@@ -332,7 +332,6 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       return;
     }
     if (!serviceWorkers) {
-      setAutomaticDashboardDataUpdatesEnabled(false, storage);
       return;
     }
     if (!online()) return schedule(RETRY_INTERVAL_MS);
@@ -343,7 +342,6 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         healthyWorker = healthy.worker;
       } catch (error) {
         console.error(`Unable to configure automatic dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
-        setAutomaticDashboardDataUpdatesEnabled(false, storage);
         await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;
@@ -376,7 +374,6 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         window.dispatchEvent(new Event(BACKGROUND_STATUS_EVENT));
       } catch (error) {
         console.error(`Unable to configure background dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
-        setAutomaticDashboardDataUpdatesEnabled(false, storage);
         await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;

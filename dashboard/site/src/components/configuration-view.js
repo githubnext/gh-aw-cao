@@ -316,7 +316,7 @@ function renderAutomaticDataUpdatesSetting() {
     h('div', { className: 'configuration-setting-row' },
       h('div', { className: 'configuration-setting-copy' },
         h('label', { htmlFor: checkbox.id }, 'Download updated data every hour'),
-        h('p', null, 'Uses Periodic Background Sync so downloads continue after the dashboard closes. Unsupported or denied browsers leave this setting off. It is off by default.')
+        h('p', null, 'Uses Periodic Background Sync so downloads continue after the dashboard closes. Unsupported or denied browsers keep the preference on and wait for background updates to become available. It is off by default.')
       ),
       checkbox
     ),
