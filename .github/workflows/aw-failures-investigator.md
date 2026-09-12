@@ -104,7 +104,7 @@ tools:
 
 graders:
   operational-value:
-    run: ./graders/aw-failures-investigator-operational-value.sh
+    run: .github/aw/aw-doctor/graders/aw-failures-investigator-operational-value.sh
 
 safe-outputs:
   create-issue:

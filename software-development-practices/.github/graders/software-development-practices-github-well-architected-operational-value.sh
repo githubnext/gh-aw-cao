@@ -9,4 +9,4 @@ OPPORTUNITY="A dispatched target repository with repository-observable collabora
 ACCEPTED="A non-bot human explicitly accepts the guidance for the frozen target commit after reviewing its official source revision, pillar-to-evidence matrix, prioritized backlog, limitations, and human-review questions."
 METRIC_ID="human-accepted-well-architected-guidance"
 
-source "${BASH_SOURCE[0]%/*}/../../aw/software-development-practices/software-development-guidance-operational-value-runtime.bash"
+source "${BASH_SOURCE[0]%/*}/../software-development-guidance-operational-value-runtime.bash"

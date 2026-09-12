@@ -16,11 +16,11 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     ["root", "dashboard"],
   );
   assert.deepEqual(
-    names([".github/workflows/graders/dependabot-release-train-updater-operational-value.sh"]),
+    names([".github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh"]),
     ["root", "Dependabot"],
   );
   assert.deepEqual(
-    names([".github/workflows/graders/aw-maintenance-compiler-security-operational-value.sh"]),
+    names([".github/aw/aw-doctor/graders/aw-maintenance-compiler-security-operational-value.sh"]),
     ["root", "AW Doctor"],
   );
 });

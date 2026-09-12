@@ -7,3 +7,5 @@ includes:
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/dependabot.json
+  - source: .github/graders/dependabot-release-train-updater-operational-value.sh
+    destination: .github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh

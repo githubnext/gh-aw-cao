@@ -18,3 +18,17 @@ resources:
     destination: .github/aw/eu-cra-compliance/implementation-status.md
   - source: eu-cra-report-operational-value-runtime.bash
     destination: .github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash
+  - source: .github/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh
+    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh
+  - source: .github/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh
+    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh
+  - source: .github/graders/eu-cra-compliance-package-maintainer-operational-value.sh
+    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-package-maintainer-operational-value.sh
+  - source: .github/graders/eu-cra-compliance-scope-classifier-operational-value.sh
+    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh
+  - source: .github/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh
+    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh
+  - source: .github/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh
+    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh
+  - source: .github/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh
+    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh

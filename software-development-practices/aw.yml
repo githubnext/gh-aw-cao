@@ -11,3 +11,7 @@ resources:
     destination: .github/aw/dashboards/software-development-practices.json
   - source: software-development-guidance-operational-value-runtime.bash
     destination: .github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash
+  - source: .github/graders/software-development-practices-github-well-architected-operational-value.sh
+    destination: .github/aw/software-development-practices/graders/software-development-practices-github-well-architected-operational-value.sh
+  - source: .github/graders/software-development-practices-nist-ssdf-operational-value.sh
+    destination: .github/aw/software-development-practices/graders/software-development-practices-nist-ssdf-operational-value.sh

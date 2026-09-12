@@ -107,7 +107,7 @@ tools:
 
 graders:
   operational-value:
-    run: ./graders/eu-cra-compliance-scope-classifier-operational-value.sh
+    run: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh
 
 safe-outputs:
   create-issue:

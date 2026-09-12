@@ -197,7 +197,7 @@ test("operational-value graders cap GitHub API usage while collecting logs", () 
     "optimization-ai-credit-auditor-operational-value.sh",
     "optimization-ai-credit-optimizer-operational-value.sh",
   ]) {
-    const source = readFileSync(join(root, ".github", "workflows", "graders", name), "utf8");
+    const source = readFileSync(join(root, ".github", "aw", "optimization", "graders", name), "utf8");
     assert.match(source, /gh aw logs[\s\S]*--max-github-api-rate-limit -2000/, name);
   }
 });
@@ -1268,59 +1268,88 @@ test("compiled workflow expressions do not contain HTML-escaped operators", () =
 });
 
 test("operational-value graders expose deterministic run-scoped contracts", () => {
-  const gradersDirectory = join(root, ".github", "workflows", "graders");
-  const graders = readdirSync(gradersDirectory).filter((name) => name.endsWith("-operational-value.sh"));
-  assert.deepEqual(graders.sort(), [
-    "aw-failures-investigator-operational-value.sh",
-    "aw-maintenance-compiler-security-operational-value.sh",
-    "dependabot-release-train-updater-operational-value.sh",
-    "eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-    "eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-    "eu-cra-compliance-package-maintainer-operational-value.sh",
-    "eu-cra-compliance-scope-classifier-operational-value.sh",
-    "eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-    "eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-    "eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
-    "optimization-agents-md-curator-operational-value.sh",
-    "optimization-ai-credit-auditor-operational-value.sh",
-    "optimization-ai-credit-optimizer-operational-value.sh",
-    "self-care-docs-build-time-investigator-operational-value.sh",
-    "software-development-practices-github-well-architected-operational-value.sh",
-    "software-development-practices-nist-ssdf-operational-value.sh",
-  ]);
-  for (const name of graders) {
-    const executable = join(gradersDirectory, name);
-    const workflowName = name.replace(/-operational-value\.sh$/, ".md");
-    const runPath = `./graders/${name}`;
-    assert.match(
-      workflow(workflowName),
-      new RegExp(`graders:\\s+operational-value:\\s+run: ${runPath.replaceAll(".", "\\.")}`),
-      `${name}: workflow must execute the frozen operational-value evaluator`,
+  const graderPackages = {
+    "aw-doctor": [
+      "aw-failures-investigator-operational-value.sh",
+      "aw-maintenance-compiler-security-operational-value.sh",
+    ],
+    dependabot: [
+      "dependabot-release-train-updater-operational-value.sh",
+    ],
+    "eu-cra-compliance": [
+      "eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
+      "eu-cra-compliance-conformity-release-evidence-operational-value.sh",
+      "eu-cra-compliance-package-maintainer-operational-value.sh",
+      "eu-cra-compliance-scope-classifier-operational-value.sh",
+      "eu-cra-compliance-security-requirements-auditor-operational-value.sh",
+      "eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
+      "eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
+    ],
+    optimization: [
+      "optimization-agents-md-curator-operational-value.sh",
+      "optimization-ai-credit-auditor-operational-value.sh",
+      "optimization-ai-credit-optimizer-operational-value.sh",
+    ],
+    "self-care": [
+      "self-care-docs-build-time-investigator-operational-value.sh",
+    ],
+    "software-development-practices": [
+      "software-development-practices-github-well-architected-operational-value.sh",
+      "software-development-practices-nist-ssdf-operational-value.sh",
+    ],
+  };
+  const evaluatorPath = (packageName, name) =>
+    join(root, ".github", "aw", packageName, "graders", name);
+  for (const [packageName, graders] of Object.entries(graderPackages)) {
+    const gradersDirectory = join(root, ".github", "aw", packageName, "graders");
+    assert.deepEqual(
+      readdirSync(gradersDirectory).filter((name) => name.endsWith("-operational-value.sh")).sort(),
+      graders,
     );
-    const definition = JSON.parse(execFileSync(executable, ["--definition"], { encoding: "utf8" }));
-    assert.equal(definition.schemaVersion, 4, name);
-    assert.equal(definition.grader, "operational-value", name);
-    const score = (example) => JSON.parse(execFileSync(executable, ["--metric"], {
-      encoding: "utf8",
-      input: JSON.stringify(definition.validationExamples[example]),
-    }));
-    assert.ok(score("targetAttained") > score("targetMissed"), name);
-    assert.equal(score("targetMissed"), 0, `${name}: complete missed opportunity`);
-    assert.equal(score("missing"), null, `${name}: missing`);
-    assert.equal(score("malformed"), null, `${name}: malformed`);
+    for (const name of graders) {
+      const executable = evaluatorPath(packageName, name);
+      const workflowName = name.replace(/-operational-value\.sh$/, ".md");
+      const runPath = `.github/aw/${packageName}/graders/${name}`;
+      assert.match(
+        workflow(workflowName),
+        new RegExp(`graders:\\s+operational-value:\\s+run: ${runPath.replaceAll(".", "\\.")}`),
+        `${name}: workflow must execute the frozen operational-value evaluator`,
+      );
+      const definition = JSON.parse(execFileSync(executable, ["--definition"], { encoding: "utf8" }));
+      assert.equal(definition.schemaVersion, 4, name);
+      assert.equal(definition.grader, "operational-value", name);
+      const score = (example) => JSON.parse(execFileSync(executable, ["--metric"], {
+        encoding: "utf8",
+        input: JSON.stringify(definition.validationExamples[example]),
+      }));
+      assert.ok(score("targetAttained") > score("targetMissed"), name);
+      assert.equal(score("targetMissed"), 0, `${name}: complete missed opportunity`);
+      assert.equal(score("missing"), null, `${name}: missing`);
+      assert.equal(score("malformed"), null, `${name}: malformed`);
+    }
   }
 
   const dependabotWorker = workflow("dependabot-release-train-updater.md");
-  const dependabotEvaluator = readFileSync(join(gradersDirectory, "dependabot-release-train-updater-operational-value.sh"), "utf8");
+  const dependabotEvaluatorPath = evaluatorPath(
+    "dependabot",
+    "dependabot-release-train-updater-operational-value.sh",
+  );
+  const dependabotEvaluator = readFileSync(dependabotEvaluatorPath, "utf8");
   const dependabotDefinition = JSON.parse(execFileSync(
-    join(gradersDirectory, "dependabot-release-train-updater-operational-value.sh"),
+    dependabotEvaluatorPath,
     ["--definition"],
     { encoding: "utf8" },
   ));
   const auditorWorker = workflow("optimization-ai-credit-auditor.md");
-  const auditorEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-auditor-operational-value.sh"), "utf8");
+  const auditorEvaluator = readFileSync(
+    evaluatorPath("optimization", "optimization-ai-credit-auditor-operational-value.sh"),
+    "utf8",
+  );
   const optimizerWorker = workflow("optimization-ai-credit-optimizer.md");
-  const optimizerEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-optimizer-operational-value.sh"), "utf8");
+  const optimizerEvaluator = readFileSync(
+    evaluatorPath("optimization", "optimization-ai-credit-optimizer-operational-value.sh"),
+    "utf8",
+  );
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
   assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
@@ -1928,7 +1957,7 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
     assert.match(source, /Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`/);
     assert.match(source, /Never (?:submit|notify)/i);
     assert.match(source, /Do not put secrets, personal data, exploit details/);
-    assert.match(source, /^graders:\n\s+operational-value:\n\s+run: \.\/graders\/eu-cra-compliance-.+-operational-value\.sh$/m);
+    assert.match(source, /^graders:\n\s+operational-value:\n\s+run: \.github\/aw\/eu-cra-compliance\/graders\/eu-cra-compliance-.+-operational-value\.sh$/m);
     assert.match(source, /<!-- operational-value: domain=[a-z0-9-]+ target=OWNER\/REPO target-sha=40_HEX_SHA -->/);
     assert.match(source, /### Human Acceptance/);
     assert.match(source, /max-ai-credits: 100/);
@@ -1950,7 +1979,7 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   assert.match(maintainer, /draft: true/);
   assert.match(maintainer, /create-issue:[\s\S]*?max: 1/);
   assert.match(maintainer, /deduplicate-by-title: true/);
-  assert.match(maintainer, /graders:\n\s+operational-value:\n\s+run: \.\/graders\/eu-cra-compliance-package-maintainer-operational-value\.sh/);
+  assert.match(maintainer, /graders:\n\s+operational-value:\n\s+run: \.github\/aw\/eu-cra-compliance\/graders\/eu-cra-compliance-package-maintainer-operational-value\.sh/);
   assert.doesNotMatch(maintainer, /shared\/control\.md/);
 
   const ledger = readFileSync(join(root, "eu-cra-compliance", "implementation-status.md"), "utf8");
@@ -2024,7 +2053,7 @@ test("Dev Practices preserves evidence and advisory boundaries", () => {
     assert.match(worker, /analyzed commit SHA/);
     assert.match(worker, /create-issue:[\s\S]*?close-older-issues: true[\s\S]*?close-older-key:.*inputs\.target_repo[\s\S]*?max: 1/);
     assert.match(worker, /^\s+web-fetch:$/m);
-    assert.match(worker, /^graders:\n\s+operational-value:\n\s+run: \.\/graders\/software-development-practices-.+-operational-value\.sh$/m);
+    assert.match(worker, /^graders:\n\s+operational-value:\n\s+run: \.github\/aw\/software-development-practices\/graders\/software-development-practices-.+-operational-value\.sh$/m);
     assert.match(worker, /<!-- operational-value: framework=[a-z0-9-]+ target=OWNER\/REPO target-sha=40_HEX_SHA -->/);
   }
   assert.match(readme, /Operational value is attainment-only/);
@@ -2176,7 +2205,7 @@ test("AW Doctor compiler security worker runs the full validation suite", () => 
 
   assert.match(source, /^name: "AW Doctor \/ Compiler Security"$/m);
   assert.match(source, /worker: compiler-security/);
-  assert.match(source, /run: \.\/graders\/aw-maintenance-compiler-security-operational-value\.sh/);
+  assert.match(source, /run: \.github\/aw\/aw-doctor\/graders\/aw-maintenance-compiler-security-operational-value\.sh/);
   assert.match(source, />"\$report_dir\/result\.json"/);
   assert.match(source, /gh aw compile \\/);
   for (const flag of [

@@ -91,7 +91,7 @@ concurrency:
 
 graders:
   operational-value:
-    run: ./graders/optimization-agents-md-curator-operational-value.sh
+    run: .github/aw/optimization/graders/optimization-agents-md-curator-operational-value.sh
 
 tracker-id: optimization-agents-md-curator
 
