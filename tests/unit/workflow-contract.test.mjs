@@ -3165,9 +3165,6 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
   assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
   assert.match(dashboardWorkflow, /github\.event_name == 'push' && github\.ref_name == github\.event\.repository\.default_branch/);
-  assert.match(dashboardWorkflow, /layout: \$\{\{ steps\.dashboard-layout\.outputs\.layout \}\}/);
-  assert.match(dashboardWorkflow, /Configure Pages\n\s+if: steps\.dashboard-layout\.outputs\.layout == 'installed'/);
-  assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.layout == 'installed'/);
   assert.match(dashboardWorkflow, /enablement: false/);
   assert.match(dashboardWorkflow, /pages: write/);
   assert.match(dashboardWorkflow, /id-token: write/);

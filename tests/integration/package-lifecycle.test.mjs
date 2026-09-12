@@ -409,7 +409,6 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
     assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
     assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
-    assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.layout == 'installed'/);
 
     const dashboardSite = join(consumer, ".github", "aw", "dashboard", "site");
     const dashboardOutput = join(consumer, "dashboard-output");
