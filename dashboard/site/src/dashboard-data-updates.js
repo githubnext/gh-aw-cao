@@ -146,7 +146,17 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
   if (permission.state !== 'granted') {
     throw new NonRetryableBackgroundSyncError('Periodic Background Sync permission was not granted.');
   }
-  await periodicSync.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS });
+  try {
+    await periodicSync.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS });
+  } catch (error) {
+    const errorName = error && typeof error === 'object'
+      ? /** @type {{ name?: unknown }} */ (error).name
+      : undefined;
+    if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
+      throw new NonRetryableBackgroundSyncError('Periodic Background Sync registration was not allowed.');
+    }
+    throw error;
+  }
   if (!(await periodicSync.getTags()).includes(PERIODIC_SYNC_TAG)) {
     throw new Error('Periodic Background Sync registration could not be verified.');
   }

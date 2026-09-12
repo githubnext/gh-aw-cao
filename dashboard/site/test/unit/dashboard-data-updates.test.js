@@ -350,6 +350,35 @@ describe('automatic dashboard data updates', () => {
     stop();
   });
 
+  it('does not retry when periodic background sync registration is not allowed', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    currentRegistration.periodicSync.register.mockRejectedValue(
+      new DOMException('Not allowed', 'NotAllowedError')
+    );
+    const serviceWorkers = {
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    };
+    const setTimer = vi.fn();
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        permissions: grantedPermissions,
+        online: () => true,
+        scriptUrl: new URL('https://example.test/service-worker.js'),
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
+      }
+    );
+
+    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
+    expect(setTimer).not.toHaveBeenCalled();
+    stop();
+  });
+
   it('force-registers a cache-busted worker when the active canary fails', async () => {
     vi.useFakeTimers();
     const brokenRegistration = registration(new FakeWorker(false));
