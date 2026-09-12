@@ -32,14 +32,27 @@ const REPOSITORY_LINK_DISPLAY = 'repository-link';
 const WORKFLOW_LINK_DISPLAY = 'workflow-link';
 
 /**
- * @param {{ href: string, label: string, externalHref?: string } | null} link
+ * @param {Record<string, unknown>} row
+ * @param {'repository-link' | 'workflow-link'} field
+ * @param {string} fallbackLabel
  * @returns {{ href: string, label: string } | null}
  */
-function preferExternalLink(link) {
-  if (!link) return null;
-  return typeof link.externalHref === 'string' && link.externalHref.length > 0
-    ? { href: link.externalHref, label: link.label }
-    : link;
+function resolveGithubEntityLink(row, field, fallbackLabel) {
+  const candidate = row[field];
+  if (
+    isPlainObject(candidate)
+    && typeof candidate.href === 'string'
+    && isSafeHttpsUrl(candidate.href)
+  ) {
+    const label = typeof candidate.label === 'string' && candidate.label.trim().length > 0
+      ? candidate.label
+      : fallbackLabel;
+    return {
+      href: candidate.href,
+      label
+    };
+  }
+  return findLink(row, field);
 }
 
 /**
@@ -202,10 +215,16 @@ function renderTableView(context) {
           : column.display === 'run-link'
             ? renderWorkflowRunLink(row, toText(row[outputField]))
           : column.display === REPOSITORY_LINK_DISPLAY
-            ? renderLinkedValue(toText(row[outputField]), preferExternalLink(findLink(row, 'repository-link')))
-          : column.display === WORKFLOW_LINK_DISPLAY
-            ? renderLinkedValue(toText(row[outputField]), preferExternalLink(findLink(row, 'workflow-link')))
-          : column.display === 'evidence-link'
+            ? renderLinkedValue(
+                toText(row[outputField]),
+                resolveGithubEntityLink(row, 'repository-link', toText(row.repository))
+              )
+            : column.display === WORKFLOW_LINK_DISPLAY
+              ? renderLinkedValue(
+                  toText(row[outputField]),
+                  resolveGithubEntityLink(row, 'workflow-link', toText(row.workflow))
+                )
+              : column.display === 'evidence-link'
               ? renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'))
           : column.display === 'outcome-link'
             ? renderOutcomeLink(row, toText(row[outputField]))
