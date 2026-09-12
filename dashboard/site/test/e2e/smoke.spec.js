@@ -2066,7 +2066,6 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-
       const metadata = {
         'source-id': 'repositories-layout-fixture',
         'source-kind': 'fixture',
@@ -2549,6 +2548,16 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { setDeclaredCliActions } from 'http://dashboard.test/src/components/cli-actions.js';
+
+      setDeclaredCliActions([{
+        id: 'update-package',
+        label: 'Update package',
+        description: 'Update this package from its aw.yml manifest.',
+        icon: 'sync',
+        command: 'gh aw update {{package}}/aw.yml',
+        placement: 'row'
+      }], { canExecute: false });
 
       const metadata = {
         'source-id': 'packages-fixture',
