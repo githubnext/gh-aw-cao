@@ -303,7 +303,7 @@ If shared authentication or shared control caused the incident, perform the cont
 
 ## Update CAO
 
-Update package-owned workflows and the control-repository-owned runtime from one reviewed CAO commit. Keep `.github/workflows/cao.json` unchanged unless the release requires an explicit, separately reviewed policy migration.
+Update package-owned workflows and runtime resources from one reviewed CAO commit. Keep `.github/workflows/cao.json` unchanged unless the release requires an explicit, separately reviewed policy migration.
 
 From the control repository:
 
@@ -313,13 +313,6 @@ CAO_REF="<full-reviewed-commit-sha>"
 
 gh extension upgrade github/gh-aw
 gh aw add --force "githubnext/gh-aw-cao@${CAO_REF}"
-
-mkdir -p .github/cao/src
-for cao_file in control.mjs policy.mjs; do
-	gh api --method GET "repos/githubnext/gh-aw-cao/contents/.github/cao/src/${cao_file}" \
-		-f ref="$CAO_REF" --jq '.content' | base64 -d > ".github/cao/src/${cao_file}"
-done
-
 gh aw upgrade
 ```
 

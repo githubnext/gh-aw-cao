@@ -178,6 +178,15 @@ test("gh aw add installs the root package without rewriting Copilot authenticati
   const consumer = await installPackage(packageSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
+    for (const relativePath of [
+      ".github/aw/cao/cao.schema.json",
+      ".github/aw/cao/setup-github-apps.mjs",
+      ".github/aw/cao/src/control.mjs",
+      ".github/aw/cao/src/policy.mjs",
+      ".github/aw/cao/upgrade.sh",
+    ]) {
+      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted CAO bootstrap file ${relativePath}`);
+    }
     assert.deepEqual(
       JSON.parse(readFileSync(join(consumer, ".github", "workflows", "aw.json"), "utf8")).auto_upgrade.options,
       ["--pre-releases"],

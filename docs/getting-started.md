@@ -77,28 +77,23 @@ If the extension is already installed, verify that it is available:
 gh aw --help
 ```
 
-### Step 3 - Add the Dependabot operation
+### Step 3 - Add Central Agentic Ops
 
-From the control repository, install the Dependabot operation package and CAO runtime from the same pinned catalog release. Replace `<catalog-release>` with a release tag or full commit SHA:
+From the control repository, install the CAO package from a pinned catalog release. Replace `<catalog-release>` with a release tag or full commit SHA:
 
 ```bash
 CAO_REF="<catalog-release>"
-gh aw add "githubnext/gh-aw-cao/dependabot@${CAO_REF}"
-mkdir -p .github/cao/src
-for cao_file in control.mjs policy.mjs; do
-	gh api --method GET "repos/githubnext/gh-aw-cao/contents/.github/cao/src/${cao_file}" \
-		-f ref="$CAO_REF" --jq '.content' | base64 -d > ".github/cao/src/${cao_file}"
-done
+gh aw add "githubnext/gh-aw-cao@${CAO_REF}"
 ```
 
 The package installs:
 
-1. the **Dependabot** orchestrator, which selects repositories;
-2. the **Dependabot / Release Trains** worker, which analyzes one selected repository;
-3. shared authentication, routing, and fail-closed controls;
+1. the catalog's operational orchestrators and workers, including **Dependabot**;
+2. shared authentication, routing, and fail-closed controls;
+3. the CAO policy schema, runtime, setup, and upgrade resources under `.github/aw/cao`;
 4. generated `.lock.yml` workflows that GitHub Actions executes.
 
-The two `.github/cao/src` files are control-repository-owned policy runtime, not gh-aw package resources. Commit them with the workflows and policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
+The runtime is installed from the same package revision as the workflows. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
 
 The installed operation is runnable after its package and worker workflow identities are declared in the control policy. Declared workers are enabled unless their policy sets `enabled: false`; undeclared or disabled identities are skipped by admission before agent execution.
 

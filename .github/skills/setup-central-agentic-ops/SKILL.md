@@ -15,11 +15,11 @@ Create a new Central Agentic Ops control plane and prove it safely with one revi
 - Public and private control repositories are supported. Preserve an existing repository's visibility; for a new repository, use the visibility the user chooses.
 - In a public control repository, policy, workflow runs, operational metadata, and review safe outputs are public. State that exposure before creation and never place confidential target information in those outputs.
 - Install the root CAO package from one full commit SHA. Resolve a reviewed release or the current default branch once before installation so every package dependency uses the same immutable source identity.
-- Materialize `.github/cao/src/control.mjs` and `.github/cao/src/policy.mjs` from that same immutable CAO commit. These are control-repository-owned runtime files; gh-aw package resources cannot and must not install them under `.github/aw`.
+- Install `.github/aw/cao/src/control.mjs`, `.github/aw/cao/src/policy.mjs`, and the other CAO bootstrap resources through the root package at that same immutable CAO commit.
 - The root package installs `.github/aw/default-AGENTS.md` as package-owned source for control-repository ambient context. If the control repository has no root `AGENTS.md`, materialize that source as `AGENTS.md`; never overwrite or merge into existing agent instructions without the user's approval.
 - Keep rollout policy only in `.github/workflows/cao.json`. Do not create `CENTRAL_AGENTIC_OPS_*` variables or another policy channel.
 - Keep credentials out of files, chat, command arguments, and workflow inputs. Have the user enter secrets directly through GitHub or an interactive terminal prompt.
-- Keep the catalog's committed root `aw.yml` free of `config` so ordinary installation remains non-interactive. When the user chooses automated App setup, run the credential-only `.github/cao/setup-github-apps.mjs` helper from a reviewed CAO checkout and target the control repository explicitly.
+- Keep the catalog's committed root `aw.yml` free of `config` so ordinary installation remains non-interactive. When the user chooses automated App setup, run the package-installed credential-only `.github/aw/cao/setup-github-apps.mjs` helper and target the control repository explicitly.
 - Require confirmed organization billing for Copilot inference. Every Copilot-backed CAO workflow declares `copilot-requests: write` and uses the built-in workflow token; do not configure `COPILOT_GITHUB_TOKEN`. A GitHub App or `GH_AW_GITHUB_TOKEN` for target access does not authenticate Copilot inference.
 - Ask which outcomes the user wants from the catalog operations installed by the root package. Do not silently choose Dependabot or infer package intent from the target repository.
 - Separately ask whether the user wants to create an operation package of their own. When they do, record the operation idea and hand it to `.github/skills/create-ops-package/SKILL.md` after the base control-plane boundary is proven; setup must not improvise a standalone custom workflow.
@@ -86,33 +86,24 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
     cao_ref=$(gh api repos/githubnext/gh-aw-cao/commits/main --jq '.sha')
     [[ "$cao_ref" =~ ^[0-9a-fA-F]{40,64}$ ]]
     gh aw add "githubnext/gh-aw-cao@${cao_ref}"
-    cao_checkout="$(mktemp -d)"
-    git init "$cao_checkout"
-    git -C "$cao_checkout" remote add origin https://github.com/githubnext/gh-aw-cao.git
-    git -C "$cao_checkout" fetch --depth=1 origin "$cao_ref"
-    git -C "$cao_checkout" sparse-checkout set --cone .github/cao/src
-    git -C "$cao_checkout" checkout --detach "$cao_ref"
-    mkdir -p .github/cao
-    cp -R "$cao_checkout/.github/cao/src" .github/cao/
-    rm -rf "$cao_checkout"
     ```
 
     A reviewed release tag may replace `main` when resolving `cao_ref`. Do not pass an unresolved branch or omit the ref: one immutable source identity keeps repeated package dependencies consistent and records a reproducible installation. In a source-managed control repository, do not install a package over workflows maintained directly in-tree. Its reviewed workflow sources, generated locks, runtime files, and policy form the runtime revision; verify them at the current commit instead.
 
-    When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper from the immutable CAO checkout at `cao_ref`. Target the control repository explicitly and complete both browser creation and installation prompts:
+    When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper installed by the package. Target the control repository explicitly and complete both browser creation and installation prompts:
 
     ```bash
-    node /path/to/cao/.github/cao/setup-github-apps.mjs --repo <organization>/<control-repository>
+    node .github/aw/cao/setup-github-apps.mjs --repo <organization>/<control-repository>
     ```
 
-    The helper mirrors gh-aw's App manifest conversion flow without package delivery, keeps the root package manifest config-free, stores client IDs as repository variables, and sends private keys to repository secrets through standard input. It is independent of `gh aw add`: run normal package installation separately for a package-managed control repository, and do not install over in-tree workflows in a source-managed control repository. After setup, verify these names exist in the control repository:
+    The helper mirrors gh-aw's App manifest conversion flow without changing package delivery, keeps the root package manifest config-free, stores client IDs as repository variables, and sends private keys to repository secrets through standard input. Do not install the package over in-tree workflows in a source-managed control repository. After setup, verify these names exist in the control repository:
 
     - variable `GH_AW_GITHUB_READ_APP_ID` and secret `GH_AW_GITHUB_READ_APP_PRIVATE_KEY`;
     - variable `GH_AW_GITHUB_WRITE_APP_ID` and secret `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY`.
 
     Existing complete credential pairs are left unchanged. Use `--dry-run` before creation when reviewing custom App names or permissions. The helper creates private Apps owned by the control repository organization; expand their installations only to approved repositories owned by that organization. Multi-organization enrollment requires an explicitly reviewed App publication and installation plan. Confirm the read App has no write permission and the write App is installed only on repositories approved for safe outputs.
 
-    Verify every installed Copilot-backed source declares `copilot-requests: write`, every corresponding generated lock grants that permission and maps `COPILOT_GITHUB_TOKEN` to `${{ github.token }}`, and no generated lock declares `${{ secrets.COPILOT_GITHUB_TOKEN }}`. Confirm both `.github/cao` runtime files exist and came from `cao_ref`, and confirm `.github/workflows/activity.yml` and `.github/aw/activity/index.mjs` were installed. Installed operations that need recent workflow-run history should restore the schema-versioned activity cache first and download only evidence absent from its bounded, complete scope. Do not rewrite installed workflow authentication or edit generated `.lock.yml` files directly.
+    Verify every installed Copilot-backed source declares `copilot-requests: write`, every corresponding generated lock grants that permission and maps `COPILOT_GITHUB_TOKEN` to `${{ github.token }}`, and no generated lock declares `${{ secrets.COPILOT_GITHUB_TOKEN }}`. Confirm both `.github/aw/cao/src` runtime files exist and came from `cao_ref`, and confirm `.github/workflows/activity.yml` and `.github/aw/activity/index.mjs` were installed. Installed operations that need recent workflow-run history should restore the schema-versioned activity cache first and download only evidence absent from its bounded, complete scope. Do not rewrite installed workflow authentication or edit generated `.lock.yml` files directly.
 
 8. Confirm `.github/aw/default-AGENTS.md` was installed. If the repository has no root `AGENTS.md`, read the installed template and create `AGENTS.md` with exactly that content using a file-editing tool. If root `AGENTS.md` already exists, preserve it unchanged unless the user explicitly approves a merge; the packaged file remains the reference default and package updates must not overwrite consumer-owned ambient context.
 
@@ -175,7 +166,7 @@ Stop before installation or execution and explain the blocker when:
 - organization-billed Copilot inference is unavailable or unconfirmed;
 - any installed Copilot-backed source omits `copilot-requests: write` or any generated lock requires `secrets.COPILOT_GITHUB_TOKEN`;
 - the installed root package does not contain `.github/aw/default-AGENTS.md`;
-- `.github/cao/src/control.mjs` or `.github/cao/src/policy.mjs` cannot be materialized from the selected immutable CAO ref;
+- the root package does not install `.github/aw/cao/src/control.mjs` and `.github/aw/cao/src/policy.mjs` from the selected immutable CAO ref;
 - the selected target does not exist, cannot be accessed, requires credentials that were not configured, or would expose non-public evidence through a public control repository;
 - the existing repository contains conflicting files that the user has not approved replacing;
 - root package installation fails; or

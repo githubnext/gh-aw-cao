@@ -70,7 +70,9 @@ jobs:
         with:
           ref: ${{ github.workflow_sha }}
           path: .cao
-          sparse-checkout: .github/cao/src
+          sparse-checkout: |
+            .github/aw/cao/src
+            .github/cao/src
           sparse-checkout-cone-mode: true
           fetch-depth: 1
           persist-credentials: false
@@ -128,7 +130,11 @@ jobs:
             };
             let control;
             try {
-              control = await import(`${process.env.GITHUB_WORKSPACE || '.'}/.cao/.github/cao/src/control.mjs`);
+              const checkout = `${process.env.GITHUB_WORKSPACE || '.'}/.cao`;
+              const runtime = fs.existsSync(`${checkout}/.github/aw/cao/src/control.mjs`)
+                ? `${checkout}/.github/aw/cao/src/control.mjs`
+                : `${checkout}/.github/cao/src/control.mjs`;
+              control = await import(runtime);
             } catch (error) {
               await failClosed(error);
               return;
@@ -230,7 +236,12 @@ jobs:
         with:
           github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
-            const control = await import(`${process.env.GITHUB_WORKSPACE || '.'}/.cao/.github/cao/src/control.mjs`);
+            const fs = require('fs');
+            const checkout = `${process.env.GITHUB_WORKSPACE || '.'}/.cao`;
+            const runtime = fs.existsSync(`${checkout}/.github/aw/cao/src/control.mjs`)
+              ? `${checkout}/.github/aw/cao/src/control.mjs`
+              : `${checkout}/.github/cao/src/control.mjs`;
+            const control = await import(runtime);
             process.exitCode = 0;
             await control.main({ core, github, context, exec, io, getOctokit }, ['precompute']);
             if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);

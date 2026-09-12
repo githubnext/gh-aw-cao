@@ -63,7 +63,7 @@ Setup creates one atomic control-plane revision:
 3. Declare the installed package and its worker-to-workflow mapping in `.github/workflows/cao.json`.
 4. Commit the workflows, generated locks, CAO runtime, and policy together, then push before running the operation.
 
-The CAO runtime files are control-repository-owned and are not gh-aw package resources. Follow [Quickstart: add the operation](getting-started.md#step-3---add-the-dependabot-operation) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the policy.
+The root CAO package installs the runtime files under `.github/aw/cao` from the same pinned revision as the workflows. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
 
 Package installation does not install the CAO runtime, declare a package, or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 
@@ -83,7 +83,7 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 
 | Reason | Check marked ❌ | Configuration or setup to check |
 | --- | --- | --- |
-| Cannot read or execute CAO runtime | Runtime revision | Materialize both `.github/cao` runtime files from the same immutable package revision and commit them with the workflows. |
+| Cannot read or execute CAO runtime | Runtime revision | Install both `.github/aw/cao/src` runtime files from the same immutable package revision and commit them with the workflows. |
 | `control policy validation failed` | Policy document | Validate policy keys, types, ranges, unique names, and expressions in `.github/workflows/cao.json`. |
 | `control-plane-absent` | Control plane | Add `control-plane` to `.github/workflows/cao.json`. |
 | `role must be orchestrator or worker`, `worker identity is required`, `worker identity is forbidden for orchestrators` | Workflow identity | Fix the dispatched role and worker identity for the workflow. |
