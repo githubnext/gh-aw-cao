@@ -89,7 +89,6 @@ const craExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const dashboardExpectedFiles = [
-  ".github/workflows/cao-dashboard-build.yml",
   ...[...readFileSync(
     new URL("../../dashboard/aw.yml", import.meta.url),
     "utf8",
@@ -394,20 +393,19 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       dashboardExpectedFiles.toSorted(),
-      "dashboard package manifest must own both workflows and every report module",
+      "dashboard package manifest must own its workflow and every report module",
     );
 
-    const buildWorkflow = readFileSync(join(consumer, ".github", "workflows", "cao-dashboard-build.yml"), "utf8");
-    const deployWorkflow = readFileSync(join(consumer, ".github", "workflows", "cao-dashboard.yml"), "utf8");
-    assert.doesNotMatch(buildWorkflow, /workflow_call:/);
-    assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?site-path:[\s\S]*?request-id:/);
-    assert.match(buildWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
-    assert.doesNotMatch(buildWorkflow, /actions\/(?:upload-pages-artifact|deploy-pages)@/);
-    assert.match(deployWorkflow, /name: CAO Dashboard/);
-    assert.match(deployWorkflow, /enablement: false/);
-    assert.doesNotMatch(deployWorkflow, /schedule:/);
-    assert.match(deployWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
-    assert.match(deployWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
+    const dashboardWorkflow = readFileSync(join(consumer, ".github", "workflows", "cao-dashboard.yml"), "utf8");
+    assert.doesNotMatch(dashboardWorkflow, /workflow_call:|cao-dashboard-build|dispatch-workflow/);
+    assert.match(dashboardWorkflow, /workflow_dispatch:/);
+    assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
+    assert.match(dashboardWorkflow, /actions\/(?:upload-pages-artifact|deploy-pages)@[0-9a-f]{40}/);
+    assert.match(dashboardWorkflow, /name: CAO Dashboard/);
+    assert.match(dashboardWorkflow, /enablement: false/);
+    assert.doesNotMatch(dashboardWorkflow, /schedule:/);
+    assert.match(dashboardWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
+    assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
@@ -424,7 +422,7 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
     const removedFiles = [
       ".github/aw/dashboard/report/records.mjs",
       ".github/aw/dashboard/site/index.html",
-      ".github/workflows/cao-dashboard-build.yml",
+      ".github/aw/dashboard/site/scripts/build.mjs",
     ];
     for (const relativePath of removedFiles) {
       rmSync(join(consumer, relativePath));
