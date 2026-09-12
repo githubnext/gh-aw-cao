@@ -814,6 +814,11 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
   await expect(view.locator('tbody tr:visible')).toHaveCount(1);
   await expect(view.locator('tbody tr:visible')).toContainText('Retained output 60');
   await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('');
+  // Wait for the cleared filter to finish re-rendering the lazy table before
+  // interacting with it, otherwise the in-flight row re-render can make the
+  // "load more" button transiently unstable/hidden and time out the click
+  // under slow CI runners.
+  await expect(view.locator('tbody tr:visible')).toHaveCount(25);
   await view.locator('[data-table-more]').click();
   await expect(view.locator('tbody tr')).toHaveCount(50);
 
