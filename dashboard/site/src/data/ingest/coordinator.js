@@ -6,7 +6,8 @@ import {
   readCanonicalBatch,
   readTransaction,
   recordTransaction,
-  replaceCanonicalBatch
+  replaceCanonicalBatch,
+  withCanonicalIngestionLock
 } from '../storage/indexeddb.js';
 import { capCanonicalBatchSize, estimateCanonicalBatchBytes, mergeRetainedRecords } from '../storage/retention.js';
 import {
@@ -54,9 +55,10 @@ async function previouslyIngested(indexedDB, kind, scope, hash) {
 
 let ingestionQueue = Promise.resolve();
 
-/** @template T @param {() => Promise<T>} task */
-function serializeIngestion(task) {
-  const result = ingestionQueue.then(task, task);
+/** @template T @param {IDBFactory} indexedDB @param {() => Promise<T>} task */
+function serializeIngestion(indexedDB, task) {
+  const lockedTask = () => withCanonicalIngestionLock(indexedDB, task);
+  const result = ingestionQueue.then(lockedTask, lockedTask);
   ingestionQueue = result.then(() => undefined, () => undefined);
   return result;
 }
@@ -122,7 +124,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
  * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string }} [options]
  */
 export function ingestDashboardSources(indexedDB, sources, options = {}) {
-  return serializeIngestion(() => ingestDashboardSourcesNow(indexedDB, sources, options));
+  return serializeIngestion(indexedDB, () => ingestDashboardSourcesNow(indexedDB, sources, options));
 }
 
 /**
@@ -207,7 +209,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadScope?: string }} [options]
  */
 export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
-  return serializeIngestion(() => ingestCachedGhAwJsonlNow(indexedDB, content, options));
+  return serializeIngestion(indexedDB, () => ingestCachedGhAwJsonlNow(indexedDB, content, options));
 }
 
 /**

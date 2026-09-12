@@ -68,6 +68,8 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
 });
 const DEFAULT_WRITE_BATCH_SIZE = 1000;
 const MAX_TRANSACTION_RECORDS = 1000;
+const INGESTION_LOCK_ID = 'lock:canonical-ingestion';
+const INGESTION_LOCK_LEASE_MS = 5 * 60 * 1000;
 
 /**
  * @template T
@@ -309,6 +311,54 @@ export async function readTransaction(indexedDB, id) {
     return result && typeof result === 'object' ? result : null;
   } finally {
     database.close();
+  }
+}
+
+/**
+ * Serializes canonical ingestion across tabs and workers.
+ * @template T
+ * @param {IDBFactory} indexedDB
+ * @param {() => Promise<T>} task
+ */
+export async function withCanonicalIngestionLock(indexedDB, task) {
+  const owner = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}:${Math.random()}`;
+  for (;;) {
+    const database = await openCanonicalDatabase(indexedDB);
+    const transaction = database.transaction(TRANSACTION_STORE, 'readwrite');
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(TRANSACTION_STORE);
+    const existing = await requestResult(store.get(INGESTION_LOCK_ID));
+    const now = Date.now();
+    const acquired = !existing || Number(existing.expiresAt) <= now;
+    if (acquired) {
+      store.put({
+        id: INGESTION_LOCK_ID,
+        kind: 'canonical-ingestion-lock',
+        createdAt: new Date(now).toISOString(),
+        owner,
+        expiresAt: now + INGESTION_LOCK_LEASE_MS
+      });
+    }
+    await done;
+    database.close();
+    if (acquired) break;
+    await new Promise((resolve) => { setTimeout(resolve, 25); });
+  }
+
+  try {
+    return await task();
+  } finally {
+    const database = await openCanonicalDatabase(indexedDB);
+    try {
+      const transaction = database.transaction(TRANSACTION_STORE, 'readwrite');
+      const done = transactionDone(transaction);
+      const store = transaction.objectStore(TRANSACTION_STORE);
+      const existing = await requestResult(store.get(INGESTION_LOCK_ID));
+      if (existing?.owner === owner) store.delete(INGESTION_LOCK_ID);
+      await done;
+    } finally {
+      database.close();
+    }
   }
 }
 
