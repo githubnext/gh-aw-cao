@@ -240,6 +240,10 @@ describe('chart element helpers', () => {
       expect(laneYs[index] - laneYs[index - 1]).toBeCloseTo(SWIMLANE_LAYOUT.laneGap);
     }
     expect(Number(chart.querySelector('.swimlane-axis')?.getAttribute('y1'))).toBe(SWIMLANE_LAYOUT.axisY);
+    expect([...chart.querySelectorAll('.swimlane-tick')].map((tick) => Number(tick.getAttribute('y2'))))
+      .toEqual(Array(4).fill(SWIMLANE_LAYOUT.tickEndY));
+    expect([...chart.querySelectorAll('.swimlane-time-label')].map((label) => Number(label.getAttribute('y'))))
+      .toEqual(Array(4).fill(SWIMLANE_LAYOUT.axisLabelY));
     expect(chart.querySelectorAll('.swimlane-mark')).toHaveLength(5);
     expect(chart.querySelector('polyline')).toBeNull();
     expect(chart.querySelector('.swimlane-summary')?.textContent).toContain('5 runs');
