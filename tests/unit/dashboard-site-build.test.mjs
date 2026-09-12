@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -17,6 +18,7 @@ function localDependencies(source) {
 test("docs dashboard installs renderer assets and configured package pages", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-build-"));
   const destination = pathToFileURL(`${root}/cao/`);
+  const buildSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const controlSettings = {
     web: { favicon: "https://example.com/dashboard.svg" },
     packages: { "uk-ai-advisory": {}, dependabot: {} },
@@ -33,6 +35,28 @@ test("docs dashboard installs renderer assets and configured package pages", asy
       await readFile(new URL("index.html", destination), "utf8"),
       /<link rel="icon" href="https:\/\/example\.com\/dashboard\.svg">/,
     );
+    assert.match(
+      await readFile(new URL("index.html", destination), "utf8"),
+      new RegExp(`<script type="module" src="./src/main.js\\?sha=${buildSha}"></script>`),
+    );
+    assert.match(
+      await readFile(new URL("src/main.js", destination), "utf8"),
+      new RegExp(`from "./presenter.js\\?sha=${buildSha}"`),
+    );
+    assert.match(
+      await readFile(new URL("src/data-processor.js", destination), "utf8"),
+      new RegExp(`new Worker\\(new URL\\('./data-worker.js\\?sha=${buildSha}'`),
+    );
+    for (const modulePath of (await readdir(new URL("src/", destination), { recursive: true }))
+      .filter((file) => file.endsWith(".js"))) {
+      const source = await readFile(new URL(modulePath, new URL("src/", destination)), "utf8");
+      for (const dependency of localDependencies(source).filter((value) => /\.js(?:\?|$)/.test(value))) {
+        assert.ok(
+          dependency.endsWith(`.js?sha=${buildSha}`),
+          `${modulePath} has an unstamped JavaScript dependency: ${dependency}`,
+        );
+      }
+    }
     for (const pageId of ["uk-ai-advisory-dashboard", "dependabot-dashboard"]) {
       assert.match(await readFile(new URL(`${pageId}/index.html`, destination), "utf8"), new RegExp(`#page-${pageId}`));
     }

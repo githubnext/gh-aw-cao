@@ -1,10 +1,14 @@
-import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { access, cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
 
 const siteRoot = new URL("../", import.meta.url);
+const execFileAsync = promisify(execFile);
+const localJavaScriptReference = /((?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+|\bexport\s+(?:\*|\{[^}]*\})\s+from\s+|new URL\(\s*)["'])(\.{1,2}\/[^"'?#]+\.js)(["'])/g;
 
 export async function buildDashboardSite({
   destination,
@@ -18,6 +22,7 @@ export async function buildDashboardSite({
 
   const destinationPath = destination instanceof URL ? fileURLToPath(destination) : resolve(destination);
   const repositoryPath = repositoryRoot instanceof URL ? fileURLToPath(repositoryRoot) : resolve(repositoryRoot);
+  const sha = await resolveBuildSha(repositoryPath);
 
   await rm(destinationPath, { force: true, recursive: true });
   await mkdir(destinationPath, { recursive: true });
@@ -31,7 +36,9 @@ export async function buildDashboardSite({
   ]);
 
   const indexPath = join(destinationPath, "index.html");
-  await writeFile(indexPath, configureSite(await readFile(indexPath, "utf8"), controlSettings));
+  const configuredIndex = configureSite(await readFile(indexPath, "utf8"), controlSettings);
+  await writeFile(indexPath, configuredIndex.replace("./src/main.js", `./src/main.js?sha=${encodeURIComponent(sha)}`));
+  await stampJavaScriptModules(destinationPath, sha);
 
   const packageDashboards = [];
   for (const packageName of Object.keys(controlSettings.packages ?? {}).toSorted()) {
@@ -50,6 +57,26 @@ export async function buildDashboardSite({
     const routeDirectory = join(destinationPath, page.id);
     await mkdir(routeDirectory, { recursive: true });
     await writeFile(join(routeDirectory, "index.html"), redirectDocument(page.id));
+  }
+}
+
+async function resolveBuildSha(repositoryPath) {
+  const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: repositoryPath });
+  return stdout.trim();
+}
+
+async function stampJavaScriptModules(directory, sha) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await stampJavaScriptModules(path, sha);
+    } else if (entry.isFile() && entry.name.endsWith(".js")) {
+      const source = await readFile(path, "utf8");
+      await writeFile(path, source.replace(
+        localJavaScriptReference,
+        `$1$2?sha=${encodeURIComponent(sha)}$3`,
+      ));
+    }
   }
 }
 
