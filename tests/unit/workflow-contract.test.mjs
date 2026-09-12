@@ -2212,6 +2212,7 @@ test("CAO Evolution compiler security worker runs the full validation suite", ()
   assert.match(source, /<details><summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(source, /<details><summary><b>Raw evidence<\/b><\/summary>/);
   assert.match(source, /never edit generated `\.lock\.yml` files/i);
+  assert.match(source, /legacy `\[aw-doctor:compiler-security\]` issues/);
   const runView = dashboard.dashboard.pages[0].views.find(({ id }) => id === "cao-evolution-runs");
   assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-failures-investigator.md"));
   assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-maintenance-compiler-security.md"));
@@ -2230,6 +2231,7 @@ test("CAO Evolution failures worker closes target AW failure issues as duplicate
   assert.match(source, /Only close target-repository issues whose title starts with `\[aw\]` and that have the `agentic-workflows` label/);
   assert.match(source, /set `duplicate_of` to the actual issue number returned for the newly created consolidated report/);
   assert.match(source, /In `review`, do not close target-repository issues/);
+  assert.match(source, /legacy `\[aw-doctor:failures-investigator\]` tracking issues/);
 });
 
 test("slower package orchestrators run hourly", () => {

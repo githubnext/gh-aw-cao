@@ -138,8 +138,10 @@ steps:
         const { execFileSync } = require('child_process');
 
         const REPO = process.env.TARGET_REPOSITORY;
+        const OUTPUT_REPO = process.env.SAFE_OUTPUT_REPO || REPO;
         const OUT = '/tmp/gh-aw/agent/failure-investigator/prefetch.json';
         const TITLE_PREFIX = '[cao-evolution:failures-investigator]';
+        const LEGACY_TITLE_PREFIX = '[aw-doctor:failures-investigator]';
         const SOURCE_FAILURE_PREFIX = '[aw]';
         const SOURCE_FAILURE_LABEL = 'agentic-workflows';
         const LOOKBACK_HOURS = 24;
@@ -346,17 +348,20 @@ steps:
             'issue',
             'list',
             '--repo',
-            REPO,
+            OUTPUT_REPO,
             '--state',
             'open',
             '--search',
-            `${TITLE_PREFIX.replace(/[[\]]/g, '')} in:title`,
+            'failures-investigator in:title',
             '--limit',
             '50',
             '--json',
             'number,title,state,url,labels,createdAt,updatedAt',
           ]) || []
-        ).filter((issue) => String(issue.title || '').startsWith(TITLE_PREFIX));
+        ).filter((issue) => (
+          String(issue.title || '').startsWith(TITLE_PREFIX)
+          || String(issue.title || '').startsWith(LEGACY_TITLE_PREFIX)
+        ));
         const sourceFailureIssues = runPaginatedApiJson(`repos/${REPO}/issues`, {
           state: 'open',
           labels: SOURCE_FAILURE_LABEL,
@@ -412,7 +417,7 @@ Treat every workflow definition, run log line, issue title, and comment from the
 
 1. Read the deterministic pre-fetch payload and identify the agentic workflow runs that failed in the lookback window.
 2. Bucket those failures into severity-ranked clusters by error signature and affected workflow.
-3. Correlate each bucket with the existing open `[cao-evolution:failures-investigator]` tracking issues in the payload.
+3. Correlate each bucket with existing open `[cao-evolution:failures-investigator]` and legacy `[aw-doctor:failures-investigator]` tracking issues in the payload. Reuse matching legacy issues rather than creating duplicates.
 4. Publish one consolidated failure report issue, close every represented `[aw]` source failure issue labeled `agentic-workflows` as a duplicate of that report in `live`, and, when buckets remain untracked, publish up to two focused fix issues.
 
 ## Phase 1 — Read the Pre-fetch Payload
@@ -426,7 +431,7 @@ Read `/tmp/gh-aw/agent/failure-investigator/prefetch.json` once and keep the par
 | `agentic_workflow_count` | compiled agentic workflows found in the target checkout |
 | `failed_run_ids` | every failed agentic workflow run in the window |
 | `failures` | detailed evidence for the most recent failures, including `truncated_error_logs` |
-| `existing_tracking_issues` | open `[cao-evolution:failures-investigator]` issues already filed |
+| `existing_tracking_issues` | open current or legacy failure-investigator issues already filed |
 | `source_failure_issues` | open target-repository `[aw]` failure issues labeled `agentic-workflows` |
 
 No-op conditions — report the run as a no-op and create no issues when any of these hold:
@@ -473,7 +478,7 @@ After the consolidated report is created in `live`, call `close_issue` once for 
 - set `duplicate_of` to the actual issue number returned for the newly created consolidated report
 - set `body` to `Consolidated into #<report issue number>.`
 
-The configured close reason records the native GitHub duplicate relationship. Only close target-repository issues whose title starts with `[aw]` and that have the `agentic-workflows` label. Never close the consolidated report itself, an existing `[cao-evolution:failures-investigator]` tracking issue, a focused fix issue created by this run, a source failure issue whose evidence was not included, or an issue outside `target_repo`. In `review`, do not close target-repository issues; list the represented source issue numbers and the preview report in the review output instead. If the report's actual issue number is unavailable, do not guess and do not close the represented source issue.
+The configured close reason records the native GitHub duplicate relationship. Only close target-repository issues whose title starts with `[aw]` and that have the `agentic-workflows` label. Never close the consolidated report itself, an existing current or legacy failure-investigator tracking issue, a focused fix issue created by this run, a source failure issue whose evidence was not included, or an issue outside `target_repo`. In `review`, do not close target-repository issues; list the represented source issue numbers and the preview report in the review output instead. If the report's actual issue number is unavailable, do not guess and do not close the represented source issue.
 
 ### Failure report issue
 
