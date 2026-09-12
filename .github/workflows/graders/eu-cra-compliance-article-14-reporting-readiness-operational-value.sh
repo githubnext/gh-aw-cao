@@ -9,4 +9,4 @@ OPPORTUNITY="A dispatched target repository with shipped or supported product re
 ACCEPTED="A non-bot human explicitly accepts the report for the frozen target commit after reviewing its awareness, escalation, separate event timelines, timestamp controls, evidence preservation, critical gaps, and reportability decisions."
 METRIC_ID="human-accepted-article-14-readiness-record"
 
-source "${BASH_SOURCE[0]%/*}/../aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash"
+source "${GITHUB_WORKSPACE:-.}/.github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash"

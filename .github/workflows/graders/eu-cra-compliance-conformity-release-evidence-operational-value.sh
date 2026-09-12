@@ -9,4 +9,4 @@ OPPORTUNITY="A dispatched target repository whose release-version technical docu
 ACCEPTED="A non-bot human explicitly accepts the report for the frozen target commit after reviewing its release-version traceability, documentation matrix, conformity register, release-gate evidence, gaps, and named decisions."
 METRIC_ID="human-accepted-conformity-release-record"
 
-source "${BASH_SOURCE[0]%/*}/../aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash"
+source "${GITHUB_WORKSPACE:-.}/.github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash"

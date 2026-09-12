@@ -15,3 +15,5 @@ includes:
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/self-care.json
+  - source: .github/graders/self-care-docs-build-time-investigator-operational-value.sh
+    destination: .github/aw/self-care/graders/self-care-docs-build-time-investigator-operational-value.sh

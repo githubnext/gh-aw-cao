@@ -10,10 +10,13 @@ const suites = [
     manifest: "aw.yml",
     testPattern: "root package",
     prefixes: [
-      ".github/graders/aw-failures-",
-      ".github/graders/aw-maintenance-",
-      ".github/graders/dependabot-",
-      ".github/graders/optimization-",
+      ".github/aw/aw-doctor/graders/",
+      ".github/aw/dependabot/graders/",
+      ".github/aw/optimization/graders/",
+      ".github/workflows/graders/aw-failures-",
+      ".github/workflows/graders/aw-maintenance-",
+      ".github/workflows/graders/dependabot-",
+      ".github/workflows/graders/optimization-",
       ".github/workflows/shared/",
     ],
   },
@@ -28,8 +31,9 @@ const suites = [
     manifest: "aw-doctor/aw.yml",
     testPattern: "focused AW Doctor package contract",
     prefixes: [
-      ".github/graders/aw-failures-",
-      ".github/graders/aw-maintenance-",
+      ".github/aw/aw-doctor/graders/",
+      ".github/workflows/graders/aw-failures-",
+      ".github/workflows/graders/aw-maintenance-",
       ".github/workflows/aw-",
       ".github/workflows/shared/",
     ],
@@ -39,7 +43,7 @@ const suites = [
     manifest: "eu-cra-compliance/aw.yml",
     testPattern: "focused EU CRA package contract",
     prefixes: [
-      ".github/graders/eu-cra-compliance",
+      ".github/aw/eu-cra-compliance/graders/",
       ".github/workflows/eu-cra-compliance",
       ".github/workflows/graders/eu-cra-compliance",
       ".github/workflows/shared/",
@@ -59,7 +63,8 @@ const suites = [
     manifest: "self-care/aw.yml",
     testPattern: "focused SelfCare package contract",
     prefixes: [
-      ".github/graders/self-care-",
+      ".github/aw/self-care/graders/",
+      ".github/workflows/graders/self-care-",
       ".github/workflows/self-care",
       ".github/workflows/shared/",
     ],
@@ -69,7 +74,8 @@ const suites = [
     manifest: "software-development-practices/aw.yml",
     testPattern: "focused Software Development Practices package contract",
     prefixes: [
-      ".github/graders/software-development-practices-",
+      ".github/aw/software-development-practices/graders/",
+      ".github/workflows/graders/software-development-practices-",
       ".github/workflows/shared/",
       ".github/workflows/software-development-practices",
     ],
@@ -85,7 +91,8 @@ const suites = [
     manifest: "dependabot/aw.yml",
     testPattern: "update replaces",
     prefixes: [
-      ".github/graders/dependabot-",
+      ".github/aw/dependabot/graders/",
+      ".github/workflows/graders/dependabot-",
       ".github/workflows/dependabot",
       ".github/workflows/shared/",
     ],
@@ -94,6 +101,10 @@ const suites = [
 
 function sourcePath(manifest, source) {
   if (source.startsWith(".github/")) return source;
+  return posix.normalize(posix.join(posix.dirname(manifest), source));
+}
+
+function resourceSourcePath(manifest, source) {
   return posix.normalize(posix.join(posix.dirname(manifest), source));
 }
 
@@ -114,7 +125,7 @@ function packageSources(root, suite) {
       }
     }
     for (const entry of manifest.resources ?? []) {
-      sources.push(sourcePath(manifestPath, entry.source));
+      sources.push(resourceSourcePath(manifestPath, entry.source));
     }
   }
   collect(suite.manifest);
