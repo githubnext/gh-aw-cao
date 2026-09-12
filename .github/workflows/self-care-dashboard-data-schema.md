@@ -111,7 +111,7 @@ safe-outputs:
 
 pre-agent-steps:
   - name: Download deployed dashboard data
-    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources
       DASHBOARD_DATA_DIR: ${{ runner.temp }}/dashboard-data
@@ -143,7 +143,7 @@ pre-agent-steps:
       done
 
   - name: Infer deployed dashboard data schemas
-    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       DASHBOARD_DATA_DIR: ${{ runner.temp }}/dashboard-data
       DASHBOARD_SCHEMA_OUTPUT: /tmp/gh-aw/agent/dashboard-data.generated.md
