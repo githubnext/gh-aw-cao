@@ -39,6 +39,17 @@ const SWIMLANE_DEFINITIONS = [
   ['skipped', 'Skipped'],
   ['success', 'Success']
 ];
+const SWIMLANE_VIEWBOX_WIDTH = 120;
+const SWIMLANE_START_X = 19;
+const SWIMLANE_END_X = 116;
+const SWIMLANE_LABEL_X = SWIMLANE_START_X - 1.5;
+const SWIMLANE_LABEL_BASELINE_OFFSET = 1;
+const SWIMLANE_TOP_Y = 5;
+const SWIMLANE_LANE_GAP = 7.25;
+const SWIMLANE_AXIS_Y = SWIMLANE_TOP_Y + (SWIMLANE_LANE_GAP * SWIMLANE_DEFINITIONS.length);
+const SWIMLANE_TICK_END_Y = SWIMLANE_AXIS_Y + 2;
+const SWIMLANE_AXIS_LABEL_Y = SWIMLANE_AXIS_Y + 6;
+const SWIMLANE_VIEWBOX_HEIGHT = SWIMLANE_AXIS_LABEL_Y + 1.5;
 /**
  * Swimlane coordinates are expressed in SVG viewBox units. `viewBoxWidth` and
  * `viewBoxHeight` define the drawing plane; `startX` and `endX` bound the
@@ -46,32 +57,19 @@ const SWIMLANE_DEFINITIONS = [
  * separators; `topY` and `laneGap` place the categorical lanes; and `axisY`,
  * `tickEndY`, and `axisLabelY` anchor the time axis below the final lane.
  */
-export const SWIMLANE_LAYOUT = (() => {
-  const viewBoxWidth = 120;
-  const startX = 19;
-  const endX = 116;
-  const labelX = startX - 1.5;
-  const labelBaselineOffset = 1;
-  const topY = 5;
-  const laneGap = 7.25;
-  const axisY = topY + (laneGap * SWIMLANE_DEFINITIONS.length);
-  const tickEndY = axisY + 2;
-  const axisLabelY = axisY + 6;
-  const viewBoxHeight = axisLabelY + 1.5;
-  return Object.freeze({
-    viewBoxWidth,
-    startX,
-    endX,
-    labelX,
-    labelBaselineOffset,
-    topY,
-    laneGap,
-    axisY,
-    tickEndY,
-    axisLabelY,
-    viewBoxHeight
-  });
-})();
+export const SWIMLANE_LAYOUT = Object.freeze({
+  viewBoxWidth: SWIMLANE_VIEWBOX_WIDTH,
+  startX: SWIMLANE_START_X,
+  endX: SWIMLANE_END_X,
+  labelX: SWIMLANE_LABEL_X,
+  labelBaselineOffset: SWIMLANE_LABEL_BASELINE_OFFSET,
+  topY: SWIMLANE_TOP_Y,
+  laneGap: SWIMLANE_LANE_GAP,
+  axisY: SWIMLANE_AXIS_Y,
+  tickEndY: SWIMLANE_TICK_END_Y,
+  axisLabelY: SWIMLANE_AXIS_LABEL_Y,
+  viewBoxHeight: SWIMLANE_VIEWBOX_HEIGHT
+});
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
 const SEMANTIC_SERIES_TERMS = {

@@ -690,9 +690,6 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   const swimlaneHeadingBox = await swimlane.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
   const swimlaneSummaryBox = await swimlane.locator('.swimlane-summary').boundingBox();
   const swimlaneChartBox = await swimlane.locator('[data-chart-widget="swimlane"] svg').boundingBox();
-  expect(swimlaneHeadingBox).not.toBeNull();
-  expect(swimlaneSummaryBox).not.toBeNull();
-  expect(swimlaneChartBox).not.toBeNull();
   if (swimlaneHeadingBox === null || swimlaneSummaryBox === null || swimlaneChartBox === null) {
     throw new Error('Expected swimlane heading, summary, and chart boxes to be measurable.');
   }
