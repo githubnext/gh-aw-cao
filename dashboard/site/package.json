@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "test": "vitest run --environment jsdom",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
-    "test:performance": "node ./test/performance/lighthouse.mjs",
+    "test:performance": "npm run build && node ./test/performance/lighthouse.mjs",
     "validate:corpus": "node ./scripts/validate-corpus.mjs",
     "dev": "cd .. && node local-server.mjs --copilot"
   },
