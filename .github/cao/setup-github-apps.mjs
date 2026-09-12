@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
@@ -513,7 +514,7 @@ async function main() {
   console.error(`Both GitHub App credential pairs are configured for ${repo}.`);
 }
 
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
 if (isMain) {
   main().catch((error) => {
     console.error(`Error: ${error.message}`);
