@@ -4,7 +4,7 @@ import { renderCliActionCommand } from '../cli-action-template.js';
 import { createModalDialog, renderCloseButton } from './ui-primitives.js';
 
 const endpoint = './__cli_action';
-/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
+/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 
 /** @param {typeof declaredCliActions} actions */

@@ -516,7 +516,7 @@ describe('data view renderer', () => {
       title: 'Repositories',
       view: {
         mark: 'table',
-        controls: 'static',
+        controls: 'interactive',
         encoding: {
           columns: [{ field: 'repository' }],
           actions: [{
@@ -533,7 +533,7 @@ describe('data view renderer', () => {
       metadata,
       contextDetails: [],
       headingTag: /** @type {'h3'} */ ('h3'),
-      prepareTableRows: (rows) => rows,
+      prepareTableRows: (/** @type {Array<Record<string, unknown>>} */ rows) => rows,
       buildChartPoints: () => [],
       prepareChartPoints: () => [],
       toText: String

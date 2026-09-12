@@ -41,7 +41,7 @@ describe('dashboard document validation', () => {
 
   it('accepts only explicit gh aw CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    document.dashboard['cli-actions'] = [{
+    document.dashboard['cli-actions'].push({
       id: 'compile-workflows',
       label: 'Compile workflows',
       description: 'Validate editable workflow sources.',
@@ -55,18 +55,19 @@ describe('dashboard document validation', () => {
         flag: '--pre-releases',
         default: false
       }]
-    }];
+    });
+    const addedAction = document.dashboard['cli-actions'][document.dashboard['cli-actions'].length - 1];
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
-    document.dashboard['cli-actions'][0].command = 'gh api user';
+    addedAction.command = 'gh api user';
     const rejected = validateDashboardDocument(JSON.stringify(document));
     expect(rejected.ok).toBe(false);
     expect(rejected.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({ message: 'CLI action command must start with "gh aw".' })
     ]));
 
-    document.dashboard['cli-actions'][0].command = 'gh aw upgrade';
-    document.dashboard['cli-actions'][0].arguments[0].flag = '$(whoami)';
+    addedAction.command = 'gh aw upgrade';
+    addedAction.arguments[0].flag = '$(whoami)';
     const invalidFlag = validateDashboardDocument(JSON.stringify(document));
     expect(invalidFlag.ok).toBe(false);
     expect(invalidFlag.errors).toEqual(expect.arrayContaining([

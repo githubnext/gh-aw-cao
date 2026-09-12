@@ -1334,6 +1334,15 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       }
       collectBuiltInDefinitionFieldCoverage(view.encoding, sourceFieldCoverage.get(coverageSource));
     }
+
+    validateTableActions(
+      view.encoding,
+      undefined,
+      view.mark,
+      data.source,
+      `${viewPath}.encoding.actions`,
+      errors
+    );
   }
 
   for (const sourceName of BUILT_IN_PAGE_REQUIRED_SOURCES[pageName]) {

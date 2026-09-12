@@ -227,7 +227,7 @@
         if (previewMode === "canvas") {
           const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
           const toolbarActions = renderCliActions(
-            declaredActions.filter((action) => !["settings", "row"].includes(action.placement))
+            declaredActions.filter((action) => !["settings", "row"].includes(action.placement ?? "toolbar"))
           );
           if (toolbarActions) dashboard.querySelector(".report-actions")?.prepend(toolbarActions);
           const settingsActions = renderCliActions(
