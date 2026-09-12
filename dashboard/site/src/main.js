@@ -227,9 +227,11 @@
         attachCopilotPanel(dashboard);
         if (previewMode === "canvas") {
           const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
-          const actionTemplateValues = typeof dashboardDocument.dashboard.repository === "string"
-            ? { repository: dashboardDocument.dashboard.repository }
-            : {};
+          /** @type {Record<string, string>} */
+          const actionTemplateValues = {};
+          if (typeof dashboardDocument.dashboard.repository === "string") {
+            actionTemplateValues.repository = dashboardDocument.dashboard.repository;
+          }
           const toolbarActions = renderCliActions(
             declaredActions.filter((action) => !["settings", "row"].includes(action.placement ?? "toolbar")),
             { templateValues: actionTemplateValues }
