@@ -1001,7 +1001,10 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.match(packageLifecycle, /remaining < 500/);
   assert.match(packageLifecycle, /if: steps\.package-api\.outputs\.ready == 'true'/);
   assert.match(packageLifecycle, /GH_TOKEN: \$\{\{ github\.token \}\}/);
-  assert.match(packageLifecycle, /CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE:/);
+  assert.match(
+    packageLifecycle,
+    /CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: \$\{\{ github\.event_name == 'pull_request' && format\('\{0\}@\{1\}', github\.event\.pull_request\.head\.repo\.full_name, github\.event\.pull_request\.head\.ref\) \|\| format\('\{0\}@\{1\}', github\.repository, github\.sha\) \}\}/,
+  );
   assert.match(packageLifecycle, /npm run test:package-lifecycle/);
   assert.match(packageLifecycle, /grep -Fq "API rate limit exceeded for installation"/);
   assert.match(packageLifecycle, /exit "\$status"/);
