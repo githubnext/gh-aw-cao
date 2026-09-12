@@ -470,15 +470,20 @@ describe('presenter built-in and custom pages', () => {
     });
 
     document.body.append(rendered);
-    window.location.hash = '#page-transactions';
-    await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="transactions"]')?.hasAttribute('data-page-pending')).toBe(false));
-    const page = rendered.querySelector('[data-page-id="transactions"]');
-    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelector('input[type="search"]')).not.toBeNull();
-    expect(page?.textContent).toContain('ingest-jsonl');
-    expect(page?.textContent).toContain('gh-aw-jsonl');
-    expect(page?.querySelector('thead')?.textContent).toContain('Committed records');
+    try {
+      window.location.hash = '#page-transactions';
+      await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="transactions"]')?.hasAttribute('data-page-pending')).toBe(false));
+      const page = rendered.querySelector('[data-page-id="transactions"]');
+      expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+      expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+      expect(page?.querySelector('input[type="search"]')).not.toBeNull();
+      expect(page?.textContent).toContain('ingest-jsonl');
+      expect(page?.textContent).toContain('gh-aw-jsonl');
+      expect(page?.querySelector('thead')?.textContent).toContain('Committed records');
+    } finally {
+      rendered.remove();
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   it('explains when engine and model usage data is missing', async () => {
