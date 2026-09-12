@@ -2066,7 +2066,6 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
-
       const metadata = {
         'source-id': 'repositories-layout-fixture',
         'source-kind': 'fixture',
@@ -2549,6 +2548,16 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { setDeclaredCliActions } from 'http://dashboard.test/src/components/cli-actions.js';
+
+      setDeclaredCliActions([{
+        id: 'update-package',
+        label: 'Update package',
+        description: "Update this package's agentic workflow.",
+        icon: 'sync',
+        command: 'gh aw update {{package}}',
+        placement: 'row'
+      }], { canExecute: false });
 
       const metadata = {
         'source-id': 'packages-fixture',
@@ -2833,6 +2842,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
   await expect(packageRows).toHaveCount(2);
   await expect(page.locator('[data-page-id="packages"] .custom-table thead tr').first().locator('th')).toHaveText([
+    '',
     'Package',
     'Workflows',
     'Roles',
@@ -2844,6 +2854,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
+  await awDoctorSummary.getByRole('button', { name: 'Update package' }).click();
+  await expect(page.getByText('gh aw update aw-doctor', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close action approval' }).click();
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-insights?package=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
