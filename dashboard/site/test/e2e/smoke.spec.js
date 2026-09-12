@@ -2631,8 +2631,8 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
           callouts: [{
             id: 'partial-data',
             title: 'Dashboard data is partial',
-            description: 'Data Health reports a collection gap.',
-            'navigation-page': 'data-health'
+            description: 'Coverage diagnostics report a collection gap.',
+            'navigation-page': 'coverage'
           }],
           pages: [{
             id: 'cost',
@@ -2704,7 +2704,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await filterBar.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 400, height: 900 });
-  expect((await page.getByRole('link', { name: 'View data health' }).boundingBox())?.height)
+  expect((await page.getByRole('link', { name: 'View coverage' }).boundingBox())?.height)
     .toBeGreaterThanOrEqual(24);
   await page.locator('.mobile-nav-menu > summary').click();
   const horizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();

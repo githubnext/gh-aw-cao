@@ -1173,14 +1173,6 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .summary-grid > div { min-width: 0; padding: 13px 15px; background: var(--canvas-subtle); }
 .summary-grid dt { color: var(--muted); font-size: .6875rem; font-weight: 600; text-transform: uppercase; }
 .summary-grid dd { margin: 2px 0 0; font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.data-health-domain-list { margin: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; }
-.data-health-domain-list > div { display: grid; grid-template-columns: minmax(10rem, .4fr) minmax(0, 1fr); gap: 24px; padding: 14px 16px; }
-.data-health-domain-list > div + div { border-top: 1px solid var(--border); }
-.data-health-domain-list dt { font-weight: 600; }
-.data-health-domain-list dd { min-width: 0; margin: 0; }
-.data-health-domain-value { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
-.data-health-domain-reason { flex: 1 1 24rem; }
-.data-health-domain-action { flex: 1 1 100%; color: var(--muted); font-size: .75rem; }
 .readiness-verdict { display: grid; overflow: hidden; border: 1px solid var(--border); border-left-width: 4px; border-radius: 6px; background: var(--canvas-subtle); }
 .readiness-verdict-blocked { border-left-color: var(--danger); }
 .readiness-verdict-ready { border-left-color: var(--success); }
@@ -1993,7 +1985,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .context-summary { grid-template-columns: 1fr; }
   .context-summary > div { border-top: 1px solid var(--border); border-left: 0; }
   .context-summary > div:first-child { border-top: 0; }
-  .data-health-domain-list > div { grid-template-columns: 1fr; gap: 8px; }
   .repository-health .section-heading { align-items: flex-start; flex-direction: column; }
   .outcome-view { grid-template-columns: 1fr; }
   .outcome-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }

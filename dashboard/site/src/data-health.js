@@ -7,18 +7,6 @@
  * @typedef {import('./presenter.js').SourceMetadata} SourceMetadata
  */
 
-export const DOMAIN_DEPENDENCIES = Object.freeze({
-  inventory: { required: ['repositories', 'workflows'], optional: ['organizations'] },
-  runtime: { required: ['workflows', 'runs'], optional: ['run-performance', 'job-performance'] },
-  cost: { required: ['runs', 'usage'], optional: [] },
-  models: { required: ['workflows', 'usage'], optional: ['mcp-calls', 'mcp-servers'] },
-  detection: { required: ['runs', 'detection-observations'], optional: ['security-observations'] },
-  firewall: { required: ['runs', 'firewall-observations'], optional: ['firewall-policy-rules'] },
-  'safe-outputs': { required: ['runs', 'safe-output-performance'], optional: ['findings'] },
-  outcomes: { required: ['safe-output-performance', 'outcomes'], optional: ['findings', 'operational-values'] },
-  configuration: { required: ['configuration-policy'], optional: ['configuration-summary', 'configuration-actions'] }
-});
-
 const COVERAGE_CONTRACTS = Object.freeze([
   { area: 'Repositories', source: 'repositories', denominator: 'metadata' },
   { area: 'Workflows', source: 'workflows', denominator: 'metadata' },
@@ -42,78 +30,22 @@ const RECONCILIATION_CONTRACTS = Object.freeze([
 ]);
 
 /**
+ * Derives evidence-collection diagnostics, including per-source schema inference.
  * @param {Record<string, LogicalSourceInput>} sources
- * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} [context]
  * @returns {Record<string, LogicalSourceInput>}
  */
-export function deriveDataHealthSources(sources, context = {}) {
-  const sourceRows = Object.entries(sources).map(([name, source]) => sourceDiagnostic(name, source));
-  const fieldRows = Object.entries(sources).flatMap(([name, source]) => fieldDiagnostics(name, source));
-  const fileRows = Object.entries(sources)
-    .map(([name, source]) => loadedFileDiagnostic(name, source))
-    .sort((left, right) => right.size - left.size || left.file.localeCompare(right.file));
-  const totalSize = fileRows.reduce((total, row) => total + row.size, 0);
-  const schemaRows = Object.entries(sources).map(([name, source]) => schemaDiagnostic(name, source));
-  const compatibilityRows = compatibilityDiagnostics(sources.workflows);
-  const reconciliationRows = RECONCILIATION_CONTRACTS.map((contract) => reconcile(contract, sources));
-  const coverageRows = COVERAGE_CONTRACTS.map((contract) => coverageDiagnostic(contract, sources, reconciliationRows));
-  const collectionRows = collectionDiagnostics(sources);
-  const domainRows = Object.entries(DOMAIN_DEPENDENCIES).map(([domain, dependencies]) => (
-    domainDiagnostic(domain, dependencies, sourceRows, compatibilityRows, reconciliationRows)
-  ));
-  const confidence = overallConfidence(domainRows);
+export function deriveDataHealthSources(sources) {
   const metadata = combineSourceMetadata(Object.values(sources));
-  const affectedDomains = domainRows.filter((row) => row.confidence !== 'trusted').map((row) => row.domain);
-  const repositoryCoverage = coverageRows.find((row) => row.area === 'Repositories');
-  const collectorState = ['failed', 'partial', 'unknown', 'complete']
-    .find((state) => collectionRows.some((row) => row.state === state)) ?? 'unknown';
-  const compatibilityGaps = compatibilityRows.filter((row) => row.compatibility !== 'compatible').length;
-  const githubUrlBase = typeof context.githubUrlBase === 'string' && context.githubUrlBase.length > 0
-    ? context.githubUrlBase.replace(/\/+$/, '')
-    : null;
-  const dashboardRepository = typeof context.dashboardRepository === 'string' && context.dashboardRepository.length > 0
-    ? context.dashboardRepository
-    : null;
-  const activityLink = githubUrlBase && dashboardRepository
-    ? { href: `${githubUrlBase}/${dashboardRepository}/actions/workflows/activity.yml`, label: 'CAO Activity' }
-    : null;
-
+  const schemaRows = Object.entries(sources).map(([name, source]) => schemaDiagnostic(name, source));
   return {
-    'data-health-summary': healthSource('data-health-summary', [{
-      confidence: confidence.state,
-      reason: confidence.reason,
-      'affected-domains': affectedDomains.length > 0 ? affectedDomains.join(', ') : 'None',
-      'next-action': confidence.action,
-      availability: aggregateAxis(sourceRows, 'availability'),
-      completeness: aggregateAxis(sourceRows, 'completeness'),
-      freshness: aggregateAxis(sourceRows, 'freshness'),
-      'scope-coverage': repositoryCoverage?.['coverage-percent'] ?? 'Unknown',
-      'collector-state': collectorState,
-      'compatibility-gaps': compatibilityRows.length === 0 ? 'Unknown' : compatibilityGaps,
-      sources: sourceRows.length,
-      'available-sources': sourceRows.filter((row) => row.availability === 'available').length,
-      rows: sourceRows.reduce((total, row) => total + row.rows, 0),
-      fields: fieldRows.length,
-      'total-size': formatBytes(totalSize),
-      'populated-cells': sourceRows.reduce((total, row) => total + row['populated-cells'], 0),
-      'empty-cells': sourceRows.reduce((total, row) => total + row['empty-cells'], 0),
-      'external-link': activityLink
-    }], metadata),
-    'data-health-domains': healthSource('data-health-domains', domainRows, metadata),
-    'data-health-collections': healthSource('data-health-collections', collectionRows, metadata),
-    'data-health-compatibility': healthSource('data-health-compatibility', compatibilityRows, metadata),
-    'data-health-reconciliation': healthSource('data-health-reconciliation', reconciliationRows, metadata),
-    'data-health-coverage': healthSource('data-health-coverage', coverageRows, metadata),
-    'data-health-sources': healthSource('data-health-sources', sourceRows, metadata),
-    'data-health-fields': healthSource('data-health-fields', fieldRows, metadata),
-    'data-health-files': healthSource('data-health-files', fileRows, metadata),
+    ...deriveDataHealthCalloutSources(sources),
     'data-health-schema': healthSource('data-health-schema', schemaRows, metadata)
   };
 }
 
 /**
- * Derives the diagnostics required before the Data Health page is opened.
- * Detailed source inspection is deferred to the data worker.
+ * Derives the collection and coverage diagnostics consumed by dashboard callouts and the
+ * coverage page.
  * @param {Record<string, LogicalSourceInput>} sources
  * @returns {Record<string, LogicalSourceInput>}
  */
@@ -127,7 +59,6 @@ export function deriveDataHealthCalloutSources(sources) {
       collectionDiagnostics(sources),
       metadata
     ),
-    'data-health-reconciliation': healthSource('data-health-reconciliation', reconciliationRows, metadata),
     'data-health-coverage': healthSource('data-health-coverage', coverageRows, metadata)
   };
 }
@@ -136,86 +67,6 @@ export function deriveDataHealthCalloutSources(sources) {
 /** @param {string} name @param {Array<Record<string, unknown>>} rows @param {SourceMetadata} metadata */
 function healthSource(name, rows, metadata) {
   return { source: name, rows, metadata };
-}
-
-/** @param {string} name @param {LogicalSourceInput} source */
-function sourceDiagnostic(name, source) {
-  const rows = Array.isArray(source?.rows) ? source.rows : [];
-  const fields = new Set(rows.flatMap((row) => Object.keys(row ?? {})));
-  const populatedFields = [...fields].filter((field) => rows.some((row) => hasValue(row?.[field])));
-  const populatedCells = rows.reduce(
-    (total, row) => total + [...fields].filter((field) => hasValue(row?.[field])).length,
-    0
-  );
-  const cells = rows.length * fields.size;
-  const metadata = source?.metadata ?? {};
-  const availability = metadata.availability ?? 'unknown';
-  const completeness = metadata.completeness ?? 'unknown';
-  const freshness = metadata.freshness ?? 'unknown';
-  const confidence = evidenceConfidence({ availability, completeness, freshness });
-  return {
-    source: name,
-    'source-id': metadata['source-id'] ?? name,
-    'source-kind': metadata['source-kind'] ?? 'unknown',
-    'as-of': metadata['as-of'] ?? '',
-    'retrieved-at': metadata['retrieved-at'] ?? '',
-    rows: rows.length,
-    fields: fields.size,
-    'populated-fields': populatedFields.length,
-    'empty-fields': fields.size - populatedFields.length,
-    'populated-cells': populatedCells,
-    'empty-cells': cells - populatedCells,
-    'field-coverage': fields.size === 0 ? 'Unknown' : formatPercent(populatedFields.length / fields.size),
-    'cell-coverage': cells === 0 ? 'Unknown' : formatPercent(populatedCells / cells),
-    status: confidence,
-    availability,
-    completeness,
-    freshness,
-    reason: confidenceReason({ availability, completeness, freshness })
-  };
-}
-
-/** @param {string} name @param {LogicalSourceInput} source */
-function loadedFileDiagnostic(name, source) {
-  const serialized = safeStringify(source);
-  const size = new TextEncoder().encode(serialized).length;
-  return {
-    file: `${name}.json`,
-    source: name,
-    size,
-    'display-size': formatBytes(size),
-    rows: Array.isArray(source?.rows) ? source.rows.length : 0,
-    status: source?.metadata?.availability ?? 'unknown'
-  };
-}
-
-/** @param {number} bytes */
-function formatBytes(bytes) {
-  if (!Number.isFinite(bytes) || bytes < 0) return 'Unknown';
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length);
-  const value = bytes / (1024 ** exponent);
-  return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1, useGrouping: false }).format(value)} ${units[exponent - 1]}`;
-}
-
-/**
- * Serializes a value to JSON, replacing reference cycles with a marker instead of throwing, so a
- * single malformed source cannot break loaded-file size diagnostics for every other source.
- * @param {unknown} value
- * @returns {string}
- */
-function safeStringify(value) {
-  /** @type {object[]} */
-  const ancestors = [];
-  return JSON.stringify(value, function replacer(_key, candidate) {
-    while (ancestors.length > 0 && ancestors.at(-1) !== this) ancestors.pop();
-    if (candidate !== null && typeof candidate === 'object') {
-      if (ancestors.includes(candidate)) return '[Circular]';
-      ancestors.push(candidate);
-    }
-    return candidate;
-  });
 }
 
 const MAX_SCHEMA_DEPTH = 6;
@@ -345,41 +196,11 @@ function formatShape(shape, depth) {
   return `{ ${fields.join(', ')} }`;
 }
 
-/** @param {string} name @param {LogicalSourceInput} source */
-function fieldDiagnostics(name, source) {
-  const rows = Array.isArray(source?.rows) ? source.rows : [];
-  const fields = [...new Set(rows.flatMap((row) => Object.keys(row ?? {})))].sort();
-  return fields.map((field) => {
-    const values = rows.map((row) => row?.[field]);
-    const populated = values.filter(hasValue);
-    const types = [...new Set(populated.map(valueType))].sort();
-    return {
-      source: name,
-      field,
-      types: types.length > 0 ? types.join(', ') : 'Unknown',
-      rows: rows.length,
-      populated: populated.length,
-      empty: rows.length - populated.length,
-      coverage: rows.length === 0 ? 'Unknown' : formatPercent(populated.length / rows.length),
-      shape: types.length > 1 ? 'mixed' : types[0] ?? 'unknown'
-    };
-  });
-}
-
 /** @param {unknown} value */
 function valueType(value) {
   if (Array.isArray(value)) return 'array';
   if (value === null) return 'null';
   return typeof value;
-}
-
-/** @param {{ availability?: string, completeness?: string, freshness?: string, compatibility?: string, collectionState?: string }} state */
-export function evidenceConfidence({ availability, completeness, freshness, compatibility = 'compatible', collectionState = 'complete' }) {
-  if (availability === 'unavailable' || collectionState === 'failed') return 'insufficient';
-  if ([availability, completeness, freshness, compatibility, collectionState].some((value) => value === 'unknown' || value === undefined)) return 'unknown';
-  if (completeness === 'partial' || freshness === 'stale' || compatibility === 'limited' || collectionState === 'partial') return 'degraded';
-  if (compatibility === 'unsupported') return 'insufficient';
-  return availability === 'available' && completeness === 'complete' && freshness === 'fresh' ? 'trusted' : 'unknown';
 }
 
 /** @param {{ availability?: string, completeness?: string, freshness?: string }} state */
@@ -391,53 +212,6 @@ function confidenceReason({ availability, completeness, freshness }) {
   if (freshness === 'stale') return 'Evidence is stale.';
   if (freshness === 'unknown') return 'Evidence freshness is unknown.';
   return 'Evidence is available, complete, and fresh.';
-}
-
-/**
- * @param {string} domain
- * @param {{ required: readonly string[], optional: readonly string[] }} dependencies
- * @param {Array<Record<string, any>>} sourceRows
- * @param {Array<Record<string, any>>} compatibilityRows
- * @param {Array<Record<string, any>>} reconciliationRows
- */
-function domainDiagnostic(domain, dependencies, sourceRows, compatibilityRows, reconciliationRows) {
-  const required = dependencies.required.map((name) => sourceRows.find((row) => row.source === name));
-  const missing = dependencies.required.filter((_, index) => !required[index]);
-  const affectedCompatibility = compatibilityRows.filter((row) => dependencies.required.includes(row.source) && row.compatibility !== 'compatible');
-  const affectedReconciliation = reconciliationRows.filter((row) => row.domain === domain && row.state !== 'complete' && row.state !== 'not-applicable');
-  let confidence = 'trusted';
-  let reason = 'Required evidence is available, complete, fresh, compatible, and consistent.';
-  if (missing.length > 0 || required.some((row) => row?.status === 'unknown')) {
-    confidence = 'unknown';
-    reason = `Required evidence state is unknown: ${missing.length > 0 ? missing.join(', ') : required.filter((row) => row?.status === 'unknown').map((row) => row?.source).join(', ')}.`;
-  } else if (required.some((row) => row?.status === 'insufficient') || affectedCompatibility.some((row) => row.compatibility === 'unsupported')) {
-    confidence = 'insufficient';
-    reason = 'A critical evidence source is unavailable or unsupported.';
-  } else if (required.some((row) => row?.status === 'degraded') || affectedCompatibility.length > 0 || affectedReconciliation.length > 0) {
-    confidence = 'degraded';
-    reason = 'Known bounded gaps affect this domain.';
-  }
-  return {
-    domain,
-    confidence,
-    reason,
-    'required-sources': dependencies.required.join(', '),
-    'optional-sources': dependencies.optional.join(', ') || 'None',
-    'next-action': confidence === 'trusted' ? 'No action required.' : `Investigate ${domain} evidence diagnostics.`
-  };
-}
-
-/** @param {Array<Record<string, any>>} domains */
-function overallConfidence(domains) {
-  /** @param {string} state */
-  const first = (state) => domains.find((domain) => domain.confidence === state);
-  const insufficient = first('insufficient');
-  if (insufficient) return { state: 'insufficient', reason: insufficient.reason, action: insufficient['next-action'] };
-  const unknown = first('unknown');
-  if (unknown) return { state: 'unknown', reason: unknown.reason, action: unknown['next-action'] };
-  const degraded = first('degraded');
-  if (degraded) return { state: 'degraded', reason: degraded.reason, action: degraded['next-action'] };
-  return { state: 'trusted', reason: 'All critical evidence domains are trusted.', action: 'No action required.' };
 }
 
 /**
@@ -526,49 +300,6 @@ function collectionDiagnostics(sources) {
   return [...sourceDiagnostics, ...retainedDiagnostics];
 }
 
-/** @param {LogicalSourceInput | undefined} workflows */
-function compatibilityDiagnostics(workflows) {
-  const currentVersion = workflows?.rows?.map((row) => parseVersion(row['gh-aw-current-version'])).find(Boolean) ?? null;
-  return (workflows?.rows ?? []).map((row) => {
-    const producer = parseVersion(row['gh-aw-version']);
-    const missingBaseFields = ['organization', 'repository', 'workflow'].filter((field) => !hasValue(row[field]));
-    const missingCurrentFields = producer && currentVersion
-      && producer.major === currentVersion.major
-      && compareVersion(producer, currentVersion) >= 0
-      && !hasValue(row['gh-aw-metadata'])
-      ? ['gh-aw-metadata']
-      : [];
-    const missingFields = [...missingBaseFields, ...missingCurrentFields];
-    let compatibility = 'unknown';
-    let reason = 'Producer version is unavailable.';
-    if (producer && currentVersion && producer.major !== currentVersion.major) {
-      compatibility = 'unsupported';
-      reason = 'Producer major version is outside the supported contract.';
-    } else if (producer && currentVersion && compareVersion(producer, currentVersion) < 0) {
-      compatibility = 'limited';
-      reason = 'Supported legacy producer; newer optional telemetry may be absent.';
-    } else if (producer) {
-      compatibility = 'compatible';
-      reason = 'Producer contract is supported.';
-    }
-    if (missingFields.length > 0 && compatibility === 'compatible') {
-      compatibility = 'limited';
-      reason = 'A required field is unexpectedly missing from a compatible producer.';
-    }
-    return {
-      source: 'workflows',
-      workflow: workflowKey(row),
-      'producer-version': row['gh-aw-version'] || 'Unknown',
-      compatibility,
-      'missing-fields': missingFields.join(', ') || 'None',
-      'missing-field-class': missingFields.length > 0 ? 'unexpected' : compatibility === 'limited' ? 'expected' : 'none',
-      'affected-domain': compatibility === 'compatible' ? 'None' : 'runtime, cost, models, security',
-      reason,
-      'next-action': compatibility === 'compatible' ? 'No action required.' : 'Investigate producer compatibility.'
-    };
-  });
-}
-
 /**
  * @param {{ relationship: string, parent: string, child: string, parentKey: (row: any) => string, childKey: (row: any) => string, domain: string }} contract
  * @param {Record<string, LogicalSourceInput>} sources
@@ -644,40 +375,9 @@ function uniqueKeys(rows, key) {
 }
 
 /** @param {unknown} value */
-function parseVersion(value) {
-  const match = String(value ?? '').match(/^v?(\d+)\.(\d+)\.(\d+)/);
-  return match ? { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) } : null;
-}
-
-/** @param {{ major: number, minor: number, patch: number }} left @param {{ major: number, minor: number, patch: number }} right */
-function compareVersion(left, right) {
-  return left.major - right.major || left.minor - right.minor || left.patch - right.patch;
-}
-
-/** @param {unknown} value */
 function finiteCount(value) {
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? number : null;
-}
-
-/** @param {Array<Record<string, any>>} rows @param {string} axis */
-function aggregateAxis(rows, axis) {
-  const values = rows.map((row) => row[axis]);
-  if (values.includes('unavailable')) return 'unavailable';
-  if (values.includes('unknown')) return 'unknown';
-  if (values.includes('partial') || values.includes('stale')) return axis === 'freshness' ? 'stale' : 'partial';
-  if (axis === 'availability') return values.every((value) => value === 'available') ? 'available' : 'unknown';
-  return axis === 'freshness' ? 'fresh' : 'complete';
-}
-
-/** @param {unknown} value */
-function hasValue(value) {
-  return value !== null && value !== undefined && value !== '';
-}
-
-/** @param {number} value */
-function formatPercent(value) {
-  return `${Math.round(value * 100)}%`;
 }
 
 /**

@@ -169,5 +169,3 @@ Dashboard presentation and attention semantics are defined by the
   relationship for operators and contributors.
 - [Data Acquisition Audit](data-acquisition-audit.md) inventories current API,
   indexing, and caching behavior; it is informative rather than normative.
-- [Dashboard data health](../docs/dashboard-data-health.md) explains how the
-  dashboard presents quality states.
