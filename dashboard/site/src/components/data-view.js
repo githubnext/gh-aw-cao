@@ -16,6 +16,7 @@ import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, cr
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
+import { renderRowCliAction } from './cli-actions.js';
 
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
 const ENTITY_LINK_FIELDS = {
@@ -163,9 +164,14 @@ function renderTableView(context) {
       'data-custom-row-key': `${pageId}-${title}-${keyOffset + rowIndex}`,
       ...(tree ? { 'aria-level': String(depth + 1), 'data-tree-row': '' } : {})
     },
-    ...actions.map((action) => actionMatches(action, row)
-      ? h('td', { className: 'table-intent-action' }, renderIntentAction(action, row))
-      : h('td', { className: 'table-intent-action' })),
+    ...actions.map((action) => {
+      const className = action.presentation === 'cli-action'
+        ? 'table-intent-action table-cli-action-cell'
+        : 'table-intent-action';
+      return actionMatches(action, row)
+        ? h('td', { className }, renderTableAction(action, row))
+        : h('td', { className });
+    }),
     ...columns.map((column, columnIndex) => {
       const outputField = typeof column.as === 'string' ? column.as : column.field;
       const cellAttributes = {
@@ -248,11 +254,16 @@ function renderTableView(context) {
       emptyMessage,
       emptyAction,
       colSpan: Math.max(columns.length + actions.length, 1),
-      headCells: [...actions.map(() => 'Action'), ...columns.map(fieldTitle)],
+      headCells: [...actions.map((action) => action.presentation === 'cli-action' ? '' : 'Action'), ...columns.map(fieldTitle)],
       unsortableColumns: actions.map((_, index) => index),
+      compactColumns: actions.flatMap((action, index) => action.presentation === 'cli-action' ? [index] : []),
       summaryColumns: interactive && view['column-summaries'] !== false
         ? [
-            ...actions.map(() => ({ label: 'Action', values: [] })),
+            ...actions.map((action) => ({
+              label: action.presentation === 'cli-action' ? '' : 'Action',
+              compact: action.presentation === 'cli-action',
+              values: []
+            })),
             ...columns.map((column) => {
               const outputField = typeof column.as === 'string' ? column.as : column.field;
               return {
@@ -504,12 +515,14 @@ function chartCategoryLinks(points) {
 
 /**
  * @param {Record<string, unknown>} view
- * @returns {Array<{ intent: string, presentation: string, icon: string, label: string, context: string[], when?: { field: string, equals: unknown } }>}
+ * @returns {Array<{ intent?: string, action?: string, presentation: string, icon: string, label: string, context: string[], when?: { field: string, equals: unknown } }>}
  */
 function tableActions(view) {
-  return isPlainObject(view.encoding) && Array.isArray(view.encoding.actions)
-    ? /** @type {Array<{ intent: string, presentation: string, icon: string, label: string, context: string[], when?: { field: string, equals: unknown } }>} */ (view.encoding.actions)
-    : [];
+  if (!isPlainObject(view.encoding) || !Array.isArray(view.encoding.actions)) return [];
+  const canvasMode = new URLSearchParams(globalThis.location?.search ?? '').get('local-preview') === 'canvas';
+  return /** @type {Array<{ intent?: string, action?: string, presentation: string, icon: string, label: string, context: string[], when?: { field: string, equals: unknown } }>} */ (
+    view.encoding.actions.filter((action) => action?.presentation !== 'cli-action' || canvasMode)
+  );
 }
 
 /** @param {{ when?: { field: string, equals: unknown } }} action @param {Record<string, unknown>} row */
@@ -518,7 +531,7 @@ function actionMatches(action, row) {
 }
 
 /**
- * @param {{ intent: string, presentation: string, icon: string, label: string, context: string[] }} action
+ * @param {{ intent?: string, presentation: string, icon: string, label: string, context: string[] }} action
  * @param {Record<string, unknown>} row
  */
 export function renderIntentAction(action, row) {
@@ -580,6 +593,21 @@ export function renderIntentAction(action, row) {
   ));
   dialog.addEventListener('close', () => triggerButton?.focus());
   return h('span', { className: 'table-intent-control' }, triggerButton, dialog);
+}
+
+/**
+ * @param {{ intent?: string, action?: string, presentation: string, icon: string, label: string, context: string[] }} action
+ * @param {Record<string, unknown>} row
+ */
+function renderTableAction(action, row) {
+  if (action.presentation !== 'cli-action') return renderIntentAction(action, row);
+  const values = Object.fromEntries(action.context.flatMap((field) => {
+    const value = row[field];
+    return typeof value === 'string' ? [[field, value]] : [];
+  }));
+  return typeof action.action === 'string'
+    ? renderRowCliAction(action.action, values) ?? ''
+    : '';
 }
 
 /** @param {unknown} value @returns {string | number | boolean | undefined} */

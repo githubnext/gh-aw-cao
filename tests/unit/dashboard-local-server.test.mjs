@@ -295,19 +295,28 @@ test("canvas dashboard executes only declared CLI actions through the provided e
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-canvas-actions-"));
   const calls = [];
   await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
-  await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [{
-    id: "compile-workflows",
-    label: "Compile workflows",
-    icon: "play",
-    command: "gh aw compile --strict",
-    arguments: [{
-      id: "pre-releases",
-      label: "Include pre-releases",
-      type: "boolean",
-      flag: "--pre-releases",
-      default: false,
-    }],
-  }]));
+  await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [
+    {
+      id: "compile-workflows",
+      label: "Compile workflows",
+      icon: "play",
+      command: "gh aw compile --strict",
+      arguments: [{
+        id: "pre-releases",
+        label: "Include pre-releases",
+        type: "boolean",
+        flag: "--pre-releases",
+        default: false,
+      }],
+    },
+    {
+      id: "update-target-repository",
+      label: "Update repository",
+      icon: "sync",
+      command: "gh aw update --repo {{repository}}",
+      placement: "row",
+    },
+  ]));
 
   const preview = await startDashboardServer({
     siteRoot: root,
@@ -361,13 +370,39 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       command: "gh aw compile --strict --pre-releases",
     }]);
 
+    const templated = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({
+        id: "update-target-repository",
+        values: { repository: "octo/example" },
+      }),
+    });
+    assert.equal(templated.status, 200);
+    await templated.text();
+    assert.deepEqual(calls.at(-1), {
+      id: "update-target-repository",
+      command: "gh aw update --repo octo/example",
+    });
+
+    const unsafeTemplate = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({
+        id: "update-target-repository",
+        values: { repository: "octo/example --force" },
+      }),
+    });
+    assert.equal(unsafeTemplate.status, 400);
+    assert.equal(calls.length, 2);
+
     const undeclared = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: origin },
       body: JSON.stringify({ id: "not-declared" }),
     });
     assert.equal(undeclared.status, 404);
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
 
     const invalidArgument = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
@@ -378,7 +413,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       }),
     });
     assert.equal(invalidArgument.status, 400);
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
   } finally {
     await preview.close();
     await rm(root, { recursive: true, force: true });

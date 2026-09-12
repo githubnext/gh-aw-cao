@@ -10,7 +10,7 @@
       import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
-      import { renderCliActions } from "./components/cli-actions.js";
+      import { renderCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -187,6 +187,9 @@
        * @param {() => void} [retryRefresh]
        */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources, retryRefresh) => {
+        setDeclaredCliActions(previewMode === "canvas"
+          ? dashboardDocument.dashboard["cli-actions"] ?? []
+          : []);
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
@@ -224,7 +227,7 @@
         if (previewMode === "canvas") {
           const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
           const toolbarActions = renderCliActions(
-            declaredActions.filter((action) => action.placement !== "settings")
+            declaredActions.filter((action) => !["settings", "row"].includes(action.placement ?? "toolbar"))
           );
           if (toolbarActions) dashboard.querySelector(".report-actions")?.prepend(toolbarActions);
           const settingsActions = renderCliActions(

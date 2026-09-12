@@ -31,6 +31,14 @@
             "default": false
           }
         ]
+      },
+      {
+        "id": "update-target-repository",
+        "label": "Update repository",
+        "description": "Update installed Agentic Workflow packages in the selected repository.",
+        "icon": "sync",
+        "command": "gh aw update --repo {{repository}}",
+        "placement": "row"
       }
     ],
     "callouts": [
@@ -1876,6 +1884,17 @@
                     "type": "nominal",
                     "title": "Status",
                     "display": "status"
+                  }
+                ],
+                "actions": [
+                  {
+                    "action": "update-target-repository",
+                    "presentation": "cli-action",
+                    "icon": "sync",
+                    "label": "Update repository",
+                    "context": [
+                      "repository"
+                    ]
                   }
                 ],
                 "href": {

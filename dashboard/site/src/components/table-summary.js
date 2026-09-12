@@ -13,7 +13,7 @@ import { chartSeriesClassName, renderChartWidget } from './chart-elements.js';
 import { octicon } from '../octicons.js';
 
 /**
- * @typedef {import('../table-summary-data.js').TableColumnSummary & { label: string }} RenderableTableColumnSummary
+ * @typedef {import('../table-summary-data.js').TableColumnSummary & { label: string, compact?: boolean }} RenderableTableColumnSummary
  */
 
 /**
@@ -54,7 +54,10 @@ export function renderReactiveTableSummaryRow(columns, pendingSummaries) {
 function renderTableSummaryCell(column) {
   return /** @type {HTMLTableCellElement} */ (h(
     'th',
-    { scope: 'col', className: 'table-summary-cell' },
+    {
+      scope: 'col',
+      className: `table-summary-cell${column.compact ? ' table-compact-column' : ''}`
+    },
     renderTableSummaryContent(column)
   ));
 }
@@ -69,7 +72,11 @@ function renderReactiveTableSummaryCell(column, index, summaries) {
   const content = h('div', { className: 'table-summary-content' }, renderTableSummarySkeleton());
   const cell = /** @type {HTMLTableCellElement} */ (h(
     'th',
-    { scope: 'col', className: 'table-summary-cell', 'aria-busy': 'true' },
+    {
+      scope: 'col',
+      className: `table-summary-cell${column.compact ? ' table-compact-column' : ''}`,
+      'aria-busy': 'true'
+    },
     content
   ));
   const handle = effect(() => {

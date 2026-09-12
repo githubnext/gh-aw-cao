@@ -21,7 +21,7 @@ export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
-export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings'];
+export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'row'];
 export const CLI_ACTION_ARGUMENT_KEYS = ['id', 'label', 'description', 'type', 'flag', 'default'];
 export const CLI_ACTION_ARGUMENT_TYPE_VALUES = ['boolean'];
 export const MAX_CLI_ACTIONS = 20;
@@ -117,8 +117,8 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'insights'
 ]);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'reference', 'href', 'actions'];
-export const TABLE_ACTION_KEYS = ['intent', 'presentation', 'icon', 'label', 'context', 'when'];
-export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt'];
+export const TABLE_ACTION_KEYS = ['intent', 'action', 'presentation', 'icon', 'label', 'context', 'when'];
+export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action'];
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];
 export const TREE_TABLE_KEYS = ['id-field', 'parent-field'];
 export const FIELD_DEFINITION_KEYS = ['field', 'type', 'aggregate', 'time-unit', 'title', 'as', 'display', 'filter', 'format', 'unit'];
