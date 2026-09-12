@@ -74,6 +74,51 @@ describe('dashboard document validation', () => {
     ]));
   });
 
+  it('validates row-scoped CLI action templates and table references', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const repositoriesPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'repositories'
+    );
+    const action = document.dashboard['cli-actions'].find(
+      (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-target-repository'
+    );
+    const tableAction = repositoriesPage.definition.views[0].encoding.actions[0];
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    action.placement = 'settings';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'cli-action must reference a row-placed dashboard CLI action.'
+        })
+      ])
+    });
+    action.placement = 'row';
+
+    tableAction.context = [];
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'action context must be a non-empty sequence of source fields.'
+        })
+      ])
+    });
+    tableAction.context = ['repository'];
+
+    action.command = 'gh aw update --repo {{ repository }}';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'CLI action command contains an invalid template token.'
+        })
+      ])
+    });
+  });
+
   it('applies human-friendly formatting to every declarative temporal encoding', () => {
     const documents = [authoritativeDashboardSource, ...packageDashboardSources].map((source) => JSON.parse(source));
     /** @type {Array<Record<string, unknown>>} */

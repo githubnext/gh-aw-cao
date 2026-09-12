@@ -387,7 +387,7 @@ describe('data view renderer', () => {
       title: 'Grader ledger',
       view: {
         mark: 'table',
-        controls: 'static',
+        controls: 'interactive',
         encoding: { columns: [{ field: 'grader' }, { field: 'value', type: 'quantitative', unit: 'grade' }, { field: 'run' }] }
       },
       sourceName: 'grader-observations',
@@ -546,6 +546,7 @@ describe('data view renderer', () => {
     const rendered = renderDataView('table', context);
     expect(rendered?.querySelector('thead th:first-child')?.textContent).toBe('');
     expect(rendered?.querySelector('thead th:first-child')?.classList.contains('table-compact-column')).toBe(true);
+    expect(rendered?.querySelector('.table-summary-row th:first-child')?.classList.contains('table-compact-column')).toBe(true);
     rendered?.querySelector('.table-cli-action-button')?.dispatchEvent(new MouseEvent('click'));
     expect(rendered?.querySelector('.cli-action-command')?.textContent)
       .toBe('gh aw update --repo octo/example');
