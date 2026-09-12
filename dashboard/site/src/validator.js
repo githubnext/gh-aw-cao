@@ -619,7 +619,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             `${path}.command`
           ));
         }
-        if (/[;&|`$<>]/.test(action.command)) {
+        if (/[!;&|`$<>]/.test(action.command)) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             'CLI action command must not contain shell control operators.',

@@ -73,6 +73,14 @@ describe('dashboard document validation', () => {
       expect.objectContaining({ message: 'CLI action command must not contain shell control operators.' })
     ]));
 
+    addedAction.command = 'gh aw compile !!';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'CLI action command must not contain shell control operators.' })
+      ])
+    });
+
     addedAction.command = 'gh aw upgrade';
     addedAction.arguments[0].flag = '$(whoami)';
     const invalidFlag = validateDashboardDocument(JSON.stringify(document));
