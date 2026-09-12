@@ -42,6 +42,12 @@ resources:
     destination: .github/aw/dashboard/site/service-worker.js
   - source: site/dashboard.json
     destination: .github/aw/dashboard/site/dashboard.json
+  - source: site/package.json
+    destination: .github/aw/dashboard/site/package.json
+  - source: site/package-lock.json
+    destination: .github/aw/dashboard/site/package-lock.json
+  - source: site/scripts/build.mjs
+    destination: .github/aw/dashboard/site/scripts/build.mjs
   - source: site/src/data-operations.js
     destination: .github/aw/dashboard/site/src/data-operations.js
   - source: site/src/data-processor.js

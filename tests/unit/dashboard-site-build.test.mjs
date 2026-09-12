@@ -47,20 +47,19 @@ test("docs dashboard installs renderer assets and configured package pages", asy
     );
     assert.match(
       await readFile(new URL("src/main.js", destination), "utf8"),
-      new RegExp(`from "./presenter\\.js\\?sha=${mainHash}";`),
+      /sourceMappingURL=main\.js\.map/,
     );
     assert.match(
-      await readFile(new URL("src/data-processor.js", destination), "utf8"),
-      new RegExp(`new URL\\('./data-worker\\.js\\?sha=${mainHash}', import\\.meta\\.url\\)`),
+      await readFile(new URL("src/data-worker.js", destination), "utf8"),
+      /sourceMappingURL=data-worker\.js\.map/,
     );
-    assert.match(
-      await readFile(new URL("src/validator.js", destination), "utf8"),
-      new RegExp(`} from './specification\\.js\\?sha=${mainHash}';`),
-    );
-    assert.match(
-      await readFile(new URL("src/presenter.js", destination), "utf8"),
-      new RegExp(`from '../dashboard\\.json\\?sha=${mainHash}' with`),
-    );
+    const mainSourceMap = JSON.parse(await readFile(new URL("src/main.js.map", destination), "utf8"));
+    const workerSourceMap = JSON.parse(await readFile(new URL("src/data-worker.js.map", destination), "utf8"));
+    assert.ok(mainSourceMap.sources.some((source) => source.endsWith("/src/main.js")));
+    assert.ok(workerSourceMap.sources.some((source) => source.endsWith("/src/data-worker.js")));
+    assert.equal(mainSourceMap.sources.length, mainSourceMap.sourcesContent.length);
+    assert.equal(workerSourceMap.sources.length, workerSourceMap.sourcesContent.length);
+    await assert.rejects(readFile(new URL("src/presenter.js", destination), "utf8"), { code: "ENOENT" });
     for (const pageId of ["uk-ai-advisory-dashboard", "dependabot-dashboard"]) {
       assert.match(await readFile(new URL(`${pageId}/index.html`, destination), "utf8"), new RegExp(`#page-${pageId}`));
     }
@@ -108,10 +107,7 @@ test("dashboard cache hashes are stable and change with assembled site content",
     assert.ok(firstSha, "first build includes a cache hash");
     assert.equal(secondSha, firstSha, "identical content produces the same cache hash");
     assert.notEqual(changedSha, firstSha, "changed content produces a different cache hash");
-    assert.match(
-      await readFile(new URL("src/main.js", changedDestination), "utf8"),
-      new RegExp(`from "./presenter\\.js\\?sha=${changedSha}";`),
-    );
+    assert.match(await readFile(new URL("src/main.js", changedDestination), "utf8"), /sourceMappingURL=main\.js\.map/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

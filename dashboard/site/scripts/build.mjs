@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { access, cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
 
@@ -34,16 +35,11 @@ export async function buildDashboardSite({
   const indexPath = join(destinationPath, "index.html");
   await writeFile(indexPath, configureSite(await readFile(indexPath, "utf8"), controlSettings));
 
-  const packageDashboards = [];
-  for (const packageName of Object.keys(controlSettings.packages ?? {}).toSorted()) {
-    const source = join(repositoryPath, packageName, "dashboard.json");
-    await access(source).then(() => packageDashboards.push(source)).catch((error) => {
-      if (error?.code !== "ENOENT") throw error;
-    });
-  }
+  const packageDashboards = await findPackageDashboards(repositoryPath, controlSettings);
 
   const dashboardPath = join(destinationPath, "dashboard.json");
   await bundleDashboardFiles(dashboardPath, packageDashboards);
+  await bundleSiteJavascript(destinationPath);
   await cacheBustSiteImports(destinationPath);
   const dashboard = JSON.parse(await readFile(dashboardPath, "utf8"));
 
@@ -52,6 +48,61 @@ export async function buildDashboardSite({
     const routeDirectory = join(destinationPath, page.id);
     await mkdir(routeDirectory, { recursive: true });
     await writeFile(join(routeDirectory, "index.html"), redirectDocument(page.id));
+  }
+}
+
+async function findPackageDashboards(repositoryPath, controlSettings) {
+  const installedDashboardsPath = join(repositoryPath, "dashboards");
+  try {
+    return (await readdir(installedDashboardsPath, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+      .map((entry) => join(installedDashboardsPath, entry.name));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+
+  const packageDashboards = [];
+  for (const packageName of Object.keys(controlSettings.packages ?? {}).toSorted()) {
+    const source = join(repositoryPath, packageName, "dashboard.json");
+    await access(source).then(() => packageDashboards.push(source)).catch((error) => {
+      if (error?.code !== "ENOENT") throw error;
+    });
+  }
+  return packageDashboards;
+}
+
+async function bundleSiteJavascript(destinationPath) {
+  const bundlePath = join(destinationPath, ".bundle");
+  try {
+    await build({
+      absWorkingDir: destinationPath,
+      bundle: true,
+      entryPoints: {
+        main: "src/main.js",
+        "data-worker": "src/data-worker.js",
+      },
+      entryNames: "[name]",
+      format: "esm",
+      legalComments: "none",
+      minify: true,
+      outdir: bundlePath,
+      platform: "browser",
+      sourcemap: true,
+      target: "es2022",
+    });
+
+    for (const sourceFile of (await listFiles(join(destinationPath, "src")))
+      .filter((file) => file.endsWith(".js"))) {
+      await rm(join(destinationPath, "src", sourceFile));
+    }
+    await Promise.all([
+      cp(join(bundlePath, "main.js"), join(destinationPath, "src", "main.js")),
+      cp(join(bundlePath, "main.js.map"), join(destinationPath, "src", "main.js.map")),
+      cp(join(bundlePath, "data-worker.js"), join(destinationPath, "src", "data-worker.js")),
+      cp(join(bundlePath, "data-worker.js.map"), join(destinationPath, "src", "data-worker.js.map")),
+    ]);
+  } finally {
+    await rm(bundlePath, { force: true, recursive: true });
   }
 }
 
@@ -64,13 +115,6 @@ async function cacheBustSiteImports(destinationPath) {
     siteHash.update(await readFile(join(destinationPath, siteFile))).update("\0");
   }
   const sha = siteHash.digest("hex");
-  const fileSet = new Set(siteFiles);
-
-  for (const sourceFile of siteFiles.filter((file) => file.startsWith("src/") && file.endsWith(".js"))) {
-    const sourcePath = join(destinationPath, sourceFile);
-    const contents = await readFile(sourcePath, "utf8");
-    await writeFile(sourcePath, rewriteLocalReferences(contents, sourcePath, destinationPath, fileSet, sha));
-  }
 
   const indexPath = join(destinationPath, "index.html");
   const index = await readFile(indexPath, "utf8");
@@ -91,32 +135,6 @@ async function listFiles(directory, root = directory) {
     else if (entry.isFile()) files.push(relative(root, path));
   }
   return files;
-}
-
-function rewriteLocalReferences(source, sourcePath, siteRoot, siteFiles, sha) {
-  const rewrite = (match, prefix, quote, specifier, suffix = "") => {
-    const target = relative(siteRoot, resolve(dirname(sourcePath), specifier));
-    return siteFiles.has(target) ? `${prefix}${quote}${specifier}?sha=${sha}${quote}${suffix}` : match;
-  };
-
-  return source
-    .replace(
-      /^(\s*import\s+(?:[^"'()]*?\s+from\s+)?)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2/gm,
-      (match, prefix, quote, specifier) => rewrite(match, prefix, quote, specifier),
-    )
-    .replace(
-      /^(\s*export\s+(?:\*|\{[^}]*\})\s+from\s+)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2/gm,
-      (match, prefix, quote, specifier) => rewrite(match, prefix, quote, specifier),
-    )
-    .replace(
-      /(\b(?:import|new\s+URL)\s*\(\s*)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2(\s*,?)/g,
-      (match, prefix, quote, specifier, suffix, offset) => {
-        const linePrefix = source.slice(source.lastIndexOf("\n", offset) + 1, offset);
-        return /^\s*(?:\/\/|\/?\*)/.test(linePrefix)
-          ? match
-          : rewrite(match, prefix, quote, specifier, suffix);
-      },
-    );
 }
 
 function requiresHashQueryParameter(page) {
@@ -143,11 +161,10 @@ function redirectDocument(pageId) {
 }
 
 async function main([destination, settingsPath]) {
-  if (!destination || !settingsPath) {
-    throw new Error("usage: build.mjs <destination> <control-settings.json>");
-  }
-  const controlSettings = JSON.parse(await readFile(resolve(settingsPath), "utf8"));
-  await buildDashboardSite({ destination, controlSettings });
+  const controlSettings = settingsPath
+    ? JSON.parse(await readFile(resolve(settingsPath), "utf8"))
+    : {};
+  await buildDashboardSite({ destination: destination ?? new URL("dist/", siteRoot), controlSettings });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {

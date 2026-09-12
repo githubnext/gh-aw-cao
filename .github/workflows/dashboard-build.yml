@@ -48,16 +48,21 @@ jobs:
       - name: Resolve dashboard source layout
         run: |
           echo "Resolving dashboard source layout"
-          if [[ -f .github/aw/dashboard/report/dashboard-language-sources.mjs && -f .github/aw/dashboard/site/index.html ]]; then
+          if [[ -f .github/aw/dashboard/report/dashboard-language-sources.mjs && -f .github/aw/dashboard/site/scripts/build.mjs ]]; then
             echo "DASHBOARD_LAYOUT=installed" >> "$GITHUB_ENV"
             echo "DASHBOARD_REPORT_ROOT=.github/aw/dashboard/report" >> "$GITHUB_ENV"
+            echo "DASHBOARD_SITE_ROOT=.github/aw/dashboard/site" >> "$GITHUB_ENV"
           elif [[ -f dashboard/report/records.mjs && -f dashboard/site/scripts/build.mjs ]]; then
             echo "DASHBOARD_LAYOUT=source" >> "$GITHUB_ENV"
             echo "DASHBOARD_REPORT_ROOT=dashboard/report" >> "$GITHUB_ENV"
+            echo "DASHBOARD_SITE_ROOT=dashboard/site" >> "$GITHUB_ENV"
           else
             echo "Dashboard package sources are unavailable" >&2
             exit 1
           fi
+
+      - name: Install dashboard build dependencies
+        run: npm ci --prefix "$DASHBOARD_SITE_ROOT" --ignore-scripts
 
       - name: Restore collected activity data
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -122,24 +127,10 @@ jobs:
         env:
           REPORT_OUTPUT: ${{ runner.temp }}/central-agentic-ops-dashboard/${{ inputs.site-path }}
         run: |
-          if [[ "$DASHBOARD_LAYOUT" == "source" ]]; then
-            echo "Building dashboard site from source layout"
-            node dashboard/site/scripts/build.mjs \
-              "$REPORT_OUTPUT" \
-              "$RUNNER_TEMP/cao-activity/control-settings.json"
-          else
-            echo "Copying installed dashboard site"
-            mkdir -p "$REPORT_OUTPUT"
-            cp -R .github/aw/dashboard/site/. "$REPORT_OUTPUT/"
-            echo "Configuring installed dashboard site"
-            node "$DASHBOARD_REPORT_ROOT/configure-site.mjs" \
-              "$REPORT_OUTPUT/index.html" \
-              "$RUNNER_TEMP/cao-activity/control-settings.json"
-            echo "Bundling installed dashboard definitions"
-            node "$DASHBOARD_REPORT_ROOT/bundle-dashboards.mjs" \
-              "$REPORT_OUTPUT/dashboard.json" \
-              .github/aw/dashboards
-          fi
+          echo "Building dashboard site from $DASHBOARD_LAYOUT layout"
+          npm --prefix "$DASHBOARD_SITE_ROOT" run build -- \
+            "$REPORT_OUTPUT" \
+            "$RUNNER_TEMP/cao-activity/control-settings.json"
           echo "Copying collected activity data"
           cp "$RUNNER_TEMP/cao-activity/inventory-sources.json" "$REPORT_OUTPUT/inventory-sources.json"
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
