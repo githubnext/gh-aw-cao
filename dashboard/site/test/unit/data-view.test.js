@@ -504,13 +504,36 @@ describe('data view renderer', () => {
   });
 
   it('shows row CLI actions only in canvas mode and renders repository templates', () => {
-    setDeclaredCliActions([{
-      id: 'update-target-repository',
-      label: 'Update repository',
-      icon: 'sync',
-      command: 'gh aw update --repo {{repository}}',
-      placement: 'row'
-    }]);
+    setDeclaredCliActions([
+      {
+        id: 'update-target-repository',
+        label: 'Update repository',
+        icon: 'sync',
+        command: 'gh aw update --repo {{repository}}',
+        placement: 'row',
+        arguments: [{
+          id: 'create-pull-request',
+          label: 'Create pull request',
+          type: 'boolean',
+          flag: '--create-pull-request',
+          default: true
+        }]
+      },
+      {
+        id: 'upgrade-target-repository',
+        label: 'Upgrade repository',
+        icon: 'download',
+        command: 'gh aw upgrade --repo {{repository}}',
+        placement: 'row',
+        arguments: [{
+          id: 'create-pull-request',
+          label: 'Create pull request',
+          type: 'boolean',
+          flag: '--create-pull-request',
+          default: true
+        }]
+      }
+    ]);
     const context = {
       pageId: 'repositories',
       title: 'Repositories',
@@ -519,13 +542,22 @@ describe('data view renderer', () => {
         controls: 'interactive',
         encoding: {
           columns: [{ field: 'repository' }],
-          actions: [{
-            action: 'update-target-repository',
-            presentation: 'cli-action',
-            icon: 'sync',
-            label: 'Update repository',
-            context: ['repository']
-          }]
+          actions: [
+            {
+              action: 'update-target-repository',
+              presentation: 'cli-action',
+              icon: 'sync',
+              label: 'Update repository',
+              context: ['repository']
+            },
+            {
+              action: 'upgrade-target-repository',
+              presentation: 'cli-action',
+              icon: 'download',
+              label: 'Upgrade repository',
+              context: ['repository']
+            }
+          ]
         }
       },
       sourceName: 'repository-activity',
@@ -547,10 +579,15 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('thead th:first-child')?.textContent).toBe('');
     expect(rendered?.querySelector('thead th:first-child')?.classList.contains('table-compact-column')).toBe(true);
     expect(rendered?.querySelector('.table-summary-row th:first-child')?.classList.contains('table-compact-column')).toBe(true);
-    rendered?.querySelector('.table-cli-action-button')?.dispatchEvent(new MouseEvent('click'));
-    expect(rendered?.querySelector('.cli-action-command')?.textContent)
-      .toBe('gh aw update --repo octo/example');
-
+    const buttons = rendered?.querySelectorAll('.table-cli-action-button');
+    expect(buttons?.length).toBe(2);
+    buttons?.[0]?.dispatchEvent(new MouseEvent('click'));
+    const commands = rendered?.querySelectorAll('.cli-action-command');
+    expect(commands?.[0]?.textContent)
+      .toBe('gh aw update --repo octo/example --create-pull-request');
+    buttons?.[1]?.dispatchEvent(new MouseEvent('click'));
+    expect(commands?.[1]?.textContent)
+      .toBe('gh aw upgrade --repo octo/example --create-pull-request');
   });
 
   it('omits column summaries when disabled by the JSON view definition', () => {

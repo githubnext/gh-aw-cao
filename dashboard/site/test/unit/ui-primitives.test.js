@@ -1,9 +1,33 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCheckbox, renderCloseButton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
+  it('renders a checkbox that can stop click propagation without blocking changes', () => {
+    const onChange = vi.fn();
+    const parentClick = vi.fn();
+    const checkbox = renderCheckbox({
+      id: 'background-updates',
+      className: 'setting-toggle',
+      checked: false,
+      ariaLabel: 'Background updates',
+      onChange,
+      stopClickPropagation: true
+    });
+    const parent = h('div', { onClick: parentClick }, checkbox);
+    document.body.append(parent);
+
+    checkbox.click();
+
+    expect(checkbox.id).toBe('background-updates');
+    expect(checkbox.className).toBe('setting-toggle');
+    expect(checkbox.getAttribute('aria-label')).toBe('Background updates');
+    expect(checkbox.checked).toBe(true);
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(parentClick).not.toHaveBeenCalled();
+  });
+
   it('renders shared section-heading markup with configurable heading levels', () => {
     const rendered = renderSectionHeading({
       kicker: 'Current decision window',

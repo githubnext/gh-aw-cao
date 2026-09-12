@@ -144,13 +144,22 @@ describe('repositories view', () => {
           { field: 'aic', unit: 'aic' },
           { field: 'status', display: 'status' }
         ],
-        actions: [{
-          action: 'update-target-repository',
-          presentation: 'cli-action',
-          icon: 'sync',
-          label: 'Update repository',
-          context: ['repository']
-        }],
+        actions: [
+          {
+            action: 'update-target-repository',
+            presentation: 'cli-action',
+            icon: 'sync',
+            label: 'Update repository',
+            context: ['repository']
+          },
+          {
+            action: 'upgrade-target-repository',
+            presentation: 'cli-action',
+            icon: 'download',
+            label: 'Upgrade repository',
+            context: ['repository']
+          }
+        ],
         href: { field: 'repository-link' }
       }
     });

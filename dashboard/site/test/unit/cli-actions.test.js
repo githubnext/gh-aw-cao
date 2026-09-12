@@ -8,15 +8,54 @@ afterEach(() => {
 });
 
 describe('canvas CLI actions', () => {
+  it('renders update actions with repository and pull-request creation', () => {
+    const rendered = renderCliActions([{
+      id: 'update-repository',
+      label: 'Update repository',
+      icon: 'sync',
+      command: 'gh aw update --repo {{repository}}',
+      arguments: [{
+        id: 'create-pull-request',
+        label: 'Create pull request',
+        type: 'boolean',
+        flag: '--create-pull-request',
+        default: true
+      }]
+    }], {
+      presentation: 'settings',
+      templateValues: { repository: 'octo/example' }
+    });
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    expect(rendered?.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw update --repo octo/example --create-pull-request');
+  });
+
   it('renders settings actions as settings-menu buttons', () => {
     const rendered = renderCliActions([{
       id: 'upgrade-repository',
       label: 'Upgrade repository',
       icon: 'download',
-      command: 'gh aw upgrade'
-    }], { presentation: 'settings' });
+      command: 'gh aw upgrade --repo {{repository}}',
+      arguments: [{
+        id: 'create-pull-request',
+        label: 'Create pull request',
+        type: 'boolean',
+        flag: '--create-pull-request',
+        default: true
+      }]
+    }], {
+      presentation: 'settings',
+      templateValues: { repository: 'octo/example' }
+    });
     expect(rendered?.classList.contains('cli-actions-settings')).toBe(true);
     expect(rendered?.querySelector('.cli-action-trigger')?.classList.contains('account-menu-action')).toBe(true);
+    rendered?.querySelector('button')?.click();
+    const checkbox = /** @type {HTMLInputElement} */ (
+      rendered?.querySelector('.cli-action-argument input')
+    );
+    expect(checkbox.checked).toBe(true);
+    expect(rendered?.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw upgrade --repo octo/example --create-pull-request');
   });
 
   it('requires a fresh confirmation before every execution', async () => {
@@ -63,7 +102,8 @@ describe('canvas CLI actions', () => {
     expect(root.querySelector('.cli-action-command')?.textContent).toBe('gh aw compile --strict');
     const checkbox = /** @type {HTMLInputElement} */ (root.querySelector('.cli-action-argument input'));
     checkbox.click();
-    expect(root.querySelector('.cli-action-command')?.textContent).toBe('gh aw compile --strict --pre-releases');
+    expect(root.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw compile --strict --pre-releases');
 
     confirm.click();
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));

@@ -1,4 +1,5 @@
 import { h } from './dom.js';
+import { formatCountNoun } from './components/count-formatters.js';
 
 export const DATABASE_COUNT_SOURCE_NAMES = [
   'database-package-count',
@@ -41,7 +42,13 @@ export function createDatabaseCountLoader(loadSources) {
  * @returns {string}
  */
 export function formatDatabaseCounts(counts) {
-  return `${formatDatabaseCount(counts.packages)} packages · ${formatDatabaseCount(counts.repositories)} repositories · ${formatDatabaseCount(counts.workflows)} workflows · ${formatDatabaseCount(counts.runs)} runs · ${formatDatabaseCount(counts.events)} events`;
+  return [
+    formatCountNoun(counts.packages, 'package', 'packages'),
+    formatCountNoun(counts.repositories, 'repository', 'repositories'),
+    formatCountNoun(counts.workflows, 'workflow', 'workflows'),
+    formatCountNoun(counts.runs, 'run', 'runs'),
+    formatCountNoun(counts.events, 'event', 'events')
+  ].join(' · ');
 }
 
 /** @param {unknown} count */
@@ -51,9 +58,10 @@ function formatDatabaseCount(count) {
 
 /**
  * @param {() => Promise<DatabaseCounts>} loadDatabaseCounts
+ * @param {Node[]} [settings]
  * @returns {{ element: HTMLElement, load: () => void }}
  */
-export function renderSettingsDatabaseCounts(loadDatabaseCounts) {
+export function renderSettingsDatabaseCounts(loadDatabaseCounts, settings = []) {
   const fields = /** @type {const} */ ([
     ['packages', 'Packages'],
     ['repositories', 'Repositories'],
@@ -85,6 +93,7 @@ export function renderSettingsDatabaseCounts(loadDatabaseCounts) {
       'fieldset',
       { className: 'database-counts' },
       h('legend', null, 'Database'),
+      settings,
       h(
         'div',
         { className: 'database-count-grid' },

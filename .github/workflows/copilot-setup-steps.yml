@@ -35,6 +35,6 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
       - name: Install gh-aw extension
-        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.7 tag resolves to this commit
+        uses: github/gh-aw-actions/setup-cli@9c19e73c3bbf2c472bf97ff29a62cc47b62c7551 # v0.89.8 tag resolves to this commit
         with:
-          version: v0.89.7
+          version: v0.89.8
