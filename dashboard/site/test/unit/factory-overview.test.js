@@ -128,8 +128,6 @@ it('summarizes packages in motion by package rollout mode', () => {
       'rollout-mode': 'review'
     })),
     {
-      run: 'unknown-0',
-      package: 'package-c',
       'run-status': 'in-progress'
     }
   ];

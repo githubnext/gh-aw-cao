@@ -7,6 +7,9 @@ import { rowsFor } from './source-rows.js';
 const DAY_MS = 86_400_000;
 const DELIVERED_STATES = new Set(['accepted', 'completed', 'lifecycle-close']);
 const FAILURE_STATES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
+/** @typedef {'review'|'live'|'unknown'} RolloutMode */
+/** @type {Record<RolloutMode, number>} */
+const MODE_PRIORITY = { unknown: 0, review: 1, live: 2 };
 
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ label: string, date: string, start: number, end: number, count: number }} RhythmDay */
@@ -176,15 +179,16 @@ function factoryMotion(runs, workflows) {
     workflowDetails.set(workflowIdentity(workflow), workflow);
     if (!workflowDetails.has(path)) workflowDetails.set(path, workflow);
   }
+  /** @type {Map<string, RolloutMode>} */
   const packages = new Map();
-  for (const operation of active) {
+  for (const [index, operation] of active.entries()) {
     const workflow = workflowDetails.get(workflowIdentity(operation))
       ?? workflowDetails.get(String(operation.workflow ?? ''));
     const packageId = String(operation.package ?? workflow?.package ?? operation.workflow ?? operation.run ?? '').trim();
-    if (!packageId) continue;
-    const mode = normalizedMode(operation['rollout-mode'] ?? workflow?.['rollout-mode']);
-    const previousMode = packages.get(packageId);
-    if (!previousMode || previousMode === 'unknown' || mode === 'live') packages.set(packageId, mode);
+    const identity = packageId || `unknown:${index}`;
+    const mode = packageId ? normalizedMode(operation['rollout-mode'] ?? workflow?.['rollout-mode']) : 'unknown';
+    const previousMode = packages.get(identity);
+    if (!previousMode || MODE_PRIORITY[mode] > MODE_PRIORITY[previousMode]) packages.set(identity, mode);
   }
   const modes = [...packages.values()];
   return {
@@ -427,7 +431,7 @@ function modeCoverage(repositories) {
   };
 }
 
-/** @param {unknown} value */
+/** @param {unknown} value @returns {RolloutMode} */
 function normalizedMode(value) {
   const mode = String(value ?? '').toLowerCase();
   return mode === 'review' || mode === 'live' ? mode : 'unknown';
