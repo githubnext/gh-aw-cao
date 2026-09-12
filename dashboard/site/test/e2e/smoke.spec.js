@@ -530,7 +530,7 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
-test('Transactions is a responsive full-view interactive lazy table under Data', async ({ page }) => {
+test('Transactions is a responsive full-view interactive lazy table opened from Settings', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -569,8 +569,10 @@ test('Transactions is a responsive full-view interactive lazy table under Data',
   `);
 
   const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
-  await dataNavigation.locator('summary').click();
-  await dataNavigation.getByRole('link', { name: 'Transactions' }).click();
+  await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
+  window.location.hash = '#page-configuration';
+  await expect(page.getByRole('button', { name: 'Transactions' })).toBeVisible();
+  await page.getByRole('button', { name: 'Transactions' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="transactions"]');

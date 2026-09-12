@@ -375,6 +375,13 @@ function renderDatabaseSetting(context) {
 }
 
 function renderLocalDataSetting() {
+  const transactions = h('button', {
+    type: 'button',
+    className: 'configuration-transactions-button',
+    onClick: () => {
+      if (globalThis.window) globalThis.window.location.hash = '#page-transactions';
+    }
+  }, 'Transactions');
   return h('section', { className: 'configuration-browser-settings configuration-danger-settings', 'aria-labelledby': 'configuration-local-data-heading' },
     h('div', { className: 'configuration-browser-settings-heading' },
       h('div', null,
@@ -382,7 +389,10 @@ function renderLocalDataSetting() {
         h('p', null, 'Delete cached dashboard data and browser preferences from this device.')
       )
     ),
-    renderResetDashboardControl()
+    h('div', { className: 'configuration-local-data-actions' },
+      transactions,
+      renderResetDashboardControl()
+    )
   );
 }
 
