@@ -6,7 +6,9 @@ import {
   enableHorizonOutsideClickDismissal,
   isTimeWindowFilterActive,
   relativeTimeWindow,
-  renderFilterBar
+  renderFilterBar,
+  setTimeWindowFilter,
+  setTimeWindowRange
 } from '../../src/components/filter-bar.js';
 
 afterEach(() => {
@@ -204,6 +206,47 @@ describe('time-window filter bar', () => {
     expect(onChange).toHaveBeenLastCalledWith(new Map([['mode', ['review', 'live', 'unknown']]]), undefined);
     expect(isTimeWindowFilterActive('24h')).toBe(false);
     expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}')).toMatchObject({ range: 'all' });
+  });
+
+  it('sets a custom time window through the rendered control', async () => {
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange);
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    setTimeWindowFilter('2026-09-09T00:00:00.000Z', '2026-09-10T00:00:00.000Z', document);
+
+    expect(/** @type {HTMLSelectElement} */ (
+      filterBar.querySelector('[aria-label="Time window"]')
+    ).value).toBe('custom');
+    expect(onChange).toHaveBeenLastCalledWith(new Map([['mode', ['review', 'live', 'unknown']]]), {
+      range: 'custom',
+      start: '2026-09-09T00:00:00.000Z',
+      end: '2026-09-10T00:00:00.000Z'
+    });
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}')).toMatchObject({
+      range: 'custom',
+      start: '2026-09-09T00:00:00.000Z',
+      end: '2026-09-10T00:00:00.000Z'
+    });
+  });
+
+  it('restores a preset time window through the rendered control', async () => {
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange, { referenceEnd: '2026-09-11T12:00:00Z' });
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    setTimeWindowRange('1w', document);
+
+    expect(/** @type {HTMLSelectElement} */ (
+      filterBar.querySelector('[aria-label="Time window"]')
+    ).value).toBe('1w');
+    expect(onChange).toHaveBeenLastCalledWith(new Map([['mode', ['review', 'live', 'unknown']]]), {
+      range: '1w',
+      start: '2026-09-04T12:00:00.000Z',
+      end: '2026-09-11T12:00:00.000Z'
+    });
   });
 
   it('shares persisted horizon and mode settings across filter bars', async () => {
