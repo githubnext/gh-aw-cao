@@ -265,6 +265,7 @@ export function processDataRequest(request, signal) {
           retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
           workflowHints,
           payloadIdentity: etag ? `${sourceUrl.href}:${etag}` : undefined,
+          payloadScope: sourceUrl.href,
           context: request.context && typeof request.context === 'object'
             ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
             : undefined
@@ -273,14 +274,16 @@ export function processDataRequest(request, signal) {
         if (inventoryResponse.ok) {
           const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
             storage: globalThis.navigator?.storage,
-            retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
+            retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+            payloadScope: inventoryUrl.href
           });
           changed ||= inventoryIngestion.updated;
         }
       } else {
         const ingestion = await ingestDashboardSources(indexedDB, sources, {
           storage: globalThis.navigator?.storage,
-          retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
+          retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+          payloadScope: sourceUrl.href
         });
         changed = ingestion.updated;
       }

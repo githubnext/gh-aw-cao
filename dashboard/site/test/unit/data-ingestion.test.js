@@ -374,4 +374,16 @@ describe('canonical source ingestion and queries', () => {
       expect.objectContaining({ visibility: 'private' })
     ]);
   });
+
+  it('reapplies a previously seen payload after a newer payload', async () => {
+    const refreshed = structuredClone(sources);
+    Object.assign(refreshed.repositories.rows[0], { visibility: 'private' });
+    await ingestDashboardSources(indexedDB, sources);
+    await ingestDashboardSources(indexedDB, refreshed);
+
+    await expect(ingestDashboardSources(indexedDB, sources)).resolves.toMatchObject({ updated: true });
+    await expect(createCanonicalQueries(indexedDB).repositories.list()).resolves.toEqual([
+      expect.objectContaining({ visibility: 'unknown' })
+    ]);
+  });
 });

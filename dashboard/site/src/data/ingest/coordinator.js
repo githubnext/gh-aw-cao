@@ -36,9 +36,29 @@ async function payloadHash(payload, identity) {
   return hashes.map((hash) => hash.toString(16).padStart(8, '0')).join('');
 }
 
-/** @param {IDBFactory} indexedDB @param {string} kind @param {string} hash */
-async function previouslyIngested(indexedDB, kind, hash) {
-  return await readTransaction(indexedDB, `${kind}:${hash}`) !== null;
+/** @param {string} kind @param {string} scope */
+async function transactionId(kind, scope) {
+  return `${kind}:current:${await payloadHash(scope, undefined)}`;
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {string} kind
+ * @param {string} scope
+ * @param {string} hash
+ */
+async function previouslyIngested(indexedDB, kind, scope, hash) {
+  const transaction = await readTransaction(indexedDB, await transactionId(kind, scope));
+  return transaction?.payloadHash === hash;
+}
+
+let ingestionQueue = Promise.resolve();
+
+/** @template T @param {() => Promise<T>} task */
+function serializeIngestion(task) {
+  const result = ingestionQueue.then(task, task);
+  ingestionQueue = result.then(() => undefined, () => undefined);
+  return result;
 }
 
 /**
@@ -99,13 +119,23 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string }} [options]
  */
-export async function ingestDashboardSources(indexedDB, sources, options = {}) {
+export function ingestDashboardSources(indexedDB, sources, options = {}) {
+  return serializeIngestion(() => ingestDashboardSourcesNow(indexedDB, sources, options));
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {Record<string, unknown>} sources
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string }} options
+ */
+async function ingestDashboardSourcesNow(indexedDB, sources, options) {
   let phase = 'adapting';
   try {
     const hash = await payloadHash(sources, options.payloadIdentity);
-    if (await previouslyIngested(indexedDB, 'ingest-dashboard-sources', hash)) {
+    const scope = options.payloadScope ?? 'dashboard-sources';
+    if (await previouslyIngested(indexedDB, 'ingest-dashboard-sources', scope, hash)) {
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
     const adapted = adaptDashboardSources(sources);
@@ -114,9 +144,10 @@ export async function ingestDashboardSources(indexedDB, sources, options = {}) {
     phase = 'writing';
     const result = await ingestCanonicalBatch(indexedDB, batch, options);
     await recordTransaction(indexedDB, {
-      id: `ingest-dashboard-sources:${hash}`,
+      id: await transactionId('ingest-dashboard-sources', scope),
       kind: 'ingest-dashboard-sources',
       createdAt: new Date(options.now ?? Date.now()).toISOString(),
+      payloadScope: scope,
       payloadHash: hash,
       committedRecords: result.committedRecords
     });
@@ -173,13 +204,27 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadScope?: string }} [options]
  */
-export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
+export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
+  return serializeIngestion(() => ingestCachedGhAwJsonlNow(indexedDB, content, options));
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {string} content
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadScope?: string }} options
+ */
+async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
   try {
-    const hash = await payloadHash(content, options.payloadIdentity);
-    if (await previouslyIngested(indexedDB, 'ingest-jsonl', hash)) {
+    const adaptationContext = JSON.stringify({
+      context: options.context ?? null,
+      workflowHints: options.workflowHints ?? []
+    });
+    const hash = await payloadHash(`${options.payloadIdentity ?? content}\0${adaptationContext}`, undefined);
+    const scope = options.payloadScope ?? 'gh-aw-jsonl';
+    if (await previouslyIngested(indexedDB, 'ingest-jsonl', scope, hash)) {
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
     const adapted = adaptCachedGhAwJsonl(content, {
@@ -188,9 +233,10 @@ export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
     });
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
     await recordTransaction(indexedDB, {
-      id: `ingest-jsonl:${hash}`,
+      id: await transactionId('ingest-jsonl', scope),
       kind: 'ingest-jsonl',
       createdAt,
+      payloadScope: scope,
       payloadHash: hash,
       records: adapted.records,
       committedRecords: result.committedRecords,
