@@ -1,4 +1,5 @@
 import { h } from './dom.js';
+import { formatCountNoun } from './components/count-formatters.js';
 
 export const DATABASE_COUNT_SOURCE_NAMES = [
   'database-package-count',
@@ -41,7 +42,13 @@ export function createDatabaseCountLoader(loadSources) {
  * @returns {string}
  */
 export function formatDatabaseCounts(counts) {
-  return `${formatDatabaseCount(counts.packages)} packages · ${formatDatabaseCount(counts.repositories)} repositories · ${formatDatabaseCount(counts.workflows)} workflows · ${formatDatabaseCount(counts.runs)} runs · ${formatDatabaseCount(counts.events)} events`;
+  return [
+    formatCountNoun(counts.packages, 'package', 'packages'),
+    formatCountNoun(counts.repositories, 'repository', 'repositories'),
+    formatCountNoun(counts.workflows, 'workflow', 'workflows'),
+    formatCountNoun(counts.runs, 'run', 'runs'),
+    formatCountNoun(counts.events, 'event', 'events')
+  ].join(' · ');
 }
 
 /** @param {unknown} count */
