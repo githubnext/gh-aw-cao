@@ -296,6 +296,7 @@ describe('automatic dashboard data updates', () => {
     const serviceWorkers = {
       register: vi.fn().mockResolvedValue(currentRegistration)
     };
+    const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
@@ -305,7 +306,8 @@ describe('automatic dashboard data updates', () => {
           query: vi.fn().mockResolvedValue({ state: 'denied' })
         })),
         online: () => true,
-        scriptUrl: new URL('https://example.test/service-worker.js')
+        scriptUrl: new URL('https://example.test/service-worker.js'),
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
       }
     );
 
@@ -313,6 +315,7 @@ describe('automatic dashboard data updates', () => {
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
+    expect(setTimer).not.toHaveBeenCalled();
     stop();
   });
 
@@ -324,13 +327,15 @@ describe('automatic dashboard data updates', () => {
     const serviceWorkers = {
       register: vi.fn().mockResolvedValue(currentRegistration)
     };
+    const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
         online: () => true,
-        scriptUrl: new URL('https://example.test/service-worker.js')
+        scriptUrl: new URL('https://example.test/service-worker.js'),
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
       }
     );
 
@@ -338,6 +343,7 @@ describe('automatic dashboard data updates', () => {
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
+    expect(setTimer).not.toHaveBeenCalled();
     stop();
   });
 

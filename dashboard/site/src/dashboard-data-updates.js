@@ -13,6 +13,8 @@ const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 /** @typedef {{ saveData?: boolean, metered?: boolean, type?: string, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
 /** @typedef {{ charging: boolean, level: number, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} BatteryState */
 
+class NonRetryableBackgroundSyncError extends Error {}
+
 /** @param {Storage} [storage] */
 export function automaticDashboardDataUpdatesEnabled(storage = localStorage) {
   return storage.getItem(ENABLED_STORAGE_KEY) === 'true';
@@ -136,13 +138,13 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
   const lastSuccess = Number(/** @type {{ lastSuccess?: unknown }} */ (response).lastSuccess ?? 0);
   const periodicSync = /** @type {ServiceWorkerRegistration & { periodicSync?: { register: (tag: string, options: { minInterval: number }) => Promise<void>, getTags: () => Promise<string[]> } }} */ (registration).periodicSync;
   if (!periodicSync || !permissions?.query) {
-    throw new Error('Periodic Background Sync is not supported by this browser.');
+    throw new NonRetryableBackgroundSyncError('Periodic Background Sync is not supported by this browser.');
   }
   const permission = await permissions.query(
     /** @type {PermissionDescriptor} */ (/** @type {unknown} */ ({ name: 'periodic-background-sync' }))
   );
   if (permission.state !== 'granted') {
-    throw new Error('Periodic Background Sync permission was not granted.');
+    throw new NonRetryableBackgroundSyncError('Periodic Background Sync permission was not granted.');
   }
   await periodicSync.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS });
   if (!(await periodicSync.getTags()).includes(PERIODIC_SYNC_TAG)) {
@@ -404,7 +406,10 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         registration = undefined;
         healthyWorker = undefined;
         backgroundConfigured = false;
-        if (automaticDashboardDataUpdatesEnabled(storage)) schedule(RETRY_INTERVAL_MS);
+        if (automaticDashboardDataUpdatesEnabled(storage)
+            && !(error instanceof NonRetryableBackgroundSyncError)) {
+          schedule(RETRY_INTERVAL_MS);
+        }
         return;
       }
     }
