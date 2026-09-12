@@ -128,7 +128,7 @@ timeout-minutes: 25
 
 steps:
   - name: Deterministic pre-fetch of ambient context evidence
-    uses: actions/github-script@v9
+    uses: actions/github-script@v9.0.0
     env:
       TARGET_REPOSITORY: ${{ inputs.target_repo }}
     with:

@@ -92,7 +92,7 @@ network:
 
 steps:
   - name: Deterministic pre-fetch of AW Doctor evidence
-    uses: actions/github-script@v9
+    uses: actions/github-script@v9.0.0
     with:
       github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       script: |
