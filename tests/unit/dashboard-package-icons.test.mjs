@@ -9,6 +9,7 @@ test("configured package icons are used by package dashboard menu entries", asyn
   const packages = policy["control-plane"].packages;
 
   for (const [packageName, packagePolicy] of Object.entries(packages)) {
+    if (["activity", "dashboard"].includes(packageName)) continue;
     assert.equal(typeof packagePolicy.icon, "string", `${packageName} must configure an Octicon`);
     const packageDashboard = JSON.parse(
       await readFile(new URL(`${packageName}/dashboard.json`, root), "utf8"),

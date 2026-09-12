@@ -8,6 +8,7 @@ import { renderSettingsCliActions } from './cli-actions.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
+  dashboardBackgroundUpdatesUnavailableReason,
   onAutomaticDashboardBackgroundUpdateStatus,
   setAutomaticDashboardDataUpdatesEnabled
 } from '../dashboard-data-updates.js';
@@ -279,7 +280,9 @@ function renderSettingsEditor(policyDocument) {
 }
 
 function renderAutomaticDataUpdatesSetting() {
+  const unavailableReason = dashboardBackgroundUpdatesUnavailableReason();
   const statusText = () => {
+    if (unavailableReason) return unavailableReason;
     if (!automaticDashboardDataUpdatesEnabled()) {
       return 'Off. Dashboard data updates only while the dashboard is open.';
     }
@@ -300,6 +303,7 @@ function renderAutomaticDataUpdatesSetting() {
     id: 'configuration-automatic-dashboard-data-updates',
     className: 'configuration-setting-toggle',
     checked: automaticDashboardDataUpdatesEnabled(),
+    disabled: Boolean(unavailableReason),
     onChange: /** @param {Event} event */ (event) => {
       const enabled = /** @type {HTMLInputElement} */ (event.currentTarget).checked;
       setAutomaticDashboardDataUpdatesEnabled(enabled);
@@ -309,6 +313,8 @@ function renderAutomaticDataUpdatesSetting() {
   status = h('p', { className: 'configuration-browser-setting-status', 'aria-live': 'polite' },
     statusText()
   );
+  checkbox.setAttribute('aria-describedby', 'configuration-automatic-dashboard-data-updates-status');
+  status.id = 'configuration-automatic-dashboard-data-updates-status';
   const section = h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-browser-settings-heading' },
     h('div', { className: 'configuration-browser-settings-heading' },
       h('div', null,
@@ -319,7 +325,7 @@ function renderAutomaticDataUpdatesSetting() {
     h('div', { className: 'configuration-setting-row' },
       h('div', { className: 'configuration-setting-copy' },
         h('label', { htmlFor: checkbox.id }, 'Download updated data every hour'),
-        h('p', null, 'Uses Periodic Background Sync so downloads continue after the dashboard closes. Unsupported or denied browsers keep the preference on and wait for background updates to become available. It is off by default.')
+        h('p', null, 'Uses Periodic Background Sync so downloads continue after the dashboard closes. This requires an installed dashboard app and browser support. It is off by default.')
       ),
       checkbox
     ),

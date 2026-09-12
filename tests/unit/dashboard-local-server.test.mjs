@@ -765,7 +765,7 @@ if [ "$1" = "api" ]; then
     exit
   fi
   if [ "$2" = "repos/acme/control/actions/runs/42" ]; then
-    printf 'success\\tmain\\t.github/workflows/dashboard-build.yml\\n'
+    printf 'success\\tmain\\t.github/workflows/cao-dashboard.yml\\n'
     exit
   fi
   exit 2

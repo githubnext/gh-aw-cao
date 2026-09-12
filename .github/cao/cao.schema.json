@@ -97,6 +97,7 @@
         "rollout-percent": { "$ref": "#/$defs/rolloutPercent" },
         "monthly-ai-credit-budget": { "$ref": "#/$defs/monthlyAiCreditBudget" },
         "icon": { "$ref": "#/$defs/octicon" },
+        "deploy": { "type": "boolean" },
         "targets": {
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/repository" },
