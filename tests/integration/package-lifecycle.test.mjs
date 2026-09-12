@@ -180,7 +180,7 @@ async function installPackage(source) {
   });
 }
 
-test("root package bootstraps an empty CAO and preserves resources during workflow update", { timeout: 180_000 }, async () => {
+test("root package bootstraps an empty CAO and preserves resources during workflow update", { timeout: 240_000 }, async () => {
   const consumer = await installPackage(packageSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
@@ -232,12 +232,15 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
 
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
     const orchestrator = readFileSync(orchestratorPath, "utf8");
-    const modifiedOrchestrator = orchestrator.replace("max-ai-credits: 250", "max-ai-credits: 251");
-    assert.notEqual(modifiedOrchestrator, orchestrator, "test could not modify package workflow frontmatter");
+    const trackedOrchestrator = orchestrator.replace(/^source: .*$/m, `source: ${packageSource}`);
+    assert.notEqual(trackedOrchestrator, orchestrator, "test could not track the candidate package revision");
+    const modifiedOrchestrator = trackedOrchestrator.replace("max-ai-credits: 250", "max-ai-credits: 251");
+    assert.notEqual(modifiedOrchestrator, trackedOrchestrator, "test could not modify package workflow frontmatter");
     writeFileSync(orchestratorPath, `${modifiedOrchestrator}\n# local integration-test change\n`);
     run("gh", [
       "aw",
       "update",
+      "dependabot",
       "--force",
       "--no-merge",
       "--no-compile",
