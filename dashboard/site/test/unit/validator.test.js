@@ -669,15 +669,17 @@ dashboard:
     expect(accepted.ok).toBe(true);
   });
 
-  it('defines packages, workflows, and runs as declarative full-view lazy tables', () => {
+  it('defines core data pages as declarative full-view lazy tables', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
     const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
+    const transactionsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'transactions');
 
     const packagesView = packagesPage.definition.views[0];
     const workflowsView = workflowsPage.definition.views[0];
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
+    const transactionsView = transactionsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'transaction-entries');
     for (const view of [packagesView, workflowsView, runsView]) {
       expect(view).toMatchObject({
         mark: 'table',
@@ -702,6 +704,13 @@ dashboard:
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'registration')?.display).toBe('active-state');
     expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs-table');
+    expect(transactionsView).toMatchObject({
+      data: { source: 'transactions' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view'
+    });
     expect(packagesPage.definition.views).toHaveLength(1);
     expect(workflowsPage.definition.views).toHaveLength(1);
     expect(runsPage.definition.views).toHaveLength(2);
@@ -715,6 +724,7 @@ dashboard:
       'workflows',
       'runs',
       'events',
+      'transactions',
       'firewall'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);

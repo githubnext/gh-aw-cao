@@ -448,7 +448,16 @@ test('Transactions is a responsive full-view interactive lazy table under Data',
         'unenriched-runs': index,
         'payload-hash': \`payload-hash-\${index}\`
       }));
-      const sources = { transactions: { source: 'transactions', rows } };
+      const metadata = {
+        'source-id': 'transactions-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-12T12:00:00Z',
+        'retrieved-at': '2026-09-12T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = { transactions: { source: 'transactions', rows, metadata } };
       window.location.hash = '#page-overview';
       document.querySelector('#root').append(renderDashboard({ document: ${JSON.stringify(documentModel)}, sources }));
     </script>
