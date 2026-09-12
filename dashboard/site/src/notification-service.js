@@ -1,4 +1,5 @@
-import { h } from './dom.js';
+import { h, injectStyleOnce } from './dom.js';
+import { notificationStylesheet } from './styles.js';
 
 const DEFAULT_DURATION = 5000;
 const EXIT_DURATION = 180;
@@ -21,6 +22,7 @@ const services = new WeakMap();
  * @param {Document} document
  */
 export function createNotificationService(document) {
+  injectStyleOnce(document, 'dashboard-notification-styles', notificationStylesheet());
   const container = h('div', {
     className: 'dashboard-notifications',
     'aria-label': 'Notifications'
