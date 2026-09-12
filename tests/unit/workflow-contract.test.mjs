@@ -1121,6 +1121,8 @@ test("root package provides default control-repository agent context", () => {
 test("CAO runtime is control-repository-owned outside package resources", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
   const setupSkill = readFileSync(join(root, ".github", "skills", "setup-central-agentic-ops", "SKILL.md"), "utf8");
+  const quickstart = readFileSync(join(root, "docs", "getting-started.md"), "utf8");
+  const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
   const policy = JSON.parse(execFileSync(process.execPath, [
     join(root, ".github", "cao", "src", "control.mjs"),
     "resolve-policy",
@@ -1142,6 +1144,11 @@ test("CAO runtime is control-repository-owned outside package resources", () => 
   assert.match(setupSkill, /sparse-checkout set --cone \.github\/cao\/src/);
   assert.match(setupSkill, /cp -R "\$cao_checkout\/\.github\/cao\/src" \.github\/cao\//);
   assert.doesNotMatch(setupSkill, /chmod \+x \.github\/cao/);
+  assert.match(quickstart, /setup-central-agentic-ops/);
+  assert.match(quickstart, /> "\.github\/cao\/src\/\$\{cao_file\}"/);
+  assert.doesNotMatch(quickstart, /> "\.github\/cao\/\$\{cao_file\}"/);
+  assert.match(operations, /gh aw add --force "githubnext\/gh-aw-cao@\$\{CAO_REF\}"/);
+  assert.match(operations, /contents\/\.github\/cao\/src\/\$\{cao_file\}/);
 });
 
 test("CAO upgrade script refreshes gh-aw, packages, and Actions", () => {

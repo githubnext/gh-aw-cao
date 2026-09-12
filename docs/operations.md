@@ -11,6 +11,7 @@ Use this page after installation to answer the urgent operator questions: Is the
 | Investigate cancelled or incomplete work | [Queuing and resource exhaustion](#queuing-and-resource-exhaustion) |
 | Stop one worker, one package, or everything | [Emergency stop](#emergency-stop) |
 | Respond to an unsafe output or exposed credential | [Incident response](#incident-response) |
+| Update an installed control plane | [Update CAO](#update-cao) |
 | Add or update catalog workflows | [Maintain the catalog](#adding-a-package) |
 
 For installation and the first write-free run, begin with [Install and run safely](getting-started.md).
@@ -299,6 +300,30 @@ credential_action: app-installation-revoked
 Do not include tokens, private keys, or secret values in the incident record.
 
 If shared authentication or shared control caused the incident, perform the control-plane-wide emergency stop. Otherwise, preserve unaffected package operation.
+
+## Update CAO
+
+Update package-owned workflows and the control-repository-owned runtime from one reviewed CAO commit. Keep `.github/workflows/cao.json` unchanged unless the release requires an explicit, separately reviewed policy migration.
+
+From the control repository:
+
+```bash
+CAO_REF="<full-reviewed-commit-sha>"
+[[ "$CAO_REF" =~ ^[0-9a-fA-F]{40,64}$ ]]
+
+gh extension upgrade github/gh-aw
+gh aw add --force "githubnext/gh-aw-cao@${CAO_REF}"
+
+mkdir -p .github/cao/src
+for cao_file in control.mjs policy.mjs; do
+	gh api --method GET "repos/githubnext/gh-aw-cao/contents/.github/cao/src/${cao_file}" \
+		-f ref="$CAO_REF" --jq '.content' | base64 -d > ".github/cao/src/${cao_file}"
+done
+
+gh aw upgrade
+```
+
+Review the package records, editable workflow sources, generated lock files, runtime modules, and action-version changes before committing them together. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
 
 ### Catalog Release Revocation
 

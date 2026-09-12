@@ -23,6 +23,12 @@ Before you begin, make sure you have:
 - [GitHub CLI](https://cli.github.com/) installed and authenticated;
 - access to GitHub Copilot through organization billing for Agentic Workflow runs.
 
+:::tip[Start with the setup skill]
+From an empty control repository, ask your coding agent to load and follow the
+[`setup-central-agentic-ops` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-central-agentic-ops/SKILL.md).
+The skill gathers the control repository, operation, target, visibility, and authentication choices before it changes the repository, then proves the boundary with one review run. The manual steps below describe the same boundary for operators who need to inspect each action.
+:::
+
 Check your GitHub CLI authentication:
 
 ```bash
@@ -78,10 +84,10 @@ From the control repository, install the Dependabot operation package and CAO ru
 ```bash
 CAO_REF="<catalog-release>"
 gh aw add "githubnext/gh-aw-cao/dependabot@${CAO_REF}"
-mkdir -p .github/cao
+mkdir -p .github/cao/src
 for cao_file in control.mjs policy.mjs; do
-	gh api --method GET "repos/githubnext/gh-aw-cao/contents/.github/cao/${cao_file}" \
-		-f ref="$CAO_REF" --jq '.content' | base64 -d > ".github/cao/${cao_file}"
+	gh api --method GET "repos/githubnext/gh-aw-cao/contents/.github/cao/src/${cao_file}" \
+		-f ref="$CAO_REF" --jq '.content' | base64 -d > ".github/cao/src/${cao_file}"
 done
 ```
 
@@ -92,7 +98,7 @@ The package installs:
 3. shared authentication, routing, and fail-closed controls;
 4. generated `.lock.yml` workflows that GitHub Actions executes.
 
-The three `.github/cao` files are control-repository-owned policy runtime, not gh-aw package resources. Commit them with the workflows and policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
+The two `.github/cao/src` files are control-repository-owned policy runtime, not gh-aw package resources. Commit them with the workflows and policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
 
 The installed operation is runnable after its package and worker workflow identities are declared in the control policy. Declared workers are enabled unless their policy sets `enabled: false`; undeclared or disabled identities are skipped by admission before agent execution.
 
