@@ -3333,10 +3333,8 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /minimumTargetSize/);
   assert.match(mobileTest, /horizontal page scrolling/);
   const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
-  assert.match(deployedDataTest, /ingestDashboardSources\(indexedDB, sources\)/);
-  assert.match(deployedDataTest, /new URL\("gh-aw-logs\.jsonl", deployedSourcesUrl\)/);
-  assert.match(deployedDataTest, /"aw", "logs"[\s\S]*?"--artifacts", "firewall"/);
-  assert.match(deployedDataTest, /readRunTimeline\(/);
+  assert.match(deployedDataTest, /ingestCachedGhAwJsonl\(indexedDB, logsContent\)/);
+  assert.match(deployedDataTest, /run\?\.firewall_analysis\?\.requests_by_domain/);
   for (const source of ["workflows", "runs", "events"]) {
     assert.match(deployedDataTest, new RegExp(`readCollection\\(indexedDB, "${source}"\\)`));
   }
