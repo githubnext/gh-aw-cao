@@ -93,9 +93,17 @@ jobs:
             echo "Activity inventory collector is unavailable" >&2
             exit 1
           fi
+          if [[ -f .github/aw/cao/src/control.mjs ]]; then
+            control_runtime=.github/aw/cao/src/control.mjs
+          elif [[ -f .github/cao/src/control.mjs ]]; then
+            control_runtime=.github/cao/src/control.mjs
+          else
+            echo "CAO control runtime is unavailable" >&2
+            exit 1
+          fi
           mkdir -p "$RUNNER_TEMP/cao-activity"
           node "$activity_root/control-settings.mjs" \
-            .github/cao/src/control.mjs \
+            "$control_runtime" \
             .github/workflows/cao.json \
             "$REPORT_CONTROL_SETTINGS"
           node "$activity_root/inventory.mjs"

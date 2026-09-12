@@ -3292,6 +3292,8 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
+  assert.match(workflow, /if \[\[ -f \.github\/aw\/cao\/src\/control\.mjs \]\]; then[\s\S]*?elif \[\[ -f \.github\/cao\/src\/control\.mjs \]\]; then[\s\S]*?CAO control runtime is unavailable/);
+  assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+"\$control_runtime"/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);
