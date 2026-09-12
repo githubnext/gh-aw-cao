@@ -69,8 +69,13 @@ function waitForWorker(worker) {
   if (!worker || worker.state === 'redundant') return Promise.resolve(null);
   if (worker.state === 'installed' || worker.state === 'activated') return Promise.resolve(worker);
   return new Promise((resolve) => {
+    const timeout = window.setTimeout(() => {
+      worker.removeEventListener('statechange', onStateChange);
+      resolve(null);
+    }, CANARY_TIMEOUT_MS);
     const onStateChange = () => {
       if (!['installed', 'activated', 'redundant'].includes(worker.state)) return;
+      window.clearTimeout(timeout);
       worker.removeEventListener('statechange', onStateChange);
       resolve(worker.state === 'redundant' ? null : worker);
     };
