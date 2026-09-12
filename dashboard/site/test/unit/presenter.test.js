@@ -1389,6 +1389,41 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('uses browser navigation entries to show back only when the previous page is in the dashboard', () => {
+    window.history.replaceState(null, '', '/#page-cost');
+    let currentIndex = 1;
+    const entries = [
+      { index: 0, url: 'https://github.com/githubnext/gh-aw-cao' },
+      { index: 1, url: window.location.href },
+      { index: 2, url: `${window.location.origin}/#page-security` }
+    ];
+    const navigation = new EventTarget();
+    Object.defineProperties(navigation, {
+      currentEntry: { get: () => ({ index: currentIndex }) },
+      entries: { value: () => entries }
+    });
+    Object.defineProperty(window, 'navigation', { configurable: true, value: navigation });
+
+    try {
+      const rendered = renderDashboard({
+        document: authoritativeDashboardDocument,
+        sources: {}
+      });
+      const back = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-history-back'));
+
+      expect(back?.hidden).toBe(true);
+      currentIndex = 2;
+      navigation.dispatchEvent(new Event('currententrychange'));
+      expect(back?.hidden).toBe(false);
+      currentIndex = 1;
+      navigation.dispatchEvent(new Event('currententrychange'));
+      expect(back?.hidden).toBe(true);
+    } finally {
+      delete /** @type {Window & { navigation?: unknown }} */ (window).navigation;
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('closes the mobile view menu on Escape and restores focus to its toggle', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
