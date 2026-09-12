@@ -77,7 +77,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 41);
+  assert.equal(operationWorkflows.length, 42);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
@@ -507,7 +507,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-package-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 4 },
-    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 13, workers: 13 },
+    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 14, workers: 14 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
     "aw-failures-investigator.md": { credits: 500, timeout: 30 },
@@ -538,6 +538,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-open-source-failures.md": { credits: 500, timeout: 30 },
     "self-care-pages-health.md": { credits: 400, timeout: 120 },
     "self-care-primer-brand-checker.md": { credits: 400, timeout: 25 },
+    "self-care-reactive-ui-expert.md": { credits: 500, timeout: 45 },
   };
 
   for (const [name, limits] of Object.entries(expected)) {
@@ -595,7 +596,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 41, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 42, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -1233,6 +1234,7 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
     "self-care-open-source-failures",
     "self-care-pages-health",
     "self-care-primer-brand-checker",
+    "self-care-reactive-ui-expert",
     "self-care",
   ];
 
@@ -1567,6 +1569,7 @@ test("live workers use central policy as the activation authority", () => {
     ["self-care-open-source-failures.md", "self-care"],
     ["self-care-pages-health.md", "self-care"],
     ["self-care-primer-brand-checker.md", "self-care"],
+    ["self-care-reactive-ui-expert.md", "self-care"],
   ]) {
     assert.match(workflow(name), new RegExp(`package: ${bundle}`));
   }
@@ -1638,6 +1641,7 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["self-care-open-source-failures.md", "self-care"],
     ["self-care-pages-health.md", "self-care"],
     ["self-care-primer-brand-checker.md", "self-care"],
+    ["self-care-reactive-ui-expert.md", "self-care"],
   ]) {
     assert.match(
       workflow(name),
@@ -1777,6 +1781,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["self-care-open-source-failures.md", "self-care", "open-source-failures"],
     ["self-care-pages-health.md", "self-care", "pages-health"],
     ["self-care-primer-brand-checker.md", "self-care", "primer-brand-checker"],
+    ["self-care-reactive-ui-expert.md", "self-care", "reactive-ui-expert"],
   ];
 
   for (const [name, packageName, workerName] of workerNames) {
@@ -2365,6 +2370,32 @@ test("SelfCare Primer brand checker audits the dashboard against retrieved guida
   assert.match(compiled, /\\"noop\\":\{\\"max\\":1,\\"report-as-issue\\":\\"false\\"\}/);
 });
 
+test("SelfCare reactive UI expert applies the local reactive framework skill", () => {
+  const source = workflow("self-care-reactive-ui-expert.md");
+  const compiled = workflow("self-care-reactive-ui-expert.lock.yml");
+
+  assert.match(source, /^name: "SelfCare \/ Reactive UI Expert"$/m);
+  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: reactive-ui-expert/);
+  assert.match(source, /skills:\n\s+- \.github\/skills\/reactive-ui/);
+  assert.match(source, /\.github\/skills\/migrate-dashboard-view/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /\.github\/skills\/reactive-ui\/SKILL\.md/);
+  assert.match(source, /dashboard\/site\/src\/reactive\.js/);
+  assert.match(source, /stable keyed rendering/);
+  assert.match(source, /state`, `derived`, `effect`, `batch`, `onCleanup`/);
+  assert.match(source, /migrate one JavaScript-produced view source to a request-scoped Dashboard Language query/);
+  assert.match(source, /Consider the other task types only when no eligible migration exists/);
+  assert.match(source, /Define the query in `dashboard\.queries`/);
+  assert.match(source, /data-processor\.js` and `data-worker\.js/);
+  assert.match(source, /Run the focused impacted JavaScript tests/);
+  assert.match(source, /npm --prefix dashboard\/site run lint/);
+  assert.match(source, /npm run docs:build/);
+  assert.match(source, /Call `noop` exactly once when no actionable non-duplicate candidate exists/);
+  assert.match(source, /draft: true/);
+  assert.match(compiled, /self-care-reactive-ui-expert/);
+  assert.match(compiled, /\.github\/skills\/reactive-ui/);
+});
+
 test("docs diagram generator creates one validated theme-aware SVG pair", () => {
   const source = workflow("docs-explanatory-diagrams.md");
 
@@ -2763,6 +2794,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "self-care-open-source-failures.lock.yml",
       "self-care-pages-health.lock.yml",
       "self-care-primer-brand-checker.lock.yml",
+      "self-care-reactive-ui-expert.lock.yml",
       "self-care.lock.yml",
       "software-development-practices-github-well-architected.lock.yml",
       "software-development-practices-nist-ssdf.lock.yml",
@@ -2884,6 +2916,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["self-care-open-source-failures.lock.yml", ["self-care", "open-source-failures"]],
       ["self-care-pages-health.lock.yml", ["self-care", "pages-health"]],
       ["self-care-primer-brand-checker.lock.yml", ["self-care", "primer-brand-checker"]],
+      ["self-care-reactive-ui-expert.lock.yml", ["self-care", "reactive-ui-expert"]],
       ["software-development-practices-github-well-architected.lock.yml", ["software-development-practices", "github-well-architected"]],
       ["software-development-practices-nist-ssdf.lock.yml", ["software-development-practices", "nist-ssdf"]],
     ]);
@@ -2923,6 +2956,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
 
     const prReviewerSource = workflow("pr-reviewer.md");
     assert.match(prReviewerSource, /types: \[ready_for_review\]/);
+    assert.match(prReviewerSource, /^max-daily-ai-credits: -1$/m);
     assert.match(prReviewerSource, /agentic-workflows: true/);
     assert.match(prReviewerSource, /cli-proxy: true/);
     assert.match(prReviewerSource, /agentic-workflows compile/);
@@ -3406,6 +3440,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
           "self-care-open-source-failures",
           "self-care-pages-health",
           "self-care-primer-brand-checker",
+          "self-care-reactive-ui-expert",
         ],
       },
       {

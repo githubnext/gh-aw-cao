@@ -172,6 +172,9 @@
           },
           "primer-brand-checker": {
             "workflow": "self-care-primer-brand-checker"
+          },
+          "reactive-ui-expert": {
+            "workflow": "self-care-reactive-ui-expert"
           }
         }
       }
