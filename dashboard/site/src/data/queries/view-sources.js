@@ -327,24 +327,26 @@ function eventsSource(events, sessionsById, runsById, sources) {
 function transactionsSource(transactions, sources) {
   return {
     source: 'transactions',
-    rows: transactions.map((transaction) => definedFields({
-      transaction: transaction.id,
-      kind: transaction.kind,
-      'created-at': transaction.createdAt,
-      'payload-scope': transaction.payloadScope,
-      'payload-hash': transaction.payloadHash,
-      'payload-etag': transaction.payloadEtag,
-      records: transaction.records,
-      'committed-records': transaction.committedRecords,
-      'raw-payload-records': transaction.rawPayloadRecords,
-      'raw-runs': transaction.rawRuns,
-      'agentic-run-records': transaction.agenticRunRecords,
-      'agentic-runs': transaction.agenticRuns,
-      'duplicate-raw-run-observations': transaction.duplicateRawRunObservations,
-      'duplicate-agentic-run-observations': transaction.duplicateAgenticRunObservations,
-      'unenriched-runs': transaction.unenrichedRuns,
-      error: transaction.error
-    })),
+    rows: [...transactions]
+      .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))
+      .map((transaction) => definedFields({
+        transaction: transaction.id,
+        kind: transaction.kind,
+        'created-at': transaction.createdAt,
+        'payload-scope': transaction.payloadScope,
+        'payload-hash': transaction.payloadHash,
+        'payload-etag': transaction.payloadEtag,
+        records: transaction.records,
+        'committed-records': transaction.committedRecords,
+        'raw-payload-records': transaction.rawPayloadRecords,
+        'raw-runs': transaction.rawRuns,
+        'agentic-run-records': transaction.agenticRunRecords,
+        'agentic-runs': transaction.agenticRuns,
+        'duplicate-raw-run-observations': transaction.duplicateRawRunObservations,
+        'duplicate-agentic-run-observations': transaction.duplicateAgenticRunObservations,
+        'unenriched-runs': transaction.unenrichedRuns,
+        error: transaction.error
+      })),
     metadata: projectionMetadata(sources, 'transactions', 'transactions', true)
   };
 }
