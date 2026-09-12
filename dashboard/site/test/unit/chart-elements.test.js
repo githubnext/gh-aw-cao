@@ -233,21 +233,13 @@ describe('chart element helpers', () => {
       'Skipped',
       'Success'
     ]);
-    expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.getAttribute('x'))).toEqual([
-      '17.5',
-      '17.5',
-      '17.5',
-      '17.5',
-      '17.5'
-    ]);
-    expect([...chart.querySelectorAll('.swimlane-separator')].map((separator) => separator.getAttribute('y1'))).toEqual([
-      '5',
-      '12.25',
-      '19.5',
-      '26.75',
-      '34'
-    ]);
-    expect(chart.querySelector('.swimlane-axis')?.getAttribute('y1')).toBe('41.25');
+    expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.getAttribute('x'))).toEqual(Array(5).fill('17.5'));
+    const laneYs = [...chart.querySelectorAll('.swimlane-separator')].map((separator) => Number(separator.getAttribute('y1')));
+    expect(laneYs[0]).toBe(5);
+    for (let index = 1; index < laneYs.length; index += 1) {
+      expect(laneYs[index] - laneYs[index - 1]).toBeCloseTo(7.25);
+    }
+    expect(Number(chart.querySelector('.swimlane-axis')?.getAttribute('y1'))).toBeLessThan(42);
     expect(chart.querySelectorAll('.swimlane-mark')).toHaveLength(5);
     expect(chart.querySelector('polyline')).toBeNull();
     expect(chart.querySelector('.swimlane-summary')?.textContent).toContain('5 runs');

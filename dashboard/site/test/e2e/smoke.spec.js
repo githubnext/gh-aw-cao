@@ -693,8 +693,11 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   expect(swimlaneHeadingBox).not.toBeNull();
   expect(swimlaneSummaryBox).not.toBeNull();
   expect(swimlaneChartBox).not.toBeNull();
-  expect(Math.abs((swimlaneHeadingBox?.x ?? 0) - (swimlaneSummaryBox?.x ?? 0))).toBeLessThanOrEqual(1);
-  expect(swimlaneChartBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(220);
+  if (swimlaneHeadingBox === null || swimlaneSummaryBox === null || swimlaneChartBox === null) {
+    throw new Error('Expected swimlane heading, summary, and chart boxes to be measurable.');
+  }
+  expect(Math.abs(swimlaneHeadingBox.x - swimlaneSummaryBox.x)).toBeLessThanOrEqual(1);
+  expect(swimlaneChartBox.height).toBeLessThanOrEqual(220);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
   const summaryRow = view.locator('.table-summary-row');
