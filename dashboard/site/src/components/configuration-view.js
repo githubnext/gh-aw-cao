@@ -1,17 +1,15 @@
 import { h } from '../dom.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
-import { octicon } from '../octicons.js';
 import { copyTextToClipboard, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
+import { renderThemeSettings } from './theme-settings.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
   onAutomaticDashboardBackgroundUpdateStatus,
   setAutomaticDashboardDataUpdatesEnabled
 } from '../dashboard-data-updates.js';
-
-const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -341,58 +339,6 @@ function renderAutomaticDataUpdatesSetting() {
   return section;
 }
 
-function renderAppearanceSetting() {
-  /** @type {'system'|'light'|'dark'} */
-  let theme = 'system';
-  try {
-    const savedTheme = globalThis.window?.localStorage?.getItem(THEME_STORAGE_KEY);
-    if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme;
-  } catch {
-    // The system theme remains available when storage is unavailable.
-  }
-
-  /** @type {HTMLButtonElement[]} */
-  const buttons = [];
-  /** @param {'system'|'light'|'dark'} nextTheme */
-  const setTheme = (nextTheme) => {
-    theme = nextTheme;
-    const root = buttons[0]?.closest('.dashboard-root');
-    if (root instanceof HTMLElement) {
-      if (theme === 'system') delete root.dataset.theme;
-      else root.dataset.theme = theme;
-    }
-    for (const button of buttons) {
-      button.setAttribute('aria-pressed', String(button.dataset.themeValue === theme));
-    }
-    try {
-      globalThis.window?.localStorage?.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      // The theme still applies for the current page when storage is unavailable.
-    }
-  };
-  for (const [value, label, icon] of /** @type {const} */ ([
-    ['system', 'System', 'device-desktop'],
-    ['light', 'Light', 'sun'],
-    ['dark', 'Dark', 'moon']
-  ])) {
-    buttons.push(/** @type {HTMLButtonElement} */ (h('button', {
-      type: 'button',
-      dataset: { themeValue: value },
-      'aria-pressed': String(theme === value),
-      onClick: () => setTheme(value)
-    }, octicon(icon), h('span', null, label))));
-  }
-  return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-appearance-heading' },
-    h('div', { className: 'configuration-browser-settings-heading' },
-      h('div', null,
-        h('h3', { id: 'configuration-appearance-heading' }, 'Appearance'),
-        h('p', null, 'Choose how this dashboard looks in this browser.')
-      )
-    ),
-    h('div', { className: 'configuration-appearance-options' }, buttons)
-  );
-}
-
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 function renderDatabaseSetting(context) {
   const fields = /** @type {const} */ ([
@@ -447,7 +393,7 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
-    renderAppearanceSetting(),
+    renderThemeSettings(),
     renderAutomaticDataUpdatesSetting(),
     renderDatabaseSetting(context),
     renderLocalDataSetting(),

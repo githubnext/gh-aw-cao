@@ -16,6 +16,7 @@ import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from '
 import { renderDataView } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
+import { restoreDashboardTheme } from './components/theme-settings.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { processRows } from './data-processor.js';
@@ -86,7 +87,6 @@ const REFRESH_CONTROL_DESCRIPTION = 'Reload the dashboard to refresh cached data
 const REFRESH_WORKFLOW_DESCRIPTION = 'Open the dashboard workflow on GitHub Actions';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
-const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
 
 /**
@@ -259,7 +259,8 @@ export function renderDashboard(input) {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });
   enableSidebarToggle(root);
-  enableThemeToggle(root);
+  enableAccountMenuDismissal(root);
+  restoreDashboardTheme(root);
   enableMobileNavigationMenu(root);
   enableHorizonOutsideClickDismissal(root);
   root.addEventListener('dashboard-time-window-change', (event) => {
@@ -591,46 +592,10 @@ function enableSidebarToggle(root) {
  * Restores and persists the dashboard color theme.
  * @param {HTMLElement} root
  */
-function enableThemeToggle(root) {
+function enableAccountMenuDismissal(root) {
   const menu = root.querySelector('.account-menu');
   if (menu instanceof HTMLDetailsElement) {
     enableDetailsMenuDismissal(root, menu, '.account-menu-action');
-  }
-  const toggles = [...root.querySelectorAll('[data-theme-value]')];
-  const view = root.ownerDocument.defaultView;
-
-  /** @param {'system'|'light'|'dark'} theme */
-  const setTheme = (theme) => {
-    if (theme === 'system') delete root.dataset.theme;
-    else root.dataset.theme = theme;
-    for (const toggle of toggles) {
-      if (!(toggle instanceof HTMLButtonElement)) continue;
-      const selected = toggle.dataset.themeValue === theme;
-      toggle.setAttribute('aria-pressed', String(selected));
-    }
-  };
-
-  /** @type {'system'|'light'|'dark'} */
-  let theme = 'system';
-  try {
-    const savedTheme = view?.localStorage.getItem(THEME_STORAGE_KEY);
-    if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme;
-  } catch {
-    // Storage can be unavailable in embedded or privacy-restricted contexts.
-  }
-  setTheme(theme);
-
-  for (const toggle of toggles) {
-    toggle.addEventListener('click', () => {
-      const theme = toggle instanceof HTMLElement ? toggle.dataset.themeValue : undefined;
-      if (theme !== 'system' && theme !== 'light' && theme !== 'dark') return;
-      setTheme(theme);
-      try {
-        view?.localStorage.setItem(THEME_STORAGE_KEY, theme);
-      } catch {
-        // The theme still applies for the current render when storage is unavailable.
-      }
-    });
   }
 }
 
