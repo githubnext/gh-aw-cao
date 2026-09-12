@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -12,6 +14,7 @@ function policy() {
   return {
     $schema: schemaUri,
     version: 1,
+    "gh-aw-version": "v0.89.8",
     "control-plane": {
       scope: {
         "allowed-owners": ["acme"],
@@ -66,6 +69,21 @@ function policy() {
     },
   };
 }
+
+test("control.mjs reads the configured gh-aw compiler version", () => {
+  const source = policy();
+  const directory = mkdtempSync(join(tmpdir(), "cao-policy-"));
+  const policyPath = join(directory, "cao.json");
+  writeFileSync(policyPath, JSON.stringify(source));
+
+  try {
+    const result = run(["compiler-version", policyPath]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, "v0.89.8\n");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 function run(args, input = "", environment = {}) {
   return spawnSync(process.execPath, [control, ...args], {

@@ -30,7 +30,7 @@ describe('CLI actions', () => {
       .toBe('gh aw update --repo octo/example --create-pull-request');
   });
 
-  it('renders settings actions as settings-menu buttons', () => {
+  it('renders settings actions as a settings section', () => {
     const rendered = renderCliActions([{
       id: 'upgrade-repository',
       label: 'Upgrade repository',
@@ -49,7 +49,8 @@ describe('CLI actions', () => {
     });
 
     expect(rendered?.classList.contains('cli-actions-settings')).toBe(true);
-    expect(rendered?.querySelector('.cli-action-trigger')?.classList.contains('account-menu-action')).toBe(true);
+    expect(rendered?.querySelector('#configuration-cli-actions-heading')?.textContent).toBe('Agentic Workflows');
+    expect(rendered?.querySelector('.cli-action-trigger')?.classList.contains('configuration-cli-action')).toBe(true);
     rendered?.querySelector('button')?.click();
     const checkbox = /** @type {HTMLInputElement} */ (
       rendered?.querySelector('.cli-action-argument input')
@@ -63,9 +64,12 @@ describe('CLI actions', () => {
     const dashboard = document.createElement('div');
     const reportActions = document.createElement('div');
     reportActions.className = 'report-actions';
-    const accountMenu = document.createElement('div');
-    accountMenu.className = 'account-menu-popover';
-    dashboard.append(reportActions, accountMenu);
+    const configurationView = document.createElement('section');
+    configurationView.className = 'configuration-view';
+    const configurationSetting = document.createElement('section');
+    configurationSetting.className = 'configuration-browser-settings';
+    configurationView.append(configurationSetting);
+    dashboard.append(reportActions, configurationView);
     attachCliActions(dashboard, [
       {
         id: 'update-repository',
@@ -83,13 +87,37 @@ describe('CLI actions', () => {
     ], { repository: 'octo/example', canExecute: false });
 
     expect(dashboard.querySelector('.report-actions > .cli-actions-menu')).not.toBeNull();
-    expect(dashboard.querySelector('.account-menu-popover > .cli-actions-settings')).not.toBeNull();
+    expect(dashboard.querySelector('.configuration-view > .cli-actions-settings')).not.toBeNull();
     expect(dashboard.querySelectorAll('.cli-action-dialog')).toHaveLength(2);
     expect(dashboard.querySelectorAll(':scope > .cli-action-dialog')).toHaveLength(1);
     dashboard.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
     expect(dashboard.querySelector('.cli-action-command')?.textContent)
       .toBe('gh aw update --repo octo/example');
     expect(dashboard.querySelector('.cli-action-confirm')?.textContent).toContain('Copy command');
+  });
+
+  it('replaces settings actions with the latest dashboard declaration', () => {
+    const dashboard = document.createElement('div');
+    const reportActions = document.createElement('div');
+    reportActions.className = 'report-actions';
+    const configurationView = document.createElement('section');
+    configurationView.className = 'configuration-view';
+    const staleActions = document.createElement('section');
+    staleActions.className = 'cli-actions-settings';
+    configurationView.append(staleActions);
+    dashboard.append(reportActions, configurationView);
+
+    attachCliActions(dashboard, [{
+      id: 'update-repository',
+      label: 'Current update',
+      icon: 'sync',
+      command: 'gh aw update --repo {{repository}}',
+      placement: 'settings'
+    }], { repository: 'octo/current' });
+
+    expect(dashboard.querySelectorAll('.configuration-view > .cli-actions-settings')).toHaveLength(1);
+    expect(dashboard.querySelector('.configuration-view > .cli-actions-settings')?.textContent)
+      .toContain('Current update');
   });
 
   it('copies commands instead of executing them outside canvas', async () => {

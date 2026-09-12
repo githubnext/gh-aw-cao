@@ -305,10 +305,10 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .cli-action-trigger-copy { min-width: 0; display: grid; gap: 2px; }
 .cli-action-trigger-copy strong { font-size: .8125rem; }
 .cli-action-trigger-copy small { color: var(--muted); font-size: .6875rem; line-height: 1.35; }
-.cli-actions-settings { padding-top: 8px; border-top: 1px solid var(--border); }
-.cli-actions-settings .cli-action-trigger { align-items: center; }
-.cli-actions-settings .cli-action-trigger-copy small { display: none; }
-.cli-action-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: min(720px, calc(100vh - 32px)); margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); text-align: left; white-space: normal; }
+.configuration-cli-action-list { display: grid; gap: 8px; }
+.configuration-cli-action { align-items: center; border: 1px solid var(--border); background: var(--canvas); }
+.configuration-cli-action:hover { background: var(--neutral-muted); }
+.cli-action-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); text-align: left; white-space: normal; }
 .cli-action-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .cli-action-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
 .cli-action-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }

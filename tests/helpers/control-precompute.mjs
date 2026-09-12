@@ -15,6 +15,7 @@ export function controlPolicy({
 } = {}) {
   return JSON.stringify({
     version: 1,
+    "gh-aw-version": "v0.89.8",
     "control-plane": {
       scope: { "allowed-owners": ["acme"], ...scope },
       inventory,

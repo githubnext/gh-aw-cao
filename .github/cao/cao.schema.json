@@ -10,11 +10,21 @@
     { "required": ["control-plane"] },
     { "required": ["target-authority"] }
   ],
+  "allOf": [
+    {
+      "if": { "required": ["control-plane"] },
+      "then": { "required": ["gh-aw-version"] }
+    }
+  ],
   "properties": {
     "$schema": {
       "const": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json"
     },
     "version": { "const": 1 },
+    "gh-aw-version": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
     "control-plane": { "$ref": "#/$defs/controlPlane" },
     "target-authority": { "$ref": "#/$defs/targetAuthority" }
   },

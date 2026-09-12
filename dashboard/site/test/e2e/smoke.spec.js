@@ -143,6 +143,47 @@ test('Settings keeps hourly dashboard downloads off until the user opts in', asy
   )).toBe('true');
 });
 
+test('production Settings view loads without an unsupported-view warning', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'configuration-integration-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-12T00:00:00Z',
+        'retrieved-at': '2026-09-12T00:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'configuration-policy': {
+          source: 'configuration-policy',
+          rows: [{
+            path: '.github/workflows/cao.json',
+            document: { version: 1 },
+            raw: '{"version":1}',
+            diagnostics: []
+          }],
+          metadata
+        }
+      };
+      window.location.hash = '#page-configuration';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const settingsPage = page.locator('[data-page-id="configuration"]');
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  await expect(settingsPage.locator('.configuration-view')).toBeVisible();
+  await expect(settingsPage.getByRole('heading', { name: 'Appearance' })).toBeVisible();
+  await expect(settingsPage).not.toContainText('Unsupported view mark.');
+  await expect(settingsPage).not.toContainText('Unsupported UI element.');
+});
+
 /**
  * @param {number} actual
  * @param {number} expected
