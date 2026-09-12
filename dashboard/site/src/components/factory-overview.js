@@ -10,7 +10,7 @@ const FAILURE_STATES = new Set(['failure', 'startup-failure', 'stale', 'timed-ou
 
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ label: string, date: string, start: number, end: number, count: number }} RhythmDay */
-/** @typedef {{ packages: number, operations: number, live: number, review: number }} Motion */
+/** @typedef {{ packages: number, operations: number, live: number, review: number, unknown: number }} Motion */
 
 /**
  * Horizon selected from the factory rhythm. The selection outlives a single
@@ -24,7 +24,7 @@ const rhythmSelection = state(/** @type {RhythmDay | null} */ (null));
  * scoped to a single rhythm day, because a past day cannot report live motion.
  * @type {import('../reactive.js').State<Motion>}
  */
-const factoryMotionState = state(/** @type {Motion} */ ({ packages: 0, operations: 0, live: 0, review: 0 }));
+const factoryMotionState = state(/** @type {Motion} */ ({ packages: 0, operations: 0, live: 0, review: 0, unknown: 0 }));
 
 /** @type {import('../reactive.js').EffectHandle | null} */
 let rhythmEffect = null;
@@ -35,7 +35,7 @@ let motionEffect = null;
 export function resetFactoryOverviewState() {
   releaseFactoryOverviewEffects();
   rhythmSelection.set(null);
-  factoryMotionState.set({ packages: 0, operations: 0, live: 0, review: 0 });
+  factoryMotionState.set({ packages: 0, operations: 0, live: 0, review: 0, unknown: 0 });
 }
 
 /** Stops the effects owned by a superseded overview render. */
@@ -51,7 +51,8 @@ function sameMotion(current, next) {
   return current.packages === next.packages
     && current.operations === next.operations
     && current.live === next.live
-    && current.review === next.review;
+    && current.review === next.review
+    && current.unknown === next.unknown;
 }
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {{ singular: string, plural: string }} PluralText */
@@ -147,7 +148,7 @@ function renderIntroduction(heading, usefulOutputs, deliveredRepositories, succe
         {},
         h('strong', {}, formatCount(motion.packages)),
         motion.packages === 1 ? ' package in motion ' : ' packages in motion ',
-        h('span', { className: 'factory-running-detail' }, `(${formatCount(motion.live)} live, ${formatCount(motion.review)}, in review)`)
+        h('span', { className: 'factory-running-detail' }, `(${formatCount(motion.live)} live, ${formatCount(motion.review)} in review${motion.unknown > 0 ? `, ${formatCount(motion.unknown)} unknown` : ''})`)
       )
       : 'Actions activity observed');
   });
@@ -175,19 +176,24 @@ function factoryMotion(runs, workflows) {
     workflowDetails.set(workflowIdentity(workflow), workflow);
     if (!workflowDetails.has(path)) workflowDetails.set(path, workflow);
   }
-  const packages = new Set();
-  let live = 0;
-  let review = 0;
+  const packages = new Map();
   for (const operation of active) {
     const workflow = workflowDetails.get(workflowIdentity(operation))
       ?? workflowDetails.get(String(operation.workflow ?? ''));
     const packageId = String(operation.package ?? workflow?.package ?? operation.workflow ?? operation.run ?? '').trim();
-    if (packageId) packages.add(packageId);
+    if (!packageId) continue;
     const mode = normalizedMode(operation['rollout-mode'] ?? workflow?.['rollout-mode']);
-    if (mode === 'live') live += 1;
-    if (mode === 'review') review += 1;
+    const previousMode = packages.get(packageId);
+    if (!previousMode || previousMode === 'unknown' || mode === 'live') packages.set(packageId, mode);
   }
-  return { packages: packages.size || active.length, operations: active.length, live, review };
+  const modes = [...packages.values()];
+  return {
+    packages: packages.size,
+    operations: active.length,
+    live: modes.filter((mode) => mode === 'live').length,
+    review: modes.filter((mode) => mode === 'review').length,
+    unknown: modes.filter((mode) => mode === 'unknown').length
+  };
 }
 
 /** @param {Row} row */

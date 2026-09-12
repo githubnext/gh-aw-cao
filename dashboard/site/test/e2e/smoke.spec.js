@@ -1390,7 +1390,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.locator('.agent-factory')).toBeVisible();
   await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
-  await expect(overviewPage.locator('.factory-running')).toContainText('1 package in motion (0 live, 0, in review)');
+  await expect(overviewPage.locator('.factory-running')).toContainText('1 package in motion (0 live, 0 in review, 1 unknown)');
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '0']);
   await expect(overviewPage.locator('.factory-station small')).toHaveText([
