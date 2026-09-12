@@ -303,20 +303,15 @@ If shared authentication or shared control caused the incident, perform the cont
 
 ## Update CAO
 
-Update package-owned workflows and runtime resources from one reviewed CAO commit. Keep `.github/workflows/cao.json` unchanged unless the release requires an explicit, separately reviewed policy migration.
+Update package-owned workflows and runtime resources through a reviewable update proposal. Keep `.github/workflows/cao.json` unchanged unless the release requires an explicit, separately reviewed policy migration.
 
 From the control repository:
 
 ```bash
-CAO_REF="<full-reviewed-commit-sha>"
-[[ "$CAO_REF" =~ ^[0-9a-fA-F]{40,64}$ ]]
-
-gh extension upgrade github/gh-aw
-gh aw add --force "githubnext/gh-aw-cao@${CAO_REF}"
-gh aw upgrade
+gh aw update --major --cool-down 0 --create-pull-request
 ```
 
-Review the package records, editable workflow sources, generated lock files, runtime modules, and action-version changes before committing them together. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
+The command updates the installed CAO package and opens a pull request containing its package-owned workflows, runtime modules, generated locks, and ownership records. Review that proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
 
 ### Catalog Release Revocation
 

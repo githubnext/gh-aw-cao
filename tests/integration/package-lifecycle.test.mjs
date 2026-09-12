@@ -129,6 +129,13 @@ const softwareDevelopmentPracticesExpectedFiles = [
   ".github/workflows/software-development-practices-nist-ssdf.md",
   ".github/workflows/software-development-practices.md",
 ];
+const caoBootstrapExpectedFiles = [
+  ".github/aw/cao/cao.schema.json",
+  ".github/aw/cao/setup-github-apps.mjs",
+  ".github/aw/cao/src/control.mjs",
+  ".github/aw/cao/src/policy.mjs",
+  ".github/aw/cao/upgrade.sh",
+];
 
 const repositoryOnlyFiles = [
   ".github/aw/e2e/run-canary.sh",
@@ -174,19 +181,29 @@ async function installPackage(source) {
   });
 }
 
-test("gh aw add installs the root package without rewriting Copilot authentication", { timeout: 180_000 }, async () => {
+test("root package creates an empty CAO and deterministically updates its bootstrap state", { timeout: 180_000 }, async () => {
   const consumer = await installPackage(packageSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
-    for (const relativePath of [
-      ".github/aw/cao/cao.schema.json",
-      ".github/aw/cao/setup-github-apps.mjs",
-      ".github/aw/cao/src/control.mjs",
-      ".github/aw/cao/src/policy.mjs",
-      ".github/aw/cao/upgrade.sh",
-    ]) {
+    const expectedBootstrap = new Map(caoBootstrapExpectedFiles.map((relativePath) => [
+      relativePath,
+      readFileSync(join(consumer, relativePath), "utf8"),
+    ]));
+    for (const relativePath of caoBootstrapExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root package omitted CAO bootstrap file ${relativePath}`);
     }
+    const policyPath = join(consumer, ".github", "workflows", "cao.json");
+    const policy = `${JSON.stringify({
+      version: 1,
+      "control-plane": {
+        scope: {
+          "allowed-owners": ["acme"],
+          "allowed-repositories": ["acme/example"],
+        },
+        packages: {},
+      },
+    }, null, 2)}\n`;
+    writeFileSync(policyPath, policy);
     assert.deepEqual(
       JSON.parse(readFileSync(join(consumer, ".github", "workflows", "aw.json"), "utf8")).auto_upgrade.options,
       ["--pre-releases"],
@@ -208,6 +225,30 @@ test("gh aw add installs the root package without rewriting Copilot authenticati
       assert.match(lock, /COPILOT_GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
       assert.doesNotMatch(lock, /secrets\.COPILOT_GITHUB_TOKEN/);
     }
+
+    writeFileSync(join(consumer, caoBootstrapExpectedFiles[0]), "stale bootstrap state\n");
+    for (const relativePath of caoBootstrapExpectedFiles.slice(1)) {
+      rmSync(join(consumer, relativePath));
+    }
+    run("gh", [
+      "aw",
+      "update",
+      "--force",
+      "--no-merge",
+      "--no-compile",
+      "--no-security-scanner",
+      "--cool-down",
+      "0",
+    ], consumer);
+
+    for (const [relativePath, expected] of expectedBootstrap) {
+      assert.equal(
+        readFileSync(join(consumer, relativePath), "utf8"),
+        expected,
+        `gh aw update did not restore ${relativePath}`,
+      );
+    }
+    assert.equal(readFileSync(policyPath, "utf8"), policy, "gh aw update changed consumer-owned CAO policy");
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }

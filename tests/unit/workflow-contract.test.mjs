@@ -1123,6 +1123,7 @@ test("root package installs the CAO bootstrap runtime", () => {
   const setupSkill = readFileSync(join(root, ".github", "skills", "setup-central-agentic-ops", "SKILL.md"), "utf8");
   const quickstart = readFileSync(join(root, "docs", "getting-started.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
+  const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
   const policy = JSON.parse(execFileSync(process.execPath, [
     join(root, ".github", "cao", "src", "control.mjs"),
     "resolve-policy",
@@ -1148,18 +1149,18 @@ test("root package installs the CAO bootstrap runtime", () => {
   assert.match(quickstart, /setup-central-agentic-ops/);
   assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_REF\}"/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
-  assert.match(operations, /gh aw add --force "githubnext\/gh-aw-cao@\$\{CAO_REF\}"/);
-  assert.doesNotMatch(operations, /base64 -d|contents\/\.github\/cao/);
+  assert.match(updateSection, /gh aw update --major --cool-down 0 --create-pull-request/);
+  assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add/);
+  assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
 });
 
-test("CAO upgrade script refreshes gh-aw, packages, and Actions", () => {
+test("CAO upgrade script proposes package updates", () => {
   const upgrade = readFileSync(join(root, ".github", "cao", "upgrade.sh"), "utf8");
 
   assert.match(upgrade, /^#!\/usr\/bin\/env bash\n/);
   assert.match(upgrade, /^set -euo pipefail$/m);
-  assert.match(upgrade, /^gh extension upgrade github\/gh-aw$/m);
-  assert.match(upgrade, /^gh aw update --major --cool-down 0$/m);
-  assert.match(upgrade, /^gh aw upgrade$/m);
+  assert.match(upgrade, /^gh aw update --major --cool-down 0 --create-pull-request$/m);
+  assert.doesNotMatch(upgrade, /gh extension (?:install|upgrade)|gh aw add/);
 });
 
 test("root package composes its operational packages through manifests", () => {
