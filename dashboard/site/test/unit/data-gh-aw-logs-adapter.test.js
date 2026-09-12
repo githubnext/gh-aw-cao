@@ -160,12 +160,6 @@ describe('gh-aw logs adapter', () => {
             key_findings: [{ title: 'Slow response', severity: 'medium' }],
             missing_tools: [{ tool: 'search', timestamp: '2026-09-09T04:00:20Z' }],
             skill_activations: [{ name: 'review', status: 'success', timestamp: '2026-09-09T04:00:30Z' }],
-            firewall_analysis: {
-              requests_by_domain: {
-                'api.github.com:443': { allowed: 3, blocked: 1 },
-                'objects.githubusercontent.com:443': { allowed: 2, blocked: 0 }
-              }
-            },
             created_items: [{
               type: 'create_issue',
               url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
@@ -173,6 +167,12 @@ describe('gh-aw logs adapter', () => {
               repo: 'githubnext/gh-aw-cao',
               timestamp: '2026-09-09T04:00:45Z'
             }]
+          },
+          firewall_analysis: {
+            requests_by_domain: {
+              'api.github.com:443': { allowed: 3, blocked: 1 },
+              'objects.githubusercontent.com:443': { allowed: 2, blocked: 0 }
+            }
           },
           agent_id: '',
           agent_version: '',
