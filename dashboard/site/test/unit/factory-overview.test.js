@@ -72,7 +72,8 @@ it('summarizes retained Actions activity and useful outputs while routing failur
   expect(rendered.textContent).not.toContain('Coming off the line');
   expect(rendered.querySelector('.factory-belt')).toBeNull();
   expect(rendered.querySelector('.factory-capacity')).toBeNull();
-  expect(rendered.querySelector('.factory-running')?.textContent).toContain('1 package in motion (1 op live, 0 in review)');
+  expect(rendered.querySelector('.factory-running')?.textContent).toContain('1 package in motion (1 live, 0, in review)');
+  expect(rendered.querySelector('.factory-running-detail')?.textContent).toBe('(1 live, 0, in review)');
   expect(rendered.querySelector('.factory-running .octicon')).toBeNull();
   expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
   expect([...rendered.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
@@ -135,7 +136,7 @@ it('summarizes packages in motion by live and review operations', () => {
   });
 
   expect(rendered.querySelector('.factory-running')?.textContent)
-    .toBe('2 packages in motion (5 ops live, 2 in review)');
+    .toBe('2 packages in motion (5 live, 2, in review)');
 });
 
 it('reports unavailable factory evidence before inferring an operating state', () => {
@@ -301,7 +302,7 @@ it('restores the selected rhythm day and live motion when the dashboard refreshe
     }
   });
 
-  expect(rendered.querySelector('.factory-running')?.textContent).toBe('1 package in motion (1 op live, 0 in review)');
+  expect(rendered.querySelector('.factory-running')?.textContent).toBe('1 package in motion (1 live, 0, in review)');
 
   const dayButtons = [...rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')];
   dayButtons[4]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -316,7 +317,7 @@ it('restores the selected rhythm day and live motion when the dashboard refreshe
 
   expect(refreshed.querySelector('.factory-rhythm-summary')?.textContent).toBe('Wed 2026-09-09: 2 successful runs.');
   expect(refreshedButtons.filter((button) => button.getAttribute('aria-pressed') === 'true')).toHaveLength(1);
-  expect(refreshed.querySelector('.factory-running')?.textContent).toBe('1 package in motion (1 op live, 0 in review)');
+  expect(refreshed.querySelector('.factory-running')?.textContent).toBe('1 package in motion (1 live, 0, in review)');
   expect(refreshed.querySelector('.factory-running')?.className).toBe('factory-running factory-running-active');
 
   refreshed.querySelector('.factory-rhythm-heading')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

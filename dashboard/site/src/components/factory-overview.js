@@ -147,7 +147,7 @@ function renderIntroduction(heading, usefulOutputs, deliveredRepositories, succe
         {},
         h('strong', {}, formatCount(motion.packages)),
         motion.packages === 1 ? ' package in motion ' : ' packages in motion ',
-        `(${formatCount(motion.live)} ${motion.live === 1 ? 'op' : 'ops'} live, ${formatCount(motion.review)} in review)`
+        h('span', { className: 'factory-running-detail' }, `(${formatCount(motion.live)} live, ${formatCount(motion.review)}, in review)`)
       )
       : 'Actions activity observed');
   });
