@@ -323,6 +323,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   let running = false;
   let rerun = false;
   let backgroundConfigured = false;
+  let backgroundSyncUnavailable = false;
   /** @type {BatteryState | undefined} */
   let battery;
   /** @type {ServiceWorkerRegistration | undefined} */
@@ -349,12 +350,14 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   const performReconcile = async () => {
     if (stopped) return;
     if (!automaticDashboardDataUpdatesEnabled(storage)) {
+      backgroundSyncUnavailable = false;
       await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
       registration = undefined;
       healthyWorker = undefined;
       backgroundConfigured = false;
       return;
     }
+    if (backgroundSyncUnavailable) return;
     if (!serviceWorkers) {
       markBackgroundUpdatesInactive();
       return;
@@ -406,8 +409,9 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         registration = undefined;
         healthyWorker = undefined;
         backgroundConfigured = false;
+        backgroundSyncUnavailable = error instanceof NonRetryableBackgroundSyncError;
         if (automaticDashboardDataUpdatesEnabled(storage)
-            && !(error instanceof NonRetryableBackgroundSyncError)) {
+            && !backgroundSyncUnavailable) {
           schedule(RETRY_INTERVAL_MS);
         }
         return;
@@ -465,7 +469,10 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       }
     }
   };
-  const onSettingChange = () => void reconcile();
+  const onSettingChange = () => {
+    backgroundSyncUnavailable = false;
+    void reconcile();
+  };
   /** @param {StorageEvent} event */
   const onStorageChange = (event) => {
     if (event.key === ENABLED_STORAGE_KEY || event.key === null) void reconcile();

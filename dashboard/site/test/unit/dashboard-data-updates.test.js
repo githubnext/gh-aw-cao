@@ -316,6 +316,9 @@ describe('automatic dashboard data updates', () => {
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
     expect(setTimer).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event('online'));
+    await Promise.resolve();
+    expect(serviceWorkers.register).toHaveBeenCalledOnce();
     stop();
   });
 
