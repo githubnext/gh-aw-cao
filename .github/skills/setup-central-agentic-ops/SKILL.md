@@ -15,11 +15,11 @@ Create a new Central Agentic Ops control plane and prove it safely with one revi
 - Public and private control repositories are supported. Preserve an existing repository's visibility; for a new repository, use the visibility the user chooses.
 - In a public control repository, policy, workflow runs, operational metadata, and review safe outputs are public. State that exposure before creation and never place confidential target information in those outputs.
 - Install the root CAO package from one full commit SHA. Resolve a reviewed release or the current default branch once before installation so every package dependency uses the same immutable source identity.
-- Keep one copy of `control.md`, `control.mjs`, `policy.mjs`, the policy schema, and the setup CLI together under `.github/workflows/shared/`. Installed workflows resolve that directory from the package's immutable source commit; never materialize duplicate runtime files under `.github/aw/cao/`.
+- Keep one package-installed copy of `control.md`, `control.mjs`, `policy.mjs`, the policy schema, and the setup CLI together under `.github/workflows/shared/`. These files are available in the shared checkout; never fetch another copy from the CAO repository or materialize duplicate runtime files under `.github/aw/cao/`.
 - The root package installs `.github/aw/default-AGENTS.md` as package-owned source for control-repository ambient context. If the control repository has no root `AGENTS.md`, materialize that source as `AGENTS.md`; never overwrite or merge into existing agent instructions without the user's approval.
 - Keep rollout policy only in `.github/workflows/cao.json`. Do not create `CENTRAL_AGENTIC_OPS_*` variables or another policy channel.
 - Keep credentials out of files, chat, command arguments, and workflow inputs. Have the user enter secrets directly through GitHub or an interactive terminal prompt.
-- Keep the catalog's committed root `aw.yml` free of `config` so ordinary installation remains non-interactive. When the user chooses automated App setup, run the credential-only `.github/workflows/shared/setup-github-apps.mjs` helper from the immutable CAO source and target the control repository explicitly.
+- Keep the catalog's committed root `aw.yml` free of `config` so ordinary installation remains non-interactive. When the user chooses automated App setup, run the package-installed `.github/workflows/shared/setup-github-apps.mjs` helper and target the control repository explicitly.
 - Require confirmed organization billing for Copilot inference. Every Copilot-backed CAO workflow declares `copilot-requests: write` and uses the built-in workflow token; do not configure `COPILOT_GITHUB_TOKEN`. A GitHub App or `GH_AW_GITHUB_TOKEN` for target access does not authenticate Copilot inference.
 - Ask which outcomes the user wants from the catalog operations installed by the root package. Do not silently choose Dependabot or infer package intent from the target repository.
 - Separately ask whether the user wants to create an operation package of their own. When they do, record the operation idea and hand it to `.github/skills/create-ops-package/SKILL.md` after the base control-plane boundary is proven; setup must not improvise a standalone custom workflow.
@@ -91,16 +91,10 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 
     A reviewed release tag may replace `main` when resolving `cao_ref`. Do not pass an unresolved branch or omit the ref: one immutable source identity keeps repeated package dependencies consistent and records a reproducible installation. In a source-managed control repository, do not install a package over workflows maintained directly in-tree. Its reviewed workflow sources, generated locks, runtime files, and policy form the runtime revision; verify them at the current commit instead.
 
-    When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper from the immutable CAO source. In a separate control repository, retrieve it into a temporary directory at `cao_ref`, run it, and remove the temporary directory:
+    When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper from the package-installed shared checkout:
 
     ```bash
-    setup_dir=$(mktemp -d)
-    trap 'rm -rf "$setup_dir"' EXIT
-    gh api \
-      -H "Accept: application/vnd.github.raw+json" \
-      "repos/githubnext/gh-aw-cao/contents/.github/workflows/shared/setup-github-apps.mjs?ref=${cao_ref}" \
-      > "$setup_dir/setup-github-apps.mjs"
-    node "$setup_dir/setup-github-apps.mjs" --repo <organization>/<control-repository>
+    node .github/workflows/shared/setup-github-apps.mjs --repo <organization>/<control-repository>
     ```
 
     In a source-managed control repository, use the in-tree helper:
@@ -116,7 +110,7 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 
     Existing complete credential pairs are left unchanged. Use `--dry-run` before creation when reviewing custom App names or permissions. The helper creates private Apps owned by the control repository organization; expand their installations only to approved repositories owned by that organization. Multi-organization enrollment requires an explicitly reviewed App publication and installation plan. Confirm the read App has no write permission and the write App is installed only on repositories approved for safe outputs.
 
-    Verify every installed Copilot-backed source declares `copilot-requests: write`, every corresponding generated lock grants that permission and maps `COPILOT_GITHUB_TOKEN` to `${{ github.token }}`, and no generated lock declares `${{ secrets.COPILOT_GITHUB_TOKEN }}`. Confirm no duplicate `.github/aw/cao` runtime exists, every controlled lock resolves the immutable package source, and `.github/workflows/activity.yml` plus `.github/aw/activity/index.mjs` were installed. Installed operations that need recent workflow-run history should restore the schema-versioned activity cache first and download only evidence absent from its bounded, complete scope. Do not rewrite installed workflow authentication or edit generated `.lock.yml` files directly.
+    Verify every installed Copilot-backed source declares `copilot-requests: write`, every corresponding generated lock grants that permission and maps `COPILOT_GITHUB_TOKEN` to `${{ github.token }}`, and no generated lock declares `${{ secrets.COPILOT_GITHUB_TOKEN }}`. Confirm the package installed the control files under `.github/workflows/shared/`, no duplicate `.github/aw/cao` runtime exists, and `.github/workflows/activity.yml` plus `.github/aw/activity/index.mjs` were installed. Installed operations that need recent workflow-run history should restore the schema-versioned activity cache first and download only evidence absent from its bounded, complete scope. Do not rewrite installed workflow authentication or edit generated `.lock.yml` files directly.
 
 8. Confirm `.github/aw/default-AGENTS.md` was installed. If the repository has no root `AGENTS.md`, read the installed template and create `AGENTS.md` with exactly that content using a file-editing tool. If root `AGENTS.md` already exists, preserve it unchanged unless the user explicitly approves a merge; the packaged file remains the reference default and package updates must not overwrite consumer-owned ambient context.
 
@@ -180,7 +174,7 @@ Stop before installation or execution and explain the blocker when:
 - organization-billed Copilot inference is unavailable or unconfirmed;
 - any installed Copilot-backed source omits `copilot-requests: write` or any generated lock requires `secrets.COPILOT_GITHUB_TOKEN`;
 - the installed root package does not contain `.github/aw/default-AGENTS.md`;
-- an installed workflow cannot resolve the single `.github/workflows/shared/` runtime from the selected immutable CAO ref;
+- the root package does not install the control files under `.github/workflows/shared/`;
 - the selected target does not exist, cannot be accessed, requires credentials that were not configured, or would expose non-public evidence through a public control repository;
 - the existing repository contains conflicting files that the user has not approved replacing;
 - root package installation fails; or
