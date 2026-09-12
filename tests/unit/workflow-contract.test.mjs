@@ -807,6 +807,33 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
   assert.equal(parse(/^---\n([\s\S]*?)\n---/.exec(workflow("docs-explanatory-diagrams.md"))[1])["safe-outputs"].noop["report-as-issue"], false);
 });
 
+test("Dependabot cooldown and duplicate prevention remain fail closed", () => {
+  const orchestratorSource = workflow("dependabot.md");
+  const workerSource = workflow("dependabot-release-train-updater.md");
+  const orchestrator = parse(/^---\n([\s\S]*?)\n---/.exec(orchestratorSource)[1]);
+  const worker = parse(/^---\n([\s\S]*?)\n---/.exec(workerSource)[1]);
+  const trustedUsers = ["cao-githubnext-gh-aw-cao-write[bot]", "dependabot[bot]"];
+
+  assert.equal(orchestrator.tools.github["min-integrity"], "approved");
+  assert.deepEqual(orchestrator.tools.github["trusted-users"], trustedUsers);
+  assert.deepEqual(orchestrator.tools["cache-memory"], {
+    "retention-days": 30,
+    "allowed-extensions": [".json"],
+  });
+  assert.match(orchestratorSource, /seven-day repository cooldown/);
+  assert.match(orchestratorSource, /dependabot-dispatch-ledger\.json/);
+  assert.match(orchestratorSource, /open workflow-owned issues and pull requests immediately before dispatch/);
+
+  assert.equal(worker.tools.github["min-integrity"], "approved");
+  assert.deepEqual(worker.tools.github["trusted-users"], trustedUsers);
+  assert.equal(worker["safe-outputs"]["create-pull-request"]["recreate-ref"], false);
+  assert.equal(worker["safe-outputs"]["create-issue"].expires, false);
+  assert.equal(worker["safe-outputs"]["close-pull-request"], undefined);
+  assert.match(workerSource, /smart-dependabot:identity=<full-digest>/);
+  assert.match(workerSource, /lowercase SHA-256 hex digest/);
+  assert.match(workerSource, /no developer has commented, reacted, edited, been assigned, linked work, or otherwise interacted/);
+});
+
 test("self-care pages health worker creates a fix PR instead of a report issue", () => {
   const source = workflow("self-care-pages-health.md");
 

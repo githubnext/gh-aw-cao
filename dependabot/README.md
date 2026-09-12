@@ -13,7 +13,7 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 - Understands relationships among manifests, lockfiles, workspaces, solutions, source code, tests, and CI instead of grouping updates only by package name.
 - Builds the smallest independently testable dependency bundle supported by repository evidence.
 - Applies a seven-day per-repository cooldown to routine work and reuses matching open issues or pull requests.
-- Closes superseded workflow-owned issues and duplicate pull requests only when no developer has interacted with them.
+- Closes superseded workflow-owned issues only when no developer has interacted with them, and reports duplicate pull requests for maintainer review.
 - Produces at most one primary dependency-maintenance outcome per worker workflow run.
 - Never auto-merges a pull request.
 

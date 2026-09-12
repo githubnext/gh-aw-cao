@@ -135,6 +135,8 @@ tracker-id: dependabot-release-train-updater
 tools:
   github:
     mode: remote
+    min-integrity: approved
+    trusted-users: ["cao-githubnext-gh-aw-cao-write[bot]", "dependabot[bot]"]
     toolsets: [default, repos, issues, pull_requests, actions, dependabot, code_security, security_advisories]
   web-fetch:
   cache-memory: true
@@ -153,7 +155,7 @@ safe-outputs:
     if-no-changes: ignore
     allowed-branches: ["dependabot-agent/*", "smart-dependabot/*"]
     preserve-branch-name: true
-    recreate-ref: true
+    recreate-ref: false
     # This workflow's entire purpose is to update manifests and lockfiles, so
     # protected-file review gating (meant for unrelated manifest edits) is disabled.
     protected-files: allowed
@@ -407,12 +409,6 @@ safe-outputs:
     required-labels: [dependabot, dependabot:release-train-updater]
     required-title-prefix: "[dependabot:release-train-updater] "
     state-reason: not_planned
-    max: 2
-  close-pull-request:
-    target: "*"
-    target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
-    required-labels: [dependabot, dependabot:release-train-updater]
-    required-title-prefix: "[dependabot-agent] "
     max: 1
 
 timeout-minutes: 60
@@ -465,9 +461,9 @@ Before inspecting available versions or editing files:
 3. If matching open work exists, treat it as authoritative. Analyze, update, or comment on that item when useful; otherwise call `noop`. Never create a parallel pull request or issue.
 4. Recheck open matching work immediately before emitting `create-pull-request` or `create-issue`. If a concurrent run created it, discard local changes and reuse the existing item or call `noop`.
 
-Give every proposed bundle a canonical identity derived from the target repository, ecosystem, sorted dependency set, normalized manifest closure, and target version. Put `<!-- smart-dependabot:identity=... -->` in the pull request body and use a deterministic branch slug derived from the same identity without dates, run IDs, or random values.
+Give every proposed bundle a canonical identity. Lowercase the target repository and ecosystem; sort and lowercase unique dependency names and repository-relative POSIX manifest paths; preserve the exact target version; join those five fields as compact JSON in the order `repository`, `ecosystem`, `dependencies`, `manifests`, `target_version`; and compute its lowercase SHA-256 hex digest. Put `<!-- smart-dependabot:identity=<full-digest> -->` in the pull request body and use `dependabot-agent/<ecosystem>-<first-12-digest-characters>` as the branch. Do not include dates, run IDs, or random values. If any identity input is unknown, do not create a pull request.
 
-When multiple workflow-owned pull requests have the same canonical identity, preserve the newest viable pull request and close an older duplicate only after verifying that no developer has commented, reviewed, reacted, committed to its branch, been assigned, or otherwise interacted with it. Link the surviving pull request in the closure comment. If human interaction is present or cannot be determined, do not close it.
+When multiple workflow-owned pull requests have the same canonical identity, preserve the newest viable pull request and report the older duplicate without closing it. If either pull request has developer interaction, preserve both for a maintainer decision.
 
 For workflow-owned issues, consider cleanup only after 14 days. Close an older issue only when its work is resolved, superseded, or duplicated and no developer has commented, reacted, edited, been assigned, linked work, or otherwise interacted with it. Link the replacement when applicable. Bot-only activity does not count as developer interaction. If interaction history is unavailable or ambiguous, preserve the issue.
 
@@ -675,7 +671,7 @@ Set merge candidate to `yes` only for a non-major update with no unresolved secu
 ## Outcome rules
 
 - Repair an existing PR when it is clearly the same dependency work item and safe-output tools can update it without crossing repository or authorship boundaries.
-- Close an older duplicate workflow-owned PR only when a newer viable PR has the same canonical identity and the older PR has no developer interaction.
+- Report an older duplicate workflow-owned PR when a newer viable PR has the same canonical identity; do not close pull requests automatically.
 - Create one new draft PR when the update is safe, coherent, and reviewable.
 - Create an issue when credentials, network policy, exact toolchain availability, source migration, unsafe scripts, unresolvable constraints, or repository governance prevent a trustworthy PR.
 - Close a workflow-owned issue older than 14 days only when it is resolved, superseded, or duplicated and has no developer interaction.
