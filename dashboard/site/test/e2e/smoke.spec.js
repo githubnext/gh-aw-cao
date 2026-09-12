@@ -1080,6 +1080,16 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         label: 'Review dependency evidence'
       };
       const sources = {
+        'configuration-policy': {
+          source: 'configuration-policy',
+          rows: [{ document: { version: 1 }, raw: '', diagnostics: [] }],
+          metadata
+        },
+        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
+        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
+        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
+        'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
+        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata },
         'overview-failed-run-count': {
           source: 'overview-failed-run-count',
           rows: [{ count: 80 }],

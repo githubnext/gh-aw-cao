@@ -592,6 +592,10 @@ function enableSidebarToggle(root) {
  * @param {HTMLElement} root
  */
 function enableThemeToggle(root) {
+  const menu = root.querySelector('.account-menu');
+  if (menu instanceof HTMLDetailsElement) {
+    enableDetailsMenuDismissal(root, menu, '.account-menu-action');
+  }
   const toggles = [...root.querySelectorAll('[data-theme-value]')];
   if (toggles.length === 0) return;
   const view = root.ownerDocument.defaultView;
@@ -629,10 +633,6 @@ function enableThemeToggle(root) {
       }
     });
   }
-
-  const menu = root.querySelector('.account-menu');
-  if (!(menu instanceof HTMLDetailsElement)) return;
-  enableDetailsMenuDismissal(root, menu, '.account-menu-action');
 }
 
 /**
