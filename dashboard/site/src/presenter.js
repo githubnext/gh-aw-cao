@@ -597,7 +597,6 @@ function enableThemeToggle(root) {
     enableDetailsMenuDismissal(root, menu, '.account-menu-action');
   }
   const toggles = [...root.querySelectorAll('[data-theme-value]')];
-  if (toggles.length === 0) return;
   const view = root.ownerDocument.defaultView;
 
   /** @param {'system'|'light'|'dark'} theme */

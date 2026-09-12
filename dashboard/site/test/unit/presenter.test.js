@@ -925,6 +925,7 @@ describe('presenter built-in and custom pages', () => {
         avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4'
       }
     });
+
     document.body.append(rendered);
 
     const labels = [...rendered.querySelectorAll('.nav-section-label')].map((node) => node.textContent?.trim());
@@ -1011,6 +1012,20 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost & efficiency');
     rendered.remove();
     window.history.replaceState(null, '', '/');
+  });
+
+  it('restores a saved theme before the Settings page is rendered', () => {
+    try {
+      localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
+      const rendered = renderDashboard({
+        document: authoritativeDashboardDocument,
+        sources: {}
+      });
+
+      expect(rendered.dataset.theme).toBe('dark');
+    } finally {
+      localStorage.clear();
+    }
   });
 
   it('does not turn agent smells into Home notifications', async () => {
