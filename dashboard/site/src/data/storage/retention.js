@@ -8,8 +8,8 @@ export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
 
 /**
  * Stores whose retention is decided by observation time. Structural parents
- * (`packages`, `repositories`, `workflows`) are retained by reachability instead so a
- * retained run never loses its hierarchy.
+ * are never TTLed: repositories and workflows are retained by reachability so
+ * a retained run never loses its hierarchy, while packages persist across imports.
  * @type {Record<string, string[]>}
  */
 const RETENTION_TIMESTAMPS = {
