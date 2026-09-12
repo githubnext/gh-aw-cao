@@ -6,7 +6,6 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -181,7 +180,7 @@ async function installPackage(source) {
   });
 }
 
-test("root package creates an empty CAO and deterministically updates its bootstrap state", { timeout: 180_000 }, async () => {
+test("root package bootstraps an empty CAO and preserves resources during workflow update", { timeout: 180_000 }, async () => {
   const consumer = await installPackage(packageSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
@@ -192,9 +191,10 @@ test("root package creates an empty CAO and deterministically updates its bootst
     for (const relativePath of caoBootstrapExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root package omitted CAO bootstrap file ${relativePath}`);
     }
-    assert.ok(
-      statSync(join(consumer, ".github", "aw", "cao", "setup-github-apps.mjs")).mode & 0o111,
-      "root package installed cao-setup without an executable mode",
+    assert.match(
+      run(process.execPath, [join(consumer, ".github", "aw", "cao", "setup-github-apps.mjs"), "--help"], consumer),
+      /^Usage: cao-setup \[options\]/,
+      "root package installed an unusable cao-setup Node CLI",
     );
     const policyPath = join(consumer, ".github", "workflows", "cao.json");
     const policy = `${JSON.stringify({

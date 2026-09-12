@@ -112,7 +112,7 @@ For private or internal targets, alternate review repositories, or live writes, 
 | `GH_AW_GITHUB_TOKEN` | PAT fallback | Fine-grained token for cross-repository access. |
 | `GH_AW_CI_TOKEN` | Optional Dependabot path | Additional token used only when an empty CI commit is required. |
 
-The root package manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Configure Authentication](authentication.md#optional-setup-wizard) to create and install both Apps with an explicitly temporary `aw.yml` block, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Each path uses only its documented credential fallback when that credential's reach is sufficient.
+The root package manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create and install both Apps with the package-installed Node CLI, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Each path uses only its documented credential fallback when that credential's reach is sufficient.
 
 ## Manual Inputs
 

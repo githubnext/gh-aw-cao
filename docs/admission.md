@@ -15,7 +15,7 @@ Admission queries the GitHub rate-limit API and uses the returned core limit, re
 
 ## What Admission Gates
 
-The shared control component reads `.github/cao/src/control.mjs` and `.github/cao/src/policy.mjs` from the exact `github.workflow_sha`. Admission then reads `.github/workflows/cao.json` at that revision, and authorized runs execute the `precompute` command from the same modules. They do not use policy or CAO runtime from another branch or from the agent checkout.
+The shared control component prefers the package-installed `.github/aw/cao/src/control.mjs` and `.github/aw/cao/src/policy.mjs`, and falls back to `.github/cao/src` in a source-managed control repository. It reads those modules from the exact `github.workflow_sha`. Admission then reads `.github/workflows/cao.json` at that revision, and authorized runs execute the `precompute` command from the same modules. They do not use policy or CAO runtime from another branch or from the agent checkout.
 
 | Check | Admitted when |
 | --- | --- |
@@ -59,13 +59,13 @@ Failure in either phase prevents agent execution. Admission denial skips activat
 Setup creates one atomic control-plane revision:
 
 1. Install the gh-aw package from an immutable CAO tag or commit.
-2. Materialize `.github/cao/src/control.mjs` and `.github/cao/src/policy.mjs` from that same CAO revision.
+2. Verify that the root package materialized `.github/aw/cao/src/control.mjs` and `.github/aw/cao/src/policy.mjs` from that same CAO revision.
 3. Declare the installed package and its worker-to-workflow mapping in `.github/workflows/cao.json`.
 4. Commit the workflows, generated locks, CAO runtime, and policy together, then push before running the operation.
 
 The root CAO package installs the runtime files under `.github/aw/cao` from the same pinned revision as the workflows. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
 
-Package installation does not install the CAO runtime, declare a package, or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
+Root package installation installs the CAO runtime, but it does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 
 The [Configuration Reference](configuration.md) defines every policy field. The phase that uses each group is:
 

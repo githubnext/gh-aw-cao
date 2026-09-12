@@ -90,7 +90,7 @@ The package installs:
 
 1. the catalog's operational orchestrators and workers, including **Dependabot**;
 2. shared authentication, routing, and fail-closed controls;
-3. the CAO policy schema, runtime, setup, and upgrade resources under `.github/aw/cao`;
+3. the CAO policy schema, runtime, and setup resources under `.github/aw/cao`;
 4. generated `.lock.yml` workflows that GitHub Actions executes.
 
 The runtime is installed from the same package revision as the workflows. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
@@ -124,7 +124,7 @@ Create `.github/workflows/cao.json` with the target owner and package. The omitt
 }
 ```
 
-Replace `acme` if your target has a different owner. Commit the workflow sources, generated locks, resolver resource, and policy together so `github.workflow_sha` identifies one atomic configuration:
+Replace `acme` if your target has a different owner. Commit the workflow sources, generated locks, CAO runtime resources, and policy together so `github.workflow_sha` identifies one atomic configuration:
 
 ```bash
 git add .github
