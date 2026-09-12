@@ -209,8 +209,12 @@ describe('canonical source ingestion and queries', () => {
       workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at: '2026-01-01T00:00:00Z',
       started_at: '2026-01-01T00:00:01Z', updated_at: '2026-01-01T00:01:00Z',
-      agent: 'copilot', engine: 'GitHub Copilot CLI', agent_version: '1.2.3',
-      gh_aw_version: '0.89.1',
+      agent: 'copilot', engine: 'GitHub Copilot CLI',
+      aw_info: {
+        agent_version: '1.2.3',
+        version: '1.2.3',
+        cli_version: '0.89.1'
+      },
       job_details: [{
         id: 404,
         run_attempt: 1,

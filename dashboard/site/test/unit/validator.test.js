@@ -497,6 +497,7 @@ describe('dashboard document validation', () => {
       'run-title',
       'event',
       'engine',
+      'gh-aw-version',
       'requested-model',
       'resolved-model',
       'started-at',

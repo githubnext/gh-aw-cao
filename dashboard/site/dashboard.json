@@ -639,6 +639,9 @@
             "field": "engine-version"
           },
           {
+            "field": "gh-aw-version"
+          },
+          {
             "field": "requested-model"
           },
           {
@@ -3280,6 +3283,11 @@
                   "title": "Engine"
                 },
                 {
+                  "field": "gh-aw-version",
+                  "type": "nominal",
+                  "title": "gh-aw version"
+                },
+                {
                   "field": "requested-model",
                   "type": "nominal",
                   "title": "Requested model"
@@ -4411,6 +4419,11 @@
                   {
                     "field": "engine-version",
                     "type": "nominal"
+                  },
+                  {
+                    "field": "gh-aw-version",
+                    "type": "nominal",
+                    "title": "gh-aw version"
                   },
                   {
                     "field": "requested-model",

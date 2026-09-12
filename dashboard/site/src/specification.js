@@ -288,7 +288,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     'workflow-inventory': ['package-name', 'repository', 'workflow', 'workflow-role', 'rollout-mode', 'workflow-active', 'aic', 'runs']
   },
   runs: {
-    runs: ['run', 'run-status', 'run-conclusion', 'organization', 'repository', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'started-at']
+    runs: ['run', 'run-status', 'run-conclusion', 'organization', 'repository', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'gh-aw-version', 'requested-model', 'resolved-model', 'started-at']
   },
   experiments: {
     experiments: ['experiment']
@@ -480,7 +480,7 @@ export const SOURCE_FIELDS = {
   'repository-workflow-status': ['repository', 'status', 'workflows'],
   'repository-workflow-usage': ['repository', 'workflow', 'invocation', 'aic', 'workflow-link'],
   'repository-workflows': ['repository', 'workflow', 'workflow-name', 'workflow-role', 'package-name', 'rollout-mode', 'workflow-active', 'observed-at', 'aic', 'workflow-link'],
-  'workflow-runs': ['workflow-route', 'organization', 'repository', 'workflow', 'run', 'run-title', 'event', 'started-at', 'ended-at', 'run-status', 'run-conclusion', 'failure-job', 'failure-message', 'failure-step', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'run-link'],
+  'workflow-runs': ['workflow-route', 'organization', 'repository', 'workflow', 'run', 'run-title', 'event', 'started-at', 'ended-at', 'run-status', 'run-conclusion', 'failure-job', 'failure-message', 'failure-step', 'rollout-mode', 'engine', 'engine-version', 'gh-aw-version', 'requested-model', 'resolved-model', 'run-link'],
   'workflow-reports': ['workflow-route', 'safe-output', 'outcome-title', 'outcome-summary', 'outcome-status', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'outcome-category', 'observed-at', 'external-link'],
   'package-reports': ['package', 'safe-output', 'outcome-title', 'outcome-summary', 'outcome-status', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'outcome-category', 'observed-at', 'external-link'],
   'model-usage-summary': ['model', 'resolved-model', 'engine', 'requested-model', 'runs', 'invocations', 'total-aic', 'estimated-usd', 'pricing'],

@@ -28,7 +28,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
     agent_version: "1.2.3",
     agent_runtime: "node20",
     model: "gpt-5",
-    version: "0.89.1",
+    version: "1.2.3",
     cli_version: "0.89.1",
     awf_version: "0.28.12",
     awmg_version: "0.10.0",
@@ -89,6 +89,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
     assert.equal(usage.runs[0].engine, "copilot");
     assert.equal(usage.runs[0].resolvedModel, "gpt-5");
     assert.equal(usage.runs[0].ghAwVersion, "0.89.1");
+    assert.equal(usage.securityRuns[0].security.agentInfo.ghAwVersion, "0.89.1");
     assert.deepEqual(usage.runs[0].data, { findings: [{ severity: "high", total: 3 }] });
     assert.equal(usage.securityRuns[0].logsPayload.database_id, 42);
     assert.equal(usage.securityRuns[0].security.agentInfo.agentVersion, "1.2.3");

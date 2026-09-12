@@ -27,6 +27,7 @@ const sources = {
       run: '42', 'run-attempt': 2, 'run-status': 'completed', 'run-conclusion': 'failure',
       'started-at': '2026-09-09T04:00:00Z', 'failure-detail': 'Build failed',
       'rollout-mode': 'review', engine: 'copilot', 'engine-version': '1.2.3',
+      'gh-aw-version': 'v0.89.4',
       'requested-model': 'model-a', 'resolved-model': 'model-b',
       'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42', label: 'Run 42' }
     }],
@@ -245,6 +246,7 @@ describe('canonical view sources', () => {
       rows: [{
         repository: 'gh-aw-cao', run: '42', 'run-attempt': 2,
         'rollout-mode': 'review', engine: 'copilot', 'engine-version': '1.2.3',
+        'gh-aw-version': 'v0.89.4',
         'requested-model': 'model-a', 'resolved-model': 'model-b'
       }],
       metadata: { 'source-kind': 'canonical-query', availability: 'available' }
