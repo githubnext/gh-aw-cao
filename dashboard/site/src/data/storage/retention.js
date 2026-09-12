@@ -177,6 +177,8 @@ function upsertRecords(
       const timestamp = recordTimestamp(storeName, record);
       if (timeBound && (timestamp === null || timestamp < horizon)) continue;
       const id = String(record.id);
+      // Discovery owns repository metadata, so run-derived observations may only
+      // backfill missing repository records and must never overwrite existing ones.
       if (storeName === 'repositories' && preserveRepositoryRecords && records.has(id)) continue;
       if (storeName === 'workflows' && preserveWorkflowPackageMappings) {
         const existing = records.get(id);
