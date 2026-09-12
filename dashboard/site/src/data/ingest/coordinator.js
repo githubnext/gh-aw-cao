@@ -75,7 +75,7 @@ function serializeIngestion(indexedDB, task) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowPackageMappings?: boolean }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowPackageMappings?: boolean, preserveRepositoryRecords?: boolean }} options
  */
 async function ingestCanonicalBatch(indexedDB, incoming, options) {
   if (options.storage) {
@@ -95,7 +95,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     now: options.now,
     retentionWindowMs: options.retentionWindowMs,
     retentionWindowMsByStore: options.retentionWindowMsByStore,
-    preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings
+    preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings,
+    preserveRepositoryRecords: options.preserveRepositoryRecords
   }), targetDatabaseBytes);
   for (;;) {
     try {
@@ -214,7 +215,8 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
     phase = 'writing';
     return await ingestCanonicalBatch(indexedDB, batch, {
       ...options,
-      preserveWorkflowPackageMappings: true
+      preserveWorkflowPackageMappings: true,
+      preserveRepositoryRecords: true
     });
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
@@ -264,7 +266,8 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     });
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), {
       ...options,
-      preserveWorkflowPackageMappings: true
+      preserveWorkflowPackageMappings: true,
+      preserveRepositoryRecords: true
     });
     await recordTransaction(indexedDB, {
       id: await transactionId('ingest-jsonl', scope),

@@ -146,6 +146,7 @@ function newestObservation(batch) {
  * @param {number} defaultRetentionWindowMs
  * @param {Partial<Record<typeof STORES[number], number>>} retentionWindowMsByStore
  * @param {boolean} preserveWorkflowPackageMappings
+ * @param {boolean} preserveRepositoryRecords
  */
 function upsertRecords(
   previous,
@@ -153,7 +154,8 @@ function upsertRecords(
   reference,
   defaultRetentionWindowMs,
   retentionWindowMsByStore,
-  preserveWorkflowPackageMappings
+  preserveWorkflowPackageMappings,
+  preserveRepositoryRecords
 ) {
   /** @type {Record<string, Map<string, Record<string, unknown>>>} */
   const merged = {};
@@ -175,6 +177,9 @@ function upsertRecords(
       const timestamp = recordTimestamp(storeName, record);
       if (timeBound && (timestamp === null || timestamp < horizon)) continue;
       const id = String(record.id);
+      // Discovery owns repository metadata, so run-derived observations may only
+      // backfill missing repository records and must never overwrite existing ones.
+      if (storeName === 'repositories' && preserveRepositoryRecords && records.has(id)) continue;
       if (storeName === 'workflows' && preserveWorkflowPackageMappings) {
         const existing = records.get(id);
         if (existing) {
@@ -281,7 +286,8 @@ function collectUnreferencedParents(merged, incoming) {
  *   retentionWindowMsByStore?: Partial<Record<typeof STORES[number], number>>,
  *   includePreviousInReference?: boolean,
  *   preserveUnreferencedParents?: boolean,
- *   preserveWorkflowPackageMappings?: boolean
+ *   preserveWorkflowPackageMappings?: boolean,
+ *   preserveRepositoryRecords?: boolean
  * }} [options]
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
@@ -301,7 +307,8 @@ export function mergeRetainedRecords(previous, incoming, options = {}) {
     reference,
     retentionWindowMs,
     options.retentionWindowMsByStore ?? {},
-    options.preserveWorkflowPackageMappings === true
+    options.preserveWorkflowPackageMappings === true,
+    options.preserveRepositoryRecords === true
   );
   pruneOrphans(merged);
   if (!options.preserveUnreferencedParents) collectUnreferencedParents(merged, incoming);
