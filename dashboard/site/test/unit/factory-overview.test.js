@@ -55,6 +55,15 @@ it('summarizes retained Actions activity and useful outputs while routing failur
         metadata
       },
       'factory-rhythm-baseline': { source: 'factory-rhythm-baseline', rows: [{ 'daily-averages': [1, 2, 3, 4, 5, 6, 7], weeks: 4 }], metadata },
+      packages: {
+        source: 'packages',
+        rows: [
+          { package: 'doctor', 'package-mode': 'review' },
+          { package: 'maintenance', 'package-mode': 'review' },
+          { package: 'optimization', 'package-mode': 'live' }
+        ],
+        metadata
+      },
       repositories: { source: 'repositories', rows: [{ repository: 'githubnext/gh-aw-cao', 'rollout-mode': 'review' }], metadata },
       workflows: {
         source: 'workflows',
@@ -76,7 +85,7 @@ it('summarizes retained Actions activity and useful outputs while routing failur
   expect(rendered.querySelector('.factory-running .octicon')).toBeNull();
   expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
   expect([...rendered.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
-    'Repositories21 review · 1 live',
+    'Repositories22 review · 1 live',
     'Successful runs22 failed',
     'Dispatches42 workflows observed',
     'Value gain1Coming soon'
@@ -260,6 +269,7 @@ it('reflects arity with declared plural text variables and falls back to built-i
     },
     dispatches: { source: 'dispatches', rows: [{ run: '1' }], metadata },
     'grader-observations': { source: 'grader-observations', rows: [{ grader: 'quality', run: '1', value: 0.9, threshold: 0.8 }], metadata },
+    packages: { source: 'packages', rows: [{ package: 'doctor', 'package-mode': 'review' }], metadata },
     repositories: { source: 'repositories', rows: [{ repository: 'githubnext/gh-aw-cao', 'rollout-mode': 'live' }], metadata },
     workflows: { source: 'workflows', rows: [{ workflow: 'review', 'workflow-role': 'worker' }], metadata }
   };
@@ -273,7 +283,7 @@ it('reflects arity with declared plural text variables and falls back to built-i
   const declared = renderFactoryOverview({ sources: singularSources, elementConfig: { labels } });
 
   expect([...declared.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
-    'Repository10 review · 1 live',
+    'Repository11 review · 0 live',
     'Successful run10 failed',
     'Dispatch11 workflow observed',
     'Value gain1Coming soon'

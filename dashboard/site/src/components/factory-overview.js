@@ -93,9 +93,11 @@ export function renderFactoryOverview(context) {
     ? dispatches
     : runs.filter((row) => String(row.event) === 'workflow_dispatch');
   const graderObservations = rowsFor(context.sources, 'grader-observations');
+  const packages = rowsFor(context.sources, 'packages');
   const repositories = rowsFor(context.sources, 'repositories');
   const workflows = rowsFor(context.sources, 'workflows');
   const repositoryCoverage = connectedRepositoryCoverage(workflows, repositories, runs);
+  const packageCoverage = modeCoverage(packages, 'package', 'package-mode');
   const motion = factoryMotion(runs, workflows);
   const activeRuns = motion.operations;
   releaseFactoryOverviewEffects();
@@ -120,7 +122,7 @@ export function renderFactoryOverview(context) {
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
     renderIntroduction(factoryHeading(context.sources, valueGains, activeRuns, successfulRuns, failedRuns), usefulOutputs, deliveredRepositories, successfulRuns, dispatchRows.length, successfulRunRows, latestTimestamp(runs)),
-    renderFactoryFloor(repositoryCoverage, successfulRuns, failedRuns, dispatchRows.length, workers, valueGains, issues, pullRequests, activeRuns, pluralLabelResolver(context.elementConfig))
+    renderFactoryFloor(repositoryCoverage, packageCoverage, successfulRuns, failedRuns, dispatchRows.length, workers, valueGains, issues, pullRequests, activeRuns, pluralLabelResolver(context.elementConfig))
   );
 }
 
@@ -214,6 +216,7 @@ function factoryHeading(sources, valueGains, activeRuns, successfulRuns, failedR
 
 /**
  * @param {{ total: number, review: number, live: number }} repositories
+ * @param {{ total: number, review: number, live: number }} packages
  * @param {number} successfulRuns
  * @param {number} failedRuns
  * @param {number} dispatches
@@ -224,18 +227,18 @@ function factoryHeading(sources, valueGains, activeRuns, successfulRuns, failedR
  * @param {number} activeRuns
  * @param {(labelId: string, count: number) => string} label
  */
-function renderFactoryFloor(repositories, successfulRuns, failedRuns, dispatches, workers, valueGains, issues, pullRequests, activeRuns, label) {
+function renderFactoryFloor(repositories, packages, successfulRuns, failedRuns, dispatches, workers, valueGains, issues, pullRequests, activeRuns, label) {
   const usefulOutputs = issues + pullRequests;
   return h(
     'section',
     {
       className: `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`,
-      'aria-label': `${formatCount(repositories.total)} ${label('repositories', repositories.total).toLowerCase()} in scope, ${formatCount(repositories.review)} in review and ${formatCount(repositories.live)} live, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatches)} workflow ${label('dispatches', dispatches).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(valueGains)} grader ${valueGains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
+      'aria-label': `${formatCount(repositories.total)} ${label('repositories', repositories.total).toLowerCase()} in scope, ${formatCount(packages.review)} packages in review and ${formatCount(packages.live)} live, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatches)} workflow ${label('dispatches', dispatches).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(valueGains)} grader ${valueGains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
     },
     h(
       'ol',
       { className: 'factory-stations' },
-      renderStation('repo', label('repositories', repositories.total), repositories.total, repositoryModeDetail(repositories), false, '#page-repositories'),
+      renderStation('repo', label('repositories', repositories.total), repositories.total, packageModeDetail(packages), false, '#page-repositories'),
       renderStation('play', label('successful-runs', successfulRuns), successfulRuns, h('a', { href: '#page-runs?runs-runs-source.run-conclusion=failure' }, `${formatCount(failedRuns)} failed`), false, '#page-runs?runs-runs-source.run-conclusion=success'),
       renderStation('workflow', label('dispatches', dispatches), dispatches, `${formatCount(workers)} ${workers === 1 ? 'workflow' : 'workflows'} observed`, false, '#page-runs'),
       renderStation('trophy', label('value-gains', valueGains), valueGains, 'Coming soon', true)
@@ -403,7 +406,7 @@ function connectedRepositoryCoverage(workflows, repositories, runs) {
       if (repository) targets.set(repository, normalizedMode(target?.mode));
     }
   }
-  if (targets.size > 0) return modeCoverage(targets);
+  if (targets.size > 0) return modeCoverage([...targets].map(([repository, mode]) => ({ repository, mode })), 'repository', 'mode');
   const observed = new Map();
   for (const repository of [...repositories, ...runs]) {
     const name = String(repository.repository ?? '').trim();
@@ -411,16 +414,20 @@ function connectedRepositoryCoverage(workflows, repositories, runs) {
     const coordinate = name.includes('/') || !owner ? name : `${owner}/${name}`;
     if (coordinate) observed.set(coordinate, normalizedMode(repository['rollout-mode']));
   }
-  return modeCoverage(observed);
+  return modeCoverage([...observed].map(([repository, mode]) => ({ repository, mode })), 'repository', 'mode');
 }
 
-/** @param {Map<string, string>} repositories */
-function modeCoverage(repositories) {
-  const modes = [...repositories.values()];
+/** @param {Row[]} rows @param {string} identityField @param {string} modeField */
+function modeCoverage(rows, identityField, modeField) {
+  const modes = new Map();
+  for (const row of rows) {
+    const identity = String(row[identityField] ?? '').trim();
+    if (identity) modes.set(identity, normalizedMode(row[modeField]));
+  }
   return {
-    total: repositories.size,
-    review: modes.filter((mode) => mode === 'review').length,
-    live: modes.filter((mode) => mode === 'live').length
+    total: modes.size,
+    review: [...modes.values()].filter((mode) => mode === 'review').length,
+    live: [...modes.values()].filter((mode) => mode === 'live').length
   };
 }
 
@@ -431,7 +438,7 @@ function normalizedMode(value) {
 }
 
 /** @param {{ review: number, live: number }} coverage */
-function repositoryModeDetail(coverage) {
+function packageModeDetail(coverage) {
   if (coverage.review + coverage.live === 0) return 'connected';
   return `${formatCount(coverage.review)} review · ${formatCount(coverage.live)} live`;
 }
