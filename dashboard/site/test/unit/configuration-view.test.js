@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { indexedDB } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
+import { renderUiElement } from '../../src/components/ui-elements.js';
 import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
@@ -123,6 +124,30 @@ describe('Configuration dashboard view', () => {
     expect(page.views.every((/** @type {{ mark: string }} */ view) => view.mark !== 'chart')).toBe(true);
     expect(page.views).toHaveLength(1);
     expect(page.views[0].id).toBe('configuration-policy');
+  });
+
+  it('wires the Settings view to a supported UI element', () => {
+    const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
+    const [view] = page.views;
+    const rendered = renderUiElement(view.element, {
+      ...context({ document: { version: 1 }, raw: '', diagnostics: [] }),
+      title: view.title,
+      description: view.description,
+      sourceNames: view.data.sources,
+      sources: {
+        ...context({ document: { version: 1 }, raw: '', diagnostics: [] }).sources,
+        'database-package-count': { source: 'database-package-count', rows: [{ packages: 0 }], metadata },
+        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 0 }], metadata },
+        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 0 }], metadata },
+        'database-run-count': { source: 'database-run-count', rows: [{ runs: 0 }], metadata },
+        'database-event-count': { source: 'database-event-count', rows: [{ events: 0 }], metadata }
+      }
+    });
+
+    expect(rendered?.classList.contains('configuration-view')).toBe(true);
+    expect(rendered?.textContent).toContain('Policy');
+    expect(rendered?.textContent).not.toContain('Unsupported UI element');
   });
 
   it('renders cao.json entries as editable settings', () => {
