@@ -9,6 +9,8 @@ import { parseGhAwLogsJsonl, serializeGhAwLogsJsonl } from "./gh-aw-logs.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_RUN_LIMIT = 10;
+// Matches gh-aw's `renderLogsCollectionStats` stderr line (pkg/cli/logs_orchestrator_download.go).
+// If gh-aw changes this wording, this falls back to null and the less-detailed summary log line below.
 const COLLECTION_STATS_PATTERN =
   /Runs:\s*(\d+)\s*discovered;\s*reports:\s*(\d+)\s*downloaded,\s*(\d+)\s*skipped because cached analyses were reused/;
 

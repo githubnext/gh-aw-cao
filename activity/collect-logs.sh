@@ -21,6 +21,8 @@ for workflow_path in "$root"/.github/workflows/*.lock.yml; do
 done
 
 set +e
+exec {gh_stderr_fd}> >(tee "$stderr_path" >&2)
+tee_pid=$!
 gh aw logs --audit \
   --output "$output_directory" \
   --summary-file "" \
@@ -34,9 +36,10 @@ gh aw logs --audit \
   --max-storage 1200 \
   --prune-older-runs \
   "${targets[@]}" \
-  2> >(tee "$stderr_path" >&2)
+  2>&"$gh_stderr_fd"
 exit_code=$?
-wait
+exec {gh_stderr_fd}>&-
+wait "$tee_pid" 2>/dev/null
 set -e
 
 printf '%s\n' "$exit_code" > "$exit_code_path"
