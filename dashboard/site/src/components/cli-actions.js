@@ -351,10 +351,17 @@ export function attachCliActions(dashboard, actions, options = {}) {
   );
   if (toolbarActions) dashboard.querySelector('.report-actions')?.prepend(toolbarActions);
 
-  if (dashboard.querySelector('.configuration-view > .cli-actions-settings')) return;
   const settingsActions = renderSettingsCliActions();
-  if (!settingsActions) return;
+  const existingSettingsActions = dashboard.querySelector('.configuration-view > .cli-actions-settings');
+  if (!settingsActions) {
+    existingSettingsActions?.remove();
+    return;
+  }
   const dialogs = [...settingsActions.querySelectorAll('dialog')];
-  dashboard.querySelector('.configuration-view > .configuration-browser-settings')?.before(settingsActions);
+  if (existingSettingsActions) {
+    existingSettingsActions.replaceWith(settingsActions);
+  } else {
+    dashboard.querySelector('.configuration-view > .configuration-browser-settings')?.before(settingsActions);
+  }
   for (const dialog of dialogs) dashboard.append(dialog);
 }

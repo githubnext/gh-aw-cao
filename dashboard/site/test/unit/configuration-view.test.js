@@ -119,6 +119,26 @@ describe('Configuration dashboard view', () => {
     setDeclaredCliActions([]);
   });
 
+  it('keeps repository actions available when policy data is unavailable', () => {
+    setDeclaredCliActions([{
+      id: 'upgrade-repository',
+      label: 'Upgrade',
+      icon: 'download',
+      command: 'gh aw upgrade --repo {{repository}}',
+      placement: 'settings'
+    }], {
+      templateValues: { repository: 'octo/example' }
+    });
+    const rendered = renderConfigurationView({
+      ...context({}),
+      sources: {}
+    });
+
+    expect(rendered?.querySelector('.cli-action-trigger')?.textContent).toContain('Upgrade');
+    expect(rendered?.textContent).toContain('The policy cannot be edited');
+    setDeclaredCliActions([]);
+  });
+
   it('reflects background registration failures while the setting is mounted', () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
     localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');

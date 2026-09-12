@@ -96,6 +96,30 @@ describe('CLI actions', () => {
     expect(dashboard.querySelector('.cli-action-confirm')?.textContent).toContain('Copy command');
   });
 
+  it('replaces settings actions with the latest dashboard declaration', () => {
+    const dashboard = document.createElement('div');
+    const reportActions = document.createElement('div');
+    reportActions.className = 'report-actions';
+    const configurationView = document.createElement('section');
+    configurationView.className = 'configuration-view';
+    const staleActions = document.createElement('section');
+    staleActions.className = 'cli-actions-settings';
+    configurationView.append(staleActions);
+    dashboard.append(reportActions, configurationView);
+
+    attachCliActions(dashboard, [{
+      id: 'update-repository',
+      label: 'Current update',
+      icon: 'sync',
+      command: 'gh aw update --repo {{repository}}',
+      placement: 'settings'
+    }], { repository: 'octo/current' });
+
+    expect(dashboard.querySelectorAll('.configuration-view > .cli-actions-settings')).toHaveLength(1);
+    expect(dashboard.querySelector('.configuration-view > .cli-actions-settings')?.textContent)
+      .toContain('Current update');
+  });
+
   it('copies commands instead of executing them outside canvas', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {

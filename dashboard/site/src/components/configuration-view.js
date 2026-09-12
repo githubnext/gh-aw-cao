@@ -383,8 +383,7 @@ function renderLocalDataSetting() {
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
-  if (!row) return null;
-  const policyDocument = row.document;
+  const policyDocument = row?.document;
   const headingId = `${context.pageId}-configuration-heading`;
   return h('section', { className: 'configuration-view', 'aria-labelledby': headingId },
     renderSectionHeading({
