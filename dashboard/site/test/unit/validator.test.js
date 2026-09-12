@@ -66,6 +66,13 @@ describe('dashboard document validation', () => {
       expect.objectContaining({ message: 'CLI action command must start with "gh aw".' })
     ]));
 
+    addedAction.command = 'gh aw compile; echo unsafe';
+    const shellControlOperator = validateDashboardDocument(JSON.stringify(document));
+    expect(shellControlOperator.ok).toBe(false);
+    expect(shellControlOperator.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: 'CLI action command must not contain shell control operators.' })
+    ]));
+
     addedAction.command = 'gh aw upgrade';
     addedAction.arguments[0].flag = '$(whoami)';
     const invalidFlag = validateDashboardDocument(JSON.stringify(document));
