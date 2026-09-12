@@ -703,6 +703,7 @@ export function renderLabeledControl(label, control, options = {}) {
  *   id?: string,
  *   className?: string,
  *   checked?: boolean,
+ *   disabled?: boolean,
  *   ariaLabel?: string,
  *   onChange?: (event: Event) => void,
  *   stopClickPropagation?: boolean
@@ -713,6 +714,7 @@ export function renderCheckbox({
   id,
   className,
   checked = false,
+  disabled = false,
   ariaLabel,
   onChange,
   stopClickPropagation = false
@@ -722,6 +724,7 @@ export function renderCheckbox({
     className,
     type: 'checkbox',
     checked,
+    disabled,
     'aria-label': ariaLabel,
     onChange,
     onClick: stopClickPropagation

@@ -1233,9 +1233,12 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(accountMenu.getByRole('link', { name: 'Open the dashboard workflow on GitHub Actions' })).toBeVisible();
   const backgroundSync = accountMenu.getByRole('checkbox', { name: 'Background sync' });
   await expect(backgroundSync).not.toBeChecked();
+  await expect(backgroundSync).toBeDisabled();
+  await expect(backgroundSync.locator('xpath=ancestor::label')).toHaveAttribute(
+    'title',
+    'Periodic Background Sync is not supported by this browser.'
+  );
   await expect(backgroundSync.locator('xpath=ancestor::fieldset')).toHaveAccessibleName('Database');
-  await backgroundSync.click();
-  await expect(backgroundSync).toBeChecked();
   await expect(accountMenu).toHaveAttribute('open', '');
   await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
   await expect(accountMenu.getByRole('button', { name: 'Reset local data' })).toBeVisible();

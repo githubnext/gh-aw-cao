@@ -5,6 +5,7 @@ import {
   automaticDashboardDataUpdatesEnabled,
   dashboardDataUpdateBlockedReason,
   ensureHealthyDashboardServiceWorker,
+  periodicBackgroundSyncSupported,
   setAutomaticDashboardDataUpdatesEnabled,
   startAutomaticDashboardDataUpdates
 } from '../../src/dashboard-data-updates.js';
@@ -74,6 +75,19 @@ describe('automatic dashboard data updates', () => {
     expect(automaticDashboardDataUpdatesEnabled()).toBe(false);
   });
 
+  it('detects Periodic Background Sync browser support', () => {
+    expect(periodicBackgroundSyncSupported(
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
+      /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
+      { periodicSync: {} }
+    )).toBe(true);
+    expect(periodicBackgroundSyncSupported(
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
+      /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
+      {}
+    )).toBe(false);
+  });
+
   it('blocks downloads on metered connections and low battery', () => {
     expect(dashboardDataUpdateBlockedReason({ saveData: true }, undefined)).toBe('metered connection');
     expect(dashboardDataUpdateBlockedReason({ metered: true }, undefined)).toBe('metered connection');
@@ -83,8 +97,9 @@ describe('automatic dashboard data updates', () => {
     expect(dashboardDataUpdateBlockedReason(undefined, { charging: false, level: 0.21 })).toBeNull();
   });
 
-  it('turns the setting off when service workers are unsupported', async () => {
+  it('preserves the setting when service workers are unsupported', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
@@ -92,27 +107,33 @@ describe('automatic dashboard data updates', () => {
       }
     );
 
-    await vi.waitFor(() => expect(automaticDashboardDataUpdatesEnabled()).toBe(false));
+    expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     stop();
   });
 
-  it('turns the setting off when service worker registration fails', async () => {
+  it('preserves the setting when service worker registration fails', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const serviceWorkers = {
       register: vi.fn().mockRejectedValue(new DOMException('Not allowed', 'SecurityError')),
       getRegistrations: vi.fn().mockResolvedValue([])
     };
+    const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         online: () => true,
-        scriptUrl: new URL('https://example.test/service-worker.js')
+        scriptUrl: new URL('https://example.test/service-worker.js'),
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
       }
     );
 
-    await vi.waitFor(() => expect(automaticDashboardDataUpdatesEnabled()).toBe(false));
-    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
+    await vi.waitFor(() => expect(automaticDashboardBackgroundUpdatesActive()).toBe(false));
+    expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
+    expect(serviceWorkers.register).toHaveBeenCalled();
+    expect(setTimer).not.toHaveBeenCalled();
     stop();
   });
 
@@ -270,13 +291,15 @@ describe('automatic dashboard data updates', () => {
     stop();
   });
 
-  it('turns the setting off when periodic background sync is denied', async () => {
+  it('preserves the setting when periodic background sync is denied', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const worker = new FakeWorker();
     const currentRegistration = registration(worker);
     const serviceWorkers = {
       register: vi.fn().mockResolvedValue(currentRegistration)
     };
+    const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
@@ -286,38 +309,76 @@ describe('automatic dashboard data updates', () => {
           query: vi.fn().mockResolvedValue({ state: 'denied' })
         })),
         online: () => true,
-        scriptUrl: new URL('https://example.test/service-worker.js')
+        scriptUrl: new URL('https://example.test/service-worker.js'),
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
       }
     );
 
-    await vi.waitFor(() => expect(automaticDashboardDataUpdatesEnabled()).toBe(false));
+    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
-    expect(currentRegistration.unregister).toHaveBeenCalledOnce();
+    expect(setTimer).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event('online'));
+    await Promise.resolve();
+    expect(serviceWorkers.register).toHaveBeenCalledOnce();
     stop();
   });
 
-  it('turns the setting off when periodic background sync is unsupported', async () => {
+  it('preserves the setting when periodic background sync is unsupported', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const worker = new FakeWorker();
     const currentRegistration = { ...registration(worker), periodicSync: undefined };
     const serviceWorkers = {
       register: vi.fn().mockResolvedValue(currentRegistration)
     };
+    const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
         online: () => true,
-        scriptUrl: new URL('https://example.test/service-worker.js')
+        scriptUrl: new URL('https://example.test/service-worker.js'),
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
       }
     );
 
-    await vi.waitFor(() => expect(automaticDashboardDataUpdatesEnabled()).toBe(false));
+    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
-    expect(currentRegistration.unregister).toHaveBeenCalledOnce();
+    expect(setTimer).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('does not retry when periodic background sync registration is not allowed', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    currentRegistration.periodicSync.register.mockRejectedValue(
+      new DOMException('Not allowed', 'NotAllowedError')
+    );
+    const serviceWorkers = {
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    };
+    const setTimer = vi.fn();
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        permissions: grantedPermissions,
+        online: () => true,
+        scriptUrl: new URL('https://example.test/service-worker.js'),
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
+      }
+    );
+
+    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
+    expect(setTimer).not.toHaveBeenCalled();
     stop();
   });
 

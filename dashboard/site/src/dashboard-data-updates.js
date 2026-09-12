@@ -13,6 +13,16 @@ const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 /** @typedef {{ saveData?: boolean, metered?: boolean, type?: string, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
 /** @typedef {{ charging: boolean, level: number, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} BatteryState */
 
+class NonRetryableBackgroundSyncError extends Error {}
+
+/** @param {unknown} error */
+function isPermissionDeniedError(error) {
+  const errorName = error && typeof error === 'object'
+    ? /** @type {{ name?: unknown }} */ (error).name
+    : undefined;
+  return errorName === 'NotAllowedError' || errorName === 'SecurityError';
+}
+
 /** @param {Storage} [storage] */
 export function automaticDashboardDataUpdatesEnabled(storage = localStorage) {
   return storage.getItem(ENABLED_STORAGE_KEY) === 'true';
@@ -21,6 +31,24 @@ export function automaticDashboardDataUpdatesEnabled(storage = localStorage) {
 /** @param {Storage} [storage] */
 export function automaticDashboardBackgroundUpdatesActive(storage = localStorage) {
   return storage.getItem(BACKGROUND_ACTIVE_STORAGE_KEY) === 'true';
+}
+
+/**
+ * @param {ServiceWorkerContainer | undefined} [serviceWorkers]
+ * @param {Permissions | undefined} [permissions]
+ * @param {object | undefined} [registrationPrototype]
+ */
+export function periodicBackgroundSyncSupported(
+  serviceWorkers = navigator.serviceWorker,
+  permissions = navigator.permissions,
+  registrationPrototype = globalThis.ServiceWorkerRegistration?.prototype
+) {
+  return Boolean(
+    serviceWorkers
+    && typeof permissions?.query === 'function'
+    && registrationPrototype
+    && 'periodicSync' in registrationPrototype
+  );
 }
 
 /** @param {EventListener} listener */
@@ -118,15 +146,22 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
   const lastSuccess = Number(/** @type {{ lastSuccess?: unknown }} */ (response).lastSuccess ?? 0);
   const periodicSync = /** @type {ServiceWorkerRegistration & { periodicSync?: { register: (tag: string, options: { minInterval: number }) => Promise<void>, getTags: () => Promise<string[]> } }} */ (registration).periodicSync;
   if (!periodicSync || !permissions?.query) {
-    throw new Error('Periodic Background Sync is not supported by this browser.');
+    throw new NonRetryableBackgroundSyncError('Periodic Background Sync is not supported by this browser.');
   }
   const permission = await permissions.query(
     /** @type {PermissionDescriptor} */ (/** @type {unknown} */ ({ name: 'periodic-background-sync' }))
   );
   if (permission.state !== 'granted') {
-    throw new Error('Periodic Background Sync permission was not granted.');
+    throw new NonRetryableBackgroundSyncError('Periodic Background Sync permission was not granted.');
   }
-  await periodicSync.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS });
+  try {
+    await periodicSync.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS });
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      throw new NonRetryableBackgroundSyncError('Periodic Background Sync registration was not allowed.');
+    }
+    throw error;
+  }
   if (!(await periodicSync.getTags()).includes(PERIODIC_SYNC_TAG)) {
     throw new Error('Periodic Background Sync registration could not be verified.');
   }
@@ -303,12 +338,17 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   let running = false;
   let rerun = false;
   let backgroundConfigured = false;
+  let backgroundSyncUnavailable = false;
   /** @type {BatteryState | undefined} */
   let battery;
   /** @type {ServiceWorkerRegistration | undefined} */
   let registration;
   /** @type {ServiceWorker | undefined} */
   let healthyWorker;
+  const markBackgroundUpdatesInactive = () => {
+    storage.removeItem(BACKGROUND_ACTIVE_STORAGE_KEY);
+    window.dispatchEvent(new Event(BACKGROUND_STATUS_EVENT));
+  };
 
   /** @param {number} delay @param {boolean} [checkForWorkerUpdate] */
   const schedule = (delay, checkForWorkerUpdate = false) => {
@@ -325,14 +365,16 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   const performReconcile = async () => {
     if (stopped) return;
     if (!automaticDashboardDataUpdatesEnabled(storage)) {
+      backgroundSyncUnavailable = false;
       await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
       registration = undefined;
       healthyWorker = undefined;
       backgroundConfigured = false;
       return;
     }
+    if (backgroundSyncUnavailable) return;
     if (!serviceWorkers) {
-      setAutomaticDashboardDataUpdatesEnabled(false, storage);
+      markBackgroundUpdatesInactive();
       return;
     }
     if (!online()) return schedule(RETRY_INTERVAL_MS);
@@ -343,10 +385,15 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         healthyWorker = healthy.worker;
       } catch (error) {
         console.error(`Unable to configure automatic dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
-        setAutomaticDashboardDataUpdatesEnabled(false, storage);
+        markBackgroundUpdatesInactive();
         await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;
+        backgroundSyncUnavailable = isPermissionDeniedError(error);
+        if (automaticDashboardDataUpdatesEnabled(storage)
+            && !backgroundSyncUnavailable) {
+          schedule(RETRY_INTERVAL_MS);
+        }
         return;
       }
     }
@@ -376,11 +423,16 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         window.dispatchEvent(new Event(BACKGROUND_STATUS_EVENT));
       } catch (error) {
         console.error(`Unable to configure background dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
-        setAutomaticDashboardDataUpdatesEnabled(false, storage);
+        markBackgroundUpdatesInactive();
         await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;
         backgroundConfigured = false;
+        backgroundSyncUnavailable = error instanceof NonRetryableBackgroundSyncError;
+        if (automaticDashboardDataUpdatesEnabled(storage)
+            && !backgroundSyncUnavailable) {
+          schedule(RETRY_INTERVAL_MS);
+        }
         return;
       }
     }
@@ -436,7 +488,10 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       }
     }
   };
-  const onSettingChange = () => void reconcile();
+  const onSettingChange = () => {
+    backgroundSyncUnavailable = false;
+    void reconcile();
+  };
   /** @param {StorageEvent} event */
   const onStorageChange = (event) => {
     if (event.key === ENABLED_STORAGE_KEY || event.key === null) void reconcile();
