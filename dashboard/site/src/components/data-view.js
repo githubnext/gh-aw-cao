@@ -206,29 +206,30 @@ function renderTableView(context) {
           ? { className: 'table-status-detail', 'data-status': toText(row.status).toLowerCase() }
           : {})
       };
-      const value = outputField === 'status-detail'
-        ? renderStatusDetail(row, view, toText)
-        : column.aggregate
-        ? renderCellValue(column, row[outputField], row)
-        : column.field === RUN_FIELD
-          ? renderWorkflowRunLink(row, toText(row[outputField]))
-          : column.display === 'run-link'
-            ? renderWorkflowRunLink(row, toText(row[outputField]))
-          : column.display === REPOSITORY_LINK_DISPLAY
-            ? renderLinkedValue(
-                toText(row[outputField]),
-                resolveGithubEntityLink(row, 'repository-link', toText(row.repository))
-              )
-            : column.display === WORKFLOW_LINK_DISPLAY
-              ? renderLinkedValue(
-                  toText(row[outputField]),
-                  resolveGithubEntityLink(row, 'workflow-link', toText(row.workflow))
-                )
-              : column.display === 'evidence-link'
-              ? renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'))
-          : column.display === 'outcome-link'
-            ? renderOutcomeLink(row, toText(row[outputField]))
-            : renderCellValue(column, row[outputField], row);
+      let value;
+      if (outputField === 'status-detail') {
+          value = renderStatusDetail(row, view, toText);
+      } else if (column.aggregate) {
+          value = renderCellValue(column, row[outputField], row);
+      } else if (column.field === RUN_FIELD || column.display === 'run-link') {
+          value = renderWorkflowRunLink(row, toText(row[outputField]));
+      } else if (column.display === REPOSITORY_LINK_DISPLAY) {
+          value = renderLinkedValue(
+            toText(row[outputField]),
+            resolveGithubEntityLink(row, REPOSITORY_LINK_DISPLAY, toText(row.repository))
+          );
+      } else if (column.display === WORKFLOW_LINK_DISPLAY) {
+          value = renderLinkedValue(
+            toText(row[outputField]),
+            resolveGithubEntityLink(row, WORKFLOW_LINK_DISPLAY, toText(row.workflow))
+          );
+      } else if (column.display === 'evidence-link') {
+          value = renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'));
+      } else if (column.display === 'outcome-link') {
+          value = renderOutcomeLink(row, toText(row[outputField]));
+      } else {
+          value = renderCellValue(column, row[outputField], row);
+      }
       /** @param {string | HTMLElement} content */
       const constrainOutputEvidence = (content) => column.display === 'outcome-link'
         ? h('span', { className: 'table-output-evidence' }, content)
