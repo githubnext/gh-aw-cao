@@ -102,7 +102,7 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
-test('Settings keeps hourly dashboard downloads off until the user opts in', async ({ page }) => {
+test('Settings disables hourly dashboard downloads when unsupported', async ({ page }) => {
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -136,11 +136,9 @@ test('Settings keeps hourly dashboard downloads off until the user opts in', asy
 
   const checkbox = page.getByRole('checkbox', { name: 'Download updated data every hour' });
   await expect(checkbox).not.toBeChecked();
-  await checkbox.check();
-  await expect(checkbox).toBeChecked();
-  await expect.poll(() => page.evaluate(
-    () => localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')
-  )).toBe('true');
+  await expect(checkbox).toBeDisabled();
+  await expect(page.locator('#configuration-automatic-dashboard-data-updates-status'))
+    .toContainText('Periodic Background Sync is not supported');
 });
 
 test('production Settings view loads without an unsupported-view warning', async ({ page }) => {

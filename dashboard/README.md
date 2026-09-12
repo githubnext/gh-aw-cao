@@ -13,8 +13,7 @@ The dashboard package publishes an access-controlled static view of Central Agen
 
 ## Contents
 
-- `.github/workflows/dashboard-build.yml`: independently dispatchable, path-aware report build that uploads a mergeable Actions artifact.
-- `.github/workflows/dashboard.yml`: manual standalone GitHub Pages deployment.
+- `.github/workflows/cao-dashboard.yml`: dashboard build, artifact publication, and optional standalone GitHub Pages deployment.
 - `.github/workflows/activity.yml`: shared data collector and cache publisher installed by the core activity package.
 - `.github/cao/src/policy.mjs`: dependency-free checked-in policy parser and resolver.
 - `.github/cao/src/control.mjs`: deterministic policy command adapter used by the build workflow.
@@ -158,63 +157,11 @@ Use **Refresh** in the dashboard header to open **Central Agentic Ops Dashboard*
 
 The catalog contains only collector, adapter, and presenter code. Installed control repositories hold runtime aggregation and the current access-controlled Pages view. Live organization-specific JSON, Markdown, and SVG snapshots are generated data and are not committed to this catalog.
 
-## Existing Pages site
-
-Keep the existing Pages workflow as the site's only uploader and deployer. Add a job that dispatches the dashboard build, waits for that exact run, and exposes its run ID. Download the artifact from that run into the existing site's output directory before `actions/upload-pages-artifact` runs:
-
-```yaml
-jobs:
-	dashboard:
-		runs-on: ubuntu-latest
-		timeout-minutes: 120
-		outputs:
-			run-id: ${{ steps.dispatch.outputs.run-id }}
-		permissions:
-			actions: write
-			contents: read
-		steps:
-			- name: Checkout trusted dashboard source
-				uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-				with:
-					ref: ${{ github.workflow_sha }}
-					persist-credentials: false
-
-			- name: Dispatch dashboard build
-				id: dispatch
-				env:
-					GH_TOKEN: ${{ github.token }}
-					DISPATCH_WORKFLOW: dashboard-build.yml
-					DISPATCH_REF: ${{ github.ref_name }}
-					DISPATCH_RUN_NAME: CAO Dashboard Build / pages-${{ github.run_id }}-${{ github.run_attempt }}
-					DISPATCH_INPUTS: '{"site-path":"operations/dashboard","request-id":"pages-${{ github.run_id }}-${{ github.run_attempt }}"}'
-				run: node .github/aw/dashboard/dispatch-workflow.mjs
-
-	pages:
-		needs: dashboard
-		runs-on: ubuntu-latest
-		steps:
-			- name: Build existing site
-				run: npm run build
-
-			- name: Add Central Agentic Ops dashboard
-				uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-				with:
-					name: central-agentic-ops-dashboard
-					path: dist
-					github-token: ${{ github.token }}
-					run-id: ${{ needs.dashboard.outputs.run-id }}
-
-			- name: Upload combined Pages artifact
-				uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-				with:
-					path: dist
-```
-
-This example publishes the dashboard at `/operations/dashboard/`. Replace `dist` with the existing site's artifact directory. Preserve the existing workflow's checkout, setup, permissions, Pages configuration, deployment job, and triggers. Do not run the standalone dashboard workflow for an embedded installation.
-
 ## Configure
 
 1. Set `control-plane.scope.allowed-repositories` in `.github/workflows/cao.json` when report discovery should be limited to an explicit repository allowlist.
-2. Use `site-path: .` only when the dashboard is the whole site; use a relative URL path when embedding it.
+2. Set `control-plane.packages.dashboard.deploy` to `false` when another workflow downloads the `central-agentic-ops-dashboard` artifact and includes it in a combined Pages deployment. The default is `true`.
+
+With standalone deployment disabled, the hosting workflow needs `actions: read`. It should list successful `cao-dashboard.yml` runs on the default branch, select the latest run, and download its `central-agentic-ops-dashboard` artifact into the hosting site's output directory before uploading the combined Pages artifact.
 
 Do not install this package when the report would be public or when the repository plan cannot enforce the required access boundary. See [Publishing Pages Reports](../docs/operations.md#publishing-pages-reports) for operating details.

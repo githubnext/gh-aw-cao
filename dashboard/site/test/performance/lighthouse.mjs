@@ -5,11 +5,12 @@ import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-const siteRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
-const lighthouseCli = join(siteRoot, 'node_modules', 'lighthouse', 'cli', 'index.js');
+const sourceRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+const siteRoot = resolve(process.env.DASHBOARD_PERFORMANCE_SITE_ROOT || join(sourceRoot, 'dist'));
+const lighthouseCli = join(sourceRoot, 'node_modules', 'lighthouse', 'cli', 'index.js');
 const outputRoot = resolve(
   process.env.DASHBOARD_PERFORMANCE_OUTPUT_DIR
-    || join(siteRoot, 'test-results', 'lighthouse')
+    || join(sourceRoot, 'test-results', 'lighthouse')
 );
 
 // Allows small run-to-run variance while retaining a high Lighthouse score.

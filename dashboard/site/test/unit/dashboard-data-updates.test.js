@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
+  dashboardBackgroundUpdatesUnavailableReason,
+  dashboardInstalled,
   dashboardDataUpdateBlockedReason,
   ensureHealthyDashboardServiceWorker,
   periodicBackgroundSyncSupported,
@@ -86,6 +88,30 @@ describe('automatic dashboard data updates', () => {
       /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
       {}
     )).toBe(false);
+  });
+
+  it('identifies installed dashboard apps and unavailable background updates', () => {
+    expect(dashboardInstalled({ matches: true }, false)).toBe(true);
+    expect(dashboardInstalled({ matches: false }, true)).toBe(true);
+    expect(dashboardInstalled({ matches: false }, false)).toBe(false);
+
+    expect(dashboardBackgroundUpdatesUnavailableReason()).toBe(
+      'Periodic Background Sync is not supported by this browser.'
+    );
+    expect(dashboardBackgroundUpdatesUnavailableReason(
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
+      /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
+      { periodicSync: {} },
+      { matches: false },
+      false
+    )).toBe('Install this dashboard as an app to enable hourly background downloads.');
+    expect(dashboardBackgroundUpdatesUnavailableReason(
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
+      /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
+      { periodicSync: {} },
+      { matches: true },
+      false
+    )).toBeNull();
   });
 
   it('blocks downloads on metered connections and low battery', () => {
@@ -322,6 +348,33 @@ describe('automatic dashboard data updates', () => {
     window.dispatchEvent(new Event('online'));
     await Promise.resolve();
     expect(serviceWorkers.register).toHaveBeenCalledOnce();
+    stop();
+  });
+
+  it('requests periodic background sync permission when prompted', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    const serviceWorkers = {
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    };
+    const permissions = /** @type {Permissions} */ (/** @type {unknown} */ ({
+      query: vi.fn().mockResolvedValue({ state: 'prompt' })
+    }));
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        getBattery: async () => ({ charging: true, level: 1 }),
+        permissions,
+        online: () => true,
+        scriptUrl: new URL('https://example.test/service-worker.js')
+      }
+    );
+
+    await vi.waitFor(() => expect(currentRegistration.periodicSync.register).toHaveBeenCalledOnce());
+    expect(permissions.query).toHaveBeenCalledWith({ name: 'periodic-background-sync' });
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(true);
     stop();
   });
 

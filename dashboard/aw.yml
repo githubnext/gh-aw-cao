@@ -3,15 +3,10 @@ description: Deploy an access-controlled, read-only Central Agentic Ops report w
 min-version: v0.89.9
 experimental: true
 includes:
-  - source: dashboard.yml
-    destination: .github/workflows/dashboard.yml
-    kind: action-workflow
-  - .github/workflows/dashboard-build.yml
+  - .github/workflows/cao-dashboard.yml
 resources:
   - source: local-server.mjs
     destination: .github/aw/dashboard/local-server.mjs
-  - source: dispatch-workflow.mjs
-    destination: .github/aw/dashboard/dispatch-workflow.mjs
   - source: report/aic-usage.mjs
     destination: .github/aw/dashboard/report/aic-usage.mjs
   - source: report/activity-collectors.mjs
@@ -42,12 +37,20 @@ resources:
     destination: .github/aw/dashboard/site/service-worker.js
   - source: site/dashboard.json
     destination: .github/aw/dashboard/site/dashboard.json
+  - source: site/package.json
+    destination: .github/aw/dashboard/site/package.json
+  - source: site/package-lock.json
+    destination: .github/aw/dashboard/site/package-lock.json
+  - source: site/scripts/build.mjs
+    destination: .github/aw/dashboard/site/scripts/build.mjs
   - source: site/src/data-operations.js
     destination: .github/aw/dashboard/site/src/data-operations.js
   - source: site/src/data-processor.js
     destination: .github/aw/dashboard/site/src/data-processor.js
   - source: site/src/data-worker.js
     destination: .github/aw/dashboard/site/src/data-worker.js
+  - source: site/src/main.js
+    destination: .github/aw/dashboard/site/src/main.js
   - source: site/src/dashboard-data-updates.js
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/adapters/dashboard-sources.js
@@ -226,6 +229,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/route-page-shell.js
   - source: site/src/components/reset-dashboard-control.js
     destination: .github/aw/dashboard/site/src/components/reset-dashboard-control.js
+  - source: site/src/components/refresh-error.js
+    destination: .github/aw/dashboard/site/src/components/refresh-error.js
   - source: site/src/components/route-composition.js
     destination: .github/aw/dashboard/site/src/components/route-composition.js
   - source: site/src/components/route-body-composition.js

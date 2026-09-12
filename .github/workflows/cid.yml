@@ -37,6 +37,8 @@ jobs:
         run: npm run lint
       - name: Unit tests
         run: npm test
+      - name: Production build
+        run: npm run build
 
   playwright-integration:
     name: Playwright integration tests (${{ matrix.shard }})

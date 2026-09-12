@@ -46,8 +46,7 @@ const devServerPidFileName = ".cao-dashboard-dev-server.json";
 const maxCopilotDashboardRepairAttempts = 3;
 let validateDashboardDocument;
 const trustedDashboardWorkflowPaths = new Set([
-  ".github/workflows/dashboard-build.yml",
-  ".github/workflows/dashboard.yml",
+  ".github/workflows/cao-dashboard.yml",
 ]);
 const contentTypes = new Map([
   [".avif", "image/avif"],

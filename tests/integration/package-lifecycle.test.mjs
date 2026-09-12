@@ -89,7 +89,7 @@ const craExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const dashboardExpectedFiles = [
-  ".github/workflows/dashboard-build.yml",
+  ".github/workflows/cao-dashboard.yml",
   ...[...readFileSync(
     new URL("../../dashboard/aw.yml", import.meta.url),
     "utf8",
@@ -394,17 +394,37 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       dashboardExpectedFiles.toSorted(),
-      "dashboard package manifest must own both workflows and every report module",
+      "dashboard package manifest must own its workflow and every report module",
     );
 
-    const buildWorkflow = readFileSync(join(consumer, ".github", "workflows", "dashboard-build.yml"), "utf8");
-    const deployWorkflow = readFileSync(join(consumer, ".github", "workflows", "dashboard.yml"), "utf8");
-    assert.doesNotMatch(buildWorkflow, /workflow_call:/);
-    assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?site-path:[\s\S]*?request-id:/);
-    assert.match(buildWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
-    assert.doesNotMatch(buildWorkflow, /actions\/(?:upload-pages-artifact|deploy-pages)@/);
-    assert.match(deployWorkflow, /enablement: false/);
-    assert.doesNotMatch(deployWorkflow, /schedule:/);
+    const dashboardWorkflow = readFileSync(join(consumer, ".github", "workflows", "cao-dashboard.yml"), "utf8");
+    assert.doesNotMatch(dashboardWorkflow, /workflow_call:|cao-dashboard-build|dispatch-workflow/);
+    assert.match(dashboardWorkflow, /workflow_dispatch:/);
+    assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
+    assert.match(dashboardWorkflow, /actions\/(?:upload-pages-artifact|deploy-pages)@[0-9a-f]{40}/);
+    assert.match(dashboardWorkflow, /name: CAO Dashboard/);
+    assert.match(dashboardWorkflow, /enablement: false/);
+    assert.match(dashboardWorkflow, /deploy: \$\{\{ steps\.deployment-policy\.outputs\.deploy \}\}/);
+    assert.match(dashboardWorkflow, /if: needs\.build\.outputs\.deploy == 'true'/);
+    assert.doesNotMatch(dashboardWorkflow, /^\s+run:/m);
+    assert.equal((dashboardWorkflow.match(/actions\/github-script@[0-9a-f]{40}/g) || []).length, 6);
+    assert.match(dashboardWorkflow, /Standalone Pages deployment:[\s\S]*?Dashboard artifact assembly completed/);
+    assert.doesNotMatch(dashboardWorkflow, /schedule:/);
+    assert.match(dashboardWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
+    assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
+    assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
+    assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
+
+    const dashboardSite = join(consumer, ".github", "aw", "dashboard", "site");
+    const dashboardOutput = join(consumer, "dashboard-output");
+    const controlSettings = join(consumer, "control-settings.json");
+    run("gh", ["aw", "add", activityPackageSource, "--force", "--no-security-scanner"], consumer);
+    writeFileSync(controlSettings, "{}\n");
+    run("npm", ["ci", "--ignore-scripts"], dashboardSite);
+    run("npm", ["run", "build", "--", dashboardOutput, controlSettings], dashboardSite);
+    for (const asset of ["src/main.js", "src/main.js.map", "src/data-worker.js", "src/data-worker.js.map", "smells.svg"]) {
+      assert.ok(existsSync(join(dashboardOutput, asset)), `dashboard build omitted ${asset}`);
+    }
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
@@ -414,14 +434,14 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
   const consumer = await installPackage(dashboardPackageSource);
 
   try {
-    const deployPath = join(consumer, ".github", "workflows", "dashboard.yml");
+    const deployPath = join(consumer, ".github", "workflows", "cao-dashboard.yml");
     const deployWorkflow = readFileSync(deployPath, "utf8");
     writeFileSync(deployPath, `${deployWorkflow}\n# local integration-test change\n`);
 
     const removedFiles = [
       ".github/aw/dashboard/report/records.mjs",
       ".github/aw/dashboard/site/index.html",
-      ".github/workflows/dashboard-build.yml",
+      ".github/aw/dashboard/site/scripts/build.mjs",
     ];
     for (const relativePath of removedFiles) {
       rmSync(join(consumer, relativePath));
