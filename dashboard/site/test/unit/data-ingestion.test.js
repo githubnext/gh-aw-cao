@@ -85,10 +85,17 @@ describe('canonical source ingestion and queries', () => {
     await ingestDashboardSources(indexedDB, sources);
 
     await expect(ingestDashboardSources(indexedDB, sources)).resolves.toMatchObject({
-      updated: true
+      updated: false,
+      skipped: true
     });
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toHaveLength(1);
+    await expect(readTransactions(indexedDB)).resolves.toEqual([
+      expect.objectContaining({
+        kind: 'ingest-dashboard-sources',
+        payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
+      })
+    ]);
   });
 
   it('evicts the oldest run subtree before exceeding the configured database cap', async () => {
@@ -96,7 +103,8 @@ describe('canonical source ingestion and queries', () => {
     const stored = await readCanonicalBatch(indexedDB);
 
     await ingestDashboardSources(indexedDB, sources, {
-      maxDatabaseBytes: estimateCanonicalBatchBytes(stored) - 1
+      maxDatabaseBytes: estimateCanonicalBatchBytes(stored) - 1,
+      payloadIdentity: 'cap-policy'
     });
 
     const capped = await readCanonicalBatch(indexedDB);
@@ -127,7 +135,11 @@ describe('canonical source ingestion and queries', () => {
       persist: vi.fn().mockResolvedValue(true)
     }));
 
-    await ingestDashboardSources(indexedDB, sources, { storage, maxDatabaseBytes });
+    await ingestDashboardSources(indexedDB, sources, {
+      storage,
+      maxDatabaseBytes,
+      payloadIdentity: 'storage-policy'
+    });
 
     expect((await readCanonicalBatch(indexedDB)).runs).toEqual([]);
     expect(estimate).toHaveBeenCalledTimes(3);
@@ -291,7 +303,19 @@ describe('canonical source ingestion and queries', () => {
       ])
     );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
-      expect.objectContaining({ kind: 'ingest-jsonl', records: 3 })
+      expect.objectContaining({
+        kind: 'ingest-jsonl',
+        records: 3,
+        payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
+      })
+    ]);
+    await expect(ingestCachedGhAwJsonl(indexedDB, content, {
+      now: Date.parse('2026-01-02T00:00:00Z'),
+      payloadEtag: '"generation-a"',
+      context
+    })).resolves.toMatchObject({ updated: false, skipped: true });
+    await expect(readTransactions(indexedDB)).resolves.toEqual([
+      expect.objectContaining({ payloadEtag: '"generation-a"' })
     ]);
     await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
@@ -351,6 +375,18 @@ describe('canonical source ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toEqual([
       expect.objectContaining({ visibility: 'private' })
+    ]);
+  });
+
+  it('reapplies a previously seen payload after a newer payload', async () => {
+    const refreshed = structuredClone(sources);
+    Object.assign(refreshed.repositories.rows[0], { visibility: 'private' });
+    await ingestDashboardSources(indexedDB, sources);
+    await ingestDashboardSources(indexedDB, refreshed);
+
+    await expect(ingestDashboardSources(indexedDB, sources)).resolves.toMatchObject({ updated: true });
+    await expect(createCanonicalQueries(indexedDB).repositories.list()).resolves.toEqual([
+      expect.objectContaining({ visibility: 'unknown' })
     ]);
   });
 });
