@@ -226,10 +226,9 @@ test("root package creates an empty CAO and deterministically updates its bootst
       assert.doesNotMatch(lock, /secrets\.COPILOT_GITHUB_TOKEN/);
     }
 
-    writeFileSync(join(consumer, caoBootstrapExpectedFiles[0]), "stale bootstrap state\n");
-    for (const relativePath of caoBootstrapExpectedFiles.slice(1)) {
-      rmSync(join(consumer, relativePath));
-    }
+    const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
+    const orchestrator = readFileSync(orchestratorPath, "utf8");
+    writeFileSync(orchestratorPath, `${orchestrator}\n# local integration-test change\n`);
     run("gh", [
       "aw",
       "update",
@@ -241,11 +240,16 @@ test("root package creates an empty CAO and deterministically updates its bootst
       "0",
     ], consumer);
 
+    assert.equal(
+      readFileSync(orchestratorPath, "utf8"),
+      orchestrator,
+      "gh aw update did not restore the package-owned workflow",
+    );
     for (const [relativePath, expected] of expectedBootstrap) {
       assert.equal(
         readFileSync(join(consumer, relativePath), "utf8"),
         expected,
-        `gh aw update did not restore ${relativePath}`,
+        `gh aw update changed ${relativePath}`,
       );
     }
     assert.equal(readFileSync(policyPath, "utf8"), policy, "gh aw update changed consumer-owned CAO policy");
