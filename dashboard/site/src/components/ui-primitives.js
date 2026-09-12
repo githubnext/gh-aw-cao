@@ -698,6 +698,39 @@ export function renderLabeledControl(label, control, options = {}) {
 }
 
 /**
+ * Renders a checkbox with consistent event handling.
+ * @param {{
+ *   id?: string,
+ *   className?: string,
+ *   checked?: boolean,
+ *   ariaLabel?: string,
+ *   onChange?: (event: Event) => void,
+ *   stopClickPropagation?: boolean
+ * }} options
+ * @returns {HTMLInputElement}
+ */
+export function renderCheckbox({
+  id,
+  className,
+  checked = false,
+  ariaLabel,
+  onChange,
+  stopClickPropagation = false
+}) {
+  return /** @type {HTMLInputElement} */ (h('input', {
+    id,
+    className,
+    type: 'checkbox',
+    checked,
+    'aria-label': ariaLabel,
+    onChange,
+    onClick: stopClickPropagation
+      ? /** @param {MouseEvent} event */ (event) => event.stopPropagation()
+      : undefined
+  }));
+}
+
+/**
  * Writes text to the clipboard via the async Clipboard API, resolving to
  * whether the copy succeeded. Shared by the table intent-action dialog and
  * the raw-policy panel, which both need a best-effort clipboard write that

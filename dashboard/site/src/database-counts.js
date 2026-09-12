@@ -51,9 +51,10 @@ function formatDatabaseCount(count) {
 
 /**
  * @param {() => Promise<DatabaseCounts>} loadDatabaseCounts
+ * @param {Node[]} [settings]
  * @returns {{ element: HTMLElement, load: () => void }}
  */
-export function renderSettingsDatabaseCounts(loadDatabaseCounts) {
+export function renderSettingsDatabaseCounts(loadDatabaseCounts, settings = []) {
   const fields = /** @type {const} */ ([
     ['packages', 'Packages'],
     ['repositories', 'Repositories'],
@@ -85,6 +86,7 @@ export function renderSettingsDatabaseCounts(loadDatabaseCounts) {
       'fieldset',
       { className: 'database-counts' },
       h('legend', null, 'Database'),
+      settings,
       h(
         'div',
         { className: 'database-count-grid' },
