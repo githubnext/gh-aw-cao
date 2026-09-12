@@ -11,7 +11,7 @@
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
       import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
-      import { renderCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
+      import { attachCliActions } from "./components/cli-actions.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -188,9 +188,7 @@
        * @param {() => void} [retryRefresh]
        */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources, retryRefresh) => {
-        setDeclaredCliActions(previewMode === "canvas"
-          ? dashboardDocument.dashboard["cli-actions"] ?? []
-          : []);
+        const canExecuteCliActions = previewMode === "canvas";
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
@@ -225,19 +223,10 @@
           }
         }
         attachCopilotPanel(dashboard);
-        if (previewMode === "canvas") {
-          const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
-          /** @type {Record<string, string>} */
-          const actionTemplateValues = {};
-          if (typeof dashboardDocument.dashboard.repository === "string") {
-            actionTemplateValues.repository = dashboardDocument.dashboard.repository;
-          }
-          const toolbarActions = renderCliActions(
-            declaredActions.filter((action) => action.placement !== "row"),
-            { templateValues: actionTemplateValues }
-          );
-          if (toolbarActions) dashboard.querySelector(".report-actions")?.prepend(toolbarActions);
-        }
+        attachCliActions(dashboard, dashboardDocument.dashboard["cli-actions"] ?? [], {
+          repository: dashboardDocument.dashboard.repository,
+          canExecute: canExecuteCliActions
+        });
         const previousDashboard = root.firstElementChild;
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);

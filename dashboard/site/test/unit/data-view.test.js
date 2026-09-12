@@ -503,7 +503,7 @@ describe('data view renderer', () => {
     expect(dialog?.hasAttribute('open')).toBe(false);
   });
 
-  it('shows row CLI actions only in canvas mode and renders repository templates', () => {
+  it('shows row CLI actions in web mode and renders repository templates', () => {
     setDeclaredCliActions([
       {
         id: 'update-target-repository',
@@ -533,7 +533,7 @@ describe('data view renderer', () => {
           default: true
         }]
       }
-    ]);
+    ], { canExecute: false });
     const context = {
       pageId: 'repositories',
       title: 'Repositories',
@@ -572,9 +572,6 @@ describe('data view renderer', () => {
     };
 
     window.history.replaceState({}, '', '/');
-    expect(renderDataView('table', context)?.querySelector('.table-cli-action-button')).toBeNull();
-
-    window.history.replaceState({}, '', '/?local-preview=canvas');
     const rendered = renderDataView('table', context);
     expect(rendered?.querySelector('thead th:first-child')?.textContent).toBe('');
     expect(rendered?.querySelector('thead th:first-child')?.classList.contains('table-compact-column')).toBe(true);
@@ -588,6 +585,8 @@ describe('data view renderer', () => {
     buttons?.[1]?.dispatchEvent(new MouseEvent('click'));
     expect(commands?.[1]?.textContent)
       .toBe('gh aw upgrade --repo octo/example --create-pull-request');
+    expect(rendered?.querySelectorAll('.cli-action-confirm')).toHaveLength(2);
+    expect(rendered?.querySelector('.cli-action-confirm')?.textContent).toContain('Copy command');
   });
 
   it('omits column summaries when disabled by the JSON view definition', () => {

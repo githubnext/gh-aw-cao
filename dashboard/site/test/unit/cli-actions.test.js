@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderCliActions, renderRowCliAction, setDeclaredCliActions } from '../../src/components/cli-actions.js';
+import { attachCliActions, renderCliActions, renderRowCliAction, setDeclaredCliActions } from '../../src/components/cli-actions.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
   setDeclaredCliActions([]);
 });
 
-describe('canvas CLI actions', () => {
+describe('CLI actions', () => {
   it('renders update actions with repository and pull-request creation', () => {
     const rendered = renderCliActions([{
       id: 'update-repository',
@@ -47,6 +47,7 @@ describe('canvas CLI actions', () => {
       presentation: 'settings',
       templateValues: { repository: 'octo/example' }
     });
+
     expect(rendered?.classList.contains('cli-actions-settings')).toBe(true);
     expect(rendered?.querySelector('.cli-action-trigger')?.classList.contains('account-menu-action')).toBe(true);
     rendered?.querySelector('button')?.click();
@@ -56,6 +57,73 @@ describe('canvas CLI actions', () => {
     expect(checkbox.checked).toBe(true);
     expect(rendered?.querySelector('.cli-action-command')?.textContent)
       .toBe('gh aw upgrade --repo octo/example --create-pull-request');
+  });
+
+  it('attaches toolbar and settings actions to the dashboard shell', () => {
+    const dashboard = document.createElement('div');
+    const reportActions = document.createElement('div');
+    reportActions.className = 'report-actions';
+    const accountMenu = document.createElement('div');
+    accountMenu.className = 'account-menu-popover';
+    dashboard.append(reportActions, accountMenu);
+    attachCliActions(dashboard, [
+      {
+        id: 'update-repository',
+        label: 'Update repository',
+        icon: 'sync',
+        command: 'gh aw update --repo {{repository}}'
+      },
+      {
+        id: 'upgrade-repository',
+        label: 'Upgrade repository',
+        icon: 'download',
+        command: 'gh aw upgrade --repo {{repository}}',
+        placement: 'settings'
+      }
+    ], { repository: 'octo/example', canExecute: false });
+
+    expect(dashboard.querySelector('.report-actions > .cli-actions-menu')).not.toBeNull();
+    expect(dashboard.querySelector('.account-menu-popover > .cli-actions-settings')).not.toBeNull();
+    expect(dashboard.querySelectorAll('.cli-action-dialog')).toHaveLength(2);
+    expect(dashboard.querySelectorAll(':scope > .cli-action-dialog')).toHaveLength(1);
+    dashboard.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    expect(dashboard.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw update --repo octo/example');
+    expect(dashboard.querySelector('.cli-action-confirm')?.textContent).toContain('Copy command');
+  });
+
+  it('copies commands instead of executing them outside canvas', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderCliActions([{
+      id: 'compile-workflows',
+      label: 'Compile workflows',
+      icon: 'play',
+      command: 'gh aw compile --strict',
+      arguments: [{
+        id: 'pre-releases',
+        label: 'Include pre-releases',
+        type: 'boolean',
+        flag: '--pre-releases',
+        default: true
+      }]
+    }], { canExecute: false });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    expect(rendered?.querySelector('.cli-action-dialog-body p')?.textContent)
+      .toBe('Copy this command and run it in your terminal.');
+    expect(rendered?.querySelector('.cli-action-output')).toBeNull();
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+
+    await vi.waitFor(() => expect(rendered?.querySelector('.cli-action-status')?.textContent).toBe('Command copied.'));
+    expect(writeText).toHaveBeenCalledWith('gh aw compile --strict --pre-releases');
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('requires a fresh confirmation before every execution', async () => {

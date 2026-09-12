@@ -619,6 +619,13 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             `${path}.command`
           ));
         }
+        if (/[!;&|`$<>]/.test(action.command)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action command must not contain shell control operators.',
+            `${path}.command`
+          ));
+        }
         const withoutTemplates = action.command.replace(/\{\{[a-z][a-z0-9]*(?:-[a-z0-9]+)*\}\}/g, '');
         if (/[{}]/.test(withoutTemplates)) {
           errors.push(createError(

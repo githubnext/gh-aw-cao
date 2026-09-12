@@ -1,15 +1,17 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderCliActionCommand } from '../cli-action-template.js';
-import { createModalDialog, renderCloseButton } from './ui-primitives.js';
+import { createCopyControl, createModalDialog, renderCloseButton } from './ui-primitives.js';
 
 const endpoint = './__cli_action';
 /** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
+let declaredCliActionsCanExecute = true;
 
-/** @param {typeof declaredCliActions} actions */
-export function setDeclaredCliActions(actions) {
+/** @param {typeof declaredCliActions} actions @param {{ canExecute?: boolean }} [options] */
+export function setDeclaredCliActions(actions, options = {}) {
   declaredCliActions = Array.isArray(actions) ? actions : [];
+  declaredCliActionsCanExecute = options.canExecute !== false;
 }
 
 /**
@@ -85,11 +87,12 @@ function commandPreview(action, values, templateValues) {
 
 /**
  * @param {{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
- * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string> }} [options]
+ * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean }} [options]
  */
 function renderCliActionControl(action, options = {}) {
   const settingsPresentation = options.presentation === 'settings';
   const rowPresentation = options.presentation === 'row';
+  const canExecute = options.canExecute !== false;
   const templateValues = options.templateValues ?? {};
   const argumentValues = Object.fromEntries(
     (action.arguments ?? []).map((argument) => [argument.id, argument.default === true])
@@ -136,7 +139,16 @@ function renderCliActionControl(action, options = {}) {
     ariaLabel: `Approve ${action.label}`,
     onFallbackClose: () => trigger.focus()
   });
-  const status = /** @type {HTMLOutputElement} */ (h('output', {
+  const copyControl = canExecute ? null : createCopyControl({
+    getContent: () => command.textContent ?? '',
+    label: 'Copy command',
+    buttonClassName: 'cli-action-confirm',
+    statusClassName: 'cli-action-status',
+    successText: 'Command copied.',
+    failureText: 'Could not copy command.',
+    trackState: true
+  });
+  const status = copyControl?.status ?? /** @type {HTMLOutputElement} */ (h('output', {
     className: 'cli-action-status',
     'aria-live': 'polite'
   }));
@@ -146,31 +158,31 @@ function renderCliActionControl(action, options = {}) {
     className: 'cli-action-cancel',
     onClick: close
   }, 'Cancel'));
-  const confirm = /** @type {HTMLButtonElement} */ (h('button', {
-    type: 'button',
-    className: 'cli-action-confirm',
-    onClick: async () => {
-      confirm.disabled = true;
-      cancel.disabled = true;
-      status.textContent = 'Running…';
-      output.textContent = '';
-      output.hidden = false;
-      try {
-        const result = await executeAction(action.id, argumentValues, templateValues, ({ data }) => {
-          output.textContent += data;
-          output.scrollTop = output.scrollHeight;
-        });
-        status.textContent = result.ok ? 'Completed' : (result.error || 'Action failed');
-        if (!output.textContent) output.textContent = resultText(result);
-        confirm.textContent = 'Run again';
-      } catch (error) {
-        status.textContent = error instanceof Error ? error.message : 'Action failed.';
-      } finally {
-        confirm.disabled = false;
-        cancel.disabled = false;
+  const confirm = copyControl?.button ?? /** @type {HTMLButtonElement} */ (h('button', {
+      type: 'button',
+      className: 'cli-action-confirm',
+      onClick: async () => {
+        confirm.disabled = true;
+        cancel.disabled = true;
+        status.textContent = 'Running…';
+        output.textContent = '';
+        output.hidden = false;
+        try {
+          const result = await executeAction(action.id, argumentValues, templateValues, ({ data }) => {
+            output.textContent += data;
+            output.scrollTop = output.scrollHeight;
+          });
+          status.textContent = result.ok ? 'Completed' : (result.error || 'Action failed');
+          if (!output.textContent) output.textContent = resultText(result);
+          confirm.textContent = 'Run again';
+        } catch (error) {
+          status.textContent = error instanceof Error ? error.message : 'Action failed.';
+        } finally {
+          confirm.disabled = false;
+          cancel.disabled = false;
+        }
       }
-    }
-  }, 'Run action'));
+    }, 'Run action'));
   trigger = /** @type {HTMLButtonElement} */ (h(
     'button',
     {
@@ -184,8 +196,9 @@ function renderCliActionControl(action, options = {}) {
       'aria-label': rowPresentation ? action.label : undefined,
       onClick: () => {
         status.textContent = '';
+        copyControl?.reset();
         output.hidden = true;
-        confirm.textContent = 'Run action';
+        if (canExecute) confirm.textContent = 'Run action';
         resetArguments();
         open();
       }
@@ -219,9 +232,11 @@ function renderCliActionControl(action, options = {}) {
           h('legend', null, 'Options'),
           ...inputs.map(({ element }) => element))
         : null,
-      h('p', null, 'Review and approve this command. Approval applies to this run only. If gh aw is unavailable, this run may install the pinned CLI extension first.'),
+      h('p', null, canExecute
+        ? 'Review and approve this command. Approval applies to this run only. If gh aw is unavailable, this run may install the pinned CLI extension first.'
+        : 'Copy this command and run it in your terminal.'),
       command,
-      output
+      canExecute ? output : null
     ),
     h('footer', { className: 'cli-action-dialog-footer' }, status, cancel, confirm)
   );
@@ -241,7 +256,8 @@ export function renderRowCliAction(actionId, templateValues) {
   if (!action) return null;
   const { trigger, dialog } = renderCliActionControl(action, {
     presentation: 'row',
-    templateValues
+    templateValues,
+    canExecute: declaredCliActionsCanExecute
   });
   return h('span', { className: 'table-cli-action-control' }, trigger, dialog);
 }
@@ -250,7 +266,7 @@ export function renderRowCliAction(actionId, templateValues) {
  * Render dashboard-declared CLI actions. Every invocation requires a fresh,
  * explicit confirmation; approval is never persisted or inferred.
  * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
- * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string> }} [options]
+ * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string>, canExecute?: boolean }} [options]
  * @returns {HTMLElement | null}
  */
 export function renderCliActions(actions, options = {}) {
@@ -280,4 +296,32 @@ export function renderCliActions(actions, options = {}) {
     root.append(dialog);
   }
   return root;
+}
+
+/**
+ * Attach dashboard-declared CLI actions to their toolbar, settings, and row placements.
+ * @param {HTMLElement} dashboard
+ * @param {typeof declaredCliActions} actions
+ * @param {{ repository?: string, canExecute?: boolean }} [options]
+ */
+export function attachCliActions(dashboard, actions, options = {}) {
+  const canExecute = options.canExecute !== false;
+  setDeclaredCliActions(actions, { canExecute });
+  /** @type {Record<string, string>} */
+  const templateValues = {};
+  if (typeof options.repository === 'string') templateValues.repository = options.repository;
+  const toolbarActions = renderCliActions(
+    actions.filter((action) => !['settings', 'row'].includes(action.placement ?? 'toolbar')),
+    { templateValues, canExecute }
+  );
+  if (toolbarActions) dashboard.querySelector('.report-actions')?.prepend(toolbarActions);
+
+  const settingsActions = renderCliActions(
+    actions.filter((action) => action.placement === 'settings'),
+    { presentation: 'settings', templateValues, canExecute }
+  );
+  if (!settingsActions) return;
+  const dialogs = [...settingsActions.querySelectorAll('dialog')];
+  dashboard.querySelector('.account-menu-popover')?.append(settingsActions);
+  for (const dialog of dialogs) dashboard.append(dialog);
 }

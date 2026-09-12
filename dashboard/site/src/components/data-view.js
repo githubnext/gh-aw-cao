@@ -519,10 +519,7 @@ function chartCategoryLinks(points) {
  */
 function tableActions(view) {
   if (!isPlainObject(view.encoding) || !Array.isArray(view.encoding.actions)) return [];
-  const canvasMode = new URLSearchParams(globalThis.location?.search ?? '').get('local-preview') === 'canvas';
-  return /** @type {Array<{ intent?: string, action?: string, presentation: string, icon: string, label: string, context: string[], when?: { field: string, equals: unknown } }>} */ (
-    view.encoding.actions.filter((action) => action?.presentation !== 'cli-action' || canvasMode)
-  );
+  return /** @type {Array<{ intent?: string, action?: string, presentation: string, icon: string, label: string, context: string[], when?: { field: string, equals: unknown } }>} */ (view.encoding.actions);
 }
 
 /** @param {{ when?: { field: string, equals: unknown } }} action @param {Record<string, unknown>} row */
