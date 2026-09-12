@@ -50,16 +50,19 @@ The cache holds:
 ```text
 $RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
+$RUNNER_TEMP/cao-activity/control-settings.json
+$RUNNER_TEMP/cao-activity/inventory-sources.json
 $RUNNER_TEMP/cao-gh-aw-logs/drain3_weights.json
 ```
 
 Its immutable key is
 `cao-activity-v3-${github.run_id}-${github.run_attempt}`; its restore prefix is
 `cao-activity-v3-`. Consumers dispatched by Activity must restore the exact
-completed run's cache key. The cache is evictable and is not historical
-authority: consumers must enforce their own freshness, completeness, and scope
-requirements. Agent jobs install the SQLite CLI before restoring this directory,
-so they can query the normalized database directly.
+completed run's cache key. Every producer and consumer uses the complete path
+list because GitHub includes paths in the cache version. The cache is evictable
+and is not historical authority: consumers must enforce their own freshness,
+completeness, and scope requirements. Agent jobs install the SQLite CLI before
+restoring this snapshot, so they can query the normalized database directly.
 
 ## Installation
 

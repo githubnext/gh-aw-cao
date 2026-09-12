@@ -104,6 +104,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json
           key: cao-activity-v3-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             cao-activity-v3-
