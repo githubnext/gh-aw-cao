@@ -942,6 +942,8 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')?.textContent).toContain('Settings');
+    expect(rendered.querySelector('[data-mobile-nav-page-id="configuration"]')?.textContent).toContain('Settings');
+    expect(rendered.querySelector('[data-mobile-nav-page-id="configuration"]')?.closest('.account-menu')).toBeNull();
     expect(rendered.querySelector('.account-menu-settings')).toBeNull();
     expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open dashboard menu');
     expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);

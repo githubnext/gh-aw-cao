@@ -1502,6 +1502,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
+  const mobileSettings = page.locator('[data-mobile-nav-page-id="configuration"]');
+  await expect(mobileSettings).toHaveText('Settings');
+  await expect(mobileSettings.locator('xpath=ancestor::*[contains(@class, "account-menu")]')).toHaveCount(0);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
