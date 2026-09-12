@@ -1452,6 +1452,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-running { margin: 0 0 12px; color: var(--muted); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
 .factory-running-active { color: var(--success); }
 .factory-running-active > span { position: relative; display: inline-flex; align-items: baseline; gap: 5px; padding-bottom: 6px; overflow: hidden; }
+.factory-running-detail { color: var(--muted); }
 .factory-running-active > span::after { content: ""; height: 2px; position: absolute; right: 0; bottom: 0; left: 0; background: linear-gradient(90deg, transparent, var(--success), transparent); animation: factory-live-sweep 2.4s ease-in-out infinite; }
 .factory-running strong { color: inherit; font-size: 1.35rem; font-variant-numeric: tabular-nums; line-height: 1; }
 @keyframes factory-live-sweep {
