@@ -90,7 +90,7 @@ function commandPreview(action, values, templateValues) {
 
 /**
  * @param {{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
- * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean }} [options]
+ * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean }} [options]
  */
 function renderCliActionControl(action, options = {}) {
   const settingsPresentation = options.presentation === 'settings';
@@ -207,11 +207,11 @@ function renderCliActionControl(action, options = {}) {
       }
     },
     octicon(action.icon),
-    rowPresentation ? null : h(
+    rowPresentation && options.showRowLabel !== true ? null : h(
       'span',
       { className: 'cli-action-trigger-copy' },
       h('strong', null, action.label),
-      action.description ? h('small', null, action.description) : null
+      !rowPresentation && action.description ? h('small', null, action.description) : null
     )
   ));
   command = h('code', { className: 'cli-action-command' }, commandPreview(action, argumentValues, templateValues));
@@ -253,14 +253,16 @@ function renderCliActionControl(action, options = {}) {
  * Render one row-scoped CLI action with template values sourced from the row.
  * @param {string} actionId
  * @param {Record<string, string>} templateValues
+ * @param {{ showLabel?: boolean }} [options]
  */
-export function renderRowCliAction(actionId, templateValues) {
+export function renderRowCliAction(actionId, templateValues, options = {}) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!action) return null;
   const { trigger, dialog } = renderCliActionControl(action, {
     presentation: 'row',
     templateValues,
-    canExecute: declaredCliActionsCanExecute
+    canExecute: declaredCliActionsCanExecute,
+    showRowLabel: options.showLabel === true
   });
   return h('span', { className: 'table-cli-action-control' }, trigger, dialog);
 }

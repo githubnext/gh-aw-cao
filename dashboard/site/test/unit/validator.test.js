@@ -269,7 +269,7 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
-      if (page.id === 'safe-outputs') continue;
+      if (page.id === 'safe-outputs' || page.id === 'maintenance') continue;
       const definition = page.definition ?? page;
       const editableViews = (definition.views ?? []).filter(
         (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
@@ -284,6 +284,16 @@ describe('dashboard document validation', () => {
         layout: 'full-view'
       });
     }
+    expect(document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
+    )?.views).toEqual([
+      expect.objectContaining({
+        id: 'maintenance-actions',
+        mark: 'element',
+        element: 'maintenance-view',
+        layout: 'full'
+      })
+    ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 

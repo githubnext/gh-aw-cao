@@ -24,7 +24,7 @@ function detail(label, value) {
 /** @param {Record<string, unknown>} row */
 function packageCard(row) {
   const action = updateAvailable(row['package-update-state'])
-    ? renderRowCliAction('update-package', { package: text(row.package) })
+    ? renderRowCliAction('update-package', { package: text(row.package) }, { showLabel: true })
     : null;
   return h(
     'li',
@@ -50,7 +50,7 @@ function repositoryCard(row) {
   const shouldUpgrade = updateAvailable(row['gh-aw-update-state']);
   const repository = text(row.repository);
   const action = shouldUpgrade
-    ? renderRowCliAction('upgrade-target-repository', { repository })
+    ? renderRowCliAction('upgrade-target-repository', { repository }, { showLabel: true })
     : null;
   return h(
     'li',
@@ -63,7 +63,8 @@ function repositoryCard(row) {
       h(
         'div',
         { className: 'maintenance-card-details' },
-        detail('gh-aw', row['gh-aw-version']),
+        detail('Installed', row['gh-aw-version']),
+        detail('Latest', row['gh-aw-current-version']),
         h(
           'span',
           { className: `maintenance-card-state ${shouldUpgrade ? 'maintenance-card-state-attention' : ''}` },
