@@ -23,8 +23,17 @@ import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
  */
 async function payloadHash(payload, identity) {
   const value = identity ?? (typeof payload === 'string' ? payload : JSON.stringify(payload));
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  if (globalThis.crypto?.subtle) {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+  const hashes = Array.from({ length: 8 }, (_, index) => (0x811c9dc5 ^ (index * 0x9e3779b9)) >>> 0);
+  for (let offset = 0; offset < value.length; offset += 1) {
+    for (let index = 0; index < hashes.length; index += 1) {
+      hashes[index] = Math.imul(hashes[index] ^ value.charCodeAt(offset), 0x01000193 + (index * 2)) >>> 0;
+    }
+  }
+  return hashes.map((hash) => hash.toString(16).padStart(8, '0')).join('');
 }
 
 /** @param {IDBFactory} indexedDB @param {string} kind @param {string} hash */
