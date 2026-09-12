@@ -687,6 +687,14 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect(view).toHaveCount(1);
   await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
   await expect(swimlane.locator('.swimlane-summary')).toContainText('50 runs');
+  const swimlaneHeadingBox = await swimlane.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
+  const swimlaneSummaryBox = await swimlane.locator('.swimlane-summary').boundingBox();
+  const swimlaneChartBox = await swimlane.locator('[data-chart-widget="swimlane"] svg').boundingBox();
+  expect(swimlaneHeadingBox).not.toBeNull();
+  expect(swimlaneSummaryBox).not.toBeNull();
+  expect(swimlaneChartBox).not.toBeNull();
+  expect(Math.abs((swimlaneHeadingBox?.x ?? 0) - (swimlaneSummaryBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(swimlaneChartBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(220);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
   const summaryRow = view.locator('.table-summary-row');

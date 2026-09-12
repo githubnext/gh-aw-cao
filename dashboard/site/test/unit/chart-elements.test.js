@@ -224,6 +224,7 @@ describe('chart element helpers', () => {
     );
 
     expect(chart.getAttribute('data-chart-widget')).toBe('swimlane');
+    expect(chart.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 120 48.75');
     expect(chart.querySelectorAll('.swimlane-label')).toHaveLength(5);
     expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.textContent)).toEqual([
       'Action required',
@@ -232,6 +233,21 @@ describe('chart element helpers', () => {
       'Skipped',
       'Success'
     ]);
+    expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.getAttribute('x'))).toEqual([
+      '17.5',
+      '17.5',
+      '17.5',
+      '17.5',
+      '17.5'
+    ]);
+    expect([...chart.querySelectorAll('.swimlane-separator')].map((separator) => separator.getAttribute('y1'))).toEqual([
+      '5',
+      '12.25',
+      '19.5',
+      '26.75',
+      '34'
+    ]);
+    expect(chart.querySelector('.swimlane-axis')?.getAttribute('y1')).toBe('41.25');
     expect(chart.querySelectorAll('.swimlane-mark')).toHaveLength(5);
     expect(chart.querySelector('polyline')).toBeNull();
     expect(chart.querySelector('.swimlane-summary')?.textContent).toContain('5 runs');

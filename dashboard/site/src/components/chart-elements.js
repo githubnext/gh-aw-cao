@@ -31,8 +31,11 @@ const PIE_CHART_CENTER = 21;
 const PIE_CHART_RADIUS = 15.9155;
 const PIE_CHART_STROKE_WIDTH = 6;
 const PIE_CHART_SEGMENT_GAP = 0.03;
-const SWIMLANE_START_X = 25;
-const SWIMLANE_END_X = 117;
+const SWIMLANE_START_X = 19;
+const SWIMLANE_END_X = 116;
+const SWIMLANE_LABEL_X = SWIMLANE_START_X - 1.5;
+const SWIMLANE_TOP_Y = 5;
+const SWIMLANE_LANE_GAP = 7.25;
 const MAX_SWIMLANE_SECTIONS_PER_LANE = 120;
 const SWIMLANE_DEFINITIONS = [
   ['action-required', 'Action required'],
@@ -41,6 +44,10 @@ const SWIMLANE_DEFINITIONS = [
   ['skipped', 'Skipped'],
   ['success', 'Success']
 ];
+const SWIMLANE_AXIS_Y = SWIMLANE_TOP_Y + (SWIMLANE_LANE_GAP * SWIMLANE_DEFINITIONS.length);
+const SWIMLANE_TICK_END_Y = SWIMLANE_AXIS_Y + 2;
+const SWIMLANE_AXIS_LABEL_Y = SWIMLANE_AXIS_Y + 6;
+const SWIMLANE_VIEWBOX_HEIGHT = SWIMLANE_AXIS_LABEL_Y + 1.5;
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
 const SEMANTIC_SERIES_TERMS = {
@@ -925,27 +932,27 @@ function renderSwimlaneChart(points, timeRange) {
     h(
       'svg',
       {
-        viewBox: '0 0 120 62',
+        viewBox: `0 0 120 ${SWIMLANE_VIEWBOX_HEIGHT}`,
         role: 'img',
         'aria-label': `Categorical swimlane timeline with ${plottedCount} workflow runs`
       },
       ...SWIMLANE_DEFINITIONS.flatMap(([lane, label], laneIndex) => {
-        const y = 7 + (laneIndex * 10);
+        const y = SWIMLANE_TOP_Y + (laneIndex * SWIMLANE_LANE_GAP);
         return [
-          h('text', { className: 'swimlane-label', x: 23, y: y + 1, 'text-anchor': 'end' }, label),
-          h('line', { className: 'swimlane-separator', x1: 25, y1: y, x2: 117, y2: y }),
+          h('text', { className: 'swimlane-label', x: SWIMLANE_LABEL_X, y: y + 1, 'text-anchor': 'end' }, label),
+          h('line', { className: 'swimlane-separator', x1: SWIMLANE_START_X, y1: y, x2: SWIMLANE_END_X, y2: y }),
           ...(sectionsByLane.get(lane) ?? []).map((section) => renderSwimlaneSection(section, y))
         ];
       }),
-      h('line', { className: 'swimlane-axis', x1: 25, y1: 54, x2: 117, y2: 54 }),
+      h('line', { className: 'swimlane-axis', x1: SWIMLANE_START_X, y1: SWIMLANE_AXIS_Y, x2: SWIMLANE_END_X, y2: SWIMLANE_AXIS_Y }),
       ...ticks.map((instant, index) => {
         const x = xCoordinate(instant);
         return [
-          h('line', { className: 'swimlane-tick', x1: x, y1: 54, x2: x, y2: 56 }),
+          h('line', { className: 'swimlane-tick', x1: x, y1: SWIMLANE_AXIS_Y, x2: x, y2: SWIMLANE_TICK_END_Y }),
           h('text', {
             className: 'swimlane-time-label',
             x,
-            y: 61,
+            y: SWIMLANE_AXIS_LABEL_Y,
             'text-anchor': index === 0 ? 'start' : index === ticks.length - 1 ? 'end' : 'middle'
           }, formatSwimlaneAxisTime(instant, span))
         ];
