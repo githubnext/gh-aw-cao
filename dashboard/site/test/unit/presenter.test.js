@@ -860,6 +860,7 @@ describe('presenter built-in and custom pages', () => {
     expect(repositoryLink?.getAttribute('aria-label')).toBe('View octo-org/agentic-operations on GitHub');
     expect(repositoryLink?.getAttribute('title')).toBe('View octo-org/agentic-operations on GitHub');
     expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('agentic-operations');
+    expect(rendered.querySelector('.mobile-page-header .mobile-brand-name')?.textContent).toBe('agentic-operations');
   });
 
   it('routes repository entity links to the repository detail view while retaining GitHub Actions links', async () => {
