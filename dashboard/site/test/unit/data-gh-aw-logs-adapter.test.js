@@ -184,6 +184,7 @@ describe('gh-aw logs adapter', () => {
             engine_name: 'GitHub Copilot CLI',
             model: 'gpt-5.4',
             agent_version: '1.0.83',
+            version: '1.0.83',
             cli_version: 'v0.89.4',
             workflow_name: 'Dashboard',
             staged: false,

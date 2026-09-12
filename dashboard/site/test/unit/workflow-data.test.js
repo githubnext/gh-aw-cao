@@ -304,6 +304,7 @@ describe('deriveWorkflowSources', () => {
             workflow: '.github/workflows/dependabot.md',
             run: '42',
             'run-title': 'Newer run',
+            'gh-aw-version': 'v0.89.4',
             'started-at': '2026-09-01T00:00:00Z'
           },
           {
@@ -319,6 +320,7 @@ describe('deriveWorkflowSources', () => {
     expect(sources['workflow-runs'].rows[0]['workflow-route']).toBe(
       'githubnext/control:.github/workflows/dependabot.md'
     );
+    expect(sources['workflow-runs'].rows[0]['gh-aw-version']).toBe('v0.89.4');
     expect(sources['workflow-runs'].rows[1]['run-link']).toEqual(expect.objectContaining({
       href: 'https://github.com/githubnext/control/actions/runs/41'
     }));

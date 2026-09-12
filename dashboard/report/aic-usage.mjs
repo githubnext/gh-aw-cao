@@ -446,7 +446,7 @@ export async function readRunSecurityTelemetry(outputDirectory, runId, evidence 
         agentVersion: firstText(info.agent_version),
         agentRuntime: firstText(info.agent_runtime),
         modelId: firstText(info.model),
-        ghAwVersion: firstText(info.cli_version, info.version),
+        ghAwVersion: firstText(info.cli_version),
         cliVersion: firstText(info.cli_version),
         firewallVersion: firstText(info.awf_version),
         gatewayVersion: firstText(info.awmg_version),
