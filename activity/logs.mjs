@@ -12,7 +12,11 @@ const DEFAULT_RUN_LIMIT = 10;
 // Matches gh-aw's `renderLogsCollectionStats` stderr line (pkg/cli/logs_orchestrator_download.go).
 // If gh-aw changes this wording, this falls back to null and the less-detailed summary log line below.
 const COLLECTION_STATS_PATTERN =
-  /Runs:\s*(\d+)\s*discovered;\s*reports:\s*(\d+)\s*downloaded,\s*(\d+)\s*skipped because cached analyses were reused/;
+  /Runs:\s*(\d+)\s*discovered;\s*reports:\s*(\d+)\s*downloaded,\s*(\d+)\s*skipped because cached analyses were reused/g;
+
+function pluralize(count, word) {
+  return count === 1 ? word : `${word}s`;
+}
 
 async function existingSnapshot(file) {
   try {
@@ -32,11 +36,17 @@ async function readCollectionStats(file) {
     if (error.code !== "ENOENT") throw error;
     return null;
   }
-  const match = COLLECTION_STATS_PATTERN.exec(contents);
-  if (!match) return null;
-  const discovered = Number(match[1]);
-  const downloaded = Number(match[2]);
-  const cached = Number(match[3]);
+  // Take the last match: gh aw logs may render this summary more than once
+  // across retries, and only the final line is authoritative.
+  let match;
+  let lastMatch = null;
+  while ((match = COLLECTION_STATS_PATTERN.exec(contents)) !== null) {
+    lastMatch = match;
+  }
+  if (!lastMatch) return null;
+  const discovered = Number(lastMatch[1]);
+  const downloaded = Number(lastMatch[2]);
+  const cached = Number(lastMatch[3]);
   const pending = discovered - downloaded - cached;
   if (pending < 0) {
     log.warning`gh aw logs reported ${downloaded} downloaded and ${cached} cached reports exceeding ${discovered} discovered runs; pending download count clamped to 0`;
@@ -103,13 +113,13 @@ export async function collectActivityLogs() {
     }, null, 2)}\n`);
     await writeOutcome("success");
     const workflowCount = new Set(snapshot.runs.map((run) => run.workflow_path || run.workflow_name || "unknown")).size;
-    const runLabel = snapshot.runs.length === 1 ? "run" : "runs";
-    const snapshotWorkflowLabel = workflowCount === 1 ? "workflow" : "workflows";
+    const runLabel = pluralize(snapshot.runs.length, "run");
+    const snapshotWorkflowLabel = pluralize(workflowCount, "workflow");
     log.info`Collected snapshot with ${snapshot.runs.length} ${runLabel} across ${workflowCount} ${snapshotWorkflowLabel}`;
     if (collectionStats) {
-      const cachedLabel = collectionStats.cached === 1 ? "run" : "runs";
-      const downloadedLabel = collectionStats.downloaded === 1 ? "run" : "runs";
-      const pendingLabel = collectionStats.pending === 1 ? "run" : "runs";
+      const cachedLabel = pluralize(collectionStats.cached, "run");
+      const downloadedLabel = pluralize(collectionStats.downloaded, "run");
+      const pendingLabel = pluralize(collectionStats.pending, "run");
       log.info`Loaded ${collectionStats.cached} cached ${cachedLabel} from the --cached-jsonl cache, downloaded ${collectionStats.downloaded} new ${downloadedLabel}, and left ${collectionStats.pending} discovered ${pendingLabel} pending download for ${targets.length} control-repository ${workflowLabel}`;
     } else {
       log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} with one gh aw logs invocation`;
