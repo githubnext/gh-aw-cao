@@ -4,7 +4,9 @@ import {
   joinSession,
 } from "@github/copilot-sdk/extension";
 
-import { resolveDashboardUrl } from "./dashboard-url.mjs";
+import { startLocalDashboardPreview } from "./local-preview.mjs";
+
+const previews = new Map();
 
 await joinSession({
   canvases: [
@@ -12,64 +14,63 @@ await joinSession({
       id: "cao-dashboard",
       displayName: "Central Agentic Ops",
       description:
-        "Open the deployed Central Agentic Ops Pages site for the current or a specified repository.",
+        "Open a local Central Agentic Ops dashboard preview for the current or a specified repository.",
       inputSchema: {
         type: "object",
-        oneOf: [
-          {
-            properties: {
-              url: {
-                type: "string",
-                format: "uri",
-                minLength: 1,
-                maxLength: 2_048,
-                description: "Deployed HTTPS dashboard URL.",
-              },
-            },
-            required: ["url"],
-            additionalProperties: false,
+        properties: {
+          repository: {
+            type: "string",
+            pattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+            maxLength: 200,
+            description:
+              "Optional GitHub repository in OWNER/REPOSITORY format. Defaults to the current repository.",
           },
-          {
-            properties: {
-              repository: {
-                type: "string",
-                pattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
-                maxLength: 200,
-                description:
-                  "Optional GitHub repository in OWNER/REPOSITORY format. Defaults to the current repository.",
-              },
-              sitePath: {
-                type: "string",
-                pattern: "^[A-Za-z0-9._~/-]*$",
-                maxLength: 1_024,
-                description:
-                  "Optional relative path within the repository's Pages site.",
-              },
-            },
-            additionalProperties: false,
-          },
-        ],
+        },
+        additionalProperties: false,
       },
       open: async (context) => {
         try {
+          const existing = previews.get(context.instanceId);
+          if (existing) {
+            return {
+              title: "Central Agentic Ops",
+              status: "Local preview",
+              url: existing.url,
+            };
+          }
+
           const input = context.input ?? {};
-          const url = await resolveDashboardUrl(input, {
-            cwd: context.session?.workingDirectory ?? process.cwd(),
+          const preview = await startLocalDashboardPreview({
+            workingDirectory:
+              context.session?.workingDirectory ?? process.cwd(),
+            repository: input.repository,
           });
+          previews.set(context.instanceId, preview);
           return {
             title: "Central Agentic Ops",
-            status: new URL(url).hostname,
-            url,
+            status: "Local preview",
+            url: preview.url,
           };
         } catch (error) {
           throw new CanvasError(
-            "cao_dashboard_url_unavailable",
+            "cao_dashboard_preview_unavailable",
             error instanceof Error
               ? error.message
-              : "Could not resolve the deployed CAO dashboard URL.",
+              : "Could not start the local CAO dashboard preview.",
           );
         }
       },
+      onClose: async (context) => {
+        const preview = previews.get(context.instanceId);
+        if (!preview) return;
+
+        previews.delete(context.instanceId);
+        await preview.close();
+      },
     }),
   ],
+});
+
+process.once("exit", () => {
+  for (const preview of previews.values()) void preview.close();
 });
