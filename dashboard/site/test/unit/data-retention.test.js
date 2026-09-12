@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { normalize } from '../../src/data/normalize/index.js';
 import {
   BROWSER_RETENTION_WINDOWS_MS,
+  capCanonicalBatchSize,
+  estimateCanonicalBatchBytes,
   mergeRetainedRecords,
   RETENTION_WINDOW_DAYS
 } from '../../src/data/storage/retention.js';
@@ -181,5 +183,38 @@ describe('canonical retention merge', () => {
     expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
     expect(merged.runs.map((run) => run.id)).toEqual(['run:1']);
     expect(merged.events.map((event) => event.id)).toEqual(['event:1']);
+  });
+
+  it('drops the oldest whole run subtree to fit a byte cap', () => {
+    const records = batch([
+      { eventId: 'event:old', timestamp: '2026-09-01T04:00:00Z', sessionId: 'session:old' }
+    ]);
+    records.runs[0].startedAt = '2026-09-01T04:00:00Z';
+    records.runs.push({
+      ...records.runs[0],
+      id: 'run:new',
+      startedAt: '2026-09-09T04:00:00Z'
+    });
+    records.jobs.push({ id: 'job:old', runId: 'run:1', name: 'old' });
+    records.jobs.push({ id: 'job:new', runId: 'run:new', name: 'new' });
+    records.sessions.push({
+      ...records.sessions[0],
+      id: 'session:new',
+      runId: 'run:new',
+      startedAt: '2026-09-09T04:00:00Z'
+    });
+    records.events.push({
+      ...records.events[0],
+      id: 'event:new',
+      sessionId: 'session:new',
+      timestamp: '2026-09-09T04:00:00Z'
+    });
+
+    const capped = capCanonicalBatchSize(records, estimateCanonicalBatchBytes(records) - 1);
+
+    expect(capped.runs.map((run) => run.id)).toEqual(['run:new']);
+    expect(capped.jobs.map((job) => job.id)).toEqual(['job:new']);
+    expect(capped.sessions.map((session) => session.id)).toEqual(['session:new']);
+    expect(capped.events.map((event) => event.id)).toEqual(['event:new']);
   });
 });

@@ -66,7 +66,14 @@ function requestWorker(worker, message, timeoutMs) {
 async function configureBackgroundDashboardDataUpdates(registration, worker, dataUrls) {
   const response = await requestWorker(
     worker,
-    { type: 'CONFIGURE_BACKGROUND_DATA', urls: dataUrls },
+    {
+      type: 'CONFIGURE_BACKGROUND_DATA',
+      urls: dataUrls,
+      assets: [
+        new URL('./', window.location.href).href,
+        ...(globalThis.performance?.getEntriesByType?.('resource') ?? []).map((entry) => entry.name)
+      ]
+    },
     CANARY_TIMEOUT_MS
   );
   if (!response || typeof response !== 'object'
@@ -79,6 +86,50 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
     // The foreground timer remains the fallback when background sync is unavailable or denied.
   });
   return Number.isFinite(lastSuccess) && lastSuccess > 0 ? lastSuccess : 0;
+}
+
+/**
+ * Removes every dashboard worker registration at the exact app scope. Clearing
+ * its persisted schedule first makes a still-running worker fail closed even
+ * when browser unregistration is delayed.
+ * @param {ServiceWorkerContainer | undefined} serviceWorkers
+ * @param {URL} scriptUrl
+ * @param {ServiceWorkerRegistration | undefined} current
+ */
+async function disableDashboardServiceWorkers(serviceWorkers, scriptUrl, current) {
+  if (!serviceWorkers) return;
+  const scope = new URL('./', scriptUrl).href;
+  const discovered = await serviceWorkers.getRegistrations?.().catch(() => []) ?? [];
+  /** @type {ServiceWorkerRegistration[]} */
+  const registrations = [];
+  for (const candidate of [current, ...discovered]) {
+    const candidateWorkers = candidate
+      ? [candidate.installing, candidate.waiting, candidate.active].filter(Boolean)
+      : [];
+    const ownsScope = candidate === current || (
+      candidate?.scope === scope && candidateWorkers.some((worker) => {
+        const workerUrl = new URL(/** @type {ServiceWorker} */ (worker).scriptURL);
+        return workerUrl.origin === scriptUrl.origin && workerUrl.pathname === scriptUrl.pathname;
+      })
+    );
+    if (candidate && ownsScope && !registrations.includes(candidate)) {
+      registrations.push(candidate);
+    }
+  }
+  if (registrations.length === 0) {
+    const registration = await serviceWorkers.getRegistration?.(scope);
+    if (registration?.scope === scope) registrations.push(registration);
+  }
+  await Promise.all(registrations.map(async (registration) => {
+    const workers = [registration.installing, registration.waiting, registration.active].filter(Boolean);
+    await Promise.all(workers.map((worker) =>
+      requestWorker(/** @type {ServiceWorker} */ (worker), { type: 'CLEAR_BACKGROUND_DATA' }, CANARY_TIMEOUT_MS)
+        .catch(() => undefined)
+    ));
+    const periodicSync = /** @type {ServiceWorkerRegistration & { periodicSync?: { unregister: (tag: string) => Promise<void> } }} */ (registration).periodicSync;
+    await periodicSync?.unregister(PERIODIC_SYNC_TAG).catch(() => undefined);
+    await registration.unregister();
+  }));
 }
 
 /** @param {ServiceWorker} worker */
@@ -227,10 +278,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   const performReconcile = async () => {
     if (stopped) return;
     if (!automaticDashboardDataUpdatesEnabled(storage)) {
-      const existing = registration ?? await serviceWorkers?.getRegistration?.(new URL('./', scriptUrl).href);
-      const periodicSync = /** @type {(ServiceWorkerRegistration & { periodicSync?: { unregister: (tag: string) => Promise<void> } }) | undefined} */ (existing)?.periodicSync;
-      await periodicSync?.unregister(PERIODIC_SYNC_TAG);
-      await existing?.unregister();
+      await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
       registration = undefined;
       healthyWorker = undefined;
       backgroundConfigured = false;
@@ -292,6 +340,10 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
           || /** @type {{ type?: unknown }} */ (response).type !== 'DOWNLOAD_COMPLETE') {
         throw new Error('Service worker data download failed.');
       }
+      if (!automaticDashboardDataUpdatesEnabled(storage)) {
+        await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
+        return;
+      }
       storage.setItem(LAST_SUCCESS_STORAGE_KEY, String(now()));
       schedule(backgroundConfigured ? UPDATE_INTERVAL_MS : RETRY_INTERVAL_MS, backgroundConfigured);
     } catch (error) {
@@ -316,8 +368,13 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
     }
   };
   const onSettingChange = () => void reconcile();
+  /** @param {StorageEvent} event */
+  const onStorageChange = (event) => {
+    if (event.key === ENABLED_STORAGE_KEY || event.key === null) void reconcile();
+  };
   const onConstraintChange = () => void reconcile();
   window.addEventListener(SETTING_EVENT, onSettingChange);
+  window.addEventListener('storage', onStorageChange);
   window.addEventListener('online', onConstraintChange);
   connection?.addEventListener?.('change', onConstraintChange);
   void reconcile();
@@ -326,6 +383,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
     stopped = true;
     if (timer !== undefined) clearTimer(timer);
     window.removeEventListener(SETTING_EVENT, onSettingChange);
+    window.removeEventListener('storage', onStorageChange);
     window.removeEventListener('online', onConstraintChange);
     connection?.removeEventListener?.('change', onConstraintChange);
     battery?.removeEventListener?.('chargingchange', onConstraintChange);

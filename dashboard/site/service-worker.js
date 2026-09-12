@@ -1,5 +1,6 @@
 const VERSION = '1';
 const DATA_CACHE = `central-agentic-ops-dashboard-data-${VERSION}`;
+const APP_CACHE = `central-agentic-ops-dashboard-app-${VERSION}`;
 const CONFIG_CACHE = 'central-agentic-ops-dashboard-config';
 const CONFIG_URL = new URL('./.dashboard-data-update-config', self.registration.scope).href;
 const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
@@ -12,6 +13,19 @@ function isDashboardDataUrl(value) {
     const url = new URL(value, self.location.href);
     return url.origin === self.location.origin
       && DATA_FILES.has(url.pathname.split('/').at(-1));
+  } catch {
+    return false;
+  }
+}
+
+function isAppAssetUrl(value) {
+  try {
+    const url = new URL(value, self.location.href);
+    return url.origin === self.location.origin
+      && url.href.startsWith(self.registration.scope)
+      && !isDashboardDataUrl(url.href)
+      && !url.pathname.endsWith('/service-worker.js')
+      && !url.pathname.endsWith('/.dashboard-data-update-config');
   } catch {
     return false;
   }
@@ -54,6 +68,17 @@ async function storeDataUrls(urls) {
     headers: { 'content-type': 'application/json' }
   }));
   return config;
+}
+
+async function cacheAppAssets(urls) {
+  const cache = await caches.open(APP_CACHE);
+  await Promise.allSettled([...new Set(urls)].filter(isAppAssetUrl).map(async (url) => {
+    const response = await fetch(url, {
+      credentials: 'same-origin',
+      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
+    });
+    if (response.ok) await cache.put(url, response);
+  }));
 }
 
 async function readDataConfig(cache) {
@@ -99,20 +124,46 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(keys
-      .filter((key) => key.startsWith('central-agentic-ops-dashboard-data-') && key !== DATA_CACHE)
+      .filter((key) => (
+        key.startsWith('central-agentic-ops-dashboard-data-') && key !== DATA_CACHE
+      ) || (
+        key.startsWith('central-agentic-ops-dashboard-app-') && key !== APP_CACHE
+      ))
       .map((key) => caches.delete(key)));
     await self.clients.claim();
   })());
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || !isDashboardDataUrl(event.request.url)) return;
+  if (event.request.method !== 'GET') return;
+  if (!isDashboardDataUrl(event.request.url)) {
+    if (!isAppAssetUrl(event.request.url)) return;
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) {
+          const cache = await caches.open(APP_CACHE);
+          await cache.put(event.request, response.clone()).catch(() => undefined);
+        }
+        return response;
+      } catch (error) {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        if (event.request.mode === 'navigate') {
+          const fallback = await caches.match(new URL('./', self.registration.scope).href);
+          if (fallback) return fallback;
+        }
+        throw error;
+      }
+    })());
+    return;
+  }
   event.respondWith((async () => {
     try {
       const response = await fetch(event.request);
       if (response.ok) {
         const cache = await caches.open(DATA_CACHE);
-        await cache.put(event.request, response.clone());
+        await cache.put(event.request, response.clone()).catch(() => undefined);
       }
       return response;
     } catch (error) {
@@ -137,8 +188,16 @@ self.addEventListener('message', (event) => {
     void self.skipWaiting();
     return;
   }
+  if (event.data?.type === 'CLEAR_BACKGROUND_DATA') {
+    const task = caches.delete(CONFIG_CACHE).then(
+      () => event.ports[0]?.postMessage({ type: 'BACKGROUND_DATA_CLEARED', version: VERSION })
+    );
+    event.waitUntil(task);
+    return;
+  }
   if (event.data?.type === 'CONFIGURE_BACKGROUND_DATA' && Array.isArray(event.data.urls)) {
-    const task = storeDataUrls(event.data.urls).then(
+    const assets = Array.isArray(event.data.assets) ? event.data.assets : [];
+    const configure = storeDataUrls(event.data.urls).then(
       (config) => event.ports[0]?.postMessage({
         type: 'BACKGROUND_DATA_CONFIGURED',
         version: VERSION,
@@ -149,7 +208,7 @@ self.addEventListener('message', (event) => {
         message: error instanceof Error ? error.message : String(error)
       })
     );
-    event.waitUntil(task);
+    event.waitUntil(Promise.allSettled([configure, cacheAppAssets(assets)]));
     return;
   }
   if (event.data?.type !== 'DOWNLOAD_DATA' || !Array.isArray(event.data.urls)) return;

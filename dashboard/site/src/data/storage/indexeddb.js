@@ -67,6 +67,7 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
   }
 });
 const DEFAULT_WRITE_BATCH_SIZE = 1000;
+const MAX_TRANSACTION_RECORDS = 1000;
 
 /**
  * @template T
@@ -284,7 +285,14 @@ export async function recordTransaction(indexedDB, transaction) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
     const write = database.transaction(TRANSACTION_STORE, 'readwrite');
-    write.objectStore(TRANSACTION_STORE).put(transaction);
+    const store = write.objectStore(TRANSACTION_STORE);
+    store.put(transaction);
+    const records = await requestResult(store.index('byCreatedAt').getAll());
+    for (const expired of records
+      .sort((left, right) => String(left.createdAt).localeCompare(String(right.createdAt)))
+      .slice(0, Math.max(0, records.length - MAX_TRANSACTION_RECORDS))) {
+      store.delete(expired.id);
+    }
     await transactionDone(write);
   } finally {
     database.close();

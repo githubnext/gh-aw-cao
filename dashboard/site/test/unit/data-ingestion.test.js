@@ -1,10 +1,11 @@
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ingestCachedGhAwJsonl, ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
-import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, readCanonicalBatch, readTransactions } from '../../src/data/storage/indexeddb.js';
+import { estimateCanonicalBatchBytes } from '../../src/data/storage/retention.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'));
@@ -88,6 +89,48 @@ describe('canonical source ingestion and queries', () => {
     });
     const queries = createCanonicalQueries(indexedDB);
     await expect(queries.repositories.list()).resolves.toHaveLength(1);
+  });
+
+  it('evicts the oldest run subtree before exceeding the configured database cap', async () => {
+    await ingestDashboardSources(indexedDB, sources);
+    const stored = await readCanonicalBatch(indexedDB);
+
+    await ingestDashboardSources(indexedDB, sources, {
+      maxDatabaseBytes: estimateCanonicalBatchBytes(stored) - 1
+    });
+
+    const capped = await readCanonicalBatch(indexedDB);
+    expect(capped.runs).toEqual([]);
+    expect(capped.jobs).toEqual([]);
+    expect(capped.repositories).toHaveLength(1);
+    expect(capped.workflows).toHaveLength(1);
+  });
+
+  it('rechecks reported IndexedDB usage and evicts runs above 2 GB', async () => {
+    const storedSize = estimateCanonicalBatchBytes((await ingestDashboardSources(indexedDB, sources)
+      .then(() => readCanonicalBatch(indexedDB))));
+    const maxDatabaseBytes = storedSize * 2;
+    const estimate = vi.fn()
+      .mockResolvedValueOnce({ usage: storedSize, quota: maxDatabaseBytes * 2 })
+      .mockResolvedValueOnce({
+        usage: maxDatabaseBytes + 1,
+        quota: maxDatabaseBytes * 2,
+        usageDetails: { indexedDB: maxDatabaseBytes + 1 }
+      })
+      .mockResolvedValueOnce({
+        usage: storedSize,
+        quota: maxDatabaseBytes * 2,
+        usageDetails: { indexedDB: storedSize }
+      });
+    const storage = /** @type {StorageManager} */ (/** @type {unknown} */ ({
+      estimate,
+      persist: vi.fn().mockResolvedValue(true)
+    }));
+
+    await ingestDashboardSources(indexedDB, sources, { storage, maxDatabaseBytes });
+
+    expect((await readCanonicalBatch(indexedDB)).runs).toEqual([]);
+    expect(estimate).toHaveBeenCalledTimes(3);
   });
 
   it('upserts a complete SQL export onto retained canonical records', async () => {
@@ -296,7 +339,7 @@ describe('canonical source ingestion and queries', () => {
     });
 
     await expect(ingestDashboardSources(indexedDB, sources, { storage })).resolves.toMatchObject({ updated: true });
-    expect(calls.sort()).toEqual(['estimate', 'persist']);
+    expect(calls.sort()).toEqual(['estimate', 'estimate', 'persist']);
   });
 
   it('overwrites matching records with fresh source data', async () => {

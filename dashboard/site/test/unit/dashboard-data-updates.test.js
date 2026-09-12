@@ -30,6 +30,9 @@ class FakeWorker extends EventTarget {
     if (message.type === 'CONFIGURE_BACKGROUND_DATA') {
       ports[0]?.postMessage({ type: 'BACKGROUND_DATA_CONFIGURED', version: 'test' });
     }
+    if (message.type === 'CLEAR_BACKGROUND_DATA') {
+      ports[0]?.postMessage({ type: 'BACKGROUND_DATA_CLEARED', version: 'test' });
+    }
   }
 }
 
@@ -124,13 +127,13 @@ describe('automatic dashboard data updates', () => {
       'central-agentic-ops-dashboard-data',
       { minInterval: 60 * 60 * 1000 }
     );
-    expect(worker.messages).toContainEqual({
+    expect(worker.messages).toContainEqual(expect.objectContaining({
       type: 'CONFIGURE_BACKGROUND_DATA',
       urls: [
         'https://example.test/gh-aw-logs.jsonl',
         'https://example.test/inventory-sources.json'
       ]
-    });
+    }));
 
     now += 60 * 60 * 1000;
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
@@ -162,7 +165,31 @@ describe('automatic dashboard data updates', () => {
 
     await vi.waitFor(() => expect(currentRegistration.periodicSync.unregister)
       .toHaveBeenCalledWith('central-agentic-ops-dashboard-data'));
+    expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' });
     expect(currentRegistration.unregister).toHaveBeenCalledOnce();
+    stop();
+  });
+
+  it('discovers and removes an untracked dashboard worker while disabled', async () => {
+    const worker = new FakeWorker();
+    const orphanedRegistration = {
+      ...registration(worker),
+      scope: 'https://example.test/'
+    };
+    Object.assign(worker, { scriptURL: 'https://example.test/service-worker.js?force-update=1' });
+    const serviceWorkers = {
+      getRegistrations: vi.fn().mockResolvedValue([orphanedRegistration])
+    };
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        scriptUrl: new URL('https://example.test/service-worker.js')
+      }
+    );
+
+    await vi.waitFor(() => expect(orphanedRegistration.unregister).toHaveBeenCalledOnce());
+    expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' });
     stop();
   });
 

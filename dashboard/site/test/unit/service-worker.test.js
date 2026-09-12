@@ -19,13 +19,19 @@ function serviceWorkerHarness() {
     delete: async (key) => entries.delete(String(key))
   };
   const fetch = vi.fn(async () => new Response('updated data'));
+  const deleteCache = vi.fn(async () => {
+    entries.clear();
+    return true;
+  });
   const worker = {
     location: {
       href: 'https://example.test/dashboard/service-worker.js',
       origin: 'https://example.test'
     },
     registration: { scope: 'https://example.test/dashboard/' },
-    navigator: { connection: { type: 'wifi', saveData: false } },
+    navigator: {
+      connection: { type: 'wifi', saveData: false }
+    },
     clients: { claim: vi.fn().mockResolvedValue(undefined) },
     skipWaiting: vi.fn().mockResolvedValue(undefined),
     /** @param {string} type @param {(event: any) => void} listener */
@@ -38,7 +44,7 @@ function serviceWorkerHarness() {
     caches: {
       open: async () => cache,
       keys: async () => [],
-      delete: async () => true,
+      delete: deleteCache,
       match: cache.match
     },
     fetch,
@@ -50,7 +56,13 @@ function serviceWorkerHarness() {
     Promise,
     JSON
   });
-  return { listeners, worker, fetch };
+  return {
+    listeners,
+    worker,
+    fetch,
+    entries,
+    deleteCache
+  };
 }
 
 /** @param {(event: any) => void} listener @param {Record<string, unknown>} event */
@@ -94,4 +106,46 @@ describe('dashboard service worker', () => {
     });
     expect(fetch).toHaveBeenCalledTimes(2);
   });
+
+  it('serves cached dashboard assets and data while offline', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const request = new Request('https://example.test/dashboard/src/main.js');
+    fetch.mockResolvedValueOnce(new Response('online'));
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    listeners.fetch({
+      request,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect(response).resolves.toHaveProperty('status', 200);
+    expect(entries.size).toBe(1);
+
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    listeners.fetch({
+      request,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect((await response)?.text()).resolves.toBe('online');
+  });
+
+  it('clears persisted scheduling before worker unregistration', async () => {
+    const { listeners, entries } = serviceWorkerHarness();
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'CONFIGURE_BACKGROUND_DATA',
+        urls: ['https://example.test/dashboard/gh-aw-logs.jsonl']
+      },
+      ports: [{ postMessage: vi.fn() }]
+    });
+    expect(entries.size).toBeGreaterThan(0);
+    const cleared = vi.fn();
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: { type: 'CLEAR_BACKGROUND_DATA' },
+      ports: [{ postMessage: cleared }]
+    });
+
+    expect(cleared).toHaveBeenCalledWith(expect.objectContaining({ type: 'BACKGROUND_DATA_CLEARED' }));
+  });
+
 });

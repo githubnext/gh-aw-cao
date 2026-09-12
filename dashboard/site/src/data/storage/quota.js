@@ -12,6 +12,14 @@ export async function inspectStorage(storage) {
 }
 
 /** @param {StorageManager | undefined} storage */
+export async function inspectDatabaseUsage(storage) {
+  if (!storage?.estimate) return null;
+  const estimate = await storage.estimate();
+  const details = /** @type {StorageEstimate & { usageDetails?: { indexedDB?: number } }} */ (estimate).usageDetails;
+  return Number.isFinite(details?.indexedDB) ? Number(details?.indexedDB) : null;
+}
+
+/** @param {StorageManager | undefined} storage */
 export async function requestPersistentStorage(storage) {
   return storage?.persist ? storage.persist() : false;
 }
@@ -33,3 +41,4 @@ export async function withQuotaRecovery(operation, reclaim) {
     return operation();
   }
 }
+export const MAX_DASHBOARD_DATABASE_BYTES = 2 * 1024 * 1024 * 1024;
