@@ -443,8 +443,8 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        transactions: {
-          source: 'transactions',
+        'transactions-table': {
+          source: 'transactions-table',
           rows: [{
             transaction: 'ingest-jsonl:current:test',
             kind: 'ingest-jsonl',

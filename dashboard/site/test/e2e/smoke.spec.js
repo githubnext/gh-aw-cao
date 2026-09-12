@@ -457,7 +457,7 @@ test('Transactions is a responsive full-view interactive lazy table under Data',
         freshness: 'fresh',
         availability: 'available'
       };
-      const sources = { transactions: { source: 'transactions', rows, metadata } };
+      const sources = { 'transactions-table': { source: 'transactions-table', rows, metadata } };
       window.location.hash = '#page-overview';
       document.querySelector('#root').append(renderDashboard({ document: ${JSON.stringify(documentModel)}, sources }));
     </script>

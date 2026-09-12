@@ -234,6 +234,80 @@
         }
       },
       {
+        "name": "transactions-table",
+        "intent": "List retained ingestion transactions from newest to oldest.",
+        "from": "transactions",
+        "select": [
+          {
+            "field": "id",
+            "as": "transaction"
+          },
+          {
+            "field": "kind"
+          },
+          {
+            "field": "createdAt",
+            "as": "created-at"
+          },
+          {
+            "field": "payloadScope",
+            "as": "payload-scope"
+          },
+          {
+            "field": "payloadHash",
+            "as": "payload-hash"
+          },
+          {
+            "field": "payloadEtag",
+            "as": "payload-etag"
+          },
+          {
+            "field": "records"
+          },
+          {
+            "field": "committedRecords",
+            "as": "committed-records"
+          },
+          {
+            "field": "rawPayloadRecords",
+            "as": "raw-payload-records"
+          },
+          {
+            "field": "rawRuns",
+            "as": "raw-runs"
+          },
+          {
+            "field": "agenticRunRecords",
+            "as": "agentic-run-records"
+          },
+          {
+            "field": "agenticRuns",
+            "as": "agentic-runs"
+          },
+          {
+            "field": "duplicateRawRunObservations",
+            "as": "duplicate-raw-run-observations"
+          },
+          {
+            "field": "duplicateAgenticRunObservations",
+            "as": "duplicate-agentic-run-observations"
+          },
+          {
+            "field": "unenrichedRuns",
+            "as": "unenriched-runs"
+          },
+          {
+            "field": "error"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "created-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "overview-failed-run-count",
         "intent": "Count failed workflow runs that need operator attention.",
         "from": "runs",
@@ -5122,13 +5196,7 @@
             "title": "Transaction entries",
             "description": "Retained ingestion transactions ordered from newest to oldest.",
             "data": {
-              "source": "transactions",
-              "order-by": [
-                {
-                  "field": "created-at",
-                  "direction": "desc"
-                }
-              ]
+              "source": "transactions-table"
             },
             "mark": "table",
             "controls": "interactive",

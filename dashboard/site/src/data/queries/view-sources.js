@@ -323,34 +323,6 @@ function eventsSource(events, sessionsById, runsById, sources) {
   };
 }
 
-/** @param {Record<string, unknown>[]} transactions @param {Record<string, unknown>} sources */
-function transactionsSource(transactions, sources) {
-  return {
-    source: 'transactions',
-    rows: [...transactions]
-      .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))
-      .map((transaction) => definedFields({
-        transaction: transaction.id,
-        kind: transaction.kind,
-        'created-at': transaction.createdAt,
-        'payload-scope': transaction.payloadScope,
-        'payload-hash': transaction.payloadHash,
-        'payload-etag': transaction.payloadEtag,
-        records: transaction.records,
-        'committed-records': transaction.committedRecords,
-        'raw-payload-records': transaction.rawPayloadRecords,
-        'raw-runs': transaction.rawRuns,
-        'agentic-run-records': transaction.agenticRunRecords,
-        'agentic-runs': transaction.agenticRuns,
-        'duplicate-raw-run-observations': transaction.duplicateRawRunObservations,
-        'duplicate-agentic-run-observations': transaction.duplicateAgenticRunObservations,
-        'unenriched-runs': transaction.unenrichedRuns,
-        error: transaction.error
-      })),
-    metadata: projectionMetadata(sources, 'transactions', 'transactions', true)
-  };
-}
-
 /**
  * @param {Record<string, unknown>[]} events
  * @param {Map<unknown, Record<string, unknown>>} sessionsById
@@ -490,7 +462,13 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
-  if (requested.has('transactions')) projected.transactions = transactionsSource(transactions, sources);
+  if (requested.has('transactions')) {
+    projected.transactions = {
+      source: 'transactions',
+      rows: transactions,
+      metadata: projectionMetadata(sources, 'transactions', 'transactions', true)
+    };
+  }
   if (needsFirewall) {
     projected['firewall-observations'] = firewallObservationsSource(events, sessionsById, runsById, sources);
   }

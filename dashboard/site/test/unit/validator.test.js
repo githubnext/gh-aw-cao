@@ -705,7 +705,7 @@ dashboard:
     expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs-table');
     expect(transactionsView).toMatchObject({
-      data: { source: 'transactions' },
+      data: { source: 'transactions-table' },
       mark: 'table',
       controls: 'interactive',
       'lazy-list': true,

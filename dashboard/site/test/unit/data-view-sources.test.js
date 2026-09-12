@@ -150,21 +150,21 @@ describe('canonical view sources', () => {
       metadata: { 'source-kind': 'canonical-query', availability: 'available' },
       rows: [
         {
-          transaction: 'ingest-jsonl:current:newer',
+          id: 'ingest-jsonl:current:newer',
           kind: 'ingest-jsonl',
-          'created-at': '2026-09-09T06:00:00Z',
-          'payload-scope': 'gh-aw-jsonl',
-          'committed-records': 4
+          createdAt: '2026-09-09T06:00:00Z',
+          payloadScope: 'gh-aw-jsonl',
+          committedRecords: 4
         },
         {
-          transaction: 'ingest-jsonl:current:test',
+          id: 'ingest-jsonl:current:test',
           kind: 'ingest-jsonl',
-          'created-at': '2026-09-09T05:00:00Z',
-          'payload-scope': 'gh-aw-jsonl',
-          'payload-hash': 'abc123',
+          createdAt: '2026-09-09T05:00:00Z',
+          payloadScope: 'gh-aw-jsonl',
+          payloadHash: 'abc123',
           records: 12,
-          'committed-records': 10,
-          'unenriched-runs': 2
+          committedRecords: 10,
+          unenrichedRuns: 2
         }
       ]
     });
