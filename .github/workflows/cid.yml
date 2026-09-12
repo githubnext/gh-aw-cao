@@ -124,7 +124,7 @@ jobs:
           retention-days: 14
 
   lighthouse-comment:
-    name: Report Lighthouse degradation
+    name: Report Lighthouse results
     if: >-
       always() &&
       github.event_name == 'pull_request' &&
@@ -144,7 +144,7 @@ jobs:
         with:
           name: dashboard-lighthouse-performance
           path: lighthouse-results
-      - name: Comment on degraded performance
+      - name: Comment with Lighthouse results
         if: steps.download.outcome == 'success'
         continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -202,14 +202,16 @@ jobs:
               core.warning(`Could not find the pull request by branch; using event pull request: ${message}`)
             }
 
-            const marker = '<!-- dashboard-lighthouse-degradation -->'
+            const marker = '<!-- dashboard-lighthouse-results -->'
+            const legacyMarker = '<!-- dashboard-lighthouse-degradation -->'
             const comments = await github.paginate(github.rest.issues.listComments, {
               ...context.repo,
               issue_number: pull.number,
               per_page: 100,
             })
             const existing = comments.filter((comment) =>
-              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+              comment.user?.type === 'Bot' &&
+              (comment.body?.includes(marker) || comment.body?.includes(legacyMarker))
             )
             const deleteComments = async (commentsToDelete) => {
               const results = await Promise.allSettled(commentsToDelete.map((comment) =>
@@ -224,12 +226,6 @@ jobs:
                 }
               })
             }
-            if (degraded.length === 0) {
-              core.info('All Lighthouse scenarios meet their performance budgets.')
-              await deleteComments(existing)
-              return
-            }
-
             const labels = {
               'cumulative-layout-shift': 'Cumulative Layout Shift',
               'first-contentful-paint': 'First Contentful Paint',
@@ -237,37 +233,51 @@ jobs:
               'speed-index': 'Speed Index',
               'total-blocking-time': 'Total Blocking Time',
             }
-            const formatMetric = (name, value) =>
-              name === 'cumulative-layout-shift' ? value.toFixed(3) : `${Math.round(value)} ms`
-            const sections = degraded.map((result) => {
-              const details = []
-              if (result.score < result.passingScore) {
-                details.push(
-                  `- 📊 Performance score: **${Math.round(result.score * 100)}** ` +
-                  `(required: **${Math.round(result.passingScore * 100)}**)`
+            const formatMetric = (name, value) => {
+              if (typeof value !== 'number' || Number.isNaN(value)) return 'n/a'
+              return name === 'cumulative-layout-shift' ? value.toFixed(3) : `${Math.round(value)} ms`
+            }
+            const sections = validResults.map((result) => {
+              const budgets = result.budgets && typeof result.budgets === 'object' ? result.budgets : {}
+              const metrics = result.metrics && typeof result.metrics === 'object' ? result.metrics : {}
+              const scoreFailed = result.score < result.passingScore
+              const rows = [
+                `| 📊 Performance score | ${scoreFailed ? '❌' : '✅'} | ` +
+                `${Math.round(result.score * 100)} | ${Math.round(result.passingScore * 100)} (minimum) |`,
+              ]
+              for (const [name, budget] of Object.entries(budgets)) {
+                const value = metrics[name]
+                const exceeded = typeof value === 'number' && value > budget
+                rows.push(
+                  `| 📏 ${labels[name] || name} | ${exceeded ? '❌' : '✅'} | ` +
+                  `${formatMetric(name, value)} | ${formatMetric(name, budget)} (budget) |`
                 )
               }
-              for (const [name, budget] of Object.entries(result.budgets)) {
-                const value = result.metrics[name]
-                if (value > budget) {
-                  details.push(
-                    `- 📏 ${labels[name] || name}: **${formatMetric(name, value)}** ` +
-                    `(budget: **${formatMetric(name, budget)}**)`
-                  )
-                }
-              }
-              return `#### 👤🚦 ${result.persona} (\`${result.id}\`)\n\n${details.join('\n')}`
+              const status = result.failures.length > 0 ? '❌' : '✅'
+              return [
+                `#### ${status} 👤🚦 ${result.persona} (\`${result.id}\`)`,
+                '',
+                '| Measurement | Status | Value | Threshold |',
+                '| --- | --- | --- | --- |',
+                ...rows,
+              ].join('\n')
             })
             const runUrl =
               `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const heading = degraded.length > 0
+              ? '### 📉🚦 Dashboard Lighthouse performance degraded'
+              : '### 📈🚦 Dashboard Lighthouse performance results'
+            const verdict = degraded.length > 0
+              ? `🧭 ${degraded.length} of ${validResults.length} scenarios are outside their configured thresholds.`
+              : `🧭 All ${validResults.length} scenarios meet their configured thresholds.`
             const body = [
               marker,
-              '### 📉🚦 Dashboard Lighthouse performance degraded',
+              heading,
               '',
               '⚠️ The Lighthouse check is informational and does not block this pull request.',
-              '🧭 The following scenario scores or metrics are outside their configured thresholds:',
+              verdict,
               '',
-              ...sections,
+              sections.join('\n\n'),
               '',
               `🔎 [View the workflow run and performance artifacts](${runUrl}).`,
             ].join('\n')

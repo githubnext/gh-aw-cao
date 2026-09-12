@@ -2710,6 +2710,9 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(lighthouseComment.block, /head: `\$\{headOwner\}:\$\{headBranch\}`/);
   assert.match(lighthouseComment.block, /using event pull request/);
   assert.match(lighthouseComment.block, /### 📉🚦 Dashboard Lighthouse performance degraded/);
+  assert.match(lighthouseComment.block, /### 📈🚦 Dashboard Lighthouse performance results/);
+  assert.match(lighthouseComment.block, /const sections = validResults\.map/);
+  assert.match(lighthouseComment.block, /All \$\{validResults\.length\} scenarios meet their configured thresholds/);
   assert.match(lighthouseComment.block, /github\.paginate\(github\.rest\.issues\.listComments/);
   assert.match(lighthouseComment.block, /comments\.filter\(\(comment\)/);
   assert.match(lighthouseComment.block, /existing\.slice\(1\)/);
