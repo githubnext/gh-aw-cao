@@ -311,9 +311,12 @@ describe('canonical source ingestion and queries', () => {
     ]);
     await expect(ingestCachedGhAwJsonl(indexedDB, content, {
       now: Date.parse('2026-01-02T00:00:00Z'),
+      payloadEtag: '"generation-a"',
       context
     })).resolves.toMatchObject({ updated: false, skipped: true });
-    await expect(readTransactions(indexedDB)).resolves.toHaveLength(1);
+    await expect(readTransactions(indexedDB)).resolves.toEqual([
+      expect.objectContaining({ payloadEtag: '"generation-a"' })
+    ]);
     await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
   });

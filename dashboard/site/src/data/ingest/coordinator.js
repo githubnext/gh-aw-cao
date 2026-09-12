@@ -231,7 +231,16 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     });
     const hash = await payloadHash(`${options.payloadIdentity ?? content}\0${adaptationContext}`, undefined);
     const scope = options.payloadScope ?? 'gh-aw-jsonl';
-    if (await previouslyIngested(indexedDB, 'ingest-jsonl', scope, hash)) {
+    const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
+    if (current?.payloadHash === hash) {
+      if (options.payloadEtag
+          && (current.payloadEtag !== options.payloadEtag || current.adaptationContext !== adaptationContext)) {
+        await recordTransaction(indexedDB, {
+          ...current,
+          payloadEtag: options.payloadEtag,
+          adaptationContext
+        });
+      }
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
     const adapted = adaptCachedGhAwJsonl(content, {
