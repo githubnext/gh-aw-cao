@@ -152,7 +152,7 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
     /** @type {PermissionDescriptor} */ (/** @type {unknown} */ ({ name: 'periodic-background-sync' }))
   );
   if (permission.state === 'denied') {
-    throw new NonRetryableBackgroundSyncError('Periodic Background Sync permission was not granted.');
+    throw new NonRetryableBackgroundSyncError('Periodic Background Sync permission was denied.');
   }
   try {
     await periodicSync.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS });
