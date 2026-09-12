@@ -450,6 +450,10 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
   const consumer = await installPackage(dependabotUpdateSource);
 
   try {
+    assert.ok(
+      existsSync(join(consumer, ".github", "aw", "dependabot", "graders", "dependabot-release-train-updater-operational-value.sh")),
+      "Dependabot package omitted its operational-value grader",
+    );
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
     const orchestrator = readFileSync(orchestratorPath, "utf8");
     writeFileSync(orchestratorPath, `${orchestrator}\n# local integration-test change\n`);
