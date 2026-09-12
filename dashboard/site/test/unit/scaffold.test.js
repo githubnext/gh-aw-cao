@@ -123,6 +123,17 @@ describe('DLS-CONF-004 scaffold gates', () => {
     }
   });
 
+  it('loads optional filter-bar actions without requiring cached modules to export them', () => {
+    const presenter = readFileSync(resolve('src/presenter.js'), 'utf8');
+    const namedFilterBarImport = presenter.match(
+      /import\s*{([^}]*)}\s*from\s*['"]\.\/components\/filter-bar\.js['"]/
+    );
+
+    expect(namedFilterBarImport?.[1]).not.toContain('setTimeWindowFilter');
+    expect(namedFilterBarImport?.[1]).not.toContain('setTimeWindowRange');
+    expect(presenter).toContain("import * as filterBarActions from './components/filter-bar.js';");
+  });
+
   it('keeps mobile overview navigation as large actions and hides it on other views', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
