@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node ./scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run --environment jsdom",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
-    "test:performance": "node ./test/performance/lighthouse.mjs",
+    "test:performance": "npm run build && node ./test/performance/lighthouse.mjs",
     "validate:corpus": "node ./scripts/validate-corpus.mjs",
     "dev": "cd .. && node local-server.mjs --copilot"
   },
@@ -15,6 +16,7 @@
     "@eslint/js": "^9.34.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.3.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9.34.0",
     "fake-indexeddb": "^6.2.5",
     "globals": "^16.3.0",

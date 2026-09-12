@@ -3485,7 +3485,7 @@ dashboard:
             source: usage
             scope:
               workflows:
-                - .github/workflows/dashboard.yml
+                - .github/workflows/cao-dashboard.yml
             time:
               range: 7d
             filters:

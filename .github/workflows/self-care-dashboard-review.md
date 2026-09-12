@@ -164,7 +164,7 @@ pre-agent-steps:
         --jq '.conclusion, .head_branch, .path')
       if [[ "${provenance[0]:-}" != success \
           || "${provenance[1]:-}" != "$default_branch" \
-          || "${provenance[2]:-}" != .github/workflows/dashboard-build.yml ]]; then
+          || "${provenance[2]:-}" != .github/workflows/cao-dashboard.yml ]]; then
         echo "The latest dashboard artifact is not from a successful trusted default-branch build" >&2
         exit 1
       fi

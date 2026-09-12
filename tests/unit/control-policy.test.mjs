@@ -100,7 +100,7 @@ test("control policy schema accepts config-defined package and worker catalogs",
   assert.equal(schema.$defs.controlPackages.additionalProperties.$ref, "#/$defs/packagePolicy");
   assert.equal(schema.$defs.targetPackages.additionalProperties.$ref, "#/$defs/targetPackage");
   for (const packagePolicy of Object.values(policy["control-plane"].packages)) {
-    for (const workerPolicy of Object.values(packagePolicy.workers)) {
+    for (const workerPolicy of Object.values(packagePolicy.workers ?? {})) {
       assert.match(workerPolicy.workflow, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
     }
   }
@@ -141,6 +141,7 @@ test("checked-in control policy selects seven repositories with live Dependabot 
 
   assert.deepEqual(policy["control-plane"].scope["allowed-repositories"], repositories);
   assert.equal(policy["control-plane"].defaults["max-repositories"], 7);
+  assert.equal(policy["control-plane"].packages.dashboard.deploy, false);
 
   for (const targetRepository of repositories) {
     const effective = effectivePolicy(policy, {
@@ -222,6 +223,7 @@ test("control policy exposes scope and publishing defaults to deterministic add-
         "rollout-percent": 100,
         "monthly-ai-credit-budget": 0,
         icon: null,
+        deploy: true,
         worker_policies: {
           "dependabot-release-train-updater": {
             worker: "release-train-updater",
@@ -288,6 +290,22 @@ test("control policy validates and exposes a package octicon", () => {
     controlSettings(parsePolicy(policyWithIcon), "acme/control").packages.dependabot.icon,
     "dependabot",
   );
+});
+
+test("control policy validates and exposes package deployment settings", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].packages.dashboard = { deploy: false };
+
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  assert.equal(
+    controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").packages.dashboard.deploy,
+    false,
+  );
+
+  policy["control-plane"].packages.dashboard.deploy = "false";
+  const invalid = validate(JSON.stringify(policy));
+  assert.notEqual(invalid.status, 0);
+  assert.match(invalid.stderr, /control-plane\.packages\.dashboard\.deploy must be a Boolean/);
 });
 
 test("control policy validates config-defined worker workflow identities", () => {

@@ -1,0 +1,257 @@
+name: CAO Dashboard
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - CAO Activity
+    types:
+      - completed
+  push:
+    paths:
+      - .github/aw/dashboards/**
+      - .github/aw/dashboard/**
+      - .github/workflows/cao.json
+      - .github/workflows/cao-dashboard.yml
+      - "*/dashboard.json"
+      - dashboard/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: central-agentic-ops-dashboard
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch) || (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      deploy: ${{ steps.deployment-policy.outputs.deploy }}
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+    steps:
+      - name: Checkout trusted dashboard source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+
+      - name: Resolve dashboard source layout
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            core.info('Resolving dashboard source layout')
+            if (
+              fs.existsSync('.github/aw/dashboard/report/dashboard-language-sources.mjs')
+              && fs.existsSync('.github/aw/dashboard/site/scripts/build.mjs')
+            ) {
+              core.exportVariable('DASHBOARD_LAYOUT', 'installed')
+              core.exportVariable('DASHBOARD_SITE_ROOT', '.github/aw/dashboard/site')
+              core.info('Resolved dashboard source layout: installed')
+            } else if (
+              fs.existsSync('dashboard/report/records.mjs')
+              && fs.existsSync('dashboard/site/scripts/build.mjs')
+            ) {
+              core.exportVariable('DASHBOARD_LAYOUT', 'source')
+              core.exportVariable('DASHBOARD_SITE_ROOT', 'dashboard/site')
+              core.info('Resolved dashboard source layout: source')
+            } else {
+              throw new Error('Dashboard package sources are unavailable')
+            }
+
+      - name: Resolve dashboard deployment policy
+        id: deployment-policy
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const policy = JSON.parse(fs.readFileSync('.github/workflows/cao.json', 'utf8'))
+            const configuredDeploy = policy['control-plane']?.packages?.dashboard?.deploy
+            if (
+              configuredDeploy !== undefined
+              && configuredDeploy !== null
+              && typeof configuredDeploy !== 'boolean'
+            ) {
+              throw new Error('control-plane.packages.dashboard.deploy must be a boolean')
+            }
+            const deploy = configuredDeploy ?? true
+            core.info(`Standalone Pages deployment: ${deploy ? 'enabled' : 'disabled'}`)
+            core.setOutput('deploy', String(deploy))
+
+      - name: Install dashboard build dependencies
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            core.info(`Installing dashboard dependencies for ${process.env.DASHBOARD_LAYOUT} layout`)
+            await exec.exec('npm', [
+              'ci',
+              '--prefix',
+              process.env.DASHBOARD_SITE_ROOT,
+              '--ignore-scripts',
+            ])
+            core.info('Dashboard build dependencies installed')
+
+      - name: Restore collected activity data
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+            ${{ runner.temp }}/cao-activity/control-settings.json
+            ${{ runner.temp }}/cao-activity/inventory-sources.json
+          key: cao-activity-v3-lookup-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            cao-activity-v3-
+          fail-on-cache-miss: true
+
+      - name: Validate restored activity data
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
+          REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const path = require('path')
+            const activityFiles = [
+              process.env.REPORT_GH_AW_LOGS,
+              process.env.ACTIVITY_DATABASE,
+              process.env.REPORT_CONTROL_SETTINGS,
+              process.env.REPORT_INVENTORY_SOURCES,
+            ]
+            core.info('Validating restored activity data')
+            let validationFailed = false
+            for (const activityFile of activityFiles) {
+              const fileName = path.basename(activityFile)
+              if (!fs.existsSync(activityFile)) {
+                core.error(`Required activity data file is missing: ${fileName}`)
+                validationFailed = true
+                continue
+              }
+              const { size } = fs.statSync(activityFile)
+              if (size === 0) {
+                core.error(`Required activity data file is empty: ${fileName}`)
+                validationFailed = true
+              } else {
+                core.info(`Validated ${fileName} (${size} bytes)`)
+              }
+            }
+            if (validationFailed) {
+              const activityRoot = path.join(process.env.RUNNER_TEMP, 'cao-activity')
+              core.info('Restored activity cache directory contents:')
+              if (fs.existsSync(activityRoot)) {
+                const restoredFiles = fs.readdirSync(activityRoot, { withFileTypes: true })
+                  .filter((entry) => entry.isFile())
+                  .toSorted((a, b) => a.name.localeCompare(b.name))
+                for (const entry of restoredFiles) {
+                  core.info(`  ${entry.name} (${fs.statSync(path.join(activityRoot, entry.name)).size} bytes)`)
+                }
+              }
+              throw new Error('Restored activity data validation failed')
+            }
+            core.info(`Restored activity data validation completed (${activityFiles.length} files)`)
+
+      - name: Assess activity database health
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            core.info('Resolving activity SQLite doctor')
+            const doctorScript = fs.existsSync('activity/cao.mjs')
+              ? 'activity/cao.mjs'
+              : fs.existsSync('.github/aw/activity/cao.mjs')
+                ? '.github/aw/activity/cao.mjs'
+                : undefined
+            if (!doctorScript) {
+              throw new Error('Activity SQLite doctor is unavailable')
+            }
+            core.info('Assessing activity database health')
+            await exec.exec(process.execPath, [
+              doctorScript,
+              'doctor',
+              '--database',
+              process.env.ACTIVITY_DATABASE,
+            ])
+            core.info('Activity database health assessment completed')
+
+      - name: Assemble Dashboard Language site
+        env:
+          REPORT_OUTPUT: ${{ runner.temp }}/central-agentic-ops-dashboard
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const path = require('path')
+            core.info(`Building dashboard site from ${process.env.DASHBOARD_LAYOUT} layout`)
+            const controlSettings = path.join(process.env.RUNNER_TEMP, 'cao-activity', 'control-settings.json')
+            await exec.exec('npm', [
+              '--prefix',
+              process.env.DASHBOARD_SITE_ROOT,
+              'run',
+              'build',
+              '--',
+              process.env.REPORT_OUTPUT,
+              controlSettings,
+            ])
+            core.info('Dashboard site build completed')
+            core.info('Copying collected activity data')
+            const collectedFiles = [
+              'inventory-sources.json',
+              'gh-aw-logs.jsonl',
+              'gh-aw-logs.sqlite',
+            ]
+            for (const fileName of collectedFiles) {
+              const destination = path.join(process.env.REPORT_OUTPUT, fileName)
+              fs.copyFileSync(
+                path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName),
+                destination,
+              )
+              core.info(`Copied ${fileName} (${fs.statSync(destination).size} bytes)`)
+            }
+            core.info(`Dashboard artifact assembly completed (${collectedFiles.length} collected data files)`)
+
+      - name: Upload dashboard artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: central-agentic-ops-dashboard
+          path: ${{ runner.temp }}/central-agentic-ops-dashboard
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Configure Pages
+        if: steps.deployment-policy.outputs.deploy == 'true'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          enablement: false
+
+      - name: Upload Pages artifact
+        if: steps.deployment-policy.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ runner.temp }}/central-agentic-ops-dashboard
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pages: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

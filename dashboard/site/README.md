@@ -18,6 +18,7 @@ The dashboard build workflow copies this directory to its configured `site-path`
 
 ```bash
 npm install
+npm run build
 npm run typecheck
 npm run lint
 npm test
@@ -27,4 +28,4 @@ npm run test:performance
 
 The performance suite audits CFO, CTO, and CSO dashboard journeys with Lighthouse. It writes machine-readable reports, browser traces, and a summary under `test-results/lighthouse/`; CI retains that directory as the `dashboard-lighthouse-performance` artifact.
 
-Application source is browser-compatible JavaScript ESM with no runtime dependencies; test tooling remains development-only.
+The production build bundles and minifies the application with esbuild and publishes external source maps alongside the JavaScript bundles.

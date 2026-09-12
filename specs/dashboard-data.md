@@ -392,7 +392,7 @@ Example:
   githubId: 98765,
 
   name: "Dashboard",
-  path: ".github/workflows/dashboard.yml",
+  path: ".github/workflows/cao-dashboard.yml",
 
   state: "active",
 
