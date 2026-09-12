@@ -4637,6 +4637,89 @@
         ]
       },
       {
+        "id": "transactions",
+        "kind": "custom",
+        "title": "Transactions",
+        "icon": "history",
+        "description": "Local dashboard ingestion history and outcomes.",
+        "views": [
+          {
+            "id": "transactions-table",
+            "title": "Transactions",
+            "description": "Recent writes to the local canonical dashboard database.",
+            "data": {
+              "source": "transactions",
+              "order-by": [
+                {
+                  "field": "created-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No dashboard transactions are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "created-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Created"
+                },
+                {
+                  "field": "kind",
+                  "type": "nominal",
+                  "title": "Kind"
+                },
+                {
+                  "field": "payload-scope",
+                  "type": "nominal",
+                  "title": "Scope"
+                },
+                {
+                  "field": "records",
+                  "type": "quantitative",
+                  "title": "Records"
+                },
+                {
+                  "field": "committed-records",
+                  "type": "quantitative",
+                  "title": "Committed"
+                },
+                {
+                  "field": "raw-runs",
+                  "type": "quantitative",
+                  "title": "Raw runs"
+                },
+                {
+                  "field": "agentic-runs",
+                  "type": "quantitative",
+                  "title": "Agentic runs"
+                },
+                {
+                  "field": "unenriched-runs",
+                  "type": "quantitative",
+                  "title": "Unenriched"
+                },
+                {
+                  "field": "error",
+                  "type": "nominal",
+                  "title": "Error"
+                },
+                {
+                  "field": "transaction",
+                  "type": "nominal",
+                  "title": "Transaction"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
         "id": "configuration",
         "kind": "custom",
         "title": "Settings",

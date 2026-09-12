@@ -687,6 +687,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
   const settingsPage = pages.find((page) => page.id === 'configuration');
+  const transactionsPage = pages.find((page) => page.id === 'transactions');
   const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
   const settingsDatabaseCounts = renderSettingsDatabaseCounts(loadDatabaseCounts);
   return h(
@@ -764,6 +765,14 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   { className: 'account-menu-settings account-menu-action', href: `#page-${encodeURIComponent(settingsPage.id)}` },
                   octicon('gear'),
                   h('span', null, 'Settings')
+                )
+                : null,
+              transactionsPage
+                ? h(
+                  'a',
+                  { className: 'account-menu-transactions account-menu-action', href: `#page-${encodeURIComponent(transactionsPage.id)}` },
+                  octicon('history'),
+                  h('span', null, 'Transactions')
                 )
                 : null,
               dashboardRepository

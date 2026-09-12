@@ -1209,6 +1209,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
   await accountMenu.locator('summary').click();
   await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
+  await expect(accountMenu.getByRole('link', { name: 'Transactions' })).toBeVisible();
   await expect(accountMenu.getByRole('link', { name: 'Open the dashboard workflow on GitHub Actions' })).toBeVisible();
   await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
   await expect(accountMenu.getByRole('button', { name: 'Reset local data' })).toBeVisible();
@@ -1223,6 +1224,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await accountMenu.getByRole('button', { name: 'Light' }).click();
   await expect(page.locator('.dashboard-root')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.theme'))).toBe('light');
+  await accountMenu.getByRole('link', { name: 'Transactions' }).click();
+  await expect(page).toHaveURL(/#page-transactions$/);
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(page.locator('[data-page-id="transactions"] [data-view-layout="full-view"]')).toBeVisible();
+  await accountMenu.locator('summary').click();
   await accountMenu.getByRole('link', { name: 'Settings' }).click();
   await expect(page).toHaveURL(/#page-configuration$/);
   await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();

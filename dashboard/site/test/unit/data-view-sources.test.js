@@ -141,6 +141,23 @@ describe('canonical view sources', () => {
     });
   });
 
+  it('projects local ingestion transactions for the Transactions view', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['transactions']);
+
+    expect(Object.keys(projected)).toEqual(['transactions']);
+    expect(projected.transactions).toMatchObject({
+      source: 'transactions',
+      rows: [{
+        kind: 'ingest-dashboard-sources',
+        'created-at': expect.any(String),
+        'committed-records': expect.any(Number)
+      }],
+      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+    });
+  });
+
   it('projects package rows and workflow membership from canonical records', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
