@@ -1,6 +1,6 @@
 name: CAO Dashboard
 description: Deploy an access-controlled, read-only Central Agentic Ops report with GitHub Pages and optional background data updates. Requires the activity package.
-min-version: v0.89.7
+min-version: v0.89.8
 experimental: true
 includes:
   - source: dashboard.yml

@@ -90,7 +90,7 @@ Commands must be single-line `gh aw ...` invocations. The canvas extension runs
 GitHub CLI directly without a shell and supplies the user-approved
 `GITHUB_TOKEN` as `GH_TOKEN` to that process. When `gh aw` is unavailable, an
 approved action first attempts `gh extension install github/gh-aw`. If that
-installation fails, it downloads and runs the pinned `v0.89.7` installer from
+installation fails, it downloads and runs the pinned `v0.89.8` installer from
 the official `github/gh-aw` repository, then verifies `gh aw` before continuing.
 Boolean action arguments render as checkboxes and may append only their declared
 canonical long option to the command preview and executed argv.
