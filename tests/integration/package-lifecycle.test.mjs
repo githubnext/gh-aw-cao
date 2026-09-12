@@ -129,13 +129,6 @@ const softwareDevelopmentPracticesExpectedFiles = [
   ".github/workflows/software-development-practices-nist-ssdf.md",
   ".github/workflows/software-development-practices.md",
 ];
-const caoBootstrapExpectedFiles = [
-  ".github/aw/cao/cao.schema.json",
-  ".github/aw/cao/setup-github-apps.mjs",
-  ".github/aw/cao/src/control.mjs",
-  ".github/aw/cao/src/policy.mjs",
-];
-
 const repositoryOnlyFiles = [
   ".github/aw/e2e/run-canary.sh",
   ".github/aw/e2e/run-stress.sh",
@@ -184,18 +177,7 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
   const consumer = await installPackage(packageSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
-    const expectedBootstrap = new Map(caoBootstrapExpectedFiles.map((relativePath) => [
-      relativePath,
-      readFileSync(join(consumer, relativePath), "utf8"),
-    ]));
-    for (const relativePath of caoBootstrapExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted CAO bootstrap file ${relativePath}`);
-    }
-    assert.match(
-      run(process.execPath, [join(consumer, ".github", "aw", "cao", "setup-github-apps.mjs"), "--help"], consumer),
-      /^Usage: cao-setup \[options\]/,
-      "root package installed an unusable cao-setup Node CLI",
-    );
+    assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
     const policyPath = join(consumer, ".github", "workflows", "cao.json");
     const policy = `${JSON.stringify({
       version: 1,
@@ -257,13 +239,7 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     assert.match(updatedOrchestrator, /^max-ai-credits: 250$/m);
     assert.doesNotMatch(updatedOrchestrator, /^max-ai-credits: 251$/m);
     assert.equal(workflowBody(updatedOrchestrator), workflowBody(orchestrator));
-    for (const [relativePath, expected] of expectedBootstrap) {
-      assert.equal(
-        readFileSync(join(consumer, relativePath), "utf8"),
-        expected,
-        `gh aw update changed ${relativePath}`,
-      );
-    }
+    assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
     assert.equal(readFileSync(policyPath, "utf8"), policy, "gh aw update changed consumer-owned CAO policy");
   } finally {
     rmSync(consumer, { recursive: true, force: true });

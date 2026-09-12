@@ -307,7 +307,7 @@ From the control repository:
 gh aw update --major --cool-down 0 --create-pull-request
 ```
 
-The command updates the installed CAO package and opens a pull request containing its package-owned workflows, runtime modules, generated locks, and ownership records. Review that proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
+The command updates the installed CAO package and opens a pull request containing its package-owned workflows, generated locks, ownership records, and immutable runtime source identity. Review that proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
 
 ### Catalog Release Revocation
 

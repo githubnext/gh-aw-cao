@@ -76,6 +76,43 @@ jobs:
           persist-credentials: false
           token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
 
+      - name: Resolve CAO control source
+        id: cao_control_source
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          set -euo pipefail
+          local_runtime="$GITHUB_WORKSPACE/.cao/.github/workflows/shared/control.mjs"
+          if [[ -f "$local_runtime" ]]; then
+            echo "external=false" >> "$GITHUB_OUTPUT"
+            echo "runtime=$local_runtime" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          workflow_ref="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/}"
+          workflow_path="${workflow_ref%@*}"
+          source="$(sed -n 's/^# Source: //p' "$GITHUB_WORKSPACE/.cao/$workflow_path" | head -n 1)"
+          if [[ ! "$source" =~ ^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(/[A-Za-z0-9_./-]+)?@([0-9a-fA-F]{40,64})$ ]]; then
+            echo "Cannot resolve immutable CAO source from $workflow_path" >&2
+            exit 1
+          fi
+          echo "external=true" >> "$GITHUB_OUTPUT"
+          echo "repository=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          echo "ref=${BASH_REMATCH[3]}" >> "$GITHUB_OUTPUT"
+          echo "runtime=$GITHUB_WORKSPACE/.cao-runtime/.github/workflows/shared/control.mjs" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout installed CAO control source
+        if: ${{ steps.cao_control_source.outputs.external == 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.cao_control_source.outputs.repository }}
+          ref: ${{ steps.cao_control_source.outputs.ref }}
+          path: .cao-runtime
+          sparse-checkout: .github/workflows/shared
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ github.token }}
+
       - name: Evaluate Central Agentic Ops admission
         id: cao_admission
         uses: actions/github-script@v9.0.0
@@ -90,6 +127,7 @@ jobs:
           CAO_REQUESTED_MODE: ${{ inputs.safe_output_mode || '' }}
           CAO_REQUESTED_MAX_REPOSITORIES: ${{ inputs.max_repos || '' }}
           CAO_REQUESTED_ROLLOUT_PERCENT: ${{ inputs.rollout_percent || '' }}
+          CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
         with:
           github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
@@ -128,11 +166,7 @@ jobs:
             };
             let control;
             try {
-              const checkout = `${process.env.GITHUB_WORKSPACE || '.'}/.cao`;
-              const runtime = fs.existsSync(`${checkout}/.github/aw/cao/src/control.mjs`)
-                ? `${checkout}/.github/aw/cao/src/control.mjs`
-                : `${checkout}/.github/workflows/shared/control.mjs`;
-              control = await import(runtime);
+              control = await import(process.env.CAO_CONTROL_RUNTIME);
             } catch (error) {
               await failClosed(error);
               return;
@@ -231,15 +265,11 @@ jobs:
           CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
           CAO_ORCHESTRATOR_CREDITS: "${{ github.aw.import-inputs.orchestrator_credits }}"
           CAO_WORKER_CREDITS_PER_TARGET: "${{ github.aw.import-inputs.worker_credits_per_target }}"
+          CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
         with:
           github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
-            const fs = require('fs');
-            const checkout = `${process.env.GITHUB_WORKSPACE || '.'}/.cao`;
-            const runtime = fs.existsSync(`${checkout}/.github/aw/cao/src/control.mjs`)
-              ? `${checkout}/.github/aw/cao/src/control.mjs`
-              : `${checkout}/.github/workflows/shared/control.mjs`;
-            const control = await import(runtime);
+            const control = await import(process.env.CAO_CONTROL_RUNTIME);
             process.exitCode = 0;
             await control.main({ core, github, context, exec, io, getOctokit }, ['precompute']);
             if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);

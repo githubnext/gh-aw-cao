@@ -115,7 +115,7 @@ For private or internal targets, alternate review repositories, or live writes, 
 | `GH_AW_GITHUB_TOKEN` | PAT fallback | Fine-grained token for cross-repository access. |
 | `GH_AW_CI_TOKEN` | Optional Dependabot path | Additional token used only when an empty CI commit is required. |
 
-The root package manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create and install both Apps with the package-installed Node CLI, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Each path uses only its documented credential fallback when that credential's reach is sufficient.
+The root package manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create and install both Apps with the Node CLI from the pinned CAO source, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Each path uses only its documented credential fallback when that credential's reach is sufficient.
 
 ## Manual Inputs
 
@@ -169,10 +169,10 @@ Installed Central Agentic Ops packages do not include these optional provider fi
 
 ## Sources of Truth
 
-- Machine-readable policy schema: installed at `.github/aw/cao/cao.schema.json`, with `.github/workflows/shared/cao.schema.json` as the source-managed location
-- Runtime policy resolution: installed at `.github/aw/cao/src/policy.mjs`, with `.github/workflows/shared/policy.mjs` as the source-managed location, and [Control Policy Specification](control-policy-specification.md)
+- Machine-readable policy schema: `.github/workflows/shared/cao.schema.json`
+- Runtime policy resolution: `.github/workflows/shared/policy.mjs` and [Control Policy Specification](control-policy-specification.md)
 - Checked-in control policy: `.github/workflows/cao.json`
-- Deterministic control commands: installed at `.github/aw/cao/src/control.mjs`, with `.github/workflows/shared/control.mjs` as the source-managed location
+- Deterministic control commands: `.github/workflows/shared/control.mjs`
 - Shared runtime enforcement: `.github/workflows/shared/control.md`
 - Package inventory: the root and package `aw.yml` manifests
 - Credentials and permissions: [Configure Authentication](authentication.md)

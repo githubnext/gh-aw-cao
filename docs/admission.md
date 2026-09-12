@@ -15,7 +15,7 @@ Admission queries the GitHub rate-limit API and uses the returned core limit, re
 
 ## What Admission Gates
 
-The shared control component reads the package-installed `.github/aw/cao/src/control.mjs` and `.github/aw/cao/src/policy.mjs`, or the source-managed copies beside `control.md` under `.github/workflows/shared/`, from the exact `github.workflow_sha`. Admission then reads `.github/workflows/cao.json` at that revision, and authorized runs execute the `precompute` command from the same modules. They do not use policy or CAO runtime from another branch or from the agent checkout.
+The shared control component keeps one runtime under `.github/workflows/shared/`. Source-managed workflows read it at the exact `github.workflow_sha`; installed workflows resolve their immutable `# Source` commit and fetch the same directory from that commit. Admission reads `.github/workflows/cao.json` at the workflow revision, and authorized runs execute `precompute` from the resolved immutable runtime.
 
 | Check | Admitted when |
 | --- | --- |
@@ -59,13 +59,13 @@ Failure in either phase prevents agent execution. Admission denial skips activat
 Setup creates one atomic control-plane revision:
 
 1. Install the gh-aw package from an immutable CAO tag or commit.
-2. Verify that the root package materialized `.github/aw/cao/src/control.mjs` and `.github/aw/cao/src/policy.mjs` from that same CAO revision.
+2. Verify that every installed lock resolves the immutable CAO source containing `.github/workflows/shared/control.mjs` and `.github/workflows/shared/policy.mjs`.
 3. Declare the installed package and its worker-to-workflow mapping in `.github/workflows/cao.json`.
-4. Commit the workflows, generated locks, CAO runtime, and policy together, then push before running the operation.
+4. Commit the workflows, generated locks, package records, and policy together, then push before running the operation.
 
-The root CAO package installs package-owned runtime copies under `.github/aw/cao` from the same pinned revision as the workflows; source-managed repositories keep the originals beside `control.md` under `.github/workflows/shared`. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
+The root CAO package records one immutable source revision instead of installing duplicate runtime copies. Controlled workflows fetch `.github/workflows/shared/` from that source when the directory is not present locally. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
 
-Root package installation installs the CAO runtime, but it does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
+Root package installation records the immutable CAO runtime source, but it does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 
 The [Configuration Reference](configuration.md) defines every policy field. The phase that uses each group is:
 
@@ -83,7 +83,7 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 
 | Reason | Check marked ❌ | Configuration or setup to check |
 | --- | --- | --- |
-| Cannot read or execute CAO runtime | Runtime revision | Install both `.github/aw/cao/src` runtime files from the same immutable package revision, or keep both source-managed modules under `.github/workflows/shared`, and commit them with the workflows. |
+| Cannot read or execute CAO runtime | Runtime revision | Verify the installed workflow has an immutable package source marker and that `.github/workflows/shared/control.mjs` and `policy.mjs` exist at that source commit. |
 | `control policy validation failed` | Policy document | Validate policy keys, types, ranges, unique names, and expressions in `.github/workflows/cao.json`. |
 | `control-plane-absent` | Control plane | Add `control-plane` to `.github/workflows/cao.json`. |
 | `role must be orchestrator or worker`, `worker identity is required`, `worker identity is forbidden for orchestrators` | Workflow identity | Fix the dispatched role and worker identity for the workflow. |

@@ -66,6 +66,45 @@ jobs:
         with:
           node-version: 24
 
+      - name: Resolve CAO control source
+        id: cao-control-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f .github/workflows/shared/control.mjs ]]; then
+            echo "external=false" >> "$GITHUB_OUTPUT"
+            echo "runtime=$GITHUB_WORKSPACE/.github/workflows/shared/control.mjs" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node <<'EOF'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const recordsDirectory = ".github/aw/packages";
+          const record = fs.readdirSync(recordsDirectory)
+            .filter((name) => name.endsWith(".json"))
+            .map((name) => JSON.parse(fs.readFileSync(path.join(recordsDirectory, name), "utf8")))
+            .find((candidate) => candidate.files?.some((file) =>
+              file.destination === ".github/workflows/activity.yml"));
+          const match = record?.source?.match(/^([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\/[A-Za-z0-9_./-]+)?@([0-9a-fA-F]{40,64})$/);
+          if (!match) throw new Error("cannot resolve immutable CAO source from package ownership");
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,
+            `external=true\nrepository=${match[1]}\nref=${match[2]}\n` +
+            `runtime=${process.env.GITHUB_WORKSPACE}/.cao-runtime/.github/workflows/shared/control.mjs\n`);
+          EOF
+
+      - name: Checkout installed CAO control source
+        if: ${{ steps.cao-control-source.outputs.external == 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.cao-control-source.outputs.repository }}
+          ref: ${{ steps.cao-control-source.outputs.ref }}
+          path: .cao-runtime
+          sparse-checkout: .github/workflows/shared
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ github.token }}
+
       - name: Restore activity cache
         id: activity-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -93,11 +132,8 @@ jobs:
             echo "Activity inventory collector is unavailable" >&2
             exit 1
           fi
-          if [[ -f .github/aw/cao/src/control.mjs ]]; then
-            control_runtime=.github/aw/cao/src/control.mjs
-          elif [[ -f .github/workflows/shared/control.mjs ]]; then
-            control_runtime=.github/workflows/shared/control.mjs
-          else
+          control_runtime="${{ steps.cao-control-source.outputs.runtime }}"
+          if [[ ! -f "$control_runtime" ]]; then
             echo "CAO control runtime is unavailable" >&2
             exit 1
           fi
