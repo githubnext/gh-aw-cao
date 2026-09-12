@@ -247,8 +247,7 @@
         );
         if (settingsActions) {
           const dialogs = [...settingsActions.querySelectorAll("dialog")];
-          dashboard.querySelector(".account-menu-popover .reset-dashboard-control")
-            ?.before(settingsActions);
+          dashboard.querySelector(".account-menu-popover")?.append(settingsActions);
           for (const dialog of dialogs) dashboard.append(dialog);
         }
         const previousDashboard = root.firstElementChild;

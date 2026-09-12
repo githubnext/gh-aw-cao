@@ -110,7 +110,7 @@ export function renderResetDashboardControl(options = {}) {
   }, 'Reset'));
   trigger = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
-    className: 'account-menu-reset',
+    className: 'reset-dashboard-trigger',
     onClick: open
   }, octicon('trash'), h('span', null, 'Reset local data')));
   dialog.append(

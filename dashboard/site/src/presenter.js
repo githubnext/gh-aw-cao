@@ -8,7 +8,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderCheckbox, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
+import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -16,7 +16,7 @@ import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from '
 import { renderDataView } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
-import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
+import { restoreDashboardTheme } from './components/theme-settings.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { processRows } from './data-processor.js';
@@ -28,13 +28,7 @@ import { deriveDataHealthCalloutSources } from './data-health.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
-import { createDatabaseCountLoader, formatDatabaseCounts, renderSettingsDatabaseCounts } from './database-counts.js';
-import {
-  automaticDashboardDataUpdatesEnabled,
-  onAutomaticDashboardDataUpdatesSettingChange,
-  periodicBackgroundSyncSupported,
-  setAutomaticDashboardDataUpdatesEnabled
-} from './dashboard-data-updates.js';
+import { createDatabaseCountLoader, formatDatabaseCounts } from './database-counts.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -93,7 +87,6 @@ const REFRESH_CONTROL_DESCRIPTION = 'Reload the dashboard to refresh cached data
 const REFRESH_WORKFLOW_DESCRIPTION = 'Open the dashboard workflow on GitHub Actions';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
-const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
 
 /**
@@ -266,7 +259,8 @@ export function renderDashboard(input) {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });
   enableSidebarToggle(root);
-  enableThemeToggle(root);
+  enableAccountMenuDismissal(root);
+  restoreDashboardTheme(root);
   enableMobileNavigationMenu(root);
   enableHorizonOutsideClickDismissal(root);
   root.addEventListener('dashboard-time-window-change', (event) => {
@@ -375,7 +369,7 @@ function inferOrganizationName(sources) {
  */
 function renderSidebar(pages, title, navigation) {
   const pagesById = new Map(pages.map((page) => [page.id, page]));
-  const primaryPages = pages.filter((page) => page.id !== 'configuration');
+  const primaryPages = pages;
   const configuredSections = Array.isArray(navigation) && navigation.length > 0
     ? navigation
       .map((section) => ({
@@ -384,7 +378,6 @@ function renderSidebar(pages, title, navigation) {
         pages: (Array.isArray(section?.pages) ? section.pages : [])
           .map((pageId) => pagesById.get(pageId))
           .filter((page) => page !== undefined)
-          .filter((page) => page.id !== 'configuration')
       }))
       .filter((section) => section.pages.length > 0)
     : [{ label: undefined, experimental: false, pages: primaryPages }];
@@ -599,48 +592,11 @@ function enableSidebarToggle(root) {
  * Restores and persists the dashboard color theme.
  * @param {HTMLElement} root
  */
-function enableThemeToggle(root) {
-  const toggles = [...root.querySelectorAll('[data-theme-value]')];
-  if (toggles.length === 0) return;
-  const view = root.ownerDocument.defaultView;
-
-  /** @param {'system'|'light'|'dark'} theme */
-  const setTheme = (theme) => {
-    if (theme === 'system') delete root.dataset.theme;
-    else root.dataset.theme = theme;
-    for (const toggle of toggles) {
-      if (!(toggle instanceof HTMLButtonElement)) continue;
-      const selected = toggle.dataset.themeValue === theme;
-      toggle.setAttribute('aria-pressed', String(selected));
-    }
-  };
-
-  /** @type {'system'|'light'|'dark'} */
-  let theme = 'system';
-  try {
-    const savedTheme = view?.localStorage.getItem(THEME_STORAGE_KEY);
-    if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme;
-  } catch {
-    // Storage can be unavailable in embedded or privacy-restricted contexts.
-  }
-  setTheme(theme);
-
-  for (const toggle of toggles) {
-    toggle.addEventListener('click', () => {
-      const theme = toggle instanceof HTMLElement ? toggle.dataset.themeValue : undefined;
-      if (theme !== 'system' && theme !== 'light' && theme !== 'dark') return;
-      setTheme(theme);
-      try {
-        view?.localStorage.setItem(THEME_STORAGE_KEY, theme);
-      } catch {
-        // The theme still applies for the current render when storage is unavailable.
-      }
-    });
-  }
-
+function enableAccountMenuDismissal(root) {
   const menu = root.querySelector('.account-menu');
-  if (!(menu instanceof HTMLDetailsElement)) return;
-  enableDetailsMenuDismissal(root, menu, '.account-menu-action');
+  if (menu instanceof HTMLDetailsElement) {
+    enableDetailsMenuDismissal(root, menu, '.account-menu-action');
+  }
 }
 
 /**
@@ -720,12 +676,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
   const initialPageDescription = initialPage?.description;
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
-  const settingsPage = pages.find((page) => page.id === 'configuration');
   const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
-  const settingsDatabaseCounts = renderSettingsDatabaseCounts(
-    loadDatabaseCounts,
-    [renderBackgroundServiceWorkerSetting()]
-  );
   return h(
     'div',
     { className: 'app-main' },
@@ -777,10 +728,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
           h(
             'details',
             {
-              className: 'account-menu',
-              ontoggle: /** @param {Event} event */ (event) => {
-                if (/** @type {HTMLDetailsElement} */ (event.currentTarget).open) settingsDatabaseCounts.load();
-              }
+              className: 'account-menu'
             },
             h(
               'summary',
@@ -795,14 +743,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
             h(
               'div',
               { className: 'account-menu-popover' },
-              settingsPage
-                ? h(
-                  'a',
-                  { className: 'account-menu-settings account-menu-action', href: `#page-${encodeURIComponent(settingsPage.id)}` },
-                  octicon('gear'),
-                  h('span', null, 'Settings')
-                )
-                : null,
               dashboardRepository
                 ? h(
                   'a',
@@ -826,21 +766,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   },
                   octicon('sync'),
                   h('span', null, 'Refresh')
-                ),
-              h(
-                'fieldset',
-                { className: 'appearance-settings' },
-                h('legend', null, 'Appearance'),
-                h(
-                  'div',
-                  { className: 'appearance-options' },
-                  h('button', { type: 'button', dataset: { themeValue: 'system' }, 'aria-pressed': 'false' }, octicon('device-desktop'), h('span', null, 'System')),
-                  h('button', { type: 'button', dataset: { themeValue: 'light' }, 'aria-pressed': 'false' }, octicon('sun'), h('span', null, 'Light')),
-                  h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
                 )
-              ),
-              settingsDatabaseCounts.element,
-              renderResetDashboardControl()
             )
           )
         )
@@ -872,60 +798,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
       )
     )
   );
-}
-
-function renderBackgroundServiceWorkerSetting() {
-  const supported = periodicBackgroundSyncSupported();
-  const enabled = () => {
-    try {
-      return automaticDashboardDataUpdatesEnabled();
-    } catch {
-      return false;
-    }
-  };
-  /** @type {HTMLInputElement} */
-  let checkbox;
-  const update = () => {
-    checkbox.checked = enabled();
-  };
-  checkbox = renderCheckbox({
-    checked: enabled(),
-    disabled: !supported,
-    ariaLabel: 'Background sync',
-    stopClickPropagation: true,
-    onChange: /** @param {Event} event */ (event) => {
-      try {
-        setAutomaticDashboardDataUpdatesEnabled(
-          /** @type {HTMLInputElement} */ (event.currentTarget).checked
-        );
-      } catch {
-        update();
-      }
-    }
-  });
-  const control = h(
-    'label',
-    {
-      className: `background-sync-setting account-menu-action${supported ? '' : ' background-sync-setting-disabled'}`,
-      title: supported ? undefined : 'Periodic Background Sync is not supported by this browser.'
-    },
-    octicon('sync'),
-    h('span', null, 'Background sync'),
-    checkbox
-  );
-  const stopSettingUpdates = onAutomaticDashboardDataUpdatesSettingChange(update);
-  let wasConnected = control.isConnected;
-  const observer = new MutationObserver(() => {
-    if (control.isConnected) {
-      wasConnected = true;
-      return;
-    }
-    if (!wasConnected) return;
-    observer.disconnect();
-    stopSettingUpdates();
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  return control;
 }
 
 /**
