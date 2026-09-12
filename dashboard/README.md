@@ -76,9 +76,15 @@ dashboard:
       label: Upgrade
       description: Upgrade the repository's Agentic Workflows files.
       icon: download
-      command: gh aw upgrade
+      command: gh aw upgrade --repo {{repository}}
       placement: settings
       arguments:
+        - id: create-pull-request
+          label: Create pull request
+          description: Create a pull request with the generated workflow upgrades.
+          type: boolean
+          flag: --create-pull-request
+          default: true
         - id: pre-releases
           label: Include pre-releases
           type: boolean
@@ -88,11 +94,14 @@ dashboard:
 
 Commands must be single-line `gh aw ...` invocations. The canvas extension runs
 GitHub CLI directly without a shell and supplies the user-approved
-`GITHUB_TOKEN` as `GH_TOKEN` to that process. When `gh aw` is unavailable, an
-approved action first attempts `gh extension install github/gh-aw`. If that
-installation fails, it downloads and runs the pinned `v0.89.8` installer from
-the official `github/gh-aw` repository, then verifies `gh aw` before continuing.
-Boolean action arguments render as checkboxes and may append only their declared
+`GITHUB_TOKEN` as `GH_TOKEN` to that process. It also derives an ephemeral
+author and committer identity from the currently authenticated GitHub CLI user
+so pull-request actions can create commits without changing global or
+repository Git configuration. When `gh aw` is unavailable, an approved action first attempts
+`gh extension install github/gh-aw`. If that installation fails, it downloads
+and runs the pinned `v0.89.8` installer from the official `github/gh-aw`
+repository, then verifies `gh aw` before continuing. Boolean action arguments
+render as checkboxes and may append only their declared
 canonical long option to the command preview and executed argv.
 
 Catalog contributors can run `npm run dashboard:local`; the same server discovers top-level package `dashboard.json` files automatically. Pass a control repository explicitly with `npm run dashboard:local -- --repo OWNER/REPOSITORY`.

@@ -310,11 +310,45 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       }],
     },
     {
+      id: "upgrade-repository",
+      label: "Upgrade repository",
+      icon: "download",
+      command: "gh aw upgrade --repo {{repository}}",
+      arguments: [{
+        id: "create-pull-request",
+        label: "Create pull request",
+        type: "boolean",
+        flag: "--create-pull-request",
+        default: true,
+      }],
+    },
+    {
       id: "update-target-repository",
       label: "Update repository",
       icon: "sync",
       command: "gh aw update --repo {{repository}}",
       placement: "row",
+      arguments: [{
+        id: "create-pull-request",
+        label: "Create pull request",
+        type: "boolean",
+        flag: "--create-pull-request",
+        default: true,
+      }],
+    },
+    {
+      id: "upgrade-target-repository",
+      label: "Upgrade repository",
+      icon: "download",
+      command: "gh aw upgrade --repo {{repository}}",
+      placement: "row",
+      arguments: [{
+        id: "create-pull-request",
+        label: "Create pull request",
+        type: "boolean",
+        flag: "--create-pull-request",
+        default: true,
+      }],
     },
   ]));
 
@@ -335,11 +369,15 @@ test("canvas dashboard executes only declared CLI actions through the provided e
     },
     allowMissingOrigin: true,
     workingDirectory: root,
+    repository: "octo/example",
     port: 0,
   });
   try {
     const previewUrl = new URL(`${preview.url}/`);
     const origin = previewUrl.origin;
+    const servedDashboard = await fetch(new URL("dashboard.json", previewUrl));
+    assert.equal(servedDashboard.status, 200);
+    assert.equal((await servedDashboard.json()).dashboard.repository, "octo/example");
     const response = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: origin },
@@ -370,6 +408,21 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       command: "gh aw compile --strict --pre-releases",
     }]);
 
+    const upgrade = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({
+        id: "upgrade-repository",
+        values: { repository: "octo/example" },
+      }),
+    });
+    assert.equal(upgrade.status, 200);
+    await upgrade.text();
+    assert.deepEqual(calls.at(-1), {
+      id: "upgrade-repository",
+      command: "gh aw upgrade --repo octo/example --create-pull-request",
+    });
+
     const templated = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: origin },
@@ -382,7 +435,22 @@ test("canvas dashboard executes only declared CLI actions through the provided e
     await templated.text();
     assert.deepEqual(calls.at(-1), {
       id: "update-target-repository",
-      command: "gh aw update --repo octo/example",
+      command: "gh aw update --repo octo/example --create-pull-request",
+    });
+
+    const targetUpgrade = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({
+        id: "upgrade-target-repository",
+        values: { repository: "octo/example" },
+      }),
+    });
+    assert.equal(targetUpgrade.status, 200);
+    await targetUpgrade.text();
+    assert.deepEqual(calls.at(-1), {
+      id: "upgrade-target-repository",
+      command: "gh aw upgrade --repo octo/example --create-pull-request",
     });
 
     const unsafeTemplate = await fetch(new URL("__cli_action", previewUrl), {
@@ -394,7 +462,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       }),
     });
     assert.equal(unsafeTemplate.status, 400);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 4);
 
     const undeclared = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
@@ -402,7 +470,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       body: JSON.stringify({ id: "not-declared" }),
     });
     assert.equal(undeclared.status, 404);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 4);
 
     const invalidArgument = await fetch(new URL("__cli_action", previewUrl), {
       method: "POST",
@@ -413,7 +481,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       }),
     });
     assert.equal(invalidArgument.status, 400);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 4);
   } finally {
     await preview.close();
     await rm(root, { recursive: true, force: true });
