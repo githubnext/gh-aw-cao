@@ -39,11 +39,17 @@ const SWIMLANE_DEFINITIONS = [
   ['skipped', 'Skipped'],
   ['success', 'Success']
 ];
+/**
+ * Swimlane coordinates are expressed in SVG viewBox units. `topY` and
+ * `laneGap` place the categorical lanes, while `axisY` anchors the time axis
+ * below the final lane.
+ */
 export const SWIMLANE_LAYOUT = Object.freeze({
   viewBoxWidth: 120,
   startX: 19,
   endX: 116,
   labelX: 17.5,
+  labelBaselineOffset: 1,
   topY: 5,
   laneGap: 7.25,
   axisY: 41.25,
@@ -942,7 +948,7 @@ function renderSwimlaneChart(points, timeRange) {
       ...SWIMLANE_DEFINITIONS.flatMap(([lane, label], laneIndex) => {
         const y = SWIMLANE_LAYOUT.topY + (laneIndex * SWIMLANE_LAYOUT.laneGap);
         return [
-          h('text', { className: 'swimlane-label', x: SWIMLANE_LAYOUT.labelX, y: y + 1, 'text-anchor': 'end' }, label),
+          h('text', { className: 'swimlane-label', x: SWIMLANE_LAYOUT.labelX, y: y + SWIMLANE_LAYOUT.labelBaselineOffset, 'text-anchor': 'end' }, label),
           h('line', { className: 'swimlane-separator', x1: SWIMLANE_LAYOUT.startX, y1: y, x2: SWIMLANE_LAYOUT.endX, y2: y }),
           ...(sectionsByLane.get(lane) ?? []).map((section) => renderSwimlaneSection(section, y))
         ];
