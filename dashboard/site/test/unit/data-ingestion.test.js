@@ -378,6 +378,29 @@ describe('canonical source ingestion and queries', () => {
     ]);
   });
 
+  it('preserves package records across imports regardless of the TTL horizon', async () => {
+    await ingestDashboardSources(indexedDB, {
+      packages: {
+        rows: [{
+          package: 'durable-package',
+          'package-name': 'Durable package',
+          'observed-at': '2025-01-01T00:00:00Z'
+        }],
+        metadata: { 'as-of': '2025-01-01T00:00:00Z' }
+      }
+    }, {
+      now: Date.parse('2025-01-01T00:00:00Z')
+    });
+
+    await ingestDashboardSources(indexedDB, sources, {
+      now: Date.parse('2026-09-09T05:00:00Z')
+    });
+
+    await expect(createCanonicalQueries(indexedDB).packages.list()).resolves.toEqual([
+      expect.objectContaining({ slug: 'durable-package', name: 'Durable package' })
+    ]);
+  });
+
   it('reapplies a previously seen payload after a newer payload', async () => {
     const refreshed = structuredClone(sources);
     Object.assign(refreshed.repositories.rows[0], { visibility: 'private' });

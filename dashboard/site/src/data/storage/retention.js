@@ -8,8 +8,8 @@ export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
 
 /**
  * Stores whose retention is decided by observation time. Structural parents
- * (`packages`, `repositories`, `workflows`) are retained by reachability instead so a
- * retained run never loses its hierarchy.
+ * are never TTLed: repositories and workflows are retained by reachability so
+ * a retained run never loses its hierarchy, while packages persist across imports.
  * @type {Record<string, string[]>}
  */
 const RETENTION_TIMESTAMPS = {
@@ -215,28 +215,19 @@ function pruneOrphans(merged) {
 }
 
 /**
- * Collects structural parents that neither the current collection nor any
- * retained descendant still references.
+ * Collects repository and workflow parents that neither the current collection
+ * nor any retained descendant still references. Package records are durable
+ * inventory and are never collected during imports.
  *
  * @param {Record<string, Map<string, Record<string, unknown>>>} merged
  * @param {import('../model/schema.js').CanonicalBatch} incoming
  */
 function collectUnreferencedParents(merged, incoming) {
-  const incomingPackages = new Set(incoming.packages.map((record) => String(record.id)));
   const incomingWorkflows = new Set(incoming.workflows.map((record) => String(record.id)));
   const incomingRepositories = new Set(incoming.repositories.map((record) => String(record.id)));
   const referencedWorkflows = new Set([...merged.runs.values()].map((run) => String(run.workflowId)));
   for (const [id] of merged.workflows) {
     if (!incomingWorkflows.has(id) && !referencedWorkflows.has(id)) merged.workflows.delete(id);
-  }
-  const referencedPackages = new Set(
-    [...merged.workflows.values()]
-      .map((workflow) => workflow.packageId)
-      .filter((id) => id !== undefined && id !== null)
-      .map(String)
-  );
-  for (const [id] of merged.packages) {
-    if (!incomingPackages.has(id) && !referencedPackages.has(id)) merged.packages.delete(id);
   }
   const referencedRepositories = new Set([
     ...[...merged.workflows.values()].map((workflow) => String(workflow.repositoryId)),
