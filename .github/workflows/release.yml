@@ -124,7 +124,7 @@ jobs:
         with:
           node-version: 24
       - name: Install gh-aw
-        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.7 peeled tag commit
+        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.7 tag resolves to this commit
         with:
           version: v0.89.7
       - name: Validate files installed from aw.yml
