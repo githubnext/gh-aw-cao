@@ -11,7 +11,7 @@
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
       import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
-      import { attachCliActions } from "./components/cli-actions.js";
+      import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -193,6 +193,12 @@
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
         renderedHorizonSourceLoader = loadHorizonSources;
+        setDeclaredCliActions(dashboardDocument.dashboard["cli-actions"] ?? [], {
+          canExecute: canExecuteCliActions,
+          templateValues: dashboardDocument.dashboard.repository
+            ? { repository: dashboardDocument.dashboard.repository }
+            : {}
+        });
         const dashboard = renderDashboard({
           document: dashboardDocument,
           sources,

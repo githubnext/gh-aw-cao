@@ -266,6 +266,21 @@ export function renderRowCliAction(actionId, templateValues) {
 }
 
 /**
+ * Render one declared CLI action with its authored label and description.
+ * @param {string} actionId
+ * @param {Record<string, string>} [templateValues]
+ */
+export function renderDeclaredCliAction(actionId, templateValues = {}) {
+  const action = declaredCliActions.find((candidate) => candidate.id === actionId);
+  if (!action) return null;
+  const rendered = renderCliActionControl(action, {
+    templateValues: { ...declaredCliActionTemplateValues, ...templateValues },
+    canExecute: declaredCliActionsCanExecute
+  });
+  return h('span', { className: 'declared-cli-action' }, rendered.trigger, rendered.dialog);
+}
+
+/**
  * Render dashboard-declared CLI actions. Every invocation requires a fresh,
  * explicit confirmation; approval is never persisted or inferred.
  * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions

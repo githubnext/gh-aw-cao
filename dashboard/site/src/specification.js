@@ -83,6 +83,7 @@ export const VIEW_ELEMENT_VALUES = [
   'package-dispatches',
   'package-reports',
   'package-route',
+  'maintenance-view',
   'workflow-route',
   'workflow-route-page',
   'outcome-detail',
@@ -412,7 +413,7 @@ export const SOURCE_VALUES = [
 
 export const SOURCE_FIELDS = {
   organizations: ['organization', 'organization-name', 'observed-at', 'organization-link'],
-  packages: ['package', 'package-name', 'package-description', 'package-icon', 'package-mode', 'package-enabled', 'package-registration', 'package-max-repositories', 'package-rollout-percent', 'package-monthly-ai-credit-budget', 'package-aic-allowance', 'package-worker-count', 'package-inventory-warnings', 'package-workers', 'package-targets', 'package-min-version', 'package-experimental', 'package-readme-path', 'package-readme', 'observed-at', 'package-link'],
+  packages: ['package', 'package-name', 'package-description', 'package-icon', 'package-mode', 'package-enabled', 'package-registration', 'package-max-repositories', 'package-rollout-percent', 'package-monthly-ai-credit-budget', 'package-aic-allowance', 'package-worker-count', 'package-inventory-warnings', 'package-workers', 'package-targets', 'package-min-version', 'package-version', 'package-current-version', 'package-update-state', 'package-experimental', 'package-readme-path', 'package-readme', 'observed-at', 'package-link'],
   repositories: ['organization', 'repository', 'repository-name', 'rollout-mode', 'observed-at', 'organization-link', 'repository-link'],
   workflows: ['organization', 'repository', 'package', 'package-name', 'package-icon', 'workflow', 'workflow-name', 'workflow-role', 'workflow-active', 'admission-status', 'admission-reason', 'gh-aw-version', 'gh-aw-current-version', 'gh-aw-version-label', 'gh-aw-update-state', 'gh-aw-metadata', 'gh-aw-manifest', 'rollout-mode', 'max-ai-credits', 'package-aic-allowance', 'package-worker-count', 'package-inventory-warnings', 'inventory-ready', 'observed-at', 'organization-link', 'repository-link', 'workflow-link', 'external-link'],
   runs: ['organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-title', 'event', 'branch', 'head-sha', 'created-at', 'started-at', 'ended-at', 'updated-at', 'run-status', 'run-conclusion', 'classification', 'duration', 'action-minutes', 'github-api-calls', 'safe-items-count', 'error-count', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'failure-detail', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'agent-id', 'agent-version', 'model-id', 'gh-aw-version', 'aic-total', 'engine', 'engine-id', 'engine-version', 'requested-model', 'resolved-model', 'agent-runtime', 'firewall-version', 'gateway-version', 'data', 'logs-payload', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],

@@ -8,8 +8,8 @@
     "cli-actions": [
       {
         "id": "update-repository",
-        "label": "Update",
-        "description": "Update installed Agentic Workflow packages in this repository.",
+        "label": "Update all",
+        "description": "Update all installed Agentic Workflow packages in this repository.",
         "icon": "sync",
         "command": "gh aw update --repo {{repository}}",
         "placement": "settings",
@@ -26,8 +26,8 @@
       },
       {
         "id": "upgrade-repository",
-        "label": "Upgrade",
-        "description": "Upgrade the repository's Agentic Workflows files.",
+        "label": "Upgrade all",
+        "description": "Upgrade the gh-aw compiler version across this repository's Agentic Workflows files.",
         "icon": "download",
         "command": "gh aw upgrade --repo {{repository}}",
         "placement": "settings",
@@ -2270,6 +2270,71 @@
         "order-by": [
           {
             "field": "package-name",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "maintenance-repositories",
+        "intent": "List each repository's observed gh-aw compiler versions and whether any workflow requires an upgrade.",
+        "from": "workflows",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "repository-coordinate"
+          ],
+          "values": [
+            {
+              "field": "gh-aw-version",
+              "as": "gh-aw-version",
+              "reducer": "distinct-list"
+            },
+            {
+              "field": "gh-aw-current-version",
+              "as": "gh-aw-current-version",
+              "reducer": "distinct-list"
+            },
+            {
+              "field": "gh-aw-update-state",
+              "as": "gh-aw-update-state",
+              "reducer": "distinct-list"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "repository-coordinate",
+            "as": "repository"
+          },
+          {
+            "field": "gh-aw-version"
+          },
+          {
+            "field": "gh-aw-current-version"
+          },
+          {
+            "field": "gh-aw-update-state"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "repository",
             "direction": "asc"
           }
         ]
@@ -5664,57 +5729,26 @@
         ]
       },
       {
-        "id": "updates",
+        "id": "maintenance",
         "kind": "custom",
-        "title": "Updates",
+        "title": "Maintenance",
         "icon": "workflow",
-        "description": "Installed gh-aw compiler versions and whether a newer gh-aw release is available.",
+        "description": "Update installed starter packages and upgrade repository compiler versions.",
         "views": [
           {
-            "id": "workflow-updates",
-            "description": "Every agentic workflow discovered in the configured scope. Unknown means the compiled workflow metadata or latest release could not be read.",
+            "id": "maintenance-actions",
+            "title": "gh-aw maintenance",
+            "description": "Review available starter updates and compiler upgrades before running a maintenance command.",
+            "intent": "Keep installed starter packages and repository gh-aw compiler versions current.",
             "data": {
-              "source": "workflows"
-            },
-            "mark": "table",
-            "empty-message": "No agentic workflows observed.",
-            "encoding": {
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "gh-aw-version",
-                  "type": "nominal",
-                  "title": "Installed version"
-                },
-                {
-                  "field": "gh-aw-current-version",
-                  "type": "nominal",
-                  "title": "Current version"
-                },
-                {
-                  "field": "gh-aw-update-state",
-                  "type": "nominal",
-                  "title": "Update state",
-                  "display": "status"
-                }
+              "sources": [
+                "packages",
+                "maintenance-repositories"
               ]
             },
-            "layout": "full-view",
-            "controls": "interactive",
-            "lazy-list": true
+            "mark": "element",
+            "element": "maintenance-view",
+            "layout": "full"
           }
         ]
       },
@@ -6368,7 +6402,7 @@
           "preview",
           "readiness",
           "github-api",
-          "updates"
+          "maintenance"
         ]
       },
       {
