@@ -76,16 +76,47 @@ jobs:
           persist-credentials: false
           token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
 
-      - name: Resolve CAO control runtime
+      - name: Resolve CAO control source
         id: cao_control_source
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
         run: |
           set -euo pipefail
-          runtime="$GITHUB_WORKSPACE/.cao/.github/workflows/shared/control.mjs"
-          if [[ ! -f "$runtime" ]]; then
-            echo "CAO control runtime is unavailable from the shared checkout" >&2
+          local_runtime="$GITHUB_WORKSPACE/.cao/.github/workflows/shared/control.mjs"
+          workflow_ref="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/}"
+          workflow_path="${workflow_ref%@*}"
+          source="$(sed -n 's/^# Source: //p' "$GITHUB_WORKSPACE/.cao/$workflow_path" | head -n 1)"
+          source_repository=
+          if [[ "$source" =~ ^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(/[A-Za-z0-9_./-]+)?@[^@]+$ ]]; then
+            source_repository="${BASH_REMATCH[1]}"
+          fi
+          if [[ -f "$local_runtime" ]] &&
+             { [[ -z "$source" ]] || [[ "${source_repository,,}" == "${GITHUB_REPOSITORY,,}" ]]; }; then
+            echo "external=false" >> "$GITHUB_OUTPUT"
+            echo "runtime=$local_runtime" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ ! "$source" =~ ^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(/[A-Za-z0-9_./-]+)?@([0-9a-fA-F]{40,64})$ ]]; then
+            echo "Cannot resolve immutable CAO source from $workflow_path" >&2
             exit 1
           fi
-          echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
+          echo "external=true" >> "$GITHUB_OUTPUT"
+          echo "repository=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          echo "ref=${BASH_REMATCH[3]}" >> "$GITHUB_OUTPUT"
+          echo "runtime=$GITHUB_WORKSPACE/.cao-runtime/.github/workflows/shared/control.mjs" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout installed CAO control source
+        if: ${{ steps.cao_control_source.outputs.external == 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.cao_control_source.outputs.repository }}
+          ref: ${{ steps.cao_control_source.outputs.ref }}
+          path: .cao-runtime
+          sparse-checkout: .github/workflows/shared
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ github.token }}
 
       - name: Evaluate Central Agentic Ops admission
         id: cao_admission

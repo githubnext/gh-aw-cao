@@ -15,7 +15,7 @@ Admission queries the GitHub rate-limit API and uses the returned core limit, re
 
 ## What Admission Gates
 
-The shared control component keeps one package-installed runtime under `.github/workflows/shared/`. The exact-`github.workflow_sha` shared checkout contains that runtime and `.github/workflows/cao.json`; authorized runs execute `precompute` from the same checkout.
+The shared control component keeps one runtime under `.github/workflows/shared/`. Source-managed workflows read it at the exact `github.workflow_sha`; installed workflows resolve their immutable `# Source` commit and fetch the same directory from that commit. Admission reads `.github/workflows/cao.json` at the workflow revision, and authorized runs execute `precompute` from the resolved immutable runtime.
 
 | Check | Admitted when |
 | --- | --- |
@@ -59,11 +59,11 @@ Failure in either phase prevents agent execution. Admission denial skips activat
 Setup creates one atomic control-plane revision:
 
 1. Install the gh-aw package from an immutable CAO tag or commit.
-2. Verify that package installation copied `.github/workflows/shared/control.mjs` and `.github/workflows/shared/policy.mjs`.
+2. Verify that every installed lock resolves the immutable CAO source containing `.github/workflows/shared/control.mjs` and `.github/workflows/shared/policy.mjs`.
 3. Declare the installed package and its worker-to-workflow mapping in `.github/workflows/cao.json`.
 4. Commit the workflows, generated locks, package records, and policy together, then push before running the operation.
 
-The root CAO package installs one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install it and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
+The root CAO package records one immutable source revision instead of installing duplicate runtime copies. Controlled workflows fetch `.github/workflows/shared/` from that source when the directory is not present locally. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
 
 Root package installation records the immutable CAO runtime source, but it does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 
