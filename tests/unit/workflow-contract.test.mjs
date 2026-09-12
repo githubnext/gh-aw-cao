@@ -826,7 +826,7 @@ test("Dependabot cooldown and duplicate prevention remain fail closed", () => {
   const workerSource = workflow("dependabot-release-train-updater.md");
   const orchestrator = parse(/^---\n([\s\S]*?)\n---/.exec(orchestratorSource)[1]);
   const worker = parse(/^---\n([\s\S]*?)\n---/.exec(workerSource)[1]);
-  const trustedUsers = ["cao-githubnext-gh-aw-cao-write[bot]", "dependabot[bot]"];
+  const trustedUsers = ["github-actions[bot]", "cao-githubnext-gh-aw-cao-write[bot]", "dependabot[bot]"];
 
   assert.equal(orchestrator.tools.github["min-integrity"], "approved");
   assert.deepEqual(orchestrator.tools.github["trusted-users"], trustedUsers);
@@ -847,11 +847,14 @@ test("Dependabot cooldown and duplicate prevention remain fail closed", () => {
   const cleanup = worker["safe-outputs"].jobs["close-unattended-dependabot-issue"];
   assert.equal(cleanup.permissions.issues, "write");
   assert.equal(cleanup.inputs.issue_number.required, true);
-  assert.match(cleanup.steps[0].run, /created_epoch > cutoff/);
-  assert.match(cleanup.steps[0].run, /\.user\.type == "Bot"/);
-  assert.match(cleanup.steps[0].run, /developer comment found/);
-  assert.match(cleanup.steps[0].run, /developer reaction found/);
-  assert.match(cleanup.steps[0].run, /developer or linked-work interaction found/);
+  assert.match(cleanup.steps[0].run, /SAFE_OUTPUT_REPO%%\/\*/);
+  assert.equal(cleanup.steps[1].uses, "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1");
+  assert.match(cleanup.steps[2].env.GH_TOKEN, /cleanup-app-token\.outputs\.token/);
+  assert.match(cleanup.steps[2].run, /created_epoch > cutoff/);
+  assert.match(cleanup.steps[2].run, /\.user\.type == "Bot"/);
+  assert.match(cleanup.steps[2].run, /developer comment found/);
+  assert.match(cleanup.steps[2].run, /developer reaction found/);
+  assert.match(cleanup.steps[2].run, /developer or linked-work interaction found/);
   assert.match(workerSource, /smart-dependabot:identity=<full-digest>/);
   assert.match(workerSource, /lowercase SHA-256 hex digest/);
   assert.match(workerSource, /replacing each run of non-ASCII-alphanumeric characters with `-`/);
