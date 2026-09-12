@@ -11,7 +11,7 @@
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
       import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
-      import { renderCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
+      import { attachCliActions } from "./components/cli-actions.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -189,9 +189,6 @@
        */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources, retryRefresh) => {
         const canExecuteCliActions = previewMode === "canvas";
-        setDeclaredCliActions(dashboardDocument.dashboard["cli-actions"] ?? [], {
-          canExecute: canExecuteCliActions
-        });
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
@@ -226,30 +223,10 @@
           }
         }
         attachCopilotPanel(dashboard);
-        const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
-        /** @type {Record<string, string>} */
-        const actionTemplateValues = {};
-        if (typeof dashboardDocument.dashboard.repository === "string") {
-          actionTemplateValues.repository = dashboardDocument.dashboard.repository;
-        }
-        const toolbarActions = renderCliActions(
-          declaredActions.filter((action) => !["settings", "row"].includes(action.placement ?? "toolbar")),
-          { templateValues: actionTemplateValues, canExecute: canExecuteCliActions }
-        );
-        if (toolbarActions) dashboard.querySelector(".report-actions")?.prepend(toolbarActions);
-        const settingsActions = renderCliActions(
-          declaredActions.filter((action) => action.placement === "settings"),
-          {
-            presentation: "settings",
-            templateValues: actionTemplateValues,
-            canExecute: canExecuteCliActions
-          }
-        );
-        if (settingsActions) {
-          const dialogs = [...settingsActions.querySelectorAll("dialog")];
-          dashboard.querySelector(".account-menu-popover")?.append(settingsActions);
-          for (const dialog of dialogs) dashboard.append(dialog);
-        }
+        attachCliActions(dashboard, dashboardDocument.dashboard["cli-actions"] ?? [], {
+          repository: dashboardDocument.dashboard.repository,
+          canExecute: canExecuteCliActions
+        });
         const previousDashboard = root.firstElementChild;
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);

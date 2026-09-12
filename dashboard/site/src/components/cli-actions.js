@@ -297,3 +297,31 @@ export function renderCliActions(actions, options = {}) {
   }
   return root;
 }
+
+/**
+ * Attach dashboard-declared CLI actions to their toolbar, settings, and row placements.
+ * @param {HTMLElement} dashboard
+ * @param {typeof declaredCliActions} actions
+ * @param {{ repository?: string, canExecute?: boolean }} [options]
+ */
+export function attachCliActions(dashboard, actions, options = {}) {
+  const canExecute = options.canExecute !== false;
+  setDeclaredCliActions(actions, { canExecute });
+  /** @type {Record<string, string>} */
+  const templateValues = {};
+  if (typeof options.repository === 'string') templateValues.repository = options.repository;
+  const toolbarActions = renderCliActions(
+    actions.filter((action) => !['settings', 'row'].includes(action.placement ?? 'toolbar')),
+    { templateValues, canExecute }
+  );
+  if (toolbarActions) dashboard.querySelector('.report-actions')?.prepend(toolbarActions);
+
+  const settingsActions = renderCliActions(
+    actions.filter((action) => action.placement === 'settings'),
+    { presentation: 'settings', templateValues, canExecute }
+  );
+  if (!settingsActions) return;
+  const dialogs = [...settingsActions.querySelectorAll('dialog')];
+  dashboard.querySelector('.account-menu-popover')?.append(settingsActions);
+  for (const dialog of dialogs) dashboard.append(dialog);
+}

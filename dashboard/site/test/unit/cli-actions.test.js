@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderCliActions, renderRowCliAction, setDeclaredCliActions } from '../../src/components/cli-actions.js';
+import { attachCliActions, renderCliActions, renderRowCliAction, setDeclaredCliActions } from '../../src/components/cli-actions.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -57,6 +57,39 @@ describe('CLI actions', () => {
     expect(checkbox.checked).toBe(true);
     expect(rendered?.querySelector('.cli-action-command')?.textContent)
       .toBe('gh aw upgrade --repo octo/example --create-pull-request');
+  });
+
+  it('attaches toolbar and settings actions to the dashboard shell', () => {
+    const dashboard = document.createElement('div');
+    const reportActions = document.createElement('div');
+    reportActions.className = 'report-actions';
+    const accountMenu = document.createElement('div');
+    accountMenu.className = 'account-menu-popover';
+    dashboard.append(reportActions, accountMenu);
+    attachCliActions(dashboard, [
+      {
+        id: 'update-repository',
+        label: 'Update repository',
+        icon: 'sync',
+        command: 'gh aw update --repo {{repository}}'
+      },
+      {
+        id: 'upgrade-repository',
+        label: 'Upgrade repository',
+        icon: 'download',
+        command: 'gh aw upgrade --repo {{repository}}',
+        placement: 'settings'
+      }
+    ], { repository: 'octo/example', canExecute: false });
+
+    expect(dashboard.querySelector('.report-actions > .cli-actions-menu')).not.toBeNull();
+    expect(dashboard.querySelector('.account-menu-popover > .cli-actions-settings')).not.toBeNull();
+    expect(dashboard.querySelectorAll('.cli-action-dialog')).toHaveLength(2);
+    expect(dashboard.querySelectorAll(':scope > .cli-action-dialog')).toHaveLength(1);
+    dashboard.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    expect(dashboard.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw update --repo octo/example');
+    expect(dashboard.querySelector('.cli-action-confirm')?.textContent).toContain('Copy command');
   });
 
   it('copies commands instead of executing them outside canvas', async () => {
