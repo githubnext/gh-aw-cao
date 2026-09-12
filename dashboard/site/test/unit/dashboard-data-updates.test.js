@@ -325,6 +325,33 @@ describe('automatic dashboard data updates', () => {
     stop();
   });
 
+  it('requests periodic background sync permission when prompted', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    const serviceWorkers = {
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    };
+    const permissions = /** @type {Permissions} */ (/** @type {unknown} */ ({
+      query: vi.fn().mockResolvedValue({ state: 'prompt' })
+    }));
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        getBattery: async () => ({ charging: true, level: 1 }),
+        permissions,
+        online: () => true,
+        scriptUrl: new URL('https://example.test/service-worker.js')
+      }
+    );
+
+    await vi.waitFor(() => expect(currentRegistration.periodicSync.register).toHaveBeenCalledOnce());
+    expect(permissions.query).toHaveBeenCalledWith({ name: 'periodic-background-sync' });
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(true);
+    stop();
+  });
+
   it('preserves the setting when periodic background sync is unsupported', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
     localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');

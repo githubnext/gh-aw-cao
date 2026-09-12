@@ -151,7 +151,7 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
   const permission = await permissions.query(
     /** @type {PermissionDescriptor} */ (/** @type {unknown} */ ({ name: 'periodic-background-sync' }))
   );
-  if (permission.state !== 'granted') {
+  if (permission.state === 'denied') {
     throw new NonRetryableBackgroundSyncError('Periodic Background Sync permission was not granted.');
   }
   try {
