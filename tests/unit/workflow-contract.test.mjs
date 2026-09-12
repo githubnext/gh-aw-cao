@@ -2377,11 +2377,15 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /^name: "SelfCare \/ Reactive UI Expert"$/m);
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: reactive-ui-expert/);
   assert.match(source, /skills:\n\s+- \.github\/skills\/reactive-ui/);
+  assert.match(source, /\.github\/skills\/migrate-dashboard-view/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /\.github\/skills\/reactive-ui\/SKILL\.md/);
   assert.match(source, /dashboard\/site\/src\/reactive\.js/);
   assert.match(source, /stable keyed rendering/);
   assert.match(source, /state`, `derived`, `effect`, `batch`, `onCleanup`/);
+  assert.match(source, /migrate one JavaScript-produced view source to a request-scoped Dashboard Language query/);
+  assert.match(source, /Define the query in `dashboard\.queries`/);
+  assert.match(source, /data-processor\.js` and `data-worker\.js/);
   assert.match(source, /Run the focused impacted JavaScript tests/);
   assert.match(source, /npm --prefix dashboard\/site run lint/);
   assert.match(source, /npm run docs:build/);
