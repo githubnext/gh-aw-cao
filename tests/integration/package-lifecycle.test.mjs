@@ -135,7 +135,6 @@ const caoBootstrapExpectedFiles = [
   ".github/aw/cao/setup-github-apps.mjs",
   ".github/aw/cao/src/control.mjs",
   ".github/aw/cao/src/policy.mjs",
-  ".github/aw/cao/upgrade.sh",
 ];
 
 const repositoryOnlyFiles = [

@@ -19,8 +19,6 @@ resources:
     destination: .github/aw/cao/src/control.mjs
   - source: .github/cao/src/policy.mjs
     destination: .github/aw/cao/src/policy.mjs
-  - source: .github/cao/upgrade.sh
-    destination: .github/aw/cao/upgrade.sh
   - source: AGENTS.md
     destination: .github/aw/default-AGENTS.md
   - source: .github/aw/instructions.md

@@ -1140,7 +1140,7 @@ test("root package installs the CAO bootstrap runtime", () => {
 
   assert.equal(policy.authorized, true);
   assert.equal(policy.package, "dependabot");
-  for (const path of ["cao.schema.json", "setup-github-apps.mjs", "src/control.mjs", "src/policy.mjs", "upgrade.sh"]) {
+  for (const path of ["cao.schema.json", "setup-github-apps.mjs", "src/control.mjs", "src/policy.mjs"]) {
     const source = `.github/cao/${path}`;
     const destination = `.github/aw/cao/${path}`;
     assert.match(rootManifest, new RegExp(`source: ${source.replaceAll(".", "\\.")}\\n\\s+destination: ${destination.replaceAll(".", "\\.")}`));
@@ -1152,15 +1152,6 @@ test("root package installs the CAO bootstrap runtime", () => {
   assert.match(updateSection, /gh aw update --major --cool-down 0 --create-pull-request/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add/);
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
-});
-
-test("CAO upgrade script proposes package updates", () => {
-  const upgrade = readFileSync(join(root, ".github", "cao", "upgrade.sh"), "utf8");
-
-  assert.match(upgrade, /^#!\/usr\/bin\/env bash\n/);
-  assert.match(upgrade, /^set -euo pipefail$/m);
-  assert.match(upgrade, /^gh aw update --major --cool-down 0 --create-pull-request$/m);
-  assert.doesNotMatch(upgrade, /gh extension (?:install|upgrade)|gh aw add/);
 });
 
 test("root package composes its operational packages through manifests", () => {
