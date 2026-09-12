@@ -858,6 +858,11 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
   await expect(view.locator('tbody tr:visible')).toHaveCount(1);
   await expect(view.locator('tbody tr:visible')).toContainText('Retained output 60');
   await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('');
+  // Wait for the cleared filter to finish re-rendering the lazy table before
+  // interacting with it, otherwise the in-flight row re-render can make the
+  // "load more" button transiently unstable/hidden and time out the click
+  // under slow CI runners.
+  await expect(view.locator('tbody tr:visible')).toHaveCount(25);
   await view.locator('[data-table-more]').click();
   await expect(view.locator('tbody tr')).toHaveCount(50);
 
@@ -2332,6 +2337,105 @@ test('full-view scrolling with a small overscroll range does not jitter the app 
     await expect(page.locator('.top-nav')).toBeVisible();
     await expect(page.locator('.org-sidebar')).toBeVisible();
   }
+});
+
+test('full-view mobile header collapses smoothly instead of jumping when scrolled', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+
+      const metadata = {
+        'source-id': 'mobile-full-view-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-01T03:00:00Z',
+        'retrieved-at': '2026-09-01T03:01:00Z',
+        'coverage-start': '2026-08-31T03:00:00Z',
+        'coverage-end': '2026-09-01T03:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        inventory: {
+          source: 'inventory',
+          rows: Array.from({ length: 60 }, (_, index) => ({
+            organization: 'githubnext',
+            repository: \`repository-\${index + 1}\`
+          })),
+          metadata
+        }
+      };
+      const dashboardDocument = {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'mobile-full-view-layout',
+          title: 'Mobile Full View Layout',
+          pages: [{
+            id: 'inventory',
+            kind: 'custom',
+            title: 'Inventory',
+            views: [{
+              id: 'inventory-list',
+              title: 'Inventory list',
+              data: { source: 'inventory' },
+              mark: 'table',
+              controls: 'interactive',
+              'lazy-list': true,
+              layout: 'full-view',
+              encoding: {
+                columns: [
+                  { field: 'organization', type: 'nominal' },
+                  { field: 'repository', type: 'nominal' }
+                ]
+              }
+            }]
+          }],
+          navigation: [{ label: 'Explore', pages: ['inventory'] }]
+        }
+      };
+
+      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+    </script>
+  `);
+
+  const view = page.locator('[data-view-layout="full-view"]');
+  const dashboardRoot = page.locator('.dashboard-root');
+  const scroll = view.locator('.table-scroll');
+  const sidebar = page.locator('.org-sidebar');
+  await expect(view).toHaveCount(1);
+  await expect(sidebar).toBeVisible();
+  const restingMaxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
+  expect(restingMaxHeight).toBeGreaterThan(0);
+
+  await scroll.evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  // The mobile header must stay a laid-out, transitionable element (never display:none)
+  // so its collapse animates smoothly instead of instantly jumping the table beneath it,
+  // which is what produced the reported scroll jitter on iPhone.
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).display)).not.toBe('none');
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).transitionProperty)).toContain('max-height');
+  // Sample the collapse repeatedly while it is in flight to confirm it actually interpolates
+  // frame-by-frame rather than jumping straight to the end state.
+  await expect.poll(async () => {
+    const maxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
+    return maxHeight > 0 && maxHeight < restingMaxHeight;
+  }, { timeout: 180, intervals: [10, 15, 20, 25] }).toBe(true);
+  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).toBe('0px');
+
+  await scroll.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(sidebar).toBeVisible();
+  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).not.toBe('0px');
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {
