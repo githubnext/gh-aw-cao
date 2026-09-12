@@ -23,6 +23,24 @@ export function automaticDashboardBackgroundUpdatesActive(storage = localStorage
   return storage.getItem(BACKGROUND_ACTIVE_STORAGE_KEY) === 'true';
 }
 
+/**
+ * @param {ServiceWorkerContainer | undefined} [serviceWorkers]
+ * @param {Permissions | undefined} [permissions]
+ * @param {object | undefined} [registrationPrototype]
+ */
+export function periodicBackgroundSyncSupported(
+  serviceWorkers = navigator.serviceWorker,
+  permissions = navigator.permissions,
+  registrationPrototype = globalThis.ServiceWorkerRegistration?.prototype
+) {
+  return Boolean(
+    serviceWorkers
+    && typeof permissions?.query === 'function'
+    && registrationPrototype
+    && 'periodicSync' in registrationPrototype
+  );
+}
+
 /** @param {EventListener} listener */
 export function onAutomaticDashboardBackgroundUpdateStatus(listener) {
   const eventTarget = window;

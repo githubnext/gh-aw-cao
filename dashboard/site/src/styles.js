@@ -364,6 +364,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu-action .octicon { width: 15px; height: 15px; color: var(--muted); }
 .background-sync-setting > span { flex: 1; }
 .background-sync-setting > input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.background-sync-setting-disabled { color: var(--muted); cursor: not-allowed; }
+.background-sync-setting-disabled:hover { background: transparent; }
 .appearance-settings { display: grid; gap: 7px; margin: 0; padding: 9px 8px 8px; border: 0; border-top: 1px solid var(--border); }
 .appearance-settings legend { padding-top: 9px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .appearance-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }

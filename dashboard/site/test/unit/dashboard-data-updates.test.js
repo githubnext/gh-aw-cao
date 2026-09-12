@@ -5,6 +5,7 @@ import {
   automaticDashboardDataUpdatesEnabled,
   dashboardDataUpdateBlockedReason,
   ensureHealthyDashboardServiceWorker,
+  periodicBackgroundSyncSupported,
   setAutomaticDashboardDataUpdatesEnabled,
   startAutomaticDashboardDataUpdates
 } from '../../src/dashboard-data-updates.js';
@@ -72,6 +73,19 @@ describe('automatic dashboard data updates', () => {
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     setAutomaticDashboardDataUpdatesEnabled(false);
     expect(automaticDashboardDataUpdatesEnabled()).toBe(false);
+  });
+
+  it('detects Periodic Background Sync browser support', () => {
+    expect(periodicBackgroundSyncSupported(
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
+      /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
+      { periodicSync: {} }
+    )).toBe(true);
+    expect(periodicBackgroundSyncSupported(
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
+      /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
+      {}
+    )).toBe(false);
   });
 
   it('blocks downloads on metered connections and low battery', () => {

@@ -32,6 +32,7 @@ import { createDatabaseCountLoader, formatDatabaseCounts, renderSettingsDatabase
 import {
   automaticDashboardDataUpdatesEnabled,
   onAutomaticDashboardDataUpdatesSettingChange,
+  periodicBackgroundSyncSupported,
   setAutomaticDashboardDataUpdatesEnabled
 } from './dashboard-data-updates.js';
 
@@ -854,6 +855,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
 }
 
 function renderBackgroundServiceWorkerSetting() {
+  const supported = periodicBackgroundSyncSupported();
   const enabled = () => {
     try {
       return automaticDashboardDataUpdatesEnabled();
@@ -868,6 +870,7 @@ function renderBackgroundServiceWorkerSetting() {
   };
   checkbox = renderCheckbox({
     checked: enabled(),
+    disabled: !supported,
     ariaLabel: 'Background sync',
     stopClickPropagation: true,
     onChange: /** @param {Event} event */ (event) => {
@@ -882,7 +885,10 @@ function renderBackgroundServiceWorkerSetting() {
   });
   const control = h(
     'label',
-    { className: 'background-sync-setting account-menu-action' },
+    {
+      className: `background-sync-setting account-menu-action${supported ? '' : ' background-sync-setting-disabled'}`,
+      title: supported ? undefined : 'Periodic Background Sync is not supported by this browser.'
+    },
     octicon('sync'),
     h('span', null, 'Background sync'),
     checkbox

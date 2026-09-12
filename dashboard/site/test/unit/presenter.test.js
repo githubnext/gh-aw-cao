@@ -904,8 +904,10 @@ describe('presenter built-in and custom pages', () => {
     );
     expect(backgroundSync?.getAttribute('aria-label')).toBe('Background sync');
     expect(backgroundSync?.checked).toBe(false);
+    expect(backgroundSync?.disabled).toBe(true);
+    expect(backgroundSync?.closest('label')?.getAttribute('title')).toBe('Periodic Background Sync is not supported by this browser.');
     backgroundSync?.click();
-    expect(window.localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
+    expect(window.localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBeNull();
     setAutomaticDashboardDataUpdatesEnabled(false);
     expect(backgroundSync?.checked).toBe(false);
     expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance');
