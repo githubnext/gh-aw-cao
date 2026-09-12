@@ -62,7 +62,7 @@ describe('dashboard local-data reset', () => {
     document.body.append(control);
     localStorage.setItem('setting', 'value');
 
-    /** @type {HTMLButtonElement} */ (control.querySelector('.account-menu-reset')).click();
+    /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-trigger')).click();
     const dialog = /** @type {HTMLDialogElement} */ (control.querySelector('dialog'));
     expect(dialog.hasAttribute('open')).toBe(true);
     expect(dialog.textContent).toContain('cannot be undone');

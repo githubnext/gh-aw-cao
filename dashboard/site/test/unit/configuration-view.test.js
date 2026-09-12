@@ -55,6 +55,41 @@ describe('Configuration dashboard view', () => {
       .toContain('Waiting for this browser');
   });
 
+  it('renders browser settings and local database totals on the full settings page', () => {
+    localStorage.clear();
+    const rendered = renderConfigurationView({
+      ...context({ document: { version: 1 }, raw: '', diagnostics: [] }),
+      sourceNames: [
+        'configuration-policy',
+        'database-package-count',
+        'database-repository-count',
+        'database-workflow-count',
+        'database-run-count',
+        'database-event-count'
+      ],
+      sources: {
+        ...context({ document: { version: 1 }, raw: '', diagnostics: [] }).sources,
+        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
+        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
+        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
+        'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
+        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
+      }
+    });
+    if (!rendered) throw new Error('configuration view did not render');
+    const root = document.createElement('div');
+    root.className = 'dashboard-root';
+    root.append(rendered);
+
+    expect(rendered.querySelector('#configuration-appearance-heading')?.textContent).toBe('Appearance');
+    expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-theme-value="dark"]')).click();
+    expect(root.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
+    expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
+    expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
+  });
+
   it('reflects background registration failures while the setting is mounted', () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
     localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');

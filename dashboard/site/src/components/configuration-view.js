@@ -2,6 +2,8 @@ import { h } from '../dom.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
 import { copyTextToClipboard, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
+import { renderResetDashboardControl } from './reset-dashboard-control.js';
+import { renderThemeSettings } from './theme-settings.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
@@ -338,6 +340,46 @@ function renderAutomaticDataUpdatesSetting() {
 }
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
+function renderDatabaseSetting(context) {
+  const fields = /** @type {const} */ ([
+    ['database-package-count', 'packages', 'Packages'],
+    ['database-repository-count', 'repositories', 'Repositories'],
+    ['database-workflow-count', 'workflows', 'Workflows'],
+    ['database-run-count', 'runs', 'Runs'],
+    ['database-event-count', 'events', 'Events']
+  ]);
+  const available = fields.every(([sourceName, field]) => context.sources[sourceName]?.rows?.[0]?.[field] !== undefined);
+  return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-database-heading' },
+    h('div', { className: 'configuration-browser-settings-heading' },
+      h('div', null,
+        h('h3', { id: 'configuration-database-heading' }, 'Local database'),
+        h('p', null, 'Records currently stored in this browser.')
+      )
+    ),
+    available
+      ? h('div', { className: 'configuration-database-counts' },
+        fields.map(([sourceName, field, label]) => h('span', null,
+          h('strong', null, String(context.sources[sourceName]?.rows?.[0]?.[field] ?? 0)),
+          h('small', null, label)
+        ))
+      )
+      : h('p', { className: 'configuration-browser-setting-status' }, 'Database counts unavailable.')
+  );
+}
+
+function renderLocalDataSetting() {
+  return h('section', { className: 'configuration-browser-settings configuration-danger-settings', 'aria-labelledby': 'configuration-local-data-heading' },
+    h('div', { className: 'configuration-browser-settings-heading' },
+      h('div', null,
+        h('h3', { id: 'configuration-local-data-heading' }, 'Local data'),
+        h('p', null, 'Delete cached dashboard data and browser preferences from this device.')
+      )
+    ),
+    renderResetDashboardControl()
+  );
+}
+
+/** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
   if (!row) return null;
@@ -351,7 +393,10 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
+    renderThemeSettings(),
     renderAutomaticDataUpdatesSetting(),
+    renderDatabaseSetting(context),
+    renderLocalDataSetting(),
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)
       : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.')

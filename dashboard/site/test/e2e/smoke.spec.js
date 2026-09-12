@@ -1080,6 +1080,16 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         label: 'Review dependency evidence'
       };
       const sources = {
+        'configuration-policy': {
+          source: 'configuration-policy',
+          rows: [{ document: { version: 1 }, raw: '', diagnostics: [] }],
+          metadata
+        },
+        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
+        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
+        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
+        'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
+        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata },
         'overview-failed-run-count': {
           source: 'overview-failed-run-count',
           rows: [{ count: 80 }],
@@ -1310,7 +1320,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').first();
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages']);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Transactions', 'Firewall']);
@@ -1319,34 +1329,27 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const accountMenu = page.locator('.account-menu');
   await expect(accountMenu.locator('summary .octicon-kebab-horizontal')).toBeVisible();
   await accountMenu.locator('summary').click();
-  await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
+  await expect(accountMenu.getByRole('link', { name: 'Settings' })).toHaveCount(0);
   await expect(accountMenu.getByRole('link', { name: 'Open the dashboard workflow on GitHub Actions' })).toBeVisible();
-  const backgroundSync = accountMenu.getByRole('checkbox', { name: 'Background sync' });
-  await expect(backgroundSync).not.toBeChecked();
-  await expect(backgroundSync).toBeDisabled();
-  await expect(backgroundSync.locator('xpath=ancestor::label')).toHaveAttribute(
-    'title',
-    'Periodic Background Sync is not supported by this browser.'
-  );
-  await expect(backgroundSync.locator('xpath=ancestor::fieldset')).toHaveAccessibleName('Database');
   await expect(accountMenu).toHaveAttribute('open', '');
-  await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
-  await expect(accountMenu.getByRole('button', { name: 'Reset local data' })).toBeVisible();
-  await accountMenu.getByRole('button', { name: 'Reset local data' }).click();
+  await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toHaveCount(0);
+  await expect(accountMenu.getByRole('button', { name: 'Reset local data' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await expect(page).toHaveURL(/#page-configuration$/);
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
+  await expect(accountMenu).not.toHaveAttribute('open', '');
+  await expect(page.getByRole('heading', { name: 'Appearance', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Reset local data' }).click();
   const resetDialog = page.getByRole('dialog', { name: 'Reset dashboard confirmation' });
   await expect(resetDialog).toBeVisible();
   await expect(resetDialog).toContainText('This action cannot be undone.');
   await resetDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(resetDialog).not.toBeVisible();
-  await expect(accountMenu.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.dashboard-root')).not.toHaveAttribute('data-theme');
-  await accountMenu.getByRole('button', { name: 'Light' }).click();
+  await page.getByRole('button', { name: 'Light' }).click();
   await expect(page.locator('.dashboard-root')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.theme'))).toBe('light');
-  await accountMenu.getByRole('link', { name: 'Settings' }).click();
-  await expect(page).toHaveURL(/#page-configuration$/);
-  await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
-  await expect(accountMenu).not.toHaveAttribute('open', '');
   const headerHeight = await page.locator('.overview-header').evaluate((element) => element.getBoundingClientRect().height);
   const description = page.locator('.overview-header .lede');
   expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
