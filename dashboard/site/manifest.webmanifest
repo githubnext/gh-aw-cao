@@ -4,7 +4,7 @@
   "id": "./",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "icons": [
     {
       "src": "./favicon.svg",
