@@ -34,10 +34,13 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
 
   assert.deepEqual(metadata, { name: "cao-dashboard", version: 1 });
   assert.match(source, /@github\/copilot-sdk\/extension/);
-  assert.match(source, /joinSession\(\{\s*canvases:/);
+  assert.match(source, /joinSession\(\{[\s\S]*canvases:/);
   assert.match(source, /createCanvas\(\{/);
   assert.match(source, /context\.session\?\.workingDirectory/);
   assert.match(source, /startLocalDashboardPreview/);
+  assert.match(source, /cao_dashboard_execute_query/);
+  assert.match(source, /cao_dashboard_read_data_specification/);
+  assert.match(source, /onSessionStart:/);
   assert.match(source, /onClose:/);
   assert.match(source, /additionalProperties: false/);
   assert.doesNotMatch(source, /github\.io|https:/);
