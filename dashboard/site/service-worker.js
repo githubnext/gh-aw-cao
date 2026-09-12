@@ -3,6 +3,7 @@ const DATA_CACHE = `central-agentic-ops-dashboard-data-${VERSION}`;
 const CONFIG_CACHE = 'central-agentic-ops-dashboard-config';
 const CONFIG_URL = new URL('./.dashboard-data-update-config', self.registration.scope).href;
 const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
+const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const DATA_FILES = new Set(['gh-aw-logs.jsonl', 'inventory-sources.json']);
 
@@ -47,23 +48,47 @@ async function storeDataUrls(urls) {
     throw new Error('Dashboard data URL is missing.');
   }
   const cache = await caches.open(CONFIG_CACHE);
-  await cache.put(CONFIG_URL, new Response(JSON.stringify(requested), {
+  const previous = await readDataConfig(cache);
+  const config = { urls: requested, lastSuccess: previous?.lastSuccess ?? 0 };
+  await cache.put(CONFIG_URL, new Response(JSON.stringify(config), {
     headers: { 'content-type': 'application/json' }
   }));
+  return config;
 }
 
-async function downloadConfiguredData() {
+async function readDataConfig(cache) {
+  const response = await cache.match(CONFIG_URL);
+  if (!response) return null;
+  const value = await response.json();
+  if (Array.isArray(value)) return { urls: value, lastSuccess: 0 };
+  if (!value || typeof value !== 'object' || !Array.isArray(value.urls)) return null;
+  const lastSuccess = Number(value.lastSuccess ?? 0);
+  return {
+    urls: value.urls,
+    lastSuccess: Number.isFinite(lastSuccess) && lastSuccess > 0 ? lastSuccess : 0
+  };
+}
+
+async function downloadConfiguredData(force = false, fallbackUrls = []) {
   const connection = self.navigator?.connection;
   if (connection?.saveData || connection?.metered || connection?.type === 'cellular') return;
-  if (typeof self.navigator?.getBattery === 'function') {
-    const battery = await self.navigator.getBattery();
-    if (!battery.charging && battery.level <= 0.2) return;
-  }
+  // Periodic Background Sync itself is deferred by the browser when power conditions are unsuitable.
   const cache = await caches.open(CONFIG_CACHE);
-  const response = await cache.match(CONFIG_URL);
-  if (!response) return;
-  const urls = await response.json();
-  if (Array.isArray(urls)) await downloadData(urls);
+  const previous = await readDataConfig(cache);
+  const fallback = [...new Set(fallbackUrls)].filter(isDashboardDataUrl);
+  const config = fallback.length > 0
+    ? { urls: fallback, lastSuccess: previous?.lastSuccess ?? 0 }
+    : previous;
+  if (!config) return 0;
+  if (!force && config.lastSuccess > 0 && Date.now() - config.lastSuccess < UPDATE_INTERVAL_MS) {
+    return config.lastSuccess;
+  }
+  await downloadData(config.urls);
+  config.lastSuccess = Date.now();
+  await cache.put(CONFIG_URL, new Response(JSON.stringify(config), {
+    headers: { 'content-type': 'application/json' }
+  }));
+  return config.lastSuccess;
 }
 
 self.addEventListener('install', () => {
@@ -114,7 +139,11 @@ self.addEventListener('message', (event) => {
   }
   if (event.data?.type === 'CONFIGURE_BACKGROUND_DATA' && Array.isArray(event.data.urls)) {
     const task = storeDataUrls(event.data.urls).then(
-      () => event.ports[0]?.postMessage({ type: 'BACKGROUND_DATA_CONFIGURED', version: VERSION }),
+      (config) => event.ports[0]?.postMessage({
+        type: 'BACKGROUND_DATA_CONFIGURED',
+        version: VERSION,
+        lastSuccess: config.lastSuccess
+      }),
       (error) => event.ports[0]?.postMessage({
         type: 'BACKGROUND_DATA_CONFIGURATION_FAILED',
         message: error instanceof Error ? error.message : String(error)
@@ -124,8 +153,12 @@ self.addEventListener('message', (event) => {
     return;
   }
   if (event.data?.type !== 'DOWNLOAD_DATA' || !Array.isArray(event.data.urls)) return;
-  const task = downloadData(event.data.urls).then(
-    () => event.ports[0]?.postMessage({ type: 'DOWNLOAD_COMPLETE', version: VERSION }),
+  const task = downloadConfiguredData(true, event.data.urls).then(
+    (lastSuccess) => event.ports[0]?.postMessage({
+      type: 'DOWNLOAD_COMPLETE',
+      version: VERSION,
+      lastSuccess
+    }),
     (error) => event.ports[0]?.postMessage({
       type: 'DOWNLOAD_FAILED',
       message: error instanceof Error ? error.message : String(error)

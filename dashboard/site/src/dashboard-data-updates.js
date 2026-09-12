@@ -73,10 +73,12 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
       || /** @type {{ type?: unknown }} */ (response).type !== 'BACKGROUND_DATA_CONFIGURED') {
     throw new Error('Service worker background data configuration failed.');
   }
+  const lastSuccess = Number(/** @type {{ lastSuccess?: unknown }} */ (response).lastSuccess ?? 0);
   const periodicSync = /** @type {ServiceWorkerRegistration & { periodicSync?: { register: (tag: string, options: { minInterval: number }) => Promise<void> } }} */ (registration).periodicSync;
   await periodicSync?.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS }).catch(() => {
     // The foreground timer remains the fallback when background sync is unavailable or denied.
   });
+  return Number.isFinite(lastSuccess) && lastSuccess > 0 ? lastSuccess : 0;
 }
 
 /** @param {ServiceWorker} worker */
@@ -202,16 +204,25 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   let stopped = false;
   let running = false;
   let rerun = false;
+  let backgroundConfigured = false;
   /** @type {BatteryState | undefined} */
   let battery;
   /** @type {ServiceWorkerRegistration | undefined} */
   let registration;
+  /** @type {ServiceWorker | undefined} */
+  let healthyWorker;
 
-  /** @param {number} delay */
-  const schedule = (delay) => {
+  /** @param {number} delay @param {boolean} [checkForWorkerUpdate] */
+  const schedule = (delay, checkForWorkerUpdate = false) => {
     if (stopped) return;
     if (timer !== undefined) clearTimer(timer);
-    timer = setTimer(() => void reconcile(), delay);
+    timer = setTimer(() => {
+      if (checkForWorkerUpdate) {
+        healthyWorker = undefined;
+        backgroundConfigured = false;
+      }
+      void reconcile();
+    }, delay);
   };
   const performReconcile = async () => {
     if (stopped) return;
@@ -221,18 +232,40 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       await periodicSync?.unregister(PERIODIC_SYNC_TAG);
       await existing?.unregister();
       registration = undefined;
+      healthyWorker = undefined;
+      backgroundConfigured = false;
       return;
     }
     if (!serviceWorkers) return;
     if (!online()) return schedule(RETRY_INTERVAL_MS);
-    let healthy;
-    try {
-      healthy = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl);
-      registration = healthy.registration;
-      await configureBackgroundDashboardDataUpdates(registration, healthy.worker, dataUrls);
-    } catch (error) {
-      console.error(`Unable to configure automatic dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
-      return schedule(RETRY_INTERVAL_MS);
+    if (!healthyWorker || !registration) {
+      try {
+        const healthy = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl);
+        registration = healthy.registration;
+        healthyWorker = healthy.worker;
+      } catch (error) {
+        console.error(`Unable to configure automatic dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
+        return schedule(RETRY_INTERVAL_MS);
+      }
+    }
+    const worker = healthyWorker;
+    const currentRegistration = registration;
+    if (!worker || !currentRegistration) return schedule(RETRY_INTERVAL_MS);
+    if (!backgroundConfigured) {
+      try {
+        const backgroundLastSuccess = await configureBackgroundDashboardDataUpdates(
+          currentRegistration,
+          worker,
+          dataUrls
+        );
+        const foregroundLastSuccess = Number(storage.getItem(LAST_SUCCESS_STORAGE_KEY) ?? 0);
+        if (backgroundLastSuccess > foregroundLastSuccess) {
+          storage.setItem(LAST_SUCCESS_STORAGE_KEY, String(backgroundLastSuccess));
+        }
+        backgroundConfigured = true;
+      } catch (error) {
+        console.error(`Unable to configure background dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
     if (!battery && getBattery) {
       battery = await getBattery().catch(() => undefined);
@@ -246,12 +279,12 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
     const lastSuccess = Number(storage.getItem(LAST_SUCCESS_STORAGE_KEY) ?? 0);
     const remaining = UPDATE_INTERVAL_MS - (now() - lastSuccess);
     if (lastSuccess > 0 && remaining > 0) {
-      schedule(remaining);
+      schedule(remaining, true);
       return;
     }
     try {
       const response = await requestWorker(
-        healthy.worker,
+        worker,
         { type: 'DOWNLOAD_DATA', urls: dataUrls },
         DOWNLOAD_TIMEOUT_MS
       );
@@ -260,7 +293,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         throw new Error('Service worker data download failed.');
       }
       storage.setItem(LAST_SUCCESS_STORAGE_KEY, String(now()));
-      schedule(UPDATE_INTERVAL_MS);
+      schedule(backgroundConfigured ? UPDATE_INTERVAL_MS : RETRY_INTERVAL_MS, backgroundConfigured);
     } catch (error) {
       console.error(`Unable to update dashboard data automatically: ${error instanceof Error ? error.message : String(error)}`);
       schedule(RETRY_INTERVAL_MS);

@@ -84,6 +84,10 @@ describe('dashboard service worker', () => {
     });
 
     expect(fetch).toHaveBeenCalledTimes(2);
+    await dispatchExtendedEvent(listeners.periodicsync, {
+      tag: 'central-agentic-ops-dashboard-data'
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
     worker.navigator.connection.type = 'cellular';
     await dispatchExtendedEvent(listeners.periodicsync, {
       tag: 'central-agentic-ops-dashboard-data'

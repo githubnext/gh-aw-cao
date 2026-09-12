@@ -284,13 +284,13 @@ function renderAutomaticDataUpdatesSetting() {
         /** @type {HTMLInputElement} */ (event.currentTarget).checked
       );
       status.textContent = checkbox.checked
-        ? 'On. Supported browsers can download in the background. Downloads pause on low battery or metered connections.'
+        ? 'On. Foreground downloads pause on low battery or metered connections. Supported browsers schedule background downloads around device constraints.'
         : 'Off. Dashboard data updates only while the dashboard is open.';
     }
   }));
   const status = h('p', { className: 'configuration-browser-setting-status', 'aria-live': 'polite' },
     checkbox.checked
-      ? 'On. Supported browsers can download in the background. Downloads pause on low battery or metered connections.'
+      ? 'On. Foreground downloads pause on low battery or metered connections. Supported browsers schedule background downloads around device constraints.'
       : 'Off. Dashboard data updates only while the dashboard is open.'
   );
   return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-browser-settings-heading' },

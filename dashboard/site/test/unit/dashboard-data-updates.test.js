@@ -190,6 +190,29 @@ describe('automatic dashboard data updates', () => {
     stop();
   });
 
+  it('keeps foreground updates when periodic background sync is unsupported', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    const worker = new FakeWorker();
+    const currentRegistration = { ...registration(worker), periodicSync: undefined };
+    const serviceWorkers = {
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    };
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        getBattery: async () => ({ charging: true, level: 1 }),
+        online: () => true,
+        scriptUrl: new URL('https://example.test/service-worker.js')
+      }
+    );
+
+    await vi.waitFor(() => expect(
+      worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')
+    ).toHaveLength(1));
+    stop();
+  });
+
   it('force-registers a cache-busted worker when the active canary fails', async () => {
     vi.useFakeTimers();
     const brokenRegistration = registration(new FakeWorker(false));
