@@ -5,38 +5,36 @@ describe('dashboard cancel command', () => {
   beforeEach(() => {
     document.head.replaceChildren();
     document.body.replaceChildren();
-    vi.useRealTimers();
+    vi.useFakeTimers();
   });
 
   it('stays hidden while the computation completes promptly', () => {
-    vi.useFakeTimers();
     const cancel = vi.fn(() => 0);
     const command = offerCancelCommand(document, { delay: 5000, cancel });
 
     vi.advanceTimersByTime(4000);
-    expect(document.querySelector('.cancel-command')?.hasAttribute('hidden')).toBe(true);
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
 
     command.complete();
     vi.advanceTimersByTime(5000);
-    expect(document.querySelector('.cancel-command')).toBeNull();
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
     expect(cancel).not.toHaveBeenCalled();
   });
 
-  it('offers the command once the computation runs long', () => {
-    vi.useFakeTimers();
+  it('offers cancellation as a persistent notification once work runs long', () => {
     const cancel = vi.fn(() => 1);
     offerCancelCommand(document, { delay: 5000, cancel });
 
     vi.advanceTimersByTime(5000);
-    const panel = /** @type {HTMLElement} */ (document.querySelector('.cancel-command'));
-    expect(panel.hidden).toBe(false);
+    const notification = /** @type {HTMLElement} */ (document.querySelector('.dashboard-notification'));
+    expect(notification.textContent).toContain('taking longer than expected');
 
-    /** @type {HTMLButtonElement} */ (panel.querySelector('.cancel-command-button')).click();
+    /** @type {HTMLButtonElement} */ (notification.querySelector('.dashboard-notification-action')).click();
     expect(cancel).toHaveBeenCalledTimes(1);
+    expect(notification.textContent).toBe('Cancelling…');
   });
 
   it('cancels from the keyboard only while the command is offered', () => {
-    vi.useFakeTimers();
     const cancel = vi.fn(() => 1);
     offerCancelCommand(document, { delay: 5000, cancel });
 
@@ -48,16 +46,16 @@ describe('dashboard cancel command', () => {
     expect(cancel).toHaveBeenCalledTimes(1);
   });
 
-  it('stops listening once the computation finishes', () => {
-    vi.useFakeTimers();
+  it('stops listening and dismisses the notification when work finishes', () => {
     const cancel = vi.fn(() => 1);
     const command = offerCancelCommand(document, { delay: 5000, cancel });
 
     vi.advanceTimersByTime(5000);
     command.complete();
+    vi.advanceTimersByTime(180);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(cancel).not.toHaveBeenCalled();
-    expect(document.querySelector('.cancel-command')).toBeNull();
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
   });
 });

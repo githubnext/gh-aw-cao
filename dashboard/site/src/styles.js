@@ -123,6 +123,20 @@ export function primerStylesheet() {
   --focus: #0969da;
   --on-emphasis: #ffffff;
 }
+.dashboard-notifications { width: min(360px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; position: fixed; z-index: 1001; right: 16px; bottom: 16px; pointer-events: none; }
+.dashboard-notifications[hidden] { display: none; }
+.dashboard-notification { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); color: var(--fg); font-size: .8125rem; pointer-events: auto; transition: transform 180ms ease-out, opacity 180ms ease-out; }
+.dashboard-notification-success { border-left-color: var(--success); }
+.dashboard-notification-warning { border-left-color: var(--attention); }
+.dashboard-notification-error { border-left-color: var(--danger); }
+.dashboard-notification-enter, .dashboard-notification-exit { transform: translateY(16px); opacity: 0; }
+.dashboard-notification-message { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.dashboard-notification-action { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.dashboard-notification-action:hover { border-color: var(--accent); background: var(--neutral-muted); }
+.dashboard-notification-action:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 700px) {
+  .dashboard-notifications { right: auto; left: 50%; transform: translateX(-50%); }
+}
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { margin: 0; background: var(--canvas); color: var(--fg); font: .875rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"; letter-spacing: 0; }
@@ -2295,6 +2309,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
   .dashboard-loading-skeleton > div, .dashboard-view-skeleton > div, .dashboard-lazy-view-skeleton > span, .dashboard-horizon-skeleton > span, .table-summary-skeleton span, .home-catchup-mobile-card { animation: none; }
+  .dashboard-notification { transition: none; }
 }
 @media (prefers-contrast: more) {
   :root {
