@@ -3,7 +3,11 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { deriveDataHealthSources } from './data-health.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
-import { ingestCachedGhAwJsonl, ingestDashboardSources } from './data/ingest/coordinator.js';
+import {
+  ingestCachedGhAwJsonl,
+  ingestDashboardSources,
+  readCurrentIngestion
+} from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
@@ -257,20 +261,37 @@ export function processDataRequest(request, signal) {
               }]
             : [];
         });
-        const response = await fetch(sourceUrl.href);
-        if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
-        const etag = response.headers.get('etag');
-        const ingestion = await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
-          storage: globalThis.navigator?.storage,
-          retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-          workflowHints,
-          payloadIdentity: etag ? `${sourceUrl.href}:${etag}` : undefined,
-          payloadScope: sourceUrl.href,
-          context: request.context && typeof request.context === 'object'
-            ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
-            : undefined
+        const collectionContext = request.context && typeof request.context === 'object'
+          ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
+          : undefined;
+        const adaptationContext = JSON.stringify({
+          context: collectionContext ?? null,
+          workflowHints
         });
-        changed ||= ingestion.updated;
+        const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', sourceUrl.href);
+        const currentEtag = current?.adaptationContext === adaptationContext
+          && typeof current.payloadEtag === 'string'
+          ? current.payloadEtag
+          : null;
+        const response = await fetch(sourceUrl.href, currentEtag
+          ? { headers: { 'If-None-Match': currentEtag } }
+          : undefined);
+        if (response.status === 304) {
+          changed = false;
+        } else {
+          if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
+          const etag = response.headers.get('etag');
+          const ingestion = await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
+            storage: globalThis.navigator?.storage,
+            retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+            workflowHints,
+            payloadIdentity: etag ? `${sourceUrl.href}:${etag}` : undefined,
+            payloadEtag: etag ?? undefined,
+            payloadScope: sourceUrl.href,
+            context: collectionContext
+          });
+          changed ||= ingestion.updated;
+        }
         if (inventoryResponse.ok) {
           const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
             storage: globalThis.navigator?.storage,

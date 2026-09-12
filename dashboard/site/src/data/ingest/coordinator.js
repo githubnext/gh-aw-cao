@@ -42,6 +42,11 @@ async function transactionId(kind, scope) {
   return `${kind}:current:${await payloadHash(scope, undefined)}`;
 }
 
+/** @param {IDBFactory} indexedDB @param {string} kind @param {string} scope */
+export async function readCurrentIngestion(indexedDB, kind, scope) {
+  return await readTransaction(indexedDB, await transactionId(kind, scope));
+}
+
 /**
  * @param {IDBFactory} indexedDB
  * @param {string} kind
@@ -49,7 +54,7 @@ async function transactionId(kind, scope) {
  * @param {string} hash
  */
 async function previouslyIngested(indexedDB, kind, scope, hash) {
-  const transaction = await readTransaction(indexedDB, await transactionId(kind, scope));
+  const transaction = await readCurrentIngestion(indexedDB, kind, scope);
   return transaction?.payloadHash === hash;
 }
 
@@ -206,7 +211,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadScope?: string }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
  */
 export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   return serializeIngestion(indexedDB, () => ingestCachedGhAwJsonlNow(indexedDB, content, options));
@@ -215,7 +220,7 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {string} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadScope?: string }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} options
  */
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
@@ -240,6 +245,8 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       createdAt,
       payloadScope: scope,
       payloadHash: hash,
+      payloadEtag: options.payloadEtag,
+      adaptationContext,
       records: adapted.records,
       committedRecords: result.committedRecords,
       rawPayloadRecords: adapted.rawPayloadRecords,

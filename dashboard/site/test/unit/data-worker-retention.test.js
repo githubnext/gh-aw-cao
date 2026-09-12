@@ -140,5 +140,37 @@ describe('canonical dashboard worker retention updates', () => {
       .data['event-inspection'].rows;
 
     expect(rows.map((row) => row.event)).toEqual(['event:agent-turn', 'event:tool-call']);
+
+    /** @type {(RequestInit | undefined)[]} */
+    const jsonlRequests = [];
+    globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
+      if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
+      jsonlRequests.push(init);
+      return new Headers(init?.headers).get('If-None-Match') === '"generation-b"'
+        ? new Response(null, { status: 304 })
+        : new Response('', { headers: { etag: '"generation-b"' } });
+    });
+    dispatch({
+      id: 3,
+      operation: 'load-canonical-dashboard',
+      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceNames: ['event-inspection'],
+      context,
+      reportActivation: true
+    });
+    const firstJsonl = await settled((message) => message.id === 3);
+    dispatch({
+      id: 4,
+      operation: 'load-canonical-dashboard',
+      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceNames: ['event-inspection'],
+      context,
+      reportActivation: true
+    });
+    const repeatedJsonl = await settled((message) => message.id === 4);
+
+    expect(firstJsonl?.data).toMatchObject({ changed: true });
+    expect(repeatedJsonl?.data).toMatchObject({ changed: false });
+    expect(new Headers(jsonlRequests[1]?.headers).get('If-None-Match')).toBe('"generation-b"');
   });
 });
