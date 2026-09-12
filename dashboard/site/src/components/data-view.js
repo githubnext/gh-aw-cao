@@ -30,12 +30,16 @@ const RUN_FIELD = 'run';
 const RUN_LINK_FIELD = 'run-link';
 const REPOSITORY_LINK_DISPLAY = 'repository-link';
 const WORKFLOW_LINK_DISPLAY = 'workflow-link';
+const GITHUB_ENTITY_DISPLAY_FIELDS = {
+  [REPOSITORY_LINK_DISPLAY]: 'repository',
+  [WORKFLOW_LINK_DISPLAY]: 'workflow'
+};
 
 /**
  * @param {Record<string, unknown>} row
  * @param {'repository-link' | 'workflow-link'} field
  * @param {string} fallbackLabel
- * @returns {{ href: string, label: string } | null}
+ * @returns {{ href: string, label: string } | null} Uses the raw GitHub `href` from the row link object when present and safe; otherwise falls back to the resolved dashboard-safe link.
  */
 function resolveGithubEntityLink(row, field, fallbackLabel) {
   const candidate = row[field];
@@ -213,15 +217,21 @@ function renderTableView(context) {
           value = renderCellValue(column, row[outputField], row);
       } else if (column.field === RUN_FIELD || column.display === 'run-link') {
           value = renderWorkflowRunLink(row, toText(row[outputField]));
-      } else if (column.display === REPOSITORY_LINK_DISPLAY) {
+      } else if (
+          column.display === REPOSITORY_LINK_DISPLAY
+          || column.display === WORKFLOW_LINK_DISPLAY
+      ) {
+          const fallbackField = GITHUB_ENTITY_DISPLAY_FIELDS[column.display];
+          const fallbackValue = typeof fallbackField === 'string'
+            ? toText(row[fallbackField])
+            : '';
           value = renderLinkedValue(
             toText(row[outputField]),
-            resolveGithubEntityLink(row, REPOSITORY_LINK_DISPLAY, toText(row.repository))
-          );
-      } else if (column.display === WORKFLOW_LINK_DISPLAY) {
-          value = renderLinkedValue(
-            toText(row[outputField]),
-            resolveGithubEntityLink(row, WORKFLOW_LINK_DISPLAY, toText(row.workflow))
+            resolveGithubEntityLink(
+              row,
+              /** @type {'repository-link' | 'workflow-link'} */ (column.display),
+              fallbackValue
+            )
           );
       } else if (column.display === 'evidence-link') {
           value = renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'));
