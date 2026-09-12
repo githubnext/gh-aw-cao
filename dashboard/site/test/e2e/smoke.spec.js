@@ -1370,18 +1370,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Transactions', 'Firewall']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
-  const accountMenu = page.locator('.account-menu');
-  await expect(accountMenu.locator('summary .octicon-kebab-horizontal')).toBeVisible();
-  await accountMenu.locator('summary').click();
-  await expect(accountMenu.getByRole('link', { name: 'Settings' })).toHaveCount(0);
-  await expect(accountMenu.getByRole('link', { name: 'Open the dashboard workflow on GitHub Actions' })).toBeVisible();
-  await expect(accountMenu).toHaveAttribute('open', '');
-  await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toHaveCount(0);
-  await expect(accountMenu.getByRole('button', { name: 'Reset local data' })).toHaveCount(0);
+  await expect(page.locator('.account-menu')).toHaveCount(0);
+  await expect(page.locator('.refresh-button')).toHaveCount(0);
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page).toHaveURL(/#page-configuration$/);
   await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
-  await expect(accountMenu).not.toHaveAttribute('open', '');
   await expect(page.getByRole('heading', { name: 'Appearance', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Reset local data' }).click();
   const resetDialog = page.getByRole('dialog', { name: 'Reset dashboard confirmation' });
@@ -3101,10 +3094,9 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
   await expect(issueLink).toHaveAttribute('rel', 'noopener noreferrer');
 
   const externalLinkMask = await page.locator('#plain-external-link').evaluate((link) => getComputedStyle(link, '::after').maskImage);
-  const refreshMask = await page.locator('.refresh-button').evaluate((button) => getComputedStyle(button, '::after').maskImage);
   const repositoryLinkMask = await page.locator('.repository-link').evaluate((link) => getComputedStyle(link, '::after').maskImage);
   expect(externalLinkMask).not.toBe('none');
-  expect(refreshMask).toBe('none');
+  await expect(page.locator('.refresh-button')).toHaveCount(0);
   expect(repositoryLinkMask).toBe('none');
 });
 
@@ -4419,7 +4411,7 @@ test('phone navigation uses overview actions and a full-label view menu without 
   const menuActions = page.locator('.mobile-nav-menu-actions');
   await expect(menuActions.locator('.repository-link .action-label')).toBeVisible();
   await expect(menuActions.locator('.repository-link .action-label')).toHaveText('githubnext/gh-aw-cao');
-  await expect(menuActions.locator('.account-menu-avatar .action-label')).toBeVisible();
+  await expect(menuActions.locator('.account-menu')).toHaveCount(0);
   await expect(menu.locator('.octicon-package')).toBeVisible();
   await expect(menu.getByText('Cost & efficiency', { exact: true })).toBeVisible();
   await menu.getByText('Cost & efficiency', { exact: true }).click();

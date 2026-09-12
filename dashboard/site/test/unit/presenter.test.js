@@ -764,7 +764,7 @@ describe('presenter built-in and custom pages', () => {
     expect(links.some((link) => link.getAttribute('href') === 'https://github.example.com/octo-org/overridden')).toBe(false);
   });
 
-  it('DLS-SAFE-011 renders a descriptive refresh control and omits the GitHub repository link when repository is absent', () => {
+  it('DLS-SAFE-011 omits repository actions when repository is absent', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -776,18 +776,11 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({ document, sources: {} });
 
-    const refreshButton = rendered.querySelector('.refresh-button');
-    expect(refreshButton).not.toBeNull();
-    expect(refreshButton?.tagName).toBe('BUTTON');
-    expect(refreshButton?.getAttribute('title')).toBeTruthy();
-    expect(refreshButton?.getAttribute('aria-label')).toBeTruthy();
-    expect(refreshButton?.closest('.account-menu')).not.toBeNull();
+    expect(rendered.querySelector('.refresh-button')).toBeNull();
+    expect(rendered.querySelector('.account-menu')).toBeNull();
     expect(rendered.querySelector('.report-footer .refresh-button')).toBeNull();
     expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
-    expect(rendered.querySelector('.account-menu-avatar .octicon-kebab-horizontal')).not.toBeNull();
-    expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
-    expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
   });
 
   it('DLS-DOC-012 DLS-SAFE-011 renders a labeled GitHub repository link resolved against a custom github-url-base', () => {
@@ -804,12 +797,8 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({ document, sources: {} });
 
-    const refreshLink = rendered.querySelector('.refresh-button');
-    expect(refreshLink?.tagName).toBe('A');
-    expect(refreshLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations/actions/workflows/dashboard.yml');
-    expect(refreshLink?.getAttribute('aria-label')).toBe('Open the dashboard workflow on GitHub Actions');
-    expect(refreshLink?.getAttribute('title')).toBe('Open the dashboard workflow on GitHub Actions');
-    expect(refreshLink?.closest('.account-menu')).not.toBeNull();
+    expect(rendered.querySelector('.refresh-button')).toBeNull();
+    expect(rendered.querySelector('.account-menu')).toBeNull();
     const repositoryLink = rendered.querySelector('.repository-link');
     expect(repositoryLink).not.toBeNull();
     expect(repositoryLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations');
@@ -942,11 +931,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')?.textContent).toContain('Settings');
-    expect(rendered.querySelector('.account-menu-settings')).toBeNull();
-    expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open dashboard menu');
-    expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
-    expect(rendered.querySelector('.account-menu-avatar .octicon-kebab-horizontal')).not.toBeNull();
-    expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
+    expect(rendered.querySelector('.account-menu')).toBeNull();
     expect(rendered.querySelector('.appearance-settings')).toBeNull();
     expect(rendered.querySelector('.database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-control')).toBeNull();
