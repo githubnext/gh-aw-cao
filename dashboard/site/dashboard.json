@@ -2903,24 +2903,9 @@
                     "title": "Repository"
                   },
                   {
-                    "field": "workflows",
-                    "type": "quantitative",
-                    "title": "Local AWs"
-                  },
-                  {
-                    "field": "reports",
-                    "type": "quantitative",
-                    "title": "Reports"
-                  },
-                  {
-                    "field": "evaluated-workflows",
-                    "type": "quantitative",
-                    "title": "Evaluated AWs"
-                  },
-                  {
                     "field": "runs",
                     "type": "quantitative",
-                    "title": "Local runs"
+                    "title": "Runs"
                   },
                   {
                     "field": "failure-summary",
@@ -2933,6 +2918,11 @@
                     "type": "quantitative",
                     "title": "Local AIC",
                     "unit": "aic"
+                  },
+                  {
+                    "field": "workflows",
+                    "type": "quantitative",
+                    "title": "Local AWs"
                   },
                   {
                     "field": "status",

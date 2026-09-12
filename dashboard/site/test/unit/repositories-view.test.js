@@ -135,13 +135,11 @@ describe('repositories view', () => {
       layout: 'full-view',
       encoding: {
         columns: [
-          { field: 'repository' },
-          { field: 'workflows' },
-          { field: 'reports' },
-          { field: 'evaluated-workflows' },
-          { field: 'runs' },
-          { field: 'failure-summary', filter: false },
-          { field: 'aic', unit: 'aic' },
+          { field: 'repository', title: 'Repository' },
+          { field: 'runs', title: 'Runs' },
+          { field: 'failure-summary', title: 'Failure rate', filter: false },
+          { field: 'aic', title: 'Local AIC', unit: 'aic' },
+          { field: 'workflows', title: 'Local AWs' },
           { field: 'status', display: 'status' }
         ],
         actions: [
