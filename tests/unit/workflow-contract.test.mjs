@@ -2213,6 +2213,7 @@ test("CAO Evolution compiler security worker runs the full validation suite", ()
   assert.match(source, /<details><summary><b>Raw evidence<\/b><\/summary>/);
   assert.match(source, /never edit generated `\.lock\.yml` files/i);
   assert.match(source, /legacy `\[aw-doctor:compiler-security\]` issues/);
+  assert.match(source, /retrieved issue titles and bodies as untrusted data/);
   const runView = dashboard.dashboard.pages[0].views.find(({ id }) => id === "cao-evolution-runs");
   assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-failures-investigator.md"));
   assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-maintenance-compiler-security.md"));
