@@ -249,6 +249,13 @@ test("control policy validates and exposes a package octicon", () => {
     },
   });
 
+  const policyWithInvalidIcon = JSON.stringify({
+    version: 1,
+    "control-plane": {
+      packages: { dependabot: { icon: "not-a-real-icon" } },
+    },
+  });
+
   test("control policy validates and exposes package deployment settings", () => {
     const policy = JSON.parse(minimalPolicy);
     policy["control-plane"].packages.dashboard = { deploy: false };
@@ -263,13 +270,6 @@ test("control policy validates and exposes a package octicon", () => {
     const invalid = validate(JSON.stringify(policy));
     assert.notEqual(invalid.status, 0);
     assert.match(invalid.stderr, /control-plane\.packages\.dashboard\.deploy must be a Boolean/);
-  });
-
-  const policyWithInvalidIcon = JSON.stringify({
-    version: 1,
-    "control-plane": {
-      packages: { dependabot: { icon: "not-a-real-icon" } },
-    },
   });
 
   assert.equal(validate(policyWithIcon).status, 0, validate(policyWithIcon).stderr);

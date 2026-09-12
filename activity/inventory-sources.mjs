@@ -3,6 +3,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "./actions-log.mjs";
 
+const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
+
 function rolloutMode(value) {
   return ["review", "live"].includes(value) ? value : "unknown";
 }
@@ -28,7 +30,10 @@ function packageRows(inventory, controlSettings, generatedAt) {
     String(bundle.controlPackage || bundle.id || "").trim(),
     bundle,
   ]).filter(([id]) => id));
-  const ids = new Set([...bundles.keys(), ...Object.keys(controlSettings.packages || {})]);
+  const ids = new Set(
+    [...bundles.keys(), ...Object.keys(controlSettings.packages || {})]
+      .filter((id) => !INTERNAL_PACKAGES.has(id)),
+  );
   return [...ids].sort().map((id) => {
     const bundle = bundles.get(id)
       || [...bundles.values()].find((candidate) => candidate.id === id)
