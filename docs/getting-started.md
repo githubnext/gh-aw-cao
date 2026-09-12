@@ -106,7 +106,7 @@ Create `.github/workflows/cao.json` with the target owner and package. The omitt
 ```json title=".github/workflows/cao.json"
 {
 	"version": 1,
-	"gh-aw-version": "v0.89.8",
+	"gh-aw-version": "v0.89.9",
 	"control-plane": {
 		"scope": {
 			"allowed-owners": ["acme"]

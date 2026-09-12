@@ -64,7 +64,7 @@ function effectiveWithLimits(policy, requestedMaxRepositories, requestedRolloutP
 const minimalPolicy = JSON.stringify({
   $schema: schema.$id,
   version: 1,
-  "gh-aw-version": "v0.89.8",
+  "gh-aw-version": "v0.89.9",
   "control-plane": {
     scope: { "allowed-repositories": ["acme/payments-api", "acme/storefront"] },
     packages: {
@@ -265,7 +265,7 @@ test("control policy validates and exposes a package octicon", () => {
   const policyWithIcon = JSON.stringify({
     $schema: schema.$id,
     version: 1,
-    "gh-aw-version": "v0.89.8",
+    "gh-aw-version": "v0.89.9",
     "control-plane": {
       packages: { dependabot: { icon: "dependabot" } },
     },
@@ -273,7 +273,7 @@ test("control policy validates and exposes a package octicon", () => {
 
   const policyWithInvalidIcon = JSON.stringify({
     version: 1,
-    "gh-aw-version": "v0.89.8",
+    "gh-aw-version": "v0.89.9",
     "control-plane": {
       packages: { dependabot: { icon: "not-a-real-icon" } },
     },
@@ -372,7 +372,7 @@ test("control policy intersects package mode, dispatch request, and worker ceili
 test("workers inherit the resolved mode when max-mode is omitted", () => {
   const policy = JSON.stringify({
     version: 1,
-    "gh-aw-version": "v0.89.8",
+    "gh-aw-version": "v0.89.9",
     "control-plane": {
       scope: { "allowed-repositories": ["acme/payments-api", "acme/storefront"] },
       packages: {
@@ -410,7 +410,7 @@ test("control policy resolves exact package target modes", () => {
   const policy = JSON.stringify({
     $schema: schema.$id,
     version: 1,
-    "gh-aw-version": "v0.89.8",
+    "gh-aw-version": "v0.89.9",
     "control-plane": {
       scope: { "allowed-repositories": ["acme/payments-api", "acme/storefront"] },
       packages: {
@@ -468,7 +468,7 @@ test("control policy resolves exact package target modes", () => {
 test("control policy requires package targets to stay inside explicit scope", () => {
   const policy = JSON.stringify({
     version: 1,
-    "gh-aw-version": "v0.89.8",
+    "gh-aw-version": "v0.89.9",
     "control-plane": {
       scope: { "allowed-repositories": ["acme/storefront"] },
       packages: {
@@ -497,7 +497,7 @@ for (const [name, targets, error] of [
   test(`control policy rejects package targets with ${name}`, () => {
     const result = validate(JSON.stringify({
       version: 1,
-      "gh-aw-version": "v0.89.8",
+      "gh-aw-version": "v0.89.9",
       "control-plane": {
         scope: { "allowed-owners": ["acme"] },
         packages: { dependabot: { targets } },
@@ -512,7 +512,7 @@ for (const [name, targets, error] of [
 test("control policy requires package targets to stay inside allowed owners", () => {
   const result = validate(JSON.stringify({
     version: 1,
-    "gh-aw-version": "v0.89.8",
+    "gh-aw-version": "v0.89.9",
     "control-plane": {
       scope: { "allowed-owners": ["acme"] },
       packages: {
@@ -549,7 +549,7 @@ for (const [name, policy, error] of [
   ["legacy root bundles", '{"version":1,"bundles":{}}', /unknown key policy.bundles/],
   ["future versions", '{"version":2,"control-plane":{}}', /version must be an integer in 1..1/],
   ["unknown schema URI", '{"$schema":"https://example.com/policy.schema.json","version":1,"control-plane":{}}', /\$schema must be https:\/\/raw\.githubusercontent\.com/],
-  ["unknown nested keys", '{"version":1,"gh-aw-version":"v0.89.8","control-plane":{"packages":{"dependabot":{"surprise":true}}}}', /unknown key control-plane.packages.dependabot.surprise/],
+  ["unknown nested keys", '{"version":1,"gh-aw-version":"v0.89.9","control-plane":{"packages":{"dependabot":{"surprise":true}}}}', /unknown key control-plane.packages.dependabot.surprise/],
   ["duplicate keys", '{"version":1,"version":1,"control-plane":{}}', /duplicate mapping key: version/],
   ["malformed JSON", '{"version":1,}', /invalid policy JSON/],
   ["expressions", '{"version":1,"control-plane":{"scope":{"allowed-owners":["${{ github.repository_owner }}"]}}}', /must not contain a GitHub Actions expression/],
