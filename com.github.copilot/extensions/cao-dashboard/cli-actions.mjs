@@ -10,10 +10,6 @@ const timeoutMilliseconds = 5 * 60 * 1000;
 const ghAwVersion = "v0.89.8";
 const ghAwInstallerUrl =
   "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh";
-const gitIdentity = {
-  name: "GitHub Copilot",
-  email: "223556219+Copilot@users.noreply.github.com",
-};
 
 export function parseGhAwCommand(command) {
   if (typeof command !== "string" || command.length === 0) {
@@ -70,14 +66,16 @@ export function parseGhAwCommand(command) {
   return tokens;
 }
 
-function commandEnvironment(githubToken) {
+function commandEnvironment(githubToken, gitIdentity) {
   return {
     ...process.env,
     ...(githubToken ? { GH_TOKEN: githubToken } : {}),
-    GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || gitIdentity.name,
-    GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || gitIdentity.email,
-    GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || gitIdentity.name,
-    GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || gitIdentity.email,
+    ...(gitIdentity ? {
+      GIT_AUTHOR_NAME: gitIdentity.name,
+      GIT_AUTHOR_EMAIL: gitIdentity.email,
+      GIT_COMMITTER_NAME: gitIdentity.name,
+      GIT_COMMITTER_EMAIL: gitIdentity.email,
+    } : {}),
   };
 }
 
@@ -162,6 +160,40 @@ async function resolveGithubToken({
   throw new Error("Authenticate GitHub CLI before running dashboard actions.");
 }
 
+async function resolveGitIdentity({
+  githubToken,
+  ghExecutable,
+  execute,
+}) {
+  let user;
+  try {
+    const result = await execute(ghExecutable, ["api", "user"], {
+      env: commandEnvironment(githubToken),
+      maxBuffer: maximumOutputBytes,
+      timeout: timeoutMilliseconds,
+      windowsHide: true,
+    });
+    user = JSON.parse(result.stdout);
+  } catch {
+    throw new Error(
+      "Could not determine the current GitHub CLI user for Git commit attribution.",
+    );
+  }
+  const login = typeof user?.login === "string" ? user.login.trim() : "";
+  const id = Number.isInteger(user?.id) && user.id > 0 ? String(user.id) : "";
+  if (!login || !id) {
+    throw new Error(
+      "The current GitHub CLI user does not provide a valid login and user ID.",
+    );
+  }
+  const profileName = typeof user.name === "string" ? user.name.trim() : "";
+  const profileEmail = typeof user.email === "string" ? user.email.trim() : "";
+  return {
+    name: profileName || login,
+    email: profileEmail || `${id}+${login}@users.noreply.github.com`,
+  };
+}
+
 export async function executeGhAwCommand({
   command,
   workingDirectory,
@@ -182,19 +214,25 @@ export async function executeGhAwCommand({
     ghExecutable,
     execute,
   });
+  const gitIdentity = await resolveGitIdentity({
+    githubToken: resolvedGithubToken,
+    ghExecutable,
+    execute,
+  });
   if (typeof onOutput === "function") {
     return streamCommand({
       ghExecutable,
       args: tokens.slice(1),
       workingDirectory,
       githubToken: resolvedGithubToken,
+      gitIdentity,
       onOutput,
     });
   }
   try {
     const result = await execute(ghExecutable, tokens.slice(1), {
       cwd: workingDirectory,
-      env: commandEnvironment(resolvedGithubToken),
+      env: commandEnvironment(resolvedGithubToken, gitIdentity),
       maxBuffer: maximumOutputBytes,
       timeout: timeoutMilliseconds,
       windowsHide: true,
@@ -226,12 +264,13 @@ export function runGhAwCommandStreaming({
   args,
   workingDirectory,
   githubToken,
+  gitIdentity,
   onOutput,
 }) {
   return new Promise((resolve, reject) => {
     const child = spawn(ghExecutable, args, {
       cwd: workingDirectory,
-      env: commandEnvironment(githubToken),
+      env: commandEnvironment(githubToken, gitIdentity),
       shell: false,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],

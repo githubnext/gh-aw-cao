@@ -33,29 +33,41 @@ test("CLI actions execute gh directly with the approved token", async () => {
       if (args[1][0] === "aw" && args[1][1] === "--help") {
         return { stdout: "usage", stderr: "" };
       }
+      if (args[1][0] === "api") {
+        return {
+          stdout: JSON.stringify({
+            login: "octocat",
+            id: 1,
+            name: "The Octocat",
+            email: null,
+          }),
+          stderr: "",
+        };
+      }
       return { stdout: "compiled\n", stderr: "" };
     },
   });
 
   assert.equal(result.ok, true);
   assert.equal(result.stdout, "compiled\n");
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.deepEqual(calls[0][1], ["aw", "--help"]);
-  assert.equal(calls[1][0], "gh");
-  assert.deepEqual(calls[1][1], ["aw", "compile", "--strict"]);
-  assert.equal(calls[1][2].cwd, "/workspace");
-  assert.equal(calls[1][2].env.GH_TOKEN, "token-value");
-  assert.equal(calls[1][2].env.GIT_AUTHOR_NAME, "GitHub Copilot");
+  assert.deepEqual(calls[1][1], ["api", "user"]);
+  assert.equal(calls[2][0], "gh");
+  assert.deepEqual(calls[2][1], ["aw", "compile", "--strict"]);
+  assert.equal(calls[2][2].cwd, "/workspace");
+  assert.equal(calls[2][2].env.GH_TOKEN, "token-value");
+  assert.equal(calls[2][2].env.GIT_AUTHOR_NAME, "The Octocat");
   assert.equal(
-    calls[1][2].env.GIT_AUTHOR_EMAIL,
-    "223556219+Copilot@users.noreply.github.com",
+    calls[2][2].env.GIT_AUTHOR_EMAIL,
+    "1+octocat@users.noreply.github.com",
   );
-  assert.equal(calls[1][2].env.GIT_COMMITTER_NAME, "GitHub Copilot");
+  assert.equal(calls[2][2].env.GIT_COMMITTER_NAME, "The Octocat");
   assert.equal(
-    calls[1][2].env.GIT_COMMITTER_EMAIL,
-    "223556219+Copilot@users.noreply.github.com",
+    calls[2][2].env.GIT_COMMITTER_EMAIL,
+    "1+octocat@users.noreply.github.com",
   );
-  assert.equal(calls[1][2].shell, undefined);
+  assert.equal(calls[2][2].shell, undefined);
 });
 
 test("CLI actions fall back to the pinned curl installer", async () => {
@@ -97,6 +109,12 @@ test("CLI actions use the authenticated gh token when no environment token is av
       calls.push([executable, args, options]);
       if (args[0] === "auth") return { stdout: "stored-token\n", stderr: "" };
       if (args[0] === "aw" && args[1] === "--help") return { stdout: "usage", stderr: "" };
+      if (args[0] === "api") {
+        return {
+          stdout: JSON.stringify({ login: "octocat", id: 1 }),
+          stderr: "",
+        };
+      }
       return { stdout: "updated\n", stderr: "" };
     },
   });
@@ -104,9 +122,10 @@ test("CLI actions use the authenticated gh token when no environment token is av
   assert.deepEqual(calls.map(([, args]) => args), [
     ["auth", "token"],
     ["aw", "--help"],
+    ["api", "user"],
     ["aw", "update"],
   ]);
-  assert.equal(calls[2][2].env.GH_TOKEN, "stored-token");
+  assert.equal(calls[3][2].env.GH_TOKEN, "stored-token");
 });
 
 test("CLI actions stream command output when an output handler is provided", async () => {
@@ -117,10 +136,20 @@ test("CLI actions stream command output when an output handler is provided", asy
     githubToken: "token-value",
     execute: async (_executable, args) => {
       if (args[0] === "aw" && args[1] === "--help") return { stdout: "usage", stderr: "" };
+      if (args[0] === "api") {
+        return {
+          stdout: JSON.stringify({ login: "octocat", id: 1 }),
+          stderr: "",
+        };
+      }
       throw new Error("buffered execution should not run");
     },
     onOutput: (event) => output.push(event),
-    streamCommand: async ({ onOutput }) => {
+    streamCommand: async ({ onOutput, gitIdentity }) => {
+      assert.deepEqual(gitIdentity, {
+        name: "octocat",
+        email: "1+octocat@users.noreply.github.com",
+      });
       onOutput({ stream: "stdout", data: "updating\n" });
       onOutput({ stream: "stderr", data: "warning\n" });
       return { ok: true, exitCode: 0, stdout: "", stderr: "" };
