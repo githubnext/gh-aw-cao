@@ -83,14 +83,14 @@ jobs:
         run: |
           set -euo pipefail
           local_runtime="$GITHUB_WORKSPACE/.cao/.github/workflows/shared/control.mjs"
-          if [[ -f "$local_runtime" ]]; then
+          workflow_ref="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/}"
+          workflow_path="${workflow_ref%@*}"
+          source="$(sed -n 's/^# Source: //p' "$GITHUB_WORKSPACE/.cao/$workflow_path" | head -n 1)"
+          if [[ -z "$source" && -f "$local_runtime" ]]; then
             echo "external=false" >> "$GITHUB_OUTPUT"
             echo "runtime=$local_runtime" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          workflow_ref="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/}"
-          workflow_path="${workflow_ref%@*}"
-          source="$(sed -n 's/^# Source: //p' "$GITHUB_WORKSPACE/.cao/$workflow_path" | head -n 1)"
           if [[ ! "$source" =~ ^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(/[A-Za-z0-9_./-]+)?@([0-9a-fA-F]{40,64})$ ]]; then
             echo "Cannot resolve immutable CAO source from $workflow_path" >&2
             exit 1

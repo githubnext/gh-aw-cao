@@ -1133,6 +1133,8 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   const setupSkill = readFileSync(join(root, ".github", "skills", "setup-central-agentic-ops", "SKILL.md"), "utf8");
   const quickstart = readFileSync(join(root, "docs", "getting-started.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
+  const control = readFileSync(join(root, ".github", "workflows", "shared", "control.md"), "utf8");
+  const activity = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
   const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
   const policy = JSON.parse(execFileSync(process.execPath, [
     join(root, ".github", "workflows", "shared", "control.mjs"),
@@ -1154,6 +1156,8 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   for (const path of ["cao.schema.json", "setup-github-apps.mjs", "control.mjs", "policy.mjs"]) {
     assert.ok(existsSync(join(root, ".github", "workflows", "shared", path)));
   }
+  assert.ok(control.indexOf("source=\"$(sed") < control.indexOf("if [[ -z \"$source\""));
+  assert.ok(activity.indexOf("const record =") < activity.indexOf("if (!record)"));
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /setup-central-agentic-ops/);
   assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_REF\}"/);
@@ -3294,7 +3298,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
-  assert.match(workflow, /Resolve CAO control source[\s\S]*?\.github\/workflows\/shared\/control\.mjs[\s\S]*?\.github\/aw\/packages/);
+  assert.match(workflow, /Resolve CAO control source[\s\S]*?\.github\/aw\/packages[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
   assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+"\$control_runtime"/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
