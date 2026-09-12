@@ -233,10 +233,10 @@ jobs:
               'speed-index': 'Speed Index',
               'total-blocking-time': 'Total Blocking Time',
             }
-            const formatMetric = (name, value) =>
-              typeof value !== 'number' || Number.isNaN(value)
-                ? 'n/a'
-                : name === 'cumulative-layout-shift' ? value.toFixed(3) : `${Math.round(value)} ms`
+            const formatMetric = (name, value) => {
+              if (typeof value !== 'number' || Number.isNaN(value)) return 'n/a'
+              return name === 'cumulative-layout-shift' ? value.toFixed(3) : `${Math.round(value)} ms`
+            }
             const sections = validResults.map((result) => {
               const budgets = result.budgets && typeof result.budgets === 'object' ? result.budgets : {}
               const metrics = result.metrics && typeof result.metrics === 'object' ? result.metrics : {}
