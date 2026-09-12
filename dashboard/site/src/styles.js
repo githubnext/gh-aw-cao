@@ -284,7 +284,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .cli-actions-settings { padding-top: 8px; border-top: 1px solid var(--border); }
 .cli-actions-settings .cli-action-trigger { align-items: center; }
 .cli-actions-settings .cli-action-trigger-copy small { display: none; }
-.cli-action-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: min(720px, calc(100vh - 32px)); margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
+.cli-action-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: min(720px, calc(100vh - 32px)); margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); text-align: left; white-space: normal; }
 .cli-action-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .cli-action-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
 .cli-action-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
@@ -738,11 +738,16 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .package-dispatches-page .table-status-detail > a, .dispatches-page .table-status-detail > a { color: inherit; font-weight: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .package-dispatches-page .chart-view-pie:first-of-type .pie-chart-total-value { fill: var(--danger); }
 .table-intent-action { width: 1%; text-align: left; white-space: nowrap; }
+.custom-table :is(th.table-compact-column, td.table-cli-action-cell) { width: 44px; min-width: 44px; max-width: 44px; padding-right: 6px; padding-left: 6px; text-align: center; }
 .table-intent-control { display: inline-grid; place-items: center; }
 .table-intent-button { min-height: 32px; display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent-muted); color: var(--accent); font: inherit; font-size: .75rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .table-intent-button:hover { background: var(--accent); color: var(--canvas); }
 .table-intent-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .table-intent-button .octicon { width: 14px; height: 14px; }
+.table-cli-action-control { display: inline-grid; place-items: center; }
+.table-cli-action-button { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }
+.table-cli-action-button:hover { border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
+.table-cli-action-button .octicon { width: 16px; height: 16px; margin: 0; }
 .table-intent-dialog { width: min(680px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
 .table-intent-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .table-intent-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
@@ -1806,6 +1811,7 @@ th, td { padding: 10px 14px; border-bottom: 1px solid var(--border-muted); text-
 thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75rem; font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .table-summary-row th { min-width: 150px; padding-block: 8px; vertical-align: top; white-space: normal; }
 .table-summary-row th:first-child { padding-left: 38px; }
+.table-summary-row th.table-compact-column { width: 44px; min-width: 44px; max-width: 44px; padding-right: 6px; padding-left: 6px; }
 .table-summary-toggle { width: 24px; height: 24px; display: grid; place-items: center; float: left; margin-left: -30px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--muted); cursor: pointer; }
 .table-summary-toggle:hover { background: var(--neutral-muted); color: var(--fg); }
 .table-summary-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

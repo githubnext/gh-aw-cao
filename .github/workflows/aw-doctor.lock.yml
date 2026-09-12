@@ -578,7 +578,7 @@ jobs:
         env:
           GH_AW_FILE_ROOT: "${{ runner.temp }}/gh-aw"
           GH_AW_FILE_CONFIG: "{\"files\":[{\"path\":\"safeoutputs/config.json\",\"content_env\":\"GH_AW_SAFE_OUTPUTS_CONFIG\"}]}"
-          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"aw-maintenance-upgrade\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"],\"max\":50,\"workflow_files\":{\"aw-failures-investigator\":\".lock.yml\",\"aw-maintenance-compiler-security\":\".lock.yml\",\"aw-maintenance-upgrade\":\".lock.yml\"},\"workflows\":[\"aw-maintenance-upgrade\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"aw-maintenance-upgrade\"],\"max\":50,\"workflow_files\":{\"aw-failures-investigator\":\".lock.yml\",\"aw-maintenance-compiler-security\":\".lock.yml\",\"aw-maintenance-upgrade\":\".lock.yml\"},\"workflows\":[\"aw-maintenance-upgrade\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
         with:
           script: |
             const path = require('path');
@@ -660,11 +660,6 @@ jobs:
                   "inputSchema": {
                     "additionalProperties": false,
                     "properties": {
-                      "aw_context": {
-                        "default": "",
-                        "description": "Agent caller context (used internally by Agentic Workflows).",
-                        "type": "string"
-                      },
                       "batch_label": {
                         "description": "Input parameter 'batch_label' for workflow aw-failures-investigator",
                         "type": "string"
@@ -720,11 +715,6 @@ jobs:
                   "inputSchema": {
                     "additionalProperties": false,
                     "properties": {
-                      "aw_context": {
-                        "default": "",
-                        "description": "Agent caller context (used internally by Agentic Workflows).",
-                        "type": "string"
-                      },
                       "batch_label": {
                         "description": "Input parameter 'batch_label' for workflow aw-maintenance-compiler-security",
                         "type": "string"
@@ -1857,7 +1847,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,docs.github.com,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.blog,github.com,github.githubassets.com,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,patch-diff.githubusercontent.com,patchdiff.githubusercontent.com,ppa.launchpad.net,raw.githubusercontent.com,s.symcb.com,s.symcd.com,security.ubuntu.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"aw-maintenance-upgrade\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"],\"max\":50,\"workflow_files\":{\"aw-failures-investigator\":\".lock.yml\",\"aw-maintenance-compiler-security\":\".lock.yml\",\"aw-maintenance-upgrade\":\".lock.yml\"},\"workflows\":[\"aw-maintenance-upgrade\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"aw-maintenance-upgrade\"],\"max\":50,\"workflow_files\":{\"aw-failures-investigator\":\".lock.yml\",\"aw-maintenance-compiler-security\":\".lock.yml\",\"aw-maintenance-upgrade\":\".lock.yml\"},\"workflows\":[\"aw-maintenance-upgrade\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
         with:
           github-token: ${{ steps.safe-outputs-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |

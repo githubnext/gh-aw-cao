@@ -94,6 +94,8 @@ resources:
     destination: .github/aw/dashboard/site/src/compliance.js
   - source: site/src/cancel-command.js
     destination: .github/aw/dashboard/site/src/cancel-command.js
+  - source: site/src/cli-action-template.js
+    destination: .github/aw/dashboard/site/src/cli-action-template.js
   - source: site/src/data-health.js
     destination: .github/aw/dashboard/site/src/data-health.js
   - source: site/src/database-counts.js

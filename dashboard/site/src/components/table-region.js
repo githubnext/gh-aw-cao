@@ -26,6 +26,7 @@ const DEFAULT_PAGE_SIZE = 25;
  *   colSpan: number,
  *   headCells: string[],
  *   unsortableColumns?: number[],
+ *   compactColumns?: number[],
  *   summaryColumns?: import('../table-summary-data.js').TableSummaryColumn[],
  *   bodyRows: unknown,
  *   filterLabel?: string,
@@ -51,6 +52,7 @@ export function renderTableRegion(options) {
     colSpan,
     headCells,
     unsortableColumns = [],
+    compactColumns = [],
     summaryColumns = [],
     bodyRows,
     filterLabel,
@@ -118,11 +120,12 @@ export function renderTableRegion(options) {
             ...headCells.map((cell, columnIndex) => {
               const facet = facets.find((candidate) => candidate.columnIndex === columnIndex);
               const canSort = hasRows && sortable && !unsortableColumns.includes(columnIndex);
+              const compactClass = compactColumns.includes(columnIndex) ? 'table-compact-column' : undefined;
               if (!facet) {
                 return canSort
                   ? h(
                     'th',
-                    { scope: 'col', 'aria-sort': 'none' },
+                    { scope: 'col', 'aria-sort': 'none', className: compactClass },
                     h(
                       'button',
                       {
@@ -133,11 +136,15 @@ export function renderTableRegion(options) {
                       cell
                     )
                   )
-                  : h('th', { scope: 'col' }, cell);
+                  : h('th', { scope: 'col', className: compactClass }, cell);
               }
               return h(
                 'th',
-                { scope: 'col', className: 'table-filter-heading', ...(canSort ? { 'aria-sort': 'none' } : {}) },
+                {
+                  scope: 'col',
+                  className: ['table-filter-heading', compactClass].filter(Boolean).join(' '),
+                  ...(canSort ? { 'aria-sort': 'none' } : {})
+                },
                 renderFacet(facet),
                 canSort
                   ? h(
@@ -193,7 +200,11 @@ export function renderTableRegion(options) {
 function renderDeferredTableSummaryRow(columns) {
   const result = processTableSummaries(columns);
   if (!(result instanceof Promise)) {
-    return renderTableSummaryRow(result.map((summary, index) => ({ ...summary, label: columns[index]?.label ?? '' })));
+    return renderTableSummaryRow(result.map((summary, index) => ({
+      ...summary,
+      label: columns[index]?.label ?? '',
+      compact: columns[index]?.compact === true
+    })));
   }
   return renderReactiveTableSummaryRow(columns, result);
 }

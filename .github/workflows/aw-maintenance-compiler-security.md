@@ -108,7 +108,7 @@ timeout-minutes: 45
 
 graders:
   operational-value:
-    run: .github/graders/aw-maintenance-compiler-security-operational-value.sh
+    run: ./graders/aw-maintenance-compiler-security-operational-value.sh
 
 steps:
   - name: Compile workflows with full validation and security scanning

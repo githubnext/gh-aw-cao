@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderCliActions } from '../../src/components/cli-actions.js';
+import { renderCliActions, renderRowCliAction, setDeclaredCliActions } from '../../src/components/cli-actions.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  setDeclaredCliActions([]);
 });
 
 describe('canvas CLI actions', () => {
@@ -80,5 +81,24 @@ describe('canvas CLI actions', () => {
     fetch.mockResolvedValueOnce({ ok: true, body: streamingBody() });
     confirm.click();
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('renders a row action command with repository context', () => {
+    setDeclaredCliActions([{
+      id: 'update-target-repository',
+      label: 'Update repository',
+      icon: 'sync',
+      command: 'gh aw update --repo {{repository}}'
+    }]);
+    const rendered = renderRowCliAction('update-target-repository', { repository: 'octo/example' });
+    expect(rendered).not.toBeNull();
+    if (!rendered) return;
+    document.body.append(rendered);
+
+    rendered.querySelector('button')?.click();
+
+    expect(rendered.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw update --repo octo/example');
+    expect(rendered.querySelector('.table-cli-action-button .octicon-sync')).not.toBeNull();
   });
 });

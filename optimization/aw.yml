@@ -11,3 +11,9 @@ includes:
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/optimization.json
+  - source: .github/graders/optimization-agents-md-curator-operational-value.sh
+    destination: .github/aw/optimization/graders/optimization-agents-md-curator-operational-value.sh
+  - source: .github/graders/optimization-ai-credit-auditor-operational-value.sh
+    destination: .github/aw/optimization/graders/optimization-ai-credit-auditor-operational-value.sh
+  - source: .github/graders/optimization-ai-credit-optimizer-operational-value.sh
+    destination: .github/aw/optimization/graders/optimization-ai-credit-optimizer-operational-value.sh

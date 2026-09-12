@@ -11,7 +11,7 @@ function histogramBinCountForSampleSize(sampleSize) {
 }
 
 /**
- * @typedef {{ field?: string, label: string, type?: string, display?: string, values: unknown[] }} TableSummaryColumn
+ * @typedef {{ field?: string, label: string, type?: string, display?: string, compact?: boolean, values: unknown[] }} TableSummaryColumn
  * @typedef {{ kind: 'none' } | { kind: 'empty', message: string } | { kind: 'boolean', count: number, trueCount: number, missingCount: number } | { kind: 'count', count: number } | { kind: 'categorical', values: Array<{ label: string, ratio: number }> } | { kind: 'quantitative', count: number, total: number, mean: number, deviation: number | null, bins: HistogramBin[] } | { kind: 'temporal', start: number, stop: number }} TableColumnSummary
  * @typedef {{ lower: number, upper: number, count: number }} HistogramBin
  */
