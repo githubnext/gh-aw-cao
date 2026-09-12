@@ -1971,8 +1971,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
      under this cap, so animating max-height here can never clip real content; it only exists to
      give the collapse-on-scroll transition below a finite value to animate toward, since CSS
      cannot transition to/from "none". */
-  .dashboard-full-view .org-sidebar { max-height: 480px; overflow: hidden; transition: max-height 200ms ease, padding 200ms ease, opacity 160ms ease, border-color 200ms ease, visibility 200ms ease; }
-  .dashboard-root.dashboard-full-view-scrolled .org-sidebar { max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; border-color: transparent; opacity: 0; visibility: hidden; pointer-events: none; }
+  .dashboard-full-view .org-sidebar { max-height: 480px; overflow: hidden; transition: max-height 200ms ease, padding 200ms ease, opacity 160ms ease, border-color 200ms ease, visibility 0s linear 0s; }
+  .dashboard-root.dashboard-full-view-scrolled .org-sidebar { max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; border-color: transparent; opacity: 0; visibility: hidden; pointer-events: none; transition: max-height 200ms ease, padding 200ms ease, opacity 160ms ease, border-color 200ms ease, visibility 0s linear 200ms; }
   .dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }
   .sidebar-header { position: relative; margin: 0 0 8px; }
   .mobile-history-back:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }

@@ -2366,6 +2366,8 @@ test('full-view mobile header collapses smoothly instead of jumping when scrolle
   const sidebar = page.locator('.org-sidebar');
   await expect(view).toHaveCount(1);
   await expect(sidebar).toBeVisible();
+  const restingMaxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
+  expect(restingMaxHeight).toBeGreaterThan(0);
 
   await scroll.evaluate((element) => {
     element.scrollTop = 100;
@@ -2377,6 +2379,12 @@ test('full-view mobile header collapses smoothly instead of jumping when scrolle
   // which is what produced the reported scroll jitter on iPhone.
   expect(await sidebar.evaluate((element) => getComputedStyle(element).display)).not.toBe('none');
   expect(await sidebar.evaluate((element) => getComputedStyle(element).transitionProperty)).toContain('max-height');
+  // Sample partway through the ~200ms collapse to confirm it is actually interpolating
+  // frame-by-frame rather than jumping straight to the end state.
+  await page.waitForTimeout(80);
+  const midCollapseMaxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
+  expect(midCollapseMaxHeight).toBeGreaterThan(0);
+  expect(midCollapseMaxHeight).toBeLessThan(restingMaxHeight);
   await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).toBe('0px');
 
   await scroll.evaluate((element) => {
