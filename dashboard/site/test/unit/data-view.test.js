@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderDataView } from '../../src/components/data-view.js';
+import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { HORIZON_FILTER_STORAGE_KEY } from '../../src/components/filter-bar.js';
 
@@ -16,6 +17,8 @@ const metadata = {
 describe('data view renderer', () => {
   afterEach(() => {
     window.localStorage.clear();
+    window.history.replaceState({}, '', '/');
+    setDeclaredCliActions([]);
   });
 
   it('renders a unit-bearing metric selected by the JSON mark', () => {
@@ -498,6 +501,55 @@ describe('data view renderer', () => {
 
     rendered?.querySelector('.table-intent-dialog-close')?.dispatchEvent(new MouseEvent('click'));
     expect(dialog?.hasAttribute('open')).toBe(false);
+  });
+
+  it('shows row CLI actions only in canvas mode and renders repository templates', () => {
+    setDeclaredCliActions([{
+      id: 'update-target-repository',
+      label: 'Update repository',
+      icon: 'sync',
+      command: 'gh aw update --repo {{repository}}',
+      placement: 'row'
+    }]);
+    const context = {
+      pageId: 'repositories',
+      title: 'Repositories',
+      view: {
+        mark: 'table',
+        controls: 'static',
+        encoding: {
+          columns: [{ field: 'repository' }],
+          actions: [{
+            action: 'update-target-repository',
+            presentation: 'cli-action',
+            icon: 'sync',
+            label: 'Update repository',
+            context: ['repository']
+          }]
+        }
+      },
+      sourceName: 'repository-activity',
+      rows: [{ repository: 'octo/example' }],
+      metadata,
+      contextDetails: [],
+      headingTag: /** @type {'h3'} */ ('h3'),
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    };
+
+    window.history.replaceState({}, '', '/');
+    expect(renderDataView('table', context)?.querySelector('.table-cli-action-button')).toBeNull();
+
+    window.history.replaceState({}, '', '/?local-preview=canvas');
+    const rendered = renderDataView('table', context);
+    expect(rendered?.querySelector('thead th:first-child')?.textContent).toBe('');
+    expect(rendered?.querySelector('thead th:first-child')?.classList.contains('table-compact-column')).toBe(true);
+    rendered?.querySelector('.table-cli-action-button')?.dispatchEvent(new MouseEvent('click'));
+    expect(rendered?.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw update --repo octo/example');
+
   });
 
   it('omits column summaries when disabled by the JSON view definition', () => {

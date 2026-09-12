@@ -117,6 +117,7 @@ import {
   WORK_VIEW_BODY_VALUES,
   WORKFLOW_ROUTE_BODY_VALUES
 } from './components/route-body-specification.js';
+import { cliActionTemplateFields } from './cli-action-template.js';
 
 /**
  * @typedef {{ code: string, message: string, path: string }} ValidationError
@@ -168,6 +169,8 @@ let declaredQueries = new Map();
 
 /** @type {Map<string, Set<string>>} */
 let declaredQuerySources = new Map();
+/** @type {Map<string, Record<string, unknown>>} */
+let declaredCliActions = new Map();
 
 /**
  * @param {string} source
@@ -215,6 +218,7 @@ export function validateDashboardDocument(source) {
   } finally {
     declaredQueries = new Map();
     declaredQuerySources = new Map();
+    declaredCliActions = new Map();
   }
 
   if (errors.length > 0) {
@@ -570,6 +574,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           ));
         }
         ids.add(action.id);
+        declaredCliActions.set(action.id, action);
       }
       validateStringField(action.label, `${path}.label`, true, errors);
       validateOptionalStringField(action.description, `${path}.description`, errors);
@@ -586,7 +591,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         if (typeof action.placement === 'string' && !CLI_ACTION_PLACEMENT_VALUES.includes(action.placement)) {
           errors.push(createError(
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-            'CLI action placement must use toolbar or settings.',
+            'CLI action placement must use toolbar, settings, or row.',
             `${path}.placement`
           ));
         }
@@ -611,6 +616,14 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             'CLI action command must be a single line without null characters.',
+            `${path}.command`
+          ));
+        }
+        const withoutTemplates = action.command.replace(/\{\{[a-z][a-z0-9]*(?:-[a-z0-9]+)*\}\}/g, '');
+        if (/[{}]/.test(withoutTemplates)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action command contains an invalid template token.',
             `${path}.command`
           ));
         }
@@ -2233,10 +2246,28 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
       return;
     }
     validateObjectKeys(actionNode, TABLE_ACTION_KEYS, actionPath, errors);
-    validateStringField(action.intent, `${actionPath}.intent`, true, errors);
     validateStringField(action.presentation, `${actionPath}.presentation`, true, errors);
     if (typeof action.presentation === 'string' && !TABLE_ACTION_PRESENTATION_VALUES.includes(action.presentation)) {
-      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt.', `${actionPath}.presentation`));
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt or cli-action.', `${actionPath}.presentation`));
+    }
+    if (action.presentation === 'cli-action') {
+      validateRequiredIdentifier(action.action, `${actionPath}.action`, 'CLI action reference', errors);
+      const declaredAction = typeof action.action === 'string'
+        ? declaredCliActions.get(action.action)
+        : undefined;
+      if (typeof action.action === 'string' && !declaredAction) {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'cli-action must reference a declared dashboard CLI action.', `${actionPath}.action`));
+      } else if (declaredAction?.placement !== 'row') {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'cli-action must reference a row-placed dashboard CLI action.', `${actionPath}.action`));
+      }
+      if (action.intent !== undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'cli-action table actions must not declare intent.', `${actionPath}.intent`));
+      }
+    } else {
+      validateStringField(action.intent, `${actionPath}.intent`, true, errors);
+      if (action.action !== undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'copy-prompt table actions must not declare action.', `${actionPath}.action`));
+      }
     }
     validateStringField(action.icon, `${actionPath}.icon`, true, errors);
     if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
@@ -2259,6 +2290,14 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
           errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'action context field must be declared by data.source.', fieldPath));
         }
       });
+      if (action.presentation === 'cli-action' && typeof action.action === 'string') {
+        const command = declaredCliActions.get(action.action)?.command;
+        const templateFields = typeof command === 'string' ? cliActionTemplateFields(command) : [];
+        const contextFieldNames = action.context.filter((field) => typeof field === 'string');
+        if (templateFields.length === 0 || templateFields.some((field) => !contextFieldNames.includes(field))) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'cli-action context must include every command template field.', `${actionPath}.context`));
+        }
+      }
     }
     if (action.when === undefined) return;
     if (!isPlainObject(action.when)) {

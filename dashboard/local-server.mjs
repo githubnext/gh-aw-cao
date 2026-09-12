@@ -20,6 +20,7 @@ import { createRequire } from "node:module";
 import { isIP } from "node:net";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
+import { cliActionTemplateFields, renderCliActionCommand } from "./site/src/cli-action-template.js";
 import {
   basename,
   dirname,
@@ -1970,10 +1971,12 @@ export async function startDashboardServer({
           return;
         }
         if (!payload || typeof payload !== "object" || Array.isArray(payload)
-            || Object.keys(payload).some((key) => !["id", "arguments"].includes(key))
+            || Object.keys(payload).some((key) => !["id", "arguments", "values"].includes(key))
             || typeof payload.id !== "string" || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(payload.id)
             || (payload.arguments !== undefined
-              && (!payload.arguments || typeof payload.arguments !== "object" || Array.isArray(payload.arguments)))) {
+              && (!payload.arguments || typeof payload.arguments !== "object" || Array.isArray(payload.arguments)))
+            || (payload.values !== undefined
+              && (!payload.values || typeof payload.values !== "object" || Array.isArray(payload.values)))) {
           sendJson(response, 400, { error: "Invalid CLI action identifier." });
           return;
         }
@@ -1985,14 +1988,30 @@ export async function startDashboardServer({
         }
         const declaredArguments = Array.isArray(action.arguments) ? action.arguments : [];
         const suppliedArguments = payload.arguments ?? {};
+        const templateFields = cliActionTemplateFields(action.command);
+        const suppliedValues = payload.values ?? {};
         if (Object.keys(suppliedArguments).some((id) =>
           !declaredArguments.some((argument) => argument?.id === id)
           || typeof suppliedArguments[id] !== "boolean")) {
           sendJson(response, 400, { error: "Invalid CLI action arguments." });
           return;
         }
+        if (Object.keys(suppliedValues).some((field) => !templateFields.includes(field))
+            || templateFields.some((field) => typeof suppliedValues[field] !== "string")) {
+          sendJson(response, 400, { error: "Invalid CLI action template values." });
+          return;
+        }
+        let renderedCommand;
+        try {
+          renderedCommand = renderCliActionCommand(action.command, suppliedValues);
+        } catch (error) {
+          sendJson(response, 400, {
+            error: error instanceof Error ? error.message : "Invalid CLI action template values.",
+          });
+          return;
+        }
         const command = [
-          action.command,
+          renderedCommand,
           ...declaredArguments
             .filter((argument) => (
               suppliedArguments[argument.id] ?? argument.default === true
