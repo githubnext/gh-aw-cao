@@ -285,6 +285,7 @@ function renderFactoryRhythm(successfulRuns, referenceTime) {
   /** @param {MouseEvent} event */
   const resetDay = (event) => {
     if (event.target instanceof Element && event.target.closest('.factory-rhythm-day')) return;
+    if (rhythmSelection.get() === null) return;
     rhythmSelection.set(null);
     showFullWeek();
   };
