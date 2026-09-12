@@ -1,6 +1,6 @@
 name: AW Optimization
 description: Organization-wide workflows for optimizing GitHub Agentic Workflow AI credit usage, cost, and ambient context.
-min-version: v0.89.7
+min-version: v0.89.8
 experimental: true
 includes:
   - .github/workflows/optimization-agents-md-curator.md
