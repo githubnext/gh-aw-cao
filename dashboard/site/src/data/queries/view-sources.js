@@ -323,6 +323,32 @@ function eventsSource(events, sessionsById, runsById, sources) {
   };
 }
 
+/** @param {Record<string, unknown>[]} transactions @param {Record<string, unknown>} sources */
+function transactionsSource(transactions, sources) {
+  return {
+    source: 'transactions',
+    rows: transactions.map((transaction) => definedFields({
+      transaction: transaction.id,
+      kind: transaction.kind,
+      'created-at': transaction.createdAt,
+      'payload-scope': transaction.payloadScope,
+      'payload-hash': transaction.payloadHash,
+      'payload-etag': transaction.payloadEtag,
+      records: transaction.records,
+      'committed-records': transaction.committedRecords,
+      'raw-payload-records': transaction.rawPayloadRecords,
+      'raw-runs': transaction.rawRuns,
+      'agentic-run-records': transaction.agenticRunRecords,
+      'agentic-runs': transaction.agenticRuns,
+      'duplicate-raw-run-observations': transaction.duplicateRawRunObservations,
+      'duplicate-agentic-run-observations': transaction.duplicateAgenticRunObservations,
+      'unenriched-runs': transaction.unenrichedRuns,
+      error: transaction.error
+    })),
+    metadata: projectionMetadata(sources, 'transactions', 'transactions', true)
+  };
+}
+
 /**
  * @param {Record<string, unknown>[]} events
  * @param {Map<unknown, Record<string, unknown>>} sessionsById
@@ -415,6 +441,7 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
       'job-performance',
       'failed-runs',
       'events',
+      'transactions',
       'firewall-observations'
     ])
   };
@@ -435,7 +462,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const queries = createCanonicalQueries(indexedDB);
   const needsFirewall = requested.has('firewall-observations');
   const needsEvents = requested.has('events') || needsFirewall;
-  const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events] = await Promise.all([
+  const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') || requested.has('runs') ? queries.workflows.list() : [],
@@ -444,7 +471,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     requested.has('job-performance') ? queries.jobs.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
     needsEvents ? queries.sessions.list() : [],
-    needsEvents ? queries.events.list() : []
+    needsEvents ? queries.events.list() : [],
+    requested.has('transactions') ? queries.transactions.list() : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
@@ -460,6 +488,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
+  if (requested.has('transactions')) projected.transactions = transactionsSource(transactions, sources);
   if (needsFirewall) {
     projected['firewall-observations'] = firewallObservationsSource(events, sessionsById, runsById, sources);
   }

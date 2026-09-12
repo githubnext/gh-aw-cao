@@ -5111,6 +5111,119 @@
         ]
       },
       {
+        "id": "transactions",
+        "kind": "custom",
+        "title": "Transactions",
+        "icon": "table",
+        "description": "Inspect retained dashboard ingestion transactions.",
+        "views": [
+          {
+            "id": "transaction-entries",
+            "title": "Transaction entries",
+            "description": "Retained ingestion transactions ordered from newest to oldest.",
+            "data": {
+              "source": "transactions",
+              "order-by": [
+                {
+                  "field": "created-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No ingestion transactions have been retained.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "created-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Created"
+                },
+                {
+                  "field": "kind",
+                  "type": "nominal",
+                  "title": "Kind"
+                },
+                {
+                  "field": "payload-scope",
+                  "type": "nominal",
+                  "title": "Scope"
+                },
+                {
+                  "field": "committed-records",
+                  "type": "quantitative",
+                  "title": "Committed records"
+                },
+                {
+                  "field": "records",
+                  "type": "quantitative",
+                  "title": "Records"
+                },
+                {
+                  "field": "raw-payload-records",
+                  "type": "quantitative",
+                  "title": "Raw payload records"
+                },
+                {
+                  "field": "raw-runs",
+                  "type": "quantitative",
+                  "title": "Raw runs"
+                },
+                {
+                  "field": "agentic-run-records",
+                  "type": "quantitative",
+                  "title": "Agentic run records"
+                },
+                {
+                  "field": "agentic-runs",
+                  "type": "quantitative",
+                  "title": "Agentic runs"
+                },
+                {
+                  "field": "duplicate-raw-run-observations",
+                  "type": "quantitative",
+                  "title": "Duplicate raw runs"
+                },
+                {
+                  "field": "duplicate-agentic-run-observations",
+                  "type": "quantitative",
+                  "title": "Duplicate agentic runs"
+                },
+                {
+                  "field": "unenriched-runs",
+                  "type": "quantitative",
+                  "title": "Unenriched runs"
+                },
+                {
+                  "field": "error",
+                  "type": "nominal",
+                  "title": "Error"
+                },
+                {
+                  "field": "transaction",
+                  "type": "nominal",
+                  "title": "Transaction"
+                },
+                {
+                  "field": "payload-hash",
+                  "type": "nominal",
+                  "title": "Payload hash"
+                },
+                {
+                  "field": "payload-etag",
+                  "type": "nominal",
+                  "title": "Payload ETag"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
         "id": "engines-models",
         "kind": "custom",
         "title": "Engines Models",
@@ -6198,6 +6311,7 @@
           "workflows",
           "runs",
           "events",
+          "transactions",
           "firewall"
         ]
       },

@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
 import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -124,6 +124,36 @@ beforeEach(async () => {
 });
 
 describe('canonical view sources', () => {
+  it('projects retained ingestion transactions for dashboard inspection', async () => {
+    await recordTransaction(indexedDB, {
+      id: 'ingest-jsonl:current:test',
+      kind: 'ingest-jsonl',
+      createdAt: '2026-09-09T05:00:00Z',
+      payloadScope: 'gh-aw-jsonl',
+      payloadHash: 'abc123',
+      records: 12,
+      committedRecords: 10,
+      unenrichedRuns: 2
+    });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['transactions']);
+
+    expect(projected.transactions).toMatchObject({
+      source: 'transactions',
+      metadata: { 'source-kind': 'canonical-query', availability: 'available' },
+      rows: [{
+        transaction: 'ingest-jsonl:current:test',
+        kind: 'ingest-jsonl',
+        'created-at': '2026-09-09T05:00:00Z',
+        'payload-scope': 'gh-aw-jsonl',
+        'payload-hash': 'abc123',
+        records: 12,
+        'committed-records': 10,
+        'unenriched-runs': 2
+      }]
+    });
+  });
+
   it('queries only the canonical payload requested by a view', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
