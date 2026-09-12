@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -75,7 +76,7 @@ test("repository credentials keep the private key out of command arguments", () 
 });
 
 test("dry run emits both exact manifests without requiring GitHub access", () => {
-  const result = spawnSync(process.execPath, [script, "--repo", "githubnext/gh-aw-cao", "--dry-run"], {
+  const result = spawnSync(script, ["--repo", "githubnext/gh-aw-cao", "--dry-run"], {
     encoding: "utf8",
   });
 
@@ -90,6 +91,15 @@ test("dry run emits both exact manifests without requiring GitHub access", () =>
     "http://127.0.0.1:0/callback",
     "http://127.0.0.1:0/callback",
   ]);
+});
+
+test("cao-setup is exposed as an executable Node CLI", () => {
+  const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const result = spawnSync(script, ["--help"], { encoding: "utf8" });
+
+  assert.equal(packageJson.bin["cao-setup"], ".github/cao/setup-github-apps.mjs");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^Usage: cao-setup \[options\]/);
 });
 
 test("App setup validates callback codes and bounded generated names", () => {

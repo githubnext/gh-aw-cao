@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "bin": {
-    "cao": "activity/cao.mjs"
+    "cao": "activity/cao.mjs",
+    "cao-setup": ".github/cao/setup-github-apps.mjs"
   },
   "scripts": {
     "install:gh-aw": "curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- v0.89.8",

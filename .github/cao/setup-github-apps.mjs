@@ -420,7 +420,7 @@ async function waitForInstallation(app, repo) {
 }
 
 function printHelp() {
-  console.log(`Usage: node <path-to-setup-github-apps.mjs> [options]
+  console.log(`Usage: cao-setup [options]
 
 Create and install separate read-only and write-capable GitHub Apps for a CAO control repository.
 

@@ -93,7 +93,7 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
     When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper installed by the package. Target the control repository explicitly and complete both browser creation and installation prompts:
 
     ```bash
-    node .github/aw/cao/setup-github-apps.mjs --repo <organization>/<control-repository>
+    .github/aw/cao/setup-github-apps.mjs --repo <organization>/<control-repository>
     ```
 
     The helper mirrors gh-aw's App manifest conversion flow without changing package delivery, keeps the root package manifest config-free, stores client IDs as repository variables, and sends private keys to repository secrets through standard input. Do not install the package over in-tree workflows in a source-managed control repository. After setup, verify these names exist in the control repository:
