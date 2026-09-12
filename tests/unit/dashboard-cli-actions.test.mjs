@@ -45,6 +45,16 @@ test("CLI actions execute gh directly with the approved token", async () => {
   assert.deepEqual(calls[1][1], ["aw", "compile", "--strict"]);
   assert.equal(calls[1][2].cwd, "/workspace");
   assert.equal(calls[1][2].env.GH_TOKEN, "token-value");
+  assert.equal(calls[1][2].env.GIT_AUTHOR_NAME, "GitHub Copilot");
+  assert.equal(
+    calls[1][2].env.GIT_AUTHOR_EMAIL,
+    "223556219+Copilot@users.noreply.github.com",
+  );
+  assert.equal(calls[1][2].env.GIT_COMMITTER_NAME, "GitHub Copilot");
+  assert.equal(
+    calls[1][2].env.GIT_COMMITTER_EMAIL,
+    "223556219+Copilot@users.noreply.github.com",
+  );
   assert.equal(calls[1][2].shell, undefined);
 });
 

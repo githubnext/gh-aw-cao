@@ -227,13 +227,20 @@
         attachCopilotPanel(dashboard);
         if (previewMode === "canvas") {
           const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
+          const actionTemplateValues = typeof dashboardDocument.dashboard.repository === "string"
+            ? { repository: dashboardDocument.dashboard.repository }
+            : {};
           const toolbarActions = renderCliActions(
-            declaredActions.filter((action) => !["settings", "row"].includes(action.placement ?? "toolbar"))
+            declaredActions.filter((action) => !["settings", "row"].includes(action.placement ?? "toolbar")),
+            { templateValues: actionTemplateValues }
           );
           if (toolbarActions) dashboard.querySelector(".report-actions")?.prepend(toolbarActions);
           const settingsActions = renderCliActions(
             declaredActions.filter((action) => action.placement === "settings"),
-            { presentation: "settings" }
+            {
+              presentation: "settings",
+              templateValues: actionTemplateValues
+            }
           );
           if (settingsActions) {
             const dialogs = [...settingsActions.querySelectorAll("dialog")];

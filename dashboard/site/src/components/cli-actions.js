@@ -250,7 +250,7 @@ export function renderRowCliAction(actionId, templateValues) {
  * Render dashboard-declared CLI actions. Every invocation requires a fresh,
  * explicit confirmation; approval is never persisted or inferred.
  * @param {Array<{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }> | undefined} actions
- * @param {{ presentation?: 'menu'|'settings' }} [options]
+ * @param {{ presentation?: 'menu'|'settings', templateValues?: Record<string, string> }} [options]
  * @returns {HTMLElement | null}
  */
 export function renderCliActions(actions, options = {}) {

@@ -10,6 +10,10 @@ const timeoutMilliseconds = 5 * 60 * 1000;
 const ghAwVersion = "v0.89.8";
 const ghAwInstallerUrl =
   "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh";
+const gitIdentity = {
+  name: "GitHub Copilot",
+  email: "223556219+Copilot@users.noreply.github.com",
+};
 
 export function parseGhAwCommand(command) {
   if (typeof command !== "string" || command.length === 0) {
@@ -70,6 +74,10 @@ function commandEnvironment(githubToken) {
   return {
     ...process.env,
     ...(githubToken ? { GH_TOKEN: githubToken } : {}),
+    GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || gitIdentity.name,
+    GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || gitIdentity.email,
+    GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || gitIdentity.name,
+    GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || gitIdentity.email,
   };
 }
 

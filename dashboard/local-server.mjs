@@ -1819,7 +1819,9 @@ export async function startDashboardServer({
 
     await copyFile(baseDashboardPath, bundledDashboardPath);
     await bundleDashboardFiles(bundledDashboardPath, packagePaths);
-    dashboardContent = redactJsonSecrets(await readFile(bundledDashboardPath, "utf8"));
+    const dashboardDocument = JSON.parse(await readFile(bundledDashboardPath, "utf8"));
+    if (repository) dashboardDocument.dashboard.repository = repository;
+    dashboardContent = redactJsonSecrets(JSON.stringify(dashboardDocument));
     signature = nextSignature;
     output("Dashboard preview rebuilt.", {
       bundledDashboardPath,
