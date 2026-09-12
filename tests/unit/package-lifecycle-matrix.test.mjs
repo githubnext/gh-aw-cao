@@ -31,6 +31,18 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     names([".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh"]),
     ["EU CRA"],
   );
+  assert.deepEqual(
+    names(["optimization/.github/graders/optimization-ai-credit-auditor-operational-value.sh"]),
+    ["root"],
+  );
+  assert.deepEqual(
+    names(["dependabot/.github/graders/dependabot-release-train-updater-operational-value.sh"]),
+    ["root", "Dependabot"],
+  );
+  assert.deepEqual(
+    names(["eu-cra-compliance/.github/graders/eu-cra-compliance-scope-classifier-operational-value.sh"]),
+    ["EU CRA"],
+  );
 });
 
 test("package lifecycle matrix selects a package when its manifest changes", () => {

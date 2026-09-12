@@ -104,6 +104,10 @@ function sourcePath(manifest, source) {
   return posix.normalize(posix.join(posix.dirname(manifest), source));
 }
 
+function resourceSourcePath(manifest, source) {
+  return posix.normalize(posix.join(posix.dirname(manifest), source));
+}
+
 function packageSources(root, suite) {
   const sources = [];
   const visited = new Set();
@@ -121,7 +125,7 @@ function packageSources(root, suite) {
       }
     }
     for (const entry of manifest.resources ?? []) {
-      sources.push(sourcePath(manifestPath, entry.source));
+      sources.push(resourceSourcePath(manifestPath, entry.source));
     }
   }
   collect(suite.manifest);
