@@ -145,9 +145,20 @@ export function parseDashboardCommand(command, additionalCommandPrefixes = []) {
   return tokens;
 }
 
+const gitIdentityEnvironmentKeys = [
+  "GIT_AUTHOR_NAME",
+  "GIT_AUTHOR_EMAIL",
+  "GIT_COMMITTER_NAME",
+  "GIT_COMMITTER_EMAIL",
+];
+
 function commandEnvironment(githubToken, gitIdentity) {
+  const environment = { ...process.env };
+  if (!gitIdentity) {
+    for (const key of gitIdentityEnvironmentKeys) delete environment[key];
+  }
   return {
-    ...process.env,
+    ...environment,
     ...(githubToken ? { GH_TOKEN: githubToken } : {}),
     ...(gitIdentity ? {
       GIT_AUTHOR_NAME: gitIdentity.name,
