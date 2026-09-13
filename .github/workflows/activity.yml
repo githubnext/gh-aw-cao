@@ -82,7 +82,8 @@ jobs:
             jq -r --arg owner "${GITHUB_REPOSITORY_OWNER,,}" --arg control "$GITHUB_REPOSITORY" \
               'if (.allowed_repositories | length) > 0 then
                 ([.allowed_repositories[] | select((split("/")[0] | ascii_downcase) == $owner) | split("/")[1]]
-                  + [($control | split("/")[1])]) | unique[]
+                  + [($control | split("/")[1])]) | unique
+                  | if length <= 500 then .[] else empty end
                else empty end' \
               "$REPORT_CONTROL_SETTINGS"
             echo "EOF"
