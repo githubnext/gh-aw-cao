@@ -947,12 +947,15 @@ test("repository PR automation remains bounded and adapted to CAO", () => {
   assert.match(finisher, /npm run compile:locks/);
   assert.doesNotMatch(finisher, /\bmake (?:fmt|lint|test|recompile)\b/);
 
-  assert.match(sousChef, /push-to-pull-request-branch:/);
-  assert.match(sousChef, /bash:\n\s+- "\*"/);
-  assert.match(sousChef, /npm ci/);
-  assert.match(sousChef, /browsers: \[chrome, chromium\]/);
-  assert.match(sousChef, /Chrome for Testing/);
-  assert.match(sousChef, /if and only if the pushed commit modifies one or more `\.lock\.yml` files/);
+  assert.match(sousChef, /model: copilot\/mai-code-1\.1-flash/);
+  assert.match(sousChef, /assign-to-agent:[\s\S]*?max: 4/);
+  assert.match(sousChef, /--limit 10/);
+  assert.match(sousChef, /Do not inspect code, check logs, review threads, or branch contents/);
+  assert.match(sousChef, /Do not wait, poll, fix, validate, commit, or push/);
+  assert.doesNotMatch(sousChef, /push-to-pull-request-branch:/);
+  assert.doesNotMatch(sousChef, /bash:/);
+  assert.doesNotMatch(sousChef, /playwright:/);
+  assert.doesNotMatch(sousChef, /npm ci/);
   assert.doesNotMatch(sousChef, /mention `@copilot`/);
   assert.match(sousChef, /fromJSON\(github\.event\.inputs\.aw_context \|\| '\{\}'\)\.item_number/);
 
