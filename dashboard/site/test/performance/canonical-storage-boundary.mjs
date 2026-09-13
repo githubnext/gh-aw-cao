@@ -105,19 +105,27 @@ for (const scale of scales) {
 
 const crossing = boundaryPoint(points);
 const evaluationRecords = evaluationPoint(points);
+const verdict = 'KEEP_INDEXEDDB';
+const nextAction = crossing === null ? 'NONE' : 'EVALUATE_SQLITE_WASM';
 const evidence = {
   generatedAt: new Date().toISOString(),
   budgetMs,
   crossingRecords: crossing,
   evaluationRecords,
+  verdict,
+  nextAction,
   decision: crossing === null
-    ? 'The measured range does not cross the cold replacement budget.'
-    : `Begin evaluating SQLite by ${evaluationRecords.toLocaleString('en-US')} canonical records; the measured SLO crossing is approximately ${crossing.toLocaleString('en-US')} records. Switch only after the documented cross-browser prototype criteria pass.`,
+    ? 'Keep IndexedDB; the measured range does not cross the cold replacement budget.'
+    : `Keep IndexedDB while evaluating SQLite-WASM. Begin evaluation by ${evaluationRecords.toLocaleString('en-US')} canonical records; the measured SLO crossing is approximately ${crossing.toLocaleString('en-US')} records. Update to SQLite only after a browser prototype is at least twice as fast and passes the documented compatibility criteria.`,
   points
 };
 await Promise.all([
   writeFile(join(outputRoot, 'summary.json'), `${JSON.stringify(evidence, null, 2)}\n`),
   writeFile(join(outputRoot, 'boundary.svg'), chart(points, crossing))
 ]);
-console.log(evidence.decision);
 console.log(`Boundary evidence: ${outputRoot}`);
+console.log('');
+console.log('=== STORAGE ENGINE VERDICT ===');
+console.log(`VERDICT: ${verdict}`);
+console.log(`NEXT_ACTION: ${nextAction}`);
+console.log(`RATIONALE: ${evidence.decision}`);
