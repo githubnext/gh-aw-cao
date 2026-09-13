@@ -59,7 +59,8 @@ export function publishWorkerNotification(notification, target = self) {
   target.postMessage({ type: 'notification', notification });
 }
 
-const INGESTION_PROGRESS_INTERVAL_MS = 5_000;
+const INGESTION_PROGRESS_DELAY_MS = 3_000;
+const INGESTION_PROGRESS_INTERVAL_MS = 1_000;
 let nextIngestionProgressId = 0;
 
 /**
@@ -70,14 +71,19 @@ export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
   let message = 'Ingesting dashboard data.';
   const report = () => publishWorkerNotification({ id, message, tone: 'info', duration: 0 }, target);
-  const timer = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
+  let interval;
+  const delay = setTimeout(() => {
+    report();
+    interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
+  }, INGESTION_PROGRESS_DELAY_MS);
   return {
     /** @param {string} nextMessage */
     update(nextMessage) {
       message = nextMessage;
     },
     complete() {
-      clearInterval(timer);
+      clearTimeout(delay);
+      if (interval) clearInterval(interval);
       publishWorkerNotification({ id, dismiss: true }, target);
     }
   };
