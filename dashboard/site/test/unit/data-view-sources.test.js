@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
 import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
+import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const sources = {
@@ -401,5 +402,65 @@ describe('canonical view sources', () => {
   it('queries an empty database before fresh data is ingested', async () => {
     const projected = await loadCanonicalViewSources(indexedDB, sources);
     expect(/** @type {{ rows: unknown[] }} */ (projected.runs).rows).toEqual([]);
+  });
+
+  it('keeps lazy continuation snapshots safe across background IndexedDB updates', async () => {
+    /** @param {string} generation @param {string[]} runIds */
+    const snapshot = (generation, runIds) => {
+      const input = structuredClone(sources);
+      const collected = { ...metadata, 'artifact-generation': generation };
+      for (const source of Object.values(input)) source.metadata = collected;
+      input.runs.rows = runIds.map((run) => ({
+        ...sources.runs.rows[0],
+        run,
+        'run-link': { relation: 'run', href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}`, label: `Run ${run}` }
+      }));
+      input['job-performance'].rows = [];
+      input.sessions.rows = [];
+      input.events.rows = [];
+      return input;
+    };
+    const definitions = [{
+      name: 'recent-runs',
+      from: 'runs',
+      select: [{ field: 'run' }],
+      'order-by': [{ field: 'run', direction: 'desc' }]
+    }];
+    const initial = snapshot('generation-a', ['42', '43', '44']);
+    await loadCanonicalViewSources(indexedDB, initial, { ingest: true });
+    const initialSources = await queryCanonicalViewSources(indexedDB, initial, ['runs']);
+    const initialBudget = createDashboardQueryBudget();
+    const firstPage = executeDashboardQueries(definitions, initialSources, ['recent-runs'], {
+      budget: initialBudget,
+      pagination: { 'recent-runs': { limit: 2 } }
+    });
+
+    expect(initialBudget.operations).toBe(0);
+
+    const updated = snapshot('generation-b', ['42', '43', '44', '45']);
+    await loadCanonicalViewSources(indexedDB, updated, { ingest: true });
+
+    expect(initialBudget.operations).toBe(0);
+    expect(firstPage['recent-runs'].rows).toEqual([{ run: '44' }, { run: '43' }]);
+    expect(initialBudget.operations).toBeGreaterThan(0);
+
+    const updatedSources = await queryCanonicalViewSources(indexedDB, updated, ['runs']);
+    expect(() => executeDashboardQueries(definitions, updatedSources, ['recent-runs'], {
+      pagination: {
+        'recent-runs': {
+          limit: 2,
+          continuationToken: firstPage['recent-runs'].continuationToken
+        }
+      }
+    })['recent-runs']).toThrow('Invalid or stale continuation token');
+
+    const refreshedBudget = createDashboardQueryBudget();
+    const refreshed = executeDashboardQueries(definitions, updatedSources, ['recent-runs'], {
+      budget: refreshedBudget,
+      pagination: { 'recent-runs': { limit: 2 } }
+    });
+    expect(refreshedBudget.operations).toBe(0);
+    expect(refreshed['recent-runs'].rows).toEqual([{ run: '45' }, { run: '44' }]);
+    expect(refreshedBudget.operations).toBeGreaterThan(0);
   });
 });
