@@ -12,7 +12,7 @@
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
       import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
-      import { applyTableQueryLimits, browserTableRowLimit, limitTableSources } from "./data/table-capacity.js";
+      import { applyTableQueryLimits, browserTableRowLimit } from "./data/table-capacity.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -196,8 +196,7 @@
        */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources, retryRefresh) => {
         const canExecuteCliActions = previewMode === "canvas";
-        const boundedSources = limitTableSources(sources, tableSourceNames, tableRowLimit);
-        renderedSources = boundedSources;
+        renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
         renderedHorizonSourceLoader = loadHorizonSources;
@@ -209,12 +208,13 @@
         });
         const dashboard = renderDashboard({
           document: dashboardDocument,
-          sources: boundedSources,
+          sources,
           viewer: localViewer,
           prepared,
           loading: state === "loading",
           loadPageSources,
           loadHorizonSources,
+          tableRowLimit,
         });
         if (state === "loading") {
           dashboard.classList.add("dashboard-loading");

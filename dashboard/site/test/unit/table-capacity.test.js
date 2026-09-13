@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   applyTableQueryLimits,
-  limitTableSources,
   tableRowLimitForEnvironment
 } from '../../src/data/table-capacity.js';
 import { dashboardTableSourceNames } from '../../src/presenter.js';
@@ -30,40 +29,19 @@ describe('adaptive table capacity', () => {
 
   it('limits every table query while preserving smaller declared limits', () => {
     const queries = [
-      { name: 'events', from: 'events' },
+      { name: 'events', from: 'raw-events' },
       { name: 'runs', from: 'runs', limit: 100 },
       { name: 'chart', from: 'runs' }
     ];
 
     expect(applyTableQueryLimits(queries, ['events', 'runs'], 25000)).toEqual([
-      { name: 'events', from: 'events', limit: 25000 },
+      { name: 'events', from: 'raw-events', limit: 25000 },
       { name: 'runs', from: 'runs', limit: 100 },
       queries[2]
     ]);
   });
 
-  it('bounds raw table sources without changing unrelated sources', () => {
-    const rows = Array.from({ length: 4 }, (_, id) => ({ id }));
-    const metadata = {
-      'source-id': 'fixture',
-      'source-kind': 'fixture',
-      'as-of': '2026-09-13T00:00:00Z',
-      'retrieved-at': '2026-09-13T00:00:00Z',
-      completeness: /** @type {'complete'} */ ('complete'),
-      freshness: /** @type {'fresh'} */ ('fresh')
-    };
-    const sources = {
-      table: { source: 'table', rows, metadata },
-      chart: { source: 'chart', rows, metadata }
-    };
-
-    const bounded = limitTableSources(sources, ['table'], 2);
-
-    expect(bounded.table.rows).toEqual(rows.slice(0, 2));
-    expect(bounded.chart).toBe(sources.chart);
-  });
-
-  it('applies the selected limit to every table-backed dashboard query', () => {
+  it('applies the selected limit to every terminal table-backed dashboard query', () => {
     const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
     const tableSources = dashboardTableSourceNames(
       /** @type {import('../../src/presenter.js').PresentationDocument} */ (document)
@@ -78,9 +56,23 @@ describe('adaptive table capacity', () => {
       const definition = /** @type {Record<string, unknown>} */ (query);
       return typeof definition.name === 'string' ? [[definition.name, definition]] : [];
     }));
+    const dashboardQueries = /** @type {Array<Record<string, any>>} */ (document.dashboard.queries);
+    const dependencies = new Set(dashboardQueries.flatMap((query) => [
+      query.from,
+      ...(query.joins ?? []).map((/** @type {Record<string, unknown>} */ join) => join.source)
+    ]));
 
-    for (const source of tableSources.filter((name) => queries.has(name))) {
+    for (const source of tableSources.filter((name) => queries.has(name) && !dependencies.has(name))) {
       expect(Number(queries.get(source)?.limit), source).toBeLessThanOrEqual(25000);
     }
+  });
+
+  it('does not limit table queries consumed by downstream queries', () => {
+    const queries = [
+      { name: 'inventory', from: 'workflows' },
+      { name: 'totals', from: 'inventory', aggregate: { values: [] } }
+    ];
+
+    expect(applyTableQueryLimits(queries, ['inventory'], 10000)[0]).toBe(queries[0]);
   });
 });

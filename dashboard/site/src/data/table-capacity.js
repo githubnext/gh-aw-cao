@@ -65,10 +65,31 @@ export function browserTableRowLimit(browserWindow) {
  */
 export function applyTableQueryLimits(queries, tableSourceNames, rowLimit) {
   const tableSources = new Set(tableSourceNames);
+  const queryNames = new Set(queries.flatMap((query) => (
+    query && typeof query === 'object' && !Array.isArray(query)
+      && typeof /** @type {Record<string, unknown>} */ (query).name === 'string'
+      ? [/** @type {Record<string, string>} */ (query).name]
+      : []
+  )));
+  const dependencies = new Set(queries.flatMap((query) => {
+    if (!query || typeof query !== 'object' || Array.isArray(query)) return [];
+    const definition = /** @type {Record<string, unknown>} */ (query);
+    const joins = Array.isArray(definition.joins) ? definition.joins : [];
+    return [
+      definition.from,
+      ...joins.map((join) => (
+        join && typeof join === 'object' && !Array.isArray(join)
+          ? /** @type {Record<string, unknown>} */ (join).source
+          : undefined
+      ))
+    ].filter((name) => typeof name === 'string' && queryNames.has(name));
+  }));
   return queries.map((query) => {
     if (!query || typeof query !== 'object' || Array.isArray(query)) return query;
     const definition = /** @type {Record<string, unknown>} */ (query);
-    if (typeof definition.name !== 'string' || !tableSources.has(definition.name)) return query;
+    if (typeof definition.name !== 'string'
+        || !tableSources.has(definition.name)
+        || dependencies.has(definition.name)) return query;
     const declaredLimit = Number(definition.limit);
     return {
       ...definition,
@@ -77,19 +98,4 @@ export function applyTableQueryLimits(queries, tableSourceNames, rowLimit) {
         : rowLimit
     };
   });
-}
-
-/**
- * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
- * @param {Iterable<string>} tableSourceNames
- * @param {number} rowLimit
- */
-export function limitTableSources(sources, tableSourceNames, rowLimit) {
-  const tableSources = new Set(tableSourceNames);
-  return Object.fromEntries(Object.entries(sources).map(([name, source]) => [
-    name,
-    tableSources.has(name) && Array.isArray(source.rows) && source.rows.length > rowLimit
-      ? { ...source, rows: source.rows.slice(0, rowLimit) }
-      : source
-  ]));
 }

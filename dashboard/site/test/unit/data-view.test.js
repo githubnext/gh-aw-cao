@@ -249,6 +249,30 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.view-description')).toBeNull();
   });
 
+  it('applies the browser row limit after preparing table rows', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: [{ event: 'oldest' }, { event: 'newest' }],
+      rowLimit: 1,
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => [...rows].reverse(),
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelectorAll('tbody tr')).toHaveLength(1);
+    expect(rendered?.querySelector('tbody')?.textContent).toContain('newest');
+  });
+
   it('omits table facets for columns with filtering disabled', () => {
     const rendered = renderDataView('table', {
       pageId: 'repositories',

@@ -75,7 +75,7 @@ import { createDatabaseCountLoader, formatDatabaseCounts } from './database-coun
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -83,6 +83,7 @@ import { createDatabaseCountLoader, formatDatabaseCounts } from './database-coun
  */
 
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
+const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
@@ -222,7 +223,10 @@ export function renderDashboard(input) {
   const orgName = inferOrganizationName(sources) || 'GitHub';
   const sidebarTitle = dashboardRepository?.split('/').at(-1) || orgName;
   const evaluatedAt = dataHorizon?.end ?? latestRetrievedAt(sources) ?? new Date().toISOString();
-  const dashboardDefaults = resolveDashboardDefaults(document.dashboard.defaults, horizonRange, evaluatedAt);
+  const dashboardDefaults = {
+    ...resolveDashboardDefaults(document.dashboard.defaults, horizonRange, evaluatedAt),
+    [TABLE_ROW_LIMIT]: input.tableRowLimit
+  };
 
   const styleEl = h('style', null, getPrimerStyles());
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
@@ -1985,6 +1989,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     view,
     sourceName,
     rows: filteredRows,
+    rowLimit: Number(/** @type {Record<PropertyKey, unknown>} */ (view.data ?? {})[TABLE_ROW_LIMIT]),
     metadata,
     contextDetails,
     headingTag,
