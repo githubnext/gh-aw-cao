@@ -70,6 +70,13 @@ Run these commands from the `dashboard/site/` directory:
 | `npm run typecheck` | TypeScript strict-mode check |
 | `npm run validate:corpus` | Dashboard authoring corpus validation |
 
+### Dashboard debug logging
+
+- Create a category logger with `createDebug(category)` from `dashboard/site/src/debug.js`; call it with structured, non-sensitive metadata only.
+- Logging is off by default. Enable all categories with `?debug=1` or `?debug=*`, or filter with comma-separated names and wildcards, such as `?debug=data,render:*`. Prefix a pattern with `-` to exclude it.
+- Use stable lowercase categories, adding `:` for subcategories. Never log secrets, tokens, prompts, raw records, payloads, or URLs containing credentials.
+- Preserve the existing `?debug=1` DOM-provenance behavior and `dashboard-data` / `dashboard-render` custom events when adding logging.
+
 ### CI workflows
 
 | Workflow file | Scope | Trigger |

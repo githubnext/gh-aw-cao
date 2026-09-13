@@ -107,6 +107,8 @@ resources:
     destination: .github/aw/dashboard/site/src/database-counts.js
   - source: site/src/debug-events.js
     destination: .github/aw/dashboard/site/src/debug-events.js
+  - source: site/src/debug.js
+    destination: .github/aw/dashboard/site/src/debug.js
   - source: site/src/diagnostics.js
     destination: .github/aw/dashboard/site/src/diagnostics.js
   - source: site/src/dom.js

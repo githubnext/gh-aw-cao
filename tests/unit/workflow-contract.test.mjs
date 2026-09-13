@@ -92,7 +92,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 41);
+  assert.equal(operationWorkflows.length, 42);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
@@ -537,7 +537,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-package-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 4 },
-    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 14, workers: 14 },
+    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 15, workers: 15 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
     "cao-evolution-failures-investigator.md": { credits: 500, timeout: 30 },
@@ -557,6 +557,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-accessibility-checker.md": { credits: 400, timeout: 30 },
     "self-care-code-improvement.md": { credits: 400, timeout: 30 },
     "self-care-dashboard-data-schema.md": { credits: 100, timeout: 15 },
+    "self-care-dashboard-debug-logging.md": { credits: 350, timeout: 40 },
     "self-care-dashboard-performance.md": { credits: 400, timeout: 30 },
     "self-care-data-acquisition-audit.md": { credits: 300, timeout: 20 },
     "self-care-dashboard-language-refactor.md": { credits: 400, timeout: 30 },
@@ -625,7 +626,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 41, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 42, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -1309,6 +1310,7 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
     "self-care-accessibility-checker",
     "self-care-code-improvement",
     "self-care-dashboard-data-schema",
+    "self-care-dashboard-debug-logging",
     "self-care-dashboard-performance",
     "self-care-data-acquisition-audit",
     "self-care-dashboard-language-refactor",
@@ -1643,6 +1645,7 @@ test("live workers use central policy as the activation authority", () => {
     ["self-care-accessibility-checker.md", "self-care"],
     ["self-care-code-improvement.md", "self-care"],
     ["self-care-dashboard-data-schema.md", "self-care"],
+    ["self-care-dashboard-debug-logging.md", "self-care"],
     ["self-care-dashboard-performance.md", "self-care"],
     ["self-care-data-acquisition-audit.md", "self-care"],
     ["self-care-dashboard-language-refactor.md", "self-care"],
@@ -1713,6 +1716,7 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["self-care-accessibility-checker.md", "self-care"],
     ["self-care-code-improvement.md", "self-care"],
     ["self-care-dashboard-data-schema.md", "self-care"],
+    ["self-care-dashboard-debug-logging.md", "self-care"],
     ["self-care-dashboard-performance.md", "self-care"],
     ["self-care-data-acquisition-audit.md", "self-care"],
     ["self-care-dashboard-language-refactor.md", "self-care"],
@@ -1852,6 +1856,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["self-care-accessibility-checker.md", "self-care", "accessibility-checker"],
     ["self-care-code-improvement.md", "self-care", "code-improvement"],
     ["self-care-dashboard-data-schema.md", "self-care", "dashboard-data-schema"],
+    ["self-care-dashboard-debug-logging.md", "self-care", "dashboard-debug-logging"],
     ["self-care-dashboard-performance.md", "self-care", "dashboard-performance"],
     ["self-care-data-acquisition-audit.md", "self-care", "data-acquisition-audit"],
     ["self-care-dashboard-language-refactor.md", "self-care", "dashboard-language-refactor"],
@@ -2463,6 +2468,23 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(compiled, /\.github\/skills\/reactive-ui/);
 });
 
+test("SelfCare dashboard debug logging worker preserves the logging privacy boundary", () => {
+  const source = workflow("self-care-dashboard-debug-logging.md");
+  const compiled = workflow("self-care-dashboard-debug-logging.lock.yml");
+
+  assert.match(source, /^name: "SelfCare \/ Dashboard Debug Logging"$/m);
+  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-debug-logging/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /Use `createDebug` from `dashboard\/site\/src\/debug\.js`/);
+  assert.match(source, /Never log secrets, tokens, credentials, prompts, raw records, payload bodies/);
+  assert.match(source, /disabled unless the `debug` query argument selects the category/);
+  assert.match(source, /dashboard\/site\/src\/\*\*\/\*\.js/);
+  assert.match(source, /npm --prefix dashboard\/site run typecheck/);
+  assert.match(source, /Call `noop` exactly once/);
+  assert.match(source, /draft: true/);
+  assert.match(compiled, /self-care-dashboard-debug-logging/);
+});
+
 test("docs diagram generator creates one validated theme-aware SVG pair", () => {
   const source = workflow("docs-explanatory-diagrams.md");
 
@@ -2853,6 +2875,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "self-care-accessibility-checker.lock.yml",
       "self-care-code-improvement.lock.yml",
       "self-care-dashboard-data-schema.lock.yml",
+      "self-care-dashboard-debug-logging.lock.yml",
       "self-care-dashboard-performance.lock.yml",
       "self-care-data-acquisition-audit.lock.yml",
       "self-care-dashboard-language-refactor.lock.yml",
@@ -2979,6 +3002,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["self-care-accessibility-checker.lock.yml", ["self-care", "accessibility-checker"]],
       ["self-care-code-improvement.lock.yml", ["self-care", "code-improvement"]],
       ["self-care-dashboard-data-schema.lock.yml", ["self-care", "dashboard-data-schema"]],
+      ["self-care-dashboard-debug-logging.lock.yml", ["self-care", "dashboard-debug-logging"]],
       ["self-care-dashboard-performance.lock.yml", ["self-care", "dashboard-performance"]],
       ["self-care-data-acquisition-audit.lock.yml", ["self-care", "data-acquisition-audit"]],
       ["self-care-dashboard-language-refactor.lock.yml", ["self-care", "dashboard-language-refactor"]],
@@ -3449,16 +3473,18 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
   assert.match(workflow, /concurrency:\n\s+group: mobile-dashboard-integration-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: true/);
   assert.match(workflow, /deployed-data:[\s\S]*?if: github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'/);
+  assert.match(workflow, /mobile:[\s\S]*?if: github\.event_name != 'push'/);
   assert.match(workflow, /name: Test deployed dashboard data ingestion\n\s+run: node --test tests\/integration\/dashboard-deployed-data\.test\.mjs/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/gh-aw-logs\.jsonl/);
   assert.match(workflow, /Test mobile dashboard with restricted memory[\s\S]*?MOBILE_MEMORY_MB: 256/);
   assert.match(workflow, /Test mobile dashboard with throttled network[\s\S]*?MOBILE_NETWORK_DOWNLOAD_KBPS: 1600/);
   assert.match(workflow, /Test mobile dashboard with restricted memory and network[\s\S]*?MOBILE_MEMORY_MB: 256[\s\S]*?MOBILE_NETWORK_LATENCY_MS: 150/);
-  assert.match(workflow, /Upload mobile analysis evidence[\s\S]*?if: always\(\)[\s\S]*?path: test-results\//);
+  assert.match(workflow, /Upload mobile analysis evidence[\s\S]*?if: always\(\)[\s\S]*?path: test-results\/[\s\S]*?retention-days: 1/);
   assert.match(workflow, /mobile-analysis-comment:[\s\S]*?permissions:[\s\S]*?pull-requests: write/);
   assert.match(workflow, /github\.event_name == 'pull_request'[\s\S]*?Comment with mobile analysis[\s\S]*?mobile-dashboard-analysis/);
   assert.match(workflow, /\| Visible target size \| Visible reflow \| Zoom \| Visible accessible names \|/);
   assert.match(workflow, /no visible targets/);
+  assert.match(workflow, /existsSync\('mobile-analysis'\)/);
   assert.match(workflow, /width min.*height min/);
   const playwrightConfig = readFileSync(join(root, "playwright.mobile.config.mjs"), "utf8");
   assert.match(playwrightConfig, /preserveOutput: "always"/);
@@ -3535,6 +3561,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
           "self-care-accessibility-checker",
           "self-care-code-improvement",
           "self-care-dashboard-data-schema",
+          "self-care-dashboard-debug-logging",
           "self-care-dashboard-performance",
           "self-care-data-acquisition-audit",
           "self-care-dashboard-language-refactor",

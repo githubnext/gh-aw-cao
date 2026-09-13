@@ -55,7 +55,7 @@ jobs:
 
   mobile:
     name: ${{ matrix.device }}
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -134,7 +134,7 @@ jobs:
           name: mobile-dashboard-${{ matrix.browser }}
           path: test-results/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 1
 
   mobile-analysis-comment:
     name: Report mobile dashboard analysis
@@ -165,6 +165,10 @@ jobs:
           script: |
             const fs = require('fs')
             const path = require('path')
+            if (!fs.existsSync('mobile-analysis')) {
+              core.warning('No mobile dashboard analysis artifacts were found; skipping PR feedback.')
+              return
+            }
             const find = (directory) => fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
               const target = path.join(directory, entry.name)
               return entry.isDirectory()
