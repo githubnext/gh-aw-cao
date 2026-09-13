@@ -46,6 +46,7 @@ safe-outputs:
       description: Update only the draft release created by this workflow
       runs-on: ubuntu-latest
       permissions:
+        actions: read
         contents: write
       env:
         GH_TOKEN: ${{ github.token }}
@@ -55,6 +56,11 @@ safe-outputs:
           required: true
           type: string
       steps:
+        - name: Download prepared release context
+          uses: actions/download-artifact@v8
+          with:
+            name: release-context-${{ github.run_id }}
+            path: ${{ runner.temp }}/release-context
         - name: Update prepared draft release
           run: |
             set -euo pipefail
@@ -70,30 +76,27 @@ safe-outputs:
               exit 1
             fi
 
-            RUN_CREATED_AT=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq '.created_at')
-            RELEASES=$(gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/releases?per_page=100")
-            CANDIDATES=$(printf '%s' "$RELEASES" | jq \
-              --arg sha "$GITHUB_SHA" \
-              --arg created_at "$RUN_CREATED_AT" \
-              '[add[] | select(.draft == true and .target_commitish == $sha and .created_at >= $created_at)]')
-            if [ "$(printf '%s' "$CANDIDATES" | jq 'length')" -ne 1 ]; then
-              echo "Expected exactly one draft release created by this workflow run." >&2
+            RELEASE_CONTEXT="${RUNNER_TEMP}/release-context/release.json"
+            if [ ! -f "$RELEASE_CONTEXT" ] || [ -L "$RELEASE_CONTEXT" ]; then
+              echo "Prepared release context is unavailable." >&2
               exit 1
             fi
 
-            RELEASE_ID=$(printf '%s' "$CANDIDATES" | jq -r '.[0].id')
-            RELEASE_TAG=$(printf '%s' "$CANDIDATES" | jq -r '.[0].tag_name')
+            RELEASE_ID=$(jq -r '.id' "$RELEASE_CONTEXT")
+            RELEASE_TAG=$(jq -r '.tag' "$RELEASE_CONTEXT")
+            RELEASE_SHA=$(jq -r '.sha' "$RELEASE_CONTEXT")
             TAG_SHA=$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
-            if ! [[ "$RELEASE_ID" =~ ^[0-9]+$ ]] || [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
+            if ! [[ "$RELEASE_ID" =~ ^[0-9]+$ ]] || [ "$RELEASE_SHA" != "$GITHUB_SHA" ] || [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
               echo "Prepared release identity changed; refusing update." >&2
               exit 1
             fi
 
             RELEASE=$(gh api "/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")
             ACTUAL_TAG=$(printf '%s' "$RELEASE" | jq -r '.tag_name')
+            ACTUAL_SHA=$(printf '%s' "$RELEASE" | jq -r '.target_commitish')
             IS_DRAFT=$(printf '%s' "$RELEASE" | jq -r '.draft')
             EXISTING_BODY=$(printf '%s' "$RELEASE" | jq -r '.body // ""')
-            if [ "$ACTUAL_TAG" != "$RELEASE_TAG" ] || [ "$IS_DRAFT" != "true" ]; then
+            if [ "$ACTUAL_TAG" != "$RELEASE_TAG" ] || [ "$ACTUAL_SHA" != "$RELEASE_SHA" ] || [ "$IS_DRAFT" != "true" ]; then
               echo "Prepared release identity or draft status changed; refusing update." >&2
               exit 1
             fi
@@ -272,6 +275,24 @@ jobs:
               .addEOL()
               .addLink('Review draft release', release.html_url);
             await core.summary.write();
+      - name: Persist prepared release identity
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+          RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-context"
+          jq -n \
+            --argjson id "$RELEASE_ID" \
+            --arg tag "$RELEASE_TAG" \
+            --arg sha "$GITHUB_SHA" \
+            '{id: $id, tag: $tag, sha: $sha}' \
+            > "$RUNNER_TEMP/release-context/release.json"
+      - name: Upload prepared release identity
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-context-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-context/release.json
+          retention-days: 1
 
 steps:
   - name: Fetch release context
@@ -286,8 +307,8 @@ steps:
       gh api "/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
         > /tmp/gh-aw/agent/release-data/current_release.json
 
-      gh api --paginate "/repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-        --jq '[.[] | select(.draft == false and .prerelease == false)][0] // {}' \
+      gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+        --jq '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
         > /tmp/gh-aw/agent/release-data/previous_release.json
 
       PREVIOUS_PUBLISHED_AT=$(jq -r '.published_at // empty' /tmp/gh-aw/agent/release-data/previous_release.json)

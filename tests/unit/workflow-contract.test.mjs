@@ -1069,6 +1069,8 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(prepare, /tag_name: releaseTag/);
   assert.match(prepare, /name: releaseTag/);
   assert.match(prepare, /core\.setOutput\('release_id', release\.id\)/);
+  assert.match(prepare, /name: Upload prepared release identity/);
+  assert.match(prepare, /name: release-context-\$\{\{ github\.run_id \}\}/);
   assert.match(prepare, /git\.deleteRef/);
   assert.match(prepare, /ref: `tags\/\$\{releaseTag\}`/);
   assert.match(prepare, /throw error/);
@@ -1082,9 +1084,11 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /Call `safeoutputs\/update_release_description` exactly once/);
   assert.match(agenticSource, /ACTUAL_TAG.*RELEASE_TAG/);
   assert.match(agenticSource, /IS_DRAFT.*true/);
-  assert.match(agenticSource, /target_commitish == \$sha and \.created_at >= \$created_at/);
+  assert.match(agenticSource, /Download prepared release context/);
+  assert.match(agenticSource, /RELEASE_SHA.*GITHUB_SHA/);
   assert.match(agenticSource, /TAG_SHA.*GITHUB_SHA/);
   assert.match(agenticSource, /releases\/\$RELEASE_ID/);
+  assert.match(agenticSource, /gh api --paginate --slurp/);
   assert.match(agenticSource, /Keep the existing GitHub-generated notes intact/);
   assert.match(agenticSource, /--json number,title,author,labels,mergedAt,url,body,files/);
   assert.match(agenticSource, /release_adrs\.md/);
@@ -1098,7 +1102,7 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(version, /needs\.activation\.outputs\.daily_ai_credits_exceeded != 'true'/);
   assert.match(jobs.get("agent")?.needs.join(","), /prepare-release/);
   assert.doesNotMatch(agenticSource, /draft: false|make_latest/);
-  assert.doesNotMatch(agenticSource, /release-please|upload-artifact/);
+  assert.doesNotMatch(agenticSource, /release-please/);
   assert.doesNotMatch(rootManifest, /\.github\/workflows\/release\.(?:yml|md)/);
 });
 
