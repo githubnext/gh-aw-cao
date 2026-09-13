@@ -27,8 +27,11 @@ const IDLE_ENTRY = { status: 'idle', origin: 'query', source: null };
 const entries = new Map();
 /** @type {Set<string>} */
 const requested = new Set();
-/** Generation of the newest load started per source, so stale results are dropped. */
-/** @type {Map<string, number>} */
+/**
+ * Generation of the newest load started per source, so stale results are
+ * dropped when queries resolve out of order.
+ * @type {Map<string, number>}
+ */
 const generations = new Map();
 /** @type {((name: string) => Promise<LogicalSourceInput | undefined>) | null} */
 let loadSource = null;
@@ -93,9 +96,13 @@ async function loadRequestedSource(name) {
   const loader = loadSource;
   if (!loader) return;
   const entry = sourceState(name);
+  // Rows handed over by a rendered view are refreshed by the next render, so a
+  // query result must not silently replace them with unfiltered rows.
+  const current = entry.get();
+  if (current.origin === 'view' && current.status === 'ready') return;
   const generation = (generations.get(name) ?? 0) + 1;
   generations.set(name, generation);
-  if (entry.get().status !== 'ready') entry.set({ status: 'loading', origin: 'query', source: null });
+  if (current.status !== 'ready') entry.set({ status: 'loading', origin: 'query', source: null });
   try {
     const source = await loader(name);
     // A later load already started, so this result is stale.

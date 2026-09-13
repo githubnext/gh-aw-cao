@@ -46,7 +46,7 @@ const factoryMotionState = state(/** @type {Motion} */ ({ packages: 0, operation
 let overviewEffects = [];
 
 /** @type {{ dispose: () => void }[]} */
-let overviewMetrics = [];
+let memoizedValues = [];
 
 /** Releases the reactive resources owned by a previously rendered overview. */
 export function resetFactoryOverviewState() {
@@ -60,8 +60,8 @@ export function resetFactoryOverviewState() {
 function releaseFactoryOverviewEffects() {
   for (const handle of overviewEffects) handle.stop();
   overviewEffects = [];
-  for (const metric of overviewMetrics) metric.dispose();
-  overviewMetrics = [];
+  for (const value of memoizedValues) value.dispose();
+  memoizedValues = [];
 }
 
 /**
@@ -72,7 +72,7 @@ function releaseFactoryOverviewEffects() {
  */
 function memo(compute) {
   const value = derived(compute);
-  overviewMetrics.push(value);
+  memoizedValues.push(value);
   return () => value.get();
 }
 
@@ -424,8 +424,8 @@ function renderFactoryRhythm(sources, metrics) {
   const bars = h('div', { className: 'factory-rhythm-bars' });
   /** @type {import('../reactive.js').State<RhythmDay[]>} */
   const rhythmDays = state(/** @type {RhythmDay[]} */ ([]));
-  /** @type {import('../reactive.js').State<HTMLButtonElement[]>} */
-  const dayButtons = state(/** @type {HTMLButtonElement[]} */ ([]));
+  /** @type {HTMLButtonElement[]} */
+  let dayButtons = [];
   const showFullWeek = () => {
     section.dispatchEvent(new CustomEvent('dashboard-time-window-range-change', {
       bubbles: true,
@@ -469,12 +469,11 @@ function renderFactoryRhythm(sources, metrics) {
     const maximum = Math.max(...days.map((day) => day.count), 1);
     // The bars are updated in place so an arriving query never discards the
     // focused or pressed day button.
-    if (dayButtons.get().length !== days.length) {
-      const buttons = days.map((_, index) => createRhythmDayButton(() => selectDay(index)));
-      dayButtons.set(buttons);
-      bars.replaceChildren(...buttons);
+    if (dayButtons.length !== days.length) {
+      dayButtons = days.map((_, index) => createRhythmDayButton(() => selectDay(index)));
+      bars.replaceChildren(...dayButtons);
     }
-    for (const [index, button] of dayButtons.get().entries()) {
+    for (const [index, button] of dayButtons.entries()) {
       const day = days[index];
       if (!day) continue;
       button.setAttribute('aria-label', `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`);
@@ -488,7 +487,7 @@ function renderFactoryRhythm(sources, metrics) {
 
   bind(() => {
     const days = rhythmDays.get();
-    const buttons = dayButtons.get();
+    const buttons = dayButtons;
     const selected = rhythmSelection.get();
     const index = selected ? days.findIndex((day) => day.date === selected.date) : -1;
     for (const [buttonIndex, button] of buttons.entries()) {
