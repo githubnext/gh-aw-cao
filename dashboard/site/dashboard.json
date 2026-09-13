@@ -5041,78 +5041,6 @@
                   }
                 ]
               }
-            },
-            {
-              "id": "audit",
-              "disclosure": "supplemental",
-              "description": "Observed audit events ordered from newest to oldest with their audit kind, status, summary, and run context.",
-              "data": {
-                "source": "audit-events"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "layout": "full-view",
-              "empty-message": "No audit events were observed in the current run window.",
-              "encoding": {
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "observed-at",
-                    "type": "temporal",
-                    "format": "human-friendly-timestamp",
-                    "title": "Observed"
-                  },
-                  {
-                    "field": "audit-kind",
-                    "type": "nominal",
-                    "title": "Audit event"
-                  },
-                  {
-                    "field": "event-status",
-                    "type": "nominal",
-                    "title": "Status"
-                  },
-                  {
-                    "field": "event-summary",
-                    "type": "nominal",
-                    "title": "Summary"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal",
-                    "title": "Repository"
-                  },
-                  {
-                    "field": "workflow",
-                    "type": "nominal",
-                    "title": "Workflow"
-                  },
-                  {
-                    "field": "run",
-                    "type": "nominal",
-                    "title": "Run"
-                  },
-                  {
-                    "field": "run-attempt",
-                    "type": "quantitative",
-                    "title": "Attempt"
-                  },
-                  {
-                    "field": "session",
-                    "type": "nominal",
-                    "title": "Session"
-                  },
-                  {
-                    "field": "event",
-                    "type": "nominal",
-                    "title": "Event"
-                  }
-                ]
-              }
             }
           ]
         }
@@ -5515,6 +5443,87 @@
               ]
             },
             "lazy-list": true
+          }
+        ]
+      },
+      {
+        "id": "audit",
+        "kind": "custom",
+        "title": "Audit",
+        "icon": "checklist",
+        "description": "Inspect observed agent audit events, including findings, recommendations, gaps, and skill activations.",
+        "views": [
+          {
+            "id": "audit-events-table",
+            "title": "Audit events",
+            "description": "Observed audit events ordered from newest to oldest with their audit kind, status, summary, and run context.",
+            "data": {
+              "source": "audit-events"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No audit events were observed in the current run window.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
+                },
+                {
+                  "field": "audit-kind",
+                  "type": "nominal",
+                  "title": "Audit event"
+                },
+                {
+                  "field": "event-status",
+                  "type": "nominal",
+                  "title": "Status"
+                },
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Summary"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                },
+                {
+                  "field": "run-attempt",
+                  "type": "quantitative",
+                  "title": "Attempt"
+                },
+                {
+                  "field": "session",
+                  "type": "nominal",
+                  "title": "Session"
+                },
+                {
+                  "field": "event",
+                  "type": "nominal",
+                  "title": "Event"
+                }
+              ]
+            }
           }
         ]
       },
@@ -6748,7 +6757,8 @@
         "pages": [
           "runtime",
           "performance",
-          "security"
+          "security",
+          "audit"
         ]
       },
       {
