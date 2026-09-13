@@ -347,7 +347,7 @@ export function processDataRequest(request, signal) {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               workflowHints,
-              onProgress: ({ linesProcessed }) => progress.update(linesProcessed),
+              onProgress: ({ recordsIngested }) => progress.update(recordsIngested),
               payloadIdentity: etag ? `${sourceUrl.href}:${etag}` : undefined,
               payloadEtag: etag ?? undefined,
               payloadScope: sourceUrl.href,

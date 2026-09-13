@@ -561,7 +561,7 @@ export function cachedJsonlPayloadIdentity(content) {
 
 /**
  * @param {AsyncIterable<string | Uint8Array>} chunks
- * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number }) => void }} [options]
+ * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number, recordsIngested: number }) => void }} [options]
  */
 export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   if (cachedJsonlExpression.contract !== 'gh-aw-cao.jsonl-ingestion'
@@ -576,6 +576,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   const accumulator = createCachedGhAwJsonlAccumulator(options);
   let pending = '';
   let lineNumber = 0;
+  let recordsIngested = 0;
   /** @param {string} line */
   const accept = (line) => {
     lineNumber += 1;
@@ -590,7 +591,10 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
       );
     }
     const kind = requiredString(envelope.kind, `gh-aw JSONL line ${lineNumber}.kind`);
-    if (knownKinds.has(kind)) accumulator.accept({ envelope, line: lineNumber });
+    if (knownKinds.has(kind)) {
+      accumulator.accept({ envelope, line: lineNumber });
+      recordsIngested += 1;
+    }
   };
   for await (const chunk of chunks) {
     const bytes = typeof chunk === 'string' ? encoder.encode(chunk) : chunk;
@@ -603,11 +607,11 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
       start = newline + 1;
     }
     if (start > 0) pending = pending.slice(start);
-    options.onProgress?.({ linesProcessed: lineNumber });
+    options.onProgress?.({ linesProcessed: lineNumber, recordsIngested });
   }
   pending += decoder.decode();
   if (pending) accept(pending);
-  options.onProgress?.({ linesProcessed: lineNumber });
+  options.onProgress?.({ linesProcessed: lineNumber, recordsIngested });
   return {
     ...accumulator.finish(),
     payloadIdentity: hasher.digest()

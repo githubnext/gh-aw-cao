@@ -484,17 +484,17 @@ describe('canonical source ingestion and queries', () => {
         yield content.subarray(offset, offset + 7);
       }
     };
-    /** @type {number[]} */
+    /** @type {{ linesProcessed: number, recordsIngested: number }[]} */
     const progress = [];
 
     await expect(ingestCachedGhAwJsonl(indexedDB, chunks(), {
-      onProgress: ({ linesProcessed }) => progress.push(linesProcessed)
+      onProgress: (update) => progress.push(update)
     })).resolves.toMatchObject({
       updated: true,
       records: 1,
       agenticRuns: 1
     });
-    expect(progress.at(-1)).toBe(2);
+    expect(progress.at(-1)).toEqual({ linesProcessed: 2, recordsIngested: 1 });
     await expect(ingestCachedGhAwJsonl(
       indexedDB,
       new TextDecoder().decode(content)
