@@ -458,9 +458,9 @@ describe('data view renderer', () => {
 
     expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
     expect(load).not.toHaveBeenCalled();
-    document.body.append(/** @type {HTMLElement} */ (rendered));
     await vi.waitFor(() => expect(load).toHaveBeenCalledWith('page-2'));
     expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
+    document.body.append(/** @type {HTMLElement} */ (rendered));
 
     resolveFirstPage({
       rows: [{ run: '2', 'started-at': '2026-08-31T12:49:37Z', 'run-conclusion': 'failure' }],

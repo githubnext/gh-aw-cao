@@ -13,7 +13,7 @@ import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayo
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
-import { renderDataView } from './components/data-view.js';
+import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
@@ -1966,7 +1966,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
 
   // Swimlanes consume the same paginated run source as their companion lazy
   // table, but render each continuation page as it arrives.
-  const sourcePage = view['lazy-list'] === true || (view.mark === 'chart' && view.chart === 'swimlane')
+  const sourcePage = view['lazy-list'] === true || supportsIncrementalChartContinuation(view)
     ? sourceContinuation(sourceInput)
     : undefined;
   const rendered = renderDataView(typeof view.mark === 'string' ? view.mark : '', {

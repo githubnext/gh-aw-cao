@@ -113,6 +113,11 @@ export function renderDataView(mark, context) {
   return DATA_VIEW_RENDERERS.get(mark)?.(context) ?? null;
 }
 
+/** @param {unknown} view */
+export function supportsIncrementalChartContinuation(view) {
+  return isPlainObject(view) && view.mark === 'chart' && view.chart === 'swimlane';
+}
+
 /** @param {DataViewContext} context */
 function renderMetricView(context) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, toText, units = {} } = context;
@@ -602,18 +607,21 @@ function renderChartView(context) {
     );
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
-  if (chartType === 'swimlane' && continuation?.token && !pending) {
+  if (supportsIncrementalChartContinuation(view) && continuation?.token && !pending) {
     let chartRows = [...rows];
     /** @type {string | undefined} */
     let token = continuation.token;
+    let hasBeenConnected = section.isConnected;
     let chartWidget = /** @type {HTMLElement | null} */ (section.querySelector('[data-chart-widget="swimlane"]'));
     chartWidget?.setAttribute('aria-busy', 'true');
     void (async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       try {
-        while (token && section.isConnected) {
+        while (token) {
+          hasBeenConnected ||= section.isConnected;
           const next = await continuation.load(token);
-          if (!section.isConnected) return;
+          if (hasBeenConnected && !section.isConnected) return;
+          hasBeenConnected ||= section.isConnected;
           chartRows.push(...next.rows);
           token = next.continuationToken;
           const rendered = renderVisualization(pointsForRows(chartRows));
