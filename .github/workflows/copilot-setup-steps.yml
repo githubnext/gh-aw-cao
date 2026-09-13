@@ -27,12 +27,18 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            dashboard/site/package-lock.json
       - name: Install SQLite
         run: |
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
           sudo apt-get update
           sudo apt-get install --yes sqlite3
-      - name: Install npm dependencies
+      - name: Install root npm dependencies
         run: npm ci
+      - name: Install dashboard npm dependencies
+        run: npm ci
+        working-directory: dashboard/site
       - name: Install gh-aw extension
         uses: ./.github/actions/setup-gh-aw
