@@ -479,6 +479,84 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('Showing partial results');
   });
 
+  it('populates the runs-view swimlane within bounded time while yielding between continuation pages', async () => {
+    const totalRuns = 20_000;
+    const pageSize = 200;
+    const conclusions = ['success', 'failure', 'skipped', 'cancelled', 'action-required'];
+    const run = (index) => ({
+      run: String(index),
+      'started-at': new Date(Date.parse('2026-08-31T00:00:00Z') + index).toISOString(),
+      'run-conclusion': conclusions[index % conclusions.length]
+    });
+    const rows = Array.from({ length: pageSize }, (_, index) => run(index));
+    let offset = pageSize;
+    const load = vi.fn(async () => {
+      const nextOffset = Math.min(offset + pageSize, totalRuns);
+      const nextRows = Array.from({ length: nextOffset - offset }, (_, index) => run(offset + index));
+      offset = nextOffset;
+      return {
+        rows: nextRows,
+        continuationToken: offset < totalRuns ? String(offset) : undefined
+      };
+    });
+    const buildChartPoints = vi.fn((_pageId, _title, chartRows) => chartRows.map((row) => ({
+      key: String(row.run),
+      x: String(row['started-at']),
+      y: Number.NaN,
+      category: String(row['run-conclusion']),
+      color: String(row['run-conclusion']),
+      link: null,
+      source: row
+    })));
+    let eventLoopTurns = 0;
+    const interval = setInterval(() => {
+      eventLoopTurns += 1;
+    }, 0);
+    const startedAt = performance.now();
+    const rendered = renderDataView('chart', {
+      pageId: 'runs',
+      title: 'Runs in the last week',
+      view: {
+        mark: 'chart',
+        chart: 'swimlane',
+        encoding: {
+          x: { field: 'started-at', type: 'temporal' },
+          y: { field: 'run-conclusion', type: 'ordinal' }
+        }
+      },
+      sourceName: 'runs-table',
+      rows,
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints,
+      prepareChartPoints: (points) => points,
+      toText: String,
+      continuation: {
+        token: String(pageSize),
+        totalRows: totalRuns,
+        load
+      }
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    await vi.waitFor(() => {
+      expect(rendered?.querySelector('.swimlane-summary')?.textContent).toContain('20,000 runs');
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
+    }, { timeout: 5_000 });
+    clearInterval(interval);
+    const elapsedMilliseconds = performance.now() - startedAt;
+    const marks = [...(rendered?.querySelectorAll('.swimlane-mark') ?? [])];
+
+    expect(elapsedMilliseconds).toBeLessThan(2_000);
+    expect(eventLoopTurns).toBeGreaterThan(0);
+    expect(load).toHaveBeenCalledTimes((totalRuns / pageSize) - 1);
+    expect(buildChartPoints.mock.calls.length).toBeLessThanOrEqual(12);
+    expect(marks.length).toBeLessThanOrEqual(600);
+    expect(marks.reduce((total, mark) => total + Number(mark.getAttribute('data-swimlane-count')), 0)).toBe(totalRuns);
+  });
+
   it('stops swimlane continuation rendering when the view is detached', async () => {
     /** @type {(value: { rows: Array<Record<string, unknown>>, continuationToken?: string }) => void} */
     let resolvePage = () => {};

@@ -29,6 +29,7 @@ const ENTITY_LINK_FIELDS = {
 };
 const RUN_FIELD = 'run';
 const RUN_LINK_FIELD = 'run-link';
+const MAX_INCREMENTAL_SWIMLANE_RENDERS = 10;
 const REPOSITORY_LINK_DISPLAY = 'repository-link';
 const WORKFLOW_LINK_DISPLAY = 'workflow-link';
 const GITHUB_ENTITY_DISPLAY_FIELDS = {
@@ -614,7 +615,12 @@ function renderChartView(context) {
       token: /** @type {string | undefined} */ (continuation.token),
       error: /** @type {string | null} */ (null)
     });
+    const rowsPerRender = Math.max(
+      1,
+      Math.ceil(Math.max(continuation.totalRows - rows.length, 1) / MAX_INCREMENTAL_SWIMLANE_RENDERS)
+    );
     let chartWidget = /** @type {HTMLElement | null} */ (section.querySelector('[data-chart-widget="swimlane"]'));
+    let renderedRowCount = rows.length;
     const failureMessage = h(
       'p',
       { className: 'view-context', role: 'status' },
@@ -622,7 +628,7 @@ function renderChartView(context) {
     );
     const renderEffect = effect(() => {
       const current = continuationState.get();
-      if (current.rows.length > rows.length) {
+      if (current.rows.length > renderedRowCount) {
         const rendered = renderVisualization(pointsForRows(current.rows));
         const nextWidget = rendered.chartContent.find((element) =>
           element.matches?.('[data-chart-widget="swimlane"]')
@@ -630,6 +636,7 @@ function renderChartView(context) {
         if (nextWidget instanceof HTMLElement && chartWidget) {
           chartWidget.replaceWith(nextWidget);
           chartWidget = nextWidget;
+          renderedRowCount = current.rows.length;
         }
       }
       chartWidget?.setAttribute('aria-busy', String(Boolean(current.token)));
@@ -659,17 +666,23 @@ function renderChartView(context) {
       });
       queueMicrotask(async () => {
         let current = continuationState.get();
+        const accumulatedRows = [...current.rows];
+        let pendingRows = 0;
         try {
           while (active && current.token) {
             const next = await continuation.load(current.token);
             if (!active || (wasConnected && !section.isConnected)) return;
             wasConnected ||= section.isConnected;
+            accumulatedRows.push(...next.rows);
+            pendingRows += next.rows.length;
+            const shouldRender = !next.continuationToken || pendingRows >= rowsPerRender;
             current = {
-              rows: [...current.rows, ...next.rows],
+              rows: shouldRender ? [...accumulatedRows] : current.rows,
               token: next.continuationToken,
               error: null
             };
             continuationState.set(current);
+            if (shouldRender) pendingRows = 0;
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
         } catch (error) {
