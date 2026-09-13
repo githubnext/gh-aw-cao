@@ -465,7 +465,7 @@ export function adaptGhAwLogs(input) {
 
 /**
  * @param {string | Uint8Array} content
- * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number }) => void }} [options]
+ * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
  * @returns {{
  *   observations: import('../model/schema.js').CanonicalObservation[],
  *   records: number,
