@@ -32,6 +32,17 @@ test("Actions lint failures create new pull request comments without comment loo
   assert.doesNotMatch(pullRequestReporter, /listComments|updateComment|deleteComment/);
 });
 
+test("dashboard view assessment issues are ready for agent assignment", () => {
+  const source = workflow("dashboard-views.yml");
+  const issueReporter = source.slice(source.indexOf("} else {", source.indexOf("if (isPullRequest)")));
+
+  assert.match(issueReporter, /github\.rest\.issues\.create/);
+  assert.match(issueReporter, /labels: \['self-care'\]/);
+  assert.match(issueReporter, /\*\*Action:\*\* Assign this issue to Copilot/);
+  assert.match(issueReporter, /<details><summary><b>Agent prompt<\/b><\/summary>/);
+  assert.match(issueReporter, /npm run test:e2e:dashboard-views/);
+});
+
 test("packages and repository workflows pin the supported gh-aw version", () => {
   const manifests = [
     "aw.yml",

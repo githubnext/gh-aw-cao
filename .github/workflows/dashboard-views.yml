@@ -206,6 +206,23 @@ jobs:
                 })
               }
             } else {
+              body = [
+                body,
+                '',
+                '**Action:** Assign this issue to Copilot using the agent prompt below; accept the fix when the affected views pass the assessment.',
+                '',
+                '<details><summary><b>Agent prompt</b></summary>',
+                '',
+                'Investigate and fix the dashboard view assessment findings reported in this issue.',
+                '',
+                `1. Download the \`dashboard-views\` artifact from ${runUrl} and inspect \`summary.json\` for the affected page IDs, browser errors, failed requests, missing views or data sources, and DOM-budget violations.`,
+                '2. Reproduce the findings from the repository root with `DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl npm run test:e2e:dashboard-views`; use `DASHBOARD_PAGE_IDS` to narrow the run when appropriate.',
+                '3. Trace each failure through the declarative view, canonical data adapter and normalization, query worker, and view payload stages. Do not add a JavaScript-based dashboard view or treat browser IndexedDB as an authority.',
+                '4. Make the smallest root-cause fix and add or update focused regression coverage.',
+                '5. Validate the affected assessment plus `npm test`, `npm run lint`, and `npm run typecheck` from `dashboard/site/`.',
+                '',
+                '</details>',
+              ].join('\n')
               const issues = await github.paginate(github.rest.issues.listForRepo, {
                 ...context.repo,
                 state: 'open',
@@ -231,18 +248,10 @@ jobs:
                   },
                 )
               }
-              await github.graphql(
-                `mutation($input: CreateIssueInput!) {
-                  createIssue(input: $input) {
-                    issue { id }
-                  }
-                }`,
-                {
-                  input: {
-                    repositoryId: context.payload.repository.node_id,
-                    title: 'Dashboard view assessment',
-                    body,
-                  },
-                },
-              )
+              await github.rest.issues.create({
+                ...context.repo,
+                title: 'Dashboard view assessment',
+                body,
+                labels: ['self-care'],
+              })
             }
