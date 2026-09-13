@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from 'node:crypto';
 import { createWriteStream, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -453,12 +454,14 @@ export async function runCli(arguments_, input = process.stdin) {
   if (command === 'ingest-jsonl') {
     rejectUnknownOptions(options, ['database', 'input', 'context', 'retention-days', 'run-retention-days']);
     const contextPath = option(options, 'context', false);
+    const content = await readFile(path.resolve(option(options, 'input', false) || DEFAULT_LOGS_PATH));
     const result = await ingestCachedGhAwJsonl(
       indexedDB,
-      await readFile(path.resolve(option(options, 'input', false) || DEFAULT_LOGS_PATH), 'utf8'),
+      content,
       {
         retentionWindowMs: retentionWindowMs(options),
         retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
+        payloadIdentity: createHash('sha256').update(content).digest('hex'),
         context: contextPath
           ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
           : undefined

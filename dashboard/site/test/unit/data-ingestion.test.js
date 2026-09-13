@@ -429,12 +429,38 @@ describe('canonical source ingestion and queries', () => {
     await ingestCachedGhAwJsonl(indexedDB, `${record(1, '2026-02-01T00:00:00Z')}\n`, {
       now: Date.parse('2026-02-01T00:00:00Z')
     });
+
     await ingestCachedGhAwJsonl(indexedDB, `${record(2, '2026-02-02T00:00:00Z')}\n`, {
       now: Date.parse('2026-02-02T00:00:00Z')
     });
     expect((await createCanonicalQueries(indexedDB).runs.list()).map((run) => run.id).sort()).toEqual([
       'github:run:1:attempt:1', 'github:run:2:attempt:1'
     ]);
+  });
+
+  it('ingests cached JSONL from binary file content', async () => {
+    const content = new TextEncoder().encode(`${JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 303,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow_name: 'Dashboard',
+        workflow_path: '.github/workflows/dashboard.md',
+        status: 'completed',
+        created_at: '2026-01-01T00:00:00Z'
+      }
+    })}\n`);
+
+    await expect(ingestCachedGhAwJsonl(indexedDB, content, {
+      payloadIdentity: 'binary-fixture'
+    })).resolves.toMatchObject({
+      updated: true,
+      records: 1,
+      agenticRuns: 1
+    });
   });
 
   it('preserves discovery repository records when ingesting cached JSONL runs', async () => {
