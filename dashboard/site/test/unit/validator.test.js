@@ -327,13 +327,18 @@ describe('dashboard document validation', () => {
       );
       if (editableViews.length === 0) continue;
       expect(definition.sections, page.id).toBeUndefined();
-      expect(editableViews, page.id).toHaveLength(1);
-      expect(editableViews[0], page.id).toMatchObject({
-        mark: 'table',
-        controls: 'interactive',
-        'lazy-list': true,
-        layout: 'full-view'
-      });
+      const primaryViews = editableViews.filter(
+        (/** @type {{ disclosure?: string }} */ view) => view.disclosure !== 'supplemental'
+      );
+      expect(primaryViews, page.id).toHaveLength(1);
+      for (const view of editableViews) {
+        expect(view, page.id).toMatchObject({
+          mark: 'table',
+          controls: 'interactive',
+          'lazy-list': true,
+          layout: 'full-view'
+        });
+      }
     }
     expect(document.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
@@ -1177,10 +1182,19 @@ dashboard:
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');
 
-    expect(experimentsPage.definition.views).toHaveLength(1);
+    expect(experimentsPage.definition.views).toHaveLength(2);
     expect(experimentsPage.definition.views[0]).toMatchObject({
       id: 'experiments-list',
       data: { source: 'experiments-table' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view'
+    });
+    expect(experimentsPage.definition.views[1]).toMatchObject({
+      id: 'audit',
+      disclosure: 'supplemental',
+      data: { source: 'audit-events' },
       mark: 'table',
       controls: 'interactive',
       'lazy-list': true,
