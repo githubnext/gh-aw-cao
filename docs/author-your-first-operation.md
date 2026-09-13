@@ -19,7 +19,7 @@ Bring:
 - one low-risk repository that can be used for the first review run;
 - a GitHub organization with Actions and organization-billed Copilot enabled;
 - GitHub CLI authenticated with `repo` and `workflow` scopes;
-- GitHub Agentic Workflows `v0.89.11` or newer.
+- GitHub Agentic Workflows `v0.89.12` or newer.
 
 Verify the local tools:
 
