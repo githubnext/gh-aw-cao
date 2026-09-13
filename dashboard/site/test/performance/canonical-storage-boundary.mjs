@@ -116,7 +116,7 @@ const evidence = {
   nextAction,
   decision: crossing === null
     ? 'Keep IndexedDB; the measured range does not cross the cold replacement budget.'
-    : `Keep IndexedDB while evaluating SQLite-WASM. Begin evaluation by ${evaluationRecords.toLocaleString('en-US')} canonical records; the measured SLO crossing is approximately ${crossing.toLocaleString('en-US')} records. Update to SQLite only after a browser prototype is at least twice as fast and passes the documented compatibility criteria.`,
+    : `IndexedDB cold replacement crosses the measured SLO at approximately ${crossing.toLocaleString('en-US')} canonical records; begin SQLite-WASM evaluation by ${evaluationRecords.toLocaleString('en-US')} records. This benchmark does not compare storage engines.`,
   points
 };
 await Promise.all([
