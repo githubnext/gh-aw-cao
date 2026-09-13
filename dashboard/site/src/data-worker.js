@@ -52,11 +52,35 @@ let subscriptionFlushRunning = false;
 
 /**
  * Publishes a user-facing notification from the data worker.
- * @param {{ message: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number }} notification
+ * @param {{ id?: string, message?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, dismiss?: boolean }} notification
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 export function publishWorkerNotification(notification, target = self) {
   target.postMessage({ type: 'notification', notification });
+}
+
+const INGESTION_PROGRESS_INTERVAL_MS = 5_000;
+let nextIngestionProgressId = 0;
+
+/**
+ * Reports long-running ingestion status through the main-thread notification manager.
+ * @param {{ postMessage: (message: unknown) => void }} [target]
+ */
+export function startIngestionProgress(target = self) {
+  const id = `ingestion-progress-${++nextIngestionProgressId}`;
+  let message = 'Ingesting dashboard data.';
+  const report = () => publishWorkerNotification({ id, message, tone: 'info', duration: 0 }, target);
+  const timer = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
+  return {
+    /** @param {string} nextMessage */
+    update(nextMessage) {
+      message = nextMessage;
+    },
+    complete() {
+      clearInterval(timer);
+      publishWorkerNotification({ id, dismiss: true }, target);
+    }
+  };
 }
 
 async function loadActiveDashboard() {
@@ -259,99 +283,110 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
+      const progress = startIngestionProgress();
       const jsonl = sourceUrl.pathname.endsWith('.jsonl');
       let changed = false;
-      let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
-      if (jsonl) {
-        const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
-        const inventoryResponse = await fetch(inventoryUrl);
-        if (inventoryResponse.ok) {
-          sources = await inventoryResponse.json();
-        } else if (inventoryResponse.status !== 404) {
-          throw new Error(`Unable to load dashboard inventory sources: ${inventoryResponse.status}`);
-        }
-        const workflowSource = sources.workflows && typeof sources.workflows === 'object'
-          ? /** @type {{ rows?: unknown }} */ (sources.workflows)
-          : null;
-        const workflowRows = Array.isArray(workflowSource?.rows) ? workflowSource.rows : [];
-        const workflowHints = workflowRows.flatMap((/** @type {unknown} */ candidate) => {
-          if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
-          const row = /** @type {Record<string, unknown>} */ (candidate);
-          return typeof row.organization === 'string'
-            && typeof row.repository === 'string'
-            && typeof row['workflow-name'] === 'string'
-            && typeof row.workflow === 'string'
-            ? [{
-                owner: row.organization,
-                repository: row.repository,
-                name: row['workflow-name'],
-                path: row.workflow
-              }]
-            : [];
-        });
-        const collectionContext = request.context && typeof request.context === 'object'
-          ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
-          : undefined;
-        const adaptationContext = JSON.stringify({
-          context: collectionContext ?? null,
-          workflowHints
-        });
-        const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', sourceUrl.href);
-        const currentEtag = current?.adaptationContext === adaptationContext
-          && typeof current.payloadEtag === 'string'
-          ? current.payloadEtag
-          : null;
-        const response = await fetch(sourceUrl.href, currentEtag
-          ? { headers: { 'If-None-Match': currentEtag } }
-          : undefined);
-        if (response.status === 304) {
-          changed = false;
+      try {
+        let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
+        if (jsonl) {
+          const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
+          const inventoryResponse = await fetch(inventoryUrl);
+          if (inventoryResponse.ok) {
+            sources = await inventoryResponse.json();
+          } else if (inventoryResponse.status !== 404) {
+            throw new Error(`Unable to load dashboard inventory sources: ${inventoryResponse.status}`);
+          }
+          const workflowSource = sources.workflows && typeof sources.workflows === 'object'
+            ? /** @type {{ rows?: unknown }} */ (sources.workflows)
+            : null;
+          const workflowRows = Array.isArray(workflowSource?.rows) ? workflowSource.rows : [];
+          const workflowHints = workflowRows.flatMap((/** @type {unknown} */ candidate) => {
+            if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
+            const row = /** @type {Record<string, unknown>} */ (candidate);
+            return typeof row.organization === 'string'
+              && typeof row.repository === 'string'
+              && typeof row['workflow-name'] === 'string'
+              && typeof row.workflow === 'string'
+              ? [{
+                  owner: row.organization,
+                  repository: row.repository,
+                  name: row['workflow-name'],
+                  path: row.workflow
+                }]
+              : [];
+          });
+          const collectionContext = request.context && typeof request.context === 'object'
+            ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
+            : undefined;
+          const adaptationContext = JSON.stringify({
+            context: collectionContext ?? null,
+            workflowHints
+          });
+          const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', sourceUrl.href);
+          const currentEtag = current?.adaptationContext === adaptationContext
+            && typeof current.payloadEtag === 'string'
+            ? current.payloadEtag
+            : null;
+          const response = await fetch(sourceUrl.href, currentEtag
+            ? { headers: { 'If-None-Match': currentEtag } }
+            : undefined);
+          if (response.status === 304) {
+            changed = false;
+          } else {
+            if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
+            if (!response.body) throw new Error('Unable to stream gh-aw JSONL response body');
+            const etag = response.headers.get('etag');
+            progress.update('Ingesting dashboard activity data.');
+            const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
+              storage: globalThis.navigator?.storage,
+              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              workflowHints,
+              onProgress: ({ linesProcessed }) => {
+                progress.update(`Ingesting dashboard activity data: ${linesProcessed} records processed.`);
+              },
+              payloadIdentity: etag ? `${sourceUrl.href}:${etag}` : undefined,
+              payloadEtag: etag ?? undefined,
+              payloadScope: sourceUrl.href,
+              context: collectionContext
+            });
+            changed ||= ingestion.updated;
+          }
+          if (inventoryResponse.ok) {
+            progress.update('Ingesting dashboard inventory data.');
+            const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
+              storage: globalThis.navigator?.storage,
+              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              payloadScope: inventoryUrl.href
+            });
+            changed ||= inventoryIngestion.updated;
+          }
         } else {
-          if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
-          if (!response.body) throw new Error('Unable to stream gh-aw JSONL response body');
-          const etag = response.headers.get('etag');
-          const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
+          progress.update('Ingesting dashboard data.');
+          const ingestion = await ingestDashboardSources(indexedDB, sources, {
             storage: globalThis.navigator?.storage,
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-            workflowHints,
-            payloadIdentity: etag ? `${sourceUrl.href}:${etag}` : undefined,
-            payloadEtag: etag ?? undefined,
-            payloadScope: sourceUrl.href,
-            context: collectionContext
+            payloadScope: sourceUrl.href
           });
           changed ||= ingestion.updated;
         }
-        if (inventoryResponse.ok) {
-          const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
-            storage: globalThis.navigator?.storage,
-            retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-            payloadScope: inventoryUrl.href
-          });
-          changed ||= inventoryIngestion.updated;
-        }
-      } else {
-        const ingestion = await ingestDashboardSources(indexedDB, sources, {
-          storage: globalThis.navigator?.storage,
-          retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-          payloadScope: sourceUrl.href
-        });
-        changed = ingestion.updated;
+        liveDashboard = {
+          logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+          revision: (liveDashboard?.revision ?? 0) + 1
+        };
+        scheduleDashboardSubscriptions();
+        const projected = await queryLiveDashboard(
+          requested,
+          context,
+          /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
+          signal,
+          /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
+        );
+        return request.reportActivation
+          ? { sources: projected, changed }
+          : projected;
+      } finally {
+        progress.complete();
       }
-      liveDashboard = {
-        logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-        revision: (liveDashboard?.revision ?? 0) + 1
-      };
-      scheduleDashboardSubscriptions();
-      const projected = await queryLiveDashboard(
-        requested,
-        context,
-        /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
-        signal,
-        /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
-      );
-      return request.reportActivation
-        ? { sources: projected, changed }
-        : projected;
     })();
   }
   if (request?.operation === 'execute-dashboard-queries') {

@@ -311,4 +311,31 @@ describe('canonical dashboard view subscriptions', () => {
     expect(notification?.classList.contains('dashboard-notification-success')).toBe(true);
     unsubscribe();
   });
+
+  it('updates and dismisses a long-running worker notification in place', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    document.body.replaceChildren();
+    const unsubscribe = subscribeCanonicalDashboardView('ingestion', ['runs'], { pages: [] }, () => {});
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+
+    worker.emit({
+      type: 'notification',
+      notification: { id: 'ingestion-1', message: 'Ingesting dashboard data.', duration: 0 }
+    });
+    worker.emit({
+      type: 'notification',
+      notification: { id: 'ingestion-1', message: 'Ingesting dashboard data: 42 records processed.', duration: 0 }
+    });
+
+    expect(document.querySelectorAll('.dashboard-notification')).toHaveLength(1);
+    expect(document.querySelector('.dashboard-notification')?.textContent)
+      .toBe('Ingesting dashboard data: 42 records processed.');
+
+    worker.emit({ type: 'notification', notification: { id: 'ingestion-1', dismiss: true } });
+    vi.advanceTimersByTime(180);
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
+    unsubscribe();
+  });
 });

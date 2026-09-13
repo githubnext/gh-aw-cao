@@ -561,7 +561,7 @@ export function cachedJsonlPayloadIdentity(content) {
 
 /**
  * @param {AsyncIterable<string | Uint8Array>} chunks
- * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
+ * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number }) => void }} [options]
  */
 export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   if (cachedJsonlExpression.contract !== 'gh-aw-cao.jsonl-ingestion'
@@ -603,9 +603,11 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
       start = newline + 1;
     }
     if (start > 0) pending = pending.slice(start);
+    options.onProgress?.({ linesProcessed: lineNumber });
   }
   pending += decoder.decode();
   if (pending) accept(pending);
+  options.onProgress?.({ linesProcessed: lineNumber });
   return {
     ...accumulator.finish(),
     payloadIdentity: hasher.digest()
