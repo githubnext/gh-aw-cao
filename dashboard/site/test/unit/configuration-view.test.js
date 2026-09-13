@@ -92,6 +92,7 @@ describe('Configuration dashboard view', () => {
     const transactions = rendered.querySelector('.configuration-transactions-button');
     expect(transactions?.textContent).toContain('View retained transactions');
     expect(transactions?.getAttribute('href')).toBe('#page-transactions');
+    expect(transactions?.getAttribute('aria-label')).toBe('View retained transactions table');
   });
 
   it('renders repository actions when the settings view is activated lazily', () => {

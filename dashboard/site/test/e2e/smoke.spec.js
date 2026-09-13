@@ -570,8 +570,8 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
 
   const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
   await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
-  await page.evaluate(() => { window.location.hash = '#page-configuration'; });
-  const transactionsLink = page.getByRole('link', { name: 'View retained transactions' });
+  await page.getByRole('link', { name: 'Settings' }).click();
+  const transactionsLink = page.getByRole('link', { name: 'View retained transactions table' });
   await expect(transactionsLink).toBeVisible();
   await transactionsLink.click();
 
