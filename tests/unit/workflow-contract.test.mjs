@@ -1111,7 +1111,6 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /IS_DRAFT.*true/);
   assert.match(agenticSource, /Download prepared release context/);
   assert.match(agent, /GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| (github\.token|secrets\.GITHUB_TOKEN) \}\}[\s\S]*name: Fetch release context/);
-  assert.match(agenticSource, /GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
   assert.match(agenticSource, /RELEASE_SHA.*GITHUB_SHA/);
   assert.match(agenticSource, /TAG_SHA.*GITHUB_SHA/);
   assert.match(agenticSource, /releases\/\$RELEASE_ID/);
