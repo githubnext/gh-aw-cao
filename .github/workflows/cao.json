@@ -140,6 +140,9 @@
           "dashboard-performance": {
             "workflow": "self-care-dashboard-performance"
           },
+          "dashboard-debug-logging": {
+            "workflow": "self-care-dashboard-debug-logging"
+          },
           "dashboard-data-schema": {
             "workflow": "self-care-dashboard-data-schema"
           },

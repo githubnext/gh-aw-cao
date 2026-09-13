@@ -324,6 +324,14 @@ test("control policy validates config-defined worker workflow identities", () =>
   assert.match(duplicateResult.stderr, /workers must declare unique workflow identities/);
 });
 
+test("control policy registers the dashboard debug logging worker", () => {
+  const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
+  assert.equal(
+    policy["control-plane"].packages["self-care"].workers["dashboard-debug-logging"].workflow,
+    "self-care-dashboard-debug-logging",
+  );
+});
+
 test("control policy disables packages by absence and requires declared workers", () => {
   const absentPackage = effective(minimalPolicy, { packageName: "optimization" });
   const declaredWorker = effective(minimalPolicy, {

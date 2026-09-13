@@ -63,9 +63,9 @@ imports:
     with:
       package: self-care
       role: orchestrator
-      dispatch_max: 14
+      dispatch_max: 15
       orchestrator_credits: 200
-      worker_credits_per_target: 4400
+      worker_credits_per_target: 4750
 
 permissions:
   contents: read
@@ -90,8 +90,8 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [self-care-accessibility-checker, self-care-code-improvement, self-care-dashboard-data-schema, self-care-dashboard-performance, self-care-data-acquisition-audit, self-care-dashboard-language-refactor, self-care-dashboard-review, self-care-docs-build-time-investigator, self-care-experimental-views, self-care-glossary, self-care-open-source-failures, self-care-pages-health, self-care-primer-brand-checker, self-care-reactive-ui-expert]
-    max: 14
+    workflows: [self-care-accessibility-checker, self-care-code-improvement, self-care-dashboard-data-schema, self-care-dashboard-debug-logging, self-care-dashboard-performance, self-care-data-acquisition-audit, self-care-dashboard-language-refactor, self-care-dashboard-review, self-care-docs-build-time-investigator, self-care-experimental-views, self-care-glossary, self-care-open-source-failures, self-care-pages-health, self-care-primer-brand-checker, self-care-reactive-ui-expert]
+    max: 15
   threat-detection: false
 
 source: githubnext/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
@@ -105,13 +105,14 @@ source: githubnext/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
 
 This operation is exclusively for `githubnext/gh-aw-cao`. Select that repository only when its precomputed candidate mode is `live`. Treat every other repository and every non-live candidate as ineligible, regardless of apparent need, and record the skip reason in the standard report.
 
-The single eligible repository contains the documentation site and dashboard maintained by the fourteen workers. Do not discover, rank, or dispatch work to any other repository.
+The single eligible repository contains the documentation site and dashboard maintained by the fifteen workers. Do not discover, rank, or dispatch work to any other repository.
 
 ## Workers
 
 - `self-care-accessibility-checker`: audits the rendered documentation site with axe-core, keyboard traversal, and browser evidence, then publishes one prioritized accessibility issue.
 - `self-care-code-improvement`: extracts one evidenced duplicated dashboard UI construct into a tested reusable component and opens one focused draft pull request.
 - `self-care-dashboard-performance`: rotates through trace-backed CFO, CTO, and CSO Lighthouse bottlenecks and opens one focused draft pull request.
+- `self-care-dashboard-debug-logging`: instruments one evidenced dashboard JavaScript subsystem with category-filtered, privacy-preserving debug logging and opens one focused draft pull request.
 - `self-care-dashboard-data-schema`: downloads every JSON file advertised by the deployed Pages manifest and opens one focused draft pull request when the inferred pseudo schemas change.
 - `self-care-dashboard-review`: uses deterministic checks and CFO, CSO, and CTO browser journeys to assess dashboard correctness, decision support, efficiency, and usability.
 - `self-care-experimental-views`: systematically exercises every editable experimental and Operations view in Chromium and WebKit across data-source shapes and DOM-size stress, then opens one focused draft pull request for the highest-ranked issue.
@@ -124,10 +125,10 @@ The single eligible repository contains the documentation site and dashboard mai
 - `self-care-primer-brand-checker`: audits the dashboard against retrieved Primer brand guidance and opens one focused draft pull request when an evidenced presentational fix is available.
 - `self-care-reactive-ui-expert`: maintains the reactive UI skill, migrates JavaScript-produced view sources to request-scoped dashboard queries, reviews recent dashboard JavaScript changes, and replaces evidenced imperative DOM updates with owned reactive elements, data binding, and effects.
 
-Immediately after selecting the authorized target, dispatch `self-care-experimental-views` before inspecting run history or dispatching any other worker. Do this on every selected repository run; this worker is not cadence-limited. Then dispatch the other ten regular workers. Dispatch `self-care-dashboard-data-schema` and `self-care-glossary` only when no run of the respective workflow is in progress or started during the preceding 24 hours. Inspect at most the ten most recent runs of each workflow to make this decision. Dispatch `self-care-pages-health` only when no run of that workflow is queued, in progress, or started during the preceding six hours. Inspect at most the 20 most recent Pages Health workflow runs to make this decision. If any run history is unavailable or ambiguous, fail closed by not dispatching the affected cadence-limited worker and record the incomplete cadence check. Never dispatch a worker in review mode or for another repository.
+Immediately after selecting the authorized target, dispatch `self-care-experimental-views` before inspecting run history or dispatching any other worker. Do this on every selected repository run; this worker is not cadence-limited. Then dispatch the other eleven regular workers. Dispatch `self-care-dashboard-data-schema` and `self-care-glossary` only when no run of the respective workflow is in progress or started during the preceding 24 hours. Inspect at most the ten most recent runs of each workflow to make this decision. Dispatch `self-care-pages-health` only when no run of that workflow is queued, in progress, or started during the preceding six hours. Inspect at most the 20 most recent Pages Health workflow runs to make this decision. If any run history is unavailable or ambiguous, fail closed by not dispatching the affected cadence-limited worker and record the incomplete cadence check. Never dispatch a worker in review mode or for another repository.
 
 ## Completion
 
 Finish with the standard orchestrator report inherited from `shared/control.md`. Preserve `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`, including every standard field. Use exact precomputed totals for repositories scanned and distinguish eligible, selected, skipped, and deferred repositories. Use `0`, `none`, or `not applicable` for every empty field.
 
-In `Outcome`, additionally state whether the sole authorized live target was selected, whether all eleven regular SelfCare workers were dispatched, whether the dashboard data schema and glossary workers were daily-eligible and dispatched, and whether the Pages Health worker was six-hour-eligible and dispatched.
+In `Outcome`, additionally state whether the sole authorized live target was selected, whether all twelve regular SelfCare workers were dispatched, whether the dashboard data schema and glossary workers were daily-eligible and dispatched, and whether the Pages Health worker was six-hour-eligible and dispatched.
