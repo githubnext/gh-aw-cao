@@ -9,7 +9,7 @@ const outputRoot = resolve(
   process.env.DASHBOARD_STORAGE_BOUNDARY_OUTPUT_DIR
     || join(siteRoot, 'test-results', 'storage-performance-boundary')
 );
-const scales = (process.env.DASHBOARD_STORAGE_BOUNDARY_SCALES || '0.01,0.02,0.04,0.06,0.08,0.1')
+const scales = (process.env.DASHBOARD_STORAGE_BOUNDARY_SCALES || '0.01,0.02,0.04,0.06,0.08,0.1,0.105,0.11,0.12')
   .split(',')
   .map(Number)
   .sort((left, right) => left - right);
@@ -65,7 +65,7 @@ function chart(points, crossing) {
   <text x="${margin.left + plotWidth - 8}" y="${y(budgetMs) - 9}" text-anchor="end" font-family="sans-serif" font-size="13" font-weight="700" fill="#a40e26">10-second SLO</text>
   <path d="${path}" fill="none" stroke="#0969da" stroke-width="3"/>
   ${points.map((point) => `<circle cx="${x(point.totalRecords)}" cy="${y(point.coldReplaceMs)}" r="5" fill="#0969da"/><text x="${x(point.totalRecords)}" y="${y(point.coldReplaceMs) - 11}" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#24292f">${(point.coldReplaceMs / 1000).toFixed(2)}s</text>`).join('\n  ')}
-  ${crossingX === null ? '' : `<line x1="${crossingX}" y1="${margin.top}" x2="${crossingX}" y2="${margin.top + plotHeight}" stroke="#8250df" stroke-width="2" stroke-dasharray="5 5"/><text x="${crossingX - 8}" y="${margin.top + 18}" text-anchor="end" font-family="sans-serif" font-size="13" font-weight="700" fill="#6639ba">Evaluate SQLite at ~${crossing.toLocaleString('en-US')} records</text>`}
+  ${crossingX === null ? '' : `<line x1="${crossingX}" y1="${margin.top}" x2="${crossingX}" y2="${margin.top + plotHeight}" stroke="#8250df" stroke-width="2" stroke-dasharray="5 5"/><text x="${crossingX - 8}" y="${margin.top + 18}" text-anchor="end" font-family="sans-serif" font-size="13" font-weight="700" fill="#6639ba">Measured crossing ~${crossing.toLocaleString('en-US')} records</text>`}
   <text x="${margin.left + plotWidth / 2}" y="${height - 20}" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#24292f">Total canonical records</text>
   <text x="22" y="${margin.top + plotHeight / 2}" transform="rotate(-90 22 ${margin.top + plotHeight / 2})" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#24292f">Cold replacement latency</text>
 </svg>
