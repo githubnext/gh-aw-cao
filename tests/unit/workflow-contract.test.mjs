@@ -2849,6 +2849,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "mattpocock-skills-reviewer.lock.yml",
       "pr-reviewer.lock.yml",
       "pr-sous-chef.lock.yml",
+      "release.lock.yml",
       "svg-visual-audit.lock.yml",
     ].sort();
 
