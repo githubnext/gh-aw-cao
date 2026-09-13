@@ -15,10 +15,12 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { existsSync, watch } from "node:fs";
+import { createReadStream, createWriteStream, existsSync, watch } from "node:fs";
 import { createRequire } from "node:module";
 import { isIP } from "node:net";
 import { tmpdir } from "node:os";
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import { cliActionTemplateFields, renderCliActionCommand } from "./site/src/cli-action-template.js";
 import {
@@ -32,7 +34,7 @@ import {
   sep,
 } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gzipSync } from "node:zlib";
+import { createGzip, gzipSync } from "node:zlib";
 import { bundleDashboardFiles } from "./report/bundle-dashboards.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -149,6 +151,25 @@ function sendContent(request, response, contentType, content) {
     ? { ...headers, Vary: "Accept-Encoding" }
     : headers);
   response.end(body);
+}
+
+async function sendFileContent(request, response, contentType, path) {
+  const headers = { "Cache-Control": "no-store", "Content-Type": contentType };
+  const acceptsGzip = /(^|,)\s*gzip\s*(;|,|$)/.test(String(request.headers["accept-encoding"] ?? ""));
+  if (request.method === "HEAD") {
+    response.writeHead(200, { ...headers, Vary: "Accept-Encoding" });
+    response.end();
+    return;
+  }
+  response.writeHead(200, acceptsGzip
+    ? { ...headers, "Content-Encoding": "gzip", Vary: "Accept-Encoding" }
+    : { ...headers, Vary: "Accept-Encoding" });
+  const source = createReadStream(path);
+  if (acceptsGzip) {
+    await pipeline(source, createGzip(), response);
+    return;
+  }
+  await pipeline(source, response);
 }
 
 function sendJson(response, statusCode, value) {
@@ -453,10 +474,38 @@ function redactJsonSecrets(source) {
   return JSON.stringify(redact(JSON.parse(source)), null, 2);
 }
 
-function redactJsonlSecrets(source) {
-  return source.split(/\r?\n/).map((line) => line.trim()
+async function redactJsonlSecretsFile(sourcePath, destinationPath) {
+  const decoder = new TextDecoder();
+  let pending = "";
+  const redactLine = (line) => line.trim()
     ? JSON.stringify(JSON.parse(redactJsonSecrets(line)))
-    : "").join("\n");
+    : "";
+  const redactor = new Transform({
+    transform(chunk, _encoding, callback) {
+      try {
+        pending += decoder.decode(chunk, { stream: true });
+        let newline;
+        while ((newline = pending.indexOf("\n")) !== -1) {
+          const line = pending.slice(0, newline).replace(/\r$/, "");
+          this.push(`${redactLine(line)}\n`);
+          pending = pending.slice(newline + 1);
+        }
+        callback();
+      } catch (error) {
+        callback(error);
+      }
+    },
+    flush(callback) {
+      try {
+        pending += decoder.decode();
+        if (pending) this.push(redactLine(pending));
+        callback();
+      } catch (error) {
+        callback(error);
+      }
+    },
+  });
+  await pipeline(createReadStream(sourcePath), redactor, createWriteStream(destinationPath));
 }
 
 function redactedLogValue(value) {
@@ -1422,15 +1471,17 @@ export async function startDashboardServer({
   let sourcesContent;
   let sourceManifestContent;
   let viewerContent;
-  let ghAwLogsContent;
+  let ghAwLogsPath;
   let inventorySourcesContent;
   const splitSourceContent = new Map();
   try {
     await downloadData(dashboardDataDirectory, repository, ghExecutable);
     const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
     if (canonicalDataDirectory) {
-      ghAwLogsContent = redactJsonlSecrets(
-        await readFile(join(canonicalDataDirectory, "gh-aw-logs.jsonl"), "utf8"),
+      ghAwLogsPath = join(temporaryDirectory, "gh-aw-logs.jsonl");
+      await redactJsonlSecretsFile(
+        join(canonicalDataDirectory, "gh-aw-logs.jsonl"),
+        ghAwLogsPath,
       );
       inventorySourcesContent = redactJsonSecrets(
         await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
@@ -2058,11 +2109,11 @@ export async function startDashboardServer({
         return;
       }
       if (pathname === "/gh-aw-logs.jsonl") {
-        if (ghAwLogsContent === undefined) {
+        if (ghAwLogsPath === undefined) {
           response.writeHead(404).end("Not found\n");
           return;
         }
-        sendContent(request, response, contentTypes.get(".jsonl"), ghAwLogsContent);
+        await sendFileContent(request, response, contentTypes.get(".jsonl"), ghAwLogsPath);
         return;
       }
       if (pathname === "/inventory-sources.json") {

@@ -779,7 +779,7 @@ fi
   [ "$8" = "--repo" ] &&
   [ "$9" = "acme/control" ] || exit 3
 mkdir -p "$7/cao"
-printf '%s\n' '{"schema_version":2,"repository":"acme/control"}' > "$7/cao/gh-aw-logs.jsonl"
+printf '%s\n' '{"schema_version":2,"repository":"acme/control","token":"sensitive"}' > "$7/cao/gh-aw-logs.jsonl"
 printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventory-sources.json"
 `);
   await chmod(ghExecutable, 0o755);
@@ -800,6 +800,7 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
     assert.deepEqual(JSON.parse((await logsResponse.text()).trim()), {
       schema_version: 2,
       repository: "acme/control",
+      token: "[REDACTED]",
     });
     const inventoryResponse = await fetch(`${preview.url}/inventory-sources.json`);
     assert.deepEqual(await inventoryResponse.json(), {
