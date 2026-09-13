@@ -479,6 +479,54 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('Showing partial results');
   });
 
+  it('consumes swimlane continuation rows in chunks of 256', async () => {
+    const continuationRows = Array.from({ length: 513 }, (_, index) => ({
+      run: String(index + 2),
+      'started-at': new Date(Date.UTC(2026, 7, 31, 12, 49, index)).toISOString(),
+      'run-conclusion': 'success'
+    }));
+    const buildChartPoints = vi.fn((_pageId, _title, chartRows) => chartRows.map((row) => ({
+      key: String(row.run),
+      x: String(row['started-at']),
+      y: Number.NaN,
+      category: String(row['run-conclusion']),
+      color: String(row['run-conclusion']),
+      link: null,
+      source: row
+    })));
+    const rendered = renderDataView('chart', {
+      pageId: 'runs',
+      title: 'Workflow runs',
+      view: {
+        mark: 'chart',
+        chart: 'swimlane',
+        encoding: {
+          x: { field: 'started-at', type: 'temporal' },
+          y: { field: 'run-conclusion', type: 'ordinal' }
+        }
+      },
+      sourceName: 'runs-table',
+      rows: [{ run: '1', 'started-at': '2026-08-31T12:48:37Z', 'run-conclusion': 'success' }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints,
+      prepareChartPoints: (points) => points,
+      toText: String,
+      continuation: {
+        token: 'page-2',
+        totalRows: 514,
+        load: vi.fn().mockResolvedValue({ rows: continuationRows })
+      }
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(514));
+
+    expect(buildChartPoints.mock.calls.map((call) => call[2].length)).toEqual([1, 257, 513, 514]);
+  });
+
   it('stops swimlane continuation rendering when the view is detached', async () => {
     /** @type {(value: { rows: Array<Record<string, unknown>>, continuationToken?: string }) => void} */
     let resolvePage = () => {};

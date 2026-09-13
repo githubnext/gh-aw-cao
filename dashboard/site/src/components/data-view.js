@@ -19,6 +19,8 @@ import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 import { renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
 import { effect, onCleanup, state } from '../reactive.js';
 
+const SWIMLANE_CONTINUATION_CHUNK_SIZE = 256;
+
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
 const ENTITY_LINK_FIELDS = {
   organization: 'organization-link',
@@ -664,13 +666,25 @@ function renderChartView(context) {
             const next = await continuation.load(current.token);
             if (!active || (wasConnected && !section.isConnected)) return;
             wasConnected ||= section.isConnected;
-            current = {
-              rows: [...current.rows, ...next.rows],
-              token: next.continuationToken,
-              error: null
-            };
-            continuationState.set(current);
-            await new Promise((resolve) => setTimeout(resolve, 0));
+            const chunks = next.rows.length === 0
+              ? [[]]
+              : Array.from(
+                  { length: Math.ceil(next.rows.length / SWIMLANE_CONTINUATION_CHUNK_SIZE) },
+                  (_, index) => next.rows.slice(
+                    index * SWIMLANE_CONTINUATION_CHUNK_SIZE,
+                    (index + 1) * SWIMLANE_CONTINUATION_CHUNK_SIZE
+                  )
+                );
+            for (const [index, chunk] of chunks.entries()) {
+              const finalChunk = index === chunks.length - 1;
+              current = {
+                rows: [...current.rows, ...chunk],
+                token: finalChunk ? next.continuationToken : current.token,
+                error: null
+              };
+              continuationState.set(current);
+              await new Promise((resolve) => setTimeout(resolve, 0));
+            }
           }
         } catch (error) {
           if (!active) return;
