@@ -1078,11 +1078,13 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(prepare, /publish the draft, and mark it as the latest release from the GitHub website/);
   assert.match(prepare, /install or update this package only with gh aw add or gh aw update/);
   assert.equal(jobs.has("publish-release"), false);
-  assert.match(agenticSource, /safe-outputs:\n  update-release:/);
-  assert.match(agenticSource, /RELEASE_ID: \$\{\{ needs\.prepare-release\.outputs\.release_id \}\}/);
-  assert.match(agenticSource, /Call `safeoutputs\/update_release` exactly once/);
-  assert.match(agenticSource, /the exact `tag_name` from `current_release\.json`/);
-  assert.match(agenticSource, /`operation`: `prepend`/);
+  assert.match(agenticSource, /update-release-description:/);
+  assert.match(agenticSource, /Call `safeoutputs\/update_release_description` exactly once/);
+  assert.match(agenticSource, /ACTUAL_TAG.*RELEASE_TAG/);
+  assert.match(agenticSource, /IS_DRAFT.*true/);
+  assert.match(agenticSource, /target_commitish == \$sha and \.created_at >= \$created_at/);
+  assert.match(agenticSource, /TAG_SHA.*GITHUB_SHA/);
+  assert.match(agenticSource, /releases\/\$RELEASE_ID/);
   assert.match(agenticSource, /Keep the existing GitHub-generated notes intact/);
   assert.match(agenticSource, /--json number,title,author,labels,mergedAt,url,body,files/);
   assert.match(agenticSource, /release_adrs\.md/);
@@ -1093,6 +1095,7 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /"\$CHANGELOG_PATH" = "\$WORKSPACE_ROOT\/CHANGELOG\.md"/);
   assert.doesNotMatch(agenticSource, /^evals:/m);
   assert.equal(jobs.has("evals"), false);
+  assert.match(version, /needs\.activation\.outputs\.daily_ai_credits_exceeded != 'true'/);
   assert.match(jobs.get("agent")?.needs.join(","), /prepare-release/);
   assert.doesNotMatch(agenticSource, /draft: false|make_latest/);
   assert.doesNotMatch(agenticSource, /release-please|upload-artifact/);

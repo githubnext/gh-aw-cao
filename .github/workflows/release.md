@@ -40,12 +40,71 @@ tools:
     - jq
 
 safe-outputs:
-  update-release:
   threat-detection: false
+  jobs:
+    update-release-description:
+      description: Update only the draft release created by this workflow
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write
+      env:
+        GH_TOKEN: ${{ github.token }}
+      inputs:
+        body:
+          description: Human-friendly Markdown to prepend to the generated release notes
+          required: true
+          type: string
+      steps:
+        - name: Update prepared draft release
+          run: |
+            set -euo pipefail
+
+            ITEM_COUNT=$(jq '[.items[] | select(.type == "update_release_description")] | length' "$GH_AW_AGENT_OUTPUT")
+            if [ "$ITEM_COUNT" -ne 1 ]; then
+              echo "Expected exactly one release description update." >&2
+              exit 1
+            fi
+            BODY=$(jq -r '.items[] | select(.type == "update_release_description") | .body' "$GH_AW_AGENT_OUTPUT")
+            if [ -z "$BODY" ] || [ "$BODY" = "null" ]; then
+              echo "Release description is empty." >&2
+              exit 1
+            fi
+
+            RUN_CREATED_AT=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq '.created_at')
+            RELEASES=$(gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/releases?per_page=100")
+            CANDIDATES=$(printf '%s' "$RELEASES" | jq \
+              --arg sha "$GITHUB_SHA" \
+              --arg created_at "$RUN_CREATED_AT" \
+              '[add[] | select(.draft == true and .target_commitish == $sha and .created_at >= $created_at)]')
+            if [ "$(printf '%s' "$CANDIDATES" | jq 'length')" -ne 1 ]; then
+              echo "Expected exactly one draft release created by this workflow run." >&2
+              exit 1
+            fi
+
+            RELEASE_ID=$(printf '%s' "$CANDIDATES" | jq -r '.[0].id')
+            RELEASE_TAG=$(printf '%s' "$CANDIDATES" | jq -r '.[0].tag_name')
+            TAG_SHA=$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
+            if ! [[ "$RELEASE_ID" =~ ^[0-9]+$ ]] || [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
+              echo "Prepared release identity changed; refusing update." >&2
+              exit 1
+            fi
+
+            RELEASE=$(gh api "/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")
+            ACTUAL_TAG=$(printf '%s' "$RELEASE" | jq -r '.tag_name')
+            IS_DRAFT=$(printf '%s' "$RELEASE" | jq -r '.draft')
+            EXISTING_BODY=$(printf '%s' "$RELEASE" | jq -r '.body // ""')
+            if [ "$ACTUAL_TAG" != "$RELEASE_TAG" ] || [ "$IS_DRAFT" != "true" ]; then
+              echo "Prepared release identity or draft status changed; refusing update." >&2
+              exit 1
+            fi
+
+            jq -n --arg body "$BODY"$'\n\n'"$EXISTING_BODY" '{body: $body}' |
+              gh api --method PATCH "/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --input -
 
 jobs:
   resolve-version:
     name: Authorize and resolve release version
+    if: needs.activation.outputs.daily_ai_credits_exceeded != 'true'
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.version.outputs.release_tag }}
@@ -298,10 +357,8 @@ Follow GitHub release-notes best practices:
 6. Do not invent changes, impact, measurements, migration guidance, links, or attribution.
 7. Keep the existing GitHub-generated notes intact.
 
-Call `safeoutputs/update_release` exactly once with:
+Call `safeoutputs/update_release_description` exactly once with:
 
-- `tag`: the exact `tag_name` from `current_release.json`
-- `operation`: `prepend`
 - `body`: the complete Markdown highlights, beginning with `## Release highlights`
 
 If the evidence contains no user-facing changes, prepend a brief `## Maintenance release` summary instead. Do not call `noop`: every created draft release needs a human-friendly introductory summary.
