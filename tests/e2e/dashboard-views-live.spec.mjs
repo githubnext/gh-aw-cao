@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
 const outputDirectory = resolve(
   process.env.DASHBOARD_VIEWS_OUTPUT_DIR || "test-results/dashboard-views",
@@ -39,26 +40,8 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
     if (!sourceUrl) throw new Error("DASHBOARD_DATA_URL is required.");
 
     preview = await startDashboardServer({
-      downloadData: async (destination) => {
-        const inventoryUrl = new URL("inventory-sources.json", sourceUrl);
-        const [logsResponse, inventoryResponse] = await Promise.all([
-          fetch(sourceUrl),
-          fetch(inventoryUrl),
-        ]);
-        if (!logsResponse.ok) {
-          throw new Error(`Unable to download deployed dashboard data: HTTP ${logsResponse.status}.`);
-        }
-        if (!inventoryResponse.ok) {
-          throw new Error(
-            `Unable to download deployed dashboard inventory: HTTP ${inventoryResponse.status}.`,
-          );
-        }
-        await mkdir(destination, { recursive: true });
-        await Promise.all([
-          writeFile(join(destination, "gh-aw-logs.jsonl"), await logsResponse.text()),
-          writeFile(join(destination, "inventory-sources.json"), await inventoryResponse.text()),
-        ]);
-      },
+      downloadData: (destination) =>
+        downloadDeployedDashboardData(destination, sourceUrl),
       host: "127.0.0.1",
       port: 0,
     });
