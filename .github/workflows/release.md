@@ -243,14 +243,20 @@ steps:
       fi
 
       : > /tmp/gh-aw/agent/release-data/release_adrs.md
+      WORKSPACE_ROOT=$(realpath -- "$GITHUB_WORKSPACE")
       jq -r '[.[].files[]?.path | select(startswith("adr/") or startswith("docs/adr/"))] | unique[]' \
         /tmp/gh-aw/agent/release-data/pull_requests.json |
         while IFS= read -r adr_path; do
           case "$adr_path" in
             adr/*.md|docs/adr/*.md)
-              if [ -f "$adr_path" ]; then
+              RESOLVED_ADR=$(realpath -- "$adr_path" 2>/dev/null || true)
+              if [ -f "$adr_path" ] && [ ! -L "$adr_path" ]; then
+                case "$RESOLVED_ADR" in
+                  "$WORKSPACE_ROOT"/adr/*.md|"$WORKSPACE_ROOT"/docs/adr/*.md) ;;
+                  *) continue ;;
+                esac
                 printf '\n## %s\n\n' "$adr_path" >> /tmp/gh-aw/agent/release-data/release_adrs.md
-                cat "$adr_path" >> /tmp/gh-aw/agent/release-data/release_adrs.md
+                cat -- "$adr_path" >> /tmp/gh-aw/agent/release-data/release_adrs.md
               fi
               ;;
           esac

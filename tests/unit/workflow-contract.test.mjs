@@ -1087,6 +1087,8 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /--json number,title,author,labels,mergedAt,url,body,files/);
   assert.match(agenticSource, /release_adrs\.md/);
   assert.match(agenticSource, /Review every ADR in `release_adrs\.md`/);
+  assert.match(agenticSource, /\[ ! -L "\$adr_path" \]/);
+  assert.match(agenticSource, /"\$WORKSPACE_ROOT"\/adr\/\*\.md\|"\$WORKSPACE_ROOT"\/docs\/adr\/\*\.md/);
   assert.doesNotMatch(agenticSource, /^evals:/m);
   assert.equal(jobs.has("evals"), false);
   assert.match(jobs.get("agent")?.needs.join(","), /prepare-release/);
