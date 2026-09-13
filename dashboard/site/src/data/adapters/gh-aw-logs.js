@@ -535,6 +535,30 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
   return accumulator.finish();
 }
 
+function createCachedJsonlPayloadHasher() {
+  const hashes = Array.from({ length: 8 }, (_, index) => (0x811c9dc5 ^ (index * 0x9e3779b9)) >>> 0);
+  return {
+    /** @param {Uint8Array} bytes */
+    update(bytes) {
+      for (const byte of bytes) {
+        for (let index = 0; index < hashes.length; index += 1) {
+          hashes[index] = Math.imul(hashes[index] ^ byte, 0x01000193 + (index * 2)) >>> 0;
+        }
+      }
+    },
+    digest() {
+      return hashes.map((hash) => hash.toString(16).padStart(8, '0')).join('');
+    }
+  };
+}
+
+/** @param {string | Uint8Array} content */
+export function cachedJsonlPayloadIdentity(content) {
+  const hasher = createCachedJsonlPayloadHasher();
+  hasher.update(typeof content === 'string' ? new TextEncoder().encode(content) : content);
+  return hasher.digest();
+}
+
 /**
  * @param {AsyncIterable<string | Uint8Array>} chunks
  * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
@@ -547,7 +571,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   const sourceSchemaVersion = cachedJsonlExpression.sourceSchemaVersion;
   const knownKinds = new Set(Object.keys(cachedJsonlExpression.variants));
   const decoder = new TextDecoder();
-  const hashes = Array.from({ length: 8 }, (_, index) => (0x811c9dc5 ^ (index * 0x9e3779b9)) >>> 0);
+  const hasher = createCachedJsonlPayloadHasher();
   const accumulator = createCachedGhAwJsonlAccumulator(options);
   let pending = '';
   let lineNumber = 0;
@@ -569,11 +593,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   };
   for await (const chunk of chunks) {
     const bytes = typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk;
-    for (const byte of bytes) {
-      for (let index = 0; index < hashes.length; index += 1) {
-        hashes[index] = Math.imul(hashes[index] ^ byte, 0x01000193 + (index * 2)) >>> 0;
-      }
-    }
+    hasher.update(bytes);
     pending += decoder.decode(bytes, { stream: true });
     let newline;
     while ((newline = pending.indexOf('\n')) !== -1) {
@@ -585,7 +605,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   if (pending) accept(pending);
   return {
     ...accumulator.finish(),
-    payloadIdentity: hashes.map((hash) => hash.toString(16).padStart(8, '0')).join('')
+    payloadIdentity: hasher.digest()
   };
 }
 

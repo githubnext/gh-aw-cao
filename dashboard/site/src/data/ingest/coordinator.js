@@ -2,7 +2,8 @@ import { adaptDashboardSources } from '../adapters/dashboard-sources.js';
 import {
   adaptCachedGhAwJsonl,
   adaptCachedGhAwJsonlStream,
-  adaptGhAwLogs
+  adaptGhAwLogs,
+  cachedJsonlPayloadIdentity
 } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { normalize } from '../normalize/index.js';
@@ -274,7 +275,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       : undefined;
     const payloadIdentity = options.payloadIdentity
       ?? streamed?.payloadIdentity
-      ?? (typeof content === 'string' ? content : await payloadHash(content, undefined));
+      ?? cachedJsonlPayloadIdentity(/** @type {string | Uint8Array} */ (content));
     const hash = await payloadHash(`${payloadIdentity}\0${adaptationContext}`, undefined);
     const scope = options.payloadScope ?? 'gh-aw-jsonl';
     const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);

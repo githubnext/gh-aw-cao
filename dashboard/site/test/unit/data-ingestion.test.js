@@ -490,7 +490,10 @@ describe('canonical source ingestion and queries', () => {
       records: 1,
       agenticRuns: 1
     });
-    await expect(ingestCachedGhAwJsonl(indexedDB, chunks())).resolves.toMatchObject({
+    await expect(ingestCachedGhAwJsonl(
+      indexedDB,
+      new TextDecoder().decode(content)
+    )).resolves.toMatchObject({
       updated: false,
       skipped: true
     });
