@@ -26,6 +26,8 @@ concurrency:
 jobs:
   index:
     runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.activity-cache-key.outputs.value }}
     permissions:
       actions: read
       contents: read
@@ -188,6 +190,32 @@ jobs:
             --database "$ACTIVITY_DATABASE" \
             --run-ttl-days all
 
+      - name: Upload activity snapshot
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cao-activity-index
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+            ${{ runner.temp }}/cao-activity/control-settings.json
+            ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json
+
+  cache:
+    needs: index
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: none
+    steps:
+      - name: Download activity snapshot
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: cao-activity-index
+          path: ${{ runner.temp }}
+
       - name: Save activity cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -197,4 +225,4 @@ jobs:
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json
-          key: ${{ steps.activity-cache-key.outputs.value }}
+          key: ${{ needs.index.outputs.cache-key }}

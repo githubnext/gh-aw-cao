@@ -25,7 +25,24 @@ function assertCachePathSets(workflow, expectedCount) {
 
 test("activity workflow caches gh-aw logs and their SQLite projection", async () => {
   const workflow = await readFile(".github/workflows/activity.yml", "utf8");
+  const indexJob = workflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
+  const cacheJob = workflow.match(/\n  cache:\n([\s\S]*)/)?.[1];
 
+  assert.ok(indexJob);
+  assert.ok(cacheJob);
+  assert.match(indexJob, /permissions:\n\s+actions: read\n\s+contents: read/);
+  assert.doesNotMatch(indexJob, /actions\/cache\/save@/);
+  assert.match(
+    indexJob,
+    /Upload activity snapshot[\s\S]*?actions\/upload-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?retention-days: 1/,
+  );
+  assert.match(cacheJob, /needs: index/);
+  assert.match(cacheJob, /permissions:\n\s+actions: write\n\s+contents: none/);
+  assert.match(
+    cacheJob,
+    /Download activity snapshot[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}[\s\S]*?Save activity cache/,
+  );
+  assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,
     /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?Download agentic workflow logs/,
@@ -40,7 +57,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     /ingest-jsonl[\s\S]*?--input "\$REPORT_GH_AW_LOGS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
   );
   assert.match(
-    workflow,
+    cacheJob,
     /Save activity cache[\s\S]*?path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-gh-aw-logs\/drain3_weights\.json/,
   );
   assert.match(

@@ -8,7 +8,9 @@ The scheduled and manually dispatchable `CAO Activity` workflow checks out the
 control repository, restores the latest compatible log cache, runs one bounded
 `gh aw logs --audit --artifacts usage` command for its compiled workflows, and
 ingests the refreshed JSONL through the canonical Node.js data pipeline. It
-caches both the source JSONL and its local SQLite projection.
+uploads the completed snapshot as a one-day artifact. A dependent job downloads
+that artifact and publishes the source JSONL and its local SQLite projection to
+the shared cache, keeping cache-write permission out of the collection job.
 
 ## Cache contract
 
