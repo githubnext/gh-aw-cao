@@ -5,6 +5,7 @@ import test from "node:test";
 const cachePaths = [
   "${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl",
   "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
+  "${{ runner.temp }}/cao-activity/payload-hashes.txt",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
   "${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json",
@@ -55,6 +56,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(
     workflow,
     /ingest-jsonl[\s\S]*?--input "\$REPORT_GH_AW_LOGS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
+  );
+  assert.match(
+    workflow,
+    /Hash activity payloads[\s\S]*?sha256sum gh-aw-logs\.jsonl gh-aw-logs\.sqlite > payload-hashes\.txt/,
   );
   assert.match(
     cacheJob,

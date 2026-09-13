@@ -19,14 +19,19 @@ The cache contains:
 ```text
 $RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
+$RUNNER_TEMP/cao-activity/payload-hashes.txt
 $RUNNER_TEMP/cao-activity/control-settings.json
 $RUNNER_TEMP/cao-activity/inventory-sources.json
 $RUNNER_TEMP/cao-gh-aw-logs/drain3_weights.json
 ```
 
+`payload-hashes.txt` contains SHA-256 checksums for the JSONL source and SQLite
+projection. The dashboard publishes it beside both payloads so clients can
+detect unchanged data without downloading either complete payload.
+
 Snapshots use the immutable key
-`cao-activity-v3-${github.run_id}-${github.run_attempt}` and restore prefix
-`cao-activity-v3-`. Dispatching consumers wait for the exact Activity run and
+`cao-activity-v4-${github.run_id}-${github.run_attempt}` and restore prefix
+`cao-activity-v4-`. Dispatching consumers wait for the exact Activity run and
 reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. The cache is an evictable transport optimization, not durable

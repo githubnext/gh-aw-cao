@@ -8,12 +8,13 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+            ${{ runner.temp }}/cao-activity/payload-hashes.txt
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json
-          key: cao-activity-v3-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
+          key: cao-activity-v4-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
           restore-keys: |
-            cao-activity-v3-
+            cao-activity-v4-
 
   agent:
     pre-steps:
@@ -23,12 +24,13 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+            ${{ runner.temp }}/cao-activity/payload-hashes.txt
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json
-          key: cao-activity-v3-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
+          key: cao-activity-v4-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
           restore-keys: |
-            cao-activity-v3-
+            cao-activity-v4-
 ---
 
 <!--
