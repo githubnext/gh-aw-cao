@@ -676,6 +676,7 @@ function renderChartView(context) {
                   )
                 );
             for (const [index, chunk] of chunks.entries()) {
+              if (!active || (wasConnected && !section.isConnected)) return;
               const finalChunk = index === chunks.length - 1;
               current = {
                 rows: [...current.rows, ...chunk],
