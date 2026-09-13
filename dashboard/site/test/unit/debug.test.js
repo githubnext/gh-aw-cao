@@ -40,4 +40,10 @@ describe('dashboard debug logging', () => {
 
     expect(output.debug).not.toHaveBeenCalled();
   });
+
+  it('reuses one no-op function for disabled categories', () => {
+    const search = () => '?debug=render';
+
+    expect(createDebug('data', { search })).toBe(createDebug('worker', { search }));
+  });
 });

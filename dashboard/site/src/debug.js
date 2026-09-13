@@ -1,6 +1,7 @@
 const DEBUG_PARAMETER = 'debug';
 const DEBUG_PREFIX = 'cao';
 const patternCache = new Map();
+const disabledDebug = () => {};
 
 /**
  * @param {string} pattern
@@ -51,12 +52,10 @@ export function isDebugEnabled(category, search = globalThis.location?.search ??
 export function createDebug(category, options = {}) {
   const search = options.search ?? (() => globalThis.location?.search ?? '');
   const output = options.output ?? globalThis.console;
-  const enabled = isDebugEnabled(category, search());
+  if (!isDebugEnabled(category, search())) return disabledDebug;
 
   return (
     /** @param {unknown[]} values */
-    (...values) => {
-      if (enabled) output.debug(`[${DEBUG_PREFIX}:${category}]`, ...values);
-    }
+    (...values) => output.debug(`[${DEBUG_PREFIX}:${category}]`, ...values)
   );
 }
