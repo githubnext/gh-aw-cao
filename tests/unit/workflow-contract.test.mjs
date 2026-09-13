@@ -40,11 +40,10 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
     assert.equal(parse(readFileSync(join(root, manifest), "utf8"))["min-version"], ghAwVersion, manifest);
   }
 
-  for (const name of ["copilot-setup-steps.yml", "release.yml", "workflow-contracts.yml"]) {
+  for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
     assert.match(source, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   }
-  assert.match(workflow("activity.yml"), new RegExp(`setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion}`));
   const setupAction = readFileSync(join(root, ".github", "actions", "setup-gh-aw", "action.yml"), "utf8");
   assert.match(setupAction, /control\.mjs compiler-version \.github\/workflows\/cao\.json/);
   assert.match(setupAction, new RegExp(`setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion} tag resolves to this commit`));
@@ -1172,7 +1171,7 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   }
   assert.match(control, /runtime="\$GITHUB_WORKSPACE\/\.cao\/\.github\/workflows\/shared\/control\.mjs"/);
   assert.doesNotMatch(control, /\.cao-runtime|Checkout installed CAO control source|# Source: /);
-  assert.match(activity, /control_runtime=\.github\/workflows\/shared\/control\.mjs/);
+  assert.match(activity, /control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /setup-central-agentic-ops/);
@@ -3238,8 +3237,8 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 1);
   assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
-  assert.match(activityWorkflow, /Resolve gh-aw compiler version[\s\S]*?github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
-  assert.doesNotMatch(activityWorkflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(activityWorkflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(activityWorkflow, /control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(deployedWorkflows, /fetch\(|api\.github\.com|gh api|spawn\(/);
   assert.match(deployedWorkflows, /Build activity index from local workflow inventory/);
   assert.match(deployedWorkflows, /usageArtifactGaps/);
@@ -3297,10 +3296,10 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
-  assert.match(workflow, /Resolve gh-aw compiler version[\s\S]*?\.github\/workflows\/shared\/control\.mjs[\s\S]*?github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
+  assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(workflow, /Resolve CAO control source|\.github\/aw\/packages|\.cao-runtime/);
-  assert.doesNotMatch(workflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
-  assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+"\$control_runtime"/);
+  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);
@@ -3314,7 +3313,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.doesNotMatch(workflow, /pull-requests: read/);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 1);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
   assert.doesNotMatch(workflow, /github-script|ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Save activity cache/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);

@@ -1022,6 +1022,110 @@
         ]
       },
       {
+        "name": "audit-events",
+        "intent": "List observed audit events so experiment reviewers can inspect agent audit findings, recommendations, gaps, and activations.",
+        "description": "Audit-sourced events ordered from newest to oldest with their audit kind, status, summary, and run context.",
+        "from": "events",
+        "filter": {
+          "predicates": [
+            {
+              "field": "event-type",
+              "in": [
+                "audit.finding",
+                "audit.observability",
+                "audit.recommendation",
+                "audit.missing_tool",
+                "audit.missing_data",
+                "audit.noop",
+                "audit.mcp_failure",
+                "audit.skill_activation"
+              ]
+            }
+          ]
+        },
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              },
+              {
+                "left": "run-attempt",
+                "right": "run-attempt"
+              }
+            ],
+            "fields": [
+              {
+                "field": "run-link",
+                "as": "linked-run"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "event-timestamp",
+            "as": "observed-at"
+          },
+          {
+            "field": "event-type",
+            "as": "audit-kind"
+          },
+          {
+            "field": "event-status"
+          },
+          {
+            "field": "event-summary"
+          },
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "run-attempt"
+          },
+          {
+            "field": "session"
+          },
+          {
+            "field": "event"
+          },
+          {
+            "field": "linked-run",
+            "as": "run-link"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "engines-models-usage",
         "intent": "Summarize agent events by the run-level agent and model identifiers.",
         "description": "Observed agent events grouped by agent ID and model ID.",
@@ -5343,6 +5447,87 @@
         ]
       },
       {
+        "id": "audit",
+        "kind": "custom",
+        "title": "Audit",
+        "icon": "checklist",
+        "description": "Inspect observed agent audit events, including findings, recommendations, gaps, and skill activations.",
+        "views": [
+          {
+            "id": "audit-events-table",
+            "title": "Audit events",
+            "description": "Observed audit events ordered from newest to oldest with their audit kind, status, summary, and run context.",
+            "data": {
+              "source": "audit-events"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No audit events were observed in the current run window.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
+                },
+                {
+                  "field": "audit-kind",
+                  "type": "nominal",
+                  "title": "Audit event"
+                },
+                {
+                  "field": "event-status",
+                  "type": "nominal",
+                  "title": "Status"
+                },
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Summary"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                },
+                {
+                  "field": "run-attempt",
+                  "type": "quantitative",
+                  "title": "Attempt"
+                },
+                {
+                  "field": "session",
+                  "type": "nominal",
+                  "title": "Session"
+                },
+                {
+                  "field": "event",
+                  "type": "nominal",
+                  "title": "Event"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
         "id": "transactions",
         "kind": "custom",
         "title": "Transactions",
@@ -6572,7 +6757,8 @@
         "pages": [
           "runtime",
           "performance",
-          "security"
+          "security",
+          "audit"
         ]
       },
       {

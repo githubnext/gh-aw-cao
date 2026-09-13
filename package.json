@@ -22,7 +22,7 @@
     "typecheck:cao": "npx tsc -p .github/workflows/shared/tsconfig.json",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "node --test tests/unit/*.test.mjs",
-    "test:integration": "node --test --test-concurrency=1 tests/integration/activity-cache.test.mjs tests/integration/control-admission.test.mjs tests/integration/control-failure.test.mjs tests/integration/control-policy-resolver.test.mjs",
+    "test:integration": "node --test --test-concurrency=1 tests/integration/activity-cache.test.mjs tests/integration/control-admission.test.mjs tests/integration/control-failure.test.mjs tests/integration/control-policy-resolver.test.mjs tests/integration/dashboard-inventory-ingestion.test.mjs",
     "test:package-lifecycle": "node --test --test-concurrency=1 tests/integration/package-lifecycle.test.mjs",
     "test:load": "node --test tests/load/*.test.mjs",
     "check:svg": "node scripts/check-svg-visual-language.mjs",

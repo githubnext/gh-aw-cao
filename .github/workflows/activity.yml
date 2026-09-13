@@ -36,41 +36,14 @@ jobs:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
 
-      - name: Resolve activity cache key
-        id: activity-cache-key
-        run: echo "value=cao-activity-v3-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
-
-      - name: Generate GitHub App token for activity
-        id: activity-app-token
-        env:
-          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
-        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
-          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
-          github-api-url: ${{ github.api_url }}
-          permission-actions: read
-          permission-contents: read
-
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
 
-      - name: Resolve gh-aw compiler version
-        id: compiler
-        run: |
-          version="$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json)"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Install gh-aw CLI
-        continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@96dc6d905bdbe195f719ddc990a3f5b59b751016 # v0.89.10
-        with:
-          version: ${{ steps.compiler.outputs.version }}
+      - name: Resolve activity cache key
+        id: activity-cache-key
+        run: echo "value=cao-activity-v3-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore activity cache
         id: activity-cache
@@ -86,13 +59,70 @@ jobs:
           restore-keys: |
             cao-activity-v3-
 
+      - name: Resolve dashboard control settings
+        id: activity-settings
+        env:
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/cao-activity"
+          if [[ -f activity/control-settings.mjs ]]; then
+            activity_root=activity
+          elif [[ -f .github/aw/activity/control-settings.mjs ]]; then
+            activity_root=.github/aw/activity
+          else
+            echo "Activity control settings resolver is unavailable" >&2
+            exit 1
+          fi
+          node "$activity_root/control-settings.mjs" \
+            .github/workflows/shared/control.mjs \
+            .github/workflows/cao.json \
+            "$REPORT_CONTROL_SETTINGS"
+          {
+            echo "repositories<<EOF"
+            jq -r --arg owner "${GITHUB_REPOSITORY_OWNER,,}" --arg control "$GITHUB_REPOSITORY" \
+              'if (.allowed_repositories | length) > 0 then
+                ([.allowed_repositories[] | select((split("/")[0] | ascii_downcase) == $owner) | split("/")[1]]
+                  + [($control | split("/")[1])]) | unique
+                  | if length <= 500 then .[] else empty end
+               else empty end' \
+              "$REPORT_CONTROL_SETTINGS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate GitHub App token for activity
+        id: activity-app-token
+        env:
+          GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+        if: ${{ vars.GH_AW_GITHUB_READ_APP_ID != '' && env.GH_AW_IGNORE_IF_MISSING_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.activity-settings.outputs.repositories }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: read
+          permission-contents: read
+
+      - name: Install gh-aw CLI
+        continue-on-error: true
+        uses: ./.github/actions/setup-gh-aw
+        env:
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+
       - name: Collect dashboard inventory
         env:
+          ACTIVITY_APP_TOKEN: ${{ steps.activity-app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
         run: |
-          rm -f "$REPORT_CONTROL_SETTINGS" "$REPORT_INVENTORY" "$REPORT_INVENTORY_SOURCES"
+          rm -f "$REPORT_INVENTORY" "$REPORT_INVENTORY_SOURCES"
+          if [[ "$(jq '.allowed_repositories | length' "$REPORT_CONTROL_SETTINGS")" -eq 0 && -z "$ACTIVITY_APP_TOKEN" ]]; then
+            echo "Owner-wide repository discovery requires the read-only GitHub App" >&2
+            exit 1
+          fi
           if [[ -f activity/inventory-sources.mjs ]]; then
             activity_root=activity
           elif [[ -f .github/aw/activity/inventory-sources.mjs ]]; then
@@ -101,16 +131,6 @@ jobs:
             echo "Activity inventory collector is unavailable" >&2
             exit 1
           fi
-          control_runtime=.github/workflows/shared/control.mjs
-          if [[ ! -f "$control_runtime" ]]; then
-            echo "CAO control runtime is unavailable" >&2
-            exit 1
-          fi
-          mkdir -p "$RUNNER_TEMP/cao-activity"
-          node "$activity_root/control-settings.mjs" \
-            "$control_runtime" \
-            .github/workflows/cao.json \
-            "$REPORT_CONTROL_SETTINGS"
           node "$activity_root/inventory.mjs"
           node "$activity_root/inventory-sources.mjs"
 
