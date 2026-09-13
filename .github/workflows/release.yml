@@ -126,7 +126,7 @@ jobs:
         with:
           node-version: 24
       - name: Install gh-aw
-        uses: $/.github/actions/setup-gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Validate files installed from aw.yml
         env:
           CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: ${{ github.repository }}@${{ github.sha }}

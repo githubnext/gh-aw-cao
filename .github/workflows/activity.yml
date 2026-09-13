@@ -108,7 +108,7 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: $/.github/actions/setup-gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
 

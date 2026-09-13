@@ -43,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install gh-aw
-        uses: $/.github/actions/setup-gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Run contract suite
         run: npm run check
       - name: Check patch formatting
@@ -116,15 +116,15 @@ jobs:
           fi
       - name: Install gh-aw
         if: steps.package-api.outputs.ready == 'true'
-        uses: $/.github/actions/setup-gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Run package lifecycle integration
         if: steps.package-api.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: '--test-name-pattern="${{ matrix.test-pattern }}"'
         run: |
-          CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE="${GITHUB_REPOSITORY}@$(git rev-parse --short=12 "$GITHUB_SHA")"
-          export CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
+          # shellcheck disable=SC2155 -- The assignment is deterministic and the contract requires this exported form.
+          export CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE="${GITHUB_REPOSITORY}@$(git rev-parse --short=12 "$GITHUB_SHA")"
           set +e
           output="$(npm run test:package-lifecycle 2>&1)"
           status=$?
