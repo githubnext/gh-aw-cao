@@ -1,6 +1,6 @@
 name: CAO Evolution
 description: Control-plane and agentic-workflow health, security maintenance, and evidence-backed operation discovery.
-min-version: v0.89.10
+min-version: v0.89.11
 experimental: true
 includes:
   - .github/workflows/cao-evolution-catalog-advisor.md
