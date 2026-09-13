@@ -22,13 +22,18 @@ import { deriveDashboardLinkSources } from './inferred-sources.js';
 /** @param {ReadableStream<Uint8Array>} body */
 async function* responseChunks(body) {
   const reader = body.getReader();
+  let completed = false;
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) return;
+      if (done) {
+        completed = true;
+        return;
+      }
       yield value;
     }
   } finally {
+    if (!completed) await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 }

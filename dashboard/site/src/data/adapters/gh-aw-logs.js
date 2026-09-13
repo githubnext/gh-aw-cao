@@ -530,7 +530,9 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
       start = end + 1;
     }
   }
-  return adaptCachedGhAwJsonlEnvelopes([...envelopes()], options);
+  const accumulator = createCachedGhAwJsonlAccumulator(options);
+  for (const envelope of envelopes()) accumulator.accept(envelope);
+  return accumulator.finish();
 }
 
 /**
@@ -546,8 +548,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   const knownKinds = new Set(Object.keys(cachedJsonlExpression.variants));
   const decoder = new TextDecoder();
   const hashes = Array.from({ length: 8 }, (_, index) => (0x811c9dc5 ^ (index * 0x9e3779b9)) >>> 0);
-  /** @type {{ envelope: Record<string, unknown>, line: number }[]} */
-  const envelopes = [];
+  const accumulator = createCachedGhAwJsonlAccumulator(options);
   let pending = '';
   let lineNumber = 0;
   /** @param {string} line */
@@ -564,7 +565,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
       );
     }
     const kind = requiredString(envelope.kind, `gh-aw JSONL line ${lineNumber}.kind`);
-    if (knownKinds.has(kind)) envelopes.push({ envelope, line: lineNumber });
+    if (knownKinds.has(kind)) accumulator.accept({ envelope, line: lineNumber });
   };
   for await (const chunk of chunks) {
     const bytes = typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk;
@@ -583,16 +584,15 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   pending += decoder.decode();
   if (pending) accept(pending);
   return {
-    ...adaptCachedGhAwJsonlEnvelopes(envelopes, options),
+    ...accumulator.finish(),
     payloadIdentity: hashes.map((hash) => hash.toString(16).padStart(8, '0')).join('')
   };
 }
 
 /**
- * @param {Iterable<{ envelope: Record<string, unknown>, line: number }>} envelopes
  * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options
  */
-function adaptCachedGhAwJsonlEnvelopes(envelopes, options) {
+function createCachedGhAwJsonlAccumulator(options) {
 
   /**
    * @typedef {{
@@ -611,8 +611,11 @@ function adaptCachedGhAwJsonlEnvelopes(envelopes, options) {
   const enrichedRuns = new Map();
   /** @type {{ envelope: Record<string, unknown>, line: number }[]} */
   const rateLimitEnvelopes = [];
+  /** @type {Map<string, CachedRun>} */
+  const rawRuns = new Map();
   let records = 0;
   let agenticRunRecords = 0;
+  let rawPayloadRecords = 0;
   /** @type {Map<string, Set<string>>} */
   const workflowPaths = new Map();
   for (const hint of options.workflowHints ?? []) {
@@ -622,59 +625,56 @@ function adaptCachedGhAwJsonlEnvelopes(envelopes, options) {
     paths.add(hint.path);
     workflowPaths.set(lookup, paths);
   }
-  for (const { envelope, line } of envelopes) {
+  /** @param {{ envelope: Record<string, unknown>, line: number }} record */
+  const accept = ({ envelope, line }) => {
     records += 1;
     if (envelope.kind === 'github_api_rate_limit') {
       rateLimitEnvelopes.push({ envelope, line });
     }
-    if (envelope.kind !== 'run') continue;
-    agenticRunRecords += 1;
-    const run = objectValue(envelope.run, `gh-aw JSONL line ${line}.run`);
-    const organization = requiredString(run.organization, `gh-aw JSONL line ${line}.run.organization`);
-    const coordinates = repositoryCoordinates(
-      requiredString(run.repository, `gh-aw JSONL line ${line}.run.repository`),
-      organization
-    );
-    const workflowName = requiredString(
-      run.workflow_name,
-      `gh-aw JSONL line ${line}.run.workflow_name`
-    );
-    const workflowPath = requiredString(
-      run.workflow_path,
-      `gh-aw JSONL line ${line}.run.workflow_path`
-    );
-    const githubRunId = identifier(run.run_id, `gh-aw JSONL line ${line}.run.run_id`);
-    const attempt = positiveInteger(
-      run.run_attempt ?? 1,
-      `gh-aw JSONL line ${line}.run.run_attempt`
-    );
-    const id = runId(githubRunId, attempt);
-    const observedAt = canonicalTimestamp(
-      run.updated_at ?? run.created_at,
-      `gh-aw JSONL line ${line}.run.updated_at`
-    );
-    const candidate = {
-      line,
-      observedAt,
-      value: run,
-      ...coordinates,
-      workflowName,
-      workflowPath
-    };
-    enrichedRuns.set(id, enrichedRuns.has(id)
-      ? preferNewer(/** @type {CachedRun} */ (enrichedRuns.get(id)), candidate)
-      : candidate);
-    const lookup = `${coordinates.fullName.toLowerCase()}:${workflowName.toLowerCase()}`;
-    const paths = workflowPaths.get(lookup) ?? new Set();
-    paths.add(workflowSourcePath(workflowPath));
-    workflowPaths.set(lookup, paths);
-  }
-
-  /** @type {Map<string, CachedRun>} */
-  const rawRuns = new Map();
-  let rawPayloadRecords = 0;
-  for (const { envelope, line } of envelopes) {
-    if (envelope.kind !== 'workflow_runs') continue;
+    if (envelope.kind === 'run') {
+      agenticRunRecords += 1;
+      const run = objectValue(envelope.run, `gh-aw JSONL line ${line}.run`);
+      const organization = requiredString(run.organization, `gh-aw JSONL line ${line}.run.organization`);
+      const coordinates = repositoryCoordinates(
+        requiredString(run.repository, `gh-aw JSONL line ${line}.run.repository`),
+        organization
+      );
+      const workflowName = requiredString(
+        run.workflow_name,
+        `gh-aw JSONL line ${line}.run.workflow_name`
+      );
+      const workflowPath = requiredString(
+        run.workflow_path,
+        `gh-aw JSONL line ${line}.run.workflow_path`
+      );
+      const githubRunId = identifier(run.run_id, `gh-aw JSONL line ${line}.run.run_id`);
+      const attempt = positiveInteger(
+        run.run_attempt ?? 1,
+        `gh-aw JSONL line ${line}.run.run_attempt`
+      );
+      const id = runId(githubRunId, attempt);
+      const observedAt = canonicalTimestamp(
+        run.updated_at ?? run.created_at,
+        `gh-aw JSONL line ${line}.run.updated_at`
+      );
+      const candidate = {
+        line,
+        observedAt,
+        value: run,
+        ...coordinates,
+        workflowName,
+        workflowPath
+      };
+      enrichedRuns.set(id, enrichedRuns.has(id)
+        ? preferNewer(/** @type {CachedRun} */ (enrichedRuns.get(id)), candidate)
+        : candidate);
+      const lookup = `${coordinates.fullName.toLowerCase()}:${workflowName.toLowerCase()}`;
+      const paths = workflowPaths.get(lookup) ?? new Set();
+      paths.add(workflowSourcePath(workflowPath));
+      workflowPaths.set(lookup, paths);
+      return;
+    }
+    if (envelope.kind !== 'workflow_runs') return;
     const request = objectValue(envelope.request, `gh-aw JSONL line ${line}.request`);
     const coordinates = repositoryCoordinates(
       requiredString(request.repository, `gh-aw JSONL line ${line}.request.repository`)
@@ -697,10 +697,6 @@ function adaptCachedGhAwJsonlEnvelopes(envelopes, options) {
         run.workflowName,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].workflowName`
       );
-      const paths = workflowPaths.get(
-        `${coordinates.fullName.toLowerCase()}:${workflowName.toLowerCase()}`
-      );
-      const workflowPath = paths?.size === 1 ? [...paths][0] : undefined;
       const observedAt = canonicalTimestamp(
         run.updatedAt ?? run.createdAt,
         `gh-aw JSONL line ${line}.payload[${payloadIndex}].updatedAt`
@@ -712,13 +708,21 @@ function adaptCachedGhAwJsonlEnvelopes(envelopes, options) {
         value: run,
         ...coordinates,
         workflowName,
-        workflowPath
+        workflowPath: undefined
       };
       rawRuns.set(id, rawRuns.has(id)
         ? preferNewer(/** @type {CachedRun} */ (rawRuns.get(id)), candidate)
         : candidate);
     }
-  }
+  };
+
+  const finish = () => {
+    for (const run of rawRuns.values()) {
+      const paths = workflowPaths.get(
+        `${run.fullName.toLowerCase()}:${run.workflowName.toLowerCase()}`
+      );
+      run.workflowPath = paths?.size === 1 ? [...paths][0] : undefined;
+    }
 
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
@@ -1397,4 +1401,6 @@ function adaptCachedGhAwJsonlEnvelopes(envelopes, options) {
     rateLimits: rateLimitEnvelopes.length,
     mappedRateLimits
   };
+  };
+  return { accept, finish };
 }
