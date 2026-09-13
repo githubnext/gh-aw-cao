@@ -1,6 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
 import {
@@ -8,6 +6,7 @@ import {
   summarizeDomTree,
   summarizeMobileAccessibility,
 } from "./dashboard-tree-analysis.mjs";
+import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
 const maximumDomNodes = 6_000;
 let preview;
@@ -47,12 +46,7 @@ test.beforeAll(async () => {
   const dataUrl = process.env.DASHBOARD_DATA_URL;
   if (!dataUrl) throw new Error("DASHBOARD_DATA_URL is required.");
   preview = await startDashboardServer({
-    downloadData: async (destination) => {
-      const response = await fetch(dataUrl);
-      if (!response.ok) throw new Error(`Unable to download deployed dashboard data: HTTP ${response.status}.`);
-      await mkdir(destination, { recursive: true });
-      await writeFile(join(destination, "sources.json"), await response.text());
-    },
+    downloadData: (destination) => downloadDeployedDashboardData(destination, dataUrl),
     host: "127.0.0.1",
     port: 0,
   });
