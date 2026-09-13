@@ -1,0 +1,120 @@
+name: GitHub Actions lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/actions/**"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run actionlint and zizmor
+        id: lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          mapfile -d '' files < <(
+            find .github/workflows .github/actions -type f \
+              \( -name '*.yml' -o -name '*.yaml' \) \
+              ! -name '*.lock.yml' -print0 | sort -z
+          )
+
+          set +e
+          set -o pipefail
+          docker run --rm --network none --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --volume "$PWD:/repo:ro" --workdir /repo \
+            rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
+            "${files[@]}" 2>&1 | tee /tmp/actionlint.txt
+          actionlint_status=${PIPESTATUS[0]}
+
+          docker run --rm --network none --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --volume "$PWD:/repo:ro" --workdir /repo \
+            ghcr.io/zizmorcore/zizmor:1.30.1@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 \
+            --format plain "${files[@]}" 2>&1 | tee /tmp/zizmor.txt
+          zizmor_status=${PIPESTATUS[0]}
+
+          if (( actionlint_status != 0 || zizmor_status != 0 )); then
+            exit 1
+          fi
+
+      - name: Update lint issue
+        if: always() && steps.lint.outcome != 'cancelled'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          LINT_FAILED: ${{ steps.lint.outcome == 'failure' }}
+        with:
+          script: |
+            const fs = require('fs')
+            const title = 'GitHub Actions lint failures on main'
+            const { owner, repo } = context.repo
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            })
+
+            for (const issue of issues.filter((candidate) =>
+              !candidate.pull_request && candidate.title === title
+            )) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'not_planned',
+              })
+            }
+
+            if (process.env.LINT_FAILED !== 'true') {
+              return
+            }
+
+            const escapeHtml = (value) => value
+              .replaceAll('&', '&amp;')
+              .replaceAll('<', '&lt;')
+              .replaceAll('>', '&gt;')
+            const output = (path) => {
+              try {
+                return escapeHtml(fs.readFileSync(path, 'utf8').slice(0, 25000))
+              } catch {
+                return 'No output was captured.'
+              }
+            }
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+            const body = [
+              'actionlint or zizmor found problems in GitHub Actions files on `main`.',
+              '',
+              `Workflow run: ${runUrl}`,
+              '',
+              'Generated `.lock.yml` files were excluded.',
+              '',
+              '<details><summary>actionlint output</summary><pre>',
+              output('/tmp/actionlint.txt'),
+              '</pre></details>',
+              '',
+              '<details><summary>zizmor output</summary><pre>',
+              output('/tmp/zizmor.txt'),
+              '</pre></details>',
+            ].join('\n')
+
+            await github.rest.issues.create({ owner, repo, title, body })
+
+      - name: Fail when lint problems are found
+        if: steps.lint.outcome == 'failure'
+        run: exit 1
