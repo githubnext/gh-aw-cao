@@ -253,8 +253,11 @@ function renderTableView(context) {
     : null;
   const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null;
   const preparedRows = prepareTableRows(rows, columns, view.data);
-  const tableRows = Number.isSafeInteger(rowLimit) && Number(rowLimit) > 0
-    ? preparedRows.slice(0, rowLimit)
+  const effectiveRowLimit = Number.isSafeInteger(rowLimit) && Number(rowLimit) > 0
+    ? Number(rowLimit)
+    : Number.POSITIVE_INFINITY;
+  const tableRows = Number.isFinite(effectiveRowLimit)
+    ? preparedRows.slice(0, effectiveRowLimit)
     : preparedRows;
   const tree = isPlainObject(view.tree)
     && typeof view.tree['id-field'] === 'string'
@@ -427,12 +430,13 @@ function renderTableView(context) {
       )),
       bodyRows,
       lazyList: view['lazy-list'] === true,
-      continuation: continuation
+      continuation: continuation && renderedRowCount < effectiveRowLimit
         ? {
             ...continuation,
             load: async (token) => {
               const next = await continuation.load(token);
-              const nextTableRows = prepareTableRows(next.rows, columns, view.data);
+              const remainingRows = effectiveRowLimit - renderedRowCount;
+              const nextTableRows = prepareTableRows(next.rows, columns, view.data).slice(0, remainingRows);
               const nextDisplayedRows = tree
                 ? arrangeTreeRows(nextTableRows, tree['id-field'], tree['parent-field'])
                 : nextTableRows.map((row) => ({ row, depth: 0 }));
@@ -441,7 +445,9 @@ function renderTableView(context) {
               renderedRowCount += rows.length;
               return {
                 rows,
-                continuationToken: next.continuationToken
+                continuationToken: renderedRowCount < effectiveRowLimit
+                  ? next.continuationToken
+                  : undefined
               };
             }
           }
