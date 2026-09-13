@@ -83,6 +83,13 @@ describe('CLI actions', () => {
         icon: 'download',
         command: 'gh aw upgrade --repo {{repository}}',
         placement: 'settings'
+      },
+      {
+        id: 'maintenance-update',
+        label: 'Maintenance update',
+        icon: 'sync',
+        command: 'gh aw update --repo {{repository}}',
+        placement: 'view'
       }
     ], { repository: 'octo/example', canExecute: false });
 
@@ -90,6 +97,7 @@ describe('CLI actions', () => {
     expect(dashboard.querySelector('.configuration-view > .cli-actions-settings')).not.toBeNull();
     expect(dashboard.querySelectorAll('.cli-action-dialog')).toHaveLength(2);
     expect(dashboard.querySelectorAll(':scope > .cli-action-dialog')).toHaveLength(1);
+    expect(dashboard.textContent).not.toContain('Maintenance update');
     dashboard.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
     expect(dashboard.querySelector('.cli-action-command')?.textContent)
       .toBe('gh aw update --repo octo/example');

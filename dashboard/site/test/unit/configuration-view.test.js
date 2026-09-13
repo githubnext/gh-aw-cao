@@ -89,6 +89,10 @@ describe('Configuration dashboard view', () => {
     expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
     expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
+    const transactions = rendered.querySelector('.configuration-transactions-button');
+    expect(transactions?.textContent).toContain('View retained transactions');
+    expect(transactions?.getAttribute('href')).toBe('#page-transactions');
+    expect(transactions?.getAttribute('aria-label')).toBe('View retained transactions table');
   });
 
   it('renders repository actions when the settings view is activated lazily', () => {
@@ -172,7 +176,7 @@ describe('Configuration dashboard view', () => {
     expect(page.views[0].id).toBe('configuration-policy');
     expect(dashboard['cli-actions']
       .filter((/** @type {{ id: string }} */ action) => ['update-repository', 'upgrade-repository'].includes(action.id))
-      .every((/** @type {{ placement: string }} */ action) => action.placement === 'settings')).toBe(true);
+      .every((/** @type {{ placement: string }} */ action) => action.placement === 'view')).toBe(true);
   });
 
   it('wires the Settings view to a supported UI element', () => {

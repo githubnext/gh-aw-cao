@@ -16,7 +16,7 @@ import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, cr
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
-import { renderRowCliAction } from './cli-actions.js';
+import { renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
 
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
 const ENTITY_LINK_FIELDS = {
@@ -28,6 +28,36 @@ const ENTITY_LINK_FIELDS = {
 };
 const RUN_FIELD = 'run';
 const RUN_LINK_FIELD = 'run-link';
+const REPOSITORY_LINK_DISPLAY = 'repository-link';
+const WORKFLOW_LINK_DISPLAY = 'workflow-link';
+const GITHUB_ENTITY_DISPLAY_FIELDS = {
+  [REPOSITORY_LINK_DISPLAY]: 'repository',
+  [WORKFLOW_LINK_DISPLAY]: 'workflow'
+};
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {'repository-link' | 'workflow-link'} field
+ * @param {string} fallbackLabel
+ * @returns {{ href: string, label: string } | null} Uses the raw GitHub `href` from the row link object when present and safe; otherwise falls back to the resolved dashboard-safe link.
+ */
+function resolveGithubEntityLink(row, field, fallbackLabel) {
+  const candidate = row[field];
+  if (
+    isPlainObject(candidate)
+    && typeof candidate.href === 'string'
+    && isSafeHttpsUrl(candidate.href)
+  ) {
+    const label = typeof candidate.label === 'string' && candidate.label.trim().length > 0
+      ? candidate.label
+      : fallbackLabel;
+    return {
+      href: candidate.href,
+      label
+    };
+  }
+  return findLink(row, field);
+}
 
 /**
  * @typedef {{ field: string, aggregate?: string, as?: string, direction?: string, display?: string } & Record<string, unknown>} TableField
@@ -69,6 +99,7 @@ const RUN_LINK_FIELD = 'run-link';
 const DATA_VIEW_RENDERERS = new Map([
   ['metric', renderMetricView],
   ['table', renderTableView],
+  ['list', renderListView],
   ['chart', renderChartView]
 ]);
 
@@ -115,6 +146,7 @@ function renderMetricView(context) {
     h('span', { className: 'metric-card-widget-icon', 'aria-hidden': 'true' }, octicon(icon)),
     ...renderViewSectionChrome(metadata, contextDetails));
   }
+
   const content = [
     ...renderViewSectionChrome(metadata, contextDetails),
     h('p', { className: 'metric-value', 'data-metric-value': fieldName ?? 'unknown' }, valueText)
@@ -123,6 +155,83 @@ function renderMetricView(context) {
     content.push(h('p', { className: 'metric-link' }, renderExternalLink(link)));
   }
   return renderPageSection(pageId, title, content, headingTag, view.description);
+}
+
+/** @param {DataViewContext} context */
+function renderListView(context) {
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag, prepareTableRows, toText, units = {} } = context;
+  const columns = /** @type {TableField[]} */ (isPlainObject(view.encoding) && Array.isArray(view.encoding.columns)
+    ? view.encoding.columns.filter((column) => isPlainObject(column) && typeof column.field === 'string')
+    : []);
+  const actions = tableActions(view);
+  const preparedRows = prepareTableRows(rows, columns, view.data);
+  const icon = isPlainObject(view.list) && typeof view.list.icon === 'string' ? view.list.icon : 'dash';
+  const listAction = isPlainObject(view.list) && typeof view.list.action === 'string'
+    ? renderDeclaredCliAction(view.list.action)
+    : null;
+  const renderValue = createEntityAwareCellRenderer(
+    ENTITY_LINK_FIELDS,
+    findLink,
+    (display, value, column) => renderCellDisplay(
+      display,
+      value,
+      toText,
+      fieldUnit(column, units),
+      typeof column === 'string' ? undefined : column.type,
+      typeof column === 'string' ? undefined : column.format
+    ),
+    toText
+  );
+  const cards = preparedRows.map((row, index) => {
+    const titleColumn = columns[0];
+    const titleField = typeof titleColumn?.as === 'string' ? titleColumn.as : titleColumn?.field;
+    return h(
+      'li',
+      { className: 'document-list-card', 'data-custom-row-key': `${pageId}-${title}-${index}` },
+      h('span', { className: 'document-list-card-icon', 'aria-hidden': 'true' }, octicon(icon)),
+      h(
+        'div',
+        { className: 'document-list-card-content' },
+        h('strong', { className: 'document-list-card-title' }, toText(row[titleField ?? ''])),
+        h(
+          'dl',
+          { className: 'document-list-card-details' },
+          ...columns.slice(1).map((column) => {
+            const outputField = typeof column.as === 'string' ? column.as : column.field;
+            return h(
+              'div',
+              null,
+              h('dt', null, typeof column.title === 'string' ? column.title : titleCase(outputField)),
+              h('dd', null, renderValue(column, row[outputField], row))
+            );
+          })
+        )
+      ),
+      ...actions.flatMap((action) => actionMatches(action, row)
+        ? [renderTableAction(action, row)]
+        : [])
+    );
+  });
+  const emptyMessage = metadata.availability === 'unavailable'
+    ? 'Data is unavailable for this view.'
+    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  return renderPageSection(
+    pageId,
+    title,
+    [
+      ...renderViewSectionChrome(metadata, contextDetails),
+      h(
+        'header',
+        { className: 'document-list-header' },
+        view.description ? h('p', null, view.description) : null,
+        listAction
+      ),
+      cards.length > 0
+        ? h('ul', { className: 'document-list' }, cards)
+        : h('p', { className: 'document-list-empty' }, emptyMessage)
+    ],
+    headingTag
+  );
 }
 
 /** @param {DataViewContext} context */
@@ -180,19 +289,36 @@ function renderTableView(context) {
           ? { className: 'table-status-detail', 'data-status': toText(row.status).toLowerCase() }
           : {})
       };
-      const value = outputField === 'status-detail'
-        ? renderStatusDetail(row, view, toText)
-        : column.aggregate
-        ? renderCellValue(column, row[outputField], row)
-        : column.field === RUN_FIELD
-          ? renderWorkflowRunLink(row, toText(row[outputField]))
-          : column.display === 'run-link'
-            ? renderWorkflowRunLink(row, toText(row[outputField]))
-          : column.display === 'evidence-link'
-            ? renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'))
-          : column.display === 'outcome-link'
-            ? renderOutcomeLink(row, toText(row[outputField]))
-            : renderCellValue(column, row[outputField], row);
+      let value;
+      if (outputField === 'status-detail') {
+          value = renderStatusDetail(row, view, toText);
+      } else if (column.aggregate) {
+          value = renderCellValue(column, row[outputField], row);
+      } else if (column.field === RUN_FIELD || column.display === 'run-link') {
+          value = renderWorkflowRunLink(row, toText(row[outputField]));
+      } else if (
+          column.display === REPOSITORY_LINK_DISPLAY
+          || column.display === WORKFLOW_LINK_DISPLAY
+      ) {
+          const fallbackField = GITHUB_ENTITY_DISPLAY_FIELDS[column.display];
+          const fallbackValue = typeof fallbackField === 'string'
+            ? toText(row[fallbackField])
+            : '';
+          value = renderLinkedValue(
+            toText(row[outputField]),
+            resolveGithubEntityLink(
+              row,
+              /** @type {'repository-link' | 'workflow-link'} */ (column.display),
+              fallbackValue
+            )
+          );
+      } else if (column.display === 'evidence-link') {
+          value = renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'));
+      } else if (column.display === 'outcome-link') {
+          value = renderOutcomeLink(row, toText(row[outputField]));
+      } else {
+          value = renderCellValue(column, row[outputField], row);
+      }
       /** @param {string | HTMLElement} content */
       const constrainOutputEvidence = (content) => column.display === 'outcome-link'
         ? h('span', { className: 'table-output-evidence' }, content)

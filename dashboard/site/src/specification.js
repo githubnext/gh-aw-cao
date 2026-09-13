@@ -21,7 +21,7 @@ export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
-export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'row'];
+export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'view', 'row'];
 export const CLI_ACTION_ARGUMENT_KEYS = ['id', 'label', 'description', 'type', 'flag', 'default'];
 export const CLI_ACTION_ARGUMENT_TYPE_VALUES = ['boolean'];
 export const MAX_CLI_ACTIONS = 20;
@@ -57,14 +57,14 @@ export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-la
 export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'description', 'icon', 'class-name', 'route', 'views', 'sections'];
 export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page'];
 
-export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
+export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'route-field', 'limit', 'order-by', 'source-metadata'];
 export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'labels'];
 export const PLURAL_TEXT_KEYS = ['singular', 'plural'];
 export const PLURAL_LABEL_ELEMENTS = ['outcomes-overview'];
 export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field'];
 export const CALLOUT_KEYS = ['label', 'icon'];
-export const VIEW_MARK_VALUES = ['metric', 'table', 'chart', 'element', 'callout'];
+export const VIEW_MARK_VALUES = ['metric', 'table', 'list', 'chart', 'element', 'callout'];
 export const VIEW_ELEMENT_VALUES = [
   'domain-attention',
   'package-status-grid',
@@ -98,6 +98,8 @@ export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page'];
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];
+export const VIEW_LIST_KEYS = ['style', 'icon', 'action'];
+export const VIEW_LIST_STYLE_VALUES = ['cards'];
 export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
 export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
@@ -123,7 +125,7 @@ export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];
 export const TREE_TABLE_KEYS = ['id-field', 'parent-field'];
 export const FIELD_DEFINITION_KEYS = ['field', 'type', 'aggregate', 'time-unit', 'title', 'as', 'display', 'filter', 'format', 'unit'];
 export const FIELD_TYPE_VALUES = ['nominal', 'ordinal', 'quantitative', 'temporal'];
-export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'digest', 'outcome-link', 'run-link', 'evidence-link'];
+export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'digest', 'outcome-link', 'run-link', 'repository-link', 'workflow-link', 'evidence-link'];
 export const FIELD_FORMAT_VALUES = ['human-friendly-timestamp', 'workflow-relative-path', 'workflow-run-url'];
 export const AGGREGATE_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max', 'none'];
 export const TIME_UNIT_VALUES = ['hour', 'day', 'week', 'month'];
@@ -412,7 +414,7 @@ export const SOURCE_VALUES = [
 
 export const SOURCE_FIELDS = {
   organizations: ['organization', 'organization-name', 'observed-at', 'organization-link'],
-  packages: ['package', 'package-name', 'package-description', 'package-icon', 'package-mode', 'package-enabled', 'package-registration', 'package-max-repositories', 'package-rollout-percent', 'package-monthly-ai-credit-budget', 'package-aic-allowance', 'package-worker-count', 'package-inventory-warnings', 'package-workers', 'package-targets', 'package-min-version', 'package-experimental', 'package-readme-path', 'package-readme', 'observed-at', 'package-link'],
+  packages: ['package', 'package-name', 'package-description', 'package-icon', 'package-mode', 'package-enabled', 'package-registration', 'package-max-repositories', 'package-rollout-percent', 'package-monthly-ai-credit-budget', 'package-aic-allowance', 'package-worker-count', 'package-inventory-warnings', 'package-workers', 'package-targets', 'package-min-version', 'package-version', 'package-current-version', 'package-update-state', 'package-experimental', 'package-readme-path', 'package-readme', 'observed-at', 'package-link'],
   repositories: ['organization', 'repository', 'repository-name', 'rollout-mode', 'observed-at', 'organization-link', 'repository-link'],
   workflows: ['organization', 'repository', 'package', 'package-name', 'package-icon', 'workflow', 'workflow-name', 'workflow-role', 'workflow-active', 'admission-status', 'admission-reason', 'gh-aw-version', 'gh-aw-current-version', 'gh-aw-version-label', 'gh-aw-update-state', 'gh-aw-metadata', 'gh-aw-manifest', 'rollout-mode', 'max-ai-credits', 'package-aic-allowance', 'package-worker-count', 'package-inventory-warnings', 'inventory-ready', 'observed-at', 'organization-link', 'repository-link', 'workflow-link', 'external-link'],
   runs: ['organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-title', 'event', 'branch', 'head-sha', 'created-at', 'started-at', 'ended-at', 'updated-at', 'run-status', 'run-conclusion', 'classification', 'duration', 'action-minutes', 'github-api-calls', 'safe-items-count', 'error-count', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'failure-detail', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'agent-id', 'agent-version', 'model-id', 'gh-aw-version', 'aic-total', 'engine', 'engine-id', 'engine-version', 'requested-model', 'resolved-model', 'agent-runtime', 'firewall-version', 'gateway-version', 'data', 'logs-payload', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],

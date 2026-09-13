@@ -20,6 +20,9 @@ describe('current dashboard source adapter', () => {
           'package-mode': 'review',
           'package-enabled': true,
           'package-min-version': 'v0.89.3',
+          'package-version': 'v1.2.0',
+          'package-current-version': 'v1.3.0',
+          'package-update-state': 'update-available',
           'package-experimental': true
         }],
         metadata
@@ -108,6 +111,9 @@ describe('current dashboard source adapter', () => {
       slug: 'dashboard',
       name: 'CAO Dashboard',
       minVersion: 'v0.89.3',
+      version: 'v1.2.0',
+      currentVersion: 'v1.3.0',
+      updateState: 'update-available',
       experimental: true
     });
     expect(batch.workflows[0]).toMatchObject({

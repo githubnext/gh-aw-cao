@@ -82,6 +82,113 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.octicon-x-circle')).not.toBeNull();
   });
 
+  it('renders a declarative card list with view and conditional row actions', () => {
+    setDeclaredCliActions([
+      {
+        id: 'update-repository',
+        label: 'Update all',
+        icon: 'sync',
+        command: 'gh aw update',
+        placement: 'view'
+      },
+      {
+        id: 'update-package',
+        label: 'Update',
+        icon: 'sync',
+        command: 'gh aw update {{package}}',
+        placement: 'row'
+      }
+    ], { canExecute: false });
+
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'Starter updates',
+      view: {
+        mark: 'list',
+        description: 'Update installed starter packages.',
+        list: { style: 'cards', icon: 'package', action: 'update-repository' },
+        encoding: {
+          columns: [
+            { field: 'package-name', title: 'Package' },
+            { field: 'package-version', title: 'Installed' },
+            { field: 'package-current-version', title: 'Latest' }
+          ],
+          actions: [{
+            action: 'update-package',
+            presentation: 'cli-action',
+            icon: 'sync',
+            label: 'Update',
+            context: ['package'],
+            when: { field: 'package-update-state', equals: 'update-available' }
+          }]
+        }
+      },
+      sourceName: 'packages',
+      rows: [
+        {
+          package: 'remote-agent',
+          'package-name': 'Remote agent',
+          'package-version': 'v1',
+          'package-current-version': 'v2',
+          'package-update-state': 'update-available'
+        },
+        {
+          package: 'ci-doctor',
+          'package-name': 'CI doctor',
+          'package-version': 'v2',
+          'package-current-version': 'v2',
+          'package-update-state': 'current'
+        }
+      ],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2);
+    expect(rendered?.querySelector('.document-list-header .declared-cli-action')?.textContent).toContain('Update all');
+    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(1);
+    expect(rendered?.textContent).not.toContain('update-available');
+  });
+
+  it('keeps a list action available when its source is unavailable', () => {
+    setDeclaredCliActions([{
+      id: 'upgrade-repository',
+      label: 'Upgrade all',
+      icon: 'download',
+      command: 'gh aw upgrade',
+      placement: 'view'
+    }], { canExecute: false });
+
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'Compiler upgrades',
+      view: {
+        mark: 'list',
+        list: { style: 'cards', icon: 'repo', action: 'upgrade-repository' },
+        'empty-message': 'No repositories were discovered.',
+        encoding: { columns: [{ field: 'repository', title: 'Repository' }] }
+      },
+      sourceName: 'maintenance-repositories',
+      rows: [],
+      metadata: { ...metadata, availability: 'unavailable' },
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.textContent).toContain('Upgrade all');
+    expect(rendered?.textContent).toContain('Data is unavailable for this view.');
+    expect(rendered?.textContent).not.toContain('No repositories were discovered.');
+  });
+
   it('presents an unavailable metric card as empty', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',
@@ -641,6 +748,54 @@ describe('data view renderer', () => {
     const link = rendered?.querySelector('tbody a');
     expect(link?.textContent).toBe('Target authority missing');
     expect(link?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+  });
+
+  it('renders repository and workflow display links to GitHub when both dashboard and external links are present', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'mcps',
+      title: 'MCP tools',
+      view: {
+        mark: 'table',
+        'column-summaries': false,
+        encoding: {
+          columns: [
+            { field: 'repository', type: 'nominal', display: 'repository-link' },
+            { field: 'workflow', type: 'nominal', display: 'workflow-link' }
+          ]
+        }
+      },
+      sourceName: 'mcp-tool-activity',
+      rows: [{
+        repository: 'githubnext/gh-aw-cao',
+        workflow: '.github/workflows/cid.yml',
+        'repository-link': {
+          relation: 'repository',
+          href: 'https://github.com/githubnext/gh-aw-cao',
+          label: 'Open githubnext/gh-aw-cao',
+          'dashboard-href': '#page-repositories?repository=githubnext%2Fgh-aw-cao',
+          'dashboard-label': 'Open repository details'
+        },
+        'workflow-link': {
+          relation: 'workflow',
+          href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/cid.yml',
+          label: 'Open .github/workflows/cid.yml',
+          'dashboard-href': '#page-workflows?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fcid.yml',
+          'dashboard-label': 'Open workflow details'
+        }
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const links = rendered?.querySelectorAll('tbody a');
+    expect(links).toHaveLength(2);
+    expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
+    expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/cid.yml');
   });
 
   it.each([
