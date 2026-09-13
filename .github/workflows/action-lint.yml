@@ -111,23 +111,43 @@ jobs:
           script: |
             const title = 'GitHub Actions lint failures on main'
             const { owner, repo } = context.repo
-            const issues = await github.paginate(github.rest.issues.listForRepo, {
-              owner,
-              repo,
-              state: 'open',
-              per_page: 100,
-            })
+            const issues = []
+            let cursor
+            let repositoryId
+            do {
+              const { repository } = await github.graphql(
+                `query($owner: String!, $repo: String!, $cursor: String) {
+                  repository(owner: $owner, name: $repo) {
+                    id
+                    issues(first: 100, states: OPEN, after: $cursor) {
+                      nodes { id title }
+                      pageInfo { endCursor hasNextPage }
+                    }
+                  }
+                }`,
+                { owner, repo, cursor },
+              )
+              repositoryId = repository.id
+              issues.push(...repository.issues.nodes)
+              cursor = repository.issues.pageInfo.hasNextPage
+                ? repository.issues.pageInfo.endCursor
+                : undefined
+            } while (cursor)
 
-            for (const issue of issues.filter((candidate) =>
-              !candidate.pull_request && candidate.title === title
-            )) {
-              await github.rest.issues.update({
-                owner,
-                repo,
-                issue_number: issue.number,
-                state: 'closed',
-                state_reason: 'not_planned',
-              })
+            for (const issue of issues.filter((candidate) => candidate.title === title)) {
+              await github.graphql(
+                `mutation($input: CloseIssueInput!) {
+                  closeIssue(input: $input) {
+                    issue { id }
+                  }
+                }`,
+                {
+                  input: {
+                    issueId: issue.id,
+                    stateReason: 'NOT_PLANNED',
+                  },
+                },
+              )
             }
 
             if (process.env.LINT_FAILED !== 'true') {
@@ -149,7 +169,20 @@ jobs:
               'Generated `.lock.yml` files were excluded.',
             ].join('\n')
 
-            await github.rest.issues.create({ owner, repo, title, body })
+            await github.graphql(
+              `mutation($input: CreateIssueInput!) {
+                createIssue(input: $input) {
+                  issue { id }
+                }
+              }`,
+              {
+                input: {
+                  repositoryId,
+                  title,
+                  body,
+                },
+              },
+            )
 
       - name: Create pull request comment
         if: github.event_name == 'pull_request' && needs.lint.outputs.failed == 'true'

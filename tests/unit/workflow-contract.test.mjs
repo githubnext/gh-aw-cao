@@ -32,6 +32,19 @@ test("Actions lint failures create new pull request comments without comment loo
   assert.doesNotMatch(pullRequestReporter, /listComments|updateComment|deleteComment/);
 });
 
+test("Actions lint issue reporter uses GraphQL issue APIs", () => {
+  const source = workflow("action-lint.yml");
+  const issueReporter = source.slice(
+    source.indexOf("- name: Update lint issue"),
+    source.indexOf("- name: Create pull request comment"),
+  );
+
+  assert.match(issueReporter, /github\.graphql/);
+  assert.match(issueReporter, /closeIssue\(input: \$input\)/);
+  assert.match(issueReporter, /createIssue\(input: \$input\)/);
+  assert.doesNotMatch(issueReporter, /github\.rest\.issues/);
+});
+
 test("dashboard view assessment issues are ready for agent assignment", () => {
   const source = workflow("dashboard-views.yml");
   const issueReporter = source.slice(source.indexOf("} else {", source.indexOf("if (isPullRequest)")));
