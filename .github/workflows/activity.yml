@@ -108,7 +108,7 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: ./.github/actions/setup-gh-aw
+        uses: $/.github/actions/setup-gh-aw
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
 

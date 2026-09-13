@@ -31,10 +31,14 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          mapfile -d '' files < <(
-            find .github/workflows .github/actions -type f \
+          mapfile -d '' workflow_files < <(
+            find .github/workflows -type f \
               \( -name '*.yml' -o -name '*.yaml' \) \
               ! -name '*.lock.yml' -print0 | sort -z
+          )
+          mapfile -d '' action_files < <(
+            find .github/actions -type f \
+              \( -name '*.yml' -o -name '*.yaml' \) -print0 | sort -z
           )
 
           set +e
@@ -43,14 +47,14 @@ jobs:
             --security-opt no-new-privileges \
             --volume "$PWD:/repo:ro" --workdir /repo \
             rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
-            "${files[@]}" 2>&1 | tee /tmp/actionlint.txt
+            "${workflow_files[@]}" 2>&1 | tee /tmp/actionlint.txt
           actionlint_status=${PIPESTATUS[0]}
 
           docker run --rm --network none --cap-drop ALL \
             --security-opt no-new-privileges \
             --volume "$PWD:/repo:ro" --workdir /repo \
             ghcr.io/zizmorcore/zizmor:1.30.1@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 \
-            --format plain "${files[@]}" 2>&1 | tee /tmp/zizmor.txt
+            --format plain "${workflow_files[@]}" "${action_files[@]}" 2>&1 | tee /tmp/zizmor.txt
           zizmor_status=${PIPESTATUS[0]}
 
           echo "actionlint-status=$actionlint_status" >> "$GITHUB_OUTPUT"

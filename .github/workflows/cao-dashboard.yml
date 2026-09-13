@@ -2,7 +2,7 @@ name: CAO Dashboard
 
 on:
   workflow_dispatch:
-  workflow_run:
+  workflow_run: # zizmor: ignore[dangerous-triggers] - The build job accepts only successful default-branch runs and checks out the default branch.
     workflows:
       - CAO Activity
     types:

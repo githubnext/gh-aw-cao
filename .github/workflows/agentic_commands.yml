@@ -52,6 +52,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Scripts
         uses: github/gh-aw-actions/setup@96dc6d905bdbe195f719ddc990a3f5b59b751016 # v0.89.10
