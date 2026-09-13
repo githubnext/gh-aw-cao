@@ -3162,9 +3162,9 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
   assert.match(dashboardCacheJob, /needs: build[\s\S]*?permissions:[\s\S]*?actions: write/);
-  assert.match(dashboardCacheJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard[\s\S]*?Delete previous dashboard cache/);
+  assert.match(dashboardCacheJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: dist\/cao[\s\S]*?Delete previous dashboard cache/);
   assert.match(dashboardCacheJob, /Delete previous dashboard cache[\s\S]*?cache\.key === process\.env\.DASHBOARD_CACHE_KEY[\s\S]*?cache\.ref === process\.env\.GITHUB_REF[\s\S]*?deleteActionsCacheById[\s\S]*?cache_id: cache\.id/);
-  assert.match(dashboardCacheJob, /Save dashboard cache[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard[\s\S]*?key: central-agentic-ops-dashboard/);
+  assert.match(dashboardCacheJob, /Save dashboard cache[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: dist\/cao[\s\S]*?key: central-agentic-ops-dashboard/);
   assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?policy\['control-plane'\]\?\.packages\?\.dashboard\?\.deploy[\s\S]*?typeof configuredDeploy !== 'boolean'[\s\S]*?const deploy = configuredDeploy \?\? true[\s\S]*?core\.setOutput\('deploy', String\(deploy\)\)/);
   assert.ok(dashboardBuildJob);
   assert.ok(dashboardCacheJob);
