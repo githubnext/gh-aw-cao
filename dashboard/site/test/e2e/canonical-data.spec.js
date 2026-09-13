@@ -199,25 +199,11 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
 
 function scopedRepositorySources() {
   const sources = canonicalSources('scope-generation', '777');
-  const scoped = /** @type {Record<string, unknown>} */ (sources);
-  scoped['configuration-policy'] = {
-    rows: [{
-      path: '.github/workflows/cao.json',
-      document: {
-        'control-plane': {
-          scope: {
-            'allowed-repositories': [
-              'github/gh-aw',
-              'githubnext/*',
-              'githubnext/gh-aw-cao',
-              'githubnext/gh-aw-workshop'
-            ]
-          }
-        }
-      }
-    }],
-    metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'scope-generation' }
-  };
+  sources.repositories.rows = [
+    { organization: 'github', repository: 'gh-aw', 'observed-at': '2026-09-09T05:00:00Z' },
+    { organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': '2026-09-09T05:00:00Z' },
+    { organization: 'githubnext', repository: 'gh-aw-workshop', 'observed-at': '2026-09-09T05:00:00Z' }
+  ];
   return sources;
 }
 
@@ -385,15 +371,17 @@ test('native IndexedDB directly upserts and retains canonical data across reload
   }]);
 });
 
-test('repositories view retains configured repository scope after canonical ingestion', async ({ page }) => {
+test('repositories view reflects canonical IndexedDB repository rows after ingestion', async ({ page }) => {
   const result = await page.evaluate(async (sourceDocument) => {
-    const [dashboardDocument, viewSourcesModule, processorModule, presenterModule] = await Promise.all([
+    const [dashboardDocument, viewSourcesModule, queriesModule, processorModule, presenterModule] = await Promise.all([
       fetch(`${location.origin}/dashboard.json`).then((response) => response.json()),
       import(`${location.origin}/src/data/queries/view-sources.js`),
+      import(`${location.origin}/src/data/queries/index.js`),
       import(`${location.origin}/src/data-processor.js`),
       import(`${location.origin}/src/presenter.js`)
     ]);
     const projected = await viewSourcesModule.loadCanonicalViewSources(indexedDB, sourceDocument, { ingest: true });
+    const canonicalRepositories = await queriesModule.createCanonicalQueries(indexedDB).repositories.list();
     const preparedSources = {
       ...projected,
       ...await processorModule.processDashboardQueries(dashboardDocument.dashboard.queries, projected)
@@ -407,6 +395,7 @@ test('repositories view retains configured repository scope after canonical inge
     }));
     const renderedText = document.querySelector('[data-page-id="repositories"]')?.textContent ?? '';
     return {
+      databaseRepositories: canonicalRepositories.map((/** @type {Record<string, unknown>} */ row) => row.fullName).sort(),
       sourceRepositories: projected.repositories.rows.map((/** @type {Record<string, unknown>} */ row) => `${row.organization}/${row.repository}`).sort(),
       activityRepositories: preparedSources['repository-activity'].rows.map((/** @type {Record<string, unknown>} */ row) => row.repository).sort(),
       renderedText
@@ -419,6 +408,7 @@ test('repositories view retains configured repository scope after canonical inge
     'githubnext/gh-aw-workshop'
   ];
   expect(result.sourceRepositories).toEqual(expectedRepositories);
+  expect(result.databaseRepositories).toEqual(expectedRepositories);
   expect(result.activityRepositories).toEqual(expectedRepositories);
   for (const repository of expectedRepositories) {
     expect(result.renderedText).toContain(repository);

@@ -154,44 +154,6 @@ describe('current dashboard source adapter', () => {
       .toEqual({ observations: [] });
   });
 
-  it('adapts concrete allowed repositories from configuration policy rows', () => {
-    const adapted = adaptDashboardSources({
-      repositories: {
-        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'repository-link': { href: 'https://github.com/githubnext/gh-aw-cao' } }],
-        metadata
-      },
-      'configuration-policy': {
-        rows: [{
-          path: '.github/workflows/cao.json',
-          document: {
-            'control-plane': {
-              scope: {
-                'allowed-repositories': [
-                  'github/gh-aw',
-                  'githubnext/*',
-                  'githubnext/gh-aw-cao',
-                  'githubnext/gh-aw-workshop'
-                ]
-              }
-            }
-          }
-        }],
-        metadata
-      }
-    });
-
-    const batch = normalize(adapted.observations);
-
-    expect(batch.repositories.map((/** @type {Record<string, unknown>} */ repository) => repository.fullName)).toEqual([
-      'github/gh-aw',
-      'githubnext/gh-aw-cao',
-      'githubnext/gh-aw-workshop'
-    ]);
-    expect(batch.repositories.find((/** @type {Record<string, unknown>} */ repository) => repository.fullName === 'githubnext/gh-aw-cao')).toMatchObject({
-      repositoryLink: { href: 'https://github.com/githubnext/gh-aw-cao' }
-    });
-  });
-
   it('adapts fresh source documents without coordinating artifact generations', () => {
     const sources = {
       repositories: { rows: [], metadata },

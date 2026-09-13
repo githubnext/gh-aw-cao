@@ -88,10 +88,6 @@ test("builds deployable package and workflow inventory sources", () => {
       }],
     },
     controlSettings: {
-      policy_document: {
-        version: 1,
-        "control-plane": { scope: { "allowed-repositories": ["githubnext/control"] } },
-      },
       allowed_repositories: ["githubnext/control"],
       packages: {
         "daily-ops": {
@@ -110,9 +106,6 @@ test("builds deployable package and workflow inventory sources", () => {
   });
 
   assert.equal(sources.packages.rows.length, 1);
-  assert.deepEqual(sources["configuration-policy"].rows[0].document["control-plane"].scope, {
-    "allowed-repositories": ["githubnext/control"],
-  });
   assert.deepEqual(sources.packages.rows[0], {
     package: "daily-ops",
     "package-name": "Daily Operations",

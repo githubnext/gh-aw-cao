@@ -25,17 +25,6 @@ function source(name, rows, generatedAt) {
   return { source: name, rows, metadata: metadata(name, generatedAt) };
 }
 
-function configurationPolicyRows(controlSettings) {
-  return controlSettings.policy_document
-    ? [{
-        path: ".github/workflows/cao.json",
-        document: controlSettings.policy_document,
-        raw: controlSettings.policy_source || "",
-        diagnostics: [],
-      }]
-    : [];
-}
-
 function packageRows(inventory, controlSettings, generatedAt) {
   const bundles = new Map((inventory.bundles || []).map((bundle) => [
     String(bundle.controlPackage || bundle.id || "").trim(),
@@ -220,7 +209,6 @@ export function buildInventoryDashboardSources({
   const [organization, repositoryName] = repository.split("/");
   return {
     packages: source("packages", packageRows(inventory, controlSettings, generatedAt), generatedAt),
-    "configuration-policy": source("configuration-policy", configurationPolicyRows(controlSettings), generatedAt),
     repositories: source("repositories", [{
       organization,
       repository: repositoryName,
