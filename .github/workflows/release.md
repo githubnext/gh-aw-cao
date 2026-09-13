@@ -53,7 +53,7 @@ safe-outputs:
         actions: read
         contents: write
       env:
-        GH_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
       inputs:
         body:
           description: Human-friendly Markdown to prepend to the generated release notes
@@ -122,6 +122,7 @@ jobs:
           RELEASE_BUMP: ${{ inputs.bump }}
           TRIGGERING_ACTOR: ${{ github.triggering_actor }}
         with:
+          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
             const requestedBump = process.env.RELEASE_BUMP;
             const triggeringActor = process.env.TRIGGERING_ACTOR;
@@ -221,7 +222,7 @@ jobs:
       - name: Validate files installed from aw.yml
         env:
           CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: ${{ github.repository }}@${{ github.sha }}
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
         run: npm run test:package-lifecycle
 
   prepare-release:
@@ -239,6 +240,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
         with:
+          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
             const releaseTag = process.env.RELEASE_TAG;
             core.info(`Creating tag and draft release ${releaseTag}.`);
@@ -300,7 +302,7 @@ jobs:
 steps:
   - name: Fetch release context
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
       RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
       RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
     run: |

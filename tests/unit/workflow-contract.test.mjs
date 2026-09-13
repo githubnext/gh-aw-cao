@@ -1054,6 +1054,7 @@ test("release increments the semantic version, prepares a draft, then updates it
   const version = jobs.get("resolve-version")?.block ?? "";
   const validation = jobs.get("validate-package")?.block ?? "";
   const prepare = jobs.get("prepare-release")?.block ?? "";
+  const agent = jobs.get("agent")?.block ?? "";
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
 
   assert.equal(config.on.workflow_dispatch.inputs.operation, undefined);
@@ -1062,6 +1063,7 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.deepEqual(config.on.workflow_dispatch.inputs.bump.options, ["patch", "minor", "major"]);
   assert.match(version, /RELEASE_BUMP: \$\{\{ inputs\.bump \}\}/);
   assert.match(version, /TRIGGERING_ACTOR: \$\{\{ github\.triggering_actor \}\}/);
+  assert.match(version, /github-token: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| (github\.token|secrets\.GITHUB_TOKEN) \}\}/);
   assert.match(version, /const bump = \['patch', 'minor', 'major'\]\.includes\(requestedBump\) \? requestedBump : 'patch'/);
   assert.match(version, /Unknown release bump.*defaulting to patch/);
   assert.match(version, /context\.payload\.repository\.fork/);
@@ -1082,8 +1084,10 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(version, /else if \(bump === 'minor'\)/);
   assert.match(version, /Resolved \$\{bump\} bump from/);
   assert.match(validation, /CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: \$\{\{ github\.repository \}\}@\$\{\{ github\.sha \}\}/);
+  assert.match(validation, /GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| (github\.token|secrets\.GITHUB_TOKEN) \}\}/);
   assert.match(validation, /npm run test:package-lifecycle/);
   assert.deepEqual(jobs.get("prepare-release")?.needs, ["resolve-version", "validate-package"]);
+  assert.match(prepare, /github-token: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| (github\.token|secrets\.GITHUB_TOKEN) \}\}/);
   assert.match(prepare, /git\.createRef/);
   assert.match(prepare, /ref: `refs\/tags\/\$\{releaseTag\}`/);
   assert.match(prepare, /sha: context\.sha/);
@@ -1106,6 +1110,8 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /ACTUAL_TAG.*RELEASE_TAG/);
   assert.match(agenticSource, /IS_DRAFT.*true/);
   assert.match(agenticSource, /Download prepared release context/);
+  assert.match(agent, /GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| (github\.token|secrets\.GITHUB_TOKEN) \}\}[\s\S]*name: Fetch release context/);
+  assert.match(agenticSource, /GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
   assert.match(agenticSource, /RELEASE_SHA.*GITHUB_SHA/);
   assert.match(agenticSource, /TAG_SHA.*GITHUB_SHA/);
   assert.match(agenticSource, /releases\/\$RELEASE_ID/);
