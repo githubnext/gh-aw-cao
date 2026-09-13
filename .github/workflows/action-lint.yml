@@ -73,9 +73,23 @@ jobs:
           if-no-files-found: warn
           retention-days: 1
 
-      - name: Fail when lint problems are found
+      - name: Report lint problems
         if: steps.lint.outcome == 'failure'
-        run: exit 1
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            for (const [tool, path] of [
+              ['actionlint', '/tmp/actionlint.txt'],
+              ['zizmor', '/tmp/zizmor.txt'],
+            ]) {
+              let output = 'No output was captured.'
+              try {
+                output = fs.readFileSync(path, 'utf8')
+              } catch {}
+              core.info(`${tool} output:\n${output}`)
+            }
+            core.setFailed('actionlint or zizmor found problems.')
 
   report:
     if: always() && needs.lint.result != 'cancelled'
