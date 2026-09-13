@@ -91,6 +91,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/storage/quota.js
   - source: site/src/data/storage/retention.js
     destination: .github/aw/dashboard/site/src/data/storage/retention.js
+  - source: site/src/data/table-capacity.js
+    destination: .github/aw/dashboard/site/src/data/table-capacity.js
   - source: site/src/copilot-prompt.js
     destination: .github/aw/dashboard/site/src/copilot-prompt.js
   - source: site/src/compliance.js
