@@ -194,6 +194,7 @@ describe('automatic dashboard data updates', () => {
     let now = 1000;
     const stop = startAutomaticDashboardDataUpdates(
       [
+        'https://example.test/payload-hashes.txt',
         'https://example.test/gh-aw-logs.jsonl',
         'https://example.test/inventory-sources.json'
       ],
@@ -219,6 +220,7 @@ describe('automatic dashboard data updates', () => {
     expect(worker.messages).toContainEqual(expect.objectContaining({
       type: 'CONFIGURE_BACKGROUND_DATA',
       urls: [
+        'https://example.test/payload-hashes.txt',
         'https://example.test/gh-aw-logs.jsonl',
         'https://example.test/inventory-sources.json'
       ]

@@ -18,7 +18,10 @@ function serviceWorkerHarness() {
     /** @param {string | Request} key */
     delete: async (key) => entries.delete(String(key))
   };
-  const fetch = vi.fn(async () => new Response('updated data'));
+  const fetch = vi.fn(async (
+    /** @type {string | URL | Request} */ _url,
+    /** @type {RequestInit | undefined} */ _init
+  ) => new Response('updated data'));
   const deleteCache = vi.fn(async () => {
     entries.clear();
     return true;
@@ -75,12 +78,17 @@ async function dispatchExtendedEvent(listener, event) {
 
 describe('dashboard service worker', () => {
   it('downloads configured dashboard data during periodic background sync with no page open', async () => {
-    const { listeners, worker, fetch } = serviceWorkerHarness();
+    const { listeners, worker, fetch, entries } = serviceWorkerHarness();
+    const payloadHashes = `${'a'.repeat(64)}  gh-aw-logs.jsonl\n${'b'.repeat(64)}  gh-aw-logs.sqlite\n`;
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.txt') ? payloadHashes : 'updated data'
+    ));
     const configured = vi.fn();
     await dispatchExtendedEvent(listeners.message, {
       data: {
         type: 'CONFIGURE_BACKGROUND_DATA',
         urls: [
+          'https://example.test/dashboard/payload-hashes.txt',
           'https://example.test/dashboard/gh-aw-logs.jsonl',
           'https://example.test/dashboard/inventory-sources.json'
         ]
@@ -95,16 +103,29 @@ describe('dashboard service worker', () => {
       tag: 'central-agentic-ops-dashboard-data'
     });
 
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(entries.has('https://example.test/dashboard/gh-aw-logs.jsonl')).toBe(true);
+    entries.set(
+      'https://example.test/dashboard/.dashboard-data-update-config',
+      new Response(JSON.stringify({
+        urls: [
+          'https://example.test/dashboard/payload-hashes.txt',
+          'https://example.test/dashboard/gh-aw-logs.jsonl',
+          'https://example.test/dashboard/inventory-sources.json'
+        ],
+        lastSuccess: 0
+      }))
+    );
     await dispatchExtendedEvent(listeners.periodicsync, {
       tag: 'central-agentic-ops-dashboard-data'
     });
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(5);
+    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/gh-aw-logs.jsonl'))).toHaveLength(1);
     worker.navigator.connection.type = 'cellular';
     await dispatchExtendedEvent(listeners.periodicsync, {
       tag: 'central-agentic-ops-dashboard-data'
     });
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(5);
   });
 
   it('serves cached dashboard assets and data while offline', async () => {

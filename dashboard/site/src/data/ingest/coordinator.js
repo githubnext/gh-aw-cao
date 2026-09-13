@@ -63,9 +63,46 @@ async function transactionId(kind, scope) {
   return `${kind}:current:${await payloadHash(scope, undefined)}`;
 }
 
+/** @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options */
+function cachedJsonlAdaptationContext(options) {
+  return JSON.stringify({
+    context: options.context ?? null,
+    workflowHints: options.workflowHints ?? []
+  });
+}
+
 /** @param {IDBFactory} indexedDB @param {string} kind @param {string} scope */
 export async function readCurrentIngestion(indexedDB, kind, scope) {
   return await readTransaction(indexedDB, await transactionId(kind, scope));
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {{ payloadIdentity: string, payloadScope: string, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options
+ */
+export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
+  const adaptationContext = cachedJsonlAdaptationContext(options);
+  const hash = await payloadHash(`${options.payloadIdentity}\0${adaptationContext}`, undefined);
+  const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', options.payloadScope);
+  return current?.payloadHash === hash;
+}
+
+/**
+ * Records a newly published identity after a conditional request confirms that
+ * the previously ingested payload is still current.
+ * @param {IDBFactory} indexedDB
+ * @param {{ payloadIdentity: string, payloadScope: string, payloadEtag?: string, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options
+ */
+export async function refreshCachedGhAwJsonlIdentity(indexedDB, options) {
+  const adaptationContext = cachedJsonlAdaptationContext(options);
+  const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', options.payloadScope);
+  if (!current) return;
+  await recordTransaction(indexedDB, {
+    ...current,
+    payloadHash: await payloadHash(`${options.payloadIdentity}\0${adaptationContext}`, undefined),
+    payloadEtag: options.payloadEtag ?? current.payloadEtag,
+    adaptationContext
+  });
 }
 
 /**
@@ -261,10 +298,7 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
   try {
-    const adaptationContext = JSON.stringify({
-      context: options.context ?? null,
-      workflowHints: options.workflowHints ?? []
-    });
+    const adaptationContext = cachedJsonlAdaptationContext(options);
     const streamed = typeof content !== 'string'
       && !ArrayBuffer.isView(content)
       && Symbol.asyncIterator in Object(content)

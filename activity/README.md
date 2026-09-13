@@ -27,7 +27,9 @@ $RUNNER_TEMP/cao-gh-aw-logs/drain3_weights.json
 
 `payload-hashes.txt` contains SHA-256 checksums for the JSONL source and SQLite
 projection. The dashboard publishes it beside both payloads so clients can
-detect unchanged data without downloading either complete payload.
+detect unchanged data without downloading either complete payload. Dashboard
+ingestion checks this sidecar first, then falls back to ETag validation and
+finally a downloaded-content hash when neither server-side identity is usable.
 
 Snapshots use the immutable key
 `cao-activity-v4-${github.run_id}-${github.run_attempt}` and restore prefix

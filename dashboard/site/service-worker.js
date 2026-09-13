@@ -6,7 +6,7 @@ const CONFIG_URL = new URL('./.dashboard-data-update-config', self.registration.
 const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
-const DATA_FILES = new Set(['gh-aw-logs.jsonl', 'inventory-sources.json']);
+const DATA_FILES = new Set(['payload-hashes.txt', 'gh-aw-logs.jsonl', 'inventory-sources.json']);
 
 function isDashboardDataUrl(value) {
   try {
@@ -36,23 +36,52 @@ async function downloadData(urls) {
   if (!requested.some((url) => new URL(url).pathname.endsWith('/gh-aw-logs.jsonl'))) {
     throw new Error('Dashboard data URL is missing.');
   }
-  const responses = await Promise.all(requested.map(async (url) => {
-    const response = await fetch(url, {
+  const cache = await caches.open(DATA_CACHE);
+  const hashesUrl = requested.find((url) => new URL(url).pathname.endsWith('/payload-hashes.txt'));
+  let unchangedJsonl = false;
+  if (hashesUrl) {
+    const previous = await cache.match(hashesUrl);
+    const response = await fetch(hashesUrl, {
       cache: 'no-store',
       credentials: 'same-origin',
       signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
     });
+    if (response.ok) {
+      const [previousText, currentText] = await Promise.all([
+        previous?.text() ?? '',
+        response.clone().text()
+      ]);
+      const jsonlHash = (text) => text.match(/^([a-f0-9]{64})[ \t]+\*?gh-aw-logs\.jsonl$/im)?.[1];
+      unchangedJsonl = Boolean(jsonlHash(currentText) && jsonlHash(currentText) === jsonlHash(previousText));
+      await cache.put(hashesUrl, response.clone());
+    } else if (response.status !== 404) {
+      throw new Error(`Dashboard data download returned ${response.status}.`);
+    }
+  }
+  const responses = await Promise.all(requested
+    .filter((url) => url !== hashesUrl)
+    .filter((url) => !(unchangedJsonl && new URL(url).pathname.endsWith('/gh-aw-logs.jsonl')))
+    .map(async (url) => {
+    const previous = await cache.match(url);
+    const etag = previous?.headers.get('etag');
+    const response = await fetch(url, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: etag ? { 'If-None-Match': etag } : undefined,
+      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
+    });
     const optionalInventory = new URL(url).pathname.endsWith('/inventory-sources.json');
-    if (!response.ok && !(optionalInventory && response.status === 404)) {
+    if (!response.ok && response.status !== 304 && !(optionalInventory && response.status === 404)) {
       throw new Error(`Dashboard data download returned ${response.status}.`);
     }
     return { url, response, optionalInventory };
   }));
-  const cache = await caches.open(DATA_CACHE);
   await Promise.all(responses.map(({ url, response, optionalInventory }) => (
     optionalInventory && response.status === 404
       ? cache.delete(url)
-      : cache.put(url, response.clone())
+      : response.status === 304
+        ? undefined
+        : cache.put(url, response.clone())
   )));
 }
 

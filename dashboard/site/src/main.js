@@ -928,6 +928,7 @@
         renderSources({}, "loading");
         const sourceUrl = new URL("./gh-aw-logs.jsonl", window.location.href).href;
         const stopAutomaticDataUpdates = startAutomaticDashboardDataUpdates([
+          new URL("./payload-hashes.txt", sourceUrl).href,
           sourceUrl,
           new URL("./inventory-sources.json", sourceUrl).href,
         ]);
