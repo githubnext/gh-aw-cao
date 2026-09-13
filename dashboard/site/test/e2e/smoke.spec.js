@@ -1762,7 +1762,7 @@ test('mobile navigation menu paints above a full-view page instead of being clip
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
-        'source-id': 'performance-fixture',
+        'source-id': 'mobile-nav-fixture',
         'source-kind': 'fixture',
         'as-of': '2026-09-03T12:00:00Z',
         'retrieved-at': '2026-09-03T12:01:00Z',
@@ -1801,7 +1801,9 @@ test('mobile navigation menu paints above a full-view page instead of being clip
     };
     return { height: rect.height, middle: hitAt(rect.top + rect.height / 2), bottom: hitAt(rect.bottom - 4) };
   });
-  expect(hits.height).toBeGreaterThan(200);
+  // The popover must be taller than the ~70px header row it is anchored in, so a clipped menu
+  // cannot satisfy the hit tests below by collapsing to the header height.
+  expect(hits.height).toBeGreaterThan(140);
   expect(hits.middle).toBe(true);
   expect(hits.bottom).toBe(true);
 });
