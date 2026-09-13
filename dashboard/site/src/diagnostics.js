@@ -1,17 +1,10 @@
 import { relationshipErrors } from './data/model/schema.js';
 import {
   DATABASE_VERSION,
+  ENTITY_STORES,
   readCollection
 } from './data/storage/indexeddb.js';
 
-const ENTITY_STORES = /** @type {const} */ ([
-  'repositories',
-  'workflows',
-  'runs',
-  'jobs',
-  'sessions',
-  'events'
-]);
 const REQUIRED_POPULATED_STORES = ['repositories', 'workflows', 'runs', 'events'];
 
 /** @param {string} name @param {boolean} passed @param {string} detail */
