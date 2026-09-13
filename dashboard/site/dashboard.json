@@ -8,11 +8,11 @@
     "cli-actions": [
       {
         "id": "update-repository",
-        "label": "Update",
-        "description": "Update installed Agentic Workflow packages in this repository.",
+        "label": "Update all",
+        "description": "Update all installed Agentic Workflow packages in this repository.",
         "icon": "sync",
         "command": "gh aw update --repo {{repository}}",
-        "placement": "settings",
+        "placement": "view",
         "arguments": [
           {
             "id": "create-pull-request",
@@ -26,11 +26,11 @@
       },
       {
         "id": "upgrade-repository",
-        "label": "Upgrade",
-        "description": "Upgrade the repository's Agentic Workflows files.",
+        "label": "Upgrade all",
+        "description": "Upgrade the gh-aw compiler version across this repository's Agentic Workflows files.",
         "icon": "download",
         "command": "gh aw upgrade --repo {{repository}}",
-        "placement": "settings",
+        "placement": "view",
         "arguments": [
           {
             "id": "create-pull-request",
@@ -47,24 +47,6 @@
             "type": "boolean",
             "flag": "--pre-releases",
             "default": false
-          }
-        ]
-      },
-      {
-        "id": "update-target-repository",
-        "label": "Update repository",
-        "description": "Update installed Agentic Workflow packages in the selected repository.",
-        "icon": "sync",
-        "command": "gh aw update --repo {{repository}}",
-        "placement": "row",
-        "arguments": [
-          {
-            "id": "create-pull-request",
-            "label": "Create pull request",
-            "description": "Create a pull request with the workflow package updates.",
-            "type": "boolean",
-            "flag": "--create-pull-request",
-            "default": true
           }
         ]
       },
@@ -2289,6 +2271,194 @@
             "direction": "asc"
           }
         ]
+      },
+      {
+        "name": "maintenance-repository-versions",
+        "intent": "Group installed and current gh-aw compiler versions and upgrade evidence by repository.",
+        "from": "workflows",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
+            "as": "update-available",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "gh-aw-update-state"
+              },
+              {
+                "value": "update-available"
+              }
+            ]
+          },
+          {
+            "as": "upgrade-state-unknown",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "gh-aw-update-state"
+              },
+              {
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "as": "upgrade-state-unknown-value",
+            "function": "if",
+            "args": [
+              {
+                "field": "upgrade-state-unknown"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "upgrade-required-value",
+            "function": "if",
+            "args": [
+              {
+                "field": "update-available"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "repository-coordinate"
+          ],
+          "values": [
+            {
+              "field": "gh-aw-version",
+              "as": "gh-aw-version",
+              "reducer": "distinct-list"
+            },
+            {
+              "field": "gh-aw-current-version",
+              "as": "gh-aw-current-version",
+              "reducer": "distinct-list"
+            },
+            {
+              "field": "upgrade-required-value",
+              "as": "upgrade-required",
+              "reducer": "max"
+            },
+            {
+              "field": "upgrade-state-unknown-value",
+              "as": "upgrade-state-unknown",
+              "reducer": "max"
+            }
+          ]
+        }
+      },
+      {
+        "name": "maintenance-repositories",
+        "intent": "List each repository with compiler versions and an explicit upgrade recommendation.",
+        "from": "maintenance-repository-versions",
+        "compute": [
+          {
+            "as": "should-upgrade",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "upgrade-required"
+              },
+              {
+                "value": 1
+              }
+            ]
+          },
+          {
+            "as": "upgrade-status-unavailable",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "upgrade-state-unknown"
+              },
+              {
+                "value": 1
+              }
+            ]
+          },
+          {
+            "as": "current-or-unavailable",
+            "function": "if",
+            "args": [
+              {
+                "field": "upgrade-status-unavailable"
+              },
+              {
+                "value": "Upgrade status unavailable"
+              },
+              {
+                "value": "Current"
+              }
+            ]
+          },
+          {
+            "as": "upgrade-state",
+            "function": "if",
+            "args": [
+              {
+                "field": "should-upgrade"
+              },
+              {
+                "value": "Upgrade recommended"
+              },
+              {
+                "field": "current-or-unavailable"
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "repository-coordinate",
+            "as": "repository"
+          },
+          {
+            "field": "gh-aw-version"
+          },
+          {
+            "field": "gh-aw-current-version"
+          },
+          {
+            "field": "upgrade-required"
+          },
+          {
+            "field": "upgrade-state"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "repository",
+            "direction": "asc"
+          }
+        ]
       }
     ],
     "pages": [
@@ -2944,26 +3114,6 @@
                     "display": "status"
                   }
                 ],
-                "actions": [
-                  {
-                    "action": "update-target-repository",
-                    "presentation": "cli-action",
-                    "icon": "sync",
-                    "label": "Update repository",
-                    "context": [
-                      "repository"
-                    ]
-                  },
-                  {
-                    "action": "upgrade-target-repository",
-                    "presentation": "cli-action",
-                    "icon": "download",
-                    "label": "Upgrade repository",
-                    "context": [
-                      "repository"
-                    ]
-                  }
-                ],
                 "href": {
                   "field": "repository-link",
                   "type": "nominal"
@@ -3534,17 +3684,6 @@
               "layout": "full-view",
               "empty-message": "No packages discovered.",
               "encoding": {
-                "actions": [
-                  {
-                    "action": "update-package",
-                    "presentation": "cli-action",
-                    "icon": "sync",
-                    "label": "Update package",
-                    "context": [
-                      "package"
-                    ]
-                  }
-                ],
                 "href": {
                   "field": "package-link",
                   "type": "nominal"
@@ -5683,31 +5822,84 @@
         ]
       },
       {
-        "id": "updates",
+        "id": "maintenance",
         "kind": "custom",
-        "title": "Updates",
+        "title": "Maintenance",
         "icon": "workflow",
-        "description": "Installed gh-aw compiler versions and whether a newer gh-aw release is available.",
+        "description": "Update installed starter packages and upgrade repository compiler versions.",
         "views": [
           {
-            "id": "workflow-updates",
-            "description": "Every agentic workflow discovered in the configured scope. Unknown means the compiled workflow metadata or latest release could not be read.",
+            "id": "starter-updates",
+            "title": "Starter updates",
+            "description": "Update installed starter packages when a newer package revision is available.",
             "data": {
-              "source": "workflows"
+              "source": "packages",
+              "order-by": [
+                {
+                  "field": "package-name",
+                  "direction": "asc"
+                }
+              ]
             },
-            "mark": "table",
-            "empty-message": "No agentic workflows observed.",
+            "mark": "list",
+            "list": {
+              "style": "cards",
+              "icon": "package",
+              "action": "update-repository"
+            },
+            "empty-message": "No installed packages were discovered.",
             "encoding": {
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              },
               "columns": [
                 {
-                  "field": "workflow",
+                  "field": "package-name",
                   "type": "nominal",
-                  "title": "Workflow"
+                  "title": "Package"
                 },
+                {
+                  "field": "package-version",
+                  "type": "nominal",
+                  "title": "Installed"
+                },
+                {
+                  "field": "package-current-version",
+                  "type": "nominal",
+                  "title": "Latest"
+                }
+              ],
+              "actions": [
+                {
+                  "action": "update-package",
+                  "presentation": "cli-action",
+                  "icon": "sync",
+                  "label": "Update",
+                  "context": [
+                    "package"
+                  ],
+                  "when": {
+                    "field": "package-update-state",
+                    "equals": "update-available"
+                  }
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "compiler-upgrades",
+            "title": "Compiler upgrades",
+            "description": "Upgrade repositories that use an older gh-aw compiler version.",
+            "data": {
+              "source": "maintenance-repositories"
+            },
+            "mark": "list",
+            "list": {
+              "style": "cards",
+              "icon": "repo",
+              "action": "upgrade-repository"
+            },
+            "empty-message": "No repositories with Agentic Workflows were discovered.",
+            "encoding": {
+              "columns": [
                 {
                   "field": "repository",
                   "type": "nominal",
@@ -5716,24 +5908,37 @@
                 {
                   "field": "gh-aw-version",
                   "type": "nominal",
-                  "title": "Installed version"
+                  "title": "Installed"
                 },
                 {
                   "field": "gh-aw-current-version",
                   "type": "nominal",
-                  "title": "Current version"
+                  "title": "Latest"
                 },
                 {
-                  "field": "gh-aw-update-state",
+                  "field": "upgrade-state",
                   "type": "nominal",
-                  "title": "Update state",
+                  "title": "Upgrade",
                   "display": "status"
+                }
+              ],
+              "actions": [
+                {
+                  "action": "upgrade-target-repository",
+                  "presentation": "cli-action",
+                  "icon": "download",
+                  "label": "Upgrade",
+                  "context": [
+                    "repository"
+                  ],
+                  "when": {
+                    "field": "upgrade-required",
+                    "equals": 1
+                  }
                 }
               ]
             },
-            "layout": "full-view",
-            "controls": "interactive",
-            "lazy-list": true
+            "layout": "full"
           }
         ]
       },
@@ -6387,7 +6592,7 @@
           "preview",
           "readiness",
           "github-api",
-          "updates"
+          "maintenance"
         ]
       },
       {

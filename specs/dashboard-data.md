@@ -256,6 +256,32 @@ Expired or unavailable GitHub Actions artifacts SHALL be reported as missing
 enrichment. Their run summaries MAY still be present and MUST NOT be described
 as fully enriched runs.
 
+## 5.2 Maintenance inventory
+
+Package inventory inputs MAY report `package-version`,
+`package-current-version`, and `package-update-state` for an installed gh-aw
+starter package. `package-update-state` MUST be `update-available`,
+`up-to-date`, or `unknown`; missing or incomparable version evidence MUST
+normalize to `unknown`. The package slug remains the stable identity, and a
+refresh MUST enrich the existing Package record rather than create a
+version-specific Package.
+
+Workflow inventory inputs SHALL continue to report `gh-aw-version`,
+`gh-aw-current-version`, and `gh-aw-update-state` as compiler evidence.
+Repository maintenance projections MUST group that evidence by canonical
+Repository identity. A repository requires an upgrade when at least one
+workflow reports `update-available`; mixed workflow versions MUST remain
+visible and MUST NOT be collapsed to a fabricated single version.
+
+The SQLite Package projection and the IndexedDB `packages` object store MUST
+preserve the same three package-maintenance fields with identical missing-data
+semantics. Both projections remain disposable and reconstructable from package
+inventory inputs. Schema migration MUST rebuild these derived records, and a
+failed refresh MUST retain the last complete active generation rather than
+publish partial maintenance state. Package and repository maintenance actions
+MUST use these canonical query results and MUST NOT inspect upstream manifests
+or browser storage directly.
+
 ---
 
 # 6. Canonical Domain Model

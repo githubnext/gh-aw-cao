@@ -142,25 +142,10 @@ describe('repositories view', () => {
           { field: 'workflows', title: 'Local AWs' },
           { field: 'status', display: 'status' }
         ],
-        actions: [
-          {
-            action: 'update-target-repository',
-            presentation: 'cli-action',
-            icon: 'sync',
-            label: 'Update repository',
-            context: ['repository']
-          },
-          {
-            action: 'upgrade-target-repository',
-            presentation: 'cli-action',
-            icon: 'download',
-            label: 'Upgrade repository',
-            context: ['repository']
-          }
-        ],
         href: { field: 'repository-link' }
       }
     });
+    expect(repositoriesPage.definition.views[0].encoding.actions).toBeUndefined();
   });
 
   it('keeps unavailable run and usage evidence explicit', () => {

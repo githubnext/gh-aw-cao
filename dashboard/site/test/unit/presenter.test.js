@@ -311,24 +311,40 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('binds deployed workflow versions, update state, and source paths in Updates', async () => {
+  it('binds package and repository version evidence in Maintenance', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        workflows: {
-          source: 'workflows',
+        packages: {
+          source: 'packages',
           rows: [{
-            organization: 'acme',
-            repository: 'service',
-            workflow: '.github/workflows/remote-agent.md',
-            'workflow-name': 'Remote agent',
-            'gh-aw-version': 'v0.88.7',
-            'gh-aw-current-version': 'v0.89.0',
-            'gh-aw-version-label': 'v0.88.7',
-            'gh-aw-update-state': 'update-available'
+            package: 'remote-agent',
+            'package-name': 'Remote agent',
+            'package-version': 'v1',
+            'package-current-version': 'v2',
+            'package-update-state': 'update-available'
           }],
           metadata: {
-            'source-id': 'deployed-workflows-fixture',
+            'source-id': 'packages-fixture',
+            'source-kind': 'github',
+            'as-of': '2026-09-08T17:24:49.713Z',
+            'retrieved-at': '2026-09-08T17:24:49.713Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        },
+        'maintenance-repositories': {
+          source: 'maintenance-repositories',
+          rows: [{
+            repository: 'acme/service',
+            'gh-aw-version': 'v0.88.7',
+            'gh-aw-current-version': 'v0.89.0',
+            'upgrade-required': 1,
+            'upgrade-state': 'Upgrade recommended'
+          }],
+          metadata: {
+            'source-id': 'maintenance-repositories-fixture',
             'source-kind': 'github',
             'as-of': '2026-09-08T17:24:49.713Z',
             'retrieved-at': '2026-09-08T17:24:49.713Z',
@@ -340,17 +356,18 @@ describe('presenter built-in and custom pages', () => {
       }
     });
 
-    const page = await activatePage(rendered, 'updates');
-    const inventory = page?.querySelector('[data-view-id="workflow-updates"]');
+    const page = await activatePage(rendered, 'maintenance');
+    const starterUpdates = page?.querySelector('[data-view-id="starter-updates"]');
+    const compilerUpgrades = page?.querySelector('[data-view-id="compiler-upgrades"]');
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
-    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-    expect(inventory?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(inventory?.textContent).toContain('v0.88.7');
-    expect(inventory?.textContent).toContain('v0.89.0');
-    expect(inventory?.textContent).toContain('update-available');
-    expect(inventory?.querySelector('tbody a')?.getAttribute('href')).toBe(
-      '#page-workflow-runtime?workflow=acme%2Fservice%3A.github%2Fworkflows%2Fremote-agent.md'
-    );
+    expect(page?.querySelectorAll('[data-view-layout="full"]')).toHaveLength(2);
+    expect(starterUpdates?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    expect(compilerUpgrades?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    expect(starterUpdates?.textContent).toContain('Remote agent');
+    expect(compilerUpgrades?.textContent).toContain('acme/service');
+    expect(compilerUpgrades?.textContent).toContain('v0.88.7');
+    expect(compilerUpgrades?.textContent).toContain('v0.89.0');
+    expect(page?.textContent).not.toContain('update-available');
     rendered.remove();
   });
 
@@ -978,7 +995,7 @@ describe('presenter built-in and custom pages', () => {
       'Preview',
       'Readiness',
       'GitHub API',
-      'Updates',
+      'Maintenance',
       'Safe Outputs',
       'Detection',
       'Dispatches',
@@ -1338,7 +1355,7 @@ describe('presenter built-in and custom pages', () => {
       'Preview',
       'Readiness',
       'GitHub API',
-      'Updates',
+      'Maintenance',
       'Safe Outputs',
       'Detection',
       'Dispatches',
