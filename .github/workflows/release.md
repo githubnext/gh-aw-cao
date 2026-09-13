@@ -52,8 +52,6 @@ safe-outputs:
       permissions:
         actions: read
         contents: write
-      env:
-        GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
       inputs:
         body:
           description: Human-friendly Markdown to prepend to the generated release notes
@@ -62,10 +60,14 @@ safe-outputs:
       steps:
         - name: Download prepared release context
           uses: actions/download-artifact@v8
+          env:
+            GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
           with:
             name: release-context-${{ github.run_id }}
             path: ${{ runner.temp }}/release-context
         - name: Update prepared draft release
+          env:
+            GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
           run: |
             set -euo pipefail
 
