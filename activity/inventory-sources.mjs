@@ -27,11 +27,10 @@ function source(name, rows, generatedAt) {
 
 function repositoryRows(controlSettings, repository, generatedAt) {
   const allowedRepositories = Array.isArray(controlSettings.allowed_repositories)
-    && controlSettings.allowed_repositories.length > 0
     ? controlSettings.allowed_repositories
-    : [repository];
+    : [];
   const repositories = new Map();
-  for (const candidate of allowedRepositories) {
+  for (const candidate of [...allowedRepositories, repository]) {
     const [organization, name, ...extra] = String(candidate).trim().split("/");
     if (!organization || !name || extra.length > 0) continue;
     repositories.set(`${organization}/${name}`.toLowerCase(), {

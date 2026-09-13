@@ -15,9 +15,18 @@ test("allowed repositories flow from control settings into canonical storage", a
     const sources = buildInventoryDashboardSources({
       repository: "acme/control",
       generatedAt,
-      inventory: { generatedAt, bundles: [], workflows: [] },
+      inventory: {
+        generatedAt,
+        bundles: [],
+        workflows: [{
+          id: "activity",
+          name: "Activity",
+          sourcePath: ".github/workflows/activity.md",
+          compiled: true,
+        }],
+      },
       controlSettings: {
-        allowed_repositories: ["acme/control", "acme/payments", "acme/storefront"],
+        allowed_repositories: ["acme/payments", "acme/storefront"],
         packages: {},
       },
     });
@@ -29,6 +38,7 @@ test("allowed repositories flow from control settings into canonical storage", a
       canonical.repositories.map(({ fullName }) => fullName).sort(),
       ["acme/control", "acme/payments", "acme/storefront"],
     );
+    assert.equal(canonical.workflows.length, 1);
   } finally {
     await deleteCanonicalDatabase(indexedDB);
   }
