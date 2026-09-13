@@ -20,6 +20,10 @@ permissions:
   pull-requests: read
   copilot-requests: write
 
+checkout:
+  fetch-depth: 0
+  fetch: ["*"]
+
 strict: true
 engine: copilot
 timeout-minutes: 20
@@ -93,10 +97,9 @@ safe-outputs:
 
             RELEASE=$(gh api "/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")
             ACTUAL_TAG=$(printf '%s' "$RELEASE" | jq -r '.tag_name')
-            ACTUAL_SHA=$(printf '%s' "$RELEASE" | jq -r '.target_commitish')
             IS_DRAFT=$(printf '%s' "$RELEASE" | jq -r '.draft')
             EXISTING_BODY=$(printf '%s' "$RELEASE" | jq -r '.body // ""')
-            if [ "$ACTUAL_TAG" != "$RELEASE_TAG" ] || [ "$ACTUAL_SHA" != "$RELEASE_SHA" ] || [ "$IS_DRAFT" != "true" ]; then
+            if [ "$ACTUAL_TAG" != "$RELEASE_TAG" ] || [ "$IS_DRAFT" != "true" ]; then
               echo "Prepared release identity or draft status changed; refusing update." >&2
               exit 1
             fi
@@ -311,22 +314,46 @@ steps:
         --jq '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
         > /tmp/gh-aw/agent/release-data/previous_release.json
 
-      PREVIOUS_PUBLISHED_AT=$(jq -r '.published_at // empty' /tmp/gh-aw/agent/release-data/previous_release.json)
-      CREATED_AT=$(jq -r '.created_at' /tmp/gh-aw/agent/release-data/current_release.json)
-      if [ -n "$PREVIOUS_PUBLISHED_AT" ]; then
-        gh pr list --state merged --limit 500 \
-          --json number,title,author,labels,mergedAt,url,body,files \
-          --jq "[.[] | select(.mergedAt > \"$PREVIOUS_PUBLISHED_AT\" and .mergedAt <= \"$CREATED_AT\")]" \
-          > /tmp/gh-aw/agent/release-data/pull_requests.json
+      PREVIOUS_TAG=$(jq -r '.tag_name // empty' /tmp/gh-aw/agent/release-data/previous_release.json)
+      echo "[]" > /tmp/gh-aw/agent/release-data/pull_requests.json
+      if [ -n "$PREVIOUS_TAG" ]; then
+        git rev-parse --verify "refs/tags/$PREVIOUS_TAG" >/dev/null
+        git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null
+        git rev-list "refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG" |
+          while IFS= read -r commit_sha; do
+            if ! [[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "Invalid commit SHA in release range." >&2
+              exit 1
+            fi
+            COMMIT_PRS=$(gh api --paginate --slurp \
+              "/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100" \
+              --jq 'add | map({
+                number,
+                title,
+                author: {login: .user.login},
+                labels: (.labels | map({name})),
+                mergedAt: .merged_at,
+                url: .html_url,
+                body
+              })')
+            jq --argjson prs "$COMMIT_PRS" '. + $prs | unique_by(.number)' \
+              /tmp/gh-aw/agent/release-data/pull_requests.json \
+              > /tmp/gh-aw/agent/release-data/pull_requests.next.json
+            mv /tmp/gh-aw/agent/release-data/pull_requests.next.json \
+              /tmp/gh-aw/agent/release-data/pull_requests.json
+          done
+        git diff --name-only --diff-filter=AM \
+          "refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG" \
+          -- 'adr/*.md' 'docs/adr/*.md' \
+          > /tmp/gh-aw/agent/release-data/adr_paths.txt
       else
-        echo "[]" > /tmp/gh-aw/agent/release-data/pull_requests.json
+        git ls-files -- 'adr/*.md' 'docs/adr/*.md' \
+          > /tmp/gh-aw/agent/release-data/adr_paths.txt
       fi
 
       : > /tmp/gh-aw/agent/release-data/release_adrs.md
       WORKSPACE_ROOT=$(realpath -- "$GITHUB_WORKSPACE")
-      jq -r '[.[].files[]?.path | select(startswith("adr/") or startswith("docs/adr/"))] | unique[]' \
-        /tmp/gh-aw/agent/release-data/pull_requests.json |
-        while IFS= read -r adr_path; do
+      while IFS= read -r adr_path; do
           case "$adr_path" in
             adr/*.md|docs/adr/*.md)
               RESOLVED_ADR=$(realpath -- "$adr_path" 2>/dev/null || true)
@@ -340,7 +367,7 @@ steps:
               fi
               ;;
           esac
-        done
+        done < /tmp/gh-aw/agent/release-data/adr_paths.txt
 
       CHANGELOG_PATH=$(realpath -- CHANGELOG.md 2>/dev/null || true)
       if [ -f CHANGELOG.md ] && [ ! -L CHANGELOG.md ] && [ "$CHANGELOG_PATH" = "$WORKSPACE_ROOT/CHANGELOG.md" ]; then
