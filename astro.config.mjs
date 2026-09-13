@@ -105,7 +105,8 @@ export default defineConfig({
           label: "Get started",
           items: [
             { label: "Quickstart", link: "/getting-started/" },
-            { label: "Package catalog", link: "/catalog/" },
+            { label: "Author your first operation", link: "/author-your-first-operation/" },
+            { label: "Operations Catalog", link: "/catalog/" },
             { label: "Configure authentication", link: "/authentication/" },
           ],
         },
@@ -124,6 +125,7 @@ export default defineConfig({
           items: [
             { label: "Configuration", link: "/configuration/" },
             { label: "Control plane overview", link: "/architecture/" },
+            { label: "What is CAO?", link: "/architecture-at-a-glance/" },
             { label: "Dashboard Overview", link: "/dashboard-overview/" },
             { label: "Dashboard Data Model", link: "/dashboard-data-model/" },
             { label: "CAO Activity", link: "/activity/" },

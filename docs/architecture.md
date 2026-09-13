@@ -66,6 +66,7 @@ Central Agentic Ops governs participating catalog workflows. Use GitHub rulesets
 
 | Read | When you need to understand |
 | --- | --- |
+| [What Is Central Agentic Ops?](architecture-at-a-glance.md) | How ready-made or custom operations scale across GitHub from one place |
 | [Deployment and Governance](deployment-and-governance.md) | Organization and enterprise topologies, ownership, target enrollment, provenance, reporting identity, and the broader governance boundary |
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
 | [Orchestrators and Workers](orchestrators-and-workers.md) | Package-specific authority, worker enforcement, eligibility, and worker ceilings |

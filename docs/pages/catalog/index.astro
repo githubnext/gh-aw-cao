@@ -7,15 +7,19 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 <StarlightPage
   frontmatter={{
-    title: "Package catalog",
-    description: "Installable Central Agentic Ops packages discovered from their aw.yml manifests.",
+    title: "Operations Catalog",
+    description: "Ready-to-install Central Agentic Ops operation packages discovered from their aw.yml manifests.",
     editUrl: false,
   }}
 >
   <p class="catalog-intro">
-    Install a focused package into your private control plane. Every entry is generated from its manifest and opens to
+    Choose a ready operation for your private operations hub. Every entry is generated from its manifest and opens to
     GitHub installation instructions, workflow inventory, and the package's full README when available. Private
     packages are omitted because gh-aw rejects them; experimental packages are labeled before installation.
+  </p>
+  <p class="catalog-author">
+    Need a different outcome? <a href={`${basePath}/author-your-first-operation/`}>Author your first operation</a> and
+    prove it safely on one repository before proposing it for this curated catalog.
   </p>
 
   <section class="catalog-browser not-content" aria-label="Browse packages">
@@ -86,6 +90,10 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
     max-width: 46rem;
     color: var(--sl-color-gray-2);
     font-size: 1.05rem;
+  }
+
+  .catalog-author {
+    max-width: 46rem;
   }
 
   .catalog-browser {

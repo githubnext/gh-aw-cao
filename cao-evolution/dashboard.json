@@ -3,7 +3,7 @@
   "dashboard": {
     "id": "cao-evolution-dashboard",
     "title": "CAO Evolution",
-    "description": "Track control-plane evolution and agentic-workflow failure and security maintenance.",
+    "description": "Track control-plane evolution, operation recommendations, and agentic-workflow maintenance.",
     "repository": "githubnext/gh-aw-cao",
     "queries": [
       {
@@ -16,6 +16,7 @@
               "field": "workflow",
               "in": [
                 ".github/workflows/cao-evolution.md",
+                ".github/workflows/cao-evolution-catalog-advisor.md",
                 ".github/workflows/cao-evolution-efficiency.md",
                 ".github/workflows/cao-evolution-integrity.md",
                 ".github/workflows/cao-evolution-reliability.md",
@@ -36,7 +37,7 @@
       },
       {
         "name": "cao-evolution-outcomes",
-        "intent": "List retained CAO Evolution outcomes so operators can act on current control-plane integrity, reliability, and efficiency work.",
+        "intent": "List retained CAO Evolution outcomes so operators can act on current control-plane health and operation recommendations.",
         "from": "outcomes",
         "filter": {
           "predicates": [
@@ -83,7 +84,7 @@
         "id": "cao-evolution-dashboard",
         "kind": "custom",
         "title": "CAO Evolution",
-        "description": "Track control-plane evolution and agentic-workflow failure and security maintenance.",
+        "description": "Track control-plane evolution, operation recommendations, and agentic-workflow maintenance.",
         "icon": "gear",
         "views": [
           {
@@ -163,6 +164,7 @@
               "filters": {
                 "workflow": [
                   ".github/workflows/cao-evolution.md",
+                  ".github/workflows/cao-evolution-catalog-advisor.md",
                   ".github/workflows/cao-evolution-efficiency.md",
                   ".github/workflows/cao-evolution-integrity.md",
                   ".github/workflows/cao-evolution-reliability.md",
@@ -244,7 +246,7 @@
           },
           {
             "id": "cao-evolution-outcomes",
-            "description": "Retained integrity, reliability, and efficiency items remain advisory until a maintainer accepts the action.",
+            "description": "Retained health and catalog recommendations remain advisory until a maintainer accepts the action.",
             "disclosure": "supplemental",
             "data": {
               "source": "cao-evolution-outcomes",

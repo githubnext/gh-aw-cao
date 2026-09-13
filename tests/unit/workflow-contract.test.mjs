@@ -83,7 +83,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 40);
+  assert.equal(operationWorkflows.length, 41);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
@@ -140,6 +140,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const orchestrator = workflow("cao-evolution.md");
   const workers = [
+    ["catalog-advisor", "cao-evolution-catalog-advisor"],
     ["compiler-security", "cao-evolution-compiler-security"],
     ["efficiency", "cao-evolution-efficiency"],
     ["failures-investigator", "cao-evolution-failures-investigator"],
@@ -163,6 +164,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     },
   });
   assert.deepEqual(manifest.includes.sort(), [
+    ".github/workflows/cao-evolution-catalog-advisor.md",
     ".github/workflows/cao-evolution-compiler-security.md",
     ".github/workflows/cao-evolution-efficiency.md",
     ".github/workflows/cao-evolution-failures-investigator.md",
@@ -181,7 +183,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   });
   assert.match(orchestrator, /A \*\*control repository\*\* has `\.github\/workflows\/cao\.json`/);
   assert.match(orchestrator, /An \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` package manifest/);
-  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-failures-investigator, cao-evolution-compiler-security\]/);
+  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security\]/);
   assert.match(orchestrator, /Dispatch each eligible worker at most once for each selected repository and effective mode/);
   for (const [workerName, workflowName] of workers) {
     const source = workflow(`${workflowName}.md`);
@@ -189,8 +191,12 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     assert.match(source, /deduplicate-by-title: true/);
     assert.match(source, /(?:required-labels|labels): \[cao-evolution, cao-evolution:/);
   }
-  assert.match(orchestrator, /Dispatch the integrity, reliability, and efficiency workers only for verified control repositories/);
+  assert.match(orchestrator, /Dispatch the integrity, reliability, efficiency, and catalog-advisor workers only for verified control repositories/);
   assert.match(orchestrator, /Dispatch the failure investigator and compiler-security workers only for verified agentic-workflow repositories/);
+  const catalogAdvisor = workflow("cao-evolution-catalog-advisor.md");
+  assert.match(catalogAdvisor, /Use `githubnext\/gh-aw-cao` as the official Operations Catalog/);
+  assert.match(catalogAdvisor, /Never install or update a package, edit policy, dispatch a workflow/);
+  assert.match(catalogAdvisor, /installation and enablement require separate reviewed changes/);
   assert.match(workflow("cao-evolution-reliability.md"), /uses: shared\/activity-cache\.md/);
   const efficiency = workflow("cao-evolution-efficiency.md");
   assert.match(efficiency, /same authoritative activity and safe-output evidence that the dashboard normalizes into browser IndexedDB/);
@@ -513,7 +519,8 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "uk-ai-advisory.md": { credits: 250, timeout: 15, dispatchMax: 50, workers: 1 },
     "uk-ai-advisory-package-maintainer.md": { credits: 200, timeout: 20 },
     "uk-ai-advisory-operational-resilience.md": { credits: 600, timeout: 30 },
-    "cao-evolution.md": { credits: 250, timeout: 15, dispatchMax: 5, workers: 5 },
+    "cao-evolution.md": { credits: 250, timeout: 15, dispatchMax: 6, workers: 6 },
+    "cao-evolution-catalog-advisor.md": { credits: 400, timeout: 40 },
     "cao-evolution-efficiency.md": { credits: 450, timeout: 40 },
     "cao-evolution-integrity.md": { credits: 400, timeout: 35 },
     "cao-evolution-reliability.md": { credits: 450, timeout: 40 },
@@ -609,7 +616,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 40, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 41, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -2785,6 +2792,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "optimization-skills-curator.lock.yml",
       "cao-evolution-failures-investigator.lock.yml",
       "cao-evolution-compiler-security.lock.yml",
+      "cao-evolution-catalog-advisor.lock.yml",
       "cao-evolution-efficiency.lock.yml",
       "cao-evolution-integrity.lock.yml",
       "cao-evolution-reliability.lock.yml",
@@ -2913,6 +2921,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["optimization-skills-curator.lock.yml", ["optimization", "skills-curator"]],
       ["cao-evolution-failures-investigator.lock.yml", ["cao-evolution", "failures-investigator"]],
       ["cao-evolution-compiler-security.lock.yml", ["cao-evolution", "compiler-security"]],
+      ["cao-evolution-catalog-advisor.lock.yml", ["cao-evolution", "catalog-advisor"]],
       ["cao-evolution-efficiency.lock.yml", ["cao-evolution", "efficiency"]],
       ["cao-evolution-integrity.lock.yml", ["cao-evolution", "integrity"]],
       ["cao-evolution-reliability.lock.yml", ["cao-evolution", "reliability"]],
@@ -3448,7 +3457,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
       id: bundle.id,
       workers: bundle.workers.map((worker) => worker.id),
     })), [
-      { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency", "cao-evolution-failures-investigator", "cao-evolution-compiler-security"] },
+      { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency", "cao-evolution-catalog-advisor", "cao-evolution-failures-investigator", "cao-evolution-compiler-security"] },
       { id: "dependabot", workers: ["dependabot-release-train-updater"] },
       {
         id: "eu-cra-compliance",

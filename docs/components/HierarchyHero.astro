@@ -121,8 +121,34 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
     </div>
   </figure>
 
-  <OpsWizard />
 </div>
+
+<section class="operations-overview" aria-labelledby="operations-overview-title">
+  <div class="overview-copy">
+    <p class="overview-eyebrow">Agentic operations as code</p>
+    <h2 id="operations-overview-title">Package once. Operate everywhere.</h2>
+    <p>
+      Choose a ready operation or build your own. Customize it once, run it safely across any set of repositories, and
+      prove the value it delivers.
+    </p>
+  </div>
+
+  <ol class="operations-path" aria-label="How Central Agentic Ops works">
+    <li><span>1</span>Choose or build</li>
+    <li><span>2</span>Package your expertise</li>
+    <li><span>3</span>Run on one repository or thousands</li>
+    <li><span>4</span>Review and measure the outcome</li>
+  </ol>
+
+  <p class="overview-boundary">
+    Each organization, team, region, or trust boundary can run its own operations hub. Central means managed in one
+    place within that boundary, not one global installation. The CAO Evolution operation can spot missing capabilities
+    and suggest what to adopt or author next; maintainers still approve every installation and rollout.
+  </p>
+  <a class="overview-link" href="/gh-aw-cao/architecture-at-a-glance/">See how Central Agentic Ops works <span aria-hidden="true">→</span></a>
+</section>
+
+<OpsWizard />
 
 <style>
   @layer starlight.core {
@@ -317,6 +343,79 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
       display: none;
     }
 
+    .operations-overview {
+      width: min(100%, 64rem);
+      margin: 0 auto 3rem;
+      padding: 2.5rem clamp(1rem, 4vw, 3rem);
+      border-block: 1px solid var(--sl-color-gray-5);
+    }
+
+    .overview-copy {
+      max-width: 48rem;
+    }
+
+    .overview-eyebrow {
+      margin: 0 0 0.5rem;
+      color: var(--sl-color-text-accent);
+      font-size: var(--sl-text-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .operations-overview h2 {
+      margin: 0;
+      color: var(--sl-color-white);
+      font-size: clamp(1.75rem, 3vw, 2.5rem);
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .overview-copy > p:last-child,
+    .overview-boundary {
+      color: var(--sl-color-gray-2);
+      line-height: 1.6;
+    }
+
+    .operations-path {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .operations-path li {
+      border-block-start: 2px solid var(--sl-color-text-accent);
+      padding-block-start: 0.75rem;
+      color: var(--sl-color-white);
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    .operations-path span {
+      display: block;
+      margin-block-end: 0.25rem;
+      color: var(--sl-color-text-accent);
+      font-size: var(--sl-text-xs);
+    }
+
+    .overview-boundary {
+      max-width: 56rem;
+      margin-block: 0 1rem;
+    }
+
+    .overview-link {
+      color: var(--sl-color-text-accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .overview-link:hover,
+    .overview-link:focus-visible {
+      text-decoration: underline;
+    }
+
     @keyframes hero-enter {
       from { opacity: 0; transform: translateY(0.75rem); }
       to { opacity: 1; transform: translateY(0); }
@@ -368,6 +467,15 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
 
       .mobile-pipeline-image {
         object-fit: contain;
+      }
+
+      .operations-overview {
+        margin-block-end: 2rem;
+        padding-block: 2rem;
+      }
+
+      .operations-path {
+        grid-template-columns: 1fr 1fr;
       }
     }
 

@@ -41,6 +41,9 @@
         "mode": "review",
         "max-repositories": 1,
         "workers": {
+          "catalog-advisor": {
+            "workflow": "cao-evolution-catalog-advisor"
+          },
           "compiler-security": {
             "workflow": "cao-evolution-compiler-security"
           },

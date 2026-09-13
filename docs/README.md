@@ -1,19 +1,19 @@
 ---
 title: Central Agentic Ops
-description: Start, operate, and govern enterprise-scale GitHub Agentic Workflows safely.
+description: Package engineering expertise once, operate across repositories, and prove the outcome.
 template: splash
 editUrl: false
 prev: false
 next: false
 hero:
-  title: Agentic Operations. At Enterprise Scale. One Control Plane.
-  tagline: Dispatch trusted workflows across organizations and more than 10,000 remote target repositories, with bounded review, authorized live execution, and traceable outcomes built in.
+  title: Central Agentic Ops
+  tagline: Package once. Operate everywhere. Turn engineering expertise into reusable AI operations that improve one repository or thousands.
   actions:
-    - text: Get started
+    - text: Run your first operation
       link: /gh-aw-cao/getting-started/
       icon: right-arrow
-    - text: Learn more
-      link: /gh-aw-cao/architecture/
+    - text: Explore operations
+      link: /gh-aw-cao/catalog/
       variant: secondary
       icon: right-arrow
     - text: View our dashboard
