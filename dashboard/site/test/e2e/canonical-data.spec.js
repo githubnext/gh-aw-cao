@@ -393,8 +393,8 @@ test('repositories view retains configured repository scope after canonical inge
     }));
     const renderedText = document.querySelector('[data-page-id="repositories"]')?.textContent ?? '';
     return {
-      sourceRepositories: projected.repositories.rows.map((row) => `${row.organization}/${row.repository}`).sort(),
-      activityRepositories: preparedSources['repository-activity'].rows.map((row) => row.repository).sort(),
+      sourceRepositories: projected.repositories.rows.map((/** @type {Record<string, unknown>} */ row) => `${row.organization}/${row.repository}`).sort(),
+      activityRepositories: preparedSources['repository-activity'].rows.map((/** @type {Record<string, unknown>} */ row) => row.repository).sort(),
       renderedText
     };
   }, scopedRepositorySources());
