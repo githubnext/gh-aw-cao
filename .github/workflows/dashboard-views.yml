@@ -114,6 +114,8 @@ jobs:
             const isPullRequest = context.eventName === 'pull_request'
             const safeIdentifier = (value) =>
               String(value ?? '').replace(/[^A-Za-z0-9._-]/g, '?').slice(0, 80)
+            const safeSummaryText = (value) =>
+              String(value ?? '').replace(/[\r\n|]+/g, ' ').trim().slice(0, 500)
             let body
 
             if ('${{ steps.download.outcome }}' !== 'success' || !fs.existsSync(summaryPath)) {
@@ -160,6 +162,7 @@ jobs:
                 return `| ${pageId} | ${status} | ${domNodes} | ${findings.join('; ') || 'None'} |`
               })
               const passed = results.filter((result) => result.status === 'passed').length
+              const blocker = summary.blocker ? safeSummaryText(summary.blocker) : ''
               body = [
                 marker,
                 '### Dashboard view assessment',
@@ -170,7 +173,7 @@ jobs:
                     : 'No dashboard views were assessed.'
                   : `**${passed}/${results.length}** ${isPullRequest ? 'selected ' : ''}views passed the informational assessment. ` +
                   `The DOM budget is **${summary.maximumDomNodes}** nodes per loaded view.`,
-                summary.blocker ? '\nThe assessment was blocked before every view could be checked.' : '',
+                blocker ? `Assessment blocker: ${blocker}` : '',
                 '',
                 '| View | Result | DOM nodes | Findings |',
                 '|---|---:|---:|---|',
@@ -214,16 +217,32 @@ jobs:
                 issue.body?.includes(marker)
               )
               for (const issue of previous) {
-                await github.rest.issues.update({
-                  ...context.repo,
-                  issue_number: issue.number,
-                  state: 'closed',
-                  state_reason: 'completed',
-                })
+                await github.graphql(
+                  `mutation($input: CloseIssueInput!) {
+                    closeIssue(input: $input) {
+                      issue { id }
+                    }
+                  }`,
+                  {
+                    input: {
+                      issueId: issue.node_id,
+                      stateReason: 'COMPLETED',
+                    },
+                  },
+                )
               }
-              await github.rest.issues.create({
-                ...context.repo,
-                title: 'Dashboard view assessment',
-                body,
-              })
+              await github.graphql(
+                `mutation($input: CreateIssueInput!) {
+                  createIssue(input: $input) {
+                    issue { id }
+                  }
+                }`,
+                {
+                  input: {
+                    repositoryId: context.payload.repository.node_id,
+                    title: 'Dashboard view assessment',
+                    body,
+                  },
+                },
+              )
             }
