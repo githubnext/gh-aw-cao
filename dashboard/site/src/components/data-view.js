@@ -602,7 +602,7 @@ function renderChartView(context) {
     );
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
-  if (chartType === 'swimlane' && continuation && !pending) {
+  if (chartType === 'swimlane' && continuation?.token && !pending) {
     let chartRows = [...rows];
     /** @type {string | undefined} */
     let token = continuation.token;
@@ -620,15 +620,25 @@ function renderChartView(context) {
           const nextWidget = rendered.chartContent.find((element) =>
             element.matches?.('[data-chart-widget="swimlane"]')
           );
-          if (!(nextWidget instanceof HTMLElement) || !chartWidget) return;
+          if (!(nextWidget instanceof HTMLElement) || !chartWidget) {
+            throw new Error('Unable to render the next swimlane page.');
+          }
           nextWidget.setAttribute('aria-busy', String(Boolean(token)));
           chartWidget.replaceWith(nextWidget);
           chartWidget = nextWidget;
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
-      } catch {
-        chartWidget?.setAttribute('aria-busy', 'false');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Unable to load additional swimlane runs: ${message}`);
         chartWidget?.setAttribute('data-continuation-state', 'error');
+        section.append(h(
+          'p',
+          { className: 'view-context', role: 'status' },
+          'Showing partial results because additional runs could not be loaded.'
+        ));
+      } finally {
+        chartWidget?.setAttribute('aria-busy', 'false');
       }
     })();
   }

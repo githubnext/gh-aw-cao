@@ -533,6 +533,53 @@ describe('data view renderer', () => {
     expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
   });
 
+  it('keeps partial swimlane results visible when a continuation fails', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const rendered = renderDataView('chart', {
+      pageId: 'runs',
+      title: 'Workflow runs',
+      view: {
+        mark: 'chart',
+        chart: 'swimlane',
+        encoding: {
+          x: { field: 'started-at', type: 'temporal' },
+          y: { field: 'run-conclusion', type: 'ordinal' }
+        }
+      },
+      sourceName: 'runs-table',
+      rows: [{ run: '1', 'started-at': '2026-08-31T12:48:37Z', 'run-conclusion': 'success' }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: (_pageId, _title, chartRows) => chartRows.map((row) => ({
+        key: String(row.run),
+        x: String(row['started-at']),
+        y: Number.NaN,
+        category: String(row['run-conclusion']),
+        color: String(row['run-conclusion']),
+        link: null,
+        source: row
+      })),
+      prepareChartPoints: (points) => points,
+      toText: String,
+      continuation: {
+        token: 'page-2',
+        totalRows: 2,
+        load: vi.fn().mockRejectedValue(new Error('worker unavailable'))
+      }
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    await vi.waitFor(() => {
+      expect(rendered?.textContent).toContain('Showing partial results because additional runs could not be loaded.');
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
+    });
+    expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
+    expect(error).toHaveBeenCalledWith('Unable to load additional swimlane runs: worker unavailable');
+    error.mockRestore();
+  });
+
   it('renders the scatter legend after the graph', () => {
     const scatter = renderDataView('chart', {
       pageId: 'github-api',

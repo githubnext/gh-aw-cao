@@ -178,20 +178,6 @@ export function dashboardPageLazySourceNames(document, pageId) {
 }
 
 /**
- * Returns sources plotted by chart views on a page.
- * @param {PresentationDocument} document
- * @param {string} pageId
- */
-export function dashboardPageChartSourceNames(document, pageId) {
-  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
-  if (!page) return [];
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-  return [...new Set((payload.views ?? []).flatMap((view) =>
-    isPlainObject(view) && view.mark === 'chart' ? getViewSources(view) : []
-  ))];
-}
-
-/**
  * @param {PresentationInput} input
  * @returns {HTMLElement}
  */
@@ -1978,6 +1964,8 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 
+  // Swimlanes consume the same paginated run source as their companion lazy
+  // table, but render each continuation page as it arrives.
   const sourcePage = view['lazy-list'] === true || (view.mark === 'chart' && view.chart === 'swimlane')
     ? sourceContinuation(sourceInput)
     : undefined;
