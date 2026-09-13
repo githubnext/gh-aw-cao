@@ -750,6 +750,54 @@ describe('data view renderer', () => {
     expect(link?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
   });
 
+  it('renders repository and workflow display links to GitHub when both dashboard and external links are present', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'mcps',
+      title: 'MCP tools',
+      view: {
+        mark: 'table',
+        'column-summaries': false,
+        encoding: {
+          columns: [
+            { field: 'repository', type: 'nominal', display: 'repository-link' },
+            { field: 'workflow', type: 'nominal', display: 'workflow-link' }
+          ]
+        }
+      },
+      sourceName: 'mcp-tool-activity',
+      rows: [{
+        repository: 'githubnext/gh-aw-cao',
+        workflow: '.github/workflows/cid.yml',
+        'repository-link': {
+          relation: 'repository',
+          href: 'https://github.com/githubnext/gh-aw-cao',
+          label: 'Open githubnext/gh-aw-cao',
+          'dashboard-href': '#page-repositories?repository=githubnext%2Fgh-aw-cao',
+          'dashboard-label': 'Open repository details'
+        },
+        'workflow-link': {
+          relation: 'workflow',
+          href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/cid.yml',
+          label: 'Open .github/workflows/cid.yml',
+          'dashboard-href': '#page-workflows?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fcid.yml',
+          'dashboard-label': 'Open workflow details'
+        }
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const links = rendered?.querySelectorAll('tbody a');
+    expect(links).toHaveLength(2);
+    expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
+    expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/cid.yml');
+  });
+
   it.each([
     {
       title: 'Blocked work',

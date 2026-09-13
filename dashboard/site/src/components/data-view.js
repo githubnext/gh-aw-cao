@@ -28,6 +28,36 @@ const ENTITY_LINK_FIELDS = {
 };
 const RUN_FIELD = 'run';
 const RUN_LINK_FIELD = 'run-link';
+const REPOSITORY_LINK_DISPLAY = 'repository-link';
+const WORKFLOW_LINK_DISPLAY = 'workflow-link';
+const GITHUB_ENTITY_DISPLAY_FIELDS = {
+  [REPOSITORY_LINK_DISPLAY]: 'repository',
+  [WORKFLOW_LINK_DISPLAY]: 'workflow'
+};
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {'repository-link' | 'workflow-link'} field
+ * @param {string} fallbackLabel
+ * @returns {{ href: string, label: string } | null} Uses the raw GitHub `href` from the row link object when present and safe; otherwise falls back to the resolved dashboard-safe link.
+ */
+function resolveGithubEntityLink(row, field, fallbackLabel) {
+  const candidate = row[field];
+  if (
+    isPlainObject(candidate)
+    && typeof candidate.href === 'string'
+    && isSafeHttpsUrl(candidate.href)
+  ) {
+    const label = typeof candidate.label === 'string' && candidate.label.trim().length > 0
+      ? candidate.label
+      : fallbackLabel;
+    return {
+      href: candidate.href,
+      label
+    };
+  }
+  return findLink(row, field);
+}
 
 /**
  * @typedef {{ field: string, aggregate?: string, as?: string, direction?: string, display?: string } & Record<string, unknown>} TableField
@@ -259,19 +289,36 @@ function renderTableView(context) {
           ? { className: 'table-status-detail', 'data-status': toText(row.status).toLowerCase() }
           : {})
       };
-      const value = outputField === 'status-detail'
-        ? renderStatusDetail(row, view, toText)
-        : column.aggregate
-        ? renderCellValue(column, row[outputField], row)
-        : column.field === RUN_FIELD
-          ? renderWorkflowRunLink(row, toText(row[outputField]))
-          : column.display === 'run-link'
-            ? renderWorkflowRunLink(row, toText(row[outputField]))
-          : column.display === 'evidence-link'
-            ? renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'))
-          : column.display === 'outcome-link'
-            ? renderOutcomeLink(row, toText(row[outputField]))
-            : renderCellValue(column, row[outputField], row);
+      let value;
+      if (outputField === 'status-detail') {
+          value = renderStatusDetail(row, view, toText);
+      } else if (column.aggregate) {
+          value = renderCellValue(column, row[outputField], row);
+      } else if (column.field === RUN_FIELD || column.display === 'run-link') {
+          value = renderWorkflowRunLink(row, toText(row[outputField]));
+      } else if (
+          column.display === REPOSITORY_LINK_DISPLAY
+          || column.display === WORKFLOW_LINK_DISPLAY
+      ) {
+          const fallbackField = GITHUB_ENTITY_DISPLAY_FIELDS[column.display];
+          const fallbackValue = typeof fallbackField === 'string'
+            ? toText(row[fallbackField])
+            : '';
+          value = renderLinkedValue(
+            toText(row[outputField]),
+            resolveGithubEntityLink(
+              row,
+              /** @type {'repository-link' | 'workflow-link'} */ (column.display),
+              fallbackValue
+            )
+          );
+      } else if (column.display === 'evidence-link') {
+          value = renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'));
+      } else if (column.display === 'outcome-link') {
+          value = renderOutcomeLink(row, toText(row[outputField]));
+      } else {
+          value = renderCellValue(column, row[outputField], row);
+      }
       /** @param {string | HTMLElement} content */
       const constrainOutputEvidence = (content) => column.display === 'outcome-link'
         ? h('span', { className: 'table-output-evidence' }, content)
