@@ -661,37 +661,38 @@ function renderChartView(context) {
       });
       queueMicrotask(async () => {
         let current = continuationState.get();
+        /** @type {Array<Record<string, unknown>>} */
+        const pendingRows = [];
+        let token = current.token;
         try {
-          while (active && current.token) {
-            const next = await continuation.load(current.token);
-            if (!active || (wasConnected && !section.isConnected)) return;
-            wasConnected ||= section.isConnected;
-            const chunks = next.rows.length === 0
-              ? [[]]
-              : Array.from(
-                  { length: Math.ceil(next.rows.length / SWIMLANE_CONTINUATION_CHUNK_SIZE) },
-                  (_, index) => next.rows.slice(
-                    index * SWIMLANE_CONTINUATION_CHUNK_SIZE,
-                    (index + 1) * SWIMLANE_CONTINUATION_CHUNK_SIZE
-                  )
-                );
-            for (const [index, chunk] of chunks.entries()) {
+          while (active && (token || pendingRows.length > 0)) {
+            while (active && token && pendingRows.length < SWIMLANE_CONTINUATION_CHUNK_SIZE) {
+              const next = await continuation.load(token);
               if (!active || (wasConnected && !section.isConnected)) return;
-              const finalChunk = index === chunks.length - 1;
-              current = {
-                rows: [...current.rows, ...chunk],
-                token: finalChunk ? next.continuationToken : current.token,
-                error: null
-              };
-              continuationState.set(current);
-              await new Promise((resolve) => setTimeout(resolve, 0));
+              wasConnected ||= section.isConnected;
+              pendingRows.push(...next.rows);
+              token = next.continuationToken;
             }
+            if (!active || (wasConnected && !section.isConnected)) return;
+            const chunk = pendingRows.splice(0, SWIMLANE_CONTINUATION_CHUNK_SIZE);
+            current = {
+              rows: [...current.rows, ...chunk],
+              token: token || pendingRows.length > 0 ? current.token : undefined,
+              error: null
+            };
+            continuationState.set(current);
+            await new Promise((resolve) => setTimeout(resolve, 0));
           }
         } catch (error) {
           if (!active) return;
           const message = error instanceof Error ? error.message : String(error);
           console.error(`Unable to load additional swimlane runs: ${message}`);
-          continuationState.set({ ...current, token: undefined, error: message });
+          continuationState.set({
+            ...current,
+            rows: [...current.rows, ...pendingRows],
+            token: undefined,
+            error: message
+          });
         } finally {
           if (active && !continuationState.get().token) consumeEffect.stop();
         }

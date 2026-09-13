@@ -466,8 +466,8 @@ describe('data view renderer', () => {
       rows: [{ run: '2', 'started-at': '2026-08-31T12:49:37Z', 'run-conclusion': 'failure' }],
       continuationToken: 'page-3'
     });
-    await vi.waitFor(() => expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(2));
     await vi.waitFor(() => expect(load).toHaveBeenCalledWith('page-3'));
+    expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
 
     resolveFinalPage({
       rows: [{ run: '3', 'started-at': '2026-08-31T12:50:37Z', 'run-conclusion': 'skipped' }]
@@ -485,6 +485,15 @@ describe('data view renderer', () => {
       'started-at': new Date(Date.UTC(2026, 7, 31, 12, 49, index)).toISOString(),
       'run-conclusion': 'success'
     }));
+    const load = vi.fn((token) => {
+      const offset = Number(token);
+      const rows = continuationRows.slice(offset, offset + 25);
+      const nextOffset = offset + rows.length;
+      return Promise.resolve({
+        rows,
+        continuationToken: nextOffset < continuationRows.length ? String(nextOffset) : undefined
+      });
+    });
     const buildChartPoints = vi.fn((
       /** @type {string} */ _pageId,
       /** @type {string} */ _title,
@@ -519,9 +528,9 @@ describe('data view renderer', () => {
       prepareChartPoints: (points) => points,
       toText: String,
       continuation: {
-        token: 'page-2',
+        token: '0',
         totalRows: 514,
-        load: vi.fn().mockResolvedValue({ rows: continuationRows })
+        load
       }
     });
     document.body.append(/** @type {HTMLElement} */ (rendered));
@@ -529,6 +538,7 @@ describe('data view renderer', () => {
     await vi.waitFor(() => expect(buildChartPoints).toHaveBeenCalledTimes(4));
 
     expect(buildChartPoints.mock.calls.map((call) => call[2].length)).toEqual([1, 257, 513, 514]);
+    expect(load).toHaveBeenCalledTimes(21);
     expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
   });
 
