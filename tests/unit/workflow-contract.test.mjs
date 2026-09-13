@@ -1045,6 +1045,7 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.doesNotMatch(contracts, /GH_TOKEN|CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE|test:package-lifecycle/);
   assert.match(packageLifecycle, /gh api rate_limit --jq '\.resources\.core\.remaining'/);
   assert.match(packageLifecycle, /remaining < 500/);
+  assert.match(packageLifecycle, /max-parallel: 1/);
   assert.match(packageLifecycle, /if: steps\.package-api\.outputs\.ready == 'true'/);
   assert.match(packageLifecycle, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(

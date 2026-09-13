@@ -68,3 +68,47 @@ test("discovered repositories flow from control scope into canonical storage", a
     await deleteCanonicalDatabase(indexedDB);
   }
 });
+
+test("explicitly allowed repositories flow into canonical storage", async () => {
+  await deleteCanonicalDatabase(indexedDB);
+  try {
+    const generatedAt = "2026-09-13T00:00:00Z";
+    const controlSettings = {
+      allowed_owners: [],
+      allowed_repositories: ["acme/payments", "acme/storefront"],
+      packages: {},
+      policy_document: {
+        "control-plane": { inventory: { "max-scan-repositories": 100 } },
+      },
+    };
+    const discoveredRepositories = await discoverRepositories(controlSettings, {
+      token: "test-token",
+      controlRepository: "acme/control",
+      fetchImplementation: async (url) => {
+        const repository = String(url).match(/\/repos\/([^/]+\/[^/?]+)/)?.[1];
+        assert.ok(repository);
+        return new Response(JSON.stringify({
+          full_name: repository,
+          visibility: repository.endsWith("payments") ? "private" : "internal",
+        }));
+      },
+    });
+    const sources = buildInventoryDashboardSources({
+      repository: "acme/control",
+      generatedAt,
+      inventory: { generatedAt, bundles: [], workflows: [] },
+      controlSettings,
+      discoveredRepositories,
+    });
+
+    await ingestDashboardSources(indexedDB, sources);
+    const canonical = await readCanonicalBatch(indexedDB);
+
+    assert.deepEqual(
+      canonical.repositories.map(({ fullName }) => fullName).sort(),
+      ["acme/control", "acme/payments", "acme/storefront"],
+    );
+  } finally {
+    await deleteCanonicalDatabase(indexedDB);
+  }
+});
