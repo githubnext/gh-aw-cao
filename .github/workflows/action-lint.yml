@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 10
     outputs:
       failed: ${{ steps.result.outputs.failed }}
+      actionlint-failed: ${{ steps.result.outputs.actionlint-failed }}
+      zizmor-failed: ${{ steps.result.outputs.zizmor-failed }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,6 +53,8 @@ jobs:
             --format plain "${files[@]}" 2>&1 | tee /tmp/zizmor.txt
           zizmor_status=${PIPESTATUS[0]}
 
+          echo "actionlint-status=$actionlint_status" >> "$GITHUB_OUTPUT"
+          echo "zizmor-status=$zizmor_status" >> "$GITHUB_OUTPUT"
           if (( actionlint_status != 0 || zizmor_status != 0 )); then
             exit 1
           fi
@@ -60,18 +64,14 @@ jobs:
         if: always()
         env:
           LINT_FAILED: ${{ steps.lint.outcome == 'failure' }}
-        run: echo "failed=$LINT_FAILED" >> "$GITHUB_OUTPUT"
-
-      - name: Upload lint output
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: github-actions-lint
-          path: |
-            /tmp/actionlint.txt
-            /tmp/zizmor.txt
-          if-no-files-found: warn
-          retention-days: 1
+          ACTIONLINT_STATUS: ${{ steps.lint.outputs.actionlint-status }}
+          ZIZMOR_STATUS: ${{ steps.lint.outputs.zizmor-status }}
+        run: |
+          {
+            echo "failed=$LINT_FAILED"
+            echo "actionlint-failed=$(( ACTIONLINT_STATUS != 0 ))"
+            echo "zizmor-failed=$(( ZIZMOR_STATUS != 0 ))"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Report lint problems
         if: steps.lint.outcome == 'failure'
@@ -97,25 +97,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      actions: read
       contents: read
       issues: write
       pull-requests: write
     steps:
-      - name: Download lint output
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: github-actions-lint
-          path: lint-output
-
       - name: Update lint issue
         if: github.event_name == 'push'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           LINT_FAILED: ${{ needs.lint.outputs.failed }}
+          ACTIONLINT_FAILED: ${{ needs.lint.outputs.actionlint-failed }}
+          ZIZMOR_FAILED: ${{ needs.lint.outputs.zizmor-failed }}
         with:
           script: |
-            const fs = require('fs')
             const title = 'GitHub Actions lint failures on main'
             const { owner, repo } = context.repo
             const issues = await github.paginate(github.rest.issues.listForRepo, {
@@ -141,32 +135,19 @@ jobs:
               return
             }
 
-            const escapeHtml = (value) => value
-              .replaceAll('&', '&amp;')
-              .replaceAll('<', '&lt;')
-              .replaceAll('>', '&gt;')
-            const output = (path) => {
-              try {
-                return escapeHtml(fs.readFileSync(`lint-output/${path}`, 'utf8').slice(0, 25000))
-              } catch {
-                return 'No output was captured.'
-              }
-            }
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+            const failedTools = [
+              process.env.ACTIONLINT_FAILED === '1' && 'actionlint',
+              process.env.ZIZMOR_FAILED === '1' && 'zizmor',
+            ].filter(Boolean)
             const body = [
               'actionlint or zizmor found problems in GitHub Actions files on `main`.',
+              '',
+              `Failed scanners: ${failedTools.join(', ') || 'unknown'}`,
               '',
               `Workflow run: ${runUrl}`,
               '',
               'Generated `.lock.yml` files were excluded.',
-              '',
-              '<details><summary>actionlint output</summary><pre>',
-              output('actionlint.txt'),
-              '</pre></details>',
-              '',
-              '<details><summary>zizmor output</summary><pre>',
-              output('zizmor.txt'),
-              '</pre></details>',
             ].join('\n')
 
             await github.rest.issues.create({ owner, repo, title, body })
@@ -176,9 +157,10 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           LINT_FAILED: ${{ needs.lint.outputs.failed }}
+          ACTIONLINT_FAILED: ${{ needs.lint.outputs.actionlint-failed }}
+          ZIZMOR_FAILED: ${{ needs.lint.outputs.zizmor-failed }}
         with:
           script: |
-            const fs = require('fs')
             const marker = '<!-- github-actions-lint -->'
             const { owner, repo } = context.repo
             const comments = await github.paginate(github.rest.issues.listComments, {
@@ -202,33 +184,20 @@ jobs:
               return
             }
 
-            const escapeHtml = (value) => value
-              .replaceAll('&', '&amp;')
-              .replaceAll('<', '&lt;')
-              .replaceAll('>', '&gt;')
-            const output = (path) => {
-              try {
-                return escapeHtml(fs.readFileSync(`lint-output/${path}`, 'utf8').slice(0, 25000))
-              } catch {
-                return 'No output was captured.'
-              }
-            }
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+            const failedTools = [
+              process.env.ACTIONLINT_FAILED === '1' && 'actionlint',
+              process.env.ZIZMOR_FAILED === '1' && 'zizmor',
+            ].filter(Boolean)
             const body = [
               marker,
               '## GitHub Actions lint failures',
               '',
+              `Failed scanners: ${failedTools.join(', ') || 'unknown'}`,
+              '',
               `Workflow run: ${runUrl}`,
               '',
               'Generated `.lock.yml` files were excluded.',
-              '',
-              '<details><summary>actionlint output</summary><pre>',
-              output('actionlint.txt'),
-              '</pre></details>',
-              '',
-              '<details><summary>zizmor output</summary><pre>',
-              output('zizmor.txt'),
-              '</pre></details>',
             ].join('\n')
 
             if (existing) {
