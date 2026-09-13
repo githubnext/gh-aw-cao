@@ -131,7 +131,7 @@ function source(name, rows, generatedAt, available = true, complete = true, fres
 /**
  * Converts configured `owner/name` repository scope entries into repository
  * rows. Invalid entries are ignored because policy validation owns diagnostics;
- * rollout mode stays unknown until observed workflow or run data refines it.
+ * rollout mode is left unset so observed workflow or run data owns that value.
  */
 function repositoryScopeRows(controlSettings = {}, generatedAt) {
   return (controlSettings.allowed_repositories || []).flatMap((repository) => {
@@ -141,7 +141,6 @@ function repositoryScopeRows(controlSettings = {}, generatedAt) {
           organization,
           repository: name,
           "repository-name": name,
-          "rollout-mode": "unknown",
           "observed-at": generatedAt,
         }]
       : [];
