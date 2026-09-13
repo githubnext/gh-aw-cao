@@ -3,8 +3,8 @@ import test from "node:test";
 
 import {
   ensureGhAwAvailable,
-  executeGhAwCommand,
-  parseGhAwCommand,
+  executeDashboardCommand,
+  parseDashboardCommand,
   resolveGhAwCompilerVersion,
 } from "../../com.github.copilot/extensions/cao-dashboard/cli-actions.mjs";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
@@ -15,21 +15,23 @@ test("CLI actions read the gh-aw compiler version from cao.json", async () => {
 
 test("CLI actions parse quoted gh aw arguments without a shell", () => {
   assert.deepEqual(
-    parseGhAwCommand("gh aw compile --strict --name 'Release check'"),
+    parseDashboardCommand("gh aw compile --strict --name 'Release check'"),
     ["gh", "aw", "compile", "--strict", "--name", "Release check"],
   );
 });
 
-test("CLI actions reject commands outside gh aw", () => {
-  assert.throws(() => parseGhAwCommand("gh api user"), /must be an explicit/);
-  assert.throws(() => parseGhAwCommand("sh -c 'gh aw compile'"), /must be an explicit/);
-  assert.throws(() => parseGhAwCommand("gh aw compile\nwhoami"), /single line/);
-  assert.throws(() => parseGhAwCommand("gh aw compile '"), /incomplete/);
+test("CLI actions reject commands outside supported GitHub CLI commands", () => {
+  assert.throws(() => parseDashboardCommand("gh api user"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand("gh workflow view"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand("gh workflow run --repo octo/example"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand("sh -c 'gh aw compile'"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand("gh aw compile\nwhoami"), /single line/);
+  assert.throws(() => parseDashboardCommand("gh aw compile '"), /incomplete/);
 });
 
 test("CLI actions execute gh directly with the approved token", async () => {
   const calls = [];
-  const result = await executeGhAwCommand({
+  const result = await executeDashboardCommand({
     command: "gh aw compile --strict",
     workingDirectory: "/workspace",
     githubToken: "token-value",
@@ -107,7 +109,7 @@ test("CLI actions fall back to the pinned curl installer", async () => {
 
 test("CLI actions use the authenticated gh token when no environment token is available", async () => {
   const calls = [];
-  await executeGhAwCommand({
+  await executeDashboardCommand({
     command: "gh aw update",
     workingDirectory: "/workspace",
     execute: async (executable, args, options) => {
@@ -135,7 +137,7 @@ test("CLI actions use the authenticated gh token when no environment token is av
 
 test("CLI actions stream command output when an output handler is provided", async () => {
   const output = [];
-  const result = await executeGhAwCommand({
+  const result = await executeDashboardCommand({
     command: "gh aw update",
     workingDirectory: "/workspace",
     githubToken: "token-value",
@@ -155,6 +157,7 @@ test("CLI actions stream command output when an output handler is provided", asy
         name: "octocat",
         email: "1+octocat@users.noreply.github.com",
       });
+
       onOutput({ stream: "stdout", data: "updating\n" });
       onOutput({ stream: "stderr", data: "warning\n" });
       return { ok: true, exitCode: 0, stdout: "", stderr: "" };
@@ -166,6 +169,32 @@ test("CLI actions stream command output when an output handler is provided", asy
     { stream: "stdout", data: "updating\n" },
     { stream: "stderr", data: "warning\n" },
   ]);
+});
+
+test("dashboard actions dispatch workflows without installing gh-aw", async () => {
+  const calls = [];
+  const result = await executeDashboardCommand({
+    command: "gh workflow run maintenance.yml --repo octo/example --ref main",
+    workingDirectory: "/workspace",
+    githubToken: "token-value",
+    execute: async (...args) => {
+      calls.push(args);
+      return { stdout: "queued\n", stderr: "" };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls.map(([, args]) => args), [[
+    "workflow",
+    "run",
+    "maintenance.yml",
+    "--repo",
+    "octo/example",
+    "--ref",
+    "main",
+  ]]);
+  assert.equal(calls[0][2].env.GH_TOKEN, "token-value");
+  assert.equal(calls[0][2].env.GIT_AUTHOR_NAME, undefined);
 });
 
 test("dashboard composition merges CLI actions and rejects duplicate ids", () => {

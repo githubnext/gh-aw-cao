@@ -39,7 +39,7 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
-  it('accepts only explicit gh aw CLI actions', () => {
+  it('accepts only explicit gh aw and workflow dispatch CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
       id: 'compile-workflows',
@@ -59,12 +59,27 @@ describe('dashboard document validation', () => {
     const addedAction = document.dashboard['cli-actions'][document.dashboard['cli-actions'].length - 1];
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
+    addedAction.command = 'gh workflow run maintenance.yml --repo {{repository}}';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
     addedAction.command = 'gh api user';
     const rejected = validateDashboardDocument(JSON.stringify(document));
     expect(rejected.ok).toBe(false);
     expect(rejected.errors).toEqual(expect.arrayContaining([
-      expect.objectContaining({ message: 'CLI action command must start with "gh aw".' })
+      expect.objectContaining({
+        message: 'CLI action command must start with "gh aw" or "gh workflow run <workflow>".'
+      })
     ]));
+
+    addedAction.command = 'gh workflow run --repo octo/example';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'CLI action command must start with "gh aw" or "gh workflow run <workflow>".'
+        })
+      ])
+    });
 
     addedAction.command = 'gh aw compile; echo unsafe';
     const shellControlOperator = validateDashboardDocument(JSON.stringify(document));

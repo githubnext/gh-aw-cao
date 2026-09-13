@@ -607,10 +607,10 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             `${path}.command`
           ));
         }
-        if (!/^gh\s+aw(?:\s|$)/.test(action.command)) {
+        if (!/^gh\s+(?:aw(?:\s|$)|workflow\s+run\s+(?!-)\S+)/.test(action.command)) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'CLI action command must start with "gh aw".',
+            'CLI action command must start with "gh aw" or "gh workflow run <workflow>".',
             `${path}.command`
           ));
         }

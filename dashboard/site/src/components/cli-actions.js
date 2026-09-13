@@ -236,7 +236,7 @@ function renderCliActionControl(action, options = {}) {
           ...inputs.map(({ element }) => element))
         : null,
       h('p', null, canExecute
-        ? 'Review and approve this command. Approval applies to this run only. If gh aw is unavailable, this run may install the pinned CLI extension first.'
+        ? 'Review and approve this GitHub CLI command. Approval applies to this run only. Actions that use gh aw may install the pinned extension first.'
         : 'Copy this command and run it in your terminal.'),
       command,
       canExecute ? output : null

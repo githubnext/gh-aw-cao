@@ -39,7 +39,7 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
   assert.match(source, /context\.session\?\.workingDirectory/);
   assert.match(source, /startLocalDashboardPreview/);
   assert.match(source, /requestedEnvironmentVariables: \["GH_TOKEN", "GITHUB_TOKEN"\]/);
-  assert.match(source, /executeGhAwCommand/);
+  assert.match(source, /executeDashboardCommand/);
   assert.match(source, /cao_dashboard_execute_query/);
   assert.match(source, /cao_dashboard_read_data_specification/);
   assert.match(source, /onSessionStart:/);

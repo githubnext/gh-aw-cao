@@ -8,7 +8,7 @@ import {
   executeDashboardQueryRequest,
   readDashboardDataSpecification,
 } from "./dashboard-agent-tools.mjs";
-import { executeGhAwCommand } from "./cli-actions.mjs";
+import { executeDashboardCommand } from "./cli-actions.mjs";
 import { startLocalDashboardPreview } from "./local-preview.mjs";
 
 const previews = new Map();
@@ -144,7 +144,7 @@ await joinSession({
               context.session?.workingDirectory ?? process.cwd(),
             repository: input.repository,
             executeCliAction: ({ command, onOutput }) =>
-              executeGhAwCommand({
+              executeDashboardCommand({
                 command,
                 workingDirectory:
                   context.session?.workingDirectory ?? dashboardWorkingDirectory,
