@@ -479,6 +479,8 @@ function resetWorker(processor) {
   processor?.terminate();
   if (worker !== processor) return;
   worker = null;
+  for (const notification of workerNotificationHandles.values()) notification.dismiss();
+  workerNotificationHandles.clear();
   for (const subscription of subscriptions.values()) subscription.registeredWorker = null;
 }
 
