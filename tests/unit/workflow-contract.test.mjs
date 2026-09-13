@@ -987,6 +987,7 @@ test("Copilot setup uses Node 24", () => {
 
 test("workflow contracts isolate authenticated package lifecycle checks", () => {
   const packageScripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
+  const packageLifecycleTest = readFileSync(join(root, "tests", "integration", "package-lifecycle.test.mjs"), "utf8");
   assert.match(packageScripts["test:integration"], /control-failure\.test\.mjs/);
   assert.doesNotMatch(packageScripts["test:integration"], /package-lifecycle/);
   assert.match(packageScripts["test:package-lifecycle"], /package-lifecycle\.test\.mjs/);
@@ -1012,6 +1013,8 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.match(packageLifecycle, /npm run test:package-lifecycle/);
   assert.match(packageLifecycle, /grep -Fq "API rate limit exceeded for installation"/);
   assert.match(packageLifecycle, /exit "\$status"/);
+  assert.match(packageLifecycleTest, /const packageUpdateSource = `https:\/\/github\.com\/\$\{packageSource\}`/);
+  assert.match(packageLifecycleTest, /"update",\n\s+packageUpdateSource,/);
 });
 
 test("release increments the semantic version, creates its tag, and prepares a correctly titled draft", () => {

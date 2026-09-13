@@ -15,6 +15,7 @@ import { retryTransientPackageInstall } from "../helpers/package-install-retry.m
 
 const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
   || "githubnext/gh-aw-cao@main";
+const packageUpdateSource = `https://github.com/${packageSource}`;
 const controlRuntimeFiles = [
   ".github/workflows/shared/control.mjs",
   ".github/workflows/shared/policy.mjs",
@@ -234,7 +235,7 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     run("gh", [
       "aw",
       "update",
-      packageSource,
+      packageUpdateSource,
       "--force",
       "--no-merge",
       "--no-compile",
