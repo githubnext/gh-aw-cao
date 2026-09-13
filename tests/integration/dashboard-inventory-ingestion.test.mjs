@@ -28,6 +28,7 @@ test("discovered repositories flow from control scope into canonical storage", a
       fetchImplementation: async (url) => {
         assert.match(String(url), /\/orgs\/acme\/repos\?/);
         return new Response(JSON.stringify([
+          { full_name: "acme/control", visibility: "private" },
           { full_name: "acme/payments", private: true },
           { full_name: "acme/storefront", visibility: "internal" },
         ]));
@@ -56,6 +57,10 @@ test("discovered repositories flow from control scope into canonical storage", a
     assert.deepEqual(
       canonical.repositories.map(({ fullName }) => fullName).sort(),
       ["acme/control", "acme/payments", "acme/storefront"],
+    );
+    assert.equal(
+      canonical.repositories.find(({ fullName }) => fullName === "acme/control")?.visibility,
+      "private",
     );
     assert.equal(canonical.workflows.length, 1);
   } finally {

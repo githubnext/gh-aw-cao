@@ -27,7 +27,7 @@ function source(name, rows, generatedAt) {
 
 function repositoryRows(discoveredRepositories, repository, generatedAt) {
   const repositories = new Map();
-  for (const candidate of [...discoveredRepositories, repository]) {
+  for (const candidate of discoveredRepositories) {
     const fullName = typeof candidate === "string" ? candidate : candidate?.full_name;
     const [organization, name, ...extra] = String(fullName || "").trim().split("/");
     if (!organization || !name || extra.length > 0) continue;
@@ -38,6 +38,15 @@ function repositoryRows(discoveredRepositories, repository, generatedAt) {
       ...(typeof candidate === "object" && candidate
         ? { visibility: candidate.visibility || (candidate.private === true ? "private" : "public") }
         : {}),
+      "observed-at": generatedAt,
+    });
+  }
+  const [organization, name, ...extra] = repository.trim().split("/");
+  if (organization && name && extra.length === 0 && !repositories.has(repository.toLowerCase())) {
+    repositories.set(repository.toLowerCase(), {
+      organization,
+      repository: name,
+      "repository-name": name,
       "observed-at": generatedAt,
     });
   }
@@ -81,6 +90,7 @@ export async function discoverRepositories(controlSettings, {
   const repositories = [];
   for (const owner of controlSettings.allowed_owners ?? []) {
     let endpoint = `orgs/${owner}/repos`;
+    let installation = false;
     for (let page = 1; repositories.length < maximum; page += 1) {
       let response = await githubResponse(
         fetchImplementation,
@@ -89,19 +99,51 @@ export async function discoverRepositories(controlSettings, {
         `${endpoint}?per_page=100&type=all&page=${page}`,
       );
       if (page === 1 && response.status === 404) {
+        endpoint = `installation/repositories`;
+        installation = true;
+        response = await githubResponse(
+          fetchImplementation,
+          apiUrl,
+          token,
+          `${endpoint}?per_page=100&page=${page}`,
+        );
+        if (!response.ok) {
+          endpoint = `users/${owner}/repos`;
+          installation = false;
+          response = await githubResponse(
+            fetchImplementation,
+            apiUrl,
+            token,
+            `${endpoint}?per_page=100&type=owner&page=${page}`,
+          );
+        }
+      }
+      if (!response.ok) throw new Error(`Unable to discover repositories for ${owner}: ${response.status}`);
+      let payload = await response.json();
+      let pageRepositories = installation ? payload?.repositories : payload;
+      if (!Array.isArray(pageRepositories)) throw new Error(`Repository discovery returned invalid data for ${owner}`);
+      let batch = installation
+        ? pageRepositories.filter((repository) => (
+          repository.full_name?.split("/", 1)[0]?.toLowerCase() === String(owner).toLowerCase()
+        ))
+        : pageRepositories;
+      if (installation && page === 1 && batch.length === 0) {
         endpoint = `users/${owner}/repos`;
+        installation = false;
         response = await githubResponse(
           fetchImplementation,
           apiUrl,
           token,
           `${endpoint}?per_page=100&type=owner&page=${page}`,
         );
+        if (!response.ok) throw new Error(`Unable to discover repositories for ${owner}: ${response.status}`);
+        payload = await response.json();
+        pageRepositories = payload;
+        if (!Array.isArray(pageRepositories)) throw new Error(`Repository discovery returned invalid data for ${owner}`);
+        batch = pageRepositories;
       }
-      if (!response.ok) throw new Error(`Unable to discover repositories for ${owner}: ${response.status}`);
-      const batch = await response.json();
-      if (!Array.isArray(batch)) throw new Error(`Repository discovery returned invalid data for ${owner}`);
       repositories.push(...batch.slice(0, maximum - repositories.length));
-      if (batch.length < 100) break;
+      if (pageRepositories.length < 100) break;
     }
     if (repositories.length >= maximum) break;
   }
