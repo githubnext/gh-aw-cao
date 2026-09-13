@@ -3432,6 +3432,27 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
 });
 
+test("deployed dashboard integration checks iPhone landing page performance", () => {
+  const workflow = readFileSync(join(root, ".github", "workflows", "dashboard-deployed-integration.yml"), "utf8");
+  const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const playwrightConfig = readFileSync(join(root, "playwright.dashboard-pages-performance.config.mjs"), "utf8");
+  const performanceTest = readFileSync(join(root, "tests", "e2e", "dashboard-pages-performance.spec.mjs"), "utf8");
+
+  assert.match(workflow, /npx playwright install --with-deps chromium webkit/);
+  assert.match(workflow, /Test deployed landing page performance[\s\S]*?npm run test:performance:deployed/);
+  assert.match(workflow, /steps\.test\.outcome == 'failure' \|\| steps\.performance\.outcome == 'failure'/);
+  assert.equal(
+    packageDocument.scripts["test:performance:deployed"],
+    "playwright test --config=playwright.dashboard-pages-performance.config.mjs",
+  );
+  assert.match(playwrightConfig, /devices\["iPhone 15"\]/);
+  assert.match(playwrightConfig, /browserName: "webkit"/);
+  assert.match(performanceTest, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\//);
+  assert.match(performanceTest, /maximumDomNodes = 6_000/);
+  assert.match(performanceTest, /maximumInitialRenderMs = 120_000/);
+  assert.match(performanceTest, /page\.on\("crash"/);
+});
+
 test("Documentation site uses stock Starlight without external themes", () => {
   const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf8");

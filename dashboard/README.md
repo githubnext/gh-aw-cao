@@ -114,6 +114,14 @@ npm run dashboard:local:mobile
 
 This starts the local preview through Playwright with the Pixel 7 profile and a 256 MiB V8 heap limit, then records DOM analysis, accessibility, trace, and screenshot evidence under `test-results/chromium-low-memory/`. The check fails when the rendered page exceeds 6,000 elements.
 
+To run the deployed Pages landing-page performance check with an iPhone 15 WebKit profile:
+
+```bash
+npm run test:performance:deployed
+```
+
+The check fails on a page crash, browser error, failed request, more than 6,000 DOM nodes, or an initial render longer than two minutes. Its metrics and retained failure diagnostics are written under `test-results/dashboard-deployed/performance/`.
+
 ### Copilot-assisted editing
 
 Install the Copilot SDK and start the preview with the optional editing mode:
