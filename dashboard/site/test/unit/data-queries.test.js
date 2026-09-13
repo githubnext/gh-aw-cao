@@ -1465,6 +1465,22 @@ describe('declarative dashboard queries', () => {
     expect(budget.operations).toBe(8);
   });
 
+  it.each(['constructor', '__proto__'])('lazily executes a query named %s', (name) => {
+    const budget = createDashboardQueryBudget();
+    const derived = executeDashboardQueries(
+      [{ name, from: 'workflows', select: [{ field: 'workflow' }] }],
+      { workflows },
+      undefined,
+      { budget }
+    );
+
+    expect(budget.operations).toBe(0);
+    expect(derived[name].rows).toEqual([{ workflow: 'a.md' }, { workflow: 'b.md' }]);
+    expect(budget.operations).toBe(4);
+    expect(structuredClone(derived)[name].rows).toEqual([{ workflow: 'a.md' }, { workflow: 'b.md' }]);
+    expect(budget.operations).toBe(4);
+  });
+
   it('rejects cyclic, self-referencing, and forward query dependencies', () => {
     const defects = dashboardQueryDefects([
       { name: 'self', from: 'self' },

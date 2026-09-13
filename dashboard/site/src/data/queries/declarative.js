@@ -449,7 +449,7 @@ export function executeDashboardQueries(definitions, sources, requested, options
   /** @type {Record<string, LogicalSourceInput>} */
   const derived = {};
   /** @type {Record<string, LogicalSourceInput>} */
-  const compiled = {};
+  const compiled = Object.create(null);
   const visiting = new Set();
   const names = requested ? new Set(requested) : index.keys();
   for (const name of names) {
@@ -488,7 +488,7 @@ export function executeDashboardQueries(definitions, sources, requested, options
 function compileDashboardQuery(name, index, sources, defects, budget, compiled, visiting) {
   /** @param {string} queryName */
   const compile = (queryName) => {
-    if (compiled[queryName] || visiting.has(queryName)) return;
+    if (Object.hasOwn(compiled, queryName) || visiting.has(queryName)) return;
     const definition = index.get(queryName);
     if (!definition) return;
     visiting.add(queryName);
