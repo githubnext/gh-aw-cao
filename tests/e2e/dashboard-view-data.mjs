@@ -20,8 +20,10 @@ export async function downloadDeployedDashboardData(destination, sourceUrl, fetc
   if (!logsResponse.body) throw new Error("Deployed dashboard data response has no body.");
   if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
   await mkdir(destination, { recursive: true });
-  await Promise.all([
+  const downloads = await Promise.allSettled([
     pipeline(logsResponse.body, createWriteStream(join(destination, "gh-aw-logs.jsonl"))),
     pipeline(inventoryResponse.body, createWriteStream(join(destination, "inventory-sources.json"))),
   ]);
+  const failure = downloads.find((download) => download.status === "rejected");
+  if (failure) throw failure.reason;
 }

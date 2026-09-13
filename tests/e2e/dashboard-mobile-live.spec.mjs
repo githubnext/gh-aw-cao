@@ -189,10 +189,12 @@ test.beforeAll(async () => {
       await mkdir(destination, { recursive: true });
       const activityPath = join(destination, "gh-aw-logs.jsonl");
       const inventoryPath = join(destination, "inventory-sources.json");
-      await Promise.all([
+      const downloads = await Promise.allSettled([
         pipeline(logsResponse.body, createWriteStream(activityPath)),
         pipeline(inventoryResponse.body, createWriteStream(inventoryPath)),
       ]);
+      const failure = downloads.find((download) => download.status === "rejected");
+      if (failure) throw failure.reason;
       const [activity, inventory] = await Promise.all([stat(activityPath), stat(inventoryPath)]);
       sourcePayload = {
         activityBytes: activity.size,

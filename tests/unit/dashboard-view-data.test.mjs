@@ -40,3 +40,39 @@ test("downloads canonical deployed dashboard inputs", async () => {
     await rm(destination, { recursive: true });
   }
 });
+
+test("waits for both deployed dashboard downloads when one fails", async () => {
+  const destination = await mkdtemp(join(tmpdir(), "dashboard-view-data-"));
+  let inventoryFinished = false;
+  const fetcher = async (url) => ({
+    ok: true,
+    body: String(url).endsWith(".jsonl")
+      ? new ReadableStream({
+          start(controller) {
+            controller.error(new Error("activity download failed"));
+          },
+        })
+      : new ReadableStream({
+          async start(controller) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            controller.enqueue(new TextEncoder().encode('{"repositories":[]}'));
+            controller.close();
+            inventoryFinished = true;
+          },
+        }),
+  });
+
+  try {
+    await assert.rejects(
+      downloadDeployedDashboardData(
+        destination,
+        "https://example.test/cao/gh-aw-logs.jsonl",
+        fetcher,
+      ),
+      /activity download failed/,
+    );
+    assert.equal(inventoryFinished, true);
+  } finally {
+    await rm(destination, { recursive: true });
+  }
+});
