@@ -25,22 +25,87 @@ function source(name, rows, generatedAt) {
   return { source: name, rows, metadata: metadata(name, generatedAt) };
 }
 
-function repositoryRows(controlSettings, repository, generatedAt) {
-  const allowedRepositories = Array.isArray(controlSettings.allowed_repositories)
-    ? controlSettings.allowed_repositories
-    : [];
+function repositoryRows(discoveredRepositories, repository, generatedAt) {
   const repositories = new Map();
-  for (const candidate of [...allowedRepositories, repository]) {
-    const [organization, name, ...extra] = String(candidate).trim().split("/");
+  for (const candidate of [...discoveredRepositories, repository]) {
+    const fullName = typeof candidate === "string" ? candidate : candidate?.full_name;
+    const [organization, name, ...extra] = String(fullName || "").trim().split("/");
     if (!organization || !name || extra.length > 0) continue;
     repositories.set(`${organization}/${name}`.toLowerCase(), {
       organization,
       repository: name,
       "repository-name": name,
+      ...(typeof candidate === "object" && candidate
+        ? { visibility: candidate.visibility || (candidate.private === true ? "private" : "public") }
+        : {}),
       "observed-at": generatedAt,
     });
   }
   return [...repositories.values()];
+}
+
+async function githubResponse(fetchImplementation, apiUrl, token, path) {
+  const response = await fetchImplementation(`${apiUrl.replace(/\/$/, "")}/${path}`, {
+    headers: {
+      accept: "application/vnd.github+json",
+      authorization: ["Bearer", token].join(" "),
+      "x-github-api-version": "2022-11-28",
+    },
+  });
+  return response;
+}
+
+export async function discoverRepositories(controlSettings, {
+  fetchImplementation = fetch,
+  token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
+  apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
+} = {}) {
+  if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover repositories");
+  const maximum = Number(controlSettings.policy_document?.["control-plane"]?.inventory?.["max-scan-repositories"] ?? 1000);
+  const allowedRepositories = Array.isArray(controlSettings.allowed_repositories)
+    ? controlSettings.allowed_repositories
+    : [];
+  if (allowedRepositories.length > 0) {
+    if (allowedRepositories.length > maximum) {
+      throw new Error("Allowed repositories exceed control-plane.inventory.max-scan-repositories");
+    }
+    const repositories = [];
+    for (const repository of allowedRepositories) {
+      const response = await githubResponse(fetchImplementation, apiUrl, token, `repos/${repository}`);
+      if (!response.ok) throw new Error(`Unable to discover allowed repository ${repository}: ${response.status}`);
+      repositories.push(await response.json());
+    }
+    return repositories;
+  }
+
+  const repositories = [];
+  for (const owner of controlSettings.allowed_owners ?? []) {
+    let endpoint = `orgs/${owner}/repos`;
+    for (let page = 1; repositories.length < maximum; page += 1) {
+      let response = await githubResponse(
+        fetchImplementation,
+        apiUrl,
+        token,
+        `${endpoint}?per_page=100&type=all&page=${page}`,
+      );
+      if (page === 1 && response.status === 404) {
+        endpoint = `users/${owner}/repos`;
+        response = await githubResponse(
+          fetchImplementation,
+          apiUrl,
+          token,
+          `${endpoint}?per_page=100&type=owner&page=${page}`,
+        );
+      }
+      if (!response.ok) throw new Error(`Unable to discover repositories for ${owner}: ${response.status}`);
+      const batch = await response.json();
+      if (!Array.isArray(batch)) throw new Error(`Repository discovery returned invalid data for ${owner}`);
+      repositories.push(...batch.slice(0, maximum - repositories.length));
+      if (batch.length < 100) break;
+    }
+    if (repositories.length >= maximum) break;
+  }
+  return repositories;
 }
 
 function packageRows(inventory, controlSettings, generatedAt) {
@@ -221,12 +286,13 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
 export function buildInventoryDashboardSources({
   inventory = {},
   controlSettings = {},
+  discoveredRepositories = [],
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
   return {
     packages: source("packages", packageRows(inventory, controlSettings, generatedAt), generatedAt),
-    repositories: source("repositories", repositoryRows(controlSettings, repository, generatedAt), generatedAt),
+    repositories: source("repositories", repositoryRows(discoveredRepositories, repository, generatedAt), generatedAt),
     workflows: source(
       "workflows",
       workflowRows(inventory, controlSettings, repository, generatedAt),
@@ -250,9 +316,10 @@ export async function main() {
       readFile(inventoryPath, "utf8").then(JSON.parse),
       readFile(controlSettingsPath, "utf8").then(JSON.parse),
     ]);
-    const sources = buildInventoryDashboardSources({ inventory, controlSettings, repository });
+    const discoveredRepositories = await discoverRepositories(controlSettings);
+    const sources = buildInventoryDashboardSources({ inventory, controlSettings, discoveredRepositories, repository });
     await writeFile(path.resolve(outputPath), `${JSON.stringify(sources, null, 2)}\n`);
-    log.info`Wrote ${sources.packages.rows.length} packages and ${sources.workflows.rows.length} workflows`;
+    log.info`Wrote ${sources.repositories.rows.length} repositories, ${sources.packages.rows.length} packages, and ${sources.workflows.rows.length} workflows`;
   } finally {
     log.endGroup();
   }

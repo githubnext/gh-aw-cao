@@ -50,7 +50,6 @@ jobs:
           client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
           private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
           github-api-url: ${{ github.api_url }}
           permission-actions: read
           permission-contents: read
@@ -82,6 +81,7 @@ jobs:
 
       - name: Collect dashboard inventory
         env:
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
