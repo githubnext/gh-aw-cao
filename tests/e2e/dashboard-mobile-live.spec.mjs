@@ -12,6 +12,76 @@ import {
 const maximumDomNodes = 6_000;
 let preview;
 
+function metricValues(metrics) {
+  return Object.fromEntries(metrics.map(({ name, value }) => [name, value]));
+}
+
+async function startMemoryInvestigation(page, browserIsChromium) {
+  if (!browserIsChromium) {
+    return {
+      mark: async () => {},
+      stop: async () => ({
+        supported: false,
+        reason: "Playwright does not expose WebKit process memory metrics.",
+        samples: [],
+      }),
+    };
+  }
+
+  const session = await page.context().newCDPSession(page);
+  await session.send("Performance.enable");
+  const startedAt = performance.now();
+  const samples = [];
+  let pending = Promise.resolve();
+
+  const capture = async (phase) => {
+    const [{ metrics }, dom] = await Promise.all([
+      session.send("Performance.getMetrics"),
+      session.send("Memory.getDOMCounters"),
+    ]);
+    const values = metricValues(metrics);
+    samples.push({
+      elapsedMs: Number((performance.now() - startedAt).toFixed(2)),
+      phase,
+      jsHeapUsedSize: values.JSHeapUsedSize ?? null,
+      jsHeapTotalSize: values.JSHeapTotalSize ?? null,
+      documents: dom.documents,
+      nodes: dom.nodes,
+      jsEventListeners: dom.jsEventListeners,
+    });
+  };
+  const scheduleCapture = (phase) => {
+    pending = pending.then(() => capture(phase));
+    return pending;
+  };
+  await scheduleCapture("before-navigation");
+  const interval = setInterval(() => void scheduleCapture("loading"), 250);
+
+  return {
+    session,
+    mark: scheduleCapture,
+    stop: async () => {
+      clearInterval(interval);
+      await pending;
+      await capture("settled");
+      await session.send("HeapProfiler.collectGarbage");
+      await capture("after-garbage-collection");
+      await session.send("Performance.disable");
+      const peak = samples.reduce((maximum, sample) =>
+        (sample.jsHeapUsedSize ?? 0) > (maximum.jsHeapUsedSize ?? 0) ? sample : maximum
+      , samples[0]);
+      return {
+        supported: true,
+        samplingIntervalMs: 250,
+        peak,
+        settled: samples.at(-2),
+        afterGarbageCollection: samples.at(-1),
+        samples,
+      };
+    },
+  };
+}
+
 function optionalNumber(name) {
   const value = process.env[name];
   if (value === undefined) return null;
@@ -79,9 +149,10 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     (memoryMb !== null || networkIsConstrained) && !browserIsChromium,
     "Restricted memory and network throttling constraints require Chromium; running this profile on another browser would silently skip the constraint.",
   );
+  const memoryInvestigation = await startMemoryInvestigation(page, browserIsChromium);
   if (networkIsConstrained) {
     expect(Object.values(network), "All network constraint values are required").not.toContain(null);
-    const session = await page.context().newCDPSession(page);
+    const session = memoryInvestigation.session;
     await session.send("Network.enable");
     await session.send("Network.emulateNetworkConditions", {
       offline: false,
@@ -109,7 +180,9 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   await page.goto(`${preview.url}/?debug=1`, { waitUntil: "domcontentloaded" });
   const dashboard = page.locator(".dashboard-root");
   await expect(dashboard).toBeVisible();
+  await memoryInvestigation.mark("dashboard-visible");
   await expect(dashboard).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
+  await memoryInvestigation.mark("dashboard-idle");
   // DOM provenance annotation (`data-json-path`/`data-js-view`) is lazily
   // loaded and applied asynchronously; wait for it so the DOM analysis below
   // can attribute node counts to their owning JSON view.
@@ -209,6 +282,15 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   const runtime = await page.evaluate(() => {
     const navigation = performance.getEntriesByType("navigation")[0];
     const memory = performance.memory;
+    const resources = performance.getEntriesByType("resource")
+      .filter(({ name }) => /\/(?:sources\/[^/]+\.json|dashboard\.json)$/.test(new URL(name).pathname))
+      .map(({ name, duration, transferSize, encodedBodySize, decodedBodySize }) => ({
+        name: new URL(name).pathname.split("/").at(-1),
+        durationMs: Number(duration.toFixed(2)),
+        transferSize,
+        encodedBodySize,
+        decodedBodySize,
+      }));
     return {
       navigation: navigation ? {
         domContentLoadedMs: Number(navigation.domContentLoadedEventEnd.toFixed(2)),
@@ -221,8 +303,10 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
         totalJSHeapSize: memory.totalJSHeapSize,
         usedJSHeapSize: memory.usedJSHeapSize,
       } : null,
+      resources,
     };
   });
+  const memory = await memoryInvestigation.stop();
   const analysis = {
     profile: process.env.MOBILE_PROFILE ?? "baseline",
     device: process.env.MOBILE_DEVICE,
@@ -232,6 +316,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
       network: networkIsConstrained ? network : null,
     },
     runtime,
+    memory,
     dom: summarizeDomTree(domTree.nodes, domTree.structures),
     accessibility,
     mobileAccessibility: summarizeMobileAccessibility({

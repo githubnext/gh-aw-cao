@@ -198,7 +198,11 @@ jobs:
               const names = mobileAccessibility
                 ? `${mobileAccessibility.accessibleNames.passes ? 'Pass' : 'Fail'} (${mobileAccessibility.accessibleNames.unnamedInteractive.length} unnamed)`
                 : 'n/a'
-              return `| ${analysis.device} | ${analysis.browser} | ${analysis.profile} | ${memory} | ${networkLabel} | ${analysis.dom.totalElements} | ${analysis.runtime?.navigation?.loadMs ?? 'n/a'} | ${formatBytes(analysis.runtime?.memory?.usedJSHeapSize)} | ${targetSize} | ${reflow} | ${zoom} | ${names} |`
+              const sourceBytes = analysis.runtime?.resources?.reduce(
+                (total, resource) => total + (resource.decodedBodySize || 0),
+                0
+              )
+              return `| ${analysis.device} | ${analysis.browser} | ${analysis.profile} | ${memory} | ${networkLabel} | ${analysis.dom.totalElements} | ${analysis.runtime?.navigation?.loadMs ?? 'n/a'} | ${formatBytes(analysis.memory?.peak?.jsHeapUsedSize)} | ${formatBytes(analysis.memory?.afterGarbageCollection?.jsHeapUsedSize)} | ${formatBytes(sourceBytes)} | ${targetSize} | ${reflow} | ${zoom} | ${names} |`
             })
             const marker = '<!-- mobile-dashboard-analysis -->'
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
@@ -206,8 +210,8 @@ jobs:
               marker,
               '## Mobile dashboard analysis',
               '',
-              '| Device | Browser | Profile | Memory limit | Network down/up, latency | DOM elements | Load (ms) | JS heap used | Visible target size | Visible reflow | Zoom | Visible accessible names |',
-              '| --- | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | --- |',
+              '| Device | Browser | Profile | Memory limit | Network down/up, latency | DOM elements | Load (ms) | Peak JS heap | Retained JS heap | Source payload | Visible target size | Visible reflow | Zoom | Visible accessible names |',
+              '| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- | --- |',
               ...rows,
               '',
               `[View detailed JSON, accessibility trees, traces, and screenshots in the workflow artifacts.](${runUrl})`,

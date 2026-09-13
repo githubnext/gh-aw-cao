@@ -3469,9 +3469,13 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(packageDocument.scripts["dashboard:local:mobile"], /playwright\.mobile\.config\.mjs/);
   const mobileTest = readFileSync(join(root, "tests", "e2e", "dashboard-mobile-live.spec.mjs"), "utf8");
   assert.match(mobileTest, /Network\.emulateNetworkConditions/);
+  assert.match(mobileTest, /Performance\.getMetrics/);
+  assert.match(mobileTest, /HeapProfiler\.collectGarbage/);
+  assert.match(mobileTest, /Memory\.getDOMCounters/);
   assert.match(mobileTest, /mobile-dashboard\.png/);
   assert.match(mobileTest, /minimumTargetSize/);
   assert.match(mobileTest, /horizontal page scrolling/);
+  assert.match(workflow, /Peak JS heap \| Retained JS heap \| Source payload/);
   const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
   assert.match(deployedDataTest, /ingestCachedGhAwJsonl\(indexedDB, logsContent\)/);
   assert.match(deployedDataTest, /run\?\.firewall_analysis \?\? run\?\.audit\?\.firewall_analysis/);
