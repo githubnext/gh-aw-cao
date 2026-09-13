@@ -49,7 +49,7 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
     assert.equal(parse(readFileSync(join(root, manifest), "utf8"))["min-version"], ghAwVersion, manifest);
   }
 
-  for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.yml", "workflow-contracts.yml"]) {
+  for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.lock.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
     assert.match(source, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   }
@@ -1033,9 +1033,11 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.match(packageLifecycleTest, /"update",\n\s+packageUpdateSource,/);
 });
 
-test("release increments the semantic version, creates its tag, and prepares a correctly titled draft", () => {
-  const source = workflow("release.yml");
-  const config = parse(source);
+test("release increments the semantic version, prepares a draft, then updates its description", () => {
+  const agenticSource = workflow("release.md");
+  const source = workflow("release.lock.yml");
+  const frontmatter = agenticSource.match(/^---\n([\s\S]*?)\n---\n/)?.[1] ?? "";
+  const config = parse(frontmatter);
   const jobs = generatedJobs(source);
   const version = jobs.get("resolve-version")?.block ?? "";
   const validation = jobs.get("validate-package")?.block ?? "";
@@ -1075,17 +1077,47 @@ test("release increments the semantic version, creates its tag, and prepares a c
   assert.match(prepare, /sha: context\.sha/);
   assert.match(prepare, /tag_name: releaseTag/);
   assert.match(prepare, /name: releaseTag/);
+  assert.match(prepare, /core\.setOutput\('release_id', release\.id\)/);
+  assert.match(prepare, /name: Upload prepared release identity/);
+  assert.match(prepare, /name: release-context-\$\{\{ github\.run_id \}\}/);
   assert.match(prepare, /git\.deleteRef/);
   assert.match(prepare, /ref: `tags\/\$\{releaseTag\}`/);
   assert.match(prepare, /throw error/);
   assert.match(prepare, /draft: true/);
   assert.match(prepare, /generate_release_notes: true/);
+  assert.match(prepare, /release highlights agent will update this draft/);
   assert.match(prepare, /publish the draft, and mark it as the latest release from the GitHub website/);
   assert.match(prepare, /install or update this package only with gh aw add or gh aw update/);
   assert.equal(jobs.has("publish-release"), false);
-  assert.doesNotMatch(source, /updateRelease|draft: false|make_latest/);
-  assert.doesNotMatch(source, /release-please|upload-artifact|CHANGELOG\.md/);
-  assert.doesNotMatch(rootManifest, /\.github\/workflows\/release\.yml/);
+  assert.match(agenticSource, /update-release-description:/);
+  assert.match(agenticSource, /Call `safeoutputs\/update_release_description` exactly once/);
+  assert.match(agenticSource, /ACTUAL_TAG.*RELEASE_TAG/);
+  assert.match(agenticSource, /IS_DRAFT.*true/);
+  assert.match(agenticSource, /Download prepared release context/);
+  assert.match(agenticSource, /RELEASE_SHA.*GITHUB_SHA/);
+  assert.match(agenticSource, /TAG_SHA.*GITHUB_SHA/);
+  assert.match(agenticSource, /releases\/\$RELEASE_ID/);
+  assert.match(agenticSource, /gh api --paginate --slurp/);
+  assert.match(agenticSource, /Keep the existing GitHub-generated notes intact/);
+  assert.equal(config.checkout["fetch-depth"], 0);
+  assert.match(agenticSource, /COMMIT_RANGE="refs\/tags\/\$PREVIOUS_TAG\.\.refs\/tags\/\$RELEASE_TAG"/);
+  assert.match(agenticSource, /COMMIT_RANGE="refs\/tags\/\$RELEASE_TAG"/);
+  assert.match(agenticSource, /git rev-list "\$COMMIT_RANGE"/);
+  assert.match(agenticSource, /commits\/\$commit_sha\/pulls\?per_page=100/);
+  assert.match(agenticSource, /git diff --name-only --diff-filter=AMR/);
+  assert.match(agenticSource, /release_adrs\.md/);
+  assert.match(agenticSource, /Review every ADR in `release_adrs\.md`/);
+  assert.match(agenticSource, /\[ ! -L "\$adr_path" \]/);
+  assert.match(agenticSource, /"\$WORKSPACE_ROOT"\/adr\/\*\.md\|"\$WORKSPACE_ROOT"\/docs\/adr\/\*\.md/);
+  assert.match(agenticSource, /\[ ! -L CHANGELOG\.md \]/);
+  assert.match(agenticSource, /"\$CHANGELOG_PATH" = "\$WORKSPACE_ROOT\/CHANGELOG\.md"/);
+  assert.doesNotMatch(agenticSource, /^evals:/m);
+  assert.equal(jobs.has("evals"), false);
+  assert.match(version, /needs\.activation\.outputs\.daily_ai_credits_exceeded != 'true'/);
+  assert.match(jobs.get("agent")?.needs.join(","), /prepare-release/);
+  assert.doesNotMatch(agenticSource, /draft: false|make_latest/);
+  assert.doesNotMatch(agenticSource, /release-please/);
+  assert.doesNotMatch(rootManifest, /\.github\/workflows\/release\.(?:yml|md)/);
 });
 
 test("package manifests exclude repository-only tests", () => {
@@ -2848,6 +2880,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "mattpocock-skills-reviewer.lock.yml",
       "pr-reviewer.lock.yml",
       "pr-sous-chef.lock.yml",
+      "release.lock.yml",
       "svg-visual-audit.lock.yml",
     ].sort();
 
