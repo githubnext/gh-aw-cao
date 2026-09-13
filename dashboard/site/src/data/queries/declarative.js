@@ -452,11 +452,14 @@ export function executeDashboardQueries(definitions, sources, requested, options
   const queryBudget = () => (budget ??= createDashboardQueryBudget(options));
   /** @type {Record<string, LogicalSourceInput>} */
   const derived = {};
+  /** @type {Record<string, LogicalSourceInput>} */
+  const compiled = {};
+  const visiting = new Set();
   const names = requested ? new Set(requested) : index.keys();
   for (const name of names) {
     if (!index.has(name)) continue;
     defineLazyProperty(derived, name, () => {
-      const compiled = compileDashboardQuery(name, index, sources, defects, queryBudget());
+      compileDashboardQuery(name, index, sources, defects, queryBudget(), compiled, visiting);
       return paginateDashboardSources(
         { [name]: compiled[name] },
         options.pagination,
@@ -477,11 +480,10 @@ export function executeDashboardQueries(definitions, sources, requested, options
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Map<string, string>} defects
  * @param {QueryBudget} budget
+ * @param {Record<string, LogicalSourceInput>} compiled
+ * @param {Set<string>} visiting
  */
-function compileDashboardQuery(name, index, sources, defects, budget) {
-  /** @type {Record<string, LogicalSourceInput>} */
-  const compiled = {};
-  const visiting = new Set();
+function compileDashboardQuery(name, index, sources, defects, budget, compiled, visiting) {
   /** @param {string} queryName */
   const compile = (queryName) => {
     if (compiled[queryName] || visiting.has(queryName)) return;

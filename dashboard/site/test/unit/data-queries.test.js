@@ -1215,6 +1215,23 @@ describe('declarative dashboard queries', () => {
     expect(budget.operations).toBe(4);
   });
 
+  it('materializes shared dependencies only once as lazy results are consumed', () => {
+    const budget = createDashboardQueryBudget();
+    const derived = executeDashboardQueries(
+      [
+        { name: 'base', from: 'usage', select: [{ field: 'workflow' }] },
+        { name: 'dependent', from: 'base', select: [{ field: 'workflow' }] }
+      ],
+      { usage },
+      undefined,
+      { budget }
+    );
+
+    expect(derived.dependent.rows).toEqual([{ workflow: 'a.md' }, { workflow: 'a.md' }]);
+    expect(derived.base.rows).toEqual([{ workflow: 'a.md' }, { workflow: 'a.md' }]);
+    expect(budget.operations).toBe(8);
+  });
+
   it('rejects cyclic, self-referencing, and forward query dependencies', () => {
     const defects = dashboardQueryDefects([
       { name: 'self', from: 'self' },
