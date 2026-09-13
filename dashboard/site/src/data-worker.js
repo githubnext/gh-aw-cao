@@ -427,15 +427,19 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
     }
     const controller = new AbortController();
     inFlight.set(id, controller);
-    const settle = (/** @type {Record<string, unknown>} */ message) => {
-      inFlight.delete(id);
-      self.postMessage({ id, ...message });
-    };
     /** @param {unknown} error */
     const failure = (error) => ({
       error: error instanceof Error ? error.message : String(error),
       cancelled: error instanceof DashboardQueryCancelledError
     });
+    const settle = (/** @type {Record<string, unknown>} */ message) => {
+      inFlight.delete(id);
+      try {
+        self.postMessage({ id, ...message });
+      } catch (error) {
+        self.postMessage({ id, ...failure(error) });
+      }
+    };
     try {
       Promise.resolve(processDataRequest(event.data, controller.signal)).then(
         (data) => settle({ data }),
