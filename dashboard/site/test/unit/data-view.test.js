@@ -483,7 +483,7 @@ describe('data view renderer', () => {
     const totalRuns = 20_000;
     const pageSize = 200;
     const conclusions = ['success', 'failure', 'skipped', 'cancelled', 'action-required'];
-    const run = (index) => ({
+    const run = (/** @type {number} */ index) => ({
       run: String(index),
       'started-at': new Date(Date.parse('2026-08-31T00:00:00Z') + index).toISOString(),
       'run-conclusion': conclusions[index % conclusions.length]
@@ -499,7 +499,7 @@ describe('data view renderer', () => {
         continuationToken: offset < totalRuns ? String(offset) : undefined
       };
     });
-    const buildChartPoints = vi.fn((_pageId, _title, chartRows) => chartRows.map((row) => ({
+    const buildChartPoints = vi.fn((_pageId, _title, chartRows) => chartRows.map((/** @type {Record<string, unknown>} */ row) => ({
       key: String(row.run),
       x: String(row['started-at']),
       y: Number.NaN,
