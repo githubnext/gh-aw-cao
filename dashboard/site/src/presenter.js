@@ -178,13 +178,7 @@ export function dashboardPageLazySourceNames(document, pageId) {
 }
 
 /**
- * Returns sources plotted by chart views on a page. Charts render every row
- * of their source (for example, each individual run mark in a swimlane) and,
- * unlike lazy-list tables, cannot page in the remainder on scroll. When a
- * chart's source is paginated -- most commonly because it is shared by name
- * with a lazy-list table on the same page -- callers must drain the
- * remaining query continuation for these sources before rendering so the
- * chart is always built from the complete result set.
+ * Returns sources plotted by chart views on a page.
  * @param {PresentationDocument} document
  * @param {string} pageId
  */
@@ -1984,7 +1978,9 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 
-  const sourcePage = view['lazy-list'] === true ? sourceContinuation(sourceInput) : undefined;
+  const sourcePage = view['lazy-list'] === true || (view.mark === 'chart' && view.chart === 'swimlane')
+    ? sourceContinuation(sourceInput)
+    : undefined;
   const rendered = renderDataView(typeof view.mark === 'string' ? view.mark : '', {
     pageId,
     title,

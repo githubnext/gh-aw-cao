@@ -499,7 +499,7 @@ function renderStatusDetail(row, view, toText) {
 
 /** @param {DataViewContext} context */
 function renderChartView(context) {
-  const { pageId, title, view, rows, metadata, contextDetails, headingTag, buildChartPoints, prepareChartPoints } = context;
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag, buildChartPoints, prepareChartPoints, continuation } = context;
   const encoding = isPlainObject(view.encoding) ? view.encoding : null;
   const x = isPlainObject(encoding?.x) && typeof encoding.x.field === 'string' ? encoding.x : null;
   const y = isPlainObject(encoding?.y) && typeof encoding.y.field === 'string' ? encoding.y : null;
@@ -509,13 +509,15 @@ function renderChartView(context) {
   const chartType = typeof view.chart === 'string' ? view.chart : x?.type === 'temporal' ? 'line' : 'bar';
   const value = chartType === 'heatmap' ? color : y;
   const series = chartType === 'heatmap' ? y : color;
-  const points = prepareChartPoints(
-    buildChartPoints(pageId, title, rows, x, value, series, href?.field ?? null),
+  /** @param {Array<Record<string, unknown>>} chartRows */
+  const pointsForRows = (chartRows) => prepareChartPoints(
+    buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
     x,
     value,
     series,
     view.data
   );
+  const points = pointsForRows(rows);
   const description = typeof view.description === 'string' && view.description.length > 0
     ? h('p', { className: 'view-description' }, view.description)
     : null;
@@ -600,6 +602,35 @@ function renderChartView(context) {
     );
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
+  if (chartType === 'swimlane' && continuation && !pending) {
+    let chartRows = [...rows];
+    let token = continuation.token;
+    let chartWidget = /** @type {HTMLElement | null} */ (section.querySelector('[data-chart-widget="swimlane"]'));
+    chartWidget?.setAttribute('aria-busy', 'true');
+    void (async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      try {
+        while (token && section.isConnected) {
+          const next = await continuation.load(token);
+          if (!section.isConnected) return;
+          chartRows.push(...next.rows);
+          token = next.continuationToken;
+          const rendered = renderVisualization(pointsForRows(chartRows));
+          const nextWidget = rendered.chartContent.find((element) =>
+            element.matches?.('[data-chart-widget="swimlane"]')
+          );
+          if (!(nextWidget instanceof HTMLElement) || !chartWidget) return;
+          nextWidget.setAttribute('aria-busy', String(Boolean(token)));
+          chartWidget.replaceWith(nextWidget);
+          chartWidget = nextWidget;
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+      } catch {
+        chartWidget?.setAttribute('aria-busy', 'false');
+        chartWidget?.setAttribute('data-continuation-state', 'error');
+      }
+    })();
+  }
   return section;
 }
 
