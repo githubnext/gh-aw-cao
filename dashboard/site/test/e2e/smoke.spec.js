@@ -530,7 +530,7 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
-test('Transactions is a responsive full-view interactive lazy table under Data', async ({ page }) => {
+test('Transactions is a responsive full-view interactive lazy table opened from Settings', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -569,8 +569,11 @@ test('Transactions is a responsive full-view interactive lazy table under Data',
   `);
 
   const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
-  await dataNavigation.locator('summary').click();
-  await dataNavigation.getByRole('link', { name: 'Transactions' }).click();
+  await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Settings' }).click();
+  const transactionsLink = page.getByRole('link', { name: 'View retained transactions table' });
+  await expect(transactionsLink).toBeVisible();
+  await transactionsLink.click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="transactions"]');
@@ -687,6 +690,17 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect(view).toHaveCount(1);
   await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
   await expect(swimlane.locator('.swimlane-summary')).toContainText('50 runs');
+  const swimlaneHeadingBox = await swimlane.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
+  const swimlaneSummaryBox = await swimlane.locator('.swimlane-summary').boundingBox();
+  const swimlaneChartBox = await swimlane.locator('[data-chart-widget="swimlane"] svg').boundingBox();
+  if (swimlaneHeadingBox === null || swimlaneSummaryBox === null || swimlaneChartBox === null) {
+    throw new Error('Expected swimlane heading, summary, and chart boxes to be measurable.');
+  }
+  const swimlaneChartMaxHeight = await swimlane.locator('[data-chart-widget="swimlane"] svg')
+    .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
+  expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
+  expect(Math.abs(swimlaneHeadingBox.x - swimlaneSummaryBox.x)).toBeLessThanOrEqual(1);
+  expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
   const summaryRow = view.locator('.table-summary-row');
@@ -1411,7 +1425,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Transactions', 'Firewall']);
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Firewall']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);

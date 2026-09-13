@@ -766,7 +766,6 @@ dashboard:
       'workflows',
       'runs',
       'events',
-      'transactions',
       'firewall',
       'mcps'
     ]);

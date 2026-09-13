@@ -633,11 +633,11 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-widget .chart-series-4 { stroke: var(--accent); }
 .chart-widget .chart-series-5 { stroke: var(--muted); }
 .chart-widget .chart-series-6 { stroke: var(--purple); }
-.swimlane-chart-widget { display: block; min-height: 0; padding: 14px 16px 10px; }
+.swimlane-chart-widget { display: block; min-height: 0; margin: 8px 0 0; padding: 8px 0 4px; }
 .swimlane-empty-state { min-height: 180px; display: grid; place-content: center; text-align: center; }
 .swimlane-empty-state p { margin: 4px 0 0; color: var(--muted); }
-.swimlane-chart-widget svg { width: 100%; max-height: 300px; overflow: visible; }
-.swimlane-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 8px; padding: 0; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; list-style: none; }
+.swimlane-chart-widget svg { width: 100%; max-height: 220px; overflow: visible; }
+.swimlane-summary { width: 100%; display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 8px; padding: 0; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; list-style: none; }
 .swimlane-summary li:first-child { color: var(--fg); font-weight: 600; }
 .swimlane-label, .swimlane-time-label { fill: var(--muted); font-size: 2.4px; }
 .swimlane-label { font-weight: 600; }
@@ -651,6 +651,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .swimlane-mark-success { stroke: var(--accent); }
 .swimlane-mark:hover, .swimlane-mark:focus-visible { filter: brightness(1.2); stroke-width: 4; }
 .swimlane-mark:focus-visible { outline: none; }
+.dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding: 0 24px 14px; }
 .chart-widget .chart-series-7 { stroke: var(--pink); }
 .chart-widget .chart-series-8 { stroke: var(--coral); }
 .chart-widget .chart-series-9 { stroke: var(--yellow); }
@@ -1191,8 +1192,11 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-database-counts > span { min-width: 0; display: grid; gap: 3px; padding: 10px 6px; border-radius: 6px; background: var(--canvas-subtle); text-align: center; }
 .configuration-database-counts strong { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; }
 .configuration-database-counts small { overflow: hidden; color: var(--muted); font-size: .6875rem; text-overflow: ellipsis; }
-.configuration-danger-settings .reset-dashboard-control { padding: 12px; }
-.reset-dashboard-trigger { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--danger); border-radius: 6px; background: var(--canvas); color: var(--danger); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+.configuration-local-data-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; }
+.configuration-transactions-button, .reset-dashboard-trigger { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid; border-radius: 6px; background: var(--canvas); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+.configuration-transactions-button { border-color: var(--border); color: var(--fg); text-decoration: none; }
+.configuration-transactions-button:hover { background: var(--neutral-muted); }
+.reset-dashboard-trigger { border-color: var(--danger); color: var(--danger); }
 .reset-dashboard-trigger:hover { background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); }
 .reset-dashboard-trigger .octicon { width: 15px; height: 15px; }
 .configuration-editor { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
@@ -2055,6 +2059,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   /* Paired with the mobile main padding above: cancel top/inline overview inset, but do not negate bottom padding. */
   .dashboard-mobile-overview-actions .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }
   .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
+  .dashboard-full-view .custom-view-grid > .chart-view-swimlane { padding: 0 14px 12px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
