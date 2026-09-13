@@ -40,7 +40,7 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
     assert.equal(parse(readFileSync(join(root, manifest), "utf8"))["min-version"], ghAwVersion, manifest);
   }
 
-  for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.yml", "workflow-contracts.yml"]) {
+  for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.lock.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
     assert.match(source, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   }
@@ -1024,9 +1024,11 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.match(packageLifecycleTest, /"update",\n\s+packageUpdateSource,/);
 });
 
-test("release increments the semantic version, creates its tag, and prepares a correctly titled draft", () => {
-  const source = workflow("release.yml");
-  const config = parse(source);
+test("release increments the semantic version, prepares a draft, then updates its description", () => {
+  const agenticSource = workflow("release.md");
+  const source = workflow("release.lock.yml");
+  const frontmatter = agenticSource.match(/^---\n([\s\S]*?)\n---\n/)?.[1] ?? "";
+  const config = parse(frontmatter);
   const jobs = generatedJobs(source);
   const version = jobs.get("resolve-version")?.block ?? "";
   const validation = jobs.get("validate-package")?.block ?? "";
@@ -1066,17 +1068,25 @@ test("release increments the semantic version, creates its tag, and prepares a c
   assert.match(prepare, /sha: context\.sha/);
   assert.match(prepare, /tag_name: releaseTag/);
   assert.match(prepare, /name: releaseTag/);
+  assert.match(prepare, /core\.setOutput\('release_id', release\.id\)/);
   assert.match(prepare, /git\.deleteRef/);
   assert.match(prepare, /ref: `tags\/\$\{releaseTag\}`/);
   assert.match(prepare, /throw error/);
   assert.match(prepare, /draft: true/);
   assert.match(prepare, /generate_release_notes: true/);
+  assert.match(prepare, /release highlights agent will update this draft/);
   assert.match(prepare, /publish the draft, and mark it as the latest release from the GitHub website/);
   assert.match(prepare, /install or update this package only with gh aw add or gh aw update/);
   assert.equal(jobs.has("publish-release"), false);
-  assert.doesNotMatch(source, /updateRelease|draft: false|make_latest/);
-  assert.doesNotMatch(source, /release-please|upload-artifact|CHANGELOG\.md/);
-  assert.doesNotMatch(rootManifest, /\.github\/workflows\/release\.yml/);
+  assert.match(agenticSource, /safe-outputs:\n  update-release:/);
+  assert.match(agenticSource, /RELEASE_ID: \$\{\{ needs\.prepare-release\.outputs\.release_id \}\}/);
+  assert.match(agenticSource, /Call `safeoutputs\/update_release` exactly once/);
+  assert.match(agenticSource, /`operation`: `prepend`/);
+  assert.match(agenticSource, /Keep the existing GitHub-generated notes intact/);
+  assert.match(jobs.get("agent")?.needs.join(","), /prepare-release/);
+  assert.doesNotMatch(agenticSource, /draft: false|make_latest/);
+  assert.doesNotMatch(agenticSource, /release-please|upload-artifact/);
+  assert.doesNotMatch(rootManifest, /\.github\/workflows\/release\.(?:yml|md)/);
 });
 
 test("package manifests exclude repository-only tests", () => {
