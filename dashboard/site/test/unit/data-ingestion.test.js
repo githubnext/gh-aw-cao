@@ -454,9 +454,7 @@ describe('canonical source ingestion and queries', () => {
       }
     })}\n`);
 
-    await expect(ingestCachedGhAwJsonl(indexedDB, content, {
-      payloadIdentity: 'binary-fixture'
-    })).resolves.toMatchObject({
+    await expect(ingestCachedGhAwJsonl(indexedDB, content)).resolves.toMatchObject({
       updated: true,
       records: 1,
       agenticRuns: 1

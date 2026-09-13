@@ -25,15 +25,29 @@ const DASHBOARD_SOURCE_INGESTION_VERSION = 2;
  * @param {string | undefined} identity
  */
 async function payloadHash(payload, identity) {
-  const value = identity ?? (typeof payload === 'string' ? payload : JSON.stringify(payload));
+  const value = identity ?? (
+    typeof payload === 'string' || ArrayBuffer.isView(payload)
+      ? payload
+      : JSON.stringify(payload)
+  );
+  const bytes = typeof value === 'string' ? undefined : /** @type {Uint8Array} */ (value);
   if (globalThis.crypto?.subtle) {
-    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+    const digest = await globalThis.crypto.subtle.digest(
+      'SHA-256',
+      typeof value === 'string'
+        ? new TextEncoder().encode(value)
+        : /** @type {BufferSource} */ (bytes)
+    );
     return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
   }
   const hashes = Array.from({ length: 8 }, (_, index) => (0x811c9dc5 ^ (index * 0x9e3779b9)) >>> 0);
-  for (let offset = 0; offset < value.length; offset += 1) {
+  const length = typeof value === 'string' ? value.length : /** @type {Uint8Array} */ (bytes).length;
+  for (let offset = 0; offset < length; offset += 1) {
+    const code = typeof value === 'string'
+      ? value.charCodeAt(offset)
+      : /** @type {Uint8Array} */ (bytes)[offset];
     for (let index = 0; index < hashes.length; index += 1) {
-      hashes[index] = Math.imul(hashes[index] ^ value.charCodeAt(offset), 0x01000193 + (index * 2)) >>> 0;
+      hashes[index] = Math.imul(hashes[index] ^ code, 0x01000193 + (index * 2)) >>> 0;
     }
   }
   return hashes.map((hash) => hash.toString(16).padStart(8, '0')).join('');
@@ -246,7 +260,9 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       context: options.context ?? null,
       workflowHints: options.workflowHints ?? []
     });
-    const hash = await payloadHash(`${options.payloadIdentity ?? content}\0${adaptationContext}`, undefined);
+    const payloadIdentity = options.payloadIdentity
+      ?? (typeof content === 'string' ? content : await payloadHash(content, undefined));
+    const hash = await payloadHash(`${payloadIdentity}\0${adaptationContext}`, undefined);
     const scope = options.payloadScope ?? 'gh-aw-jsonl';
     const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
     if (current?.payloadHash === hash) {
