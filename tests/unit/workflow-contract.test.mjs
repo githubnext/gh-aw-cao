@@ -1013,7 +1013,7 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.match(packageLifecycle, /npm run test:package-lifecycle/);
   assert.match(packageLifecycle, /grep -Fq "API rate limit exceeded for installation"/);
   assert.match(packageLifecycle, /exit "\$status"/);
-  assert.match(packageLifecycleTest, /const packageUpdateSource = `https:\/\/github\.com\/\$\{packageSource\}`/);
+  assert.match(packageLifecycleTest, /const packageUpdateSource = "https:\/\/github\.com\/githubnext\/gh-aw-cao"/);
   assert.match(packageLifecycleTest, /"update",\n\s+packageUpdateSource,/);
 });
 

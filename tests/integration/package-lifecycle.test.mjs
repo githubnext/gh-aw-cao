@@ -15,7 +15,7 @@ import { retryTransientPackageInstall } from "../helpers/package-install-retry.m
 
 const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
   || "githubnext/gh-aw-cao@main";
-const packageUpdateSource = `https://github.com/${packageSource}`;
+const packageUpdateSource = "https://github.com/githubnext/gh-aw-cao";
 const controlRuntimeFiles = [
   ".github/workflows/shared/control.mjs",
   ".github/workflows/shared/policy.mjs",
