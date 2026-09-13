@@ -1057,6 +1057,12 @@ test("release increments the semantic version, prepares a draft, then updates it
   const compiled = parse(source);
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
   const fetchReleaseContext = compiled.jobs.agent.steps.find((step) => step.name === "Fetch release context");
+  const safeOutputDownloadContext = compiled.jobs.update_release_description.steps.find(
+    (step) => step.name === "Download prepared release context",
+  );
+  const safeOutputUpdateRelease = compiled.jobs.update_release_description.steps.find(
+    (step) => step.name === "Update prepared draft release",
+  );
 
   assert.equal(config.on.workflow_dispatch.inputs.operation, undefined);
   assert.equal(config.on.workflow_dispatch.inputs.bump.required, false);
@@ -1112,6 +1118,8 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /IS_DRAFT.*true/);
   assert.match(agenticSource, /Download prepared release context/);
   assert.equal(fetchReleaseContext.env.GH_TOKEN, "${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}");
+  assert.equal(safeOutputDownloadContext.with["github-token"], "${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}");
+  assert.equal(safeOutputUpdateRelease.env.GH_TOKEN, "${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}");
   assert.match(agenticSource, /RELEASE_SHA.*GITHUB_SHA/);
   assert.match(agenticSource, /TAG_SHA.*GITHUB_SHA/);
   assert.match(agenticSource, /releases\/\$RELEASE_ID/);

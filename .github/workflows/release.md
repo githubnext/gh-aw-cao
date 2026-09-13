@@ -60,9 +60,8 @@ safe-outputs:
       steps:
         - name: Download prepared release context
           uses: actions/download-artifact@v8
-          env:
-            GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
           with:
+            github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
             name: release-context-${{ github.run_id }}
             path: ${{ runner.temp }}/release-context
         - name: Update prepared draft release
