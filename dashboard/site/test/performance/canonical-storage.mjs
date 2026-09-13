@@ -45,6 +45,14 @@ const budgets = {
   routeProjectionP95Ms: 500,
   mainThreadLongTaskMs: 50
 };
+const configuredMeasurementTimeoutMs = Number(
+  process.env.DASHBOARD_STORAGE_PERFORMANCE_MEASUREMENT_TIMEOUT_MS
+);
+const coldMeasurementTimeoutMs = Number.isSafeInteger(configuredMeasurementTimeoutMs)
+  && configuredMeasurementTimeoutMs >= budgets.coldReplaceMs
+  ? configuredMeasurementTimeoutMs
+  : budgets.coldReplaceMs;
+const overallTimeoutMs = Math.max(60_000, coldMeasurementTimeoutMs + 60_000);
 const contentTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'],
@@ -146,7 +154,7 @@ async function main() {
       if (!response.ok()) failedResponses.push(`${response.status()} ${response.url()}`);
     });
     await page.goto(origin, { waitUntil: 'domcontentloaded' });
-    measured = await page.evaluate(({ workerUrl, profile, budgets }) => new Promise((resolvePromise, reject) => {
+    measured = await page.evaluate(({ workerUrl, profile, coldMeasurementTimeoutMs, overallTimeoutMs }) => new Promise((resolvePromise, reject) => {
       const longTasks = [];
       let settled = false;
       let phaseTimeout;
@@ -174,8 +182,8 @@ async function main() {
         });
       };
       const overallTimeout = window.setTimeout(() => {
-        finish({ timedOutPhase: 'storage contract', timedOutBudgetMs: 60_000 });
-      }, 60_000);
+        finish({ timedOutPhase: 'storage contract', timedOutBudgetMs: overallTimeoutMs });
+      }, overallTimeoutMs);
       worker.onerror = (event) => {
         if (settled) return;
         settled = true;
@@ -193,10 +201,10 @@ async function main() {
             phaseTimeout = window.setTimeout(() => {
               finish({
                 timedOutPhase: 'cold canonical replacement',
-                timedOutBudgetMs: budgets.coldReplaceMs,
-                coldReplaceMs: budgets.coldReplaceMs + 1
+                timedOutBudgetMs: coldMeasurementTimeoutMs,
+                coldReplaceMs: coldMeasurementTimeoutMs + 1
               });
-            }, budgets.coldReplaceMs);
+            }, coldMeasurementTimeoutMs);
           } else if (event.data.progress.phase === 'canonical-replacement-complete') {
             window.clearTimeout(phaseTimeout);
           }
@@ -217,7 +225,8 @@ async function main() {
     }), {
       workerUrl: `${origin}/test/performance/canonical-storage-worker.mjs`,
       profile,
-      budgets
+      coldMeasurementTimeoutMs,
+      overallTimeoutMs
     }).catch((error) => {
       throw new Error(`${error instanceof Error ? error.message : String(error)}${failedResponses.length > 0 ? `; failed responses: ${failedResponses.join(', ')}` : ''}`);
     });
@@ -248,6 +257,7 @@ async function main() {
     corpus: profile.corpus,
     samples: { warmups: profile.warmups, measured: profile.iterations },
     budgets,
+    measurementTimeoutMs: coldMeasurementTimeoutMs,
     timedOutPhase: measured.timedOutPhase ?? null,
     timedOutBudgetMs: measured.timedOutBudgetMs ?? null,
     metrics,
