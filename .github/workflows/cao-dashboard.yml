@@ -228,6 +228,48 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  cache:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Download dashboard artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: central-agentic-ops-dashboard
+          path: dist/cao
+
+      - name: Delete previous dashboard cache
+        env:
+          DASHBOARD_CACHE_KEY: central-agentic-ops-dashboard
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const caches = await github.paginate(github.rest.actions.getActionsCacheList, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              key: process.env.DASHBOARD_CACHE_KEY,
+              per_page: 100,
+            })
+            const matchingCaches = caches.filter(
+              (cache) => cache.key === process.env.DASHBOARD_CACHE_KEY && cache.ref === process.env.GITHUB_REF,
+            )
+            for (const cache of matchingCaches) {
+              core.info(`Deleting dashboard cache ID ${cache.id}`)
+              await github.rest.actions.deleteActionsCacheById({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                cache_id: cache.id,
+              })
+            }
+
+      - name: Save dashboard cache
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: dist/cao
+          key: central-agentic-ops-dashboard
+
   deploy:
     needs: build
     if: needs.build.outputs.deploy == 'true'

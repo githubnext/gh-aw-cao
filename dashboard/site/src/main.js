@@ -1,10 +1,10 @@
-      import { dashboardPageChartSourceNames, dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
+      import { dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries, refreshCanonicalDashboardSources, subscribeCanonicalDashboardView } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
       import { DATABASE_COUNT_SOURCE_NAMES } from "./database-counts.js";
-      import { bindSourceContinuations, continuationRequests, drainSourceContinuation } from "./data/continuation.js";
+      import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
       import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
@@ -949,38 +949,18 @@
               () => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
             ),
           );
-          /**
-           * Charts plot every row of their source and cannot page the rest
-           * in on scroll like lazy-list tables do. When a chart's source is
-           * paginated -- most commonly because it is shared by name with a
-           * lazy-list table on the same page -- drain any remaining query
-           * continuation for it up front so the chart always renders from
-           * the complete result set.
-           * @param {string} pageId
-           * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
-           */
-          const drainChartSources = async (pageId, sources) => {
-            const chartSourceNames = dashboardPageChartSourceNames(dashboardDocument, pageId);
-            const drainedEntries = (await Promise.all(chartSourceNames.map(async (name) => {
-              const source = sources[name];
-              return source && source.continuationToken !== undefined
-                ? /** @type {[string, import('./presenter.js').LogicalSourceInput]} */ ([name, await drainSourceContinuation(source)])
-                : null;
-            }))).filter((entry) => entry !== null);
-            return drainedEntries.length > 0 ? { ...sources, ...Object.fromEntries(drainedEntries) } : sources;
-          };
           /** @param {string} pageId */
           const loadPageSources = async (pageId) => {
             const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);
             const lazySources = dashboardPageLazySourceNames(dashboardDocument, pageId);
-            return runWithLoadingProgress(async () => drainChartSources(pageId, bindContinuations(
+            return runWithLoadingProgress(async () => bindContinuations(
               await loadCanonicalDashboardPage(
                 sourceNames,
                 dashboardContext,
                 continuationRequests(lazySources),
               ),
               lazySources,
-            )));
+            ));
           };
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
@@ -993,13 +973,13 @@
           /**
            * @param {(sourceNames: string[], pagination: Record<string, { limit: number, continuationToken?: string }>) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} load
            */
-          const loadInitialSources = async (load) => drainChartSources(initialPageId, bindContinuations(
+          const loadInitialSources = async (load) => bindContinuations(
             await load(
               initialSources,
               continuationRequests(initialLazySources),
             ),
             initialLazySources,
-          ));
+          );
           try {
             cachedSources = await loadInitialSources(
               (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
@@ -1065,31 +1045,20 @@
             refreshSources();
             loadingProgress.complete();
             cancelCommand.complete();
-            let liveUpdateSequence = 0;
             subscribeCanonicalDashboardView(
               `page:${initialPageId}`,
               initialSources,
               dashboardContext,
               (sources) => {
-                const sequence = ++liveUpdateSequence;
-                void drainChartSources(initialPageId, bindContinuations(sources, initialLazySources)).then(
-                  (drainedSources) => {
-                    // Discard this update if a newer one has already started
-                    // draining while this one was in flight, so out-of-order
-                    // resolution never renders stale data over fresh data.
-                    if (sequence !== liveUpdateSequence) return;
-                    updateWithViewTransition(
-                      document,
-                      () => renderSources(
-                        drainedSources,
-                        "ready",
-                        true,
-                        loadPageSources,
-                        loadHorizonSources,
-                      ),
-                    );
-                  },
-                  showStaleSources,
+                updateWithViewTransition(
+                  document,
+                  () => renderSources(
+                    bindContinuations(sources, initialLazySources),
+                    "ready",
+                    true,
+                    loadPageSources,
+                    loadHorizonSources,
+                  ),
                 );
               },
               refreshPagination,

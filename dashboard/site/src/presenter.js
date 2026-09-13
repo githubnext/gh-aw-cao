@@ -13,7 +13,7 @@ import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayo
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
-import { renderDataView } from './components/data-view.js';
+import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
@@ -174,26 +174,6 @@ export function dashboardPageLazySourceNames(document, pageId) {
   const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
   return [...new Set((payload.views ?? []).flatMap((view) =>
     isPlainObject(view) && view['lazy-list'] === true ? getViewSources(view) : []
-  ))];
-}
-
-/**
- * Returns sources plotted by chart views on a page. Charts render every row
- * of their source (for example, each individual run mark in a swimlane) and,
- * unlike lazy-list tables, cannot page in the remainder on scroll. When a
- * chart's source is paginated -- most commonly because it is shared by name
- * with a lazy-list table on the same page -- callers must drain the
- * remaining query continuation for these sources before rendering so the
- * chart is always built from the complete result set.
- * @param {PresentationDocument} document
- * @param {string} pageId
- */
-export function dashboardPageChartSourceNames(document, pageId) {
-  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
-  if (!page) return [];
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-  return [...new Set((payload.views ?? []).flatMap((view) =>
-    isPlainObject(view) && view.mark === 'chart' ? getViewSources(view) : []
   ))];
 }
 
@@ -1984,7 +1964,11 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 
-  const sourcePage = view['lazy-list'] === true ? sourceContinuation(sourceInput) : undefined;
+  // Swimlanes consume the same paginated run source as their companion lazy
+  // table, but render each continuation page as it arrives.
+  const sourcePage = view['lazy-list'] === true || supportsIncrementalChartContinuation(view)
+    ? sourceContinuation(sourceInput)
+    : undefined;
   const rendered = renderDataView(typeof view.mark === 'string' ? view.mark : '', {
     pageId,
     title,

@@ -402,6 +402,187 @@ describe('data view renderer', () => {
     expect(bar?.querySelector('.table-region')).toBeNull();
   });
 
+  it('renders swimlane continuation pages incrementally without blocking the initial view', async () => {
+    /** @type {(value: { rows: Array<Record<string, unknown>>, continuationToken?: string }) => void} */
+    let resolveFirstPage = () => {};
+    /** @type {(value: { rows: Array<Record<string, unknown>>, continuationToken?: string }) => void} */
+    let resolveFinalPage = () => {};
+    const firstPage = new Promise((resolve) => {
+      resolveFirstPage = resolve;
+    });
+    const finalPage = new Promise((resolve) => {
+      resolveFinalPage = resolve;
+    });
+    const load = vi.fn()
+      .mockReturnValueOnce(firstPage)
+      .mockReturnValueOnce(finalPage);
+    const rows = [{
+      run: '1',
+      'started-at': '2026-08-31T12:48:37Z',
+      'run-conclusion': 'success'
+    }];
+    const rendered = renderDataView('chart', {
+      pageId: 'runs',
+      title: 'Workflow runs',
+      view: {
+        mark: 'chart',
+        chart: 'swimlane',
+        encoding: {
+          x: { field: 'started-at', type: 'temporal' },
+          y: { field: 'run-conclusion', type: 'ordinal' }
+        }
+      },
+      sourceName: 'runs-table',
+      rows,
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: (_pageId, _title, chartRows) => chartRows.map((row) => ({
+        key: String(row.run),
+        x: String(row['started-at']),
+        y: Number.NaN,
+        category: String(row['run-conclusion']),
+        color: String(row['run-conclusion']),
+        link: null,
+        source: row
+      })),
+      prepareChartPoints: (points) => points,
+      toText: String,
+      continuation: {
+        token: 'page-2',
+        totalRows: 3,
+        load
+      }
+    });
+
+    expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
+    expect(load).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(load).toHaveBeenCalledWith('page-2'));
+    expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    resolveFirstPage({
+      rows: [{ run: '2', 'started-at': '2026-08-31T12:49:37Z', 'run-conclusion': 'failure' }],
+      continuationToken: 'page-3'
+    });
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(2));
+    await vi.waitFor(() => expect(load).toHaveBeenCalledWith('page-3'));
+
+    resolveFinalPage({
+      rows: [{ run: '3', 'started-at': '2026-08-31T12:50:37Z', 'run-conclusion': 'skipped' }]
+    });
+    await vi.waitFor(() => {
+      expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(3);
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
+    });
+    expect(rendered?.textContent).not.toContain('Showing partial results');
+  });
+
+  it('stops swimlane continuation rendering when the view is detached', async () => {
+    /** @type {(value: { rows: Array<Record<string, unknown>>, continuationToken?: string }) => void} */
+    let resolvePage = () => {};
+    const page = new Promise((resolve) => {
+      resolvePage = resolve;
+    });
+    const load = vi.fn(() => page);
+    const rendered = renderDataView('chart', {
+      pageId: 'runs',
+      title: 'Workflow runs',
+      view: {
+        mark: 'chart',
+        chart: 'swimlane',
+        encoding: {
+          x: { field: 'started-at', type: 'temporal' },
+          y: { field: 'run-conclusion', type: 'ordinal' }
+        }
+      },
+      sourceName: 'runs-table',
+      rows: [{ run: '1', 'started-at': '2026-08-31T12:48:37Z', 'run-conclusion': 'success' }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: (_pageId, _title, chartRows) => chartRows.map((row) => ({
+        key: String(row.run),
+        x: String(row['started-at']),
+        y: Number.NaN,
+        category: String(row['run-conclusion']),
+        color: String(row['run-conclusion']),
+        link: null,
+        source: row
+      })),
+      prepareChartPoints: (points) => points,
+      toText: String,
+      continuation: {
+        token: 'page-2',
+        totalRows: 3,
+        load
+      }
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+
+    rendered?.remove();
+    resolvePage({
+      rows: [{ run: '2', 'started-at': '2026-08-31T12:49:37Z', 'run-conclusion': 'failure' }],
+      continuationToken: 'page-3'
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
+  });
+
+  it('keeps partial swimlane results visible when a continuation fails', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const rendered = renderDataView('chart', {
+      pageId: 'runs',
+      title: 'Workflow runs',
+      view: {
+        mark: 'chart',
+        chart: 'swimlane',
+        encoding: {
+          x: { field: 'started-at', type: 'temporal' },
+          y: { field: 'run-conclusion', type: 'ordinal' }
+        }
+      },
+      sourceName: 'runs-table',
+      rows: [{ run: '1', 'started-at': '2026-08-31T12:48:37Z', 'run-conclusion': 'success' }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: (_pageId, _title, chartRows) => chartRows.map((row) => ({
+        key: String(row.run),
+        x: String(row['started-at']),
+        y: Number.NaN,
+        category: String(row['run-conclusion']),
+        color: String(row['run-conclusion']),
+        link: null,
+        source: row
+      })),
+      prepareChartPoints: (points) => points,
+      toText: String,
+      continuation: {
+        token: 'page-2',
+        totalRows: 2,
+        load: vi.fn().mockRejectedValue(new Error('worker unavailable'))
+      }
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    await vi.waitFor(() => {
+      expect(rendered?.querySelector('.view-context[role="status"]')?.textContent)
+        .toBe('Showing partial results because additional runs could not be loaded.');
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('data-continuation-state')).toBe('error');
+    });
+    expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
+    expect(error).toHaveBeenCalledWith('Unable to load additional swimlane runs: worker unavailable');
+    error.mockRestore();
+  });
+
   it('renders the scatter legend after the graph', () => {
     const scatter = renderDataView('chart', {
       pageId: 'github-api',

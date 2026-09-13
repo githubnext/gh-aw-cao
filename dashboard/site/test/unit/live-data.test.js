@@ -24,13 +24,10 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
     expect(preview).toContain("subscribeCanonicalDashboardView(");
     expect(preview).toContain("emitCurrent: false");
-    expect(preview).toContain("dashboardPageChartSourceNames, dashboardPageLazySourceNames");
-    expect(preview).toContain("drainSourceContinuation");
-    expect(preview.indexOf("const drainChartSources = async (pageId, sources) => {")).toBeLessThan(preview.indexOf("const loadPageSources = async (pageId) => {"));
-    expect(preview).toContain("drainChartSources(pageId, bindContinuations(");
-    expect(preview).toContain("drainChartSources(initialPageId, bindContinuations(sources, initialLazySources))");
-    expect(preview).toContain("let liveUpdateSequence = 0;");
-    expect(preview).toContain("if (sequence !== liveUpdateSequence) return;");
+    expect(preview).toContain("dashboardPageLazySourceNames, dashboardPageSourceNames");
+    expect(preview).not.toContain("drainSourceContinuation");
+    expect(preview).not.toContain("drainChartSources");
+    expect(preview).toContain("bindContinuations(sources, initialLazySources)");
     expect(preview).toContain("if (!event.persisted) refreshOwner.abort()");
     expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DATABASE_COUNT_SOURCE_NAMES,/);
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));

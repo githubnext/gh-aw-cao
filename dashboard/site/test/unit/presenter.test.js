@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageChartSourceNames, dashboardPageLazySourceNames } from '../../src/presenter.js';
+import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames } from '../../src/presenter.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
@@ -31,13 +31,8 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
-  it('reports the chart source shared with a lazy-list table on the runs page', () => {
-    // The "runs" page's swimlane chart and its lazy-list table both read the
-    // "runs-table" source; the chart must drain any pagination applied for
-    // the lazy-list table instead of only rendering the first page.
-    const chartSourceNames = dashboardPageChartSourceNames(authoritativeDashboardDocument, 'runs');
+  it('reports the paginated source shared by the runs page views', () => {
     const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
-    expect(chartSourceNames).toContain('runs-table');
     expect(lazySourceNames).toContain('runs-table');
   });
 
