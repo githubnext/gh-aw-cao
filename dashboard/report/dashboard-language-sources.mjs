@@ -128,6 +128,21 @@ function source(name, rows, generatedAt, available = true, complete = true, fres
   };
 }
 
+function repositoryScopeRows(controlSettings = {}, generatedAt) {
+  return (controlSettings.allowed_repositories || []).flatMap((repository) => {
+    const [organization, name, ...extra] = String(repository || "").trim().split("/");
+    return organization && name && extra.length === 0
+      ? [{
+          organization,
+          repository: name,
+          "repository-name": name,
+          "rollout-mode": "unknown",
+          "observed-at": generatedAt,
+        }]
+      : [];
+  });
+}
+
 function uniqueStableRuns(rows) {
   return new Set((rows || []).flatMap((row) => (
     row.organization && row.repository && row.run
@@ -2640,6 +2655,9 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     ...graders.observations,
   ];
   const repositories = new Map();
+  for (const row of repositoryScopeRows(controlSettings, generatedAt)) {
+    repositories.set(`${row.organization}/${row.repository}`, row);
+  }
   for (const row of [...workflows, ...runs, ...findings, ...values]) {
     if (!row.organization || !row.repository) continue;
     repositories.set(`${row.organization}/${row.repository}`, {

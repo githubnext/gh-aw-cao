@@ -197,6 +197,16 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
   };
 }
 
+function scopedRepositorySources() {
+  const sources = canonicalSources('scope-generation', '777');
+  sources.repositories.rows = [
+    { organization: 'github', repository: 'gh-aw', 'observed-at': '2026-09-09T05:00:00Z' },
+    { organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': '2026-09-09T05:00:00Z' },
+    { organization: 'githubnext', repository: 'gh-aw-workshop', 'observed-at': '2026-09-09T05:00:00Z' }
+  ];
+  return sources;
+}
+
 test.beforeEach(async ({ context, page }) => {
   await context.route('http://dashboard.test/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -359,6 +369,46 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     organization: 'githubnext', repository: 'gh-aw-cao', run: '12345',
     'run-attempt': 2, 'job-id': '123459', job: 'build'
   }]);
+});
+
+test('repositories view retains configured repository scope after canonical ingestion', async ({ page }) => {
+  const result = await page.evaluate(async (sourceDocument) => {
+    const [dashboardDocument, viewSourcesModule, processorModule, presenterModule] = await Promise.all([
+      fetch(`${location.origin}/dashboard.json`).then((response) => response.json()),
+      import(`${location.origin}/src/data/queries/view-sources.js`),
+      import(`${location.origin}/src/data-processor.js`),
+      import(`${location.origin}/src/presenter.js`)
+    ]);
+    const projected = await viewSourcesModule.loadCanonicalViewSources(indexedDB, sourceDocument, { ingest: true });
+    const preparedSources = {
+      ...projected,
+      ...await processorModule.processDashboardQueries(dashboardDocument.dashboard.queries, projected)
+    };
+    location.hash = '#page-repositories';
+    document.body.replaceChildren(document.createElement('main'));
+    document.querySelector('main')?.append(presenterModule.renderDashboard({
+      document: dashboardDocument,
+      sources: preparedSources,
+      prepared: true
+    }));
+    const renderedText = document.querySelector('[data-page-id="repositories"]')?.textContent ?? '';
+    return {
+      sourceRepositories: projected.repositories.rows.map((row) => `${row.organization}/${row.repository}`).sort(),
+      activityRepositories: preparedSources['repository-activity'].rows.map((row) => row.repository).sort(),
+      renderedText
+    };
+  }, scopedRepositorySources());
+
+  const expectedRepositories = [
+    'github/gh-aw',
+    'githubnext/gh-aw-cao',
+    'githubnext/gh-aw-workshop'
+  ];
+  expect(result.sourceRepositories).toEqual(expectedRepositories);
+  expect(result.activityRepositories).toEqual(expectedRepositories);
+  for (const repository of expectedRepositories) {
+    expect(result.renderedText).toContain(repository);
+  }
 });
 
 test('data worker returns only the canonical payload requested by a view', async ({ page }) => {
