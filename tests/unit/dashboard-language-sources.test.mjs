@@ -88,6 +88,10 @@ test("builds deployable package and workflow inventory sources", () => {
       }],
     },
     controlSettings: {
+      policy_document: {
+        version: 1,
+        "control-plane": { scope: { "allowed-repositories": ["githubnext/control"] } },
+      },
       allowed_repositories: ["githubnext/control"],
       packages: {
         "daily-ops": {
@@ -106,6 +110,9 @@ test("builds deployable package and workflow inventory sources", () => {
   });
 
   assert.equal(sources.packages.rows.length, 1);
+  assert.deepEqual(sources["configuration-policy"].rows[0].document["control-plane"].scope, {
+    "allowed-repositories": ["githubnext/control"],
+  });
   assert.deepEqual(sources.packages.rows[0], {
     package: "daily-ops",
     "package-name": "Daily Operations",
@@ -165,43 +172,6 @@ test("builds deployable package and workflow inventory sources", () => {
       "observed-at": generatedAt,
     },
   );
-});
-
-test("configured repository scope appears in dashboard repository source without activity", () => {
-  const generatedAt = "2026-09-12T12:00:00Z";
-  const sources = buildDashboardLanguageSources({
-    deployed: {
-      generatedAt,
-      discovery: { complete: true },
-      runHealth: { available: true, complete: true },
-      bundles: [],
-      workflows: [{
-        repository: "githubnext/gh-aw-cao",
-        path: ".github/workflows/dashboard.lock.yml",
-        name: "Dashboard",
-        role: "worker",
-        state: "active",
-        runHealth: { runRecords: [] },
-      }],
-    },
-    usage: { available: true, complete: true, runs: [] },
-    operationalValues: { records: [] },
-    report: { generatedAt, records: [] },
-    controlSettings: {
-      allowed_repositories: [
-        "github/gh-aw",
-        "githubnext/*",
-        "githubnext/gh-aw-cao",
-        "githubnext/gh-aw-workshop",
-      ],
-    },
-  });
-
-  assert.deepEqual(sources.repositories.rows.map((row) => `${row.organization}/${row.repository}`).sort(), [
-    "github/gh-aw",
-    "githubnext/gh-aw-cao",
-    "githubnext/gh-aw-workshop",
-  ]);
 });
 
 test("excludes internal packages from user-facing package inventory", () => {

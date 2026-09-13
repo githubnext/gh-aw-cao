@@ -128,28 +128,6 @@ function source(name, rows, generatedAt, available = true, complete = true, fres
   };
 }
 
-/**
- * Converts configured `owner/name` repository scope entries into repository
- * rows. Invalid entries are ignored because policy validation owns diagnostics;
- * rollout mode is left unset so observed workflow or run data owns that value.
- * @param {{ allowed_repositories?: string[] } | null | undefined} controlSettings
- * @param {string} generatedAt
- * @returns {Array<Record<string, string>>}
- */
-function repositoryScopeRows(controlSettings, generatedAt) {
-  return (controlSettings?.allowed_repositories || []).flatMap((repository) => {
-    const [organization, name, ...extra] = String(repository || "").trim().split("/");
-    return organization && name && name !== "*" && extra.length === 0
-      ? [{
-          organization,
-          repository: name,
-          "repository-name": name,
-          "observed-at": generatedAt,
-        }]
-      : [];
-  });
-}
-
 function uniqueStableRuns(rows) {
   return new Set((rows || []).flatMap((row) => (
     row.organization && row.repository && row.run
@@ -2662,14 +2640,9 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     ...graders.observations,
   ];
   const repositories = new Map();
-  for (const row of repositoryScopeRows(controlSettings, generatedAt)) {
-    repositories.set(`${row.organization}/${row.repository}`, row);
-  }
   for (const row of [...workflows, ...runs, ...findings, ...values]) {
     if (!row.organization || !row.repository) continue;
-    const existing = repositories.get(`${row.organization}/${row.repository}`) || {};
     repositories.set(`${row.organization}/${row.repository}`, {
-      ...existing,
       organization: row.organization,
       repository: row.repository,
       "repository-name": row.repository,

@@ -34,6 +34,26 @@ function objectRow(row) {
     : null;
 }
 
+/** @param {unknown} document */
+function allowedRepositoryRows(document) {
+  const policy = document && typeof document === 'object' && !Array.isArray(document)
+    ? /** @type {Record<string, unknown>} */ (document)
+    : {};
+  const controlPlane = policy['control-plane'] && typeof policy['control-plane'] === 'object' && !Array.isArray(policy['control-plane'])
+    ? /** @type {Record<string, unknown>} */ (policy['control-plane'])
+    : {};
+  const scope = controlPlane.scope && typeof controlPlane.scope === 'object' && !Array.isArray(controlPlane.scope)
+    ? /** @type {Record<string, unknown>} */ (controlPlane.scope)
+    : {};
+  const repositories = Array.isArray(scope['allowed-repositories']) ? scope['allowed-repositories'] : [];
+  return repositories.flatMap((repository) => {
+    const [owner, name, ...extra] = String(repository ?? '').trim().split('/');
+    return owner && name && name !== '*' && extra.length === 0
+      ? [{ owner, name, fullName: `${owner}/${name}` }]
+      : [];
+  });
+}
+
 /**
  * Adapts the current published dashboard source document without exposing its
  * view-shaped field names beyond this boundary.
@@ -44,6 +64,7 @@ function objectRow(row) {
 export function adaptDashboardSources(sources) {
   const repositories = sourceDocument(sources.repositories);
   const packages = sourceDocument(sources.packages);
+  const configurationPolicy = sourceDocument(sources['configuration-policy']);
   const workflows = sourceDocument(sources.workflows);
   const runs = sourceDocument(sources.runs);
   const jobs = sourceDocument(sources['job-performance']);
@@ -113,6 +134,25 @@ export function adaptDashboardSources(sources) {
         repositoryLink: row['repository-link'] ?? null
       }
     });
+  }
+
+  for (const candidate of configurationPolicy.rows) {
+    const row = objectRow(candidate);
+    if (!row) continue;
+    for (const repository of allowedRepositoryRows(row.document)) {
+      observations.push({
+        kind: 'repository',
+        source: SOURCE,
+        sourceId: repository.fullName,
+        observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(configurationPolicy.metadata), 'configuration-policy.observed-at'),
+        data: {
+          id: repositoryCoordinateId(repository.owner, repository.name),
+          owner: repository.owner,
+          name: repository.name,
+          fullName: repository.fullName
+        }
+      });
+    }
   }
 
   for (const candidate of workflows.rows) {

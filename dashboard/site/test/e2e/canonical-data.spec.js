@@ -199,11 +199,25 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
 
 function scopedRepositorySources() {
   const sources = canonicalSources('scope-generation', '777');
-  sources.repositories.rows = [
-    { organization: 'github', repository: 'gh-aw', 'observed-at': '2026-09-09T05:00:00Z' },
-    { organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': '2026-09-09T05:00:00Z' },
-    { organization: 'githubnext', repository: 'gh-aw-workshop', 'observed-at': '2026-09-09T05:00:00Z' }
-  ];
+  const scoped = /** @type {Record<string, unknown>} */ (sources);
+  scoped['configuration-policy'] = {
+    rows: [{
+      path: '.github/workflows/cao.json',
+      document: {
+        'control-plane': {
+          scope: {
+            'allowed-repositories': [
+              'github/gh-aw',
+              'githubnext/*',
+              'githubnext/gh-aw-cao',
+              'githubnext/gh-aw-workshop'
+            ]
+          }
+        }
+      }
+    }],
+    metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'scope-generation' }
+  };
   return sources;
 }
 
