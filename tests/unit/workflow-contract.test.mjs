@@ -1178,7 +1178,7 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.match(quickstart, /setup-central-agentic-ops/);
   assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_REF\}"/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
-  assert.match(updateSection, /gh aw update --major --cool-down 0 --create-pull-request/);
+  assert.match(updateSection, /gh aw update https:\/\/github\.com\/githubnext\/gh-aw-cao --major --cool-down 0 --create-pull-request/);
   assert.match(updateSection, /predate the package-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add/);
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);

@@ -234,7 +234,7 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     run("gh", [
       "aw",
       "update",
-      "dependabot",
+      packageSource,
       "--force",
       "--no-merge",
       "--no-compile",

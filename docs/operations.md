@@ -304,7 +304,7 @@ Update package-owned workflows and runtime resources through a reviewable update
 From the control repository:
 
 ```bash
-gh aw update --major --cool-down 0 --create-pull-request
+gh aw update https://github.com/githubnext/gh-aw-cao --major --cool-down 0 --create-pull-request
 ```
 
 The command updates the installed CAO package and opens a pull request containing its package-owned workflows, generated locks, shared runtime modules, and ownership records. Review that proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
