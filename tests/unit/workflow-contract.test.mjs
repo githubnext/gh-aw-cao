@@ -1081,6 +1081,7 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /safe-outputs:\n  update-release:/);
   assert.match(agenticSource, /RELEASE_ID: \$\{\{ needs\.prepare-release\.outputs\.release_id \}\}/);
   assert.match(agenticSource, /Call `safeoutputs\/update_release` exactly once/);
+  assert.match(agenticSource, /the exact `tag_name` from `current_release\.json`/);
   assert.match(agenticSource, /`operation`: `prepend`/);
   assert.match(agenticSource, /Keep the existing GitHub-generated notes intact/);
   assert.match(jobs.get("agent")?.needs.join(","), /prepare-release/);

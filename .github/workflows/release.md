@@ -255,7 +255,7 @@ evals:
 
 # Release Highlights
 
-Update the newly created draft release `${RELEASE_TAG}` with a concise, human-friendly summary.
+Update the newly created draft release identified by `current_release.json` with a concise, human-friendly summary.
 
 The release publishing job has already created the tag and draft release. Do not create, publish, or otherwise change the release state. Your only write is the release-description update through the safe output.
 
@@ -283,7 +283,7 @@ Follow GitHub release-notes best practices:
 
 Call `safeoutputs/update_release` exactly once with:
 
-- `tag`: `${RELEASE_TAG}`
+- `tag`: the exact `tag_name` from `current_release.json`
 - `operation`: `prepend`
 - `body`: the complete Markdown highlights, beginning with `## Release highlights`
 
