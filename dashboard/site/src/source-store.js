@@ -27,6 +27,9 @@ const IDLE_ENTRY = { status: 'idle', origin: 'query', source: null };
 const entries = new Map();
 /** @type {Set<string>} */
 const requested = new Set();
+/** Generation of the newest load started per source, so stale results are dropped. */
+/** @type {Map<string, number>} */
+const generations = new Map();
 /** @type {((name: string) => Promise<LogicalSourceInput | undefined>) | null} */
 let loadSource = null;
 
@@ -80,7 +83,7 @@ export function requestSource(name) {
 
 /** Re-runs every previously requested query, for example after live data changes. */
 export function refreshSources() {
-  for (const name of requested) {
+  for (const name of [...requested]) {
     void loadRequestedSource(name);
   }
 }
@@ -90,14 +93,19 @@ async function loadRequestedSource(name) {
   const loader = loadSource;
   if (!loader) return;
   const entry = sourceState(name);
+  const generation = (generations.get(name) ?? 0) + 1;
+  generations.set(name, generation);
   if (entry.get().status !== 'ready') entry.set({ status: 'loading', origin: 'query', source: null });
   try {
     const source = await loader(name);
+    // A later load already started, so this result is stale.
+    if (generations.get(name) !== generation) return;
     entry.set(source
       ? { status: 'ready', origin: 'query', source }
       : { status: 'missing', origin: 'query', source: null });
     debug('resolved', { source: name, rows: source?.rows?.length ?? 0 });
   } catch (error) {
+    if (generations.get(name) !== generation) return;
     entry.set({ status: 'failed', origin: 'query', source: null });
     debug('failed', { source: name, message: error instanceof Error ? error.message : String(error) });
   }
@@ -112,6 +120,7 @@ export function clearSources(names) {
   for (const name of names) {
     entries.delete(name);
     requested.delete(name);
+    generations.delete(name);
   }
 }
 
@@ -119,5 +128,6 @@ export function clearSources(names) {
 export function resetSourceStore() {
   entries.clear();
   requested.clear();
+  generations.clear();
   loadSource = null;
 }

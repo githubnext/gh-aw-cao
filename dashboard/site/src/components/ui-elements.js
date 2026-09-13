@@ -76,6 +76,21 @@ const ELEMENT_RENDERERS = new Map([
   ['outcomes-overview', renderFactoryOverview]
 ]);
 
+/**
+ * Elements that bind each declared source to its own reactive state and load it
+ * asynchronously, so their page renders before any query resolves.
+ */
+const ASYNC_SOURCE_ELEMENTS = new Set(['outcomes-overview']);
+
+/**
+ * Reports whether an element loads its declared sources on its own.
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function elementLoadsSourcesAsync(name) {
+  return ASYNC_SOURCE_ELEMENTS.has(name);
+}
+
 const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'outcomes-overview']);
 
 /**

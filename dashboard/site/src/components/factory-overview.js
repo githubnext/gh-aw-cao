@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { derived, effect, state } from '../reactive.js';
-import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
+import { clearSources, hasSourceLoader, publishSource, requestSource, sourceState } from '../source-store.js';
 import { formatCount } from './count-formatters.js';
 
 const DAY_MS = 86_400_000;
@@ -23,7 +23,7 @@ const OVERVIEW_SOURCE_NAMES = ['outcomes', 'runs', 'dispatches', 'grader-observa
 /**
  * Values shared by more than one bound element. Each one is memoised so a
  * source update recomputes it once instead of once per element.
- * @typedef {{ dispatchRows: () => Row[], successfulRunRows: () => Row[], valueGains: () => number, coverage: () => Coverage, workers: () => number, outcomes: () => Row[] }} OverviewMetrics
+ * @typedef {{ dispatchRows: () => Row[], successfulRunRows: () => Row[], valueGains: () => number, coverage: () => Coverage, workers: () => number, outcomes: () => Row[], usefulOutputs: () => number }} OverviewMetrics
  */
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {{ singular: string, plural: string }} PluralText */
@@ -145,8 +145,11 @@ function bindOverviewSources(context) {
         // straight from a query still need the view's own row filter.
         return entry.origin === 'query' && filterRows ? filterRows(entry.source.rows) : entry.source.rows;
       },
-      pending: () => entryState.get().status === 'loading',
-      unavailable: () => entryState.get().source?.metadata?.availability === 'unavailable'
+      // A requested source is pending until its query settles; without a
+      // loader nothing is in flight, so idle rows render as they are.
+      pending: () => ['loading', 'idle'].includes(entryState.get().status) && hasSourceLoader(),
+      unavailable: () => entryState.get().status === 'failed'
+        || entryState.get().source?.metadata?.availability === 'unavailable'
     };
   }
   return bindings;
@@ -176,13 +179,15 @@ function createOverviewMetrics(sources) {
       ? dispatches
       : sources.runs.rows().filter((row) => String(row.event) === 'workflow_dispatch');
   });
+  const outcomes = memo(() => latestOutcomes(sources.outcomes.rows()));
   return {
     dispatchRows,
+    usefulOutputs: memo(() => outcomes().filter((row) => ['issue', 'pull-request'].includes(outputKind(row))).length),
+    outcomes,
     successfulRunRows: memo(() => sources.runs.rows().filter((row) => String(row['run-conclusion']) === 'success')),
     valueGains: memo(() => sources['grader-observations'].rows().filter(exceedsThreshold).length),
     coverage: memo(() => connectedRepositoryCoverage(sources.workflows.rows(), sources.repositories.rows(), sources.runs.rows())),
-    workers: memo(() => workerCount(sources.workflows.rows(), dispatchRows())),
-    outcomes: memo(() => latestOutcomes(sources.outcomes.rows()))
+    workers: memo(() => workerCount(sources.workflows.rows(), dispatchRows()))
   };
 }
 
@@ -218,7 +223,7 @@ function renderIntroduction(sources, metrics) {
 
   bind(() => {
     const outcomes = metrics.outcomes();
-    const usefulOutputs = outcomes.filter((row) => ['issue', 'pull-request'].includes(outputKind(row))).length;
+    const usefulOutputs = metrics.usefulOutputs();
     const delivered = outcomes.filter((row) => DELIVERED_STATES.has(String(row['outcome-state'])));
     const deliveredRepositories = new Set(delivered.map((row) => String(row.repository ?? '')).filter(Boolean)).size;
     const successfulRuns = metrics.successfulRunRows().length;
@@ -341,8 +346,7 @@ function renderFactoryFloor(sources, metrics, label) {
     const dispatchRows = metrics.dispatchRows();
     const workers = metrics.workers();
     const gains = metrics.valueGains();
-    const usefulOutputs = metrics.outcomes()
-      .filter((row) => ['issue', 'pull-request'].includes(outputKind(row))).length;
+    const usefulOutputs = metrics.usefulOutputs();
     const activeRuns = factoryMotionState.get().operations;
     floor.className = `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`;
     floor.setAttribute(
@@ -457,23 +461,22 @@ function renderFactoryRhythm(sources, metrics) {
   bind(() => {
     const days = activityDays(metrics.successfulRunRows(), latestTimestamp(sources.runs.rows()));
     const maximum = Math.max(...days.map((day) => day.count), 1);
-    const buttons = days.map((day, index) => /** @type {HTMLButtonElement} */ (h(
-      'button',
-      {
-        className: 'factory-rhythm-day',
-        type: 'button',
-        'aria-label': `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`,
-        'aria-pressed': 'false',
-        onClick: () => selectDay(index)
-      },
-      h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
-        h('i', { className: 'factory-rhythm-current', style: `height: ${Math.max(5, day.count / maximum * 100)}%` })
-      ),
-      h('small', {}, day.label)
-    )));
-    bars.replaceChildren(...buttons);
+    // The bars are updated in place so an arriving query never discards the
+    // focused or pressed day button.
+    if (dayButtons.get().length !== days.length) {
+      const buttons = days.map((_, index) => createRhythmDayButton(() => selectDay(index)));
+      dayButtons.set(buttons);
+      bars.replaceChildren(...buttons);
+    }
+    for (const [index, button] of dayButtons.get().entries()) {
+      const day = days[index];
+      button.setAttribute('aria-label', `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`);
+      const bar = button.querySelector('.factory-rhythm-current');
+      if (bar instanceof HTMLElement) bar.style.height = `${Math.max(5, day.count / maximum * 100)}%`;
+      const label = button.querySelector('small');
+      if (label) label.textContent = day.label;
+    }
     rhythmDays.set(days);
-    dayButtons.set(buttons);
   });
 
   bind(() => {
@@ -491,6 +494,23 @@ function renderFactoryRhythm(sources, metrics) {
   });
 
   return section;
+}
+
+/** @param {() => void} onSelect */
+function createRhythmDayButton(onSelect) {
+  return /** @type {HTMLButtonElement} */ (h(
+    'button',
+    {
+      className: 'factory-rhythm-day',
+      type: 'button',
+      'aria-pressed': 'false',
+      onClick: onSelect
+    },
+    h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
+      h('i', { className: 'factory-rhythm-current' })
+    ),
+    h('small', {})
+  ));
 }
 
 /** @param {Row[]} successfulRuns @param {number} referenceTime */

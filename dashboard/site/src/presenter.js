@@ -12,7 +12,7 @@ import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
+import { elementHandlesEmptyRows, elementLoadsSourcesAsync, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -141,19 +141,13 @@ function getBuiltInPagePayload(page) {
 }
 
 /**
- * Elements that bind each declared source to its own reactive state and load
- * it asynchronously, so their page renders before any query resolves.
- */
-const ASYNC_SOURCE_ELEMENTS = new Set(['outcomes-overview']);
-
-/**
  * @param {unknown} view
  * @returns {boolean}
  */
 function isAsyncElementView(view) {
   return isPlainObject(view)
     && typeof view.element === 'string'
-    && ASYNC_SOURCE_ELEMENTS.has(view.element);
+    && elementLoadsSourcesAsync(view.element);
 }
 
 /**
