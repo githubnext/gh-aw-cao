@@ -85,7 +85,10 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 
     ```bash
     cao_release=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-    [[ "$cao_release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+    [[ "$cao_release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+      echo "No published semantic CAO release was found." >&2
+      exit 1
+    }
     gh aw add "githubnext/gh-aw-cao@${cao_release}"
     ```
 

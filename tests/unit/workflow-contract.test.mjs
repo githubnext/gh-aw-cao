@@ -3042,6 +3042,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.doesNotMatch(setupSkill, /Always target the control repository itself for the first run/);
   assert.match(setupSkill, /cao_release=\$\(gh release view --repo githubnext\/gh-aw-cao --json tagName --jq '\.tagName'\)/);
   assert.match(setupSkill, /\[\[ "\$cao_release" =~ \^v\[0-9\]\+\\\.\[0-9\]\+\\\.\[0-9\]\+\$ \]\]/);
+  assert.match(setupSkill, /No published semantic CAO release was found/);
   assert.match(setupSkill, /gh aw add "githubnext\/gh-aw-cao@\$\{cao_release\}"/);
   assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-aw-cao@main|full commit SHA/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
