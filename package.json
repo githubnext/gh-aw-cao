@@ -56,5 +56,8 @@
     "@types/node": "^26.5.1",
     "fake-indexeddb": "^6.2.5",
     "typescript": "^7.0.2"
+  },
+  "overrides": {
+    "undici": "^6.28.1"
   }
 }
