@@ -60,28 +60,11 @@ The private key commands read keys from local files without placing them in shel
 
 ### Automated App setup
 
-The CAO source includes a credential-only Node CLI that mirrors gh-aw's GitHub App manifest flow without installing or rewriting a package. From an installed control repository, read the immutable source commit from its package record, retrieve the CLI to a temporary directory, run it, and remove the temporary directory:
+The CAO package includes a credential-only Node CLI that mirrors gh-aw's GitHub App manifest flow without rewriting the package. Run the installed CLI from the control repository:
 
 ```bash
-CAO_REF=$(jq -rs \
-  '[.[] | select((.package // "") == "githubnext/gh-aw-cao" or
-    ((.package // "") | startswith("githubnext/gh-aw-cao/"))) |
-    .resolvedCommit] | unique | if length == 1 then .[0] else empty end' \
-  .github/aw/packages/*.json)
-[[ "$CAO_REF" =~ ^[0-9a-fA-F]{40,64}$ ]] || {
-  echo "Cannot resolve one immutable CAO package commit" >&2
-  exit 1
-}
-SETUP_DIR=$(mktemp -d)
-trap 'rm -rf "$SETUP_DIR"' EXIT
-gh api \
-  -H "Accept: application/vnd.github.raw+json" \
-  "repos/githubnext/gh-aw-cao/contents/.github/workflows/shared/setup-github-apps.mjs?ref=${CAO_REF}" \
-  > "$SETUP_DIR/setup-github-apps.mjs"
-node "$SETUP_DIR/setup-github-apps.mjs" --repo acme/central-agentic-ops
+node .github/workflows/shared/setup-github-apps.mjs --repo acme/central-agentic-ops
 ```
-
-This accepts root and focused CAO package records only when they agree on one immutable commit. It fails closed rather than requesting the helper from a default branch.
 
 In a CAO source checkout, the same CLI is available as `npm run setup:github-apps --`. The script opens two browser flows in sequence. Review and create each private App. When GitHub redirects to the installation page, choose **Only select repositories**, select only the control repository, and save; do not choose all repositories. The script stores each returned client ID as its repository variable and sends each PEM private key to `gh secret set` through standard input; it does not write keys to disk or place them in command arguments. Setup is resumable: rerunning it verifies and skips each complete credential and selected-repository installation, or reopens an incomplete installation without recreating the App. Use `--dry-run` to inspect both manifests without changing GitHub, `--no-open` to print the local browser URLs, or explicit `--read-app-name` and `--write-app-name` values when the generated globally unique names are unavailable.
 

@@ -307,9 +307,9 @@ From the control repository:
 gh aw update --major --cool-down 0 --create-pull-request
 ```
 
-The command updates the installed CAO package and opens a pull request containing its package-owned workflows, generated locks, ownership records, and immutable runtime source identity. Review that proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
+The command updates the installed CAO package and opens a pull request containing its package-owned workflows, generated locks, shared runtime modules, and ownership records. Review that proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
 
-Existing installations whose package records predate the `.github/workflows/shared/` runtime must update to a catalog commit that contains `control.mjs` and `policy.mjs` there before running CAO. Admission intentionally fails closed when an older pinned source lacks those files.
+Existing installations whose package records predate the package-owned `.github/workflows/shared/` runtime must update before running CAO so `control.mjs` and `policy.mjs` are materialized beside `control.md`. Admission intentionally fails closed when those installed files are missing.
 
 ### Catalog Release Revocation
 

@@ -90,10 +90,10 @@ The package installs:
 
 1. the catalog's operational orchestrators and workers, including **Dependabot**;
 2. shared authentication, routing, and fail-closed controls;
-3. shared control that resolves the single CAO runtime under `.github/workflows/shared` at the package's immutable source commit;
+3. shared control and its single package-installed CAO runtime under `.github/workflows/shared`;
 4. generated `.lock.yml` workflows that GitHub Actions executes.
 
-The installed workflows resolve the runtime from the same immutable package revision. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
+The installed workflows use the runtime copied into the same shared directory. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
 
 The installed operation is runnable after its package and worker workflow identities are declared in the control policy. Declared workers are enabled unless their policy sets `enabled: false`; undeclared or disabled identities are skipped by admission before agent execution.
 
@@ -107,7 +107,7 @@ Create `.github/workflows/cao.json` with the target owner and package. The omitt
 ```json title=".github/workflows/cao.json"
 {
 	"version": 1,
-	"gh-aw-version": "v0.89.9",
+	"gh-aw-version": "v0.89.10",
 	"control-plane": {
 		"scope": {
 			"allowed-owners": ["acme"]

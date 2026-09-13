@@ -15,6 +15,11 @@ import { retryTransientPackageInstall } from "../helpers/package-install-retry.m
 
 const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
   || "githubnext/gh-aw-cao@main";
+const controlRuntimeFiles = [
+  ".github/workflows/shared/control.mjs",
+  ".github/workflows/shared/policy.mjs",
+  ".github/workflows/shared/setup-github-apps.mjs",
+];
 function focusedPackageSource(slug, source = packageSource) {
   const separator = source.lastIndexOf("@");
   assert.notEqual(separator, -1, "package source must include a ref");
@@ -180,6 +185,9 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
     assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
+    for (const relativePath of controlRuntimeFiles) {
+      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted control file ${relativePath}`);
+    }
     const policyPath = join(consumer, ".github", "workflows", "cao.json");
     const policy = `${JSON.stringify({
       version: 1,
@@ -221,6 +229,8 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     const modifiedOrchestrator = trackedOrchestrator.replace("max-ai-credits: 250", "max-ai-credits: 251");
     assert.notEqual(modifiedOrchestrator, trackedOrchestrator, "test could not modify package workflow frontmatter");
     writeFileSync(orchestratorPath, `${modifiedOrchestrator}\n# local integration-test change\n`);
+    const removedRuntime = controlRuntimeFiles[0];
+    rmSync(join(consumer, removedRuntime));
     run("gh", [
       "aw",
       "update",
@@ -241,6 +251,7 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     assert.match(updatedOrchestrator, /^max-ai-credits: 250$/m);
     assert.doesNotMatch(updatedOrchestrator, /^max-ai-credits: 251$/m);
     assert.equal(workflowBody(updatedOrchestrator), workflowBody(orchestrator));
+    assert.ok(existsSync(join(consumer, removedRuntime)), "gh aw update did not restore the control runtime");
     assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
     assert.equal(readFileSync(policyPath, "utf8"), policy, "gh aw update changed consumer-owned CAO policy");
   } finally {

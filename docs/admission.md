@@ -15,7 +15,7 @@ Admission queries the GitHub rate-limit API and uses the returned core limit, re
 
 ## What Admission Gates
 
-The shared control component keeps one runtime under `.github/workflows/shared/`. Source-managed workflows read it at the exact `github.workflow_sha`; installed workflows resolve their immutable `# Source` commit and fetch the same directory from that commit. Admission reads `.github/workflows/cao.json` at the workflow revision, and authorized runs execute `precompute` from the resolved immutable runtime.
+The shared control component keeps one package-installed runtime under `.github/workflows/shared/`. The exact-`github.workflow_sha` shared checkout contains that runtime and `.github/workflows/cao.json`; authorized runs execute `precompute` from the same checkout.
 
 | Check | Admitted when |
 | --- | --- |
@@ -59,15 +59,13 @@ Failure in either phase prevents agent execution. Admission denial skips activat
 Setup creates one atomic control-plane revision:
 
 1. Install the gh-aw package from an immutable CAO tag or commit.
-2. Verify that every installed lock resolves the immutable CAO source containing `.github/workflows/shared/control.mjs` and `.github/workflows/shared/policy.mjs`.
+2. Verify that package installation copied `.github/workflows/shared/control.mjs` and `.github/workflows/shared/policy.mjs`.
 3. Declare the installed package and its worker-to-workflow mapping in `.github/workflows/cao.json`.
 4. Commit the workflows, generated locks, package records, and policy together, then push before running the operation.
 
-The root CAO package records one immutable source revision instead of installing duplicate runtime copies. Controlled workflows fetch `.github/workflows/shared/` from that source when the directory is not present locally. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
+The root CAO package installs one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install it and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
 
-An installed workflow checks out that source with its control repository's `GITHUB_TOKEN`, so the package source must be public. A private catalog or mirror must use the source-managed topology with the runtime committed in-tree; missing cross-repository read authority fails closed.
-
-Root package installation records the immutable CAO runtime source, but it does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
+Root package installation does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 
 The [Configuration Reference](configuration.md) defines every policy field. The phase that uses each group is:
 
@@ -85,7 +83,7 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 
 | Reason | Check marked ❌ | Configuration or setup to check |
 | --- | --- | --- |
-| Cannot read or execute CAO runtime | Runtime revision | Verify the installed workflow has an immutable package source marker and that `.github/workflows/shared/control.mjs` and `policy.mjs` exist at that source commit. |
+| Cannot read or execute CAO runtime | Runtime revision | Verify that the root CAO package installed `.github/workflows/shared/control.mjs` and `policy.mjs` and that both exist at the workflow revision. |
 | `control policy validation failed` | Policy document | Validate policy keys, types, ranges, unique names, and expressions in `.github/workflows/cao.json`. |
 | `control-plane-absent` | Control plane | Add `control-plane` to `.github/workflows/cao.json`. |
 | `role must be orchestrator or worker`, `worker identity is required`, `worker identity is forbidden for orchestrators` | Workflow identity | Fix the dispatched role and worker identity for the workflow. |

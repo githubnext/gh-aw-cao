@@ -1161,24 +1161,30 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.equal(policy.authorized, true);
   assert.equal(policy.package, "dependabot");
   assert.doesNotMatch(rootManifest, /\.github\/aw\/cao/);
+  for (const path of ["control.mjs", "policy.mjs", "setup-github-apps.mjs"]) {
+    assert.match(
+      rootManifest,
+      new RegExp(`source: \\.github/workflows/shared/${path.replace(".", "\\.")}[\\s\\S]*?destination: \\.github/workflows/shared/${path.replace(".", "\\.")}`),
+    );
+  }
   for (const path of ["cao.schema.json", "setup-github-apps.mjs", "control.mjs", "policy.mjs"]) {
     assert.ok(existsSync(join(root, ".github", "workflows", "shared", path)));
   }
-  assert.ok(control.indexOf("source=\"$(sed") < control.indexOf("if [[ -f \"$local_runtime\""));
-  assert.match(control, /\[\[ "\$\{source_repository,,\}" == "\$\{GITHUB_REPOSITORY,,\}" \]\]/);
-  assert.ok(activity.indexOf("const record =") < activity.indexOf("if (!record)"));
+  assert.match(control, /runtime="\$GITHUB_WORKSPACE\/\.cao\/\.github\/workflows\/shared\/control\.mjs"/);
+  assert.doesNotMatch(control, /\.cao-runtime|Checkout installed CAO control source|# Source: /);
+  assert.match(activity, /control_runtime=\.github\/workflows\/shared\/control\.mjs/);
+  assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /setup-central-agentic-ops/);
   assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_REF\}"/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(updateSection, /gh aw update --major --cool-down 0 --create-pull-request/);
-  assert.match(updateSection, /predate the `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
+  assert.match(updateSection, /predate the package-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add/);
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
-  assert.match(authentication, /startswith\("githubnext\/gh-aw-cao\/"\)/);
-  assert.match(authentication, /\[\[ "\$CAO_REF" =~ \^\[0-9a-fA-F\]\{40,64\}\$ \]\]/);
-  assert.match(authentication, /fails closed rather than requesting the helper from a default branch/);
-  assert.match(admission, /package source must be public[\s\S]*?private catalog or mirror must use the source-managed topology/);
+  assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
+  assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
+  assert.match(admission, /root CAO package installs one runtime copy under `\.github\/workflows\/shared\/`/i);
 });
 
 test("root package composes its operational packages through manifests", () => {
@@ -2832,10 +2838,9 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(preActivation, /name: Evaluate Central Agentic Ops admission/);
       assert.match(preActivation, /name: Checkout CAO control modules/);
       assert.match(preActivation, /sparse-checkout: \.github/);
-      assert.match(preActivation, /name: Resolve CAO control source/);
-      assert.match(preActivation, /# Source: /);
-      assert.match(preActivation, /name: Checkout installed CAO control source/);
-      assert.match(preActivation, /sparse-checkout: \.github\/workflows\/shared/);
+      assert.match(preActivation, /name: Resolve CAO control runtime/);
+      assert.match(preActivation, /\.cao\/\.github\/workflows\/shared\/control\.mjs/);
+      assert.doesNotMatch(preActivation, /name: Checkout installed CAO control source|\.cao-runtime|# Source: /);
       assert.match(preActivation, /fetch-depth: 1/);
       assert.doesNotMatch(preActivation, /contents\/\.github\/cao\/src\/(?:control|policy)\.mjs/);
       assert.doesNotMatch(preActivation, /github\/gh-aw-actions\/setup-cli@/);
@@ -3089,7 +3094,8 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Control-repository visibility does not determine target access/);
   assert.match(setupSkill, /use `GITHUB_TOKEN` for control-repository self-review or an exact public target in `review`/);
   assert.match(setupSkill, /require separate least-privilege read-only and write-capable GitHub Apps/);
-  assert.match(setupSkill, /contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs\?ref=\$\{cao_ref\}/);
+  assert.match(setupSkill, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo <organization>\/<control-repository>/);
+  assert.doesNotMatch(setupSkill, /contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs|setup_dir=\$\(mktemp -d\)/);
   assert.match(setupSkill, /helper mirrors gh-aw's App manifest conversion flow without changing package delivery/);
   assert.match(setupSkill, /sends private keys to repository secrets through standard input/);
   assert.match(setupSkill, /read App has no write permission/);
@@ -3291,8 +3297,8 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
-  assert.match(workflow, /Resolve CAO control source[\s\S]*?\.github\/aw\/packages[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
-  assert.match(workflow, /Resolve gh-aw compiler version[\s\S]*?steps\.cao-control-source\.outputs\.runtime[\s\S]*?github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
+  assert.match(workflow, /Resolve gh-aw compiler version[\s\S]*?\.github\/workflows\/shared\/control\.mjs[\s\S]*?github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
+  assert.doesNotMatch(workflow, /Resolve CAO control source|\.github\/aw\/packages|\.cao-runtime/);
   assert.doesNotMatch(workflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+"\$control_runtime"/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
