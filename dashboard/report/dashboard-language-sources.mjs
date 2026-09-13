@@ -128,6 +128,11 @@ function source(name, rows, generatedAt, available = true, complete = true, fres
   };
 }
 
+/**
+ * Converts configured `owner/name` repository scope entries into repository
+ * rows. Invalid entries are ignored because policy validation owns diagnostics;
+ * rollout mode stays unknown until observed workflow or run data refines it.
+ */
 function repositoryScopeRows(controlSettings = {}, generatedAt) {
   return (controlSettings.allowed_repositories || []).flatMap((repository) => {
     const [organization, name, ...extra] = String(repository || "").trim().split("/");
@@ -2660,7 +2665,9 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   }
   for (const row of [...workflows, ...runs, ...findings, ...values]) {
     if (!row.organization || !row.repository) continue;
+    const existing = repositories.get(`${row.organization}/${row.repository}`) || {};
     repositories.set(`${row.organization}/${row.repository}`, {
+      ...existing,
       organization: row.organization,
       repository: row.repository,
       "repository-name": row.repository,
