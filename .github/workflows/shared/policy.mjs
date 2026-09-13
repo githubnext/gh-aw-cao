@@ -5,7 +5,7 @@ const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "targ
 const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "packages", "publishing"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
-const WEB_KEYS = ["favicon", "allowed-command-prefixes"];
+const WEB_KEYS = ["favicon"];
 const DEFAULT_KEYS = ["mode", "max-repositories", "rollout-percent", "monthly-ai-credit-budget"];
 const OCTICONS = [
   "mark-github", "code", "repo", "server", "issue", "pull-request", "play", "eye",
@@ -23,7 +23,6 @@ const OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
 const LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const GH_AW_VERSION_PATTERN = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
-const COMMAND_PREFIX_PATTERN = /^gh [A-Za-z0-9][A-Za-z0-9-]*(?: [A-Za-z0-9][A-Za-z0-9._:/-]*)*$/;
 const MODES = ["review", "live"];
 
 function log(message) {
@@ -198,16 +197,6 @@ function validateWeb(web) {
   assertMapping(web, path);
   assertKeys(web, WEB_KEYS, path);
   if ("favicon" in web) assertFavicon(web.favicon, `${path}.favicon`);
-  if ("allowed-command-prefixes" in web) {
-    const commandPath = `${path}.allowed-command-prefixes`;
-    assertUniqueStrings(web["allowed-command-prefixes"], commandPath, COMMAND_PREFIX_PATTERN);
-    if (web["allowed-command-prefixes"].some((prefix) => prefix.length > 200)) {
-      throw new PolicyError(`${commandPath} values must be at most 200 characters`);
-    }
-    if (web["allowed-command-prefixes"].length > 20) {
-      throw new PolicyError(`${commandPath} must contain at most 20 values`);
-    }
-  }
 }
 
 function validateDefaults(defaults, path) {

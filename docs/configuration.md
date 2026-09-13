@@ -51,7 +51,6 @@ The schema defaults are:
 | `control-plane.inventory.batch-size` | `100000` | `1` through `100000` |
 | `control-plane.inventory.batch-index` | `0` | Non-negative integer |
 | `control-plane.web.favicon` | `./favicon.svg` | Absolute HTTPS URL or `./` relative path |
-| `control-plane.web.allowed-command-prefixes` | `[]` | Additional GitHub CLI command prefixes available to dashboard actions |
 | `control-plane.defaults.mode` | `review` | `review` or `live` |
 | `control-plane.defaults.max-repositories` | `1` | `1` through `1000` |
 | `control-plane.defaults.rollout-percent` | `100` | `1` through `100` |
@@ -61,11 +60,6 @@ The schema defaults are:
 Each entry under `control-plane.packages` may override the defaults with `enabled`, `mode`, `max-repositories`, and `rollout-percent`; `monthly-ai-credit-budget` remains accepted as a deprecated compatibility field but has no runtime admission effect. The internal `dashboard` package also accepts `deploy: false` to keep building its reusable artifact while another workflow owns Pages deployment; `deploy` defaults to `true`. Its optional `targets` map assigns a different mode to an exact repository while unmatched repositories retain the package mode. Every package target must remain inside the global allowed owners and, when present, the global repository allowlist. The `workers` map is the package's workflow catalog: every worker entry requires its exact `workflow` slug, may set `enabled: false` to disable that worker, and may set `max-mode` to narrow its mode. Package and worker names are lowercase kebab-case identifiers loaded directly from this policy.
 
 The optional `control-plane.web` section configures deterministic web surfaces without changing rollout authority. Set `favicon` to an absolute HTTPS URL without credentials, query, or fragment, or to a non-traversing `./` relative path available in the generated site. The dashboard package ships `./favicon.svg` as its default.
-
-`allowed-command-prefixes` adds reviewed GitHub CLI prefixes to the dashboard
-canvas action allowlist. Each entry starts with `gh`, contains only literal
-command tokens, and is limited to 200 characters. Dashboard actions still
-require explicit approval for every invocation and execute without a shell.
 
 For example, this policy keeps Dependabot in review across its scope while promoting one exact target to live:
 

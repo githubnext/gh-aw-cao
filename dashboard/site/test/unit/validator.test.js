@@ -39,7 +39,7 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
-  it('accepts explicit GitHub CLI actions for runtime allowlist enforcement', () => {
+  it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
       id: 'compile-workflows',
@@ -57,30 +57,50 @@ describe('dashboard document validation', () => {
       }]
     });
     const addedAction = document.dashboard['cli-actions'][document.dashboard['cli-actions'].length - 1];
+    const actionArguments = addedAction.arguments;
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
+    delete addedAction.arguments;
     addedAction.command = 'gh workflow run maintenance.yml --repo {{repository}}';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     addedAction.command = 'gh issue create --repo {{repository}}';
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
 
     addedAction.command = 'gh workflow run --repo octo/example';
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({
-          message: 'CLI action workflow dispatch command must identify a workflow.'
+          message: 'CLI action workflow dispatch command has an invalid workflow or option.'
         })
       ])
     });
+
+    addedAction.command = 'gh workflow run ""';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+
+    addedAction.command = 'gh workflow run "--repo" octo/example';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+
+    addedAction.command = 'gh workflow run maintenance.yml -F token=@/proc/self/environ';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+
+    addedAction.command = 'gh workflow run maintenance.yml --json';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+
+    addedAction.command = 'gh workflow run maintenance.yml --repo not-a-repository';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+
+    addedAction.command = 'gh workflow run maintenance.yml -f mode=review';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     addedAction.command = 'curl https://example.com';
     const rejected = validateDashboardDocument(JSON.stringify(document));
     expect(rejected.ok).toBe(false);
     expect(rejected.errors).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        message: 'CLI action command must start with an explicit GitHub CLI command.'
+        message: 'CLI action command must start with "gh aw" or "gh workflow run".'
       })
     ]));
 
@@ -89,7 +109,7 @@ describe('dashboard document validation', () => {
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({
-          message: 'CLI action command must start with an explicit GitHub CLI command.'
+          message: 'CLI action command must start with "gh aw" or "gh workflow run".'
         })
       ])
     });
@@ -110,6 +130,7 @@ describe('dashboard document validation', () => {
     });
 
     addedAction.command = 'gh aw upgrade';
+    addedAction.arguments = actionArguments;
     addedAction.arguments[0].flag = '$(whoami)';
     const invalidFlag = validateDashboardDocument(JSON.stringify(document));
     expect(invalidFlag.ok).toBe(false);

