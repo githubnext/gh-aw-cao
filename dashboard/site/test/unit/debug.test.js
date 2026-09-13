@@ -16,16 +16,28 @@ describe('dashboard debug logging', () => {
     expect(isDebugEnabled('other', '?debug=data,render')).toBe(false);
   });
 
-  it('reads the current query each time and prefixes matching output', () => {
+  it('checks the query once when created and prefixes matching output', () => {
     let search = '?debug=data';
     const output = { debug: vi.fn() };
     const debug = createDebug('data', { search: () => search, output });
 
     debug('loaded', { count: 3 });
     search = '?debug=render';
+    debug('still enabled');
+
+    expect(output.debug).toHaveBeenCalledTimes(2);
+    expect(output.debug).toHaveBeenCalledWith('[cao:data]', 'loaded', { count: 3 });
+    expect(output.debug).toHaveBeenCalledWith('[cao:data]', 'still enabled');
+  });
+
+  it('keeps a logger disabled when the query changes later', () => {
+    let search = '?debug=render';
+    const output = { debug: vi.fn() };
+    const debug = createDebug('data', { search: () => search, output });
+
+    search = '?debug=data';
     debug('ignored');
 
-    expect(output.debug).toHaveBeenCalledOnce();
-    expect(output.debug).toHaveBeenCalledWith('[cao:data]', 'loaded', { count: 3 });
+    expect(output.debug).not.toHaveBeenCalled();
   });
 });

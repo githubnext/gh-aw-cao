@@ -1,5 +1,6 @@
 const DEBUG_PARAMETER = 'debug';
 const DEBUG_PREFIX = 'cao';
+const patternCache = new Map();
 
 /**
  * @param {string} pattern
@@ -10,24 +11,35 @@ function patternExpression(pattern) {
 }
 
 /**
+ * @param {string} search
+ * @returns {{ included: RegExp[], excluded: RegExp[] }}
+ */
+function debugPatterns(search) {
+  const cached = patternCache.get(search);
+  if (cached) return cached;
+
+  const value = new URLSearchParams(search).get(DEBUG_PARAMETER) ?? '';
+  const patterns = value.split(/[\s,]+/).filter(Boolean);
+  const compiled = {
+    included: patterns
+      .filter((pattern) => !pattern.startsWith('-'))
+      .map((pattern) => patternExpression(pattern === '1' || pattern.toLowerCase() === 'true' ? '*' : pattern)),
+    excluded: patterns
+      .filter((pattern) => pattern.startsWith('-'))
+      .map((pattern) => patternExpression(pattern.slice(1)))
+  };
+  patternCache.set(search, compiled);
+  return compiled;
+}
+
+/**
  * @param {string} category
  * @param {string} search
  */
 export function isDebugEnabled(category, search = globalThis.location?.search ?? '') {
-  const value = new URLSearchParams(search).get(DEBUG_PARAMETER);
-  if (!value) return false;
-
-  const patterns = value.split(/[\s,]+/).filter(Boolean);
-  const excluded = patterns
-    .filter((pattern) => pattern.startsWith('-'))
-    .map((pattern) => patternExpression(pattern.slice(1)));
+  const { included, excluded } = debugPatterns(search);
   if (excluded.some((pattern) => pattern.test(category))) return false;
-
-  return patterns
-    .filter((pattern) => !pattern.startsWith('-'))
-    .some((pattern) => pattern === '1'
-      || pattern.toLowerCase() === 'true'
-      || patternExpression(pattern).test(category));
+  return included.some((pattern) => pattern.test(category));
 }
 
 /**
@@ -39,12 +51,12 @@ export function isDebugEnabled(category, search = globalThis.location?.search ??
 export function createDebug(category, options = {}) {
   const search = options.search ?? (() => globalThis.location?.search ?? '');
   const output = options.output ?? globalThis.console;
+  const enabled = isDebugEnabled(category, search());
 
   return (
     /** @param {unknown[]} values */
     (...values) => {
-    if (!isDebugEnabled(category, search())) return;
-    output.debug(`[${DEBUG_PREFIX}:${category}]`, ...values);
+      if (enabled) output.debug(`[${DEBUG_PREFIX}:${category}]`, ...values);
     }
   );
 }
