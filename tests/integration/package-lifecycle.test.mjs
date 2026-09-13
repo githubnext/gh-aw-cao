@@ -223,10 +223,23 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
       assert.doesNotMatch(lock, /secrets\.COPILOT_GITHUB_TOKEN/);
     }
 
+    const packageRecords = readdirSync(join(consumer, ".github", "aw", "packages"));
+    assert.equal(packageRecords.length, 1, "expected one installed root package manifest");
+    const installedPackage = JSON.parse(readFileSync(
+      join(consumer, ".github", "aw", "packages", packageRecords[0]),
+      "utf8",
+    ));
+    for (const { destination } of installedPackage.files) {
+      const workflowPath = join(consumer, destination);
+      if (!destination.endsWith(".md") || !existsSync(workflowPath)) continue;
+      const workflow = readFileSync(workflowPath, "utf8");
+      writeFileSync(workflowPath, workflow.replace(/^source: .*$/m, `source: ${packageSource}`));
+    }
+
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
     const orchestrator = readFileSync(orchestratorPath, "utf8");
-    const trackedOrchestrator = orchestrator.replace(/^source: .*$/m, `source: ${packageSource}`);
-    assert.notEqual(trackedOrchestrator, orchestrator, "test could not track the candidate package revision");
+    assert.match(orchestrator, new RegExp(`^source: ${packageSource.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
+    const trackedOrchestrator = orchestrator;
     const modifiedOrchestrator = trackedOrchestrator.replace("max-ai-credits: 250", "max-ai-credits: 251");
     assert.notEqual(modifiedOrchestrator, trackedOrchestrator, "test could not modify package workflow frontmatter");
     writeFileSync(orchestratorPath, `${modifiedOrchestrator}\n# local integration-test change\n`);
