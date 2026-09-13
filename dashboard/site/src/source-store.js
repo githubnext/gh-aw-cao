@@ -15,7 +15,9 @@ const debug = createDebug('data:source-store');
  * `origin` records whether rows were handed over by an already rendered view
  * (already filtered by the presenter) or loaded directly from a query, which
  * still needs the view's own row filter applied.
- * @typedef {{ status: 'idle'|'loading'|'ready'|'failed', origin: 'view'|'query', source: LogicalSourceInput | null }} SourceEntry
+ * `missing` records a query that resolved without rows because the dashboard
+ * data does not carry that source, which is not a load failure.
+ * @typedef {{ status: 'idle'|'loading'|'ready'|'missing'|'failed', origin: 'view'|'query', source: LogicalSourceInput | null }} SourceEntry
  */
 
 /** @type {SourceEntry} */
@@ -93,7 +95,7 @@ async function loadRequestedSource(name) {
     const source = await loader(name);
     entry.set(source
       ? { status: 'ready', origin: 'query', source }
-      : { status: 'failed', origin: 'query', source: null });
+      : { status: 'missing', origin: 'query', source: null });
     debug('resolved', { source: name, rows: source?.rows?.length ?? 0 });
   } catch (error) {
     entry.set({ status: 'failed', origin: 'query', source: null });

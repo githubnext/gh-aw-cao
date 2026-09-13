@@ -83,3 +83,13 @@ it('publishes rows a rendered view already holds without a query', () => {
     source: { source: 'workflows', rows: [{ workflow: 'review' }], metadata }
   });
 });
+
+it('records a source the dashboard data does not carry as missing rather than failed', async () => {
+  configureSourceLoader(() => Promise.resolve(undefined));
+
+  requestSource('dispatches');
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(sourceState('dispatches').get()).toEqual({ status: 'missing', origin: 'query', source: null });
+});

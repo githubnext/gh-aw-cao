@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { effect, state } from '../reactive.js';
+import { derived, effect, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { formatCount } from './count-formatters.js';
 
@@ -19,6 +19,12 @@ const OVERVIEW_SOURCE_NAMES = ['outcomes', 'runs', 'dispatches', 'grader-observa
 /** @typedef {{ packages: number, operations: number, live: number, review: number }} Motion */
 /** @typedef {{ rows: () => Row[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
+/** @typedef {{ total: number, live: number, review: number }} Coverage */
+/**
+ * Values shared by more than one bound element. Each one is memoised so a
+ * source update recomputes it once instead of once per element.
+ * @typedef {{ dispatchRows: () => Row[], successfulRunRows: () => Row[], valueGains: () => number, coverage: () => Coverage, workers: () => number, outcomes: () => Row[] }} OverviewMetrics
+ */
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {{ singular: string, plural: string }} PluralText */
 
@@ -39,6 +45,9 @@ const factoryMotionState = state(/** @type {Motion} */ ({ packages: 0, operation
 /** @type {import('../reactive.js').EffectHandle[]} */
 let overviewEffects = [];
 
+/** @type {{ dispose: () => void }[]} */
+let overviewMetrics = [];
+
 /** Releases the reactive resources owned by a previously rendered overview. */
 export function resetFactoryOverviewState() {
   releaseFactoryOverviewEffects();
@@ -51,6 +60,20 @@ export function resetFactoryOverviewState() {
 function releaseFactoryOverviewEffects() {
   for (const handle of overviewEffects) handle.stop();
   overviewEffects = [];
+  for (const metric of overviewMetrics) metric.dispose();
+  overviewMetrics = [];
+}
+
+/**
+ * Memoises one derived value for the lifetime of the rendered overview.
+ * @template T
+ * @param {() => T} compute
+ * @returns {() => T}
+ */
+function memo(compute) {
+  const value = derived(compute);
+  overviewMetrics.push(value);
+  return () => value.get();
 }
 
 /**
@@ -133,34 +156,38 @@ function bindOverviewSources(context) {
 export function renderFactoryOverview(context) {
   releaseFactoryOverviewEffects();
   const sources = bindOverviewSources(context);
+  const metrics = createOverviewMetrics(sources);
   return h(
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
-    renderIntroduction(sources),
-    renderFactoryFloor(sources, pluralLabelResolver(context.elementConfig))
+    renderIntroduction(sources, metrics),
+    renderFactoryFloor(sources, metrics, pluralLabelResolver(context.elementConfig))
   );
 }
 
-/** @param {SourceBindings} sources */
-function dispatchRowsOf(sources) {
-  const dispatches = sources.dispatches.rows();
-  return dispatches.length > 0
-    ? dispatches
-    : sources.runs.rows().filter((row) => String(row.event) === 'workflow_dispatch');
+/**
+ * @param {SourceBindings} sources
+ * @returns {OverviewMetrics}
+ */
+function createOverviewMetrics(sources) {
+  const dispatchRows = memo(() => {
+    const dispatches = sources.dispatches.rows();
+    return dispatches.length > 0
+      ? dispatches
+      : sources.runs.rows().filter((row) => String(row.event) === 'workflow_dispatch');
+  });
+  return {
+    dispatchRows,
+    successfulRunRows: memo(() => sources.runs.rows().filter((row) => String(row['run-conclusion']) === 'success')),
+    valueGains: memo(() => sources['grader-observations'].rows().filter(exceedsThreshold).length),
+    coverage: memo(() => connectedRepositoryCoverage(sources.workflows.rows(), sources.repositories.rows(), sources.runs.rows())),
+    workers: memo(() => workerCount(sources.workflows.rows(), dispatchRows())),
+    outcomes: memo(() => latestOutcomes(sources.outcomes.rows()))
+  };
 }
 
-/** @param {SourceBindings} sources */
-function successfulRunRowsOf(sources) {
-  return sources.runs.rows().filter((row) => String(row['run-conclusion']) === 'success');
-}
-
-/** @param {SourceBindings} sources */
-function valueGainsOf(sources) {
-  return sources['grader-observations'].rows().filter(exceedsThreshold).length;
-}
-
-/** @param {SourceBindings} sources */
-function renderIntroduction(sources) {
+/** @param {SourceBindings} sources @param {OverviewMetrics} metrics */
+function renderIntroduction(sources, metrics) {
   const running = h('p', { className: 'factory-running' });
   const heading = h('h2', { id: 'agent-factory-heading' });
   const summary = h('p', {});
@@ -186,16 +213,16 @@ function renderIntroduction(sources) {
   });
 
   bind(() => {
-    heading.textContent = factoryHeading(sources);
+    heading.textContent = factoryHeading(sources, metrics);
   });
 
   bind(() => {
-    const outcomes = latestOutcomes(sources.outcomes.rows());
+    const outcomes = metrics.outcomes();
     const usefulOutputs = outcomes.filter((row) => ['issue', 'pull-request'].includes(outputKind(row))).length;
     const delivered = outcomes.filter((row) => DELIVERED_STATES.has(String(row['outcome-state'])));
     const deliveredRepositories = new Set(delivered.map((row) => String(row.repository ?? '')).filter(Boolean)).size;
-    const successfulRuns = successfulRunRowsOf(sources).length;
-    const dispatches = dispatchRowsOf(sources).length;
+    const successfulRuns = metrics.successfulRunRows().length;
+    const dispatches = metrics.dispatchRows().length;
     summary.textContent = usefulOutputs > 0
       ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
       : `${formatCount(successfulRuns)} successful ${successfulRuns === 1 ? 'run' : 'runs'} and ${formatCount(dispatches)} workflow ${dispatches === 1 ? 'dispatch' : 'dispatches'} are retained in this period.`;
@@ -205,7 +232,7 @@ function renderIntroduction(sources) {
     'header',
     { className: 'factory-intro' },
     h('div', { className: 'factory-intro-copy' }, running, heading, summary),
-    renderFactoryRhythm(sources)
+    renderFactoryRhythm(sources, metrics)
   );
 }
 
@@ -239,14 +266,14 @@ function workflowIdentity(row) {
   return `${String(row.organization ?? '')}/${String(row.repository ?? '')}:${String(row.workflow ?? '')}`;
 }
 
-/** @param {SourceBindings} sources */
-function factoryHeading(sources) {
+/** @param {SourceBindings} sources @param {OverviewMetrics} metrics */
+function factoryHeading(sources, metrics) {
   if (sources.runs.unavailable() || sources.outcomes.unavailable()) return 'Your factory status is unavailable.';
   const runs = sources.runs.rows();
   const successfulRuns = runs.filter((row) => String(row['run-conclusion']) === 'success').length;
   const failedRuns = runs.filter((row) => FAILURE_STATES.has(String(row['run-conclusion']))).length;
   const activeRuns = runs.filter((row) => ['queued', 'in-progress'].includes(normalizedStatus(row['run-status']))).length;
-  if (valueGainsOf(sources) > 0) return 'Your factory is delivering value.';
+  if (metrics.valueGains() > 0) return 'Your factory is delivering value.';
   if (activeRuns > 0) return 'Your factory is humming.';
   if (failedRuns > successfulRuns && failedRuns > 0) return 'Your factory is under strain.';
   if (failedRuns > 0) return 'Your factory needs attention.';
@@ -256,9 +283,10 @@ function factoryHeading(sources) {
 
 /**
  * @param {SourceBindings} sources
+ * @param {OverviewMetrics} metrics
  * @param {(labelId: string, count: number) => string} label
  */
-function renderFactoryFloor(sources, label) {
+function renderFactoryFloor(sources, metrics, label) {
   const floor = h('section', { className: 'factory-floor' });
   const repositories = renderStation('repo', { href: '#page-repositories' });
   const runs = renderStation('play', { href: '#page-runs?runs-runs-source.run-conclusion=success' });
@@ -266,9 +294,9 @@ function renderFactoryFloor(sources, label) {
   const valueGains = renderStation('trophy', { final: true });
 
   repositories.bind(() => {
-    const coverage = connectedRepositoryCoverage(sources.workflows.rows(), sources.repositories.rows(), sources.runs.rows());
+    const coverage = metrics.coverage();
     return {
-      pending: sources.repositories.pending() && sources.workflows.pending() && sources.runs.pending(),
+      pending: sources.repositories.pending() || sources.workflows.pending() || sources.runs.pending(),
       label: label('repositories', coverage.total),
       value: coverage.total,
       detail: repositoryModeDetail(coverage)
@@ -276,7 +304,7 @@ function renderFactoryFloor(sources, label) {
   });
 
   runs.bind(() => {
-    const successfulRuns = successfulRunRowsOf(sources).length;
+    const successfulRuns = metrics.successfulRunRows().length;
     const failedRuns = sources.runs.rows().filter((row) => FAILURE_STATES.has(String(row['run-conclusion']))).length;
     return {
       pending: sources.runs.pending(),
@@ -287,10 +315,10 @@ function renderFactoryFloor(sources, label) {
   });
 
   dispatches.bind(() => {
-    const dispatchRows = dispatchRowsOf(sources);
-    const workers = workerCount(sources.workflows.rows(), dispatchRows);
+    const dispatchRows = metrics.dispatchRows();
+    const workers = metrics.workers();
     return {
-      pending: sources.dispatches.pending() && sources.runs.pending(),
+      pending: sources.dispatches.pending() || sources.runs.pending() || sources.workflows.pending(),
       label: label('dispatches', dispatchRows.length),
       value: dispatchRows.length,
       detail: `${formatCount(workers)} ${workers === 1 ? 'workflow' : 'workflows'} observed`
@@ -298,7 +326,7 @@ function renderFactoryFloor(sources, label) {
   });
 
   valueGains.bind(() => {
-    const gains = valueGainsOf(sources);
+    const gains = metrics.valueGains();
     return {
       pending: sources['grader-observations'].pending(),
       label: label('value-gains', gains),
@@ -308,12 +336,12 @@ function renderFactoryFloor(sources, label) {
   });
 
   bind(() => {
-    const coverage = connectedRepositoryCoverage(sources.workflows.rows(), sources.repositories.rows(), sources.runs.rows());
-    const successfulRuns = successfulRunRowsOf(sources).length;
-    const dispatchRows = dispatchRowsOf(sources);
-    const workers = workerCount(sources.workflows.rows(), dispatchRows);
-    const gains = valueGainsOf(sources);
-    const usefulOutputs = latestOutcomes(sources.outcomes.rows())
+    const coverage = metrics.coverage();
+    const successfulRuns = metrics.successfulRunRows().length;
+    const dispatchRows = metrics.dispatchRows();
+    const workers = metrics.workers();
+    const gains = metrics.valueGains();
+    const usefulOutputs = metrics.outcomes()
       .filter((row) => ['issue', 'pull-request'].includes(outputKind(row))).length;
     const activeRuns = factoryMotionState.get().operations;
     floor.className = `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`;
@@ -380,8 +408,8 @@ function renderStation(icon, options = {}) {
   };
 }
 
-/** @param {SourceBindings} sources */
-function renderFactoryRhythm(sources) {
+/** @param {SourceBindings} sources @param {OverviewMetrics} metrics */
+function renderFactoryRhythm(sources, metrics) {
   const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
   const bars = h('div', { className: 'factory-rhythm-bars' });
   /** @type {import('../reactive.js').State<RhythmDay[]>} */
@@ -427,7 +455,7 @@ function renderFactoryRhythm(sources) {
   // The daily runs chart owns the runs query alone: its bars are computed and
   // drawn as soon as rows arrive, without waiting for any other query.
   bind(() => {
-    const days = activityDays(successfulRunRowsOf(sources), latestTimestamp(sources.runs.rows()));
+    const days = activityDays(metrics.successfulRunRows(), latestTimestamp(sources.runs.rows()));
     const maximum = Math.max(...days.map((day) => day.count), 1);
     const buttons = days.map((day, index) => /** @type {HTMLButtonElement} */ (h(
       'button',
