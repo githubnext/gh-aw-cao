@@ -361,19 +361,20 @@ async function queryRawCanonicalData(indexedDB, query) {
   ])));
   const time = console.time;
   const timeEnd = console.timeEnd;
-  let result;
+  let rows;
   try {
     console.time = () => {};
     console.timeEnd = () => {};
-    result = executeDashboardQuery(query, sources);
+    const result = executeDashboardQuery(query, sources);
+    if (result.metadata?.availability === 'unavailable') {
+      throw new Error(String(result.metadata['query-diagnostic'] ?? 'Query is unavailable'));
+    }
+    rows = result.rows;
   } finally {
     console.time = time;
     console.timeEnd = timeEnd;
   }
-  if (result.metadata?.availability === 'unavailable') {
-    throw new Error(String(result.metadata['query-diagnostic'] ?? 'Query is unavailable'));
-  }
-  return result.rows;
+  return rows;
 }
 
 async function createDatabase(databasePath) {
