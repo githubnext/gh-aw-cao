@@ -141,6 +141,22 @@ function getBuiltInPagePayload(page) {
 }
 
 /**
+ * Elements that bind each declared source to its own reactive state and load
+ * it asynchronously, so their page renders before any query resolves.
+ */
+const ASYNC_SOURCE_ELEMENTS = new Set(['outcomes-overview']);
+
+/**
+ * @param {unknown} view
+ * @returns {boolean}
+ */
+function isAsyncElementView(view) {
+  return isPlainObject(view)
+    && typeof view.element === 'string'
+    && ASYNC_SOURCE_ELEMENTS.has(view.element);
+}
+
+/**
  * @param {PresentationDocument} document
  * @param {string} pageId
  * @returns {string[]}
@@ -151,6 +167,7 @@ export function dashboardPageSourceNames(document, pageId) {
   const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
   const names = new Set();
   for (const view of payload.views ?? []) {
+    if (isAsyncElementView(view)) continue;
     for (const sourceName of getViewSources(view)) names.add(sourceName);
   }
 
@@ -2240,6 +2257,7 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
     viewId: typeof view.id === 'string' ? view.id : undefined,
+    filterRows: (/** @type {Array<Record<string, unknown>>} */ rows) => filterRowsForView(rows, viewData),
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag
   });
@@ -2303,6 +2321,7 @@ async function renderElementViewAsync(pageId, title, view, sources, contextDetai
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
     viewId: typeof view.id === 'string' ? view.id : undefined,
+    filterRows: (/** @type {Array<Record<string, unknown>>} */ rows) => filterRowsForView(rows, viewData),
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag
   });
@@ -2318,6 +2337,7 @@ async function renderElementViewAsync(pageId, title, view, sources, contextDetai
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
     viewId: typeof view.id === 'string' ? view.id : undefined,
+    filterRows: (/** @type {Array<Record<string, unknown>>} */ rows) => filterRowsForView(rows, viewData),
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag
   });

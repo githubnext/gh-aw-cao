@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { renderFactoryOverview, resetFactoryOverviewState } from '../../src/components/factory-overview.js';
+import { configureSourceLoader } from '../../src/source-store.js';
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -19,6 +20,7 @@ beforeEach(() => {
 
 afterEach(() => {
   resetFactoryOverviewState();
+  configureSourceLoader(null);
 });
 
 it('summarizes retained Actions activity and useful outputs while routing failures to Runs', () => {
@@ -344,4 +346,76 @@ it('stops the reactive effects owned by a superseded overview render', () => {
 
   expect(current.querySelector('.factory-rhythm-summary')?.textContent).toBe('Wed 2026-09-09: 1 successful run.');
   expect(stale.querySelector('.factory-rhythm-summary')?.textContent).toBe(staleSummary);
+});
+
+it('renders the overview before its queries resolve and counts each one up on its own', async () => {
+  /** @type {Map<string, (source: import('../../src/presenter.js').LogicalSourceInput | undefined) => void>} */
+  const resolvers = new Map();
+  /** @type {string[]} */
+  const requestedSources = [];
+  configureSourceLoader((name) => {
+    requestedSources.push(name);
+    return new Promise((resolve) => resolvers.set(name, resolve));
+  });
+
+  const rendered = renderFactoryOverview({ sources: {} });
+
+  expect(requestedSources).toEqual(['outcomes', 'runs', 'dispatches', 'grader-observations', 'repositories', 'workflows']);
+  expect(rendered.classList.contains('agent-factory')).toBe(true);
+  expect(rendered.querySelectorAll('.factory-station')).toHaveLength(4);
+  expect(rendered.querySelectorAll('.factory-station-pending')).toHaveLength(4);
+  expect(rendered.querySelector('.factory-station:nth-child(2) strong')?.textContent).toBe('');
+  expect(rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')).toHaveLength(7);
+
+  resolvers.get('runs')?.({
+    source: 'runs',
+    rows: [
+      { run: '1', 'run-conclusion': 'success', 'run-status': 'completed', 'started-at': '2026-09-11T11:00:00Z' },
+      { run: '2', 'run-conclusion': 'failure', 'started-at': '2026-09-11T11:30:00Z' }
+    ],
+    metadata
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(rendered.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Successful run11 failed');
+  expect(rendered.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(false);
+  expect(rendered.querySelector('.factory-station:nth-child(4)')?.classList.contains('factory-station-pending')).toBe(true);
+  expect(rendered.querySelector('h2')?.textContent).toBe('Your factory needs attention.');
+  expect([...rendered.querySelectorAll('.factory-rhythm-day')].at(-1)?.getAttribute('aria-label'))
+    .toBe('Fri 2026-09-11: 1 successful run');
+
+  resolvers.get('grader-observations')?.({
+    source: 'grader-observations',
+    rows: [{ grader: 'quality', run: '1', value: 0.9, threshold: 0.8 }],
+    metadata
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(rendered.querySelector('.factory-station:nth-child(4)')?.textContent).toBe('Value gain1Coming soon');
+  expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
+});
+
+it('applies the view row filter to rows read straight from a query', async () => {
+  configureSourceLoader((name) => Promise.resolve(name === 'runs'
+    ? {
+      source: 'runs',
+      rows: [
+        { run: '1', 'run-conclusion': 'success', 'started-at': '2026-09-11T11:00:00Z' },
+        { run: '2', 'run-conclusion': 'success', 'started-at': '2020-01-01T11:00:00Z' }
+      ],
+      metadata
+    }
+    : undefined));
+
+  const rendered = renderFactoryOverview({
+    sources: {},
+    filterRows: (rows) => rows.filter((row) => String(row['started-at']) >= '2026-01-01')
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(rendered.querySelector('.factory-station:nth-child(2) strong')?.textContent).toBe('1');
 });

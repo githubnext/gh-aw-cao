@@ -1,16 +1,26 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { effect, state } from '../reactive.js';
+import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { formatCount } from './count-formatters.js';
-import { rowsFor } from './source-rows.js';
 
 const DAY_MS = 86_400_000;
 const DELIVERED_STATES = new Set(['accepted', 'completed', 'lifecycle-close']);
 const FAILURE_STATES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 
+/**
+ * Queries the overview binds to. Each one is requested on its own and renders
+ * into its own UI elements, so the page never waits for the slowest query.
+ */
+const OVERVIEW_SOURCE_NAMES = ['outcomes', 'runs', 'dispatches', 'grader-observations', 'repositories', 'workflows'];
+
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ label: string, date: string, start: number, end: number, count: number }} RhythmDay */
 /** @typedef {{ packages: number, operations: number, live: number, review: number }} Motion */
+/** @typedef {{ rows: () => Row[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
+/** @typedef {Record<string, SourceBinding>} SourceBindings */
+/** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
+/** @typedef {{ singular: string, plural: string }} PluralText */
 
 /**
  * Horizon selected from the factory rhythm. The selection outlives a single
@@ -26,24 +36,30 @@ const rhythmSelection = state(/** @type {RhythmDay | null} */ (null));
  */
 const factoryMotionState = state(/** @type {Motion} */ ({ packages: 0, operations: 0, live: 0, review: 0 }));
 
-/** @type {import('../reactive.js').EffectHandle | null} */
-let rhythmEffect = null;
-/** @type {import('../reactive.js').EffectHandle | null} */
-let motionEffect = null;
+/** @type {import('../reactive.js').EffectHandle[]} */
+let overviewEffects = [];
 
 /** Releases the reactive resources owned by a previously rendered overview. */
 export function resetFactoryOverviewState() {
   releaseFactoryOverviewEffects();
+  clearSources(OVERVIEW_SOURCE_NAMES);
   rhythmSelection.set(null);
   factoryMotionState.set({ packages: 0, operations: 0, live: 0, review: 0 });
 }
 
 /** Stops the effects owned by a superseded overview render. */
 function releaseFactoryOverviewEffects() {
-  rhythmEffect?.stop();
-  rhythmEffect = null;
-  motionEffect?.stop();
-  motionEffect = null;
+  for (const handle of overviewEffects) handle.stop();
+  overviewEffects = [];
+}
+
+/**
+ * Binds one effect to the elements it renders and keeps it alive until the
+ * overview is rendered again.
+ * @param {() => void} render
+ */
+function bind(render) {
+  overviewEffects.push(effect(render));
 }
 
 /** @param {Motion} current @param {Motion} next */
@@ -53,8 +69,6 @@ function sameMotion(current, next) {
     && current.live === next.live
     && current.review === next.review;
 }
-/** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
-/** @typedef {{ singular: string, plural: string }} PluralText */
 
 /** @type {Record<string, PluralText>} */
 const DEFAULT_STATION_LABELS = {
@@ -84,61 +98,80 @@ function pluralLabelResolver(elementConfig) {
   };
 }
 
-/** @param {{ sources: Record<string, LogicalSourceInput>, elementConfig?: Record<string, unknown> }} context */
-export function renderFactoryOverview(context) {
-  const outcomes = latestOutcomes(rowsFor(context.sources, 'outcomes'));
-  const runs = rowsFor(context.sources, 'runs');
-  const dispatches = rowsFor(context.sources, 'dispatches');
-  const dispatchRows = dispatches.length > 0
-    ? dispatches
-    : runs.filter((row) => String(row.event) === 'workflow_dispatch');
-  const graderObservations = rowsFor(context.sources, 'grader-observations');
-  const repositories = rowsFor(context.sources, 'repositories');
-  const workflows = rowsFor(context.sources, 'workflows');
-  const repositoryCoverage = connectedRepositoryCoverage(workflows, repositories, runs);
-  const motion = factoryMotion(runs, workflows);
-  const activeRuns = motion.operations;
-  releaseFactoryOverviewEffects();
-  if (rhythmSelection.get() === null) {
-    factoryMotionState.set((current) => (sameMotion(current, motion) ? current : motion));
+/**
+ * Binds every declared overview query to reactive state. Rows a rendered view
+ * already holds are published immediately; anything still missing is requested
+ * asynchronously and reaches the bound elements when its query resolves.
+ * @param {{ sources?: Record<string, LogicalSourceInput>, filterRows?: (rows: Row[]) => Row[] }} context
+ * @returns {SourceBindings}
+ */
+function bindOverviewSources(context) {
+  const filterRows = typeof context.filterRows === 'function' ? context.filterRows : null;
+  /** @type {SourceBindings} */
+  const bindings = {};
+  for (const name of OVERVIEW_SOURCE_NAMES) {
+    const provided = context.sources?.[name];
+    if (provided && Array.isArray(provided.rows)) publishSource(name, provided);
+    else requestSource(name);
+    const entryState = sourceState(name);
+    bindings[name] = {
+      rows: () => {
+        const entry = entryState.get();
+        if (!entry.source || !Array.isArray(entry.source.rows)) return [];
+        // View-provided rows are already filtered by the presenter; rows read
+        // straight from a query still need the view's own row filter.
+        return entry.origin === 'query' && filterRows ? filterRows(entry.source.rows) : entry.source.rows;
+      },
+      pending: () => entryState.get().status === 'loading',
+      unavailable: () => entryState.get().source?.metadata?.availability === 'unavailable'
+    };
   }
-  const successfulRunRows = runs.filter((row) => String(row['run-conclusion']) === 'success');
-  const successfulRuns = successfulRunRows.length;
-  const failedRuns = runs.filter((row) => FAILURE_STATES.has(String(row['run-conclusion']))).length;
-  const configuredWorkers = workflows.filter((row) => String(row['workflow-role']) === 'worker');
-  const workers = configuredWorkers.length > 0
-    ? configuredWorkers.length
-    : new Set(dispatchRows.map((row) => String(row.workflow ?? '')).filter(Boolean)).size;
-  const issues = outcomes.filter((row) => outputKind(row) === 'issue').length;
-  const pullRequests = outcomes.filter((row) => outputKind(row) === 'pull-request').length;
-  const usefulOutputs = issues + pullRequests;
-  const valueGains = graderObservations.filter(exceedsThreshold).length;
-  const delivered = outcomes.filter((row) => DELIVERED_STATES.has(String(row['outcome-state'])));
-  const deliveredRepositories = new Set(delivered.map((row) => String(row.repository ?? '')).filter(Boolean)).size;
+  return bindings;
+}
 
+/** @param {{ sources?: Record<string, LogicalSourceInput>, elementConfig?: Record<string, unknown>, filterRows?: (rows: Row[]) => Row[] }} context */
+export function renderFactoryOverview(context) {
+  releaseFactoryOverviewEffects();
+  const sources = bindOverviewSources(context);
   return h(
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
-    renderIntroduction(factoryHeading(context.sources, valueGains, activeRuns, successfulRuns, failedRuns), usefulOutputs, deliveredRepositories, successfulRuns, dispatchRows.length, successfulRunRows, latestTimestamp(runs)),
-    renderFactoryFloor(repositoryCoverage, successfulRuns, failedRuns, dispatchRows.length, workers, valueGains, issues, pullRequests, activeRuns, pluralLabelResolver(context.elementConfig))
+    renderIntroduction(sources),
+    renderFactoryFloor(sources, pluralLabelResolver(context.elementConfig))
   );
 }
 
-/**
- * @param {string} heading
- * @param {number} usefulOutputs
- * @param {number} deliveredRepositories
- * @param {number} successfulRuns
- * @param {number} dispatches
- * @param {Row[]} successfulRunRows
- * @param {number} referenceTime
- */
-function renderIntroduction(heading, usefulOutputs, deliveredRepositories, successfulRuns, dispatches, successfulRunRows, referenceTime) {
-  const summary = usefulOutputs > 0
-    ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
-    : `${formatCount(successfulRuns)} successful ${successfulRuns === 1 ? 'run' : 'runs'} and ${formatCount(dispatches)} workflow ${dispatches === 1 ? 'dispatch' : 'dispatches'} are retained in this period.`;
+/** @param {SourceBindings} sources */
+function dispatchRowsOf(sources) {
+  const dispatches = sources.dispatches.rows();
+  return dispatches.length > 0
+    ? dispatches
+    : sources.runs.rows().filter((row) => String(row.event) === 'workflow_dispatch');
+}
+
+/** @param {SourceBindings} sources */
+function successfulRunRowsOf(sources) {
+  return sources.runs.rows().filter((row) => String(row['run-conclusion']) === 'success');
+}
+
+/** @param {SourceBindings} sources */
+function valueGainsOf(sources) {
+  return sources['grader-observations'].rows().filter(exceedsThreshold).length;
+}
+
+/** @param {SourceBindings} sources */
+function renderIntroduction(sources) {
   const running = h('p', { className: 'factory-running' });
-  motionEffect = effect(() => {
+  const heading = h('h2', { id: 'agent-factory-heading' });
+  const summary = h('p', {});
+
+  bind(() => {
+    const motion = factoryMotion(sources.runs.rows(), sources.workflows.rows());
+    if (rhythmSelection.get() !== null) return;
+    factoryMotionState.set((current) => (sameMotion(current, motion) ? current : motion));
+  });
+
+  bind(() => {
     const motion = factoryMotionState.get();
     running.className = `factory-running${motion.operations > 0 ? ' factory-running-active' : ''}`;
     running.replaceChildren(motion.operations > 0
@@ -151,17 +184,28 @@ function renderIntroduction(heading, usefulOutputs, deliveredRepositories, succe
       )
       : 'Actions activity observed');
   });
+
+  bind(() => {
+    heading.textContent = factoryHeading(sources);
+  });
+
+  bind(() => {
+    const outcomes = latestOutcomes(sources.outcomes.rows());
+    const usefulOutputs = outcomes.filter((row) => ['issue', 'pull-request'].includes(outputKind(row))).length;
+    const delivered = outcomes.filter((row) => DELIVERED_STATES.has(String(row['outcome-state'])));
+    const deliveredRepositories = new Set(delivered.map((row) => String(row.repository ?? '')).filter(Boolean)).size;
+    const successfulRuns = successfulRunRowsOf(sources).length;
+    const dispatches = dispatchRowsOf(sources).length;
+    summary.textContent = usefulOutputs > 0
+      ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
+      : `${formatCount(successfulRuns)} successful ${successfulRuns === 1 ? 'run' : 'runs'} and ${formatCount(dispatches)} workflow ${dispatches === 1 ? 'dispatch' : 'dispatches'} are retained in this period.`;
+  });
+
   return h(
     'header',
     { className: 'factory-intro' },
-    h(
-      'div',
-      { className: 'factory-intro-copy' },
-      running,
-      h('h2', { id: 'agent-factory-heading' }, heading),
-      h('p', {}, summary)
-    ),
-    renderFactoryRhythm(successfulRunRows, referenceTime)
+    h('div', { className: 'factory-intro-copy' }, running, heading, summary),
+    renderFactoryRhythm(sources)
   );
 }
 
@@ -195,16 +239,14 @@ function workflowIdentity(row) {
   return `${String(row.organization ?? '')}/${String(row.repository ?? '')}:${String(row.workflow ?? '')}`;
 }
 
-/**
- * @param {Record<string, LogicalSourceInput>} sources
- * @param {number} valueGains
- * @param {number} activeRuns
- * @param {number} successfulRuns
- * @param {number} failedRuns
- */
-function factoryHeading(sources, valueGains, activeRuns, successfulRuns, failedRuns) {
-  if (['runs', 'outcomes'].some((name) => sources[name]?.metadata?.availability === 'unavailable')) return 'Your factory status is unavailable.';
-  if (valueGains > 0) return 'Your factory is delivering value.';
+/** @param {SourceBindings} sources */
+function factoryHeading(sources) {
+  if (sources.runs.unavailable() || sources.outcomes.unavailable()) return 'Your factory status is unavailable.';
+  const runs = sources.runs.rows();
+  const successfulRuns = runs.filter((row) => String(row['run-conclusion']) === 'success').length;
+  const failedRuns = runs.filter((row) => FAILURE_STATES.has(String(row['run-conclusion']))).length;
+  const activeRuns = runs.filter((row) => ['queued', 'in-progress'].includes(normalizedStatus(row['run-status']))).length;
+  if (valueGainsOf(sources) > 0) return 'Your factory is delivering value.';
   if (activeRuns > 0) return 'Your factory is humming.';
   if (failedRuns > successfulRuns && failedRuns > 0) return 'Your factory is under strain.';
   if (failedRuns > 0) return 'Your factory needs attention.';
@@ -213,62 +255,139 @@ function factoryHeading(sources, valueGains, activeRuns, successfulRuns, failedR
 }
 
 /**
- * @param {{ total: number, review: number, live: number }} repositories
- * @param {number} successfulRuns
- * @param {number} failedRuns
- * @param {number} dispatches
- * @param {number} workers
- * @param {number} valueGains
- * @param {number} issues
- * @param {number} pullRequests
- * @param {number} activeRuns
+ * @param {SourceBindings} sources
  * @param {(labelId: string, count: number) => string} label
  */
-function renderFactoryFloor(repositories, successfulRuns, failedRuns, dispatches, workers, valueGains, issues, pullRequests, activeRuns, label) {
-  const usefulOutputs = issues + pullRequests;
-  return h(
-    'section',
-    {
-      className: `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`,
-      'aria-label': `${formatCount(repositories.total)} ${label('repositories', repositories.total).toLowerCase()} in scope, ${formatCount(repositories.review)} in review and ${formatCount(repositories.live)} live, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatches)} workflow ${label('dispatches', dispatches).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(valueGains)} grader ${valueGains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
-    },
-    h(
-      'ol',
-      { className: 'factory-stations' },
-      renderStation('repo', label('repositories', repositories.total), repositories.total, repositoryModeDetail(repositories), false, '#page-repositories'),
-      renderStation('play', label('successful-runs', successfulRuns), successfulRuns, h('a', { href: '#page-runs?runs-runs-source.run-conclusion=failure' }, `${formatCount(failedRuns)} failed`), false, '#page-runs?runs-runs-source.run-conclusion=success'),
-      renderStation('workflow', label('dispatches', dispatches), dispatches, `${formatCount(workers)} ${workers === 1 ? 'workflow' : 'workflows'} observed`, false, '#page-runs'),
-      renderStation('trophy', label('value-gains', valueGains), valueGains, 'Coming soon', true)
-    )
-  );
+function renderFactoryFloor(sources, label) {
+  const floor = h('section', { className: 'factory-floor' });
+  const repositories = renderStation('repo', { href: '#page-repositories' });
+  const runs = renderStation('play', { href: '#page-runs?runs-runs-source.run-conclusion=success' });
+  const dispatches = renderStation('workflow', { href: '#page-runs' });
+  const valueGains = renderStation('trophy', { final: true });
+
+  repositories.bind(() => {
+    const coverage = connectedRepositoryCoverage(sources.workflows.rows(), sources.repositories.rows(), sources.runs.rows());
+    return {
+      pending: sources.repositories.pending() && sources.workflows.pending() && sources.runs.pending(),
+      label: label('repositories', coverage.total),
+      value: coverage.total,
+      detail: repositoryModeDetail(coverage)
+    };
+  });
+
+  runs.bind(() => {
+    const successfulRuns = successfulRunRowsOf(sources).length;
+    const failedRuns = sources.runs.rows().filter((row) => FAILURE_STATES.has(String(row['run-conclusion']))).length;
+    return {
+      pending: sources.runs.pending(),
+      label: label('successful-runs', successfulRuns),
+      value: successfulRuns,
+      detail: h('a', { href: '#page-runs?runs-runs-source.run-conclusion=failure' }, `${formatCount(failedRuns)} failed`)
+    };
+  });
+
+  dispatches.bind(() => {
+    const dispatchRows = dispatchRowsOf(sources);
+    const workers = workerCount(sources.workflows.rows(), dispatchRows);
+    return {
+      pending: sources.dispatches.pending() && sources.runs.pending(),
+      label: label('dispatches', dispatchRows.length),
+      value: dispatchRows.length,
+      detail: `${formatCount(workers)} ${workers === 1 ? 'workflow' : 'workflows'} observed`
+    };
+  });
+
+  valueGains.bind(() => {
+    const gains = valueGainsOf(sources);
+    return {
+      pending: sources['grader-observations'].pending(),
+      label: label('value-gains', gains),
+      value: gains,
+      detail: 'Coming soon'
+    };
+  });
+
+  bind(() => {
+    const coverage = connectedRepositoryCoverage(sources.workflows.rows(), sources.repositories.rows(), sources.runs.rows());
+    const successfulRuns = successfulRunRowsOf(sources).length;
+    const dispatchRows = dispatchRowsOf(sources);
+    const workers = workerCount(sources.workflows.rows(), dispatchRows);
+    const gains = valueGainsOf(sources);
+    const usefulOutputs = latestOutcomes(sources.outcomes.rows())
+      .filter((row) => ['issue', 'pull-request'].includes(outputKind(row))).length;
+    const activeRuns = factoryMotionState.get().operations;
+    floor.className = `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`;
+    floor.setAttribute(
+      'aria-label',
+      `${formatCount(coverage.total)} ${label('repositories', coverage.total).toLowerCase()} in scope, ${formatCount(coverage.review)} in review and ${formatCount(coverage.live)} live, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchRows.length)} workflow ${label('dispatches', dispatchRows.length).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
+    );
+  });
+
+  floor.append(h(
+    'ol',
+    { className: 'factory-stations' },
+    repositories.element,
+    runs.element,
+    dispatches.element,
+    valueGains.element
+  ));
+  return floor;
+}
+
+/** @param {Row[]} workflows @param {Row[]} dispatchRows */
+function workerCount(workflows, dispatchRows) {
+  const configuredWorkers = workflows.filter((row) => String(row['workflow-role']) === 'worker');
+  return configuredWorkers.length > 0
+    ? configuredWorkers.length
+    : new Set(dispatchRows.map((row) => String(row.workflow ?? '')).filter(Boolean)).size;
 }
 
 /**
+ * Renders one counter that owns its own effect, so it appears with the page and
+ * counts up on its own when its query resolves.
  * @param {string} icon
- * @param {string} label
- * @param {number} value
- * @param {string|HTMLElement} detail
- * @param {boolean} [final]
- * @param {string} [href]
+ * @param {{ final?: boolean, href?: string }} [options]
+ * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, label: string, value: number, detail: string | HTMLElement }) => void }}
  */
-function renderStation(icon, label, value, detail, final = false, href) {
-  return h(
+function renderStation(icon, options = {}) {
+  const stationLabel = h('span', {});
+  const value = h('strong', {});
+  const detail = h('small', {});
+  const element = h(
     'li',
-    { className: `factory-station${final ? ' factory-station-final' : ''}${value === 0 ? ' factory-station-empty' : ''}` },
+    { className: 'factory-station' },
     h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
-    h('span', {}, label),
-    h('strong', {}, href ? h('a', { href }, formatCount(value)) : formatCount(value)),
-    h('small', {}, detail)
+    stationLabel,
+    value,
+    detail
   );
+  return {
+    element,
+    bind(read) {
+      bind(() => {
+        const station = read();
+        element.className = `factory-station${options.final ? ' factory-station-final' : ''}`
+          + `${station.pending ? ' factory-station-pending' : ''}`
+          + `${!station.pending && station.value === 0 ? ' factory-station-empty' : ''}`;
+        if (station.pending) element.setAttribute('aria-busy', 'true');
+        else element.removeAttribute('aria-busy');
+        stationLabel.textContent = station.label;
+        const count = station.pending ? '' : formatCount(station.value);
+        value.replaceChildren(options.href && !station.pending ? h('a', { href: options.href }, count) : count);
+        detail.replaceChildren(station.pending ? '' : station.detail);
+      });
+    }
+  };
 }
 
-/** @param {Row[]} successfulRuns @param {number} referenceTime */
-function renderFactoryRhythm(successfulRuns, referenceTime) {
-  const days = activityDays(successfulRuns, referenceTime);
-  const maximum = Math.max(...days.map((day) => day.count), 1);
+/** @param {SourceBindings} sources */
+function renderFactoryRhythm(sources) {
   const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
-  /** @type {HTMLButtonElement[]} */
-  const dayButtons = [];
+  const bars = h('div', { className: 'factory-rhythm-bars' });
+  /** @type {import('../reactive.js').State<RhythmDay[]>} */
+  const rhythmDays = state(/** @type {RhythmDay[]} */ ([]));
+  /** @type {import('../reactive.js').State<HTMLButtonElement[]>} */
+  const dayButtons = state(/** @type {HTMLButtonElement[]} */ ([]));
   const showFullWeek = () => {
     section.dispatchEvent(new CustomEvent('dashboard-time-window-range-change', {
       bubbles: true,
@@ -277,7 +396,7 @@ function renderFactoryRhythm(successfulRuns, referenceTime) {
   };
   /** @param {number} index */
   const selectDay = (index) => {
-    const day = days[index];
+    const day = rhythmDays.get()[index];
     if (!day) return;
     rhythmSelection.set(day);
     showFullWeek();
@@ -302,30 +421,39 @@ function renderFactoryRhythm(successfulRuns, referenceTime) {
       h('span', {}, 'Factory rhythm'),
       summary
     ),
-    h('div', { className: 'factory-rhythm-bars' },
-      ...days.map((day, index) => {
-        const button = /** @type {HTMLButtonElement} */ (h(
-          'button',
-          {
-            className: 'factory-rhythm-day',
-            type: 'button',
-            'aria-label': `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`,
-            'aria-pressed': 'false',
-            onClick: () => selectDay(index)
-          },
-          h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
-            h('i', { className: 'factory-rhythm-current', style: `height: ${Math.max(5, day.count / maximum * 100)}%` })
-          ),
-          h('small', {}, day.label)
-        ));
-        dayButtons.push(button);
-        return button;
-      }))
+    bars
   );
-  rhythmEffect = effect(() => {
+
+  // The daily runs chart owns the runs query alone: its bars are computed and
+  // drawn as soon as rows arrive, without waiting for any other query.
+  bind(() => {
+    const days = activityDays(successfulRunRowsOf(sources), latestTimestamp(sources.runs.rows()));
+    const maximum = Math.max(...days.map((day) => day.count), 1);
+    const buttons = days.map((day, index) => /** @type {HTMLButtonElement} */ (h(
+      'button',
+      {
+        className: 'factory-rhythm-day',
+        type: 'button',
+        'aria-label': `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`,
+        'aria-pressed': 'false',
+        onClick: () => selectDay(index)
+      },
+      h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
+        h('i', { className: 'factory-rhythm-current', style: `height: ${Math.max(5, day.count / maximum * 100)}%` })
+      ),
+      h('small', {}, day.label)
+    )));
+    bars.replaceChildren(...buttons);
+    rhythmDays.set(days);
+    dayButtons.set(buttons);
+  });
+
+  bind(() => {
+    const days = rhythmDays.get();
+    const buttons = dayButtons.get();
     const selected = rhythmSelection.get();
     const index = selected ? days.findIndex((day) => day.date === selected.date) : -1;
-    for (const [buttonIndex, button] of dayButtons.entries()) {
+    for (const [buttonIndex, button] of buttons.entries()) {
       button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
     }
     const day = days[index];
@@ -333,6 +461,7 @@ function renderFactoryRhythm(successfulRuns, referenceTime) {
       ? `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}.`
       : '';
   });
+
   return section;
 }
 

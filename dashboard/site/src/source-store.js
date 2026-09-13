@@ -1,0 +1,121 @@
+/**
+ * Reactive store that binds one dashboard query result to one reactive state,
+ * so views can render before their queries resolve and update each bound UI
+ * element independently as results arrive.
+ */
+
+import { state } from './reactive.js';
+import { createDebug } from './debug.js';
+
+const debug = createDebug('data:source-store');
+
+/** @typedef {import('./presenter.js').LogicalSourceInput} LogicalSourceInput */
+
+/**
+ * `origin` records whether rows were handed over by an already rendered view
+ * (already filtered by the presenter) or loaded directly from a query, which
+ * still needs the view's own row filter applied.
+ * @typedef {{ status: 'idle'|'loading'|'ready'|'failed', origin: 'view'|'query', source: LogicalSourceInput | null }} SourceEntry
+ */
+
+/** @type {SourceEntry} */
+const IDLE_ENTRY = { status: 'idle', origin: 'query', source: null };
+
+/** @type {Map<string, import('./reactive.js').State<SourceEntry>>} */
+const entries = new Map();
+/** @type {Set<string>} */
+const requested = new Set();
+/** @type {((name: string) => Promise<LogicalSourceInput | undefined>) | null} */
+let loadSource = null;
+
+/**
+ * @param {string} name
+ * @returns {import('./reactive.js').State<SourceEntry>}
+ */
+export function sourceState(name) {
+  let entry = entries.get(name);
+  if (!entry) {
+    entry = state(IDLE_ENTRY);
+    entries.set(name, entry);
+  }
+  return entry;
+}
+
+/**
+ * Publishes rows a rendered view already holds, so bound elements render them
+ * without waiting for a query round trip.
+ * @param {string} name
+ * @param {LogicalSourceInput} source
+ */
+export function publishSource(name, source) {
+  sourceState(name).set({ status: 'ready', origin: 'view', source });
+}
+
+/**
+ * Registers the loader used to resolve one named query at a time. Each source
+ * is requested on its own so a slow query never delays a fast one.
+ * @param {((name: string) => Promise<LogicalSourceInput | undefined>) | null} loader
+ */
+export function configureSourceLoader(loader) {
+  loadSource = loader;
+}
+
+/** @returns {boolean} */
+export function hasSourceLoader() {
+  return loadSource !== null;
+}
+
+/**
+ * Requests one source asynchronously when a loader is configured. Repeated
+ * requests for the same source reuse the first in-flight query.
+ * @param {string} name
+ */
+export function requestSource(name) {
+  if (!loadSource || requested.has(name)) return;
+  requested.add(name);
+  void loadRequestedSource(name);
+}
+
+/** Re-runs every previously requested query, for example after live data changes. */
+export function refreshSources() {
+  for (const name of requested) {
+    void loadRequestedSource(name);
+  }
+}
+
+/** @param {string} name */
+async function loadRequestedSource(name) {
+  const loader = loadSource;
+  if (!loader) return;
+  const entry = sourceState(name);
+  if (entry.get().status !== 'ready') entry.set({ status: 'loading', origin: 'query', source: null });
+  try {
+    const source = await loader(name);
+    entry.set(source
+      ? { status: 'ready', origin: 'query', source }
+      : { status: 'failed', origin: 'query', source: null });
+    debug('resolved', { source: name, rows: source?.rows?.length ?? 0 });
+  } catch (error) {
+    entry.set({ status: 'failed', origin: 'query', source: null });
+    debug('failed', { source: name, message: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+/**
+ * Forgets the state bound to the named sources so a new render starts from the
+ * queries again.
+ * @param {Iterable<string>} names
+ */
+export function clearSources(names) {
+  for (const name of names) {
+    entries.delete(name);
+    requested.delete(name);
+  }
+}
+
+/** Releases every bound source and the configured loader. */
+export function resetSourceStore() {
+  entries.clear();
+  requested.clear();
+  loadSource = null;
+}

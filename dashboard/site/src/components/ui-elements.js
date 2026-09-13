@@ -40,6 +40,7 @@ import { renderFactoryOverview } from './factory-overview.js';
  *   element?: string,
  *   viewId?: string,
  *   elementConfig?: { body?: string, sections?: string[], section?: string },
+ *   filterRows?: (rows: Array<Record<string, unknown>>) => Array<Record<string, unknown>>,
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */

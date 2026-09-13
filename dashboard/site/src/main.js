@@ -13,6 +13,7 @@
       import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
+      import { configureSourceLoader, refreshSources as refreshBoundSources } from "./source-store.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -971,6 +972,7 @@
               lazySources,
             ));
           };
+          configureSourceLoader(async (name) => (await loadCanonicalDashboardPage([name], dashboardContext))[name]);
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
           const loadHorizonSources = () => runWithLoadingProgress(
@@ -1045,6 +1047,7 @@
                     status: "completed",
                     changed,
                   });
+                  refreshBoundSources();
                   renderSources(
                     bindContinuations(sources, initialLazySources),
                     "ready",
@@ -1064,6 +1067,7 @@
               initialSources,
               dashboardContext,
               (sources) => {
+                refreshBoundSources();
                 updateWithViewTransition(
                   document,
                   () => renderSources(
