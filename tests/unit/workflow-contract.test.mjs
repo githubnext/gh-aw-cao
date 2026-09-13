@@ -1139,6 +1139,8 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   const setupSkill = readFileSync(join(root, ".github", "skills", "setup-central-agentic-ops", "SKILL.md"), "utf8");
   const quickstart = readFileSync(join(root, "docs", "getting-started.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
+  const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
+  const admission = readFileSync(join(root, "docs", "admission.md"), "utf8");
   const control = readFileSync(join(root, ".github", "workflows", "shared", "control.md"), "utf8");
   const activity = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
   const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
@@ -1170,8 +1172,13 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_REF\}"/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(updateSection, /gh aw update --major --cool-down 0 --create-pull-request/);
+  assert.match(updateSection, /predate the `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add/);
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
+  assert.match(authentication, /startswith\("githubnext\/gh-aw-cao\/"\)/);
+  assert.match(authentication, /\[\[ "\$CAO_REF" =~ \^\[0-9a-fA-F\]\{40,64\}\$ \]\]/);
+  assert.match(authentication, /fails closed rather than requesting the helper from a default branch/);
+  assert.match(admission, /package source must be public[\s\S]*?private catalog or mirror must use the source-managed topology/);
 });
 
 test("root package composes its operational packages through manifests", () => {

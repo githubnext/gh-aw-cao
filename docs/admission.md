@@ -65,6 +65,8 @@ Setup creates one atomic control-plane revision:
 
 The root CAO package records one immutable source revision instead of installing duplicate runtime copies. Controlled workflows fetch `.github/workflows/shared/` from that source when the directory is not present locally. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
 
+An installed workflow checks out that source with its control repository's `GITHUB_TOKEN`, so the package source must be public. A private catalog or mirror must use the source-managed topology with the runtime committed in-tree; missing cross-repository read authority fails closed.
+
 Root package installation records the immutable CAO runtime source, but it does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 
 The [Configuration Reference](configuration.md) defines every policy field. The phase that uses each group is:
