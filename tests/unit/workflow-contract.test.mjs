@@ -3040,10 +3040,9 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Offer `<organization>\/<control-repository>` as the default/);
   assert.match(setupSkill, /target_repo="<target-owner>\/<target-repository>"/);
   assert.doesNotMatch(setupSkill, /Always target the control repository itself for the first run/);
-  assert.match(setupSkill, /cao_release=\$\(gh release view --repo githubnext\/gh-aw-cao --json tagName --jq '\.tagName'\)/);
-  assert.match(setupSkill, /\[\[ "\$cao_release" =~ \^v\[0-9\]\+\\\.\[0-9\]\+\\\.\[0-9\]\+\$ \]\]/);
-  assert.match(setupSkill, /No published semantic CAO release was found/);
-  assert.match(setupSkill, /gh aw add "githubnext\/gh-aw-cao@\$\{cao_release\}"/);
+  assert.match(setupSkill, /gh aw add githubnext\/gh-aw-cao/);
+  assert.match(setupSkill, /gh-aw resolves the latest published release, retries transient package-install failures/);
+  assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
   assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-aw-cao@main|full commit SHA/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(setupSkill, /gh aw doctor --repo <organization>\/<control-repository> --dir \./);
@@ -3056,7 +3055,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /every installed Copilot-backed source declares `copilot-requests: write`/);
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
-  assert.match(setupSkill, /pinning that tag keeps every package dependency on the same immutable release/);
+  assert.match(setupSkill, /Do not add release-resolution scripts/);
   assert.match(setupSkill, /package cannot install this file because it is consumer-owned rollout policy/);
   assert.match(setupSkill, /Replace `<gh-aw-version>`[\s\S]*?both occurrences of `<target-owner>`[\s\S]*?one occurrence of `<target-repository>`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);

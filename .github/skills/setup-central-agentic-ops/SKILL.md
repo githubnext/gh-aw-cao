@@ -14,7 +14,7 @@ Create a new Central Agentic Ops control plane and prove it safely with one revi
 - When a source-managed control repository is also a catalog, treat it as a supported dogfood repository and apply both catalog and control-repository safety rules. Keep package manifests as package source, `.github/workflows/cao.json` as rollout and live-activation policy, and Actions variables and secrets as credentials. Do not require package records for workflows maintained directly in-tree or authority files in target repositories.
 - Public and private control repositories are supported. Preserve an existing repository's visibility; for a new repository, use the visibility the user chooses.
 - In a public control repository, policy, workflow runs, operational metadata, and review safe outputs are public. State that exposure before creation and never place confidential target information in those outputs.
-- Install the root CAO package from one published GitHub release. Use the latest release by default, pin its tag in `gh aw add`, and never install CAO from `main`, another branch, or by copying package files.
+- Install the root CAO package with `gh aw add githubnext/gh-aw-cao`. Let gh-aw resolve the latest published release and handle retries; never install CAO from `main`, another branch, or by copying package files.
 - Keep one package-installed copy of `control.md`, `control.mjs`, `policy.mjs`, the policy schema, and the setup CLI together under `.github/workflows/shared/`. These files are available in the shared checkout; never fetch another copy from the CAO repository or materialize duplicate runtime files under `.github/aw/cao/`.
 - The root package installs `.github/aw/default-AGENTS.md` as package-owned source for control-repository ambient context. If the control repository has no root `AGENTS.md`, materialize that source as `AGENTS.md`; never overwrite or merge into existing agent instructions without the user's approval.
 - Keep rollout policy only in `.github/workflows/cao.json`. Do not create `CENTRAL_AGENTIC_OPS_*` variables or another policy channel.
@@ -48,7 +48,6 @@ Resolve these values once before installation and use the same exact values in e
 | `target-owner` | canonical owner login from the selected target's `nameWithOwner` | every `<target-owner>` |
 | `target-repository` | canonical repository name from the selected target's `nameWithOwner` | every `<target-repository>` |
 | `default-branch` | control repository's `defaultBranchRef.name` | `<default-branch>` |
-| `cao-release` | latest published CAO GitHub release tag | `${cao_release}` |
 | `gh-aw-version` | `min-version` from root CAO `aw.yml` | `<gh-aw-version>` |
 | `initial-package` | package slug for the catalog operation selected for the first proof | `<package-slug>` |
 | `initial-orchestrator` | source filename stem for the selected package orchestrator | `<orchestrator-workflow>` |
@@ -84,15 +83,10 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 7. Install the root CAO package in a separate control repository. Before installing, review the manifest metadata: `gh aw add` rejects packages marked `private` and warns for packages marked `experimental`. `gh aw add` reads root `aw.yml`, installs its orchestrators, workers, shared controls, skills, resources, and the deterministic core activity index, and compiles the workflow lock files without rewriting their authentication profile:
 
     ```bash
-    cao_release=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-    [[ "$cao_release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-      echo "No published semantic CAO release was found." >&2
-      exit 1
-    }
-    gh aw add "githubnext/gh-aw-cao@${cao_release}"
+    gh aw add githubnext/gh-aw-cao
     ```
 
-    `gh release view` resolves the latest published release; pinning that tag keeps every package dependency on the same immutable release. Use an older published release only when the user explicitly selects it. Do not pass `main`, another branch, or a commit SHA, and do not copy control files separately: `gh aw add` installs the complete package, including the shared control runtime. In a source-managed control repository, do not install a package over workflows maintained directly in-tree. Its reviewed workflow sources, generated locks, runtime files, and policy form the runtime revision; verify them at the current commit instead.
+    gh-aw resolves the latest published release, retries transient package-install failures, and installs the complete package, including the shared control runtime. Do not add release-resolution scripts, pass `main` or another branch, or copy control files separately. In a source-managed control repository, do not install a package over workflows maintained directly in-tree. Its reviewed workflow sources, generated locks, runtime files, and policy form the runtime revision; verify them at the current commit instead.
 
     When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper installed with the package:
 
