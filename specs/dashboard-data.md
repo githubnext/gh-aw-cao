@@ -216,8 +216,10 @@ flowchart LR
   sqlite --> headless["Agents and CLI"]
 
   canonical --> worker["Dashboard data Web Worker"]
-  worker --> indexeddb["IndexedDB<br/>bounded disposable browser cache"]
-  indexeddb --> queries["Canonical query layer<br/>indexed and page-scoped"]
+  worker --> staging["Inactive IndexedDB slots<br/>bounded staging writes"]
+  staging -->|atomic manifest activation| active["Active IndexedDB generation<br/>disposable browser cache"]
+  active --> queries["Canonical query layer<br/>indexed and page-scoped"]
+  queries -. warm cache first .-> worker
   language["Dashboard Language<br/>declarative queries"] --> queries
   queries --> views["Dashboard views"]
 
@@ -255,6 +257,19 @@ The contract SHALL enforce these service-level objectives:
 | Warm indexed canonical query, p95 | 200 milliseconds |
 | Page-scoped route projection, p95 | 500 milliseconds |
 | Main-thread long task during storage work | 50 milliseconds |
+
+The browser implementation SHALL write changed entity stores into their
+inactive physical slots using bounded transactions. It SHALL reuse the active
+slot for an unchanged store and SHALL expose the replacement only by atomically
+updating one active-generation manifest after every changed store completes.
+An interrupted or quota-failed staging write MUST leave the previous manifest
+and all reads unchanged.
+
+Page-scoped queries SHOULD push limits into IndexedDB index cursors before
+projection. Exact total counts MAY be queried separately when the continuation
+protocol requires them. On a warm start, subscriptions MAY render the complete
+active generation before network refresh finishes; they MUST NOT render an
+incomplete staging generation.
 
 Measurements SHALL exclude at least five warmup iterations and report the
 median and p95 of at least twenty measured iterations. Route results MUST remain
@@ -298,7 +313,7 @@ Expired or unavailable GitHub Actions artifacts SHALL be reported as missing
 enrichment. Their run summaries MAY still be present and MUST NOT be described
 as fully enriched runs.
 
-## 5.2 Maintenance inventory
+## 5.3 Maintenance inventory
 
 Package inventory inputs MAY report `package-version`,
 `package-current-version`, and `package-update-state` for an installed gh-aw

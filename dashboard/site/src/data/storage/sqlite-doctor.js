@@ -4,16 +4,18 @@ import path from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 import { relationshipErrors } from '../model/schema.js';
 import {
-  CANONICAL_DATABASE_SCHEMA,
+  ACTIVE_GENERATION_ID,
   DATABASE_NAME,
   DATABASE_VERSION,
-  ENTITY_STORES
+  ENTITY_STORES,
+  PHYSICAL_DATABASE_SCHEMA,
+  physicalStoreName
 } from './indexeddb.js';
 import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from './retention.js';
 import { SQLITE_INDEXEDDB_METADATA_SCHEMA } from './sqlite-indexeddb.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const EXPECTED_STORES = Object.keys(CANONICAL_DATABASE_SCHEMA);
+const EXPECTED_STORES = Object.keys(PHYSICAL_DATABASE_SCHEMA);
 
 /** @typedef {{ id: string, kind: string, createdAt: string, [field: string]: unknown }} DoctorTransaction */
 
@@ -112,7 +114,7 @@ function schemaDiagnosticsFromConnection(connection) {
   const issues = [];
   if (version !== DATABASE_VERSION) issues.push(`database version is ${version}; expected ${DATABASE_VERSION}`);
   const actualStores = stores.map((row) => String(row.name));
-  for (const [store, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+  for (const [store, definition] of Object.entries(PHYSICAL_DATABASE_SCHEMA)) {
     const row = stores.find((candidate) => candidate.name === store);
     if (!row) issues.push(`missing object store ${store}`);
     else if (String(row.key_path) !== JSON.stringify(definition.keyPath)) {
@@ -122,7 +124,7 @@ function schemaDiagnosticsFromConnection(connection) {
   for (const store of actualStores) {
     if (!EXPECTED_STORES.includes(store)) issues.push(`unexpected object store ${store}`);
   }
-  for (const [store, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+  for (const [store, definition] of Object.entries(PHYSICAL_DATABASE_SCHEMA)) {
     const expected = definition.indexes;
     for (const [name, keyPath] of Object.entries(expected)) {
       const row = indexes.find((candidate) => candidate.store_name === store && candidate.name === name);
@@ -165,6 +167,21 @@ function scanRecordsFromConnection(connection) {
   const batch = emptyBatch();
   const transactions = /** @type {DoctorTransaction[]} */ ([]);
   const invalid = /** @type {{ store: string, recordKey: string, reason: string }[]} */ ([]);
+  const activeMetadata = rows.find((row) => {
+    if (String(row.store_name) !== 'meta') return false;
+    try {
+      return JSON.parse(String(row.record_key)) === ACTIVE_GENERATION_ID;
+    } catch {
+      return false;
+    }
+  });
+  let activeSlots = /** @type {Record<string, number>} */ ({});
+  try {
+    const metadata = activeMetadata ? JSON.parse(String(activeMetadata.value)) : null;
+    if (metadata?.slots && typeof metadata.slots === 'object') activeSlots = metadata.slots;
+  } catch {
+    // The regular record validation below reports malformed metadata.
+  }
   for (const row of rows) {
     const store = String(row.store_name);
     if (!EXPECTED_STORES.includes(store)) {
@@ -175,6 +192,10 @@ function scanRecordsFromConnection(connection) {
       });
       continue;
     }
+    const logicalStore = ENTITY_STORES.find((candidate) => (
+      physicalStoreName(candidate, activeSlots[candidate]) === store
+    ));
+    if (!logicalStore && store !== 'transactions' && store !== 'meta') continue;
     let key;
     let value;
     let reason = '';
@@ -201,8 +222,10 @@ function scanRecordsFromConnection(connection) {
       invalid.push({ store, recordKey: String(row.record_key), reason });
     } else if (store === 'transactions') {
       transactions.push(/** @type {DoctorTransaction} */ (value));
+    } else if (store === 'meta') {
+      continue;
     } else {
-      batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (store)].push(value);
+      batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (logicalStore)].push(value);
     }
   }
   return { batch, transactions, invalid, error: null };
@@ -292,7 +315,7 @@ function writeCanonicalDatabase(connection, batch, transactions) {
   const insertIndex = connection.prepare(`
     INSERT INTO __idb_indexes (database_name, store_name, name, key_path) VALUES (?, ?, ?, ?)
   `);
-  for (const [store, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+  for (const [store, definition] of Object.entries(PHYSICAL_DATABASE_SCHEMA)) {
     insertStore.run(DATABASE_NAME, store, JSON.stringify(definition.keyPath));
     for (const [name, keyPath] of Object.entries(definition.indexes)) {
       insertIndex.run(DATABASE_NAME, store, name, JSON.stringify(keyPath));

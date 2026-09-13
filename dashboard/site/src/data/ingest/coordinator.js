@@ -98,9 +98,13 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings,
     preserveRepositoryRecords: options.preserveRepositoryRecords
   }), targetDatabaseBytes);
+  let committedBatches = 0;
+  let committedRecords = 0;
   for (;;) {
     try {
-      await replaceCanonicalBatch(indexedDB, batch);
+      const replacement = await replaceCanonicalBatch(indexedDB, batch);
+      committedBatches += replacement.committedBatches;
+      committedRecords += replacement.committedRecords;
       break;
     } catch (error) {
       if (!(error instanceof DOMException) || error.name !== 'QuotaExceededError') throw error;
@@ -117,13 +121,15 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
       const reduced = capCanonicalBatchSize(batch, target);
       if (reduced.runs.length === batch.runs.length) break;
       batch = reduced;
-      await replaceCanonicalBatch(indexedDB, batch);
+      const replacement = await replaceCanonicalBatch(indexedDB, batch);
+      committedBatches += replacement.committedBatches;
+      committedRecords += replacement.committedRecords;
     }
   }
   return {
     updated: true,
-    committedBatches: 0,
-    committedRecords: Object.values(batch).reduce((total, records) => total + records.length, 0)
+    committedBatches,
+    committedRecords
   };
 }
 

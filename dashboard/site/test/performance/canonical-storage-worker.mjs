@@ -142,10 +142,14 @@ async function runContract(config) {
   let pageRows = 0;
   let totalRows = 0;
   const routeProjection = await measure(config.warmups, config.iterations, async () => {
-    const projected = await queryCanonicalViewSources(indexedDB, {}, ['failed-runs']);
+    const pagination = { 'failed-runs': { limit: config.pageSize } };
+    const projected = await queryCanonicalViewSources(indexedDB, {}, ['failed-runs'], {
+      pagination,
+      revision: 'storage-performance-contract-v1'
+    });
     const paginated = paginateDashboardSources(
       projected,
-      { 'failed-runs': { limit: config.pageSize } },
+      pagination,
       'storage-performance-contract-v1'
     );
     pageRows = paginated['failed-runs'].rows.length;

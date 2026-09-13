@@ -1,7 +1,24 @@
-import { readCollection, readIndex, readRecord, readTransactions } from '../storage/indexeddb.js';
+import { countIndex, readCollection, readIndex, readIndexDescending, readRecord, readTransactions } from '../storage/indexeddb.js';
 
 /** @param {IDBFactory} indexedDB */
 export function createCanonicalQueries(indexedDB) {
+  const recentFailuresPage = async (limit = Number.MAX_SAFE_INTEGER) => {
+    const conclusions = ['failure', 'startup-failure', 'stale', 'timed-out'];
+    const boundedLimit = limit;
+    const [runsByConclusion, counts] = await Promise.all([
+      Promise.all(conclusions.map((conclusion) =>
+        readIndexDescending(indexedDB, 'runs', 'byConclusionStartedAt', [conclusion], boundedLimit)
+      )),
+      Promise.all(conclusions.map((conclusion) =>
+        countIndex(indexedDB, 'runs', 'byConclusionStartedAt', [conclusion])
+      ))
+    ]);
+    const rows = runsByConclusion.flat()
+      .sort((left, right) => String(right.startedAt).localeCompare(String(left.startedAt))
+        || String(right.id).localeCompare(String(left.id)))
+      .slice(0, boundedLimit);
+    return { rows, total: counts.reduce((sum, count) => sum + count, 0) };
+  };
   return {
     packages: {
       list: () => readCollection(indexedDB, 'packages'),
@@ -23,12 +40,8 @@ export function createCanonicalQueries(indexedDB) {
         readIndex(indexedDB, 'runs', 'byRepository', [repositoryId]),
       forWorkflow: (/** @type {string} */ workflowId) =>
         readIndex(indexedDB, 'runs', 'byWorkflow', [workflowId]),
-      recentFailures: async () => {
-        const runs = await readCollection(indexedDB, 'runs');
-        return runs
-          .filter((run) => ['failure', 'startup-failure', 'stale', 'timed-out'].includes(String(run.conclusion)))
-          .sort((left, right) => String(right.startedAt).localeCompare(String(left.startedAt)));
-      }
+      recentFailures: async () => (await recentFailuresPage()).rows,
+      recentFailuresPage
     },
     jobs: {
       list: () => readCollection(indexedDB, 'jobs'),

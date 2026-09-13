@@ -5,6 +5,7 @@ import {
   openCanonicalDatabase,
   readCollection,
   readRecord,
+  replaceCanonicalBatch,
   upsertCanonicalBatch
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
@@ -36,14 +37,28 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'events',
       'jobs',
+      'meta',
       'packages',
       'repositories',
       'runs',
       'sessions',
+      'staging-events',
+      'staging-jobs',
+      'staging-packages',
+      'staging-repositories',
+      'staging-runs',
+      'staging-sessions',
+      'staging-workflows',
       'transactions',
       'workflows'
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
+    expect([...database.transaction('repositories').objectStore('repositories').indexNames]).toEqual([]);
+    expect([...database.transaction('runs').objectStore('runs').indexNames]).toEqual([
+      'byConclusionStartedAt',
+      'byRepository',
+      'byWorkflow'
+    ]);
     database.close();
   });
 
@@ -67,10 +82,18 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'events',
       'jobs',
+      'meta',
       'packages',
       'repositories',
       'runs',
       'sessions',
+      'staging-events',
+      'staging-jobs',
+      'staging-packages',
+      'staging-repositories',
+      'staging-runs',
+      'staging-sessions',
+      'staging-workflows',
       'transactions',
       'workflows'
     ]);
@@ -95,6 +118,36 @@ describe('canonical IndexedDB', () => {
     await upsertCanonicalBatch(indexedDB, canonicalBatch);
 
     expect(await readCollection(indexedDB, 'repositories')).toHaveLength(1);
+  });
+
+  it('skips unchanged stores during canonical replacement', async () => {
+    const canonicalBatch = batch();
+    const first = await replaceCanonicalBatch(indexedDB, canonicalBatch);
+    const second = await replaceCanonicalBatch(indexedDB, canonicalBatch);
+
+    expect(first).toMatchObject({ committedRecords: 1, skippedStores: 0 });
+    expect(second).toEqual({ committedBatches: 0, committedRecords: 0, skippedStores: 7 });
+    expect(await readCollection(indexedDB, 'repositories')).toHaveLength(1);
+  });
+
+  it('keeps the active generation visible when staging is interrupted', async () => {
+    const activeBatch = batch();
+    await replaceCanonicalBatch(indexedDB, activeBatch);
+    const stagedBatch = normalize([
+      {
+        kind: 'repository',
+        source: 'fixture',
+        sourceId: 'repo-2',
+        observedAt: '2026-09-09T06:00:00Z',
+        data: { id: 'repository:2', fullName: 'githubnext/second' }
+      }
+    ]);
+
+    await expect(replaceCanonicalBatch(indexedDB, stagedBatch, {
+      onBatchCommitted: () => { throw new Error('interrupted staging'); }
+    })).rejects.toThrow('interrupted staging');
+
+    expect(await readCollection(indexedDB, 'repositories')).toEqual(activeBatch.repositories);
   });
 
   it('writes 100,000 records in bounded transactions', async () => {

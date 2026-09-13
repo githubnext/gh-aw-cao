@@ -223,6 +223,51 @@ class SqliteIDBIndex {
         .map(({ value }) => clone(value));
     });
   }
+
+  /** @param {unknown} [query] */
+  count(query) {
+    if (!this.transaction) throw new Error('Index is not associated with a transaction');
+    const transaction = this.transaction;
+    return transaction.runRequest(() => transaction.database.records(this.storeName)
+      .map(({ value }) => valueAtKeyPath(value, this.keyPath))
+      .filter((indexKey) => !hasUndefinedKeyPart(indexKey) && matchesQuery(indexKey, query))
+      .length);
+  }
+
+  /** @param {unknown} [query] @param {'next' | 'prev'} [direction] */
+  openCursor(query, direction = 'next') {
+    if (!this.transaction) throw new Error('Index is not associated with a transaction');
+    const transaction = this.transaction;
+    const request = new SqliteIDBRequest();
+    let records;
+    try {
+      records = transaction.database.records(this.storeName)
+        .map(({ key, value }) => ({ indexKey: valueAtKeyPath(value, this.keyPath), primaryKey: key, value }))
+        .filter(({ indexKey }) => !hasUndefinedKeyPart(indexKey) && matchesQuery(indexKey, query))
+        .sort((left, right) => compareKeys(left.indexKey, right.indexKey) || compareKeys(left.primaryKey, right.primaryKey));
+      if (direction === 'prev') records.reverse();
+      else if (direction !== 'next') throw new TypeError(`Unsupported cursor direction: ${direction}`);
+    } catch (error) {
+      request.fail(error);
+      return request;
+    }
+    let offset = 0;
+    const advance = () => {
+      if (offset >= records.length) {
+        request.succeed(undefined);
+        return;
+      }
+      const record = records[offset++];
+      request.succeed({
+        key: clone(record.indexKey),
+        primaryKey: clone(record.primaryKey),
+        value: clone(record.value),
+        continue: advance
+      });
+    };
+    advance();
+    return request;
+  }
 }
 
 class SqliteIDBObjectStore {
@@ -325,6 +370,16 @@ class SqliteIDBObjectStore {
         DELETE FROM __idb_records
         WHERE database_name = ? AND store_name = ? AND record_key = ?
       `).run(this.database.name, this.name, encodeKey(key));
+      return undefined;
+    });
+  }
+
+  clear() {
+    return this.requireTransaction().runRequest(() => {
+      this.database.connection.prepare(`
+        DELETE FROM __idb_records
+        WHERE database_name = ? AND store_name = ?
+      `).run(this.database.name, this.name);
       return undefined;
     });
   }

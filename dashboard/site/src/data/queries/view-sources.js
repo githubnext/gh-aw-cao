@@ -1,4 +1,5 @@
 import { ingestDashboardSources } from '../ingest/coordinator.js';
+import { paginationReadLimit } from './declarative.js';
 import { createCanonicalQueries } from './index.js';
 
 /**
@@ -28,8 +29,8 @@ function projectionMetadata(sources, sourceName, projectionName, available) {
   });
 }
 
-/** @param {Record<string, unknown>[]} runs @param {Record<string, unknown>} sources */
-function failedRunsSource(runs, sources) {
+/** @param {Record<string, unknown>[]} runs @param {Record<string, unknown>} sources @param {number} total */
+function failedRunsSource(runs, sources, total) {
   return {
     source: 'failed-runs',
     rows: runs.map((run) => ({
@@ -46,7 +47,10 @@ function failedRunsSource(runs, sources) {
       'failure-detail': run.failureDetail,
       'run-link': run.runLink
     })),
-    metadata: projectionMetadata(sources, 'runs', 'failed-runs', true)
+    metadata: {
+      ...projectionMetadata(sources, 'runs', 'failed-runs', true),
+      'total-row-count': total
+    }
   };
 }
 
@@ -430,8 +434,9 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} logicalSources
  * @param {string[]} sourceNames
+ * @param {{ pagination?: Record<string, { limit: number, continuationToken?: string }>, revision?: string }} [options]
  */
-export async function queryCanonicalViewSources(indexedDB, logicalSources, sourceNames) {
+export async function queryCanonicalViewSources(indexedDB, logicalSources, sourceNames, options = {}) {
   if (!Array.isArray(sourceNames) || sourceNames.some((name) => typeof name !== 'string')) {
     throw new TypeError('Canonical view source names must be an array of strings.');
   }
@@ -439,6 +444,11 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const queries = createCanonicalQueries(indexedDB);
   const needsFirewall = requested.has('firewall-observations');
   const needsEvents = requested.has('events') || needsFirewall;
+  const failureReadLimit = paginationReadLimit(
+    options.pagination?.['failed-runs'],
+    'failed-runs',
+    options.revision ?? ''
+  );
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
@@ -446,7 +456,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     requested.has('runs') || requested.has('job-performance') || needsEvents
       ? queries.runs.list() : [],
     requested.has('job-performance') ? queries.jobs.list() : [],
-    requested.has('failed-runs') ? queries.runs.recentFailures() : [],
+    requested.has('failed-runs') ? queries.runs.recentFailuresPage(failureReadLimit) : { rows: [], total: 0 },
     needsEvents ? queries.sessions.list() : [],
     needsEvents ? queries.events.list() : [],
     requested.has('transactions') ? queries.transactions.list() : []
@@ -463,7 +473,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('workflows')) projected.workflows = workflowsSource(workflows, repositoriesById, sources);
   if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
-  if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
+  if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns.rows, sources, failedRuns.total);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
   if (requested.has('transactions')) {
     projected.transactions = {

@@ -73,9 +73,7 @@ export function paginateDashboardSources(
       throw new TypeError(`Pagination limit for "${name}" must be a positive integer no greater than ${DASHBOARD_QUERY_LIMITS['max-output-rows']}.`);
     }
     const rows = Array.isArray(source.rows) ? source.rows : [];
-    const cursor = page.continuationToken
-      ? decodeContinuationToken(page.continuationToken, name, revision)
-      : null;
+    const cursor = page.continuationToken ? decodeContinuationToken(page.continuationToken, name, revision) : null;
     let offset = cursor?.offset ?? 0;
     if (cursor?.run !== undefined) {
       const expected = rows[offset - 1];
@@ -85,9 +83,13 @@ export function paginateDashboardSources(
         offset = anchor + 1;
       }
     }
-    const end = Math.min(rows.length, offset + page.limit);
-    const pageRows = rows.slice(offset, end);
-    const continuationToken = end < rows.length
+    const declaredTotal = Number(source.metadata?.['total-row-count']);
+    const totalRows = Number.isSafeInteger(declaredTotal) && declaredTotal >= rows.length
+      ? declaredTotal
+      : rows.length;
+    const end = Math.min(totalRows, offset + page.limit);
+    const pageRows = rows.slice(offset, Math.min(rows.length, end));
+    const continuationToken = end < totalRows
       ? encodeContinuationToken({
           source: name,
           offset: end,
@@ -99,9 +101,22 @@ export function paginateDashboardSources(
       ...source,
       rows: pageRows,
       ...(continuationToken ? { continuationToken } : {}),
-      metadata: { ...source.metadata, 'total-row-count': rows.length }
+      metadata: { ...source.metadata, 'total-row-count': totalRows }
     }];
   }));
+}
+
+/** @param {{ limit: number, continuationToken?: string } | undefined} page @param {string} source @param {string} revision */
+export function paginationReadLimit(page, source, revision) {
+  if (!page) return undefined;
+  if (!Number.isSafeInteger(page.limit) || page.limit <= 0
+      || page.limit > DASHBOARD_QUERY_LIMITS['max-output-rows']) {
+    throw new TypeError(`Pagination limit for "${source}" must be a positive integer no greater than ${DASHBOARD_QUERY_LIMITS['max-output-rows']}.`);
+  }
+  const offset = page.continuationToken
+    ? decodeContinuationToken(page.continuationToken, source, revision).offset
+    : 0;
+  return offset + page.limit;
 }
 
 /** @param {Row | undefined} row */

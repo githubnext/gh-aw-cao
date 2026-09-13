@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
+import { paginateDashboardSources } from '../../src/data/queries/declarative.js';
 import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -186,6 +187,41 @@ describe('canonical view sources', () => {
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
       metadata: { 'source-kind': 'canonical-query' }
     });
+  });
+
+  it('paginates failed runs from a bounded canonical index prefix', async () => {
+    const pagedSources = structuredClone(sources);
+    pagedSources.runs.rows = [42, 43, 44].map((run, index) => ({
+      ...sources.runs.rows[0],
+      run: String(run),
+      'started-at': `2026-09-09T0${4 + index}:00:00Z`
+    }));
+    await loadCanonicalViewSources(indexedDB, pagedSources, { ingest: true });
+    const revision = 'failed-runs-test';
+    const firstPagination = { 'failed-runs': { limit: 2 } };
+    const firstProjection = await queryCanonicalViewSources(
+      indexedDB,
+      pagedSources,
+      ['failed-runs'],
+      { pagination: firstPagination, revision }
+    );
+    const first = paginateDashboardSources(firstProjection, firstPagination, revision)['failed-runs'];
+    const secondPagination = {
+      'failed-runs': { limit: 2, continuationToken: first.continuationToken }
+    };
+    const secondProjection = await queryCanonicalViewSources(
+      indexedDB,
+      pagedSources,
+      ['failed-runs'],
+      { pagination: secondPagination, revision }
+    );
+    const second = paginateDashboardSources(secondProjection, secondPagination, revision)['failed-runs'];
+
+    expect(first.rows.map((row) => row.run)).toEqual(['44', '43']);
+    expect(first.metadata['total-row-count']).toBe(3);
+    expect(first.continuationToken).toEqual(expect.any(String));
+    expect(second.rows.map((row) => row.run)).toEqual(['42']);
+    expect(second.continuationToken).toBeUndefined();
   });
 
   it('projects package rows and workflow membership from canonical records', async () => {

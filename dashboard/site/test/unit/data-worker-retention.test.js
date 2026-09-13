@@ -1,6 +1,7 @@
 // @vitest-environment node
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { ingestDashboardSources } from '../../src/data/ingest/coordinator.js';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -93,6 +94,7 @@ describe('canonical dashboard worker retention updates', () => {
         posted.push(message);
       }
     }));
+    await ingestDashboardSources(indexedDB, collection('generation-cache', eventRows));
     await import('../../src/data-worker.js');
     const dispatch = (/** @type {Record<string, unknown>} */ data) => listeners.get('message')?.({ data });
     /** @param {(message: Record<string, unknown>) => boolean} match */
@@ -109,6 +111,10 @@ describe('canonical dashboard worker retention updates', () => {
       sourceNames: ['event-inspection'],
       context
     });
+    const cached = await settled((message) => message.subscriptionId === 'events');
+    expect(cached).toMatchObject({ subscriptionId: 'events' });
+    expect(/** @type {{ data: Record<string, { rows: unknown[] }> }} */ (cached).data['event-inspection'].rows).toHaveLength(2);
+    posted.length = 0;
     stubFetch(collection('generation-a', eventRows));
     dispatch({
       id: 1,

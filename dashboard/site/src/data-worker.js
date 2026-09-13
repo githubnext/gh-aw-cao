@@ -79,10 +79,12 @@ function pageScopedSources(sources, requested) {
 async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}, dashboard = liveDashboard) {
   dashboard ??= await loadActiveDashboard();
   const required = resolveDashboardQuerySources(context.queries, requested);
+  const revision = continuationRevision(context.queries, dashboard.revision);
   const canonicalPayload = await queryCanonicalViewSources(
     indexedDB,
     dashboard.logicalSources,
-    required
+    required,
+    { pagination, revision }
   );
   const hasPublishedSources = Object.keys(dashboard.logicalSources).length > 0;
   if (!hasPublishedSources) {
@@ -93,7 +95,7 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
     return paginateDashboardSources(
       deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-      continuationRevision(context.queries, dashboard.revision)
+      revision
     );
   }
   const derivedSources = deriveRuntimeSources(
@@ -113,7 +115,7 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   return paginateDashboardSources(
     deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
     /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-    continuationRevision(context.queries, dashboard.revision)
+    revision
   );
 }
 
@@ -410,8 +412,8 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
         pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
         revision: liveDashboard?.revision ?? null
       });
-      if (liveDashboard && event.data.emitCurrent !== false) {
-        scheduleDashboardSubscriptions([subscriptionId]);
+      if (event.data.emitCurrent !== false) {
+        void loadActiveDashboard().then(() => scheduleDashboardSubscriptions([subscriptionId]));
       }
       return;
     }
