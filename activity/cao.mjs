@@ -366,6 +366,8 @@ async function queryRawCanonicalData(indexedDB, query) {
     console.time = () => {};
     console.timeEnd = () => {};
     result = executeDashboardQuery(query, sources);
+    void result.rows;
+    void result.metadata;
   } finally {
     console.time = time;
     console.timeEnd = timeEnd;
