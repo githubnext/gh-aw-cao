@@ -90,15 +90,15 @@ describe('dashboard document validation', () => {
     ]));
   });
 
-  it('validates row-scoped CLI action templates and table references', () => {
+  it('validates row-scoped CLI action templates and list references', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const repositoriesPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'repositories'
+    const maintenancePage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
     );
     const action = document.dashboard['cli-actions'].find(
-      (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-target-repository'
+      (/** @type {{ id: string }} */ candidate) => candidate.id === 'upgrade-target-repository'
     );
-    const tableAction = repositoriesPage.definition.views[0].encoding.actions[0];
+    const listAction = maintenancePage.views[1].encoding.actions[0];
 
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
@@ -113,7 +113,7 @@ describe('dashboard document validation', () => {
     });
     action.placement = 'row';
 
-    tableAction.context = [];
+    listAction.context = [];
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
@@ -122,9 +122,9 @@ describe('dashboard document validation', () => {
         })
       ])
     });
-    tableAction.context = ['repository'];
+    listAction.context = ['repository'];
 
-    action.command = 'gh aw update --repo {{ repository }}';
+    action.command = 'gh aw upgrade --repo {{ repository }}';
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
@@ -135,7 +135,7 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('targets each package workflow from the packages table update action', () => {
+  it('keeps package updates exclusively in the Maintenance list', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const action = document.dashboard['cli-actions'].find(
       (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-package'
@@ -143,16 +143,67 @@ describe('dashboard document validation', () => {
     const packagesPage = document.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'packages'
     );
-    const tableAction = packagesPage.definition.views[0].encoding.actions[0];
+    const maintenancePage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
+    );
+    const listAction = maintenancePage.views[0].encoding.actions[0];
 
     expect(action).toMatchObject({
       command: 'gh aw update {{package}}',
       placement: 'row'
     });
-    expect(tableAction).toMatchObject({
+    expect(document.dashboard['cli-actions'].some(
+      (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-target-repository'
+    )).toBe(false);
+    expect(packagesPage.definition.views[0].encoding.actions).toBeUndefined();
+    expect(listAction).toMatchObject({
       action: 'update-package',
       presentation: 'cli-action',
       context: ['package']
+    });
+  });
+
+  it('validates declarative card lists and their view actions', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const maintenancePage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
+    );
+    const starterList = maintenancePage.views[0];
+    const viewAction = document.dashboard['cli-actions'].find(
+      (/** @type {{ id: string }} */ action) => action.id === starterList.list.action
+    );
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    starterList.list.style = 'rows';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'list.style must be "cards".' })
+      ])
+    });
+    starterList.list.style = 'cards';
+
+    const columns = starterList.encoding.columns;
+    starterList.encoding.columns = [];
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'list views must encode a non-empty columns sequence.'
+        })
+      ])
+    });
+    starterList.encoding.columns = columns;
+
+    viewAction.placement = 'row';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'list.action must reference a view-placed dashboard CLI action.'
+        })
+      ])
     });
   });
 
@@ -269,7 +320,7 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
-      if (page.id === 'safe-outputs') continue;
+      if (page.id === 'safe-outputs' || page.id === 'maintenance') continue;
       const definition = page.definition ?? page;
       const editableViews = (definition.views ?? []).filter(
         (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
@@ -284,6 +335,30 @@ describe('dashboard document validation', () => {
         layout: 'full-view'
       });
     }
+    expect(document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
+    )?.views).toEqual([
+      expect.objectContaining({
+        id: 'starter-updates',
+        mark: 'list',
+        list: {
+          style: 'cards',
+          icon: 'package',
+          action: 'update-repository'
+        },
+        layout: 'full'
+      }),
+      expect.objectContaining({
+        id: 'compiler-upgrades',
+        mark: 'list',
+        list: {
+          style: 'cards',
+          icon: 'repo',
+          action: 'upgrade-repository'
+        },
+        layout: 'full'
+      })
+    ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 

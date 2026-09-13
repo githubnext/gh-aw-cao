@@ -4,7 +4,7 @@ import { renderCliActionCommand } from '../cli-action-template.js';
 import { createCopyControl, createModalDialog, renderCloseButton } from './ui-primitives.js';
 
 const endpoint = './__cli_action';
-/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
+/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
 /** @type {Record<string, string>} */
@@ -90,7 +90,7 @@ function commandPreview(action, values, templateValues) {
 
 /**
  * @param {{ id: string, label: string, description?: string, icon: string, command: string, arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }} action
- * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean }} [options]
+ * @param {{ presentation?: 'menu'|'settings'|'row', templateValues?: Record<string, string>, canExecute?: boolean, showRowLabel?: boolean }} [options]
  */
 function renderCliActionControl(action, options = {}) {
   const settingsPresentation = options.presentation === 'settings';
@@ -207,11 +207,11 @@ function renderCliActionControl(action, options = {}) {
       }
     },
     octicon(action.icon),
-    rowPresentation ? null : h(
+    rowPresentation && options.showRowLabel !== true ? null : h(
       'span',
       { className: 'cli-action-trigger-copy' },
       h('strong', null, action.label),
-      action.description ? h('small', null, action.description) : null
+      !rowPresentation && action.description ? h('small', null, action.description) : null
     )
   ));
   command = h('code', { className: 'cli-action-command' }, commandPreview(action, argumentValues, templateValues));
@@ -253,16 +253,33 @@ function renderCliActionControl(action, options = {}) {
  * Render one row-scoped CLI action with template values sourced from the row.
  * @param {string} actionId
  * @param {Record<string, string>} templateValues
+ * @param {{ showLabel?: boolean }} [options]
  */
-export function renderRowCliAction(actionId, templateValues) {
+export function renderRowCliAction(actionId, templateValues, options = {}) {
   const action = declaredCliActions.find((candidate) => candidate.id === actionId);
   if (!action) return null;
   const { trigger, dialog } = renderCliActionControl(action, {
     presentation: 'row',
     templateValues,
-    canExecute: declaredCliActionsCanExecute
+    canExecute: declaredCliActionsCanExecute,
+    showRowLabel: options.showLabel === true
   });
   return h('span', { className: 'table-cli-action-control' }, trigger, dialog);
+}
+
+/**
+ * Render one declared CLI action with its authored label and description.
+ * @param {string} actionId
+ * @param {Record<string, string>} [templateValues]
+ */
+export function renderDeclaredCliAction(actionId, templateValues = {}) {
+  const action = declaredCliActions.find((candidate) => candidate.id === actionId);
+  if (!action) return null;
+  const rendered = renderCliActionControl(action, {
+    templateValues: { ...declaredCliActionTemplateValues, ...templateValues },
+    canExecute: declaredCliActionsCanExecute
+  });
+  return h('span', { className: 'declared-cli-action' }, rendered.trigger, rendered.dialog);
 }
 
 /**
@@ -334,7 +351,8 @@ export function renderSettingsCliActions() {
 }
 
 /**
- * Attach dashboard-declared CLI actions to their toolbar, settings, and row placements.
+ * Attach dashboard-declared CLI actions to their toolbar and settings placements.
+ * View and row actions are rendered by their declaring views.
  * @param {HTMLElement} dashboard
  * @param {typeof declaredCliActions} actions
  * @param {{ repository?: string, canExecute?: boolean }} [options]
@@ -346,7 +364,7 @@ export function attachCliActions(dashboard, actions, options = {}) {
   if (typeof options.repository === 'string') templateValues.repository = options.repository;
   setDeclaredCliActions(actions, { canExecute, templateValues });
   const toolbarActions = renderCliActions(
-    actions.filter((action) => !['settings', 'row'].includes(action.placement ?? 'toolbar')),
+    actions.filter((action) => (action.placement ?? 'toolbar') === 'toolbar'),
     { templateValues, canExecute }
   );
   if (toolbarActions) dashboard.querySelector('.report-actions')?.prepend(toolbarActions);

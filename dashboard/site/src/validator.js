@@ -103,6 +103,8 @@ import {
   PLURAL_TEXT_KEYS,
   VIEW_KEYS,
   VIEW_LAYOUT_VALUES,
+  VIEW_LIST_KEYS,
+  VIEW_LIST_STYLE_VALUES,
   VIEW_MARK_VALUES,
   VIEW_METRIC_KEYS,
   VIEW_METRIC_STYLE_VALUES,
@@ -591,7 +593,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         if (typeof action.placement === 'string' && !CLI_ACTION_PLACEMENT_VALUES.includes(action.placement)) {
           errors.push(createError(
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-            'CLI action placement must use toolbar, settings, or row.',
+            'CLI action placement must use toolbar, settings, view, or row.',
             `${path}.placement`
           ));
         }
@@ -1935,10 +1937,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
     }
   }
 
-  if (view['empty-message'] !== undefined && !['chart', 'table'].includes(String(view.mark))) {
+  if (view['empty-message'] !== undefined && !['chart', 'list', 'table'].includes(String(view.mark))) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      'empty-message is allowed only when mark is "chart" or "table".',
+      'empty-message is allowed only when mark is "chart", "list", or "table".',
       `${path}.empty-message`
     ));
   }
@@ -2066,6 +2068,37 @@ function validateView(view, viewNode, path, viewIds, errors) {
     }
   }
 
+  if (view.list !== undefined) {
+    const listPath = `${path}.list`;
+    if (!isPlainObject(view.list)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list must be a list widget mapping.', listPath));
+    } else {
+      validateObjectKeys(getValueNodeByKey(viewNode, 'list'), VIEW_LIST_KEYS, listPath, errors);
+      validateStringField(view.list.style, `${listPath}.style`, true, errors);
+      if (typeof view.list.style === 'string' && !VIEW_LIST_STYLE_VALUES.includes(view.list.style)) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'list.style must be "cards".', `${listPath}.style`));
+      }
+      validateStringField(view.list.icon, `${listPath}.icon`, true, errors);
+      if (typeof view.list.icon === 'string' && !PAGE_ICON_VALUES.includes(view.list.icon)) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'list icon must use one canonical Octicon name.', `${listPath}.icon`));
+      }
+      validateRequiredIdentifier(view.list.action, `${listPath}.action`, 'list action reference', errors);
+      const declaredAction = typeof view.list.action === 'string'
+        ? declaredCliActions.get(view.list.action)
+        : undefined;
+      if (typeof view.list.action === 'string' && !declaredAction) {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list action must reference a declared dashboard CLI action.', `${listPath}.action`));
+      } else if (declaredAction?.placement !== 'view') {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
+      }
+    }
+    if (view.mark !== 'list') {
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list is allowed only when mark is "list".', listPath));
+    }
+  } else if (view.mark === 'list') {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list views must declare a list widget mapping.', `${path}.list`));
+  }
+
   if (view.chart !== undefined) {
     validateStringField(view.chart, `${path}.chart`, true, errors);
     if (typeof view.chart === 'string' && !VIEW_CHART_VALUES.includes(view.chart)) {
@@ -2191,7 +2224,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       if (view.data.sources !== undefined) {
         errors.push(createError(
           ERROR_CODES.missingOrInvalidRequiredField,
-          'metric, table, and chart views must use data.source instead of data.sources.',
+          'metric, table, list, and chart views must use data.source instead of data.sources.',
           `${path}.data.sources`
         ));
       }
@@ -2246,8 +2279,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
  */
 function validateTableActions(encoding, encodingNode, mark, sourceName, path, errors) {
   if (!isPlainObject(encoding) || encoding.actions === undefined) return;
-  if (mark !== 'table') {
-    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'actions is allowed only when mark is "table".', path));
+  if (!['list', 'table'].includes(String(mark))) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'actions is allowed only when mark is "list" or "table".', path));
     return;
   }
   if (!Array.isArray(encoding.actions) || encoding.actions.length === 0) {
@@ -3509,7 +3542,7 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
   /** @type {Map<string, string>} */
   const aggregateOutputIds = new Map();
   const markValue = typeof mark === 'string' ? mark : null;
-  const displayForbiddenChannels = markValue === 'table'
+  const displayForbiddenChannels = ['list', 'table'].includes(markValue ?? '')
     ? ['href']
     : ['value', 'x', 'y', 'color', 'reference', 'href'];
   for (const channel of displayForbiddenChannels) {
@@ -3521,7 +3554,7 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
       ));
     }
   }
-  const filterForbiddenChannels = markValue === 'table'
+  const filterForbiddenChannels = ['list', 'table'].includes(markValue ?? '')
     ? ['href']
     : ['value', 'x', 'y', 'color', 'reference', 'href'];
   for (const channel of filterForbiddenChannels) {
@@ -3537,7 +3570,16 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
   if (markValue === 'metric') {
     validateMetricEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors);
   } else if (markValue === 'table') {
-    validateTableEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors);
+    validateTableEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors, 'table');
+  } else if (markValue === 'list') {
+    validateTableEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors, 'list');
+    if (encoding.href !== undefined) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'list views must not encode href.',
+        `${viewPath}.encoding.href`
+      ));
+    }
   } else if (markValue === 'chart') {
     validateChartEncoding(encodingNode, encoding, chart, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors);
     validateChartWidget(encoding, chart, viewPath, errors);
@@ -3707,12 +3749,13 @@ function validateMetricEncoding(encodingNode, encoding, sourceName, path, aggreg
  * @param {string} path
  * @param {Map<string, string>} aggregateOutputIds
  * @param {ValidationError[]} errors
+ * @param {'list'|'table'} viewKind
  */
-function validateTableEncoding(encodingNode, encoding, sourceName, path, aggregateOutputIds, errors) {
+function validateTableEncoding(encodingNode, encoding, sourceName, path, aggregateOutputIds, errors, viewKind) {
   if (!Array.isArray(encoding.columns) || encoding.columns.length === 0) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      'table views must encode a non-empty columns sequence.',
+      `${viewKind} views must encode a non-empty columns sequence.`,
       `${path}.columns`
     ));
   } else {
@@ -3733,7 +3776,7 @@ function validateTableEncoding(encodingNode, encoding, sourceName, path, aggrega
     if (encoding[forbiddenChannel] !== undefined) {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
-        `table views must not encode ${forbiddenChannel}.`,
+        `${viewKind} views must not encode ${forbiddenChannel}.`,
         `${path}.${forbiddenChannel}`
       ));
     }

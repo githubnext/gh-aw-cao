@@ -94,6 +94,77 @@ describe('declarative dashboard queries', () => {
     expect(result['database-event-count'].rows).toEqual([{ events: 3 }]);
   });
 
+  it('derives one compiler upgrade decision per repository', () => {
+    const compilerWorkflows = {
+      source: 'workflows',
+      rows: [
+        {
+          organization: 'acme',
+          repository: 'service',
+          workflow: 'a.md',
+          'gh-aw-version': 'v0.88.0',
+          'gh-aw-current-version': 'v0.89.0',
+          'gh-aw-update-state': 'update-available'
+        },
+        {
+          organization: 'acme',
+          repository: 'service',
+          workflow: 'b.md',
+          'gh-aw-version': 'v0.89.0',
+          'gh-aw-current-version': 'v0.89.0',
+          'gh-aw-update-state': 'current'
+        },
+        {
+          organization: 'acme',
+          repository: 'current',
+          workflow: 'c.md',
+          'gh-aw-version': 'v0.89.0',
+          'gh-aw-current-version': 'v0.89.0',
+          'gh-aw-update-state': 'current'
+        },
+        {
+          organization: 'acme',
+          repository: 'unknown',
+          workflow: 'd.md',
+          'gh-aw-version': null,
+          'gh-aw-current-version': null,
+          'gh-aw-update-state': 'unknown'
+        }
+      ],
+      metadata: metadata('workflows')
+    };
+
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      { workflows: compilerWorkflows },
+      ['maintenance-repositories']
+    );
+
+    expect(result['maintenance-repositories'].rows).toEqual([
+      {
+        repository: 'acme/current',
+        'gh-aw-version': 'v0.89.0',
+        'gh-aw-current-version': 'v0.89.0',
+        'upgrade-required': 0,
+        'upgrade-state': 'Current'
+      },
+      {
+        repository: 'acme/service',
+        'gh-aw-version': 'v0.88.0, v0.89.0',
+        'gh-aw-current-version': 'v0.89.0',
+        'upgrade-required': 1,
+        'upgrade-state': 'Upgrade recommended'
+      },
+      {
+        repository: 'acme/unknown',
+        'gh-aw-version': '',
+        'gh-aw-current-version': '',
+        'upgrade-required': 0,
+        'upgrade-state': 'Upgrade status unavailable'
+      }
+    ]);
+  });
+
   it('shapes and orders transaction entries through the declared dashboard query', () => {
     const transactions = {
       source: 'transactions',
