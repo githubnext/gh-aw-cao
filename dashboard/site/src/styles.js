@@ -1995,6 +1995,11 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
      finite value to animate toward, since CSS cannot transition to/from "none". */
   .dashboard-full-view .org-sidebar { --full-view-sidebar-max-height: 480px; /* generous headroom over the ~70px .sidebar-header row this cap actually bounds */ max-height: var(--full-view-sidebar-max-height); overflow: hidden; transition: max-height 200ms ease, padding 200ms ease, opacity 160ms ease, border-color 200ms ease, visibility 0s linear 0s; }
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; border-color: transparent; opacity: 0; visibility: hidden; pointer-events: none; transition: max-height 200ms ease, padding 200ms ease, opacity 160ms ease, border-color 200ms ease, visibility 0s linear 200ms; }
+  /* The hamburger popover is anchored inside that header row, so it is taller than the row and
+     than the full-view shell allows. While the menu is open the header, shell, and root stop
+     clipping so the menu paints over the page content instead of being cut off by it. */
+  .dashboard-full-view .org-sidebar:has(.mobile-nav-menu[open]) { max-height: none; overflow: visible; }
+  .dashboard-full-view:has(.mobile-nav-menu[open]), .dashboard-full-view:has(.mobile-nav-menu[open]) .app-shell { overflow: visible; }
   .dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }
   .sidebar-header { position: relative; margin: 0 0 8px; }
   .mobile-history-back:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }

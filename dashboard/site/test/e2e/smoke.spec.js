@@ -1752,6 +1752,60 @@ test('performance page renders one full-view lazy job table', async ({ page }) =
   await expect(pageRegion).toContainText('45s');
 });
 
+test('mobile navigation menu paints above a full-view page instead of being clipped by it', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'performance-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-03T12:00:00Z',
+        'retrieved-at': '2026-09-03T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'run-performance': {
+          source: 'run-performance',
+          rows: [{ run: '1', 'started-at': '2026-09-03T10:00:00Z', 'run-duration-seconds': 60 }],
+          metadata
+        },
+        'job-performance': {
+          source: 'job-performance',
+          rows: [{ run: '1', 'started-at': '2026-09-03T10:00:00Z', job: 'agent', runner: 'ubuntu-latest', 'sandbox-runtime': 'gvisor', engine: 'copilot', model: 'gpt-5.4', 'job-duration-seconds': 45 }],
+          metadata
+        }
+      };
+      window.location.hash = '#page-performance';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  const menu = page.locator('.mobile-nav-menu');
+  await menu.locator('summary').click();
+  const menuList = menu.locator('.mobile-nav-menu-list');
+  await expect(menuList).toBeVisible();
+  const hits = await menuList.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    /** @param {number} y */
+    const hitAt = (y) => {
+      const hit = element.ownerDocument.elementFromPoint(rect.left + rect.width / 2, y);
+      return hit !== null && element.contains(hit);
+    };
+    return { height: rect.height, middle: hitAt(rect.top + rect.height / 2), bottom: hitAt(rect.bottom - 4) };
+  });
+  expect(hits.height).toBeGreaterThan(200);
+  expect(hits.middle).toBe(true);
+  expect(hits.bottom).toBe(true);
+});
+
 test('histogram keeps a low constant DOM size for 100,000 observations', async ({ page }) => {
   await page.setContent(`
     <div id="root"></div>
