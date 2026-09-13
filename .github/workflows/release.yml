@@ -179,7 +179,7 @@ jobs:
             }
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
-              .addRaw('A maintainer must review the generated notes, publish the draft, and mark it as the latest release from the GitHub website.')
+              .addRaw('A maintainer must review the generated notes, publish the draft, and mark it as the latest release from the GitHub website. Control repositories then install or update this package only with gh aw add or gh aw update.')
               .addEOL()
               .addLink('Review draft release', release.html_url);
             await core.summary.write();

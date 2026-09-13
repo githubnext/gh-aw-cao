@@ -79,12 +79,14 @@ gh aw --help
 
 ### Step 3 - Add Central Agentic Ops
 
-From the control repository, install the CAO package from a pinned catalog release. Replace `<catalog-release>` with a release tag or full commit SHA:
+From the control repository, resolve the latest published CAO release and install that complete package with the gh-aw CLI:
 
 ```bash
-CAO_REF="<catalog-release>"
-gh aw add "githubnext/gh-aw-cao@${CAO_REF}"
+CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
+gh aw add "githubnext/gh-aw-cao@${CAO_RELEASE}"
 ```
+
+Use an older published release tag only when you intentionally need that version. Do not install from `main` or copy control files separately; `gh aw add` installs the workflows, shared control files, runtime modules, and package ownership records together.
 
 The package installs:
 
@@ -93,7 +95,7 @@ The package installs:
 3. shared control and its single package-installed CAO runtime under `.github/workflows/shared`;
 4. generated `.lock.yml` workflows that GitHub Actions executes.
 
-The installed workflows use the runtime copied into the same shared directory. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
+The installed workflows use the runtime installed into the same shared directory. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
 
 The installed operation is runnable after its package and worker workflow identities are declared in the control policy. Declared workers are enabled unless their policy sets `enabled: false`; undeclared or disabled identities are skipped by admission before agent execution.
 

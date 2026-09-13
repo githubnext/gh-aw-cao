@@ -154,7 +154,7 @@ This path supports issue outputs only. It does not transfer issues, publish pull
 
 ### Install the dashboard package
 
-The root Central Agentic Ops package installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic packages from the same reviewed release tag or full commit SHA:
+The root Central Agentic Ops package installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic packages from the same published release tag:
 
 ```bash
 gh aw add githubnext/gh-aw-cao/activity@<catalog-release>
@@ -307,7 +307,7 @@ From the control repository:
 gh aw update https://github.com/githubnext/gh-aw-cao --major --cool-down 0 --create-pull-request
 ```
 
-The command updates the installed CAO package and opens a pull request containing its package-owned workflows, generated locks, shared runtime modules, and ownership records. Review that proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
+The command resolves published GitHub releases, updates the installed CAO package to the latest compatible release, and opens a pull request containing its package-owned workflows, generated locks, shared runtime modules, and ownership records. Do not point updates at `main`, fetch control files separately, or copy them with a script. Review the proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
 
 Existing installations whose package records predate the package-owned `.github/workflows/shared/` runtime must update before running CAO so `control.mjs` and `policy.mjs` are materialized beside `control.md`. Admission intentionally fails closed when those installed files are missing.
 
@@ -315,7 +315,7 @@ Existing installations whose package records predate the package-owned `.github/
 
 A catalog maintainer cannot remotely disable workflows already installed in independent control repositories. When a package release is unsafe:
 
-1. publish the affected release or commit and a known-good replacement;
+1. identify the affected published release and publish a known-good replacement release;
 2. identify installations through package manifests and the approved control-repository inventory;
 3. commit `enabled: false` for affected packages and cancel active runs in every installation;
 4. revoke credentials when repository access must stop immediately;

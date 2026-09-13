@@ -1062,6 +1062,7 @@ test("release increments the semantic version, creates its tag, and prepares a c
   assert.match(prepare, /draft: true/);
   assert.match(prepare, /generate_release_notes: true/);
   assert.match(prepare, /publish the draft, and mark it as the latest release from the GitHub website/);
+  assert.match(prepare, /install or update this package only with gh aw add or gh aw update/);
   assert.equal(jobs.has("publish-release"), false);
   assert.doesNotMatch(source, /updateRelease|draft: false|make_latest/);
   assert.doesNotMatch(source, /release-please|upload-artifact|CHANGELOG\.md/);
@@ -1175,9 +1176,13 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /setup-central-agentic-ops/);
-  assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_REF\}"/);
+  assert.match(quickstart, /CAO_RELEASE=\$\(gh release view --repo githubnext\/gh-aw-cao --json tagName --jq '\.tagName'\)/);
+  assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_RELEASE\}"/);
+  assert.doesNotMatch(quickstart, /@main|commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(updateSection, /gh aw update https:\/\/github\.com\/githubnext\/gh-aw-cao --major --cool-down 0 --create-pull-request/);
+  assert.match(updateSection, /resolves published GitHub releases[\s\S]*?latest compatible release/);
+  assert.match(updateSection, /Do not point updates at `main`, fetch control files separately, or copy them with a script/);
   assert.match(updateSection, /predate the package-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add/);
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
@@ -3035,9 +3040,10 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Offer `<organization>\/<control-repository>` as the default/);
   assert.match(setupSkill, /target_repo="<target-owner>\/<target-repository>"/);
   assert.doesNotMatch(setupSkill, /Always target the control repository itself for the first run/);
-  assert.match(setupSkill, /cao_ref=\$\(gh api repos\/githubnext\/gh-aw-cao\/commits\/main/);
-  assert.match(setupSkill, /\[\[ "\$cao_ref" =~ \^\[0-9a-fA-F\]\{40,64\}\$ \]\]/);
-  assert.match(setupSkill, /gh aw add "githubnext\/gh-aw-cao@\$\{cao_ref\}"/);
+  assert.match(setupSkill, /cao_release=\$\(gh release view --repo githubnext\/gh-aw-cao --json tagName --jq '\.tagName'\)/);
+  assert.match(setupSkill, /\[\[ "\$cao_release" =~ \^v\[0-9\]\+\\\.\[0-9\]\+\\\.\[0-9\]\+\$ \]\]/);
+  assert.match(setupSkill, /gh aw add "githubnext\/gh-aw-cao@\$\{cao_release\}"/);
+  assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-aw-cao@main|full commit SHA/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(setupSkill, /gh aw doctor --repo <organization>\/<control-repository> --dir \./);
   assert.match(setupSkill, /Run `gh aw version`\. Compare it with `min-version` in the root CAO `aw\.yml`/);
@@ -3049,7 +3055,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /every installed Copilot-backed source declares `copilot-requests: write`/);
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
-  assert.match(setupSkill, /one immutable source identity keeps repeated package dependencies consistent/);
+  assert.match(setupSkill, /pinning that tag keeps every package dependency on the same immutable release/);
   assert.match(setupSkill, /package cannot install this file because it is consumer-owned rollout policy/);
   assert.match(setupSkill, /Replace `<gh-aw-version>`[\s\S]*?both occurrences of `<target-owner>`[\s\S]*?one occurrence of `<target-repository>`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);

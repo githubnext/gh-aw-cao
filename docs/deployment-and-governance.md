@@ -63,7 +63,7 @@ GitHub repository custom properties may project selected fields from those recor
 | --- | --- | --- |
 | `central-ops-role` | `enterprise`, `organization`, or `independent` | Identifies the runtime's governance scope. |
 | `central-ops-catalog` | `githubnext/gh-aw-cao` | Projects the authoritative catalog source. |
-| `central-ops-version` | Release tag or commit SHA | Projects the catalog revision installed by the control repository. |
+| `central-ops-version` | Published release tag | Projects the catalog release installed by the control repository. |
 | `central-ops-owner` | `organization/platform-team` | Identifies the team responsible for operation and incidents. |
 | `central-ops-status` | `review`, `active`, or `suspended` | Records the installation lifecycle state. |
 
