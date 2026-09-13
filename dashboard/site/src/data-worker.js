@@ -66,7 +66,7 @@ let nextIngestionProgressId = 0;
  * Reports long-running ingestion status through the main-thread notification manager.
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
-function startIngestionProgress(target = self) {
+export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
   let message = 'Ingesting dashboard data.';
   const report = () => publishWorkerNotification({ id, message, tone: 'info', duration: 0 }, target);

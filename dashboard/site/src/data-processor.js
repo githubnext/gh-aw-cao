@@ -420,9 +420,11 @@ function getWorker() {
       try {
         const notification = event.data.notification;
         const id = typeof notification?.id === 'string' ? notification.id : undefined;
-        if (notification?.dismiss === true && id) {
-          workerNotificationHandles.get(id)?.dismiss();
-          workerNotificationHandles.delete(id);
+        if (notification?.dismiss === true) {
+          if (id) {
+            workerNotificationHandles.get(id)?.dismiss();
+            workerNotificationHandles.delete(id);
+          }
         } else if (id) {
           const current = workerNotificationHandles.get(id);
           if (current) current.update(notification);
