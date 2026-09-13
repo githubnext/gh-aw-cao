@@ -23,7 +23,7 @@ const OVERVIEW_SOURCE_NAMES = ['outcomes', 'runs', 'dispatches', 'grader-observa
 /**
  * Values shared by more than one bound element. Each one is memoised so a
  * source update recomputes it once instead of once per element.
- * @typedef {{ dispatchRows: () => Row[], successfulRunRows: () => Row[], valueGains: () => number, coverage: () => Coverage, workers: () => number, outcomes: () => Row[], usefulOutputs: () => number }} OverviewMetrics
+ * @typedef {{ dispatchRows: () => Row[], successfulRunRows: () => Row[], failedRunRows: () => Row[], activeRunRows: () => Row[], valueGains: () => number, coverage: () => Coverage, workers: () => number, outcomes: () => Row[], usefulOutputs: () => number }} OverviewMetrics
  */
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {{ singular: string, plural: string }} PluralText */
@@ -147,9 +147,14 @@ function bindOverviewSources(context) {
       },
       // A requested source is pending until its query settles; without a
       // loader nothing is in flight, so idle rows render as they are.
-      pending: () => ['loading', 'idle'].includes(entryState.get().status) && hasSourceLoader(),
-      unavailable: () => entryState.get().status === 'failed'
-        || entryState.get().source?.metadata?.availability === 'unavailable'
+      pending: () => {
+        const status = entryState.get().status;
+        return (status === 'loading' || status === 'idle') && hasSourceLoader();
+      },
+      unavailable: () => {
+        const entry = entryState.get();
+        return entry.status === 'failed' || entry.source?.metadata?.availability === 'unavailable';
+      }
     };
   }
   return bindings;
@@ -184,6 +189,8 @@ function createOverviewMetrics(sources) {
     dispatchRows,
     usefulOutputs: memo(() => outcomes().filter((row) => ['issue', 'pull-request'].includes(outputKind(row))).length),
     outcomes,
+    failedRunRows: memo(() => sources.runs.rows().filter((row) => FAILURE_STATES.has(String(row['run-conclusion'])))),
+    activeRunRows: memo(() => sources.runs.rows().filter((row) => ['queued', 'in-progress'].includes(normalizedStatus(row['run-status'])))),
     successfulRunRows: memo(() => sources.runs.rows().filter((row) => String(row['run-conclusion']) === 'success')),
     valueGains: memo(() => sources['grader-observations'].rows().filter(exceedsThreshold).length),
     coverage: memo(() => connectedRepositoryCoverage(sources.workflows.rows(), sources.repositories.rows(), sources.runs.rows())),
@@ -274,10 +281,9 @@ function workflowIdentity(row) {
 /** @param {SourceBindings} sources @param {OverviewMetrics} metrics */
 function factoryHeading(sources, metrics) {
   if (sources.runs.unavailable() || sources.outcomes.unavailable()) return 'Your factory status is unavailable.';
-  const runs = sources.runs.rows();
-  const successfulRuns = runs.filter((row) => String(row['run-conclusion']) === 'success').length;
-  const failedRuns = runs.filter((row) => FAILURE_STATES.has(String(row['run-conclusion']))).length;
-  const activeRuns = runs.filter((row) => ['queued', 'in-progress'].includes(normalizedStatus(row['run-status']))).length;
+  const successfulRuns = metrics.successfulRunRows().length;
+  const failedRuns = metrics.failedRunRows().length;
+  const activeRuns = metrics.activeRunRows().length;
   if (metrics.valueGains() > 0) return 'Your factory is delivering value.';
   if (activeRuns > 0) return 'Your factory is humming.';
   if (failedRuns > successfulRuns && failedRuns > 0) return 'Your factory is under strain.';
@@ -310,7 +316,7 @@ function renderFactoryFloor(sources, metrics, label) {
 
   runs.bind(() => {
     const successfulRuns = metrics.successfulRunRows().length;
-    const failedRuns = sources.runs.rows().filter((row) => FAILURE_STATES.has(String(row['run-conclusion']))).length;
+    const failedRuns = metrics.failedRunRows().length;
     return {
       pending: sources.runs.pending(),
       label: label('successful-runs', successfulRuns),
@@ -470,6 +476,7 @@ function renderFactoryRhythm(sources, metrics) {
     }
     for (const [index, button] of dayButtons.get().entries()) {
       const day = days[index];
+      if (!day) continue;
       button.setAttribute('aria-label', `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`);
       const bar = button.querySelector('.factory-rhythm-current');
       if (bar instanceof HTMLElement) bar.style.height = `${Math.max(5, day.count / maximum * 100)}%`;
