@@ -262,8 +262,9 @@ steps:
           esac
         done
 
-      if [ -f CHANGELOG.md ]; then
-        cp CHANGELOG.md /tmp/gh-aw/agent/release-data/CHANGELOG.md
+      CHANGELOG_PATH=$(realpath -- CHANGELOG.md 2>/dev/null || true)
+      if [ -f CHANGELOG.md ] && [ ! -L CHANGELOG.md ] && [ "$CHANGELOG_PATH" = "$WORKSPACE_ROOT/CHANGELOG.md" ]; then
+        cp -- CHANGELOG.md /tmp/gh-aw/agent/release-data/CHANGELOG.md
       fi
 ---
 

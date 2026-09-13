@@ -1089,6 +1089,8 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /Review every ADR in `release_adrs\.md`/);
   assert.match(agenticSource, /\[ ! -L "\$adr_path" \]/);
   assert.match(agenticSource, /"\$WORKSPACE_ROOT"\/adr\/\*\.md\|"\$WORKSPACE_ROOT"\/docs\/adr\/\*\.md/);
+  assert.match(agenticSource, /\[ ! -L CHANGELOG\.md \]/);
+  assert.match(agenticSource, /"\$CHANGELOG_PATH" = "\$WORKSPACE_ROOT\/CHANGELOG\.md"/);
   assert.doesNotMatch(agenticSource, /^evals:/m);
   assert.equal(jobs.has("evals"), false);
   assert.match(jobs.get("agent")?.needs.join(","), /prepare-release/);
