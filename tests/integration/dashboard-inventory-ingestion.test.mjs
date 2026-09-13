@@ -25,6 +25,7 @@ test("discovered repositories flow from control scope into canonical storage", a
     };
     const discoveredRepositories = await discoverRepositories(controlSettings, {
       token: "test-token",
+      controlRepository: "acme/control",
       fetchImplementation: async (url) => {
         assert.match(String(url), /\/orgs\/acme\/repos\?/);
         return new Response(JSON.stringify([

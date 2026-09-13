@@ -68,6 +68,7 @@ export async function discoverRepositories(controlSettings, {
   fetchImplementation = fetch,
   token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
   apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
+  controlRepository = process.env.GITHUB_REPOSITORY || "",
 } = {}) {
   if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover repositories");
   const maximum = Number(controlSettings.policy_document?.["control-plane"]?.inventory?.["max-scan-repositories"] ?? 1000);
@@ -89,6 +90,9 @@ export async function discoverRepositories(controlSettings, {
 
   const repositories = [];
   for (const owner of controlSettings.allowed_owners ?? []) {
+    if (String(owner).toLowerCase() !== controlRepository.split("/", 1)[0]?.toLowerCase()) {
+      throw new Error(`Cannot completely discover repositories for ${owner} with the control repository installation`);
+    }
     let endpoint = `orgs/${owner}/repos`;
     let installation = false;
     for (let page = 1; repositories.length < maximum; page += 1) {
