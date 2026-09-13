@@ -2,6 +2,7 @@ import { h } from '../dom.js';
 import { debounce } from '../debounce.js';
 import { dashboardHorizonHours, formatDashboardHorizon } from '../horizon.js';
 import { octicon } from '../octicons.js';
+import { scopedStorageKey } from '../storage-scope.js';
 import { renderCountBadge, renderLabeledControl } from './ui-primitives.js';
 
 /** @typedef {{ range: string, start: string, end: string }} TimeWindow */
@@ -10,7 +11,7 @@ const TIME_RANGE_OPTIONS = ['1h', '6h', '24h', '3d', '1w', '2w', '4w', '30d'];
 const MODE_OPTIONS = ['review', 'live', 'unknown'];
 const ALL_RECORDED = 'all';
 const TIME_WINDOW_SELECT_LABEL = 'Time window';
-export const HORIZON_FILTER_STORAGE_KEY = 'central-agentic-ops.dashboard.horizon-filter-settings';
+export const HORIZON_FILTER_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.horizon-filter-settings');
 
 /**
  * @param {(filters: Map<string, string[]>, timeWindow?: TimeWindow) => void} onChange

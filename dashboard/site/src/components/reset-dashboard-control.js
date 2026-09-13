@@ -1,46 +1,12 @@
 import { h } from '../dom.js';
 import { deleteCanonicalDatabase } from '../data/storage/indexeddb.js';
 import { octicon } from '../octicons.js';
+import { clearScopedStorage } from '../storage-scope.js';
 import { createModalDialog, renderCloseButton } from './ui-primitives.js';
 
-const APP_INDEXEDDB_PREFIX = 'gh-aw-cao-';
-
-/**
- * Delete dashboard IndexedDB databases for this app. Always deletes the canonical
- * database, and additionally deletes discovered `gh-aw-cao-` prefixed databases
- * when `indexedDB.databases()` is available.
- *
- * @param {IDBFactory} indexedDB
- */
+/** @param {IDBFactory} indexedDB */
 async function deleteAppDatabases(indexedDB) {
   await deleteCanonicalDatabase(indexedDB);
-  if (typeof indexedDB.databases !== 'function') return;
-  const databases = await indexedDB.databases();
-  const databaseNames = databases.flatMap((database) => {
-    const name = database?.name;
-    return typeof name === 'string' && name.startsWith(APP_INDEXEDDB_PREFIX) ? [name] : [];
-  });
-  await Promise.all(
-    databaseNames.map((name) => new Promise((resolve, reject) => {
-        let settled = false;
-        const request = indexedDB.deleteDatabase(name);
-        request.onsuccess = () => {
-          if (settled) return;
-          settled = true;
-          resolve(undefined);
-        };
-        request.onerror = () => {
-          if (settled) return;
-          settled = true;
-          reject(request.error);
-        };
-        request.onblocked = () => {
-          if (settled) return;
-          settled = true;
-          reject(new Error(`Database deletion was blocked: ${name}`));
-        };
-      }))
-  );
 }
 
 /**
@@ -51,7 +17,7 @@ export async function resetLocalDashboardData(storage, indexedDB) {
   try {
     await deleteAppDatabases(indexedDB);
   } finally {
-    storage.clear();
+    clearScopedStorage(storage);
   }
 }
 

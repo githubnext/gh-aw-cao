@@ -29,6 +29,7 @@ import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHo
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
 import { createDatabaseCountLoader, formatDatabaseCounts } from './database-counts.js';
+import { scopedStorageKey } from './storage-scope.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -84,7 +85,7 @@ import { createDatabaseCountLoader, formatDatabaseCounts } from './database-coun
 
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
-const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
+const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
 

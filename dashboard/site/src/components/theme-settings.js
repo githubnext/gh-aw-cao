@@ -1,7 +1,8 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
+import { scopedStorageKey } from '../storage-scope.js';
 
-const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
+const THEME_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.theme');
 
 /** @typedef {'system'|'light'|'dark'} DashboardTheme */
 

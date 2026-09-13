@@ -1,7 +1,13 @@
 import { relationshipErrors } from '../model/schema.js';
+import { scopedStorageKey } from '../../storage-scope.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
 export const DATABASE_VERSION = 10;
+
+/** @param {string} [pathname] */
+export function canonicalDatabaseName(pathname) {
+  return scopedStorageKey(DATABASE_NAME, pathname);
+}
 
 export const ENTITY_STORES = /** @type {const} */ ([
   'packages',
@@ -116,7 +122,7 @@ function createSchema(database) {
  * @returns {Promise<void>}
  */
 export function deleteCanonicalDatabase(indexedDB) {
-  const request = indexedDB.deleteDatabase(DATABASE_NAME);
+  const request = indexedDB.deleteDatabase(canonicalDatabaseName());
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error ?? new Error('Unable to delete canonical dashboard data'));
@@ -129,7 +135,7 @@ export function deleteCanonicalDatabase(indexedDB) {
  * @returns {Promise<IDBDatabase>}
  */
 export function openCanonicalDatabase(indexedDB) {
-  const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+  const request = indexedDB.open(canonicalDatabaseName(), DATABASE_VERSION);
   return new Promise((resolve, reject) => {
     request.onupgradeneeded = (event) => {
       const database = request.result;

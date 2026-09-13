@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderResetDashboardControl, resetLocalDashboardData } from '../../src/components/reset-dashboard-control.js';
 import { DATABASE_NAME, openCanonicalDatabase } from '../../src/data/storage/indexeddb.js';
 
-const APP_AUX_DATABASE_NAME = 'gh-aw-cao-dashboard-data-aux';
 const NON_APP_DATABASE_NAME = 'third-party-dashboard-data';
 
 /** @param {string} name */
@@ -33,26 +32,24 @@ beforeEach(async () => {
   localStorage.clear();
   await Promise.all([
     deleteDatabase(DATABASE_NAME),
-    deleteDatabase(APP_AUX_DATABASE_NAME),
     deleteDatabase(NON_APP_DATABASE_NAME)
   ]);
 });
 
 describe('dashboard local-data reset', () => {
-  it('deletes app indexedDB databases and clears all localStorage entries', async () => {
+  it('deletes the scoped database and clears only dashboard localStorage entries', async () => {
     const database = await openCanonicalDatabase(indexedDB);
     database.close();
-    await openDatabase(APP_AUX_DATABASE_NAME);
     await openDatabase(NON_APP_DATABASE_NAME);
     localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
     localStorage.setItem('unrelated-dashboard-setting', 'value');
 
     await resetLocalDashboardData(localStorage, indexedDB);
 
-    expect(localStorage.length).toBe(0);
+    expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBeNull();
+    expect(localStorage.getItem('unrelated-dashboard-setting')).toBe('value');
     const databases = await indexedDB.databases();
     expect(databases.some(({ name }) => name === DATABASE_NAME)).toBe(false);
-    expect(databases.some(({ name }) => name === APP_AUX_DATABASE_NAME)).toBe(false);
     expect(databases.some(({ name }) => name === NON_APP_DATABASE_NAME)).toBe(true);
   });
 
@@ -60,25 +57,24 @@ describe('dashboard local-data reset', () => {
     const reload = vi.fn();
     const control = renderResetDashboardControl({ storage: localStorage, indexedDB, reload });
     document.body.append(control);
-    localStorage.setItem('setting', 'value');
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
 
     /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-trigger')).click();
     const dialog = /** @type {HTMLDialogElement} */ (control.querySelector('dialog'));
     expect(dialog.hasAttribute('open')).toBe(true);
     expect(dialog.textContent).toContain('cannot be undone');
-    expect(localStorage.getItem('setting')).toBe('value');
+    expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
 
     /** @type {HTMLButtonElement} */ (dialog.querySelector('.reset-dashboard-confirm')).click();
 
     await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce());
-    expect(localStorage.length).toBe(0);
+    expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBeNull();
   });
 
   it('clears localStorage even when app database deletion fails', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
     const deletionError = new Error('deletion failed');
     const failingIndexedDB = {
-      databases: async () => [{ name: APP_AUX_DATABASE_NAME }],
       deleteDatabase: () => {
         const request = /** @type {{ error: Error, onerror?: () => void }} */ ({ error: deletionError });
         queueMicrotask(() => request.onerror?.());

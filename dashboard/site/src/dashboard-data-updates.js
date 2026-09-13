@@ -1,6 +1,8 @@
-const ENABLED_STORAGE_KEY = 'central-agentic-ops.dashboard.automatic-data-updates';
-const LAST_SUCCESS_STORAGE_KEY = 'central-agentic-ops.dashboard.automatic-data-update-last-success';
-const BACKGROUND_ACTIVE_STORAGE_KEY = 'central-agentic-ops.dashboard.background-data-updates-active';
+import { scopedStorageKey } from './storage-scope.js';
+
+const ENABLED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.automatic-data-updates');
+const LAST_SUCCESS_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.automatic-data-update-last-success');
+const BACKGROUND_ACTIVE_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.background-data-updates-active');
 const SETTING_EVENT = 'dashboard-automatic-data-updates-setting-change';
 const BACKGROUND_STATUS_EVENT = 'dashboard-background-data-updates-status-change';
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
