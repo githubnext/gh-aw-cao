@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { derived, effect, state } from '../reactive.js';
+import { batch, derived, effect, state } from '../reactive.js';
 import { clearSources, hasSourceLoader, publishSource, requestSource, sourceState } from '../source-store.js';
 import { formatCount } from './count-formatters.js';
 
@@ -42,11 +42,11 @@ const rhythmSelection = state(/** @type {RhythmDay | null} */ (null));
  */
 const factoryMotionState = state(/** @type {Motion} */ ({ packages: 0, operations: 0, live: 0, review: 0 }));
 
-/** @type {import('../reactive.js').EffectHandle[]} */
-let overviewEffects = [];
-
-/** @type {{ dispose: () => void }[]} */
-let memoizedValues = [];
+/**
+ * Lifetime of the rendered overview. Effects and memoised values are bound to
+ * its signal, which is the disposal channel `reactive.js` already supports.
+ */
+let overviewLifetime = new AbortController();
 
 /** Releases the reactive resources owned by a previously rendered overview. */
 export function resetFactoryOverviewState() {
@@ -56,12 +56,10 @@ export function resetFactoryOverviewState() {
   factoryMotionState.set({ packages: 0, operations: 0, live: 0, review: 0 });
 }
 
-/** Stops the effects owned by a superseded overview render. */
+/** Stops the effects and memoised values owned by a superseded render. */
 function releaseFactoryOverviewEffects() {
-  for (const handle of overviewEffects) handle.stop();
-  overviewEffects = [];
-  for (const value of memoizedValues) value.dispose();
-  memoizedValues = [];
+  overviewLifetime.abort();
+  overviewLifetime = new AbortController();
 }
 
 /**
@@ -72,7 +70,7 @@ function releaseFactoryOverviewEffects() {
  */
 function memo(compute) {
   const value = derived(compute);
-  memoizedValues.push(value);
+  overviewLifetime.signal.addEventListener('abort', () => value.dispose(), { once: true });
   return () => value.get();
 }
 
@@ -82,7 +80,7 @@ function memo(compute) {
  * @param {() => void} render
  */
 function bind(render) {
-  overviewEffects.push(effect(render));
+  effect(render, { signal: overviewLifetime.signal });
 }
 
 /** @param {Motion} current @param {Motion} next */
@@ -134,8 +132,11 @@ function bindOverviewSources(context) {
   const bindings = {};
   for (const name of OVERVIEW_SOURCE_NAMES) {
     const provided = context.sources?.[name];
-    if (provided && Array.isArray(provided.rows)) publishSource(name, provided);
-    else requestSource(name);
+    // Grouped so bound elements observe one settled set of sources per render.
+    batch(() => {
+      if (provided && Array.isArray(provided.rows)) publishSource(name, provided);
+      else requestSource(name);
+    });
     const entryState = sourceState(name);
     bindings[name] = {
       rows: () => {
@@ -422,8 +423,7 @@ function renderStation(icon, options = {}) {
 function renderFactoryRhythm(sources, metrics) {
   const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
   const bars = h('div', { className: 'factory-rhythm-bars' });
-  /** @type {import('../reactive.js').State<RhythmDay[]>} */
-  const rhythmDays = state(/** @type {RhythmDay[]} */ ([]));
+  const rhythmDays = memo(() => activityDays(metrics.successfulRunRows(), latestTimestamp(sources.runs.rows())));
   /** @type {HTMLButtonElement[]} */
   let dayButtons = [];
   const showFullWeek = () => {
@@ -434,7 +434,7 @@ function renderFactoryRhythm(sources, metrics) {
   };
   /** @param {number} index */
   const selectDay = (index) => {
-    const day = rhythmDays.get()[index];
+    const day = rhythmDays()[index];
     if (!day) return;
     rhythmSelection.set(day);
     showFullWeek();
@@ -465,7 +465,7 @@ function renderFactoryRhythm(sources, metrics) {
   // The daily runs chart owns the runs query alone: its bars are computed and
   // drawn as soon as rows arrive, without waiting for any other query.
   bind(() => {
-    const days = activityDays(metrics.successfulRunRows(), latestTimestamp(sources.runs.rows()));
+    const days = rhythmDays();
     const maximum = Math.max(...days.map((day) => day.count), 1);
     // The bars are updated in place so an arriving query never discards the
     // focused or pressed day button.
@@ -482,11 +482,10 @@ function renderFactoryRhythm(sources, metrics) {
       const label = button.querySelector('small');
       if (label) label.textContent = day.label;
     }
-    rhythmDays.set(days);
   });
 
   bind(() => {
-    const days = rhythmDays.get();
+    const days = rhythmDays();
     const buttons = dayButtons;
     const selected = rhythmSelection.get();
     const index = selected ? days.findIndex((day) => day.date === selected.date) : -1;

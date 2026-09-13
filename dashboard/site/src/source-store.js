@@ -4,7 +4,7 @@
  * element independently as results arrive.
  */
 
-import { state } from './reactive.js';
+import { batch, state } from './reactive.js';
 import { createDebug } from './debug.js';
 
 const debug = createDebug('data:source-store');
@@ -86,9 +86,13 @@ export function requestSource(name) {
 
 /** Re-runs every previously requested query, for example after live data changes. */
 export function refreshSources() {
-  for (const name of [...requested]) {
-    void loadRequestedSource(name);
-  }
+  // Grouped so bound elements run once for the whole refresh rather than once
+  // per source that flips to loading.
+  batch(() => {
+    for (const name of [...requested]) {
+      void loadRequestedSource(name);
+    }
+  });
 }
 
 /** @param {string} name */
@@ -102,7 +106,11 @@ async function loadRequestedSource(name) {
   if (current.origin === 'view' && current.status === 'ready') return;
   const generation = (generations.get(name) ?? 0) + 1;
   generations.set(name, generation);
-  if (current.status !== 'ready') entry.set({ status: 'loading', origin: 'query', source: null });
+  // Ready rows stay on screen while they reload, and a source already loading
+  // is left alone so bound elements are not woken for an unchanged state.
+  if (current.status !== 'ready' && current.status !== 'loading') {
+    entry.set({ status: 'loading', origin: 'query', source: null });
+  }
   try {
     const source = await loader(name);
     // A later load already started, so this result is stale.

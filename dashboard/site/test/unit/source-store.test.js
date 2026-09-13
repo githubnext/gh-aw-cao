@@ -93,3 +93,26 @@ it('records a source the dashboard data does not carry as missing rather than fa
 
   expect(sourceState('dispatches').get()).toEqual({ status: 'missing', origin: 'query', source: null });
 });
+
+it('groups a refresh so bound effects run once for the whole batch', async () => {
+  configureSourceLoader(() => Promise.reject(new Error('offline')));
+  requestSource('runs');
+  requestSource('outcomes');
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(sourceState('runs').get().status).toBe('failed');
+
+  let runCount = 0;
+  const handle = effect(() => {
+    sourceState('runs').get();
+    sourceState('outcomes').get();
+    runCount += 1;
+  });
+  configureSourceLoader(() => new Promise(() => {}));
+  // Both sources flip back to loading, but the bound effect runs once.
+  refreshSources();
+
+  expect(sourceState('outcomes').get().status).toBe('loading');
+  expect(runCount).toBe(2);
+  handle.stop();
+});
