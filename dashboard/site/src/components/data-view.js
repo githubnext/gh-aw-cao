@@ -604,6 +604,7 @@ function renderChartView(context) {
   section.classList.add('chart-view', `chart-view-${chartType}`);
   if (chartType === 'swimlane' && continuation && !pending) {
     let chartRows = [...rows];
+    /** @type {string | undefined} */
     let token = continuation.token;
     let chartWidget = /** @type {HTMLElement | null} */ (section.querySelector('[data-chart-widget="swimlane"]'));
     chartWidget?.setAttribute('aria-busy', 'true');
