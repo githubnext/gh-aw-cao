@@ -485,7 +485,11 @@ describe('data view renderer', () => {
       'started-at': new Date(Date.UTC(2026, 7, 31, 12, 49, index)).toISOString(),
       'run-conclusion': 'success'
     }));
-    const buildChartPoints = vi.fn((_pageId, _title, chartRows) => chartRows.map((row) => ({
+    const buildChartPoints = vi.fn((
+      /** @type {string} */ _pageId,
+      /** @type {string} */ _title,
+      /** @type {Array<Record<string, unknown>>} */ chartRows
+    ) => chartRows.map((row) => ({
       key: String(row.run),
       x: String(row['started-at']),
       y: Number.NaN,
@@ -522,9 +526,10 @@ describe('data view renderer', () => {
     });
     document.body.append(/** @type {HTMLElement} */ (rendered));
 
-    await vi.waitFor(() => expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(514));
+    await vi.waitFor(() => expect(buildChartPoints).toHaveBeenCalledTimes(4));
 
     expect(buildChartPoints.mock.calls.map((call) => call[2].length)).toEqual([1, 257, 513, 514]);
+    expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
   });
 
   it('stops swimlane continuation rendering when the view is detached', async () => {
