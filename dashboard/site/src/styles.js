@@ -1192,8 +1192,11 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-database-counts > span { min-width: 0; display: grid; gap: 3px; padding: 10px 6px; border-radius: 6px; background: var(--canvas-subtle); text-align: center; }
 .configuration-database-counts strong { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; }
 .configuration-database-counts small { overflow: hidden; color: var(--muted); font-size: .6875rem; text-overflow: ellipsis; }
-.configuration-danger-settings .reset-dashboard-control { padding: 12px; }
-.reset-dashboard-trigger { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--danger); border-radius: 6px; background: var(--canvas); color: var(--danger); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+.configuration-local-data-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; }
+.configuration-transactions-button, .reset-dashboard-trigger { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid; border-radius: 6px; background: var(--canvas); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+.configuration-transactions-button { border-color: var(--border); color: var(--fg); text-decoration: none; }
+.configuration-transactions-button:hover { background: var(--neutral-muted); }
+.reset-dashboard-trigger { border-color: var(--danger); color: var(--danger); }
 .reset-dashboard-trigger:hover { background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); }
 .reset-dashboard-trigger .octicon { width: 15px; height: 15px; }
 .configuration-editor { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
