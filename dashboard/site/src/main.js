@@ -12,7 +12,7 @@
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
       import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
-      import { applyTableQuerySafetyLimits, browserTableRowLimit } from "./data/table-capacity.js";
+      import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -82,7 +82,9 @@
         dashboard: dashboardSchema.dashboard,
       };
       const tableSourceNames = dashboardTableSourceNames(dashboardDocument);
-      const tableRowLimit = browserTableRowLimit(window);
+      const tableCapacityDecision = browserTableCapacityDecision(window);
+      const tableRowLimit = tableCapacityDecision.rowLimit;
+      logTableCapacityDecision(tableCapacityDecision);
       const dashboardQueries = applyTableQuerySafetyLimits(
         dashboardSchema.dashboard.queries ?? [],
         tableSourceNames,

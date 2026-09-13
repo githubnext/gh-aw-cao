@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   applyTableQuerySafetyLimits,
+  logTableCapacityDecision,
   tableRowLimitForEnvironment
 } from '../../src/data/table-capacity.js';
 import { dashboardTableSourceNames } from '../../src/presenter.js';
@@ -25,6 +26,21 @@ describe('adaptive table capacity', () => {
       deviceMemory: 16,
       heapSizeLimit: 2 * (1024 ** 3)
     })).toBe(25000);
+  });
+
+  it('logs the selected row limit and browser capacity signals', () => {
+    const info = vi.fn();
+    const decision = {
+      rowLimit: 25000,
+      mobile: false,
+      deviceMemoryGiB: 4,
+      heapSizeLimitGiB: 2,
+      hardwareConcurrency: 8
+    };
+
+    logTableCapacityDecision(decision, { info });
+
+    expect(info).toHaveBeenCalledWith('[dashboard-table-capacity]', decision);
   });
 
   it('applies the engine safety ceiling while preserving smaller declared limits', () => {

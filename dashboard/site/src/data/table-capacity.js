@@ -41,21 +41,41 @@ export function tableRowLimitForEnvironment(environment) {
 }
 
 /** @param {Window} browserWindow */
-export function browserTableRowLimit(browserWindow) {
+export function browserTableCapacityDecision(browserWindow) {
   const browserNavigator = /** @type {Navigator & { deviceMemory?: number, userAgentData?: { mobile?: boolean } }} */ (
     browserWindow.navigator
   );
   const browserPerformance = /** @type {Performance & { memory?: { jsHeapSizeLimit?: number } }} */ (
     browserWindow.performance
   );
-  return tableRowLimitForEnvironment({
+  const environment = {
     deviceMemory: browserNavigator.deviceMemory,
     heapSizeLimit: browserPerformance.memory?.jsHeapSizeLimit,
     hardwareConcurrency: browserNavigator.hardwareConcurrency,
     mobile: browserNavigator.userAgentData?.mobile === true
       || (typeof browserWindow.matchMedia === 'function'
         && browserWindow.matchMedia('(pointer: coarse) and (max-width: 768px)').matches)
-  });
+  };
+  const heapSizeLimit = Number(environment.heapSizeLimit);
+  return {
+    rowLimit: tableRowLimitForEnvironment(environment),
+    mobile: environment.mobile,
+    deviceMemoryGiB: Number.isFinite(environment.deviceMemory) ? environment.deviceMemory : null,
+    heapSizeLimitGiB: Number.isFinite(heapSizeLimit)
+      ? Math.round(heapSizeLimit / (1024 ** 3) * 10) / 10
+      : null,
+    hardwareConcurrency: Number.isFinite(environment.hardwareConcurrency)
+      ? environment.hardwareConcurrency
+      : null
+  };
+}
+
+/**
+ * @param {ReturnType<typeof browserTableCapacityDecision>} decision
+ * @param {{ info: (...data: unknown[]) => void }} [logger]
+ */
+export function logTableCapacityDecision(decision, logger = console) {
+  logger.info('[dashboard-table-capacity]', decision);
 }
 
 /**
