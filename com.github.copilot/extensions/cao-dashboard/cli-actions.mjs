@@ -11,6 +11,17 @@ const ghAwInstallerUrl =
   "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh";
 const ghAwVersionPattern = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
 const caoConfigurationPath = join(".github", "workflows", "cao.json");
+const allowedCommandPrefixes = [
+  {
+    tokens: ["gh", "aw"],
+    minimumArguments: 1,
+  },
+  {
+    tokens: ["gh", "workflow", "run"],
+    minimumArguments: 1,
+    requiresOperand: true,
+  },
+];
 
 export async function resolveGhAwCompilerVersion(workingDirectory = process.cwd()) {
   let configuration;
@@ -75,16 +86,13 @@ export function parseDashboardCommand(command) {
   }
   if (escaping || quote) throw new Error("CLI action command contains an incomplete escape or quote.");
   if (tokenStarted) tokens.push(token);
-  const isGhAwCommand =
-    tokens[0] === "gh" && tokens[1] === "aw" && tokens.length >= 3;
-  const isWorkflowDispatchCommand =
-    tokens[0] === "gh"
-    && tokens[1] === "workflow"
-    && tokens[2] === "run"
-    && tokens.length >= 4
-    && tokens[3].length > 0
-    && !tokens[3].startsWith("-");
-  if (!isGhAwCommand && !isWorkflowDispatchCommand) {
+  const isAllowed = allowedCommandPrefixes.some((allowed) => {
+    const commandArguments = tokens.slice(allowed.tokens.length);
+    return allowed.tokens.every((token, index) => tokens[index] === token)
+      && commandArguments.length >= allowed.minimumArguments
+      && (!allowed.requiresOperand || !commandArguments[0].startsWith("-"));
+  });
+  if (!isAllowed) {
     throw new Error(
       'CLI action command must be an explicit "gh aw <command>" or "gh workflow run <workflow>" invocation.',
     );
