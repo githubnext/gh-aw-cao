@@ -33,6 +33,8 @@ const pending = new Map();
  */
 /** @type {Map<string, ViewSubscription>} */
 const subscriptions = new Map();
+/** @type {Map<string, ReturnType<typeof publishNotification>>} */
+const workerNotificationHandles = new Map();
 
 /**
  * Cancels every in-flight data-worker request. The worker is first asked to
@@ -416,7 +418,18 @@ function getWorker() {
   worker.addEventListener('message', (event) => {
     if (event.data?.type === 'notification') {
       try {
-        publishNotification(event.data.notification);
+        const notification = event.data.notification;
+        const id = typeof notification?.id === 'string' ? notification.id : undefined;
+        if (notification?.dismiss === true && id) {
+          workerNotificationHandles.get(id)?.dismiss();
+          workerNotificationHandles.delete(id);
+        } else if (id) {
+          const current = workerNotificationHandles.get(id);
+          if (current) current.update(notification);
+          else workerNotificationHandles.set(id, publishNotification(notification));
+        } else {
+          publishNotification(notification);
+        }
       } catch {
         // Ignore malformed worker notifications without disrupting data processing.
       }

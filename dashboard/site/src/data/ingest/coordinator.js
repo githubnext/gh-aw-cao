@@ -247,7 +247,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
  */
 export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   return serializeIngestion(indexedDB, () => ingestCachedGhAwJsonlNow(indexedDB, content, options));
@@ -256,7 +256,7 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} options
  */
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
@@ -270,7 +270,11 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       && Symbol.asyncIterator in Object(content)
       ? await adaptCachedGhAwJsonlStream(
           /** @type {AsyncIterable<string | Uint8Array>} */ (content),
-          { context: options.context, workflowHints: options.workflowHints }
+          {
+           context: options.context,
+           workflowHints: options.workflowHints,
+           onProgress: options.onProgress
+          }
         )
       : undefined;
     const payloadIdentity = options.payloadIdentity
