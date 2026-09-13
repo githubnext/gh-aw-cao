@@ -90,6 +90,7 @@ jobs:
     name: Package lifecycle (${{ matrix.name }})
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix: ${{ fromJSON(needs.package-lifecycle-changes.outputs.matrix) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
