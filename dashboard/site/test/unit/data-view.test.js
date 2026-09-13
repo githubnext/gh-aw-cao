@@ -476,6 +476,7 @@ describe('data view renderer', () => {
       expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(3);
       expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
     });
+    expect(rendered?.textContent).not.toContain('Showing partial results');
   });
 
   it('stops swimlane continuation rendering when the view is detached', async () => {
@@ -572,8 +573,10 @@ describe('data view renderer', () => {
     document.body.append(/** @type {HTMLElement} */ (rendered));
 
     await vi.waitFor(() => {
-      expect(rendered?.textContent).toContain('Showing partial results because additional runs could not be loaded.');
+      expect(rendered?.querySelector('.view-context[role="status"]')?.textContent)
+        .toBe('Showing partial results because additional runs could not be loaded.');
       expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('data-continuation-state')).toBe('error');
     });
     expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
     expect(error).toHaveBeenCalledWith('Unable to load additional swimlane runs: worker unavailable');

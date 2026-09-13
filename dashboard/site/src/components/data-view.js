@@ -17,6 +17,7 @@ import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 import { renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
+import { effect, onCleanup, state } from '../reactive.js';
 
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
 const ENTITY_LINK_FIELDS = {
@@ -608,47 +609,79 @@ function renderChartView(context) {
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
   if (supportsIncrementalChartContinuation(view) && continuation?.token && !pending) {
-    let chartRows = [...rows];
-    /** @type {string | undefined} */
-    let token = continuation.token;
-    let hasBeenConnected = section.isConnected;
+    const continuationState = state({
+      rows: [...rows],
+      token: /** @type {string | undefined} */ (continuation.token),
+      error: /** @type {string | null} */ (null)
+    });
     let chartWidget = /** @type {HTMLElement | null} */ (section.querySelector('[data-chart-widget="swimlane"]'));
-    chartWidget?.setAttribute('aria-busy', 'true');
-    void (async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      try {
-        while (token) {
-          hasBeenConnected ||= section.isConnected;
-          const next = await continuation.load(token);
-          if (hasBeenConnected && !section.isConnected) return;
-          hasBeenConnected ||= section.isConnected;
-          chartRows.push(...next.rows);
-          token = next.continuationToken;
-          const rendered = renderVisualization(pointsForRows(chartRows));
-          const nextWidget = rendered.chartContent.find((element) =>
-            element.matches?.('[data-chart-widget="swimlane"]')
-          );
-          if (!(nextWidget instanceof HTMLElement) || !chartWidget) {
-            throw new Error('Unable to render the next swimlane page.');
-          }
-          nextWidget.setAttribute('aria-busy', String(Boolean(token)));
+    const failureMessage = h(
+      'p',
+      { className: 'view-context', role: 'status' },
+      'Showing partial results because additional runs could not be loaded.'
+    );
+    const renderEffect = effect(() => {
+      const current = continuationState.get();
+      if (current.rows.length > rows.length) {
+        const rendered = renderVisualization(pointsForRows(current.rows));
+        const nextWidget = rendered.chartContent.find((element) =>
+          element.matches?.('[data-chart-widget="swimlane"]')
+        );
+        if (nextWidget instanceof HTMLElement && chartWidget) {
           chartWidget.replaceWith(nextWidget);
           chartWidget = nextWidget;
-          await new Promise((resolve) => setTimeout(resolve, 0));
         }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error(`Unable to load additional swimlane runs: ${message}`);
-        chartWidget?.setAttribute('data-continuation-state', 'error');
-        section.append(h(
-          'p',
-          { className: 'view-context', role: 'status' },
-          'Showing partial results because additional runs could not be loaded.'
-        ));
-      } finally {
-        chartWidget?.setAttribute('aria-busy', 'false');
       }
-    })();
+      chartWidget?.setAttribute('aria-busy', String(Boolean(current.token)));
+      if (current.error === null) {
+        chartWidget?.removeAttribute('data-continuation-state');
+      } else {
+        chartWidget?.setAttribute('data-continuation-state', 'error');
+        if (!failureMessage.isConnected) section.append(failureMessage);
+      }
+      if (!current.token) renderEffect.stop();
+    });
+    const consumeEffect = effect(() => {
+      let active = true;
+      let wasConnected = section.isConnected;
+      const observer = new MutationObserver(() => {
+        if (section.isConnected) {
+          wasConnected = true;
+        } else if (wasConnected) {
+          consumeEffect.stop();
+          renderEffect.stop();
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      onCleanup(() => {
+        active = false;
+        observer.disconnect();
+      });
+      queueMicrotask(async () => {
+        let current = continuationState.get();
+        try {
+          while (active && current.token) {
+            const next = await continuation.load(current.token);
+            if (!active || (wasConnected && !section.isConnected)) return;
+            wasConnected ||= section.isConnected;
+            current = {
+              rows: [...current.rows, ...next.rows],
+              token: next.continuationToken,
+              error: null
+            };
+            continuationState.set(current);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+        } catch (error) {
+          if (!active) return;
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`Unable to load additional swimlane runs: ${message}`);
+          continuationState.set({ ...current, token: undefined, error: message });
+        } finally {
+          if (active && !continuationState.get().token) consumeEffect.stop();
+        }
+      });
+    });
   }
   return section;
 }
