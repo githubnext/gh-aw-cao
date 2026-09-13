@@ -190,6 +190,7 @@ test("configured repository scope appears in dashboard repository source without
     controlSettings: {
       allowed_repositories: [
         "github/gh-aw",
+        "githubnext/*",
         "githubnext/gh-aw-cao",
         "githubnext/gh-aw-workshop",
       ],

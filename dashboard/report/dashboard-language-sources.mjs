@@ -132,11 +132,14 @@ function source(name, rows, generatedAt, available = true, complete = true, fres
  * Converts configured `owner/name` repository scope entries into repository
  * rows. Invalid entries are ignored because policy validation owns diagnostics;
  * rollout mode is left unset so observed workflow or run data owns that value.
+ * @param {{ allowed_repositories?: string[] }} controlSettings
+ * @param {string} generatedAt
+ * @returns {Array<Record<string, string>>}
  */
 function repositoryScopeRows(controlSettings = {}, generatedAt) {
   return (controlSettings.allowed_repositories || []).flatMap((repository) => {
     const [organization, name, ...extra] = String(repository || "").trim().split("/");
-    return organization && name && extra.length === 0
+    return organization && name && name !== "*" && extra.length === 0
       ? [{
           organization,
           repository: name,
