@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { pipeline } from "node:stream/promises";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
 import {
@@ -182,17 +184,21 @@ test.beforeAll(async () => {
       ]);
       if (!logsResponse.ok) throw new Error(`Unable to download deployed dashboard data: HTTP ${logsResponse.status}.`);
       if (!inventoryResponse.ok) throw new Error(`Unable to download deployed dashboard inventory: HTTP ${inventoryResponse.status}.`);
-      const [logs, inventory] = await Promise.all([logsResponse.text(), inventoryResponse.text()]);
-      sourcePayload = {
-        activityBytes: Buffer.byteLength(logs),
-        inventoryBytes: Buffer.byteLength(inventory),
-        totalBytes: Buffer.byteLength(logs) + Buffer.byteLength(inventory),
-      };
+      if (!logsResponse.body) throw new Error("Deployed dashboard data response has no body.");
+      if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
       await mkdir(destination, { recursive: true });
+      const activityPath = join(destination, "gh-aw-logs.jsonl");
+      const inventoryPath = join(destination, "inventory-sources.json");
       await Promise.all([
-        writeFile(join(destination, "gh-aw-logs.jsonl"), logs),
-        writeFile(join(destination, "inventory-sources.json"), inventory),
+        pipeline(logsResponse.body, createWriteStream(activityPath)),
+        pipeline(inventoryResponse.body, createWriteStream(inventoryPath)),
       ]);
+      const [activity, inventory] = await Promise.all([stat(activityPath), stat(inventoryPath)]);
+      sourcePayload = {
+        activityBytes: activity.size,
+        inventoryBytes: inventory.size,
+        totalBytes: activity.size + inventory.size,
+      };
     },
     host: "127.0.0.1",
     port: 0,

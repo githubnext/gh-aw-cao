@@ -3512,13 +3512,17 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /VmRSS/);
   assert.match(mobileTest, /gh-aw-logs\.jsonl/);
   assert.match(mobileTest, /inventory-sources\.json/);
+  assert.match(mobileTest, /pipeline\(logsResponse\.body, createWriteStream\(activityPath\)\)/);
+  assert.doesNotMatch(mobileTest, /logsResponse\.text\(\)/);
   assert.match(mobileTest, /mobile-dashboard\.png/);
   assert.match(mobileTest, /minimumTargetSize/);
   assert.match(mobileTest, /horizontal page scrolling/);
   assert.match(workflow, /Peak process PSS \| Peak JS heap \| Retained JS heap \| Source payload/);
   const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
-  assert.match(deployedDataTest, /ingestCachedGhAwJsonl\(indexedDB, logsContent\)/);
-  assert.match(deployedDataTest, /run\?\.firewall_analysis \?\? run\?\.audit\?\.firewall_analysis/);
+  assert.match(deployedDataTest, /ingestCachedGhAwJsonl\(indexedDB, await deployedLogs\(\)\)/);
+  assert.match(deployedDataTest, /return response\.body/);
+  assert.doesNotMatch(deployedDataTest, /response\.text\(\)/);
+  assert.match(deployedDataTest, /event\.source === "firewall"/);
   for (const source of ["workflows", "runs", "events"]) {
     assert.match(deployedDataTest, new RegExp(`readCollection\\(indexedDB, "${source}"\\)`));
   }

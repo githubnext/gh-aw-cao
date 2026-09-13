@@ -14,7 +14,8 @@ const deployedLogsUrl = process.env.GH_AW_LOGS_URL
 async function deployedLogs() {
   const response = await fetch(deployedLogsUrl, { signal: AbortSignal.timeout(60_000) });
   assert.equal(response.ok, true, `failed to download ${deployedLogsUrl}: ${response.status}`);
-  return response.text();
+  assert.ok(response.body, `failed to stream ${deployedLogsUrl}`);
+  return response.body;
 }
 
 test("deployed dashboard cache populates canonical workflows, runs, and events", async () => {
@@ -48,14 +49,7 @@ test("deployed dashboard cache populates canonical workflows, runs, and events",
 test("deployed dashboard cache ingests its firewall analysis", async () => {
   await deleteCanonicalDatabase(indexedDB);
   try {
-    const logsContent = await deployedLogs();
-    const logs = logsContent.split(/\r?\n/).filter(Boolean).map(JSON.parse);
-    assert.ok(logs.some(({ run }) => {
-      const analysis = run?.firewall_analysis ?? run?.audit?.firewall_analysis;
-      return analysis?.requests_by_domain && Object.keys(analysis.requests_by_domain).length > 0;
-    }), "deployed gh-aw logs must contain firewall analysis");
-
-    await ingestCachedGhAwJsonl(indexedDB, logsContent);
+    await ingestCachedGhAwJsonl(indexedDB, await deployedLogs());
     const ingestedFirewallEvents = (await readCollection(indexedDB, "events")).filter(
       (event) => event.source === "firewall" && /^net_/.test(String(event.type)),
     );
