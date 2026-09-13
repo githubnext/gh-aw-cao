@@ -1259,9 +1259,14 @@ describe('declarative dashboard queries', () => {
   it('never consumes unrequested or unobserved queries', () => {
     const usageRows = vi.fn(() => usage.rows);
     const workflowRows = vi.fn(() => workflows.rows);
+    const workflowMetadata = vi.fn(() => workflows.metadata);
     const sources = {
       usage: { ...usage, get rows() { return usageRows(); } },
-      workflows: { ...workflows, get rows() { return workflowRows(); } }
+      workflows: {
+        ...workflows,
+        get rows() { return workflowRows(); },
+        get metadata() { return workflowMetadata(); }
+      }
     };
     const definitions = [
       { name: 'totals', from: 'usage', select: [{ field: 'workflow' }] },
@@ -1271,14 +1276,17 @@ describe('declarative dashboard queries', () => {
     const requested = executeDashboardQueries(definitions, sources, ['totals']);
     expect(Object.keys(requested)).toEqual(['totals']);
     expect(workflowRows).not.toHaveBeenCalled();
+    expect(workflowMetadata).not.toHaveBeenCalled();
 
     requested.totals.rows;
     expect(usageRows).toHaveBeenCalled();
     expect(workflowRows).not.toHaveBeenCalled();
+    expect(workflowMetadata).not.toHaveBeenCalled();
 
     const all = executeDashboardQueries(definitions, sources);
     all.totals.rows;
     expect(workflowRows).not.toHaveBeenCalled();
+    expect(workflowMetadata).not.toHaveBeenCalled();
   });
 
   it('materializes shared dependencies only once as lazy results are consumed', () => {
@@ -1410,6 +1418,29 @@ describe('declarative dashboard queries', () => {
     expect(budget.operations).toBe(0);
     expect(continued['recent-runs'].rows).toEqual([{ run: '2' }]);
     expect(budget.operations).toBe(6);
+  });
+
+  it('does not read unrelated source metadata for a paginated query', () => {
+    const definitions = [{ name: 'recent-runs', from: 'runs', 'order-by': [{ field: 'run', direction: 'desc' }] }];
+    const result = executeDashboardQueries(definitions, {
+      runs: {
+        source: 'runs',
+        rows: ['2', '1'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      },
+      unrelated: {
+        source: 'unrelated',
+        rows: [],
+        /** @returns {import('../../src/presenter.js').SourceMetadata} */
+        get metadata() {
+          throw new Error('unrelated metadata was consumed');
+        }
+      }
+    }, ['recent-runs'], {
+      pagination: { 'recent-runs': { limit: 1 } }
+    });
+
+    expect(result['recent-runs'].rows).toEqual([{ run: '2' }]);
   });
 
   it('consumes each lazy query once when the batch crosses the structured-clone boundary', () => {

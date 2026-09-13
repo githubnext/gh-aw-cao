@@ -180,16 +180,18 @@ describe('canonical dashboard worker retention updates', () => {
       sources: {
         events: {
           source: 'events',
-          rows: eventRows,
+          /** @returns {Record<string, unknown>[]} */
+          get rows() {
+            throw new Error('source read failed');
+          },
           metadata
         }
       }
     });
-    dispatch({ id: 6, operation: 'cancel-data-processing', ids: [5] });
 
     expect(await settled((message) => message.id === 5)).toMatchObject({
-      cancelled: true,
-      error: 'dashboard queries were cancelled'
+      cancelled: false,
+      error: 'source read failed'
     });
   });
 });

@@ -443,9 +443,6 @@ export function executeDashboardQueries(definitions, sources, requested, options
   const index = dashboardQueryIndex(definitions);
   if (index.size === 0) return {};
   const defects = dashboardQueryDefects(definitions);
-  const revision = () => continuationRevision(definitions, Object.fromEntries(
-    Object.entries(sources).map(([name, source]) => [name, source.metadata])
-  ));
   /** @type {QueryBudget | undefined} */
   let budget = options.budget;
   const queryBudget = () => (budget ??= createDashboardQueryBudget(options));
@@ -459,10 +456,17 @@ export function executeDashboardQueries(definitions, sources, requested, options
     if (!index.has(name)) continue;
     defineLazyProperty(derived, name, () => {
       compileDashboardQuery(name, index, sources, defects, queryBudget(), compiled, visiting);
+      const page = options.pagination?.[name];
+      if (!page) return compiled[name];
+      const required = new Set(resolveDashboardQuerySources(definitions, [name]));
       return paginateDashboardSources(
         { [name]: compiled[name] },
-        options.pagination,
-        revision()
+        { [name]: page },
+        continuationRevision(definitions, Object.fromEntries(
+          Object.entries(sources)
+            .filter(([sourceName]) => required.has(sourceName))
+            .map(([sourceName, source]) => [sourceName, source.metadata])
+        ))
       )[name];
     });
   }
