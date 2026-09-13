@@ -1038,15 +1038,20 @@
                 dashboardContext,
                 refreshPagination,
               )).then(
-                ({ changed }) => {
+                ({ sources, changed }) => {
                   refreshPending = false;
                   emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
                     kind: "refresh",
                     status: "completed",
                     changed,
                   });
-                  if (changed) return;
-                  renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources);
+                  renderSources(
+                    bindContinuations(sources, initialLazySources),
+                    "ready",
+                    true,
+                    loadPageSources,
+                    loadHorizonSources,
+                  );
                 },
                 showStaleSources,
               );

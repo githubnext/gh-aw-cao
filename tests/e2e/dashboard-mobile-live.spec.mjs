@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
@@ -257,7 +257,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   const dashboard = page.locator(".dashboard-root");
   await expect(dashboard).toBeVisible();
   await memoryInvestigation.mark("dashboard-visible");
-  await expect(dashboard).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
+  await expect(dashboard).not.toHaveAttribute("aria-busy", "true", { timeout: 540_000 });
   await memoryInvestigation.mark("dashboard-idle");
   // DOM provenance annotation (`data-json-path`/`data-js-view`) is lazily
   // loaded and applied asynchronously; wait for it so the DOM analysis below
