@@ -3,12 +3,6 @@ title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
 version: 1.0.0
 status: Working Draft
-
-IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
-summaries so dashboard trends and run history can cover the complete published
-source. It SHALL retain detailed Job, Session, and Event records for the bounded
-30-day operational window. Expiring detail MUST NOT remove its retained Run or
-the Run's structural parents.
 editors:
   - GitHub Next
 ---
