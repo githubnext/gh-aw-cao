@@ -444,27 +444,27 @@ export function executeDashboardQueries(definitions, sources, requested, options
   const index = dashboardQueryIndex(definitions);
   if (index.size === 0) return {};
   const defects = dashboardQueryDefects(definitions);
-  const budget = options.budget ?? createDashboardQueryBudget(options);
-  const revision = continuationRevision(definitions, Object.fromEntries(
+  const revision = () => continuationRevision(definitions, Object.fromEntries(
     Object.entries(sources).map(([name, source]) => [name, source.metadata])
   ));
-  if (requested) {
-    /** @type {Record<string, LogicalSourceInput>} */
-    const requestedResults = {};
-    for (const name of new Set(requested)) {
-      if (!index.has(name)) continue;
-      const compiled = compileDashboardQuery(name, index, sources, defects, budget);
-      requestedResults[name] = compiled[name];
-    }
-    return paginateDashboardSources(requestedResults, options.pagination, revision);
-  }
+  /** @type {QueryBudget | undefined} */
+  let budget = options.budget;
+  const queryBudget = () => (budget ??= createDashboardQueryBudget(options));
   /** @type {Record<string, LogicalSourceInput>} */
   const derived = {};
-  for (const [name, definition] of index) {
-    budget.checkpoint();
-    derived[name] = executeDashboardQuery(definition, { ...sources, ...derived }, defects.get(name), budget);
+  const names = requested ? new Set(requested) : index.keys();
+  for (const name of names) {
+    if (!index.has(name)) continue;
+    defineLazyProperty(derived, name, () => {
+      const compiled = compileDashboardQuery(name, index, sources, defects, queryBudget());
+      return paginateDashboardSources(
+        { [name]: compiled[name] },
+        options.pagination,
+        revision()
+      )[name];
+    });
   }
-  return paginateDashboardSources(derived, options.pagination, revision);
+  return derived;
 }
 
 /**
@@ -511,7 +511,35 @@ function compileDashboardQuery(name, index, sources, defects, budget) {
  * @param {QueryBudget} [budget] shared cancellation, deadline, and operation budget
  * @returns {LogicalSourceInput}
  */
-export function executeDashboardQuery(definition, sources, defect, budget = createDashboardQueryBudget()) {
+export function executeDashboardQuery(definition, sources, defect, budget) {
+  /** @type {LogicalSourceInput | undefined} */
+  let materialized;
+  let queryBudget = budget;
+  const consume = () => (materialized ??= materializeDashboardQuery(
+    definition,
+    sources,
+    defect,
+    queryBudget ??= createDashboardQueryBudget()
+  ));
+  return /** @type {LogicalSourceInput} */ ({
+    source: definition.name,
+    get rows() {
+      return consume().rows;
+    },
+    get metadata() {
+      return consume().metadata;
+    }
+  });
+}
+
+/**
+ * @param {DashboardQuery} definition
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @param {string | undefined} defect
+ * @param {QueryBudget} budget
+ * @returns {LogicalSourceInput}
+ */
+function materializeDashboardQuery(definition, sources, defect, budget) {
   const inputs = queryInputNames(definition).map((name) => ({ name, source: sources[name] }));
   const rejected = defect ?? queryStructuralDefect(definition);
   if (rejected) {
@@ -539,6 +567,7 @@ export function executeDashboardQuery(definition, sources, defect, budget = crea
         effectiveSources[name] = { ...source, source: source?.source ?? name, rows: [] };
       }
     }
+
     const rows = runDashboardQuery(definition, effectiveSources, budget);
     return {
       source: definition.name,
@@ -553,6 +582,38 @@ export function executeDashboardQuery(definition, sources, defect, budget = crea
       error instanceof Error ? error.message : String(error)
     );
   }
+}
+
+/**
+ * Defines an enumerable property whose value is computed at most once, when read.
+ *
+ * @template T
+ * @param {Record<string, T>} target
+ * @param {string} name
+ * @param {() => T} consume
+ */
+function defineLazyProperty(target, name, consume) {
+  let state = 'pending';
+  /** @type {T | undefined} */
+  let value;
+  /** @type {unknown} */
+  let failure;
+  Object.defineProperty(target, name, {
+    enumerable: true,
+    get() {
+      if (state === 'pending') {
+        try {
+          value = consume();
+          state = 'resolved';
+        } catch (error) {
+          failure = error;
+          state = 'rejected';
+        }
+      }
+      if (state === 'rejected') throw failure;
+      return /** @type {T} */ (value);
+    }
+  });
 }
 
 /**

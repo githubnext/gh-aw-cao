@@ -306,7 +306,7 @@ describe('declarative dashboard queries', () => {
       source,
       ['recent-runs'],
       { pagination: { 'recent-runs': { limit: 1, continuationToken: first.continuationToken } } }
-    )).toThrow('Invalid or stale continuation token');
+    )['recent-runs']).toThrow('Invalid or stale continuation token');
     expect(() => executeDashboardQueries(
       query,
       {
@@ -317,7 +317,7 @@ describe('declarative dashboard queries', () => {
       },
       ['recent-runs'],
       { pagination: { 'recent-runs': { limit: 1, continuationToken: first.continuationToken } } }
-    )).toThrow('Invalid or stale continuation token');
+    )['recent-runs']).toThrow('Invalid or stale continuation token');
   });
 
   it('projects, renames, and orders rows deterministically', () => {
@@ -341,7 +341,7 @@ describe('declarative dashboard queries', () => {
     const end = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});
 
     try {
-      executeDashboardQuery({
+      const result = executeDashboardQuery({
         name: 'timed-inventory',
         from: 'workflows',
         joins: [{
@@ -357,6 +357,7 @@ describe('declarative dashboard queries', () => {
         'order-by': [{ field: 'aic', direction: 'desc' }],
         limit: 1
       }, { workflows, usage: { ...usage, rows: [usage.rows[0]] } });
+      result.rows;
 
       const labels = [
         'from',
@@ -1173,6 +1174,47 @@ describe('declarative dashboard queries', () => {
     expect(Object.keys(derived)).toEqual(['totals']);
   });
 
+  it('defers every requested query until its result is consumed', () => {
+    const budget = createDashboardQueryBudget();
+    const derived = executeDashboardQueries(
+      [
+        { name: 'totals', from: 'usage', aggregate: { by: ['workflow'], values: [{ field: 'aic', as: 'aic', reducer: 'sum' }] } },
+        { name: 'inventory', from: 'workflows', select: [{ field: 'workflow' }] }
+      ],
+      { workflows, usage },
+      undefined,
+      { budget }
+    );
+
+    expect(Object.keys(derived)).toEqual(['totals', 'inventory']);
+    expect(budget.operations).toBe(0);
+
+    expect(derived.totals.rows).toEqual([{ workflow: 'a.md', aic: 10 }]);
+    expect(budget.operations).toBe(4);
+
+    expect(derived.totals.metadata.availability).toBe('available');
+    expect(budget.operations).toBe(4);
+  });
+
+  it('defers a single query until its rows or metadata are consumed', () => {
+    const budget = createDashboardQueryBudget();
+    const result = executeDashboardQuery(
+      { name: 'totals', from: 'usage', aggregate: { by: ['workflow'], values: [{ field: 'aic', as: 'aic', reducer: 'sum' }] } },
+      { usage },
+      undefined,
+      budget
+    );
+
+    expect(result.source).toBe('totals');
+    expect(budget.operations).toBe(0);
+
+    expect(result.metadata.availability).toBe('available');
+    expect(budget.operations).toBe(4);
+
+    expect(result.rows).toEqual([{ workflow: 'a.md', aic: 10 }]);
+    expect(budget.operations).toBe(4);
+  });
+
   it('rejects cyclic, self-referencing, and forward query dependencies', () => {
     const defects = dashboardQueryDefects([
       { name: 'self', from: 'self' },
@@ -1282,7 +1324,7 @@ describe('query cancellation, deadlines, and operation budgets', () => {
     const controller = new AbortController();
     controller.abort();
 
-    expect(() => executeDashboardQueries([totals], { usage }, undefined, { signal: controller.signal }))
+    expect(() => executeDashboardQueries([totals], { usage }, undefined, { signal: controller.signal }).totals.rows)
       .toThrow(DashboardQueryCancelledError);
   });
 
@@ -1290,7 +1332,7 @@ describe('query cancellation, deadlines, and operation budgets', () => {
     const controller = new AbortController();
     controller.abort();
     try {
-      executeDashboardQueries([totals], { usage }, undefined, { signal: controller.signal });
+      executeDashboardQueries([totals], { usage }, undefined, { signal: controller.signal }).totals.rows;
       expect.unreachable('cancelled execution must not return a projection');
     } catch (error) {
       expect(/** @type {DashboardQueryCancelledError} */ (error).kind).toBe('aborted');
@@ -1302,20 +1344,20 @@ describe('query cancellation, deadlines, and operation budgets', () => {
     let clock = 0;
     const budget = createDashboardQueryBudget({ timeout: 60000, now: () => (clock += 40000) });
 
-    expect(() => executeDashboardQueries([totals], { usage }, undefined, { budget }))
+    expect(() => executeDashboardQueries([totals], { usage }, undefined, { budget }).totals.rows)
       .toThrow(/max-duration-ms limit of 60000/);
   });
 
   it('stops a runaway computation once the operation budget is spent', () => {
     const budget = createDashboardQueryBudget({ maxOperations: 1 });
 
-    expect(() => executeDashboardQueries([totals], { usage }, undefined, { budget }))
+    expect(() => executeDashboardQueries([totals], { usage }, undefined, { budget }).totals.rows)
       .toThrow(/max-operations budget of 1/);
   });
 
   it('counts the row operations a query performs', () => {
     const budget = createDashboardQueryBudget();
-    executeDashboardQueries([totals], { usage }, undefined, { budget });
+    executeDashboardQueries([totals], { usage }, undefined, { budget }).totals.rows;
 
     expect(budget.operations).toBe(4);
   });
@@ -1329,11 +1371,11 @@ describe('query cancellation, deadlines, and operation budgets', () => {
     const controller = new AbortController();
     controller.abort();
 
-    expect(() => processDataRequest({
+    expect(() => /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: [totals],
       sources: { usage }
-    }, controller.signal)).toThrow(DashboardQueryCancelledError);
+    }, controller.signal)).totals.rows).toThrow(DashboardQueryCancelledError);
   });
 });
 
