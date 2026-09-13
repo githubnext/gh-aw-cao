@@ -10,12 +10,15 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
   await mkdir(outputDirectory, { recursive: true });
   const browserErrors = [];
   const failedRequests = [];
+  let reloading = false;
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
   });
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("requestfailed", (request) => {
-    failedRequests.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText || "failed"}`);
+    const errorText = request.failure()?.errorText || "failed";
+    if (reloading && errorText === "net::ERR_ABORTED") return;
+    failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
   });
   page.on("response", (response) => {
     if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
@@ -37,7 +40,12 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
       window.__dashboardTestEvents?.some(({ type, detail }) =>
         type === "dashboard-data" && detail?.status === "completed"
       ), null, { timeout: 120_000 });
-    await page.reload({ waitUntil: "domcontentloaded" });
+    reloading = true;
+    try {
+      await page.reload({ waitUntil: "domcontentloaded" });
+    } finally {
+      reloading = false;
+    }
     await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
     await page.waitForFunction(() =>
       window.__dashboardTestEvents?.some(({ type, detail }) =>
