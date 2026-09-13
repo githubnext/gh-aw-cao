@@ -145,10 +145,13 @@ describe('canonical dashboard worker retention updates', () => {
     const jsonlRequests = [];
     /** @type {string[]} */
     const requestUrls = [];
-    const payloadHashes = `${'a'.repeat(64)}  gh-aw-logs.jsonl\n${'b'.repeat(64)}  gh-aw-logs.sqlite\n`;
+    const payloadHashes = {
+      'gh-aw-logs.jsonl': 'a'.repeat(64),
+      'gh-aw-logs.sqlite': 'b'.repeat(64)
+    };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       requestUrls.push(String(input));
-      if (String(input).endsWith('/payload-hashes.txt')) return new Response(payloadHashes);
+      if (String(input).endsWith('/payload-hashes.json')) return Response.json(payloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
       return new Response('', { headers: { etag: '"generation-b"' } });
@@ -176,16 +179,16 @@ describe('canonical dashboard worker retention updates', () => {
     expect(repeatedJsonl?.data).toMatchObject({ changed: false });
     expect(jsonlRequests).toHaveLength(1);
     expect(requestUrls).toEqual([
-      'https://dashboard.example/payload-hashes.txt',
+      'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json',
       'https://dashboard.example/gh-aw-logs.jsonl',
-      'https://dashboard.example/payload-hashes.txt',
+      'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json'
     ]);
 
-    const updatedPayloadHashes = `${'c'.repeat(64)}  gh-aw-logs.jsonl\n${'b'.repeat(64)}  gh-aw-logs.sqlite\n`;
+    const updatedPayloadHashes = { ...payloadHashes, 'gh-aw-logs.jsonl': 'c'.repeat(64) };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
-      if (String(input).endsWith('/payload-hashes.txt')) return new Response(updatedPayloadHashes);
+      if (String(input).endsWith('/payload-hashes.json')) return Response.json(updatedPayloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
       return new Response('', { headers: { etag: '"generation-c"' } });
@@ -212,7 +215,7 @@ describe('canonical dashboard worker retention updates', () => {
     expect(jsonlRequests).toHaveLength(2);
 
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
-      if (String(input).endsWith('/payload-hashes.txt')) return new Response(null, { status: 404 });
+      if (String(input).endsWith('/payload-hashes.json')) return new Response(null, { status: 404 });
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
       return new Headers(init?.headers).get('If-None-Match') === '"generation-c"'

@@ -6,7 +6,7 @@ const CONFIG_URL = new URL('./.dashboard-data-update-config', self.registration.
 const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
-const DATA_FILES = new Set(['payload-hashes.txt', 'gh-aw-logs.jsonl', 'inventory-sources.json']);
+const DATA_FILES = new Set(['payload-hashes.json', 'gh-aw-logs.jsonl', 'inventory-sources.json']);
 
 function isDashboardDataUrl(value) {
   try {
@@ -37,7 +37,7 @@ async function downloadData(urls) {
     throw new Error('Dashboard data URL is missing.');
   }
   const cache = await caches.open(DATA_CACHE);
-  const hashesUrl = requested.find((url) => new URL(url).pathname.endsWith('/payload-hashes.txt'));
+  const hashesUrl = requested.find((url) => new URL(url).pathname.endsWith('/payload-hashes.json'));
   let hashesResponse;
   let publishedJsonlHash = null;
   let unchangedJsonl = false;
@@ -49,18 +49,22 @@ async function downloadData(urls) {
       signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
     });
     if (response.ok) {
-      const [previousText, currentText] = await Promise.all([
-        previous?.text() ?? '',
-        response.clone().text()
+      const [previousHashes, currentHashes] = await Promise.all([
+        previous?.json().catch(() => null) ?? null,
+        response.clone().json().catch(() => null)
       ]);
-      const jsonlHash = (text) => text.match(/^([a-f0-9]{64})[ \t]+\*?gh-aw-logs\.jsonl$/im)?.[1];
-      publishedJsonlHash = jsonlHash(currentText) ?? null;
-      unchangedJsonl = Boolean(publishedJsonlHash && publishedJsonlHash === jsonlHash(previousText));
+      const jsonlHash = (hashes) => {
+        const hash = hashes && typeof hashes === 'object' ? hashes['gh-aw-logs.jsonl'] : null;
+        return typeof hash === 'string' && /^[a-f0-9]{64}$/i.test(hash) ? hash.toLowerCase() : null;
+      };
+      publishedJsonlHash = jsonlHash(currentHashes);
+      unchangedJsonl = Boolean(publishedJsonlHash && publishedJsonlHash === jsonlHash(previousHashes));
       if (publishedJsonlHash) hashesResponse = response;
     } else if (response.status !== 404) {
       throw new Error(`Dashboard data download returned ${response.status}.`);
     }
   }
+  if (hashesUrl && !publishedJsonlHash) await cache.delete(hashesUrl);
   const responses = await Promise.all(requested
     .filter((url) => url !== hashesUrl)
     .filter((url) => !(unchangedJsonl && new URL(url).pathname.endsWith('/gh-aw-logs.jsonl')))
@@ -173,6 +177,7 @@ self.addEventListener('fetch', (event) => {
   if (!isDashboardDataUrl(event.request.url)) {
     if (!isAppAssetUrl(event.request.url)) return;
     event.respondWith((async () => {
+      if (event.request.cache === 'no-store') return fetch(event.request);
       try {
         const response = await fetch(event.request);
         if (response.ok) {
@@ -193,6 +198,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   event.respondWith((async () => {
+    if (event.request.cache === 'no-store') return fetch(event.request);
     try {
       const response = await fetch(event.request);
       if (response.ok) {

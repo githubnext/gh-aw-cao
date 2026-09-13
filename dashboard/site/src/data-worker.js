@@ -259,11 +259,14 @@ function dashboardContext(value) {
   };
 }
 
-/** @param {string} contents @param {string} fileName */
-function publishedPayloadIdentity(contents, fileName) {
-  const escaped = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = contents.match(new RegExp(`^([a-f0-9]{64})[ \\t]+\\*?${escaped}$`, 'im'));
-  return match ? `sha256:${match[1].toLowerCase()}` : null;
+/** @param {unknown} hashes @param {string} fileName */
+function publishedPayloadIdentity(hashes, fileName) {
+  const hash = hashes && typeof hashes === 'object' && !Array.isArray(hashes)
+    ? /** @type {Record<string, unknown>} */ (hashes)[fileName]
+    : null;
+  return typeof hash === 'string' && /^[a-f0-9]{64}$/i.test(hash)
+    ? `sha256:${hash.toLowerCase()}`
+    : null;
 }
 
 /**
@@ -305,11 +308,11 @@ export function processDataRequest(request, signal) {
       try {
         let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
         if (jsonl) {
-          const payloadHashesUrl = new URL('./payload-hashes.txt', sourceUrl);
+          const payloadHashesUrl = new URL('./payload-hashes.json', sourceUrl);
           const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
           const publishedIdentity = payloadHashesResponse?.ok
             ? publishedPayloadIdentity(
-                await payloadHashesResponse.text(),
+                await payloadHashesResponse.json().catch(() => null),
                 sourceUrl.pathname.split('/').at(-1) ?? ''
               )
             : null;
@@ -362,9 +365,14 @@ export function processDataRequest(request, signal) {
           if (currentPublishedPayload) {
             changed = false;
           } else {
-            const response = await fetch(sourceUrl.href, !publishedIdentity && currentEtag
-              ? { headers: { 'If-None-Match': currentEtag } }
-              : undefined);
+            const response = await fetch(
+              sourceUrl.href,
+              publishedIdentity
+                ? { cache: 'no-store' }
+                : currentEtag
+                  ? { headers: { 'If-None-Match': currentEtag } }
+                  : undefined
+            );
             if (response.status === 304) {
               changed = false;
             } else {
