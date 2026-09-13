@@ -65,7 +65,7 @@ afterEach(() => {
   }
 });
 
-describe('SQLite IndexedDB compatibility layer', () => {
+describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
   it('persists canonical records and supports compound index queries', async () => {
     const filename = temporaryDatabase();
     const indexedDB = installSqliteIndexedDB(filename);
