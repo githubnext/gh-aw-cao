@@ -2434,7 +2434,7 @@ test("shared activity cache restores into activation and agent jobs", () => {
   assert.equal((source.match(/path: \|/g) || []).length, 2);
   assert.equal((source.match(/key: cao-activity-v4-lookup-/g) || []).length, 2);
   assert.equal((source.match(/restore-keys: \|[\s\S]*?cao-activity-v4-/g) || []).length, 2);
-  assert.doesNotMatch(source, /cao-activity-(?!v3-)/);
+  assert.doesNotMatch(source, /cao-activity-(?!v4-)/);
   assert.doesNotMatch(source, /actions\/cache\/save@/);
   assert.doesNotMatch(source, /Install SQLite|apt-get install.*sqlite3/);
 
