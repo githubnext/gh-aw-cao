@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 
-import { createHash } from 'node:crypto';
-import { createWriteStream, realpathSync } from 'node:fs';
+import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
-import { adaptCachedGhAwJsonl } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
+import { adaptCachedGhAwJsonlStream } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
@@ -220,7 +219,7 @@ async function databaseCounts(indexedDB) {
 
 async function auditJsonl(inputPath) {
   const input = path.resolve(inputPath);
-  const adapted = adaptCachedGhAwJsonl(await readFile(input, 'utf8'));
+  const adapted = await adaptCachedGhAwJsonlStream(createReadStream(input));
   const canonical = normalize(adapted.observations);
   return {
     command: 'audit-jsonl',
@@ -454,14 +453,12 @@ export async function runCli(arguments_, input = process.stdin) {
   if (command === 'ingest-jsonl') {
     rejectUnknownOptions(options, ['database', 'input', 'context', 'retention-days', 'run-retention-days']);
     const contextPath = option(options, 'context', false);
-    const content = await readFile(path.resolve(option(options, 'input', false) || DEFAULT_LOGS_PATH));
     const result = await ingestCachedGhAwJsonl(
       indexedDB,
-      content,
+      createReadStream(path.resolve(option(options, 'input', false) || DEFAULT_LOGS_PATH)),
       {
         retentionWindowMs: retentionWindowMs(options),
         retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
-        payloadIdentity: createHash('sha256').update(content).digest('hex'),
         context: contextPath
           ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
           : undefined

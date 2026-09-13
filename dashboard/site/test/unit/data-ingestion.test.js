@@ -461,6 +461,41 @@ describe('canonical source ingestion and queries', () => {
     });
   });
 
+  it('ingests chunked JSONL across line and UTF-8 boundaries without buffering the response', async () => {
+    const content = new TextEncoder().encode([
+      '{"schema_version":2,"kind":"unknown","value":"ignored"}',
+      JSON.stringify({
+        schema_version: 2,
+        kind: 'run',
+        run: {
+          run_id: 303,
+          run_attempt: 1,
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow_name: 'Dashboard 📊',
+          workflow_path: '.github/workflows/dashboard.md',
+          status: 'completed',
+          created_at: '2026-01-01T00:00:00Z'
+        }
+      })
+    ].join('\r\n'));
+    const chunks = async function* () {
+      for (let offset = 0; offset < content.length; offset += 7) {
+        yield content.subarray(offset, offset + 7);
+      }
+    };
+
+    await expect(ingestCachedGhAwJsonl(indexedDB, chunks())).resolves.toMatchObject({
+      updated: true,
+      records: 1,
+      agenticRuns: 1
+    });
+    await expect(ingestCachedGhAwJsonl(indexedDB, chunks())).resolves.toMatchObject({
+      updated: false,
+      skipped: true
+    });
+  });
+
   it('preserves discovery repository records when ingesting cached JSONL runs', async () => {
     const discoverySources = structuredClone(sources);
     Object.assign(discoverySources.repositories.rows[0], { visibility: 'private' });

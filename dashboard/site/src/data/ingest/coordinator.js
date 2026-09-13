@@ -1,5 +1,9 @@
 import { adaptDashboardSources } from '../adapters/dashboard-sources.js';
-import { adaptCachedGhAwJsonl, adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
+import {
+  adaptCachedGhAwJsonl,
+  adaptCachedGhAwJsonlStream,
+  adaptGhAwLogs
+} from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { normalize } from '../normalize/index.js';
 import {
@@ -241,7 +245,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
 /**
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
- * @param {string | Uint8Array} content
+ * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
  * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
  */
 export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
@@ -250,7 +254,7 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {string | Uint8Array} content
+ * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
  * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} options
  */
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
@@ -260,7 +264,16 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       context: options.context ?? null,
       workflowHints: options.workflowHints ?? []
     });
+    const streamed = typeof content !== 'string'
+      && !ArrayBuffer.isView(content)
+      && Symbol.asyncIterator in Object(content)
+      ? await adaptCachedGhAwJsonlStream(
+          /** @type {AsyncIterable<string | Uint8Array>} */ (content),
+          { context: options.context, workflowHints: options.workflowHints }
+        )
+      : undefined;
     const payloadIdentity = options.payloadIdentity
+      ?? streamed?.payloadIdentity
       ?? (typeof content === 'string' ? content : await payloadHash(content, undefined));
     const hash = await payloadHash(`${payloadIdentity}\0${adaptationContext}`, undefined);
     const scope = options.payloadScope ?? 'gh-aw-jsonl';
@@ -276,10 +289,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       }
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
-    const adapted = adaptCachedGhAwJsonl(content, {
-      context: options.context,
-      workflowHints: options.workflowHints
-    });
+    const adapted = streamed ?? adaptCachedGhAwJsonl(
+      /** @type {string | Uint8Array} */ (content),
+      { context: options.context, workflowHints: options.workflowHints }
+    );
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), {
       ...options,
       preserveWorkflowPackageMappings: true,
