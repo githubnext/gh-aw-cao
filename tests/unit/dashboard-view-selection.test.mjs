@@ -31,6 +31,14 @@ test("selects every page for shared renderer changes", () => {
   }), ["experiments", "cost"]);
 });
 
+test("selects every page for dashboard assessment data changes", () => {
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard,
+    changedFiles: ["tests/e2e/dashboard-view-data.mjs"],
+    baseRef: "unused",
+  }), ["experiments", "cost"]);
+});
+
 test("selects no pages for unrelated changes", () => {
   assert.deepEqual(selectAffectedPageIds({
     dashboard,
