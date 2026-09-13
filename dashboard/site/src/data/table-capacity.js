@@ -61,9 +61,8 @@ export function browserTableRowLimit(browserWindow) {
 /**
  * @param {unknown[]} queries
  * @param {Iterable<string>} tableSourceNames
- * @param {number} rowLimit
  */
-export function applyTableQueryLimits(queries, tableSourceNames, rowLimit) {
+export function applyTableQuerySafetyLimits(queries, tableSourceNames) {
   const tableSources = new Set(tableSourceNames);
   const queryNames = new Set(queries.flatMap((query) => (
     query && typeof query === 'object' && !Array.isArray(query)
@@ -94,8 +93,8 @@ export function applyTableQueryLimits(queries, tableSourceNames, rowLimit) {
     return {
       ...definition,
       limit: Number.isSafeInteger(declaredLimit) && declaredLimit > 0
-        ? Math.min(declaredLimit, rowLimit)
-        : rowLimit
+        ? Math.min(declaredLimit, DASHBOARD_QUERY_LIMITS['max-output-rows'])
+        : DASHBOARD_QUERY_LIMITS['max-output-rows']
     };
   });
 }

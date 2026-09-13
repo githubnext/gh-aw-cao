@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  applyTableQueryLimits,
+  applyTableQuerySafetyLimits,
   tableRowLimitForEnvironment
 } from '../../src/data/table-capacity.js';
 import { dashboardTableSourceNames } from '../../src/presenter.js';
@@ -27,29 +27,28 @@ describe('adaptive table capacity', () => {
     })).toBe(25000);
   });
 
-  it('limits every table query while preserving smaller declared limits', () => {
+  it('applies the engine safety ceiling while preserving smaller declared limits', () => {
     const queries = [
       { name: 'events', from: 'raw-events' },
       { name: 'runs', from: 'runs', limit: 100 },
       { name: 'chart', from: 'runs' }
     ];
 
-    expect(applyTableQueryLimits(queries, ['events', 'runs'], 25000)).toEqual([
-      { name: 'events', from: 'raw-events', limit: 25000 },
+    expect(applyTableQuerySafetyLimits(queries, ['events', 'runs'])).toEqual([
+      { name: 'events', from: 'raw-events', limit: 100000 },
       { name: 'runs', from: 'runs', limit: 100 },
       queries[2]
     ]);
   });
 
-  it('applies the selected limit to every terminal table-backed dashboard query', () => {
+  it('applies the safety ceiling to every terminal table-backed dashboard query', () => {
     const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
     const tableSources = dashboardTableSourceNames(
       /** @type {import('../../src/presenter.js').PresentationDocument} */ (document)
     );
-    const limited = applyTableQueryLimits(
+    const limited = applyTableQuerySafetyLimits(
       /** @type {unknown[]} */ (document.dashboard.queries ?? []),
-      tableSources,
-      25000
+      tableSources
     );
     const queries = new Map(limited.flatMap((query) => {
       if (!query || typeof query !== 'object' || Array.isArray(query)) return [];
@@ -63,7 +62,7 @@ describe('adaptive table capacity', () => {
     ]));
 
     for (const source of tableSources.filter((name) => queries.has(name) && !dependencies.has(name))) {
-      expect(Number(queries.get(source)?.limit), source).toBeLessThanOrEqual(25000);
+      expect(Number(queries.get(source)?.limit), source).toBeLessThanOrEqual(100000);
     }
   });
 
@@ -73,6 +72,6 @@ describe('adaptive table capacity', () => {
       { name: 'totals', from: 'inventory', aggregate: { values: [] } }
     ];
 
-    expect(applyTableQueryLimits(queries, ['inventory'], 10000)[0]).toBe(queries[0]);
+    expect(applyTableQuerySafetyLimits(queries, ['inventory'])[0]).toBe(queries[0]);
   });
 });

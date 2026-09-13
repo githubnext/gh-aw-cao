@@ -12,7 +12,7 @@
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
       import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
-      import { applyTableQueryLimits, browserTableRowLimit } from "./data/table-capacity.js";
+      import { applyTableQuerySafetyLimits, browserTableRowLimit } from "./data/table-capacity.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -83,10 +83,9 @@
       };
       const tableSourceNames = dashboardTableSourceNames(dashboardDocument);
       const tableRowLimit = browserTableRowLimit(window);
-      const dashboardQueries = applyTableQueryLimits(
+      const dashboardQueries = applyTableQuerySafetyLimits(
         dashboardSchema.dashboard.queries ?? [],
         tableSourceNames,
-        tableRowLimit,
       );
       const root = document.querySelector("#root");
       if (!(root instanceof HTMLElement)) throw new Error("Dashboard root element is missing.");

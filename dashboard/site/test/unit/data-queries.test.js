@@ -11,7 +11,7 @@ import {
   paginateDashboardSources,
   resolveDashboardQuerySources
 } from '../../src/data/queries/declarative.js';
-import { applyTableQueryLimits } from '../../src/data/table-capacity.js';
+import { applyTableQuerySafetyLimits } from '../../src/data/table-capacity.js';
 import { dashboardTableSourceNames } from '../../src/presenter.js';
 import { computeValue, tidy } from '../../src/data-operations.js';
 import { processDataRequest } from '../../src/data-worker.js';
@@ -686,10 +686,9 @@ describe('declarative dashboard queries', () => {
       const runs = { source: 'runs', rows: [], metadata: metadata('runs') };
 
       const derived = executeDashboardQueries(
-        applyTableQueryLimits(
+        applyTableQuerySafetyLimits(
           dashboardQueries,
-          dashboardTableSourceNames(dashboardDocument),
-          DASHBOARD_QUERY_LIMITS['max-output-rows']
+          dashboardTableSourceNames(dashboardDocument)
         ),
         { events, runs },
         ['event-inspection']
