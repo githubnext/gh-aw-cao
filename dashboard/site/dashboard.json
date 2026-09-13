@@ -1019,8 +1019,7 @@
             "field": "observed-at",
             "direction": "desc"
           }
-        ],
-        "limit": 100000
+        ]
       },
       {
         "name": "audit-events",

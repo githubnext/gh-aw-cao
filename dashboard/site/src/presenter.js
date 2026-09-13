@@ -177,6 +177,16 @@ export function dashboardPageLazySourceNames(document, pageId) {
   ))];
 }
 
+/** @param {PresentationDocument} document */
+export function dashboardTableSourceNames(document) {
+  return [...new Set(document.dashboard.pages.flatMap((page) => {
+    const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+    return (payload.views ?? []).flatMap((view) =>
+      isPlainObject(view) && view.mark === 'table' ? getViewSources(view) : []
+    );
+  }))];
+}
+
 /**
  * @param {PresentationInput} input
  * @returns {HTMLElement}
