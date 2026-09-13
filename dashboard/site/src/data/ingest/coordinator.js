@@ -88,24 +88,6 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
 }
 
 /**
- * Records a newly published identity after a conditional request confirms that
- * the previously ingested payload is still current.
- * @param {IDBFactory} indexedDB
- * @param {{ payloadIdentity: string, payloadScope: string, payloadEtag?: string, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options
- */
-export async function refreshCachedGhAwJsonlIdentity(indexedDB, options) {
-  const adaptationContext = cachedJsonlAdaptationContext(options);
-  const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', options.payloadScope);
-  if (!current) return;
-  await recordTransaction(indexedDB, {
-    ...current,
-    payloadHash: await payloadHash(`${options.payloadIdentity}\0${adaptationContext}`, undefined),
-    payloadEtag: options.payloadEtag ?? current.payloadEtag,
-    adaptationContext
-  });
-}
-
-/**
  * @param {IDBFactory} indexedDB
  * @param {string} kind
  * @param {string} scope

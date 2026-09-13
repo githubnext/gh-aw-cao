@@ -105,6 +105,7 @@ describe('dashboard service worker', () => {
 
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(entries.has('https://example.test/dashboard/gh-aw-logs.jsonl')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/payload-hashes.txt')).toBe(true);
     entries.set(
       'https://example.test/dashboard/.dashboard-data-update-config',
       new Response(JSON.stringify({
@@ -126,6 +127,30 @@ describe('dashboard service worker', () => {
       tag: 'central-agentic-ops-dashboard-data'
     });
     expect(fetch).toHaveBeenCalledTimes(5);
+  });
+
+  it('does not publish a new payload hash when the matching JSONL download fails', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const payloadHashes = `${'a'.repeat(64)}  gh-aw-logs.jsonl\n`;
+    fetch.mockImplementation(async (url) => {
+      if (String(url).endsWith('/payload-hashes.txt')) return new Response(payloadHashes);
+      throw new TypeError('network failure');
+    });
+    const completed = vi.fn();
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'DOWNLOAD_DATA',
+        urls: [
+          'https://example.test/dashboard/payload-hashes.txt',
+          'https://example.test/dashboard/gh-aw-logs.jsonl'
+        ]
+      },
+      ports: [{ postMessage: completed }]
+    });
+
+    expect(completed).toHaveBeenCalledWith(expect.objectContaining({ type: 'DOWNLOAD_FAILED' }));
+    expect(entries.has('https://example.test/dashboard/payload-hashes.txt')).toBe(false);
   });
 
   it('serves cached dashboard assets and data while offline', async () => {

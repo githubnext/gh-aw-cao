@@ -1,4 +1,4 @@
-const VERSION = '1';
+const VERSION = '2';
 const DATA_CACHE = `central-agentic-ops-dashboard-data-${VERSION}`;
 const APP_CACHE = `central-agentic-ops-dashboard-app-${VERSION}`;
 const CONFIG_CACHE = 'central-agentic-ops-dashboard-config';
@@ -38,6 +38,8 @@ async function downloadData(urls) {
   }
   const cache = await caches.open(DATA_CACHE);
   const hashesUrl = requested.find((url) => new URL(url).pathname.endsWith('/payload-hashes.txt'));
+  let hashesResponse;
+  let publishedJsonlHash = null;
   let unchangedJsonl = false;
   if (hashesUrl) {
     const previous = await cache.match(hashesUrl);
@@ -52,8 +54,9 @@ async function downloadData(urls) {
         response.clone().text()
       ]);
       const jsonlHash = (text) => text.match(/^([a-f0-9]{64})[ \t]+\*?gh-aw-logs\.jsonl$/im)?.[1];
-      unchangedJsonl = Boolean(jsonlHash(currentText) && jsonlHash(currentText) === jsonlHash(previousText));
-      await cache.put(hashesUrl, response.clone());
+      publishedJsonlHash = jsonlHash(currentText) ?? null;
+      unchangedJsonl = Boolean(publishedJsonlHash && publishedJsonlHash === jsonlHash(previousText));
+      if (publishedJsonlHash) hashesResponse = response;
     } else if (response.status !== 404) {
       throw new Error(`Dashboard data download returned ${response.status}.`);
     }
@@ -63,7 +66,8 @@ async function downloadData(urls) {
     .filter((url) => !(unchangedJsonl && new URL(url).pathname.endsWith('/gh-aw-logs.jsonl')))
     .map(async (url) => {
     const previous = await cache.match(url);
-    const etag = previous?.headers.get('etag');
+    const jsonl = new URL(url).pathname.endsWith('/gh-aw-logs.jsonl');
+    const etag = !publishedJsonlHash && jsonl ? previous?.headers.get('etag') : null;
     const response = await fetch(url, {
       cache: 'no-store',
       credentials: 'same-origin',
@@ -83,6 +87,7 @@ async function downloadData(urls) {
         ? undefined
         : cache.put(url, response.clone())
   )));
+  if (hashesUrl && hashesResponse) await cache.put(hashesUrl, hashesResponse.clone());
 }
 
 async function storeDataUrls(urls) {

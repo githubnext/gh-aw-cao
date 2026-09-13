@@ -7,8 +7,7 @@ import {
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
   isCachedGhAwJsonlCurrent,
-  readCurrentIngestion,
-  refreshCachedGhAwJsonlIdentity
+  readCurrentIngestion
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
@@ -363,19 +362,10 @@ export function processDataRequest(request, signal) {
           if (currentPublishedPayload) {
             changed = false;
           } else {
-            const response = await fetch(sourceUrl.href, currentEtag
+            const response = await fetch(sourceUrl.href, !publishedIdentity && currentEtag
               ? { headers: { 'If-None-Match': currentEtag } }
               : undefined);
             if (response.status === 304) {
-              if (publishedIdentity) {
-                await refreshCachedGhAwJsonlIdentity(indexedDB, {
-                  payloadIdentity: publishedIdentity,
-                  payloadScope: sourceUrl.href,
-                  payloadEtag: currentEtag ?? undefined,
-                  context: collectionContext,
-                  workflowHints
-                });
-              }
               changed = false;
             } else {
               if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);

@@ -188,9 +188,7 @@ describe('canonical dashboard worker retention updates', () => {
       if (String(input).endsWith('/payload-hashes.txt')) return new Response(updatedPayloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
-      return new Headers(init?.headers).get('If-None-Match') === '"generation-b"'
-        ? new Response(null, { status: 304 })
-        : new Response('');
+      return new Response('', { headers: { etag: '"generation-c"' } });
     });
     dispatch({
       id: 5,
@@ -200,7 +198,8 @@ describe('canonical dashboard worker retention updates', () => {
       context,
       reportActivation: true
     });
-    expect((await settled((message) => message.id === 5))?.data).toMatchObject({ changed: false });
+    expect((await settled((message) => message.id === 5))?.data).toMatchObject({ changed: true });
+    expect(new Headers(jsonlRequests[1]?.headers).get('If-None-Match')).toBeNull();
     dispatch({
       id: 6,
       operation: 'load-canonical-dashboard',
@@ -216,7 +215,7 @@ describe('canonical dashboard worker retention updates', () => {
       if (String(input).endsWith('/payload-hashes.txt')) return new Response(null, { status: 404 });
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
-      return new Headers(init?.headers).get('If-None-Match') === '"generation-b"'
+      return new Headers(init?.headers).get('If-None-Match') === '"generation-c"'
         ? new Response(null, { status: 304 })
         : new Response('');
     });
@@ -229,7 +228,7 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 7))?.data).toMatchObject({ changed: false });
-    expect(new Headers(jsonlRequests[2]?.headers).get('If-None-Match')).toBe('"generation-b"');
+    expect(new Headers(jsonlRequests[2]?.headers).get('If-None-Match')).toBe('"generation-c"');
 
     dispatch({
       id: 8,
