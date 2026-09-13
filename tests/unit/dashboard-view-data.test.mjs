@@ -10,9 +10,13 @@ test("downloads canonical deployed dashboard inputs", async () => {
   const requested = [];
   const fetcher = async (url) => {
     requested.push(String(url));
+    const content = String(url).endsWith(".jsonl") ? '{"kind":"run"}\n' : '{"repositories":[]}';
     return {
       ok: true,
-      text: async () => String(url).endsWith(".jsonl") ? '{"kind":"run"}\n' : '{"repositories":[]}',
+      body: new Blob([content]).stream(),
+      text: async () => {
+        throw new Error("response must be streamed");
+      },
     };
   };
 

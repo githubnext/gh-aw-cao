@@ -1,5 +1,7 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { pipeline } from "node:stream/promises";
 
 export async function downloadDeployedDashboardData(destination, sourceUrl, fetcher = fetch) {
   const inventoryUrl = new URL("inventory-sources.json", sourceUrl);
@@ -15,9 +17,11 @@ export async function downloadDeployedDashboardData(destination, sourceUrl, fetc
       `Unable to download deployed dashboard inventory: HTTP ${inventoryResponse.status}.`,
     );
   }
+  if (!logsResponse.body) throw new Error("Deployed dashboard data response has no body.");
+  if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
   await mkdir(destination, { recursive: true });
   await Promise.all([
-    writeFile(join(destination, "gh-aw-logs.jsonl"), await logsResponse.text()),
-    writeFile(join(destination, "inventory-sources.json"), await inventoryResponse.text()),
+    pipeline(logsResponse.body, createWriteStream(join(destination, "gh-aw-logs.jsonl"))),
+    pipeline(inventoryResponse.body, createWriteStream(join(destination, "inventory-sources.json"))),
   ]);
 }
