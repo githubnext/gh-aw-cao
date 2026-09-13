@@ -430,9 +430,8 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
 }
 
 /**
- * Executes declared queries against already loaded logical sources.
- * Queries are executed in declaration order so a query may consume an
- * earlier query's output.
+ * Creates lazy declared queries over already loaded logical sources.
+ * Each query and its dependencies execute when that result is first consumed.
  *
  * @param {unknown} definitions
  * @param {Record<string, LogicalSourceInput>} sources
@@ -471,9 +470,8 @@ export function executeDashboardQueries(definitions, sources, requested, options
 }
 
 /**
- * Recompiles one requested query and its dependencies in an isolated working
- * set. Shared dependencies may be recomputed for another requested query so
- * completed result graphs do not accumulate in worker memory.
+ * Compiles one consumed query and its dependencies into a shared working set
+ * so dependencies are materialized at most once per batch.
  *
  * @param {string} name
  * @param {Map<string, DashboardQuery>} index
