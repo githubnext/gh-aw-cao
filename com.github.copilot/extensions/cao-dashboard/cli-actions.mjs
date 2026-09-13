@@ -15,13 +15,18 @@ const allowedCommandPrefixes = [
   {
     tokens: ["gh", "aw"],
     minimumArguments: 1,
+    usage: "gh aw <command>",
   },
   {
     tokens: ["gh", "workflow", "run"],
     minimumArguments: 1,
     requiresOperand: true,
+    usage: "gh workflow run <workflow>",
   },
 ];
+const allowedCommandUsage = allowedCommandPrefixes
+  .map(({ usage }) => `"${usage}"`)
+  .join(" or ");
 
 export async function resolveGhAwCompilerVersion(workingDirectory = process.cwd()) {
   let configuration;
@@ -95,7 +100,7 @@ export function parseDashboardCommand(command) {
   });
   if (!isAllowed) {
     throw new Error(
-      'CLI action command must be an explicit "gh aw <command>" or "gh workflow run <workflow>" invocation.',
+      `CLI action command must be an explicit ${allowedCommandUsage} invocation.`,
     );
   }
   return tokens;
