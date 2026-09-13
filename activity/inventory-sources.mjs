@@ -25,6 +25,25 @@ function source(name, rows, generatedAt) {
   return { source: name, rows, metadata: metadata(name, generatedAt) };
 }
 
+function repositoryRows(controlSettings, repository, generatedAt) {
+  const allowedRepositories = Array.isArray(controlSettings.allowed_repositories)
+    && controlSettings.allowed_repositories.length > 0
+    ? controlSettings.allowed_repositories
+    : [repository];
+  const repositories = new Map();
+  for (const candidate of allowedRepositories) {
+    const [organization, name, ...extra] = String(candidate).trim().split("/");
+    if (!organization || !name || extra.length > 0) continue;
+    repositories.set(`${organization}/${name}`.toLowerCase(), {
+      organization,
+      repository: name,
+      "repository-name": name,
+      "observed-at": generatedAt,
+    });
+  }
+  return [...repositories.values()];
+}
+
 function packageRows(inventory, controlSettings, generatedAt) {
   const bundles = new Map((inventory.bundles || []).map((bundle) => [
     String(bundle.controlPackage || bundle.id || "").trim(),
@@ -206,15 +225,9 @@ export function buildInventoryDashboardSources({
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
-  const [organization, repositoryName] = repository.split("/");
   return {
     packages: source("packages", packageRows(inventory, controlSettings, generatedAt), generatedAt),
-    repositories: source("repositories", [{
-      organization,
-      repository: repositoryName,
-      "repository-name": repositoryName,
-      "observed-at": generatedAt,
-    }], generatedAt),
+    repositories: source("repositories", repositoryRows(controlSettings, repository, generatedAt), generatedAt),
     workflows: source(
       "workflows",
       workflowRows(inventory, controlSettings, repository, generatedAt),
