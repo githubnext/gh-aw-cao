@@ -1999,7 +1999,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
      than the full-view shell allows. While the menu is open the header, shell, and root stop
      clipping so the menu paints over the page content instead of being cut off by it. The
      collapse-on-scroll state keeps its clip because the menu collapses away with the header. */
-  .dashboard-root.dashboard-full-view:not(.dashboard-full-view-scrolled) .org-sidebar:has(.mobile-nav-menu[open]) { max-height: none; overflow: visible; }
+  .dashboard-root.dashboard-full-view:not(.dashboard-full-view-scrolled) .org-sidebar:has(.mobile-nav-menu[open]) { overflow: visible; }
   .dashboard-root.dashboard-full-view:not(.dashboard-full-view-scrolled):has(.mobile-nav-menu[open]), .dashboard-root.dashboard-full-view:not(.dashboard-full-view-scrolled):has(.mobile-nav-menu[open]) .app-shell { overflow: visible; }
   .dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }
   .sidebar-header { position: relative; margin: 0 0 8px; }
