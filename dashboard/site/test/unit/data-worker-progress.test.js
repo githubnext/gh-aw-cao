@@ -6,6 +6,23 @@ afterEach(() => {
 });
 
 describe('data-worker ingestion progress', () => {
+  it('reports zero processed records before the first JSONL record is read', () => {
+    vi.useFakeTimers();
+    const postMessage = vi.fn();
+    const progress = startIngestionProgress({ postMessage });
+
+    vi.advanceTimersByTime(3_000);
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'notification',
+      notification: expect.objectContaining({
+        message: 'Ingesting data... 0 records processed.',
+        duration: 0
+      })
+    });
+    progress.complete();
+  });
+
   it('shows progress after three seconds, updates every second, and dismisses it when complete', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
@@ -21,7 +38,7 @@ describe('data-worker ingestion progress', () => {
       type: 'notification',
       notification: expect.objectContaining({
         id: expect.stringMatching(/^ingestion-progress-/),
-        message: 'Ingesting data... 42 records ingested.',
+        message: 'Ingesting data... 42 records processed.',
         duration: 0
       })
     });
@@ -31,7 +48,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Ingesting data... 84 records ingested.'
+        message: 'Ingesting data... 84 records processed.'
       })
     });
 
