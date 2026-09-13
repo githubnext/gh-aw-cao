@@ -23,6 +23,7 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
 test("CLI actions reject commands outside supported GitHub CLI commands", () => {
   assert.throws(() => parseDashboardCommand("gh api user"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh workflow view"), /must be an explicit/);
+  assert.throws(() => parseDashboardCommand('gh workflow run ""'), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh workflow run --repo octo/example"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("sh -c 'gh aw compile'"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh aw compile\nwhoami"), /single line/);

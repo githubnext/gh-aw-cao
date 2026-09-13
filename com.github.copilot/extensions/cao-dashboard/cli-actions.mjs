@@ -90,7 +90,8 @@ export function parseDashboardCommand(command) {
     const commandArguments = tokens.slice(allowed.tokens.length);
     return allowed.tokens.every((token, index) => tokens[index] === token)
       && commandArguments.length >= allowed.minimumArguments
-      && (!allowed.requiresOperand || !commandArguments[0].startsWith("-"));
+      && (!allowed.requiresOperand
+        || (commandArguments[0].length > 0 && !commandArguments[0].startsWith("-")));
   });
   if (!isAllowed) {
     throw new Error(
