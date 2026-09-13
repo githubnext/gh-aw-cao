@@ -337,12 +337,23 @@ describe('gh-aw logs adapter', () => {
     ]);
   });
 
-  it('rejects unsupported cached JSONL schema versions and kinds', () => {
+  it('rejects unsupported cached JSONL schema versions', () => {
     expect(() => adaptCachedGhAwJsonl(
       '{"schema_version":3,"kind":"run","run":{}}\n'
     )).toThrow('Unsupported gh-aw JSONL schema version');
-    expect(() => adaptCachedGhAwJsonl(
-      '{"schema_version":2,"kind":"unknown"}\n'
-    )).toThrow('Unsupported gh-aw JSONL kind');
+  });
+
+  it('ignores unsupported cached JSONL kinds in string and binary input', () => {
+    const content = [
+      '{"schema_version":2,"kind":"unknown","value":"ignored"}',
+      '{"schema_version":2,"kind":"github_api_rate_limit","rate_limit":{"host":"github.com"}}'
+    ].join('\n');
+
+    for (const input of [content, new TextEncoder().encode(content)]) {
+      expect(adaptCachedGhAwJsonl(input)).toMatchObject({
+        records: 1,
+        rateLimits: 1
+      });
+    }
   });
 });

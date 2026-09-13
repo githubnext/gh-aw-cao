@@ -519,10 +519,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
           );
         }
         const kind = requiredString(envelope.kind, `gh-aw JSONL line ${lineNumber}.kind`);
-        if (!knownKinds.has(kind)) {
-          throw new TypeError(`Unsupported gh-aw JSONL kind at line ${lineNumber}: ${kind}`);
-        }
-        yield { envelope, line: lineNumber };
+        if (knownKinds.has(kind)) yield { envelope, line: lineNumber };
       }
       if (end === -1) break;
       start = end + 1;
