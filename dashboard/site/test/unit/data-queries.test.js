@@ -668,6 +668,32 @@ describe('declarative dashboard queries', () => {
       ]);
     });
 
+  it('caps event inspection at the query output limit instead of becoming unavailable', () => {
+      const events = {
+        source: 'events',
+        rows: Array.from(
+          { length: DASHBOARD_QUERY_LIMITS['max-output-rows'] + 1 },
+          (_, index) => ({
+            event: `event-${String(index).padStart(6, '0')}`,
+            'event-timestamp': new Date(Date.UTC(2026, 8, 1) + index).toISOString()
+          })
+        ),
+        metadata: metadata('events')
+      };
+      const runs = { source: 'runs', rows: [], metadata: metadata('runs') };
+
+      const derived = executeDashboardQueries(
+        dashboardQueries,
+        { events, runs },
+        ['event-inspection']
+      );
+
+      expect(derived['event-inspection'].metadata.availability).toBe('available');
+      expect(derived['event-inspection'].rows).toHaveLength(DASHBOARD_QUERY_LIMITS['max-output-rows']);
+      expect(derived['event-inspection'].rows.at(0)?.event).toBe('event-100000');
+      expect(derived['event-inspection'].rows.at(-1)?.event).toBe('event-000001');
+    });
+
   it('computes the Repositories and Packages view payloads from dashboard queries', () => {
     const repositories = {
       source: 'repositories',
