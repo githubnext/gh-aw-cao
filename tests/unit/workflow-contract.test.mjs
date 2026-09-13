@@ -1091,9 +1091,11 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /gh api --paginate --slurp/);
   assert.match(agenticSource, /Keep the existing GitHub-generated notes intact/);
   assert.equal(config.checkout["fetch-depth"], 0);
-  assert.match(agenticSource, /git rev-list "refs\/tags\/\$PREVIOUS_TAG\.\.refs\/tags\/\$RELEASE_TAG"/);
+  assert.match(agenticSource, /COMMIT_RANGE="refs\/tags\/\$PREVIOUS_TAG\.\.refs\/tags\/\$RELEASE_TAG"/);
+  assert.match(agenticSource, /COMMIT_RANGE="refs\/tags\/\$RELEASE_TAG"/);
+  assert.match(agenticSource, /git rev-list "\$COMMIT_RANGE"/);
   assert.match(agenticSource, /commits\/\$commit_sha\/pulls\?per_page=100/);
-  assert.match(agenticSource, /git diff --name-only --diff-filter=AM/);
+  assert.match(agenticSource, /git diff --name-only --diff-filter=AMR/);
   assert.match(agenticSource, /release_adrs\.md/);
   assert.match(agenticSource, /Review every ADR in `release_adrs\.md`/);
   assert.match(agenticSource, /\[ ! -L "\$adr_path" \]/);

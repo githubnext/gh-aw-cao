@@ -319,37 +319,41 @@ steps:
       if [ -n "$PREVIOUS_TAG" ]; then
         git rev-parse --verify "refs/tags/$PREVIOUS_TAG" >/dev/null
         git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null
-        git rev-list "refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG" |
-          while IFS= read -r commit_sha; do
-            if ! [[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]; then
-              echo "Invalid commit SHA in release range." >&2
-              exit 1
-            fi
-            COMMIT_PRS=$(gh api --paginate --slurp \
-              "/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100" \
-              --jq 'add | map({
-                number,
-                title,
-                author: {login: .user.login},
-                labels: (.labels | map({name})),
-                mergedAt: .merged_at,
-                url: .html_url,
-                body
-              })')
-            jq --argjson prs "$COMMIT_PRS" '. + $prs | unique_by(.number)' \
-              /tmp/gh-aw/agent/release-data/pull_requests.json \
-              > /tmp/gh-aw/agent/release-data/pull_requests.next.json
-            mv /tmp/gh-aw/agent/release-data/pull_requests.next.json \
-              /tmp/gh-aw/agent/release-data/pull_requests.json
-          done
-        git diff --name-only --diff-filter=AM \
+        COMMIT_RANGE="refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG"
+        git diff --name-only --diff-filter=AMR \
           "refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG" \
           -- 'adr/*.md' 'docs/adr/*.md' \
           > /tmp/gh-aw/agent/release-data/adr_paths.txt
       else
+        git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null
+        COMMIT_RANGE="refs/tags/$RELEASE_TAG"
         git ls-files -- 'adr/*.md' 'docs/adr/*.md' \
           > /tmp/gh-aw/agent/release-data/adr_paths.txt
       fi
+
+      git rev-list "$COMMIT_RANGE" |
+        while IFS= read -r commit_sha; do
+          if ! [[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid commit SHA in release range." >&2
+            exit 1
+          fi
+          COMMIT_PRS=$(gh api --paginate --slurp \
+            "/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100" \
+            --jq 'add | map({
+              number,
+              title,
+              author: {login: .user.login},
+              labels: (.labels | map({name})),
+              mergedAt: .merged_at,
+              url: .html_url,
+              body
+            })')
+          jq --argjson prs "$COMMIT_PRS" '. + $prs | unique_by(.number)' \
+            /tmp/gh-aw/agent/release-data/pull_requests.json \
+            > /tmp/gh-aw/agent/release-data/pull_requests.next.json
+          mv /tmp/gh-aw/agent/release-data/pull_requests.next.json \
+            /tmp/gh-aw/agent/release-data/pull_requests.json
+        done
 
       : > /tmp/gh-aw/agent/release-data/release_adrs.md
       WORKSPACE_ROOT=$(realpath -- "$GITHUB_WORKSPACE")
