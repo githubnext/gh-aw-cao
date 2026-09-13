@@ -25,6 +25,135 @@ function source(name, rows, generatedAt) {
   return { source: name, rows, metadata: metadata(name, generatedAt) };
 }
 
+function repositoryRows(discoveredRepositories, repository, generatedAt) {
+  const repositories = new Map();
+  for (const candidate of discoveredRepositories) {
+    const fullName = typeof candidate === "string" ? candidate : candidate?.full_name;
+    const [organization, name, ...extra] = String(fullName || "").trim().split("/");
+    if (!organization || !name || extra.length > 0) continue;
+    repositories.set(`${organization}/${name}`.toLowerCase(), {
+      organization,
+      repository: name,
+      "repository-name": name,
+      ...(typeof candidate === "object" && candidate
+        ? { visibility: candidate.visibility || (candidate.private === true ? "private" : "public") }
+        : {}),
+      "observed-at": generatedAt,
+    });
+  }
+  const [organization, name, ...extra] = repository.trim().split("/");
+  if (organization && name && extra.length === 0 && !repositories.has(repository.toLowerCase())) {
+    repositories.set(repository.toLowerCase(), {
+      organization,
+      repository: name,
+      "repository-name": name,
+      "observed-at": generatedAt,
+    });
+  }
+  return [...repositories.values()];
+}
+
+async function githubResponse(fetchImplementation, apiUrl, token, path) {
+  const response = await fetchImplementation(`${apiUrl.replace(/\/$/, "")}/${path}`, {
+    headers: {
+      accept: "application/vnd.github+json",
+      authorization: ["Bearer", token].join(" "),
+      "x-github-api-version": "2022-11-28",
+    },
+  });
+  return response;
+}
+
+export async function discoverRepositories(controlSettings, {
+  fetchImplementation = fetch,
+  token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
+  apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
+  controlRepository = process.env.GITHUB_REPOSITORY || "",
+} = {}) {
+  if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover repositories");
+  const maximum = Number(controlSettings.policy_document?.["control-plane"]?.inventory?.["max-scan-repositories"] ?? 1000);
+  const allowedRepositories = Array.isArray(controlSettings.allowed_repositories)
+    ? controlSettings.allowed_repositories
+    : [];
+  if (allowedRepositories.length > 0) {
+    if (allowedRepositories.length > maximum) {
+      throw new Error("Allowed repositories exceed control-plane.inventory.max-scan-repositories");
+    }
+    const repositories = [];
+    for (const repository of allowedRepositories) {
+      const response = await githubResponse(fetchImplementation, apiUrl, token, `repos/${repository}`);
+      if (!response.ok) throw new Error(`Unable to discover allowed repository ${repository}: ${response.status}`);
+      repositories.push(await response.json());
+    }
+    return repositories;
+  }
+
+  const repositories = [];
+  for (const owner of controlSettings.allowed_owners ?? []) {
+    if (String(owner).toLowerCase() !== controlRepository.split("/", 1)[0]?.toLowerCase()) {
+      throw new Error(`Cannot completely discover repositories for ${owner} with the control repository installation`);
+    }
+    let endpoint = `orgs/${owner}/repos`;
+    let installation = false;
+    for (let page = 1; repositories.length < maximum; page += 1) {
+      let response = await githubResponse(
+        fetchImplementation,
+        apiUrl,
+        token,
+        `${endpoint}?per_page=100&type=all&page=${page}`,
+      );
+      if (page === 1 && response.status === 404) {
+        endpoint = `installation/repositories`;
+        installation = true;
+        response = await githubResponse(
+          fetchImplementation,
+          apiUrl,
+          token,
+          `${endpoint}?per_page=100&page=${page}`,
+        );
+        if (!response.ok) {
+          endpoint = `users/${owner}/repos`;
+          installation = false;
+          response = await githubResponse(
+            fetchImplementation,
+            apiUrl,
+            token,
+            `${endpoint}?per_page=100&type=owner&page=${page}`,
+          );
+        }
+      }
+      if (!response.ok) throw new Error(`Unable to discover repositories for ${owner}: ${response.status}`);
+      let payload = await response.json();
+      let pageRepositories = installation ? payload?.repositories : payload;
+      if (!Array.isArray(pageRepositories)) throw new Error(`Repository discovery returned invalid data for ${owner}`);
+      let batch = installation
+        ? pageRepositories.filter((repository) => (
+          repository.full_name?.split("/", 1)[0]?.toLowerCase() === String(owner).toLowerCase()
+        ))
+        : pageRepositories;
+      if (installation && page === 1 && batch.length === 0) {
+        endpoint = `users/${owner}/repos`;
+        installation = false;
+        response = await githubResponse(
+          fetchImplementation,
+          apiUrl,
+          token,
+          `${endpoint}?per_page=100&type=owner&page=${page}`,
+        );
+        if (!response.ok) throw new Error(`Unable to discover repositories for ${owner}: ${response.status}`);
+        payload = await response.json();
+        pageRepositories = payload;
+        if (!Array.isArray(pageRepositories)) throw new Error(`Repository discovery returned invalid data for ${owner}`);
+        batch = pageRepositories;
+      }
+      repositories.push(...batch.slice(0, maximum - repositories.length));
+      if (pageRepositories.length < 100) break;
+    }
+    if (repositories.length >= maximum) break;
+  }
+  return repositories;
+}
+
 function packageRows(inventory, controlSettings, generatedAt) {
   const bundles = new Map((inventory.bundles || []).map((bundle) => [
     String(bundle.controlPackage || bundle.id || "").trim(),
@@ -203,18 +332,13 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
 export function buildInventoryDashboardSources({
   inventory = {},
   controlSettings = {},
+  discoveredRepositories = [],
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
-  const [organization, repositoryName] = repository.split("/");
   return {
     packages: source("packages", packageRows(inventory, controlSettings, generatedAt), generatedAt),
-    repositories: source("repositories", [{
-      organization,
-      repository: repositoryName,
-      "repository-name": repositoryName,
-      "observed-at": generatedAt,
-    }], generatedAt),
+    repositories: source("repositories", repositoryRows(discoveredRepositories, repository, generatedAt), generatedAt),
     workflows: source(
       "workflows",
       workflowRows(inventory, controlSettings, repository, generatedAt),
@@ -238,9 +362,10 @@ export async function main() {
       readFile(inventoryPath, "utf8").then(JSON.parse),
       readFile(controlSettingsPath, "utf8").then(JSON.parse),
     ]);
-    const sources = buildInventoryDashboardSources({ inventory, controlSettings, repository });
+    const discoveredRepositories = await discoverRepositories(controlSettings);
+    const sources = buildInventoryDashboardSources({ inventory, controlSettings, discoveredRepositories, repository });
     await writeFile(path.resolve(outputPath), `${JSON.stringify(sources, null, 2)}\n`);
-    log.info`Wrote ${sources.packages.rows.length} packages and ${sources.workflows.rows.length} workflows`;
+    log.info`Wrote ${sources.repositories.rows.length} repositories, ${sources.packages.rows.length} packages, and ${sources.workflows.rows.length} workflows`;
   } finally {
     log.endGroup();
   }

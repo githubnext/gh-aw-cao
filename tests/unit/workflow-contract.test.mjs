@@ -3286,7 +3286,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.doesNotMatch(workflow, /pull-requests: read/);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 2);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
   assert.doesNotMatch(workflow, /github-script|ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Save activity cache/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);
