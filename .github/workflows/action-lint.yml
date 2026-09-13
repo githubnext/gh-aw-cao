@@ -4,12 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/actions/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
       - ".github/workflows/**"
 
 permissions:
   contents: read
   issues: write
+  pull-requests: write
 
 jobs:
   lint:
@@ -53,7 +56,7 @@ jobs:
           fi
 
       - name: Update lint issue
-        if: always() && steps.lint.outcome != 'cancelled'
+        if: always() && github.event_name == 'push' && steps.lint.outcome != 'cancelled'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           LINT_FAILED: ${{ steps.lint.outcome == 'failure' }}
@@ -114,6 +117,82 @@ jobs:
             ].join('\n')
 
             await github.rest.issues.create({ owner, repo, title, body })
+
+      - name: Update pull request comment
+        if: always() && github.event_name == 'pull_request' && steps.lint.outcome != 'cancelled'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          LINT_FAILED: ${{ steps.lint.outcome == 'failure' }}
+        with:
+          script: |
+            const fs = require('fs')
+            const marker = '<!-- github-actions-lint -->'
+            const { owner, repo } = context.repo
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            })
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            )
+
+            if (process.env.LINT_FAILED !== 'true') {
+              if (existing) {
+                await github.rest.issues.deleteComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                })
+              }
+              return
+            }
+
+            const escapeHtml = (value) => value
+              .replaceAll('&', '&amp;')
+              .replaceAll('<', '&lt;')
+              .replaceAll('>', '&gt;')
+            const output = (path) => {
+              try {
+                return escapeHtml(fs.readFileSync(path, 'utf8').slice(0, 25000))
+              } catch {
+                return 'No output was captured.'
+              }
+            }
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+            const body = [
+              marker,
+              '## GitHub Actions lint failures',
+              '',
+              `Workflow run: ${runUrl}`,
+              '',
+              'Generated `.lock.yml` files were excluded.',
+              '',
+              '<details><summary>actionlint output</summary><pre>',
+              output('/tmp/actionlint.txt'),
+              '</pre></details>',
+              '',
+              '<details><summary>zizmor output</summary><pre>',
+              output('/tmp/zizmor.txt'),
+              '</pre></details>',
+            ].join('\n')
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
 
       - name: Fail when lint problems are found
         if: steps.lint.outcome == 'failure'
