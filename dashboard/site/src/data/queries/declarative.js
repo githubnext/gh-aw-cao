@@ -512,10 +512,8 @@ function compileDashboardQuery(name, index, sources, defects, budget) {
  * @returns {LogicalSourceInput}
  */
 export function executeDashboardQuery(definition, sources, defect, budget) {
-  /** @type {LogicalSourceInput | undefined} */
-  let materialized;
   let queryBudget = budget;
-  const consume = () => (materialized ??= materializeDashboardQuery(
+  const consume = lazyValue(() => materializeDashboardQuery(
     definition,
     sources,
     defect,
@@ -593,27 +591,37 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
  * @param {() => T} consume
  */
 function defineLazyProperty(target, name, consume) {
+  const value = lazyValue(consume);
+  Object.defineProperty(target, name, {
+    enumerable: true,
+    get: value
+  });
+}
+
+/**
+ * @template T
+ * @param {() => T} consume
+ * @returns {() => T}
+ */
+function lazyValue(consume) {
   let state = 'pending';
   /** @type {T | undefined} */
   let value;
   /** @type {unknown} */
   let failure;
-  Object.defineProperty(target, name, {
-    enumerable: true,
-    get() {
-      if (state === 'pending') {
-        try {
-          value = consume();
-          state = 'resolved';
-        } catch (error) {
-          failure = error;
-          state = 'rejected';
-        }
+  return () => {
+    if (state === 'pending') {
+      try {
+        value = consume();
+        state = 'resolved';
+      } catch (error) {
+        failure = error;
+        state = 'rejected';
       }
-      if (state === 'rejected') throw failure;
-      return /** @type {T} */ (value);
     }
-  });
+    if (state === 'rejected') throw failure;
+    return /** @type {T} */ (value);
+  };
 }
 
 /**
