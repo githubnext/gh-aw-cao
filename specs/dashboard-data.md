@@ -210,12 +210,18 @@ Views MUST read only the active canonical generation. The completed implementati
 
 ```mermaid
 flowchart LR
-  logs["gh aw logs"] --> source["JSONL<br/>authoritative input"]
-  source --> sqlite["SQLite"]
-  sqlite --> agents["Agents"]
-  sqlite --> cli["CLI"]
-  source --> indexeddb["IndexedDB<br/>browser"]
-  indexeddb --> views["Dashboard views"]
+  inputs["Authoritative external inputs<br/>JSONL and inventory"] --> canonical["Shared adapters, identities,<br/>normalization, and validation"]
+
+  canonical --> sqlite["Native SQLite projection<br/>full local archive"]
+  sqlite --> headless["Agents and CLI"]
+
+  canonical --> worker["Dashboard data Web Worker"]
+  worker --> indexeddb["IndexedDB<br/>bounded disposable browser cache"]
+  indexeddb --> queries["Canonical query layer<br/>indexed and page-scoped"]
+  language["Dashboard Language<br/>declarative queries"] --> queries
+  queries --> views["Dashboard views"]
+
+  contract["Browser storage performance contract<br/>ingestion, query, and responsiveness SLOs"] -. guards .-> worker
 ```
 
 The SQLite and IndexedDB projections SHALL be independently reconstructable
@@ -233,7 +239,43 @@ Repository, Workflow, and Run summaries. They SHALL retain detailed Job,
 Session, and Event records for the bounded 30-day operational window. Expiring
 detail MUST NOT remove its retained Run or the Run's structural parents.
 
-## 5.1 Completeness and archives
+## 5.1 Browser storage performance contract
+
+The browser projection MUST satisfy an executable performance contract in a
+real browser using native IndexedDB from the dashboard data Web Worker. The
+contract corpus SHALL contain 100,000 repositories, 100,000 workflows, 200,000
+runs, and representative retained Job, Session, and Event detail.
+
+The contract SHALL enforce these service-level objectives:
+
+| Operation | Budget |
+| --- | ---: |
+| Cold canonical replacement | 10 seconds |
+| Warm database open, p95 | 200 milliseconds |
+| Warm indexed canonical query, p95 | 200 milliseconds |
+| Page-scoped route projection, p95 | 500 milliseconds |
+| Main-thread long task during storage work | 50 milliseconds |
+
+Measurements SHALL exclude at least five warmup iterations and report the
+median and p95 of at least twenty measured iterations. Route results MUST remain
+bounded by the requested page size. The benchmark SHALL publish
+machine-readable evidence for trend analysis.
+
+One noisy result MUST NOT justify changing browser storage engines. Browser
+SQLite SHOULD be evaluated only after two consecutive contract failures and
+after indexed access, cursor pagination, and query pushdown fail to restore the
+budgets. A SQLite-WASM prototype MUST then demonstrate at least a twofold
+improvement on the failing workload and pass Chromium, Firefox, WebKit, reload,
+quota, corruption-recovery, and multi-tab tests before replacing IndexedDB.
+SQLite and IndexedDB MUST NOT operate as synchronized canonical browser stores.
+
+The implementation contract is run from `dashboard/site/` with:
+
+```bash
+npm run test:storage-performance
+```
+
+## 5.2 Completeness and archives
 
 The scheduled Activity collection SHALL be treated as a rolling operational
 snapshot, not as a complete historical archive. Completeness SHALL be reported
