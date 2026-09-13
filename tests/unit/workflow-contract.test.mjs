@@ -23,6 +23,15 @@ function script(name, directory) {
   return readFileSync(join(directory, name), "utf8").replace(/\r?\n$/, "");
 }
 
+test("Actions lint failures create new pull request comments without comment lookup", () => {
+  const source = workflow("action-lint.yml");
+  const pullRequestReporter = source.slice(source.indexOf("- name: Create pull request comment"));
+
+  assert.match(pullRequestReporter, /needs\.lint\.outputs\.failed == 'true'/);
+  assert.match(pullRequestReporter, /github\.rest\.issues\.createComment/);
+  assert.doesNotMatch(pullRequestReporter, /listComments|updateComment|deleteComment/);
+});
+
 test("packages and repository workflows pin the supported gh-aw version", () => {
   const manifests = [
     "aw.yml",
