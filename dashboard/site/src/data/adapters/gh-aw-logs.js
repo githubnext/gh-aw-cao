@@ -571,6 +571,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   const sourceSchemaVersion = cachedJsonlExpression.sourceSchemaVersion;
   const knownKinds = new Set(Object.keys(cachedJsonlExpression.variants));
   const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
   const hasher = createCachedJsonlPayloadHasher();
   const accumulator = createCachedGhAwJsonlAccumulator(options);
   let pending = '';
@@ -592,14 +593,16 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
     if (knownKinds.has(kind)) accumulator.accept({ envelope, line: lineNumber });
   };
   for await (const chunk of chunks) {
-    const bytes = typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk;
+    const bytes = typeof chunk === 'string' ? encoder.encode(chunk) : chunk;
     hasher.update(bytes);
     pending += decoder.decode(bytes, { stream: true });
+    let start = 0;
     let newline;
-    while ((newline = pending.indexOf('\n')) !== -1) {
-      accept(pending.slice(0, newline));
-      pending = pending.slice(newline + 1);
+    while ((newline = pending.indexOf('\n', start)) !== -1) {
+      accept(pending.slice(start, newline));
+      start = newline + 1;
     }
+    if (start > 0) pending = pending.slice(start);
   }
   pending += decoder.decode();
   if (pending) accept(pending);
