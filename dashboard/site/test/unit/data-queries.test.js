@@ -1357,6 +1357,7 @@ describe('declarative dashboard queries', () => {
         workflows,
         'broken-source': {
           source: 'broken-source',
+          /** @returns {Record<string, unknown>[]} */
           get rows() {
             throw new Error('source read failed');
           },
