@@ -127,7 +127,7 @@ test("control policy requires a gh-aw compiler version for control planes", () =
   assert.match(result.stderr, /gh-aw-version is required for a control plane/);
 });
 
-test("checked-in control policy selects seven repositories with live Dependabot and local SelfCare authority", () => {
+test("checked-in control policy selects six repositories with live Dependabot and local SelfCare authority", () => {
   const policy = parsePolicy(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const repositories = [
     "github/gh-aw",
@@ -136,11 +136,10 @@ test("checked-in control policy selects seven repositories with live Dependabot 
     "github/gh-aw-actions",
     "github/gh-aw-threat-detection",
     "githubnext/gh-aw-cao",
-    "githubnext/gh-aw-workshop",
   ];
 
   assert.deepEqual(policy["control-plane"].scope["allowed-repositories"], repositories);
-  assert.equal(policy["control-plane"].defaults["max-repositories"], 7);
+  assert.equal(policy["control-plane"].defaults["max-repositories"], 6);
   assert.equal(policy["control-plane"].packages.dashboard.deploy, false);
 
   for (const targetRepository of repositories) {
@@ -151,7 +150,7 @@ test("checked-in control policy selects seven repositories with live Dependabot 
       targetRepository,
     });
     assert.equal(effective.safe_output_mode, "live");
-    assert.equal(effective.max_repositories, 7);
+    assert.equal(effective.max_repositories, 6);
   }
 
   const selfCare = effectivePolicy(policy, {
