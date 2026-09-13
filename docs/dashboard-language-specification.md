@@ -799,10 +799,12 @@ The optional table-column field `display` is `text`, `status`, `grader-status`, 
 
 A dashboard CLI action placement is `toolbar`, `settings`, `view`, or `row`. A `view` action is rendered only by the view that references it and is not duplicated in Settings or the global toolbar.
 
-A dashboard CLI action command is a single-line `gh aw ...` invocation or a
-`gh workflow run <workflow> ...` invocation for triggering a workflow that
-declares `workflow_dispatch`. Presenters execute the command directly without a
-shell and require explicit approval for every invocation.
+A dashboard CLI action command is a single-line GitHub CLI invocation.
+Presenters recognize `gh aw ...` and `gh workflow run <workflow> ...` by
+default; the latter triggers a workflow that declares `workflow_dispatch`.
+Control repositories may declare additional literal GitHub CLI prefixes in
+`control-plane.web.allowed-command-prefixes`. Presenters execute commands
+directly without a shell and require explicit approval for every invocation.
 
 A list view declares `list.style: cards`, a canonical Octicon `list.icon`, and one view-placed dashboard CLI action through `list.action`. It encodes a non-empty `columns` sequence: the first column is the card title and remaining columns are labeled details. Optional row actions use the same declarative action contract as tables. The view-level action is rendered once beside the list description; each matching row action is rendered on its card. Empty and unavailable states remain distinct.
 

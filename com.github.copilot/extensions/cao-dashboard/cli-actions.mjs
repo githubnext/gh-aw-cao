@@ -10,6 +10,8 @@ const timeoutMilliseconds = 5 * 60 * 1000;
 const ghAwInstallerUrl =
   "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh";
 const ghAwVersionPattern = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
+const commandPrefixPattern =
+  /^gh [A-Za-z0-9][A-Za-z0-9-]*(?: [A-Za-z0-9][A-Za-z0-9._:/-]*)*$/;
 const caoConfigurationPath = join(".github", "workflows", "cao.json");
 const allowedCommandPrefixes = [
   {
@@ -24,9 +26,37 @@ const allowedCommandPrefixes = [
     usage: "gh workflow run <workflow>",
   },
 ];
-const allowedCommandUsage = allowedCommandPrefixes
-  .map(({ usage }) => `"${usage}"`)
-  .join(" or ");
+
+export async function resolveAdditionalCommandPrefixes(workingDirectory = process.cwd()) {
+  let configuration;
+  try {
+    configuration = JSON.parse(
+      await readFile(join(workingDirectory, caoConfigurationPath), "utf8"),
+    );
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw new Error(
+      "Could not read dashboard command prefixes from .github/workflows/cao.json.",
+    );
+  }
+  const prefixes =
+    configuration["control-plane"]?.web?.["allowed-command-prefixes"] ?? [];
+  if (
+    !Array.isArray(prefixes)
+    || prefixes.length > 20
+    || prefixes.some((prefix) =>
+      typeof prefix !== "string"
+      || prefix.length > 200
+      || !commandPrefixPattern.test(prefix)
+    )
+    || new Set(prefixes).size !== prefixes.length
+  ) {
+    throw new Error(
+      "control-plane.web.allowed-command-prefixes must contain valid GitHub CLI command prefixes.",
+    );
+  }
+  return prefixes;
+}
 
 export async function resolveGhAwCompilerVersion(workingDirectory = process.cwd()) {
   let configuration;
@@ -42,7 +72,7 @@ export async function resolveGhAwCompilerVersion(workingDirectory = process.cwd(
   return version;
 }
 
-export function parseDashboardCommand(command) {
+export function parseDashboardCommand(command, additionalCommandPrefixes = []) {
   if (typeof command !== "string" || command.length === 0) {
     throw new Error("CLI action command must be a non-empty string.");
   }
@@ -91,7 +121,13 @@ export function parseDashboardCommand(command) {
   }
   if (escaping || quote) throw new Error("CLI action command contains an incomplete escape or quote.");
   if (tokenStarted) tokens.push(token);
-  const isAllowed = allowedCommandPrefixes.some((allowed) => {
+  const configuredPrefixes = additionalCommandPrefixes.map((prefix) => ({
+    tokens: prefix.split(" "),
+    minimumArguments: 0,
+    usage: prefix,
+  }));
+  const effectivePrefixes = [...allowedCommandPrefixes, ...configuredPrefixes];
+  const isAllowed = effectivePrefixes.some((allowed) => {
     const commandArguments = tokens.slice(allowed.tokens.length);
     return allowed.tokens.every((token, index) => tokens[index] === token)
       && commandArguments.length >= allowed.minimumArguments
@@ -99,6 +135,9 @@ export function parseDashboardCommand(command) {
         || (commandArguments[0].length > 0 && !commandArguments[0].startsWith("-")));
   });
   if (!isAllowed) {
+    const allowedCommandUsage = effectivePrefixes
+      .map(({ usage }) => `"${usage}"`)
+      .join(" or ");
     throw new Error(
       `CLI action command must be an explicit ${allowedCommandUsage} invocation.`,
     );
@@ -247,7 +286,9 @@ export async function executeDashboardCommand({
   onOutput,
   streamCommand = runDashboardCommandStreaming,
 }) {
-  const tokens = parseDashboardCommand(command);
+  const additionalCommandPrefixes =
+    await resolveAdditionalCommandPrefixes(workingDirectory);
+  const tokens = parseDashboardCommand(command, additionalCommandPrefixes);
   const resolvedGithubToken = await resolveGithubToken({
     githubToken,
     ghExecutable,

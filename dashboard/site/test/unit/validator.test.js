@@ -39,7 +39,7 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
-  it('accepts only explicit gh aw and workflow dispatch CLI actions', () => {
+  it('accepts explicit GitHub CLI actions for runtime allowlist enforcement', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
       id: 'compile-workflows',
@@ -62,21 +62,34 @@ describe('dashboard document validation', () => {
     addedAction.command = 'gh workflow run maintenance.yml --repo {{repository}}';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
-    addedAction.command = 'gh api user';
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
-    expect(rejected.errors).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        message: 'CLI action command must start with "gh aw" or "gh workflow run <workflow>".'
-      })
-    ]));
+    addedAction.command = 'gh issue create --repo {{repository}}';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     addedAction.command = 'gh workflow run --repo octo/example';
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({
-          message: 'CLI action command must start with "gh aw" or "gh workflow run <workflow>".'
+          message: 'CLI action workflow dispatch command must identify a workflow.'
+        })
+      ])
+    });
+
+    addedAction.command = 'curl https://example.com';
+    const rejected = validateDashboardDocument(JSON.stringify(document));
+    expect(rejected.ok).toBe(false);
+    expect(rejected.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        message: 'CLI action command must start with an explicit GitHub CLI command.'
+      })
+    ]));
+
+    addedAction.command = 'gh --version';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'CLI action command must start with an explicit GitHub CLI command.'
         })
       ])
     });

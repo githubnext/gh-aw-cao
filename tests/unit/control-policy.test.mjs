@@ -107,6 +107,31 @@ test("control policy schema accepts config-defined package and worker catalogs",
   assert.equal(validate(JSON.stringify(policy)).status, 0);
 });
 
+test("control policy accepts additional dashboard command prefixes", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    "allowed-command-prefixes": ["gh issue create", "gh pr create"],
+  };
+
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  assert.equal(
+    schema.$defs.web.properties["allowed-command-prefixes"].maxItems,
+    20,
+  );
+});
+
+test("control policy rejects unsafe dashboard command prefixes", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].web = {
+    "allowed-command-prefixes": ["curl https://example.com"],
+  };
+
+  const result = validate(JSON.stringify(policy));
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /allowed-command-prefixes has an invalid value/);
+});
+
 test("control policy rejects malformed gh-aw compiler versions", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["gh-aw-version"] = "latest";

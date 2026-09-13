@@ -91,11 +91,13 @@ dashboard:
           default: false
 ```
 
-Commands must be single-line `gh aw ...` or `gh workflow run <workflow> ...`
-invocations. The latter triggers workflows that declare `workflow_dispatch`.
-The canvas extension runs GitHub CLI directly without a shell and supplies the
-user-approved `GITHUB_TOKEN` as `GH_TOKEN` to that process. For `gh aw`
-commands, it also derives an ephemeral
+Commands must be single-line GitHub CLI invocations. `gh aw ...` and
+`gh workflow run <workflow> ...` are built in; the latter triggers workflows
+that declare `workflow_dispatch`. Control repositories may allow additional
+GitHub CLI prefixes through `control-plane.web.allowed-command-prefixes` in
+`.github/workflows/cao.json`. The canvas extension runs GitHub CLI directly
+without a shell and supplies the user-approved `GITHUB_TOKEN` as `GH_TOKEN` to
+that process. For `gh aw` commands, it also derives an ephemeral
 author and committer identity from the currently authenticated GitHub CLI user
 so pull-request actions can create commits without changing global or
 repository Git configuration. When `gh aw` is unavailable, an approved action first attempts

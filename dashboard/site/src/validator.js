@@ -607,10 +607,20 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             `${path}.command`
           ));
         }
-        if (!/^gh\s+(?:aw(?:\s|$)|workflow\s+run\s+(?!-)\S+)/.test(action.command)) {
+        if (!/^gh\s+[A-Za-z0-9][A-Za-z0-9-]*(?:\s|$)/.test(action.command)) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'CLI action command must start with "gh aw" or "gh workflow run <workflow>".',
+            'CLI action command must start with an explicit GitHub CLI command.',
+            `${path}.command`
+          ));
+        }
+        if (
+          /^gh\s+workflow\s+run(?:\s|$)/.test(action.command)
+          && !/^gh\s+workflow\s+run\s+(?!-)\S+/.test(action.command)
+        ) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action workflow dispatch command must identify a workflow.',
             `${path}.command`
           ));
         }

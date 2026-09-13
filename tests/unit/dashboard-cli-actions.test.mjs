@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
   ensureGhAwAvailable,
   executeDashboardCommand,
   parseDashboardCommand,
+  resolveAdditionalCommandPrefixes,
   resolveGhAwCompilerVersion,
 } from "../../com.github.copilot/extensions/cao-dashboard/cli-actions.mjs";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
@@ -18,6 +22,68 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
     parseDashboardCommand("gh aw compile --strict --name 'Release check'"),
     ["gh", "aw", "compile", "--strict", "--name", "Release check"],
   );
+});
+
+test("CLI actions accept configured GitHub CLI command prefixes", () => {
+  assert.deepEqual(
+    parseDashboardCommand(
+      "gh issue create --repo octo/example",
+      ["gh issue create"],
+    ),
+    ["gh", "issue", "create", "--repo", "octo/example"],
+  );
+  assert.throws(
+    () => parseDashboardCommand("gh issue create --repo octo/example"),
+    /"gh aw <command>" or "gh workflow run <workflow>"/,
+  );
+  assert.throws(
+    () => parseDashboardCommand("gh api user", ["gh issue create"]),
+    /or "gh issue create"/,
+  );
+});
+
+test("CLI actions load additional command prefixes from cao.json", async () => {
+  const root = await mkdtemp(join(tmpdir(), "cao-dashboard-commands-"));
+  const workflows = join(root, ".github", "workflows");
+  await mkdir(workflows, { recursive: true });
+  await writeFile(join(workflows, "cao.json"), JSON.stringify({
+    "control-plane": {
+      web: {
+        "allowed-command-prefixes": ["gh issue create"],
+      },
+    },
+  }));
+
+  try {
+    assert.deepEqual(
+      await resolveAdditionalCommandPrefixes(root),
+      ["gh issue create"],
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("CLI actions reject invalid configured command prefixes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "cao-dashboard-commands-"));
+  const workflows = join(root, ".github", "workflows");
+  await mkdir(workflows, { recursive: true });
+  await writeFile(join(workflows, "cao.json"), JSON.stringify({
+    "control-plane": {
+      web: {
+        "allowed-command-prefixes": ["curl https://example.com"],
+      },
+    },
+  }));
+
+  try {
+    await assert.rejects(
+      resolveAdditionalCommandPrefixes(root),
+      /must contain valid GitHub CLI command prefixes/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("CLI actions reject commands outside supported GitHub CLI commands", () => {
@@ -202,6 +268,42 @@ test("dashboard actions dispatch workflows without installing gh-aw", async () =
   ]]);
   assert.equal(calls[0][2].env.GH_TOKEN, "token-value");
   assert.equal(calls[0][2].env.GIT_AUTHOR_NAME, undefined);
+});
+
+test("dashboard actions execute configured command prefixes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "cao-dashboard-commands-"));
+  const workflows = join(root, ".github", "workflows");
+  const calls = [];
+  await mkdir(workflows, { recursive: true });
+  await writeFile(join(workflows, "cao.json"), JSON.stringify({
+    "control-plane": {
+      web: {
+        "allowed-command-prefixes": ["gh issue create"],
+      },
+    },
+  }));
+
+  try {
+    const result = await executeDashboardCommand({
+      command: "gh issue create --repo octo/example",
+      workingDirectory: root,
+      githubToken: "token-value",
+      execute: async (...args) => {
+        calls.push(args);
+        return { stdout: "created\n", stderr: "" };
+      },
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(calls.map(([, args]) => args), [[
+      "issue",
+      "create",
+      "--repo",
+      "octo/example",
+    ]]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("dashboard composition merges CLI actions and rejects duplicate ids", () => {
