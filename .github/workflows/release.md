@@ -26,6 +26,7 @@ timeout-minutes: 20
 
 concurrency:
   group: release
+  job-discriminator: ${{ github.run_id }}
   cancel-in-progress: false
 
 network:
@@ -45,14 +46,13 @@ safe-outputs:
 jobs:
   resolve-version:
     name: Authorize and resolve release version
-    needs: [pre_activation, activation]
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.version.outputs.release_tag }}
     steps:
       - name: Authorize request and compute version
         id: version
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_BUMP: ${{ inputs.bump }}
           TRIGGERING_ACTOR: ${{ github.triggering_actor }}
@@ -141,14 +141,14 @@ jobs:
 
   validate-package:
     name: Validate gh-aw package
-    needs: [pre_activation, activation, resolve-version]
+    needs: resolve-version
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install gh-aw
@@ -161,7 +161,7 @@ jobs:
 
   prepare-release:
     name: Prepare draft release
-    needs: [pre_activation, activation, resolve-version, validate-package]
+    needs: [resolve-version, validate-package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -170,7 +170,7 @@ jobs:
     steps:
       - name: Generate draft release notes without assets
         id: release
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
         with:
