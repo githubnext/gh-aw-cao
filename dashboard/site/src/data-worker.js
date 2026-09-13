@@ -69,7 +69,8 @@ let nextIngestionProgressId = 0;
  */
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
-  const report = () => publishWorkerNotification({ id, message: 'Ingesting data...', tone: 'info', duration: 0 }, target);
+  let message = 'Ingesting data...';
+  const report = () => publishWorkerNotification({ id, message, tone: 'info', duration: 0 }, target);
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let interval;
   const delay = setTimeout(() => {
@@ -77,6 +78,10 @@ export function startIngestionProgress(target = self) {
     interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
   }, INGESTION_PROGRESS_DELAY_MS);
   return {
+    /** @param {number} recordsIngested */
+    update(recordsIngested) {
+      message = `Ingesting data... ${recordsIngested} ${recordsIngested === 1 ? 'record' : 'records'} ingested.`;
+    },
     complete() {
       clearTimeout(delay);
       if (interval) clearInterval(interval);
@@ -342,6 +347,7 @@ export function processDataRequest(request, signal) {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               workflowHints,
+              onProgress: ({ linesProcessed }) => progress.update(linesProcessed),
               payloadIdentity: etag ? `${sourceUrl.href}:${etag}` : undefined,
               payloadEtag: etag ?? undefined,
               payloadScope: sourceUrl.href,

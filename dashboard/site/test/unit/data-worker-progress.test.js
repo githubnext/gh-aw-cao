@@ -11,6 +11,7 @@ describe('data-worker ingestion progress', () => {
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
 
+    progress.update(42);
     vi.advanceTimersByTime(2_999);
     expect(postMessage).not.toHaveBeenCalled();
 
@@ -20,16 +21,17 @@ describe('data-worker ingestion progress', () => {
       type: 'notification',
       notification: expect.objectContaining({
         id: expect.stringMatching(/^ingestion-progress-/),
-        message: 'Ingesting data...',
+        message: 'Ingesting data... 42 records ingested.',
         duration: 0
       })
     });
 
+    progress.update(84);
     vi.advanceTimersByTime(1_000);
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Ingesting data...'
+        message: 'Ingesting data... 84 records ingested.'
       })
     });
 
