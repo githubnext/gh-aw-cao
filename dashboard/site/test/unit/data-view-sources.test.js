@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
 import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
 
@@ -324,6 +325,65 @@ describe('canonical view sources', () => {
         'correlation-id': 'call-1'
       }),
       expect.objectContaining({ event: 'event:agent-turn', 'event-source': 'agent', 'event-type': 'agent_turn' })
+    ]);
+  });
+
+  it('projects current gh-aw grader summaries without treating zero as missing', async () => {
+    const content = JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 84,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'githubnext/gh-aw-cao',
+        workflow_name: 'Value worker',
+        workflow_path: '.github/workflows/value-worker.md',
+        status: 'completed',
+        conclusion: 'success',
+        created_at: '2026-09-09T04:00:00Z',
+        started_at: '2026-09-09T04:00:00Z',
+        updated_at: '2026-09-09T04:02:00Z',
+        graders: {
+          results: [{
+            id: 'operational-value',
+            name: 'Operational Value',
+            status: 'pass',
+            unit: 'count',
+            direction: 'higher_is_better',
+            value: 0
+          }]
+        }
+      }
+    });
+    await ingestCachedGhAwJsonl(indexedDB, `${content}\n`, {
+      now: Date.parse('2026-09-09T05:00:00Z')
+    });
+
+    const projected = await queryCanonicalViewSources(
+      indexedDB,
+      {},
+      ['grader-observations', 'operational-values']
+    );
+
+    expect(projected['grader-observations'].rows).toEqual([
+      expect.objectContaining({
+        repository: 'gh-aw-cao',
+        run: '84',
+        grader: 'operational-value',
+        status: 'pass',
+        included: true,
+        value: 0
+      })
+    ]);
+    expect(projected['operational-values'].rows).toEqual([
+      expect.objectContaining({
+        repository: 'gh-aw-cao',
+        run: '84',
+        'operational-value': 0,
+        'operational-case': 'run:84',
+        'maturity-status': 'observed'
+      })
     ]);
   });
 

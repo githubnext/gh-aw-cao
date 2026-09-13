@@ -326,6 +326,112 @@ function eventsSource(events, sessionsById, runsById, sources) {
   };
 }
 
+/** @param {unknown} value */
+function recordValue(value) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? /** @type {Record<string, unknown>} */ (value)
+    : {};
+}
+
+/**
+ * @param {Record<string, unknown>[]} events
+ * @param {Map<unknown, Record<string, unknown>>} sessionsById
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ */
+function graderRows(events, sessionsById, runsById) {
+  return events.filter((event) => event.type === 'workflow_run_grader').map((event) => {
+    const session = sessionsById.get(event.sessionId) ?? {};
+    const run = runsById.get(session.runId) ?? {};
+    const implementation = recordValue(event.implementation);
+    const observation = recordValue(event.observation);
+    return {
+      __event: event,
+      organization: run.owner,
+      repository: run.repository,
+      workflow: run.workflowPath,
+      run: String(run.githubRunId ?? ''),
+      'run-attempt': run.attempt,
+      grader: event.grader,
+      value: event.value,
+      status: event.status ?? 'unavailable',
+      included: Number.isFinite(event.value),
+      'exclusion-reason': Number.isFinite(event.value) ? undefined : event.error ?? event.message,
+      role: event.grader === 'operational-value' ? 'operational-value' : 'grader',
+      direction: event.direction,
+      unit: event.unit,
+      'rollout-mode': run.rolloutMode,
+      'maturity-status': Object.keys(observation).length === 0
+        ? 'unavailable'
+        : observation.mature === true ? 'matured' : 'interim',
+      'baseline-value': event.baselineValue,
+      'delta-from-baseline': event.deltaFromBaseline,
+      'evaluator-digest': implementation.digest ?? '',
+      'observed-at': observation.evidenceAt ?? event.timestamp,
+      'run-link': run.runLink,
+      'evidence-link': run.runLink
+    };
+  });
+}
+
+/** @param {Record<string, unknown>[]} graders @param {Record<string, unknown>} sources */
+function graderObservationsSource(graders, sources) {
+  return {
+    source: 'grader-observations',
+    rows: graders,
+    metadata: projectionMetadata(sources, 'events', 'grader-observations', graders.length > 0)
+  };
+}
+
+/** @param {Record<string, unknown>[]} graders @param {Record<string, unknown>} sources */
+function operationalValuesSource(graders, sources) {
+  const rows = graders.flatMap((grader) => {
+    if (grader.grader !== 'operational-value') return [];
+    const event = recordValue(grader.__event);
+    const observation = recordValue(event.observation);
+    if (!Number.isFinite(grader.value) && Object.keys(observation).length === 0) return [];
+    const implementation = recordValue(event.implementation);
+    const subject = recordValue(observation.subject);
+    const evidenceCase = recordValue(observation.case);
+    const target = typeof evidenceCase.targetRepo === 'string'
+      ? evidenceCase.targetRepo
+      : typeof subject.repository === 'string' ? subject.repository : '';
+    const [targetOwner, targetRepository] = target.split('/');
+    return [{
+      organization: targetRepository ? targetOwner : grader.organization,
+      repository: targetRepository || grader.repository,
+      'repository-name': targetRepository || grader.repository,
+      workflow: grader.workflow,
+      run: grader.run,
+      'run-attempt': grader['run-attempt'],
+      'observation-id': event.id,
+      experiment: observation.experiment ?? '',
+      'operational-case': observation.opportunityKey ?? `run:${String(grader.run)}`,
+      'evaluator-digest': implementation.digest ?? '',
+      'rollout-mode': grader['rollout-mode'],
+      'operational-value': grader.value,
+      'operational-value-definition': grader.workflow ?? 'operational-value',
+      'requested-evidence-at': subject.createdAt ?? observation.evidenceAt ?? event.timestamp,
+      'evidence-cutoff': observation.evidenceCutoff ?? observation.evidenceAt ?? event.timestamp,
+      'maturity-at': observation.maturesAt ?? observation.evidenceAt ?? event.timestamp,
+      'maturity-status': Object.keys(observation).length === 0
+        ? 'observed'
+        : observation.mature === true ? 'matured' : 'interim',
+      'baseline-value': grader['baseline-value'],
+      'delta-from-baseline': grader['delta-from-baseline'],
+      'accepted-evidence-provenance': observation.provenance ?? [],
+      diagnostics: event.diagnostics ?? {},
+      'observed-at': observation.evidenceAt ?? event.timestamp,
+      'evidence-link': grader['evidence-link'],
+      'run-link': grader['run-link']
+    }];
+  });
+  return {
+    source: 'operational-values',
+    rows,
+    metadata: projectionMetadata(sources, 'events', 'operational-values', graders.length > 0)
+  };
+}
+
 /**
  * @param {Record<string, unknown>[]} events
  * @param {Map<unknown, Record<string, unknown>>} sessionsById
@@ -438,7 +544,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
   const needsFirewall = requested.has('firewall-observations');
-  const needsEvents = requested.has('events') || needsFirewall;
+  const needsGraders = requested.has('grader-observations') || requested.has('operational-values');
+  const needsEvents = requested.has('events') || needsFirewall || needsGraders;
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
@@ -455,6 +562,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
   const runsById = new Map(runs.map((run) => [run.id, run]));
   const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+  const graders = needsGraders ? graderRows(events, sessionsById, runsById) : [];
   const sources = namedLogicalSources(logicalSources);
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const projected = {};
@@ -465,6 +573,13 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
+  if (requested.has('grader-observations')) {
+    projected['grader-observations'] = graderObservationsSource(
+      graders.map(({ __event, ...grader }) => grader),
+      sources
+    );
+  }
+  if (requested.has('operational-values')) projected['operational-values'] = operationalValuesSource(graders, sources);
   if (requested.has('transactions')) {
     projected.transactions = {
       source: 'transactions',

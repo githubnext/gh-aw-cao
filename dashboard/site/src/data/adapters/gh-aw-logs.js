@@ -970,7 +970,23 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         completedAt ?? enriched.observedAt,
         optionalString(record.name) ?? optionalString(record.id) ?? `Grader ${index + 1}`,
         optionalString(record.status) ?? (record.passed === true ? 'passed' : record.passed === false ? 'failed' : undefined),
-        { type: 'grader', index, record }
+        { type: 'grader', index, record },
+        {
+          source: 'grader',
+          grader: optionalString(record.id) ?? `grader-${index + 1}`,
+          graderName: optionalString(record.name),
+          graderSource: optionalString(record.source),
+          value: finiteNumber(record.value),
+          unit: optionalString(record.unit),
+          direction: optionalString(record.direction),
+          message: optionalString(record.message),
+          error: optionalString(record.error),
+          implementation: record.implementation,
+          observation: record.observation,
+          diagnostics: record.diagnostics,
+          baselineValue: finiteNumber(record.baselineValue),
+          deltaFromBaseline: finiteNumber(record.deltaFromBaseline)
+        }
       );
     });
     const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
