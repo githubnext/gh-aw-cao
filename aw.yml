@@ -1,6 +1,6 @@
 name: Central Agentic Ops
 description: Central agentic workflow control plane for reusable packages at the organization level
-min-version: v0.89.9
+min-version: v0.89.10
 experimental: true
 includes:
   - .github/workflows/aw.json
@@ -10,6 +10,12 @@ includes:
   - dependabot/aw.yml
   - optimization/aw.yml
 resources:
+  - source: .github/workflows/shared/control.mjs
+    destination: .github/workflows/shared/control.mjs
+  - source: .github/workflows/shared/policy.mjs
+    destination: .github/workflows/shared/policy.mjs
+  - source: .github/workflows/shared/setup-github-apps.mjs
+    destination: .github/workflows/shared/setup-github-apps.mjs
   - source: AGENTS.md
     destination: .github/aw/default-AGENTS.md
   - source: .github/aw/instructions.md

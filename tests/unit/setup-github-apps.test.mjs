@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -7,15 +9,16 @@ import {
   APP_PROFILES,
   buildGitHubAppManifest,
   deriveAppName,
+  installationIncludesRepository,
   installationInstruction,
   isManifestCode,
   setRepositoryCredentials,
   validateAppName,
   validateInstallationScope,
-} from "../../.github/cao/setup-github-apps.mjs";
+} from "../../.github/workflows/shared/setup-github-apps.mjs";
 
 const root = process.cwd();
-const script = join(root, ".github", "cao", "setup-github-apps.mjs");
+const script = join(root, ".github", "workflows", "shared", "setup-github-apps.mjs");
 
 test("GitHub App profiles preserve separate permission ceilings", () => {
   const read = APP_PROFILES.find((profile) => profile.role === "read");
@@ -75,7 +78,7 @@ test("repository credentials keep the private key out of command arguments", () 
 });
 
 test("dry run emits both exact manifests without requiring GitHub access", () => {
-  const result = spawnSync(process.execPath, [script, "--repo", "githubnext/gh-aw-cao", "--dry-run"], {
+  const result = spawnSync(script, ["--repo", "githubnext/gh-aw-cao", "--dry-run"], {
     encoding: "utf8",
   });
 
@@ -90,6 +93,19 @@ test("dry run emits both exact manifests without requiring GitHub access", () =>
     "http://127.0.0.1:0/callback",
     "http://127.0.0.1:0/callback",
   ]);
+});
+
+test("cao-setup is exposed as an executable Node CLI", (t) => {
+  const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const directory = mkdtempSync(join(tmpdir(), "cao-setup-bin-"));
+  const bin = join(directory, "cao-setup");
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  symlinkSync(script, bin);
+  const result = spawnSync(bin, ["--help"], { encoding: "utf8" });
+
+  assert.equal(packageJson.bin["cao-setup"], ".github/workflows/shared/setup-github-apps.mjs");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^Usage: cao-setup \[options\]/);
 });
 
 test("App setup validates callback codes and bounded generated names", () => {
@@ -119,5 +135,17 @@ test("App setup directs installation to only the control repository", () => {
   assert.equal(
     installationInstruction("octo/control"),
     'Choose "Only select repositories", select only octo/control, and save.',
+  );
+});
+
+test("App setup verifies the control repository is selected", () => {
+  const installation = { id: "123", repositorySelection: "selected" };
+  assert.equal(
+    installationIncludesRepository(installation, "octo/control", () => ["octo/other", "octo/control"]),
+    true,
+  );
+  assert.equal(
+    installationIncludesRepository(installation, "octo/control", () => ["octo/other"]),
+    false,
   );
 });

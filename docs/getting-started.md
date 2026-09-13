@@ -23,6 +23,12 @@ Before you begin, make sure you have:
 - [GitHub CLI](https://cli.github.com/) installed and authenticated;
 - access to GitHub Copilot through organization billing for Agentic Workflow runs.
 
+:::tip[Start with the setup skill]
+From an empty control repository, ask your coding agent to load and follow the
+[`setup-central-agentic-ops` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-central-agentic-ops/SKILL.md).
+The skill gathers the control repository, operation, target, visibility, and authentication choices before it changes the repository, then proves the boundary with one review run. The manual steps below describe the same boundary for operators who need to inspect each action.
+:::
+
 Check your GitHub CLI authentication:
 
 ```bash
@@ -71,28 +77,25 @@ If the extension is already installed, verify that it is available:
 gh aw --help
 ```
 
-### Step 3 - Add the Dependabot operation
+### Step 3 - Add Central Agentic Ops
 
-From the control repository, install the Dependabot operation package and CAO runtime from the same pinned catalog release. Replace `<catalog-release>` with a release tag or full commit SHA:
+From the control repository, resolve the latest published CAO release and install that complete package with the gh-aw CLI:
 
 ```bash
-CAO_REF="<catalog-release>"
-gh aw add "githubnext/gh-aw-cao/dependabot@${CAO_REF}"
-mkdir -p .github/cao
-for cao_file in control.mjs policy.mjs; do
-	gh api --method GET "repos/githubnext/gh-aw-cao/contents/.github/cao/${cao_file}" \
-		-f ref="$CAO_REF" --jq '.content' | base64 -d > ".github/cao/${cao_file}"
-done
+CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
+gh aw add "githubnext/gh-aw-cao@${CAO_RELEASE}"
 ```
+
+Use an older published release tag only when you intentionally need that version. Do not install from `main` or copy control files separately; `gh aw add` installs the workflows, shared control files, runtime modules, and package ownership records together.
 
 The package installs:
 
-1. the **Dependabot** orchestrator, which selects repositories;
-2. the **Dependabot / Release Trains** worker, which analyzes one selected repository;
-3. shared authentication, routing, and fail-closed controls;
+1. the catalog's operational orchestrators and workers, including **Dependabot**;
+2. shared authentication, routing, and fail-closed controls;
+3. shared control and its single package-installed CAO runtime under `.github/workflows/shared`;
 4. generated `.lock.yml` workflows that GitHub Actions executes.
 
-The three `.github/cao` files are control-repository-owned policy runtime, not gh-aw package resources. Commit them with the workflows and policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
+The installed workflows use the runtime installed into the same shared directory. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
 
 The installed operation is runnable after its package and worker workflow identities are declared in the control policy. Declared workers are enabled unless their policy sets `enabled: false`; undeclared or disabled identities are skipped by admission before agent execution.
 
@@ -106,7 +109,7 @@ Create `.github/workflows/cao.json` with the target owner and package. The omitt
 ```json title=".github/workflows/cao.json"
 {
 	"version": 1,
-	"gh-aw-version": "v0.89.9",
+	"gh-aw-version": "v0.89.10",
 	"control-plane": {
 		"scope": {
 			"allowed-owners": ["acme"]
@@ -124,7 +127,7 @@ Create `.github/workflows/cao.json` with the target owner and package. The omitt
 }
 ```
 
-Replace `acme` if your target has a different owner. Commit the workflow sources, generated locks, resolver resource, and policy together so `github.workflow_sha` identifies one atomic configuration:
+Replace `acme` if your target has a different owner. Commit the workflow sources, generated locks, CAO runtime resources, and policy together so `github.workflow_sha` identifies one atomic configuration:
 
 ```bash
 git add .github

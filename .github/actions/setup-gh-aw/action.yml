@@ -8,9 +8,9 @@ runs:
       id: compiler
       shell: bash
       run: |
-        version="$(node .github/cao/src/control.mjs compiler-version .github/workflows/cao.json)"
+        version="$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json)"
         echo "version=$version" >> "$GITHUB_OUTPUT"
     - name: Install gh-aw
-      uses: github/gh-aw-actions/setup-cli@74929b772fd7d9dddf663dc49e01f470d8458310 # v0.89.9 tag resolves to this commit
+      uses: github/gh-aw-actions/setup-cli@96dc6d905bdbe195f719ddc990a3f5b59b751016 # v0.89.10 tag resolves to this commit
       with:
         version: ${{ steps.compiler.outputs.version }}

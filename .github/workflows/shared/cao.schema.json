@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json",
+  "$id": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
   "title": "Central Agentic Ops Policy",
   "description": "Versioned non-secret policy for Central Agentic Ops control and target repositories.",
   "type": "object",
@@ -18,7 +18,7 @@
   ],
   "properties": {
     "$schema": {
-      "const": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json"
+      "const": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json"
     },
     "version": { "const": 1 },
     "gh-aw-version": {

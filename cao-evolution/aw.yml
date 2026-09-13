@@ -1,6 +1,6 @@
 name: CAO Evolution
 description: Control-plane and agentic-workflow integrity, reliability, efficiency, failure investigation, and security maintenance.
-min-version: v0.89.9
+min-version: v0.89.10
 experimental: true
 includes:
   - .github/workflows/cao-evolution-failures-investigator.md

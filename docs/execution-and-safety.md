@@ -23,7 +23,7 @@ The execution boundary is the key architectural fact: orchestrators and workers 
 ![The control plane contains rollout policy and operation packages. Central orchestrators and workers inspect remote targets, emit declared safe outputs across the repository boundary, and correlate results with the originating central run.](assets/central-execution-how-it-works.svg)
 
 1. A schedule trigger or `workflow_dispatch` starts a package orchestrator workflow.
-2. Before activation, `.github/workflows/shared/control.md` fetches `.github/cao/src/control.mjs` and `.github/cao/src/policy.mjs` at the exact workflow commit and runs the `admit` command against policy from that same revision.
+2. Before activation, `.github/workflows/shared/control.md` loads the package-installed `.github/workflows/shared` runtime from the workflow revision, then runs the `admit` command against policy from that revision.
 3. A denied or invalid request skips activation and records the reason in the workflow summary. An admitted run executes the `precompute` command in the same pre-activation job to resolve routing, repository inventory, centrally owned live authority, budgets, and worker workflow availability.
 4. Pre-activation uploads only the resulting non-secret `control-precompute.json`. The agent job restores and validates that artifact before checkout; CAO policy and precompute credentials do not cross into the agent job.
 5. The admitted workflow imports shared control with its package mode and review repository.

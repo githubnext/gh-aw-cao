@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
@@ -367,6 +368,17 @@ function matchingInstallation(app, owner) {
   ));
 }
 
+function listInstallationRepositories(installationId) {
+  const output = runGh([
+    "api",
+    `/user/installations/${installationId}/repositories?per_page=100`,
+    "--paginate",
+    "--jq",
+    ".repositories[].full_name",
+  ]);
+  return output.split("\n").filter(Boolean);
+}
+
 export function validateInstallationScope(installation, owner) {
   if (installation.repositorySelection !== "selected") {
     const settingsUrl = `https://github.com/organizations/${owner}/settings/installations/${installation.id}`;
@@ -380,14 +392,19 @@ export function installationInstruction(repo) {
   return `Choose "Only select repositories", select only ${repo}, and save.`;
 }
 
+export function installationIncludesRepository(installation, repo, listRepositories = listInstallationRepositories) {
+  const [owner] = splitRepo(repo);
+  validateInstallationScope(installation, owner);
+  return listRepositories(installation.id).some((name) => name.toLowerCase() === repo.toLowerCase());
+}
+
 function hasSelectedInstallation(app, repo) {
   const [owner] = splitRepo(repo);
   const installation = matchingInstallation(app, owner);
   if (!installation) {
     return false;
   }
-  validateInstallationScope(installation, owner);
-  return true;
+  return installationIncludesRepository(installation, repo);
 }
 
 function openInstallation(app, openBrowser) {
@@ -420,7 +437,7 @@ async function waitForInstallation(app, repo) {
 }
 
 function printHelp() {
-  console.log(`Usage: node .github/cao/setup-github-apps.mjs [options]
+  console.log(`Usage: cao-setup [options]
 
 Create and install separate read-only and write-capable GitHub Apps for a CAO control repository.
 
@@ -513,7 +530,7 @@ async function main() {
   console.error(`Both GitHub App credential pairs are configured for ${repo}.`);
 }
 
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
 if (isMain) {
   main().catch((error) => {
     console.error(`Error: ${error.message}`);

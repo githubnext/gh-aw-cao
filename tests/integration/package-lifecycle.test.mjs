@@ -15,6 +15,12 @@ import { retryTransientPackageInstall } from "../helpers/package-install-retry.m
 
 const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
   || "githubnext/gh-aw-cao@main";
+const packageUpdateSource = "https://github.com/githubnext/gh-aw-cao";
+const controlRuntimeFiles = [
+  ".github/workflows/shared/control.mjs",
+  ".github/workflows/shared/policy.mjs",
+  ".github/workflows/shared/setup-github-apps.mjs",
+];
 function focusedPackageSource(slug, source = packageSource) {
   const separator = source.lastIndexOf("@");
   assert.notEqual(separator, -1, "package source must include a ref");
@@ -131,7 +137,6 @@ const softwareDevelopmentPracticesExpectedFiles = [
   ".github/workflows/software-development-practices-nist-ssdf.md",
   ".github/workflows/software-development-practices.md",
 ];
-
 const repositoryOnlyFiles = [
   ".github/aw/e2e/run-canary.sh",
   ".github/aw/e2e/run-stress.sh",
@@ -176,10 +181,26 @@ async function installPackage(source) {
   });
 }
 
-test("gh aw add installs the root package without rewriting Copilot authentication", { timeout: 180_000 }, async () => {
+test("root package bootstraps an empty CAO and preserves resources during workflow update", { timeout: 240_000 }, async () => {
   const consumer = await installPackage(packageSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
+    assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
+    for (const relativePath of controlRuntimeFiles) {
+      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted control file ${relativePath}`);
+    }
+    const policyPath = join(consumer, ".github", "workflows", "cao.json");
+    const policy = `${JSON.stringify({
+      version: 1,
+      "control-plane": {
+        scope: {
+          "allowed-owners": ["acme"],
+          "allowed-repositories": ["acme/example"],
+        },
+        packages: {},
+      },
+    }, null, 2)}\n`;
+    writeFileSync(policyPath, policy);
     assert.deepEqual(
       JSON.parse(readFileSync(join(consumer, ".github", "workflows", "aw.json"), "utf8")).auto_upgrade.options,
       ["--pre-releases"],
@@ -201,6 +222,52 @@ test("gh aw add installs the root package without rewriting Copilot authenticati
       assert.match(lock, /COPILOT_GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
       assert.doesNotMatch(lock, /secrets\.COPILOT_GITHUB_TOKEN/);
     }
+
+    const packageRecords = readdirSync(join(consumer, ".github", "aw", "packages"));
+    assert.equal(packageRecords.length, 1, "expected one installed root package manifest");
+    const installedPackage = JSON.parse(readFileSync(
+      join(consumer, ".github", "aw", "packages", packageRecords[0]),
+      "utf8",
+    ));
+    for (const { destination } of installedPackage.files) {
+      const workflowPath = join(consumer, destination);
+      if (!destination.endsWith(".md") || !existsSync(workflowPath)) continue;
+      const workflow = readFileSync(workflowPath, "utf8");
+      writeFileSync(workflowPath, workflow.replace(/^source: .*$/m, `source: ${packageSource}`));
+    }
+
+    const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
+    const orchestrator = readFileSync(orchestratorPath, "utf8");
+    assert.match(orchestrator, new RegExp(`^source: ${packageSource.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
+    const trackedOrchestrator = orchestrator;
+    const modifiedOrchestrator = trackedOrchestrator.replace("max-ai-credits: 250", "max-ai-credits: 251");
+    assert.notEqual(modifiedOrchestrator, trackedOrchestrator, "test could not modify package workflow frontmatter");
+    writeFileSync(orchestratorPath, `${modifiedOrchestrator}\n# local integration-test change\n`);
+    const removedRuntime = controlRuntimeFiles[0];
+    rmSync(join(consumer, removedRuntime));
+    run("gh", [
+      "aw",
+      "update",
+      packageUpdateSource,
+      "--force",
+      "--no-merge",
+      "--no-compile",
+      "--no-security-scanner",
+      "--cool-down",
+      "0",
+    ], consumer);
+
+    const updatedOrchestrator = readFileSync(orchestratorPath, "utf8");
+    assert.ok(
+      !updatedOrchestrator.includes("# local integration-test change"),
+      "gh aw update retained a local package workflow modification",
+    );
+    assert.match(updatedOrchestrator, /^max-ai-credits: 250$/m);
+    assert.doesNotMatch(updatedOrchestrator, /^max-ai-credits: 251$/m);
+    assert.equal(workflowBody(updatedOrchestrator), workflowBody(orchestrator));
+    assert.ok(existsSync(join(consumer, removedRuntime)), "gh aw update did not restore the control runtime");
+    assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
+    assert.equal(readFileSync(policyPath, "utf8"), policy, "gh aw update changed consumer-owned CAO policy");
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }

@@ -11,6 +11,7 @@ Use this page after installation to answer the urgent operator questions: Is the
 | Investigate cancelled or incomplete work | [Queuing and resource exhaustion](#queuing-and-resource-exhaustion) |
 | Stop one worker, one package, or everything | [Emergency stop](#emergency-stop) |
 | Respond to an unsafe output or exposed credential | [Incident response](#incident-response) |
+| Update an installed control plane | [Update CAO](#update-cao) |
 | Add or update catalog workflows | [Maintain the catalog](#adding-a-package) |
 
 For installation and the first write-free run, begin with [Install and run safely](getting-started.md).
@@ -153,11 +154,12 @@ This path supports issue outputs only. It does not transfer issues, publish pull
 
 ### Install the dashboard package
 
-The root Central Agentic Ops package installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic packages from the same reviewed release tag or full commit SHA:
+The root Central Agentic Ops package installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic packages from the same published release tag:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/activity@<catalog-release>
-gh aw add githubnext/gh-aw-cao/dashboard@<catalog-release>
+CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
+gh aw add "githubnext/gh-aw-cao/activity@${CAO_RELEASE}"
+gh aw add "githubnext/gh-aw-cao/dashboard@${CAO_RELEASE}"
 ```
 
 Both installation paths add an independently dispatchable dashboard builder, a manual standalone Pages publisher, and their deterministic report modules. There is no additional dashboard enable variable, and installation does not deploy or enable Pages.
@@ -296,11 +298,25 @@ Do not include tokens, private keys, or secret values in the incident record.
 
 If shared authentication or shared control caused the incident, perform the control-plane-wide emergency stop. Otherwise, preserve unaffected package operation.
 
+## Update CAO
+
+Update package-owned workflows and runtime resources through a reviewable update proposal. Keep `.github/workflows/cao.json` unchanged unless the release requires an explicit, separately reviewed policy migration.
+
+From the control repository:
+
+```bash
+gh aw update https://github.com/githubnext/gh-aw-cao --major --cool-down 0 --create-pull-request
+```
+
+The command resolves published GitHub releases, updates the installed CAO package to the latest compatible release, and opens a pull request containing its package-owned workflows, generated locks, shared runtime modules, and ownership records. Do not point updates at `main`, fetch control files separately, or copy them with a script. Review the proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
+
+Existing installations whose package records predate the package-owned `.github/workflows/shared/` runtime must update before running CAO so `control.mjs` and `policy.mjs` are materialized beside `control.md`. Admission intentionally fails closed when those installed files are missing.
+
 ### Catalog Release Revocation
 
 A catalog maintainer cannot remotely disable workflows already installed in independent control repositories. When a package release is unsafe:
 
-1. publish the affected release or commit and a known-good replacement;
+1. identify the affected published release and publish a known-good replacement release;
 2. identify installations through package manifests and the approved control-repository inventory;
 3. commit `enabled: false` for affected packages and cancel active runs in every installation;
 4. revoke credentials when repository access must stop immediately;

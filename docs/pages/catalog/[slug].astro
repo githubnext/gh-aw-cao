@@ -64,10 +64,12 @@ const ReadmeContent = entry.ReadmeContent;
   <section class="install-package" aria-labelledby="install-package">
     <h2 id="install-package">Add this package</h2>
     <p>
-      From a private control repository, install a reviewed release tag or full commit SHA:
+      From a private control repository, install a published release tag:
     </p>
     <pre><code>{installCommand}</code></pre>
     <p>
+      Replace <code>&lt;catalog-release&gt;</code> with the latest published tag shown in
+      <a href={`${repositoryBase}/releases/latest`}> GitHub Releases</a>.
       Follow the <a href={`${basePath}/getting-started/`}>Quickstart</a> for prerequisites and first-run validation, or
       <a href={packageUrl}> view the package source on GitHub</a>.
     </p>

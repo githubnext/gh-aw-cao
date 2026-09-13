@@ -7,7 +7,7 @@ Persistent non-secret policy lives only in `.github/workflows/cao.json` in the p
 
 Keep credentials in Actions secrets. Manual inputs may select a target or narrow a checked-in limit for one run, but they never change policy or widen it.
 
-The policy is plain JSON so Node.js can parse it with the built-in `JSON.parse` API and no runtime dependencies. Its Draft 2020-12 schema is published at `.github/cao/cao.schema.json`; the checked-in policy's `$schema` property enables editor completion and diagnostics. The dependency-free resolver remains the runtime validator for constraints JSON Schema cannot express, including duplicate keys, case-insensitive uniqueness, and `cell-index < cell-count`.
+The policy is plain JSON so Node.js can parse it with the built-in `JSON.parse` API and no runtime dependencies. Its Draft 2020-12 schema is published at `.github/workflows/shared/cao.schema.json`; the checked-in policy's `$schema` property enables editor completion and diagnostics. The dependency-free resolver remains the runtime validator for constraints JSON Schema cannot express, including duplicate keys, case-insensitive uniqueness, and `cell-index < cell-count`.
 
 ## Control Policy
 
@@ -15,9 +15,9 @@ This minimal policy enables the installed Dependabot package and its workers in 
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json",
+  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
-  "gh-aw-version": "v0.89.9",
+  "gh-aw-version": "v0.89.10",
   "control-plane": {
     "scope": {
       "allowed-owners": ["acme"]
@@ -115,7 +115,7 @@ For private or internal targets, alternate review repositories, or live writes, 
 | `GH_AW_GITHUB_TOKEN` | PAT fallback | Fine-grained token for cross-repository access. |
 | `GH_AW_CI_TOKEN` | Optional Dependabot path | Additional token used only when an empty CI commit is required. |
 
-The root package manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Configure Authentication](authentication.md#optional-setup-wizard) to create and install both Apps with an explicitly temporary `aw.yml` block, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Each path uses only its documented credential fallback when that credential's reach is sufficient.
+The root package manifest remains free of interactive setup so `gh aw add` works non-interactively. Follow [Automated App setup](authentication.md#automated-app-setup) to create and install both Apps with the Node CLI from the pinned CAO source, or configure the four values manually. Shared control uses the read-only App for GitHub tools and admission. It exposes the write-capable App to safe outputs and, with only `Actions: write`, to best-effort API-gate persistence after a fresh capacity denial. Each path uses only its documented credential fallback when that credential's reach is sufficient.
 
 ## Manual Inputs
 
@@ -169,10 +169,10 @@ Installed Central Agentic Ops packages do not include these optional provider fi
 
 ## Sources of Truth
 
-- Machine-readable policy schema: `.github/cao/cao.schema.json`
-- Runtime policy resolution: `.github/cao/src/policy.mjs` and [Control Policy Specification](control-policy-specification.md)
+- Machine-readable policy schema: `.github/workflows/shared/cao.schema.json`
+- Runtime policy resolution: `.github/workflows/shared/policy.mjs` and [Control Policy Specification](control-policy-specification.md)
 - Checked-in control policy: `.github/workflows/cao.json`
-- Deterministic control commands: `.github/cao/src/control.mjs`
+- Deterministic control commands: `.github/workflows/shared/control.mjs`
 - Shared runtime enforcement: `.github/workflows/shared/control.md`
 - Package inventory: the root and package `aw.yml` manifests
 - Credentials and permissions: [Configure Authentication](authentication.md)

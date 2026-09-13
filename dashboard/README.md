@@ -15,8 +15,8 @@ The dashboard package publishes an access-controlled static view of Central Agen
 
 - `.github/workflows/cao-dashboard.yml`: dashboard build, artifact publication, and optional standalone GitHub Pages deployment.
 - `.github/workflows/activity.yml`: shared data collector and cache publisher installed by the core activity package.
-- `.github/cao/src/policy.mjs`: dependency-free checked-in policy parser and resolver.
-- `.github/cao/src/control.mjs`: deterministic policy command adapter used by the build workflow.
+- `.github/workflows/shared/policy.mjs`: dependency-free checked-in policy parser and resolver.
+- `.github/workflows/shared/control.mjs`: deterministic policy command adapter used by the build workflow.
 - `.github/aw/dashboard/report`: deterministic collection modules executed by the activity action plus Dashboard Language source adaptation.
 - `.github/aw/dashboard/site`: the packaged Dashboard Language validator, presenter, configuration, and browser runtime.
 - `.github/aw/dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.

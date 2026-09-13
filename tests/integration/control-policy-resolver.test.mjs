@@ -7,14 +7,14 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const control = join(root, ".github", "cao", "src", "control.mjs");
-const schemaUri = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json";
+const control = join(root, ".github", "workflows", "shared", "control.mjs");
+const schemaUri = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
 
 function policy() {
   return {
     $schema: schemaUri,
     version: 1,
-    "gh-aw-version": "v0.89.9",
+    "gh-aw-version": "v0.89.10",
     "control-plane": {
       scope: {
         "allowed-owners": ["acme"],
@@ -79,7 +79,7 @@ test("control.mjs reads the configured gh-aw compiler version", () => {
   try {
     const result = run(["compiler-version", policyPath]);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, "v0.89.9\n");
+    assert.equal(result.stdout, "v0.89.10\n");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

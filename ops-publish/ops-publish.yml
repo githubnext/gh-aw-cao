@@ -29,7 +29,7 @@ jobs:
       - name: Resolve authoritative control policy
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: node .github/cao/src/control.mjs control-settings .github/workflows/cao.json > "$RUNNER_TEMP/control-settings.json"
+        run: node .github/workflows/shared/control.mjs control-settings .github/workflows/cao.json > "$RUNNER_TEMP/control-settings.json"
 
       - name: Inspect publication request
         id: inspect

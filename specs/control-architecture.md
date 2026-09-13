@@ -191,7 +191,7 @@ The orchestrator is the rollout decision point. Each worker is an independent en
 
 **CAO-CFG-002:** The file MUST be UTF-8 JSON with an object root and `version` equal to integer `1`.
 
-**CAO-CFG-003:** The document MUST contain at least one of `control-plane` or `target-authority` and MUST conform to `.github/cao/cao.schema.json`, based on JSON Schema Draft 2020-12.
+**CAO-CFG-003:** The document MUST contain at least one of `control-plane` or `target-authority` and MUST conform to `.github/workflows/shared/cao.schema.json`, based on JSON Schema Draft 2020-12.
 
 **CAO-CFG-004:** Unknown properties, duplicate object keys, malformed package, worker, or workflow identifiers, and GitHub Actions expressions MUST be rejected.
 
@@ -199,7 +199,7 @@ The orchestrator is the rollout decision point. Each worker is an independent en
 
 **CAO-CFG-006:** A control repository MUST declare `gh-aw-version` as a `v`-prefixed semantic version. Infrastructure that installs the gh-aw CLI MUST use this value as its compiler-version source of truth. The field does not grant execution capability or rollout authority.
 
-The `$schema` property SHOULD identify `https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json`.
+The `$schema` property SHOULD identify `https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json`.
 
 ### 5.2 Document Roles
 
@@ -371,7 +371,7 @@ The effective record SHOULD contain only identifiers and provenance required for
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json",
+  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
   "control-plane": {
     "scope": {
@@ -427,7 +427,7 @@ Invalid JSON, schema violations, unknown static identities, widening requests, u
 - **[RFC 2119]** Bradner, S. [Key words for use in RFCs to Indicate Requirement Levels](https://www.ietf.org/rfc/rfc2119.txt). March 1997.
 - **[JSON]** Bray, T. [The JavaScript Object Notation Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259). RFC 8259, December 2017.
 - **[JSON Schema 2020-12]** [JSON Schema Core](https://json-schema.org/draft/2020-12/json-schema-core) and [Validation](https://json-schema.org/draft/2020-12/json-schema-validation).
-- **[CAO Schema]** [Central Agentic Ops Policy Schema](../.github/cao/cao.schema.json).
+- **[CAO Schema]** [Central Agentic Ops Policy Schema](../.github/workflows/shared/cao.schema.json).
 
 ### 11.2 Informative References
 

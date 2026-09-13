@@ -3,11 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "bin": {
-    "cao": "activity/cao.mjs"
+    "cao": "activity/cao.mjs",
+    "cao-setup": ".github/workflows/shared/setup-github-apps.mjs"
   },
   "scripts": {
-    "install:gh-aw": "GH_AW_VERSION=$(node .github/cao/src/control.mjs compiler-version .github/workflows/cao.json) && curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$GH_AW_VERSION\"",
-    "setup:github-apps": "node .github/cao/setup-github-apps.mjs",
+    "install:gh-aw": "GH_AW_VERSION=$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json) && curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$GH_AW_VERSION\"",
+    "setup:github-apps": "node .github/workflows/shared/setup-github-apps.mjs",
     "dashboard:local": "node dashboard/local-server.mjs",
     "dashboard:local:copilot": "node dashboard/local-server.mjs --copilot",
     "dashboard:local:mobile": "DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl MOBILE_BROWSER=chromium MOBILE_DEVICE='Pixel 7' MOBILE_PROFILE=low-memory MOBILE_MEMORY_MB=256 playwright test --config=playwright.mobile.config.mjs",
@@ -18,7 +19,7 @@
     "docs:build": "astro build",
     "docs:preview": "astro preview",
     "lint": "node scripts/check-file-sizes.mjs",
-    "typecheck:cao": "npx tsc -p .github/cao/tsconfig.json",
+    "typecheck:cao": "npx tsc -p .github/workflows/shared/tsconfig.json",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "node --test tests/unit/*.test.mjs",
     "test:integration": "node --test --test-concurrency=1 tests/integration/activity-cache.test.mjs tests/integration/control-admission.test.mjs tests/integration/control-failure.test.mjs tests/integration/control-policy-resolver.test.mjs tests/integration/dashboard-inventory-ingestion.test.mjs",

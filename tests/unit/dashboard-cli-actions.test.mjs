@@ -10,7 +10,7 @@ import {
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
 
 test("CLI actions read the gh-aw compiler version from cao.json", async () => {
-  assert.equal(await resolveGhAwCompilerVersion(), "v0.89.9");
+  assert.equal(await resolveGhAwCompilerVersion(), "v0.89.10");
 });
 
 test("CLI actions parse quoted gh aw arguments without a shell", () => {
@@ -99,7 +99,7 @@ test("CLI actions fall back to the pinned curl installer", async () => {
 
   assert.deepEqual(calls, [
     ["gh", ["aw", "--help"]],
-    ["gh", ["extension", "install", "github/gh-aw", "--pin", "v0.89.9"]],
+    ["gh", ["extension", "install", "github/gh-aw", "--pin", "v0.89.10"]],
     ["gh", ["aw", "--help"]],
   ]);
   assert.deepEqual(fallback, ["token-value"]);

@@ -107,10 +107,10 @@ Read `/tmp/gh-aw/agent/control-precompute.json` before selecting repositories. T
 
 Classify each candidate using read-only repository evidence:
 
-- A **control repository** has `.github/workflows/cao.json` plus CAO runtime evidence under `.github/cao/` or installed package records under `.github/aw/packages/`.
+- A **control repository** has `.github/workflows/cao.json` plus CAO runtime evidence under `.github/workflows/shared/` or installed package records under `.github/aw/packages/`.
 - An **agentic-workflow repository** has editable `.github/workflows/*.md` sources or an `aw.yml` package manifest.
 
-Do not infer either role from the repository name. A repository may have both roles.
+Verify the evidence through read-only repository tools. Do not infer either role from the repository name, catalog manifests alone, or target-repository files. A repository may have both roles.
 
 Prioritize control repositories with one or more of these signals:
 

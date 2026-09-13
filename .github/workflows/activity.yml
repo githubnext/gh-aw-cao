@@ -74,7 +74,7 @@ jobs:
             exit 1
           fi
           node "$activity_root/control-settings.mjs" \
-            .github/cao/src/control.mjs \
+            .github/workflows/shared/control.mjs \
             .github/workflows/cao.json \
             "$REPORT_CONTROL_SETTINGS"
           {

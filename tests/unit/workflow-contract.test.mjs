@@ -220,8 +220,8 @@ test("operational-value graders cap GitHub API usage while collecting logs", () 
 function controlPrecompute() {
   return [
     workflow("shared/control.md"),
-    readFileSync(join(root, ".github", "cao", "src", "control.mjs"), "utf8"),
-    readFileSync(join(root, ".github", "cao", "src", "policy.mjs"), "utf8"),
+    readFileSync(join(root, ".github", "workflows", "shared", "control.mjs"), "utf8"),
+    readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8"),
   ].join("\n");
 }
 
@@ -623,7 +623,7 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1/);
   assert.match(sharedControl, /ref: \$\{\{ github\.workflow_sha \}\}/);
   assert.match(sharedControl, /path: \.cao\n/);
-  assert.match(sharedControl, /sparse-checkout: \.github\/cao\/src/);
+  assert.match(sharedControl, /sparse-checkout: \.github/);
   assert.match(sharedControl, /sparse-checkout-cone-mode: true/);
   assert.match(sharedControl, /fetch-depth: 1/);
   assert.doesNotMatch(sharedControl, /gh api --method GET "repos\/\$\{GITHUB_REPOSITORY\}\/contents\/\.github\/cao\/src/);
@@ -987,6 +987,7 @@ test("Copilot setup uses Node 24", () => {
 
 test("workflow contracts isolate authenticated package lifecycle checks", () => {
   const packageScripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
+  const packageLifecycleTest = readFileSync(join(root, "tests", "integration", "package-lifecycle.test.mjs"), "utf8");
   assert.match(packageScripts["test:integration"], /control-failure\.test\.mjs/);
   assert.doesNotMatch(packageScripts["test:integration"], /package-lifecycle/);
   assert.match(packageScripts["test:package-lifecycle"], /package-lifecycle\.test\.mjs/);
@@ -1005,10 +1006,15 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.match(packageLifecycle, /remaining < 500/);
   assert.match(packageLifecycle, /if: steps\.package-api\.outputs\.ready == 'true'/);
   assert.match(packageLifecycle, /GH_TOKEN: \$\{\{ github\.token \}\}/);
-  assert.match(packageLifecycle, /CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE:/);
+  assert.match(
+    packageLifecycle,
+    /export CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE="\$\{GITHUB_REPOSITORY\}@\$\(git rev-parse --short=12 "\$GITHUB_SHA"\)"/,
+  );
   assert.match(packageLifecycle, /npm run test:package-lifecycle/);
   assert.match(packageLifecycle, /grep -Fq "API rate limit exceeded for installation"/);
   assert.match(packageLifecycle, /exit "\$status"/);
+  assert.match(packageLifecycleTest, /const packageUpdateSource = "https:\/\/github\.com\/githubnext\/gh-aw-cao"/);
+  assert.match(packageLifecycleTest, /"update",\n\s+packageUpdateSource,/);
 });
 
 test("release increments the semantic version, creates its tag, and prepares a correctly titled draft", () => {
@@ -1059,6 +1065,7 @@ test("release increments the semantic version, creates its tag, and prepares a c
   assert.match(prepare, /draft: true/);
   assert.match(prepare, /generate_release_notes: true/);
   assert.match(prepare, /publish the draft, and mark it as the latest release from the GitHub website/);
+  assert.match(prepare, /install or update this package only with gh aw add or gh aw update/);
   assert.equal(jobs.has("publish-release"), false);
   assert.doesNotMatch(source, /updateRelease|draft: false|make_latest/);
   assert.doesNotMatch(source, /release-please|upload-artifact|CHANGELOG\.md/);
@@ -1130,11 +1137,18 @@ test("root package provides default control-repository agent context", () => {
   assert.match(setupSkill, /preserve it unchanged unless the user explicitly approves a merge/);
 });
 
-test("CAO runtime is control-repository-owned outside package resources", () => {
+test("root package resolves the single CAO bootstrap runtime", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
   const setupSkill = readFileSync(join(root, ".github", "skills", "setup-central-agentic-ops", "SKILL.md"), "utf8");
+  const quickstart = readFileSync(join(root, "docs", "getting-started.md"), "utf8");
+  const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
+  const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
+  const admission = readFileSync(join(root, "docs", "admission.md"), "utf8");
+  const control = readFileSync(join(root, ".github", "workflows", "shared", "control.md"), "utf8");
+  const activity = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
+  const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
   const policy = JSON.parse(execFileSync(process.execPath, [
-    join(root, ".github", "cao", "src", "control.mjs"),
+    join(root, ".github", "workflows", "shared", "control.mjs"),
     "resolve-policy",
     join(root, ".github", "workflows", "cao.json"),
   ], {
@@ -1149,21 +1163,35 @@ test("CAO runtime is control-repository-owned outside package resources", () => 
 
   assert.equal(policy.authorized, true);
   assert.equal(policy.package, "dependabot");
-  assert.doesNotMatch(rootManifest, /destination: \.github\/cao\//);
-  assert.match(setupSkill, /fetch --depth=1 origin "\$cao_ref"/);
-  assert.match(setupSkill, /sparse-checkout set --cone \.github\/cao\/src/);
-  assert.match(setupSkill, /cp -R "\$cao_checkout\/\.github\/cao\/src" \.github\/cao\//);
-  assert.doesNotMatch(setupSkill, /chmod \+x \.github\/cao/);
-});
-
-test("CAO upgrade script refreshes gh-aw, packages, and Actions", () => {
-  const upgrade = readFileSync(join(root, ".github", "cao", "upgrade.sh"), "utf8");
-
-  assert.match(upgrade, /^#!\/usr\/bin\/env bash\n/);
-  assert.match(upgrade, /^set -euo pipefail$/m);
-  assert.match(upgrade, /^gh extension upgrade github\/gh-aw$/m);
-  assert.match(upgrade, /^gh aw update --major --cool-down 0$/m);
-  assert.match(upgrade, /^gh aw upgrade$/m);
+  assert.doesNotMatch(rootManifest, /\.github\/aw\/cao/);
+  for (const path of ["control.mjs", "policy.mjs", "setup-github-apps.mjs"]) {
+    assert.match(
+      rootManifest,
+      new RegExp(`source: \\.github/workflows/shared/${path.replace(".", "\\.")}[\\s\\S]*?destination: \\.github/workflows/shared/${path.replace(".", "\\.")}`),
+    );
+  }
+  for (const path of ["cao.schema.json", "setup-github-apps.mjs", "control.mjs", "policy.mjs"]) {
+    assert.ok(existsSync(join(root, ".github", "workflows", "shared", path)));
+  }
+  assert.match(control, /runtime="\$GITHUB_WORKSPACE\/\.cao\/\.github\/workflows\/shared\/control\.mjs"/);
+  assert.doesNotMatch(control, /\.cao-runtime|Checkout installed CAO control source|# Source: /);
+  assert.match(activity, /control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
+  assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
+  assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
+  assert.match(quickstart, /setup-central-agentic-ops/);
+  assert.match(quickstart, /CAO_RELEASE=\$\(gh release view --repo githubnext\/gh-aw-cao --json tagName --jq '\.tagName'\)/);
+  assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_RELEASE\}"/);
+  assert.doesNotMatch(quickstart, /@main|commits\/main|full commit SHA/);
+  assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
+  assert.match(updateSection, /gh aw update https:\/\/github\.com\/githubnext\/gh-aw-cao --major --cool-down 0 --create-pull-request/);
+  assert.match(updateSection, /resolves published GitHub releases[\s\S]*?latest compatible release/);
+  assert.match(updateSection, /Do not point updates at `main`, fetch control files separately, or copy them with a script/);
+  assert.match(updateSection, /predate the package-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
+  assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add/);
+  assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
+  assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
+  assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
+  assert.match(admission, /root CAO package installs one runtime copy under `\.github\/workflows\/shared\/`/i);
 });
 
 test("root package composes its operational packages through manifests", () => {
@@ -1484,7 +1512,7 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
 test("public read-only operation uses the built-in token without widening access", () => {
   const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
   const configuration = readFileSync(join(root, "docs", "configuration.md"), "utf8");
-  const controlSource = readFileSync(join(root, ".github", "cao", "src", "control.mjs"), "utf8");
+  const controlSource = readFileSync(join(root, ".github", "workflows", "shared", "control.mjs"), "utf8");
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
@@ -2816,7 +2844,10 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(preActivation, /actions: read/);
       assert.match(preActivation, /name: Evaluate Central Agentic Ops admission/);
       assert.match(preActivation, /name: Checkout CAO control modules/);
-      assert.match(preActivation, /sparse-checkout: \.github\/cao\/src/);
+      assert.match(preActivation, /sparse-checkout: \.github/);
+      assert.match(preActivation, /name: Resolve CAO control runtime/);
+      assert.match(preActivation, /\.cao\/\.github\/workflows\/shared\/control\.mjs/);
+      assert.doesNotMatch(preActivation, /name: Checkout installed CAO control source|\.cao-runtime|# Source: /);
       assert.match(preActivation, /fetch-depth: 1/);
       assert.doesNotMatch(preActivation, /contents\/\.github\/cao\/src\/(?:control|policy)\.mjs/);
       assert.doesNotMatch(preActivation, /github\/gh-aw-actions\/setup-cli@/);
@@ -3012,12 +3043,11 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Offer `<organization>\/<control-repository>` as the default/);
   assert.match(setupSkill, /target_repo="<target-owner>\/<target-repository>"/);
   assert.doesNotMatch(setupSkill, /Always target the control repository itself for the first run/);
-  assert.match(setupSkill, /cao_ref=\$\(gh api repos\/githubnext\/gh-aw-cao\/commits\/main/);
-  assert.match(setupSkill, /\[\[ "\$cao_ref" =~ \^\[0-9a-fA-F\]\{40,64\}\$ \]\]/);
-  assert.match(setupSkill, /gh aw add "githubnext\/gh-aw-cao@\$\{cao_ref\}"/);
-  assert.match(setupSkill, /git -C "\$cao_checkout" fetch --depth=1 origin "\$cao_ref"/);
-  assert.match(setupSkill, /git -C "\$cao_checkout" sparse-checkout set --cone \.github\/cao\/src/);
-  assert.doesNotMatch(setupSkill, /contents\/\.github\/cao\/src\/\$\{cao_file\}/);
+  assert.match(setupSkill, /gh aw add githubnext\/gh-aw-cao/);
+  assert.match(setupSkill, /gh-aw resolves the latest published release, retries transient package-install failures/);
+  assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
+  assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-aw-cao@main|full commit SHA/);
+  assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(setupSkill, /gh aw doctor --repo <organization>\/<control-repository> --dir \./);
   assert.match(setupSkill, /Run `gh aw version`\. Compare it with `min-version` in the root CAO `aw\.yml`/);
   assert.match(setupSkill, /Do not require the catalog maintainer's current local version when the package supports an older release/);
@@ -3028,7 +3058,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /every installed Copilot-backed source declares `copilot-requests: write`/);
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
-  assert.match(setupSkill, /one immutable source identity keeps repeated package dependencies consistent/);
+  assert.match(setupSkill, /Do not add release-resolution scripts/);
   assert.match(setupSkill, /package cannot install this file because it is consumer-owned rollout policy/);
   assert.match(setupSkill, /Replace `<gh-aw-version>`[\s\S]*?both occurrences of `<target-owner>`[\s\S]*?one occurrence of `<target-repository>`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);
@@ -3072,8 +3102,9 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Control-repository visibility does not determine target access/);
   assert.match(setupSkill, /use `GITHUB_TOKEN` for control-repository self-review or an exact public target in `review`/);
   assert.match(setupSkill, /require separate least-privilege read-only and write-capable GitHub Apps/);
-  assert.match(setupSkill, /\.github\/cao\/setup-github-apps\.mjs --repo <organization>\/<control-repository>/);
-  assert.match(setupSkill, /helper mirrors gh-aw's App manifest conversion flow without package delivery/);
+  assert.match(setupSkill, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo <organization>\/<control-repository>/);
+  assert.doesNotMatch(setupSkill, /contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs|setup_dir=\$\(mktemp -d\)/);
+  assert.match(setupSkill, /helper mirrors gh-aw's App manifest conversion flow without changing package delivery/);
   assert.match(setupSkill, /sends private keys to repository secrets through standard input/);
   assert.match(setupSkill, /read App has no write permission/);
   assert.match(setupSkill, /Do not place private target evidence in a public control repository/);
@@ -3090,7 +3121,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
   const rootPackage = parse(rootManifest);
   const dashboardPackage = parse(dashboardManifest);
-  const canonicalPolicyResolver = readFileSync(join(root, ".github", "cao", "src", "policy.mjs"), "utf8");
+  const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
   const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
   const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
@@ -3145,7 +3176,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /name: Assess activity database health[\s\S]*?await exec\.exec\(process\.execPath,[\s\S]*?'doctor'[\s\S]*?'--database'[\s\S]*?process\.env\.ACTIVITY_DATABASE/);
   assert.doesNotMatch(dashboardWorkflow, /control-settings\.mjs|ACTIVITY_ROOT/);
   assert.doesNotMatch(dashboardWorkflow, /Discover deployed agentic workflows|Collect AI Credit usage|Collect operational-value observations|Collect durable dashboard records/);
-  assert.match(activityRunner, /control-settings\.mjs[\s\S]*?\.github\/cao\/src\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?controlSettingsPath/);
+  assert.match(activityRunner, /control-settings\.mjs[\s\S]*?\.github\/workflows\/shared\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?controlSettingsPath/);
   assert.match(activityRunner, /REPORT_CONTROL_SETTINGS[\s\S]*?path\.join\(runnerTemp, "cao-activity", "control-settings\.json"\)/);
   assert.doesNotMatch(dashboardWorkflow, /^\s+run:/m);
   assert.equal((dashboardWorkflow.match(/actions\/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3/g) || []).length, 7);
@@ -3222,7 +3253,8 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 1);
   assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
-  assert.match(activityWorkflow, /Install gh-aw CLI[\s\S]*?uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(activityWorkflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(activityWorkflow, /control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(deployedWorkflows, /fetch\(|api\.github\.com|gh api|spawn\(/);
   assert.match(deployedWorkflows, /Build activity index from local workflow inventory/);
   assert.match(deployedWorkflows, /usageArtifactGaps/);
@@ -3280,6 +3312,10 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
+  assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
+  assert.doesNotMatch(workflow, /Resolve CAO control source|\.github\/aw\/packages|\.cao-runtime/);
+  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);

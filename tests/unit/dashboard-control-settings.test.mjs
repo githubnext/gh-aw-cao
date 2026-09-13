@@ -4,7 +4,7 @@ import { resolveDashboardControlSettings } from "../../activity/control-settings
 
 const options = {
   repository: "acme/control",
-  controlProgram: ".github/cao/src/control.mjs",
+  controlProgram: ".github/workflows/shared/control.mjs",
   policyPath: ".github/workflows/cao.json",
 };
 
