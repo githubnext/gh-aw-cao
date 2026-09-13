@@ -18,6 +18,7 @@ permissions:
   pull-requests: read
   copilot-requests: write
 strict: true
+max-turns: 5
 max-ai-credits: 25
 max-daily-ai-credits: -1
 timeout-minutes: 5
@@ -33,12 +34,11 @@ network:
   allowed:
     - defaults
 safe-outputs:
-  assign-to-agent:
-    name: copilot
-    allowed: [copilot]
+  add-comment:
     max: 4
     target: "*"
-    custom-instructions: Resolve the actionable blockers already visible on this pull request with the smallest complete change and appropriate validation.
+  mentions:
+    allowed: ["@copilot"]
   noop:
     report-as-issue: false
 steps:
@@ -70,9 +70,10 @@ Rapidly scan open pull request metadata and dispatch at most four pull requests 
 2. For a `/souschef` invocation, consider only the pull request that received the command and dispatch it once.
 3. Otherwise, scan the queue once in its existing order. Use only each entry's title, `mergeStateStatus`, and `statusCheckRollup`.
 4. Dispatch a pull request only when that metadata clearly shows merge conflicts or a completed failed check. Skip queued or in-progress checks.
-5. Call `assign_to_agent` once for each selected pull request, stopping after four assignments.
-6. Do not inspect code, check logs, review threads, or branch contents.
-7. Do not wait, poll, fix, validate, commit, or push.
-8. If nothing is dispatched, call `noop` with concise counts for evaluated, pending, and no-clear-blocker pull requests.
+5. For each selected pull request, check only whether a comment containing `<!-- cao-pr-sous-chef-nudge -->` was posted in the last 30 minutes. Skip it when one exists.
+6. Post one combined comment per selected pull request, stopping after four comments. It must begin with `<!-- cao-pr-sous-chef-nudge -->`, mention `@copilot`, identify the blocker visible in the queue metadata, and ask Copilot to invoke the repository's `pr-finisher` skill.
+7. Do not inspect code, check logs, review threads, or branch contents.
+8. Do not wait, poll, fix, validate, commit, or push.
+9. If nothing is dispatched, call `noop` with concise counts for evaluated, pending, recently dispatched, and no-clear-blocker pull requests.
 
-Never target another repository. Never use raw GitHub writes; all assignments must use the declared safe output.
+Never target another repository. Never use raw GitHub writes; all comments must use the declared safe output.

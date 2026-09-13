@@ -948,15 +948,18 @@ test("repository PR automation remains bounded and adapted to CAO", () => {
   assert.doesNotMatch(finisher, /\bmake (?:fmt|lint|test|recompile)\b/);
 
   assert.match(sousChef, /model: copilot\/mai-code-1\.1-flash/);
-  assert.match(sousChef, /assign-to-agent:[\s\S]*?max: 4/);
+  assert.match(sousChef, /max-turns: 5/);
+  assert.match(sousChef, /add-comment:[\s\S]*?max: 4/);
+  assert.match(sousChef, /allowed: \["@copilot"\]/);
   assert.match(sousChef, /--limit 10/);
+  assert.match(sousChef, /last 30 minutes/);
   assert.match(sousChef, /Do not inspect code, check logs, review threads, or branch contents/);
   assert.match(sousChef, /Do not wait, poll, fix, validate, commit, or push/);
   assert.doesNotMatch(sousChef, /push-to-pull-request-branch:/);
+  assert.doesNotMatch(sousChef, /assign-to-agent:/);
   assert.doesNotMatch(sousChef, /bash:/);
   assert.doesNotMatch(sousChef, /playwright:/);
   assert.doesNotMatch(sousChef, /npm ci/);
-  assert.doesNotMatch(sousChef, /mention `@copilot`/);
   assert.match(sousChef, /fromJSON\(github\.event\.inputs\.aw_context \|\| '\{\}'\)\.item_number/);
 
   assert.equal([...mattReviewer.matchAll(/mattpocock\/skills\/[\w-]+@[0-9a-f]{40}/g)].length, 5);
