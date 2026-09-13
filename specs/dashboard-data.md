@@ -276,6 +276,28 @@ median and p95 of at least twenty measured iterations. Route results MUST remain
 bounded by the requested page size. The benchmark SHALL publish
 machine-readable evidence for trend analysis.
 
+The benchmark's corpus-scale sweep provides an environment-specific boundary
+plot:
+
+```mermaid
+xychart-beta
+  title "IndexedDB cold replacement boundary"
+  x-axis "Total canonical records" [4500, 9000, 18000, 27000, 36000, 45000, 47250, 49500, 54000]
+  y-axis "Cold replacement (seconds)" 0 --> 14
+  line [0.14, 0.45, 1.64, 3.42, 5.95, 9.49, 10.33, 10.53, 12.84]
+  line [10, 10, 10, 10, 10, 10, 10, 10, 10]
+```
+
+In the September 2026 Chromium reference run, the measured 10-second crossing
+was approximately 46,365 canonical records. Because repeated runs varied around
+the crossing, 45,000 records is the conservative threshold for beginning a
+SQLite-WASM evaluation. This is an evaluation threshold, not an automatic
+migration threshold. Reproduce the graph with:
+
+```bash
+npm run test:storage-boundary
+```
+
 One noisy result MUST NOT justify changing browser storage engines. Browser
 SQLite SHOULD be evaluated only after two consecutive contract failures and
 after indexed access, cursor pagination, and query pushdown fail to restore the

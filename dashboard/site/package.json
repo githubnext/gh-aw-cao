@@ -10,6 +10,7 @@
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
     "test:performance": "npm run build && node ./test/performance/lighthouse.mjs && npm run test:storage-performance",
     "test:storage-performance": "node ./test/performance/canonical-storage.mjs",
+    "test:storage-boundary": "node ./test/performance/canonical-storage-boundary.mjs",
     "validate:corpus": "node ./scripts/validate-corpus.mjs",
     "dev": "cd .. && node local-server.mjs --copilot"
   },

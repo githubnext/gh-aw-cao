@@ -10,6 +10,7 @@ const outputRoot = resolve(
     || join(siteRoot, 'test-results', 'storage-performance')
 );
 const profileName = process.env.DASHBOARD_STORAGE_PERFORMANCE_PROFILE || 'contract';
+const configuredCorpusScale = Number(process.env.DASHBOARD_STORAGE_PERFORMANCE_CORPUS_SCALE || 1);
 const profiles = {
   contract: {
     corpus: {
@@ -134,8 +135,18 @@ function contractFailures(metrics, profile) {
 }
 
 async function main() {
-  const profile = profiles[profileName];
-  if (!profile) throw new Error(`Unknown storage performance profile: ${profileName}`);
+  const baseProfile = profiles[profileName];
+  if (!baseProfile) throw new Error(`Unknown storage performance profile: ${profileName}`);
+  if (!Number.isFinite(configuredCorpusScale) || configuredCorpusScale <= 0 || configuredCorpusScale > 1) {
+    throw new Error('DASHBOARD_STORAGE_PERFORMANCE_CORPUS_SCALE must be greater than 0 and no greater than 1.');
+  }
+  const profile = {
+    ...baseProfile,
+    corpus: Object.fromEntries(Object.entries(baseProfile.corpus).map(([name, count]) => [
+      name,
+      Math.max(1, Math.round(count * configuredCorpusScale))
+    ]))
+  };
   await rm(outputRoot, { force: true, recursive: true });
   await mkdir(outputRoot, { recursive: true });
   const { server, origin } = await startServer();
@@ -254,6 +265,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     methodology: 'Chromium dedicated Web Worker with native IndexedDB; median and p95 exclude warmup iterations',
     profile: profileName,
+    corpusScale: configuredCorpusScale,
     corpus: profile.corpus,
     samples: { warmups: profile.warmups, measured: profile.iterations },
     budgets,
