@@ -191,21 +191,25 @@ async function installPackage(source) {
 test("gh aw add resolves root files included through a nested manifest", { timeout: 180_000 }, () => {
   const packageRoot = mkdtempSync(join(tmpdir(), "central-agentic-ops-nested-package-"));
   const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-consumer-"));
+  const rootFiles = [
+    [".github/workflows/root-one.md", "# Root one\n"],
+    [".github/workflows/root-two.md", "# Root two\n"],
+  ];
   try {
     writePackageFile(packageRoot, "README.md", "# Nested package\n");
-    writePackageFile(packageRoot, "aw.yml", `name: Nested package
-includes:
-  - .github/workflows/root-one.md
-  - .github/workflows/root-two.md
-  - child/aw.yml
-`);
+    writePackageFile(
+      packageRoot,
+      "aw.yml",
+      `name: Nested package\nincludes:\n${rootFiles.map(([path]) => `  - ${path}\n`).join("")}  - child/aw.yml\n`,
+    );
     // This must resolve the root manifest rather than treating child/aw.yml as a cycle.
     writePackageFile(packageRoot, "child/aw.yml", `name: Child package
 includes:
   - ./aw.yml
 `);
-    writePackageFile(packageRoot, ".github/workflows/root-one.md", "# Root one\n");
-    writePackageFile(packageRoot, ".github/workflows/root-two.md", "# Root two\n");
+    for (const [relativePath, content] of rootFiles) {
+      writePackageFile(packageRoot, relativePath, content);
+    }
     run("git", ["init", "--quiet"], consumer);
     run("gh", [
       "aw",
@@ -215,10 +219,7 @@ includes:
       "--no-security-scanner",
     ], consumer);
 
-    for (const [relativePath, content] of [
-      [".github/workflows/root-one.md", "# Root one\n"],
-      [".github/workflows/root-two.md", "# Root two\n"],
-    ]) {
+    for (const [relativePath, content] of rootFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `nested package omitted ${relativePath}`);
       assert.equal(readFileSync(join(consumer, relativePath), "utf8"), content);
     }
