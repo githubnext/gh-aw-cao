@@ -77,7 +77,7 @@ const ELEMENT_RENDERERS = new Map([
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
-const ASYNC_SOURCE_ELEMENTS = new Set();
+const ASYNC_SOURCE_ELEMENTS = new Set(['outcomes-overview']);
 
 /**
  * Reports whether an element loads its declared sources on its own.

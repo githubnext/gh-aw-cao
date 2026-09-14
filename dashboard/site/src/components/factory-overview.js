@@ -2,7 +2,10 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { batch, derived, effect, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
+import { createDebug } from '../debug.js';
 import { formatCount } from './count-formatters.js';
+
+const debug = createDebug('render:factory-overview');
 
 /**
  * Compact worker-query results consumed by the overview.
@@ -154,6 +157,7 @@ export function renderFactoryOverview(context) {
   releaseFactoryOverviewEffects();
   const sources = bindOverviewSources(context);
   const metrics = createOverviewMetrics(sources);
+  debug('configured', { sourceCount: OVERVIEW_SOURCE_NAMES.length });
   return h(
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
@@ -509,4 +513,3 @@ function createRhythmDay() {
     h('small', {})
   );
 }
-

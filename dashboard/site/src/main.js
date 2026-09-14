@@ -1082,7 +1082,16 @@
                 kind: "refresh",
                 status: "started",
               });
-              renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
+              renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources);
+              emitDashboardDebugEvent(document, DASHBOARD_RENDER_EVENT, {
+                kind: "initial-page",
+                status: "configured",
+                pageId: initialPageId,
+              });
+              emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+                kind: "ingestion",
+                status: "started",
+              });
               void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
                 sourceUrl,
                 initialSources,
@@ -1113,6 +1122,16 @@
             loadingProgress.complete();
             cancelCommand.complete();
           } else {
+            renderSources({}, "ready", true, loadPageSources, loadHorizonSources);
+            emitDashboardDebugEvent(document, DASHBOARD_RENDER_EVENT, {
+              kind: "initial-page",
+              status: "configured",
+              pageId: initialPageId,
+            });
+            emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+              kind: "ingestion",
+              status: "started",
+            });
             renderSources(
               await loadInitialSources(
                 (requested, pagination) => loadCanonicalDashboardSources(
@@ -1129,9 +1148,10 @@
               loadHorizonSources,
             );
             emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
-              kind: "initial-load",
+              kind: "ingestion",
               status: "completed",
             });
+            refreshBoundSources();
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
