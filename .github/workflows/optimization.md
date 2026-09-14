@@ -93,8 +93,6 @@ safe-outputs:
 source: githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
 ---
 
-{{#runtime-import? .github/cao/optimization.md}}
-
 # AW Optimization
 
 ## Discovery
@@ -124,3 +122,5 @@ Add package-specific details after the standard fields:
 
 - The optimization or ambient-context signal that justified each selected repository.
 - Repositories skipped for ambient-context work because they have no root `AGENTS.md`.
+
+{{#runtime-import? .github/cao/optimization.md}}

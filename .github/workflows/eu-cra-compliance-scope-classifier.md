@@ -122,8 +122,6 @@ safe-outputs:
 timeout-minutes: 25
 ---
 
-{{#runtime-import? .github/cao/eu-cra-compliance.md}}
-
 # EU CRA / Scope
 
 Build a repository-level CRA scope evidence record. Assist human decision-makers; do not issue a legal conclusion.
@@ -207,3 +205,5 @@ Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`
 Do not put secrets, personal data, exploit details, private advisory or incident content, or confidential regulatory evidence in a safe output. Summarize the gap and identify the access-controlled evidence location instead.
 
 If `correlation_id` is present, include a `### Control Plane` section with the correlation ID, central repository, and control-plane run URL. Use `noop` only when a current equivalent report exists and no material evidence or baseline changed; otherwise preserve findings in the issue.
+
+{{#runtime-import? .github/cao/eu-cra-compliance.md}}

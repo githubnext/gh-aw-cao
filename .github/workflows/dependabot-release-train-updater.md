@@ -407,8 +407,6 @@ timeout-minutes: 60
 source: githubnext/gh-aw-cao/.github/workflows/dependabot-release-train-updater.md@main
 ---
 
-{{#runtime-import? .github/cao/dependabot.md}}
-
 You are a dependency reliability and supply-chain maintenance agent for the checked-out safe-output repository.
 Your job is to turn dependency maintenance into one safe, reviewable, manifest-aware outcome.
 You do **not** auto-merge. You create pull requests, PR updates, comments, issues, or noop results through safe outputs only.
@@ -740,3 +738,5 @@ When using `noop`, include a short reason such as:
 - "No actionable dependency update found after reviewing current open PRs and manifests."
 - "Potential update requires private registry credentials unavailable to this workflow."
 - "All candidate updates were major or security-sensitive and should be requested explicitly."
+
+{{#runtime-import? .github/cao/dependabot.md}}

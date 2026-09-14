@@ -100,8 +100,6 @@ safe-outputs:
   threat-detection: false
 ---
 
-{{#runtime-import? .github/cao/uk-ai-advisory.md}}
-
 <!-- Advisory outputs are advisory and non-binding. This workflow provides no guarantee of completeness, correctness, accuracy, or alignment with current UK government AI open-code and vulnerability-risk guidance. -->
 
 # UK AI Advisory
@@ -135,3 +133,5 @@ Dispatch once per selected repository. Do not analyze target repositories in the
 Finish with the standard `## Orchestrator Report` inherited from `shared/control.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields.
 
 Add the evidence supporting each selected repository's UK public-sector, AI, open-code, recent-change, or resilience priority alongside the standard fields. When no repository has enough observed evidence for a useful advisory, dispatch nothing and report a no-op in `Outcome`.
+
+{{#runtime-import? .github/cao/uk-ai-advisory.md}}

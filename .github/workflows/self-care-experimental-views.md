@@ -141,8 +141,6 @@ pre-agent-steps:
     run: timeout 15m npm exec --prefix dashboard/site -- playwright install --with-deps chromium webkit
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Experimental Views
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing dashboard files.
@@ -172,3 +170,5 @@ Add or update focused tests that reproduce the issue in both Chromium and WebKit
 If no issue is reproducible, a complete inventory cannot be tested, another matching PR is open, the best fix exceeds the boundary, or validation fails, call `noop` exactly once with the blocker. Otherwise Call `create_pull_request` exactly once. Provide only the unprefixed subject because the configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 
 Begin the draft pull request body with a concise unheaded summary and `**Action:** Review the cross-browser evidence and merge after CI passes.` Include visible browser and view coverage, the fixed behavior, before/after DOM counts when relevant, data-source fixtures exercised, and validation results. Put the complete per-view matrix and verbose evidence in `<details>`. Include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`. Never finish with only a textual response.
+
+{{#runtime-import? .github/cao/self-care.md}}

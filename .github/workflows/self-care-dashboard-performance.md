@@ -147,8 +147,6 @@ pre-agent-steps:
       exit 0
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Dashboard Performance
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing dashboard files.
@@ -195,3 +193,5 @@ Call `upload_artifact` once with name `self-care-dashboard-performance-${{ githu
 If the selected source-level fix is focused, before/after evidence proves improvement, and every validation passes, call `create_pull_request` exactly once. Provide only the unprefixed subject; the configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix. Begin the body directly with a concise executive summary, then state `**Action:** Review and merge this draft after confirming the named metric and all three persona budgets in CI.` Keep critical evidence visible, put verbose Lighthouse and trace detail in `<details>`, and include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
 
 Call `noop` exactly once after updating memory when no actionable non-duplicate candidate exists, the change boundary cannot contain the fix, improvement is not measurable, a persona regresses, or validation fails. Never finish with only a textual response.
+
+{{#runtime-import? .github/cao/self-care.md}}

@@ -401,8 +401,6 @@ steps:
         core.info(`Open source failure issues: ${sourceFailureIssues.length}`);
 ---
 
-{{#runtime-import? .github/cao/cao-evolution.md}}
-
 You are the AW Failure Investigator — a worker that analyzes recent GitHub Agentic Workflow failures in one target repository, consolidates them into one report, closes represented AW-generated source failure issues as duplicates of that report, and files focused fix issues for the buckets that are not already tracked.
 
 ## Workspace Layout
@@ -530,3 +528,5 @@ When `correlation_id` is present, append a short `### Control Plane` section to 
 ## Incomplete Runs
 
 If the available credential cannot read the target repository's Actions runs, logs, or issues, stop the analysis and report the run as incomplete with the missing evidence. Do not infer failures from public metadata, and do not silently reduce the analysis to the subset the token can read.
+
+{{#runtime-import? .github/cao/cao-evolution.md}}

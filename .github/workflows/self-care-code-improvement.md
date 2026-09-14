@@ -131,8 +131,6 @@ pre-agent-steps:
       npm --prefix dashboard/site run test:e2e
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Code Improvement
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing dashboard files.
@@ -170,3 +168,5 @@ Review the final diff and scan changed files for secrets. If every command passe
 Provide only the unprefixed subject as the safe-output title. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 
 Call `noop` with a short reason and make no visible write when no non-duplicate candidate meets the evidence threshold, the baseline or post-change validation fails, evidence is insufficient, or the necessary change exceeds the allowed or protected-file boundary.
+
+{{#runtime-import? .github/cao/self-care.md}}

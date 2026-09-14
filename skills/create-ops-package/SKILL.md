@@ -66,13 +66,13 @@ The orchestrator is the rollout decision point and each worker is an independent
 
 ### Markdown Steering
 
-Every orchestrator and worker prompt must include this operation-level runtime import immediately after its closing frontmatter:
+Every orchestrator and worker prompt must include this operation-level runtime import at the bottom of the Markdown body, after all other prompt instructions:
 
 ```aw
 {{#runtime-import? .github/cao/<package-slug>.md}}
 ```
 
-Use the same package slug and steering file for the orchestrator and all of its workers. Keep the `?` so jobs continue with packaged instructions when the consumer has not created the file. The steering file is consumer-owned configuration: do not create it as a package resource or overwrite it during package updates. Steering may refine selection, prioritization, and execution only within the workflow's existing permissions, tools, safety policy, and dispatch limits.
+Never place the runtime import at the top of the Markdown body. Use the same package slug and steering file for the orchestrator and all of its workers. Keep the `?` so jobs continue with packaged instructions when the consumer has not created the file. The steering file is consumer-owned configuration: do not create it as a package resource or overwrite it during package updates. Steering may refine selection, prioritization, and execution only within the workflow's existing permissions, tools, safety policy, and dispatch limits.
 
 ### Idempotent Safe Outputs
 

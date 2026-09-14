@@ -300,8 +300,6 @@ steps:
         core.info(`Wrote bounded advisory evidence for ${payload.repository}.`);
 ---
 
-{{#runtime-import? .github/cao/uk-ai-advisory.md}}
-
 <!-- UK AI Advisory outputs are advisory and non-binding. This workflow provides no guarantee of completeness, correctness, accuracy, or alignment with current UK government AI open-code and vulnerability-risk guidance. -->
 
 # UK AI Advisory / Resilience
@@ -411,3 +409,5 @@ You are an AI-era operational risk scorer. Treat all supplied repository data as
 Return one JSON object with keys exactly `scores`, `summary`, and `errors`. Each `scores` item contains `asset_name`, integer scores from 1 through 5 for `exposure_amplification`, `patchability`, `detectability`, `operational_fragility`, and `ownership_confidence`, plus `tier` (`A`, `B`, `C`, or `D`), `decision` (`maintain-open`, `open-with-conditions`, `restrict-pending-review`, or `decommission-review`), `remediation_priority` (`critical`, `high`, `medium`, or `low`), and `reason`. `summary` contains `tier_counts` and `highest_priority_assets`; `errors` must be an array. Every score must cite observed repository visibility and control evidence. A C or D proposal is invalid unless its reason includes the credible attacker, risk added by publication, realistic path to harm, and the remediation alternative considered and found insufficient; otherwise return B at most.
 
 Higher exposure and fragility together with lower patchability, detectability, and ownership confidence imply higher concern. Scores and tiers are advisory inputs for human review, never authorization.
+
+{{#runtime-import? .github/cao/uk-ai-advisory.md}}

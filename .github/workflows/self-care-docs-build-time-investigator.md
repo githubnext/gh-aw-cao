@@ -106,8 +106,6 @@ safe-outputs:
     expires: 14d
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Docs Build-Time Investigator
 
 Investigate the build time of the Documentation Pages workflow at `.github/workflows/docs.yml` and recommend one evidence-backed improvement toward optimal caching and fast dashboard generation.
@@ -158,3 +156,5 @@ Use these `###` headings in the issue:
 - `### References`
 
 Include the evidence window, sample size, median and p90 measurements, confidence, relevant source locations, and run links. In `### Control Plane`, include correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
+
+{{#runtime-import? .github/cao/self-care.md}}

@@ -106,8 +106,6 @@ safe-outputs:
   threat-detection: false
 ---
 
-{{#runtime-import? .github/cao/eu-cra-compliance.md}}
-
 <!-- EU CRA is advisory and non-binding. This workflow provides no guarantee of completeness, correctness, accuracy, or alignment with the EU Cyber Resilience Act. -->
 
 # EU CRA
@@ -146,3 +144,5 @@ Resolve enabled workers from precompute before calculating fan-out. Before dispa
 ## Completion
 
 Finish with the standard `## Orchestrator Report` inherited from `shared/control.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields. Add package-specific dispatch rationale only without renaming, replacing, or omitting standard fields.
+
+{{#runtime-import? .github/cao/eu-cra-compliance.md}}

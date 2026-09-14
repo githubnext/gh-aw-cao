@@ -124,8 +124,6 @@ pre-agent-steps:
     run: npm exec --prefix dashboard/site -- playwright install --with-deps chromium
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Primer Brand Checker
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without auditing or changing files.
@@ -202,3 +200,5 @@ Always finish by calling exactly one safe-output tool. If the audit finds no mea
 - Do NOT change `dashboard/aw.yml`, report producers, documentation, agentic workflows, or files outside the configured safe-output allowlist.
 - Do NOT open a pull request when any validation command fails.
 - Keep the change set small enough for a human to review in one sitting.
+
+{{#runtime-import? .github/cao/self-care.md}}

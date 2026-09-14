@@ -114,8 +114,6 @@ pre-agent-steps:
     run: npm ci --prefix dashboard/site --ignore-scripts
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Dashboard Debug Logging
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing repository files.
@@ -146,3 +144,5 @@ Run focused tests, then `npm --prefix dashboard/site run typecheck`, `npm --pref
 Call `create_pull_request` exactly once only when one evidenced candidate was instrumented and all validation passes. Provide only the unprefixed subject because the configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix. Summarize the diagnostic gap, categories, privacy boundary, and validation, and include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
 
 Call `noop` exactly once when no actionable candidate exists, evidence is insufficient, the required change exceeds the allowed boundary, or validation fails. Do not create more than one pull request, merge it, or modify an existing contributor pull request.
+
+{{#runtime-import? .github/cao/self-care.md}}

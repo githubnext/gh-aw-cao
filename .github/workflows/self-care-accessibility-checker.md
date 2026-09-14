@@ -202,8 +202,6 @@ pre-agent-steps:
       fi
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Accessibility Checker
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without auditing or publishing findings.
@@ -328,3 +326,5 @@ Apply the inherited worker report contract exactly:
 If no barriers were found, replace the caution alert with a `[!NOTE]` clean-result alert, keep the zero counts and recommended follow-up visible, and preserve the coverage detail. If the browser or preview server never became available, use the same progressive-disclosure structure with a visible `[!WARNING]` infrastructure summary, zero coverage, and the next recovery action; put the exact failing commands and logs in the audit-notes detail and make no accessibility claims.
 
 Keep the issue body substantive — never placeholder text — require the `self-care` label, and finish with exactly one `create_issue` output.
+
+{{#runtime-import? .github/cao/self-care.md}}

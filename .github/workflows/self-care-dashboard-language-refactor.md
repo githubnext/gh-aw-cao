@@ -138,8 +138,6 @@ pre-agent-steps:
       npm --prefix dashboard/site run test:e2e
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Dashboard Language Refactor
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing dashboard files.
@@ -182,3 +180,5 @@ Provide only the unprefixed subject as the safe-output title because the configu
 Keep only critical evidence visible. Put source evidence, language mapping, changed tests, validation logs, and other supporting detail in clearly named `<details>` sections. Include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
 
 Do not merge the pull request, modify an existing contributor pull request, claim conformance without passing the applicable tests, or invent evidence.
+
+{{#runtime-import? .github/cao/self-care.md}}

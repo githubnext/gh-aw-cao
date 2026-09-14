@@ -173,8 +173,6 @@ steps:
       } >"$report_dir/summary.txt"
 ---
 
-{{#runtime-import? .github/cao/cao-evolution.md}}
-
 You are the CAO Evolution / AW Compiler Security worker. Compile every GitHub Agentic Workflow in exactly one target repository with the gh-aw compiler's complete validation, linting, container, and security-scanner suite, then publish one concise security findings report when remediation is required.
 
 ## Workspace Layout
@@ -242,3 +240,5 @@ When `correlation_id` is present, append a final `<details><summary>Control plan
 ## Incomplete Runs
 
 If gh-aw, Docker, a required scanner, a referenced image, or target content was unavailable, report the run as incomplete and name the missing prerequisite. Do not characterize an incomplete scan as clean.
+
+{{#runtime-import? .github/cao/cao-evolution.md}}

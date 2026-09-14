@@ -103,8 +103,6 @@ safe-outputs:
   threat-detection: false
 ---
 
-{{#runtime-import? .github/cao/software-development-practices.md}}
-
 <!-- Dev Practices outputs are advisory and non-binding. They provide no guarantee of completeness, correctness, security, compliance, or alignment with current GitHub or NIST guidance. -->
 
 # Dev Practices
@@ -140,3 +138,5 @@ Calculate the proposed dispatch count across selected repositories and enabled w
 ## Completion
 
 Finish with the standard `## Orchestrator Report` inherited from `shared/control.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields. Add framework-specific selection rationale only without renaming, replacing, or omitting standard fields.
+
+{{#runtime-import? .github/cao/software-development-practices.md}}

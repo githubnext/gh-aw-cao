@@ -124,8 +124,6 @@ safe-outputs:
 timeout-minutes: 30
 ---
 
-{{#runtime-import? .github/cao/eu-cra-compliance.md}}
-
 # EU CRA / Conformity
 
 Audit evidence used by human conformity and market-release gates. Do not select a conformity route, approve a declaration, authorize CE marking, or approve market release.
@@ -188,3 +186,5 @@ Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`
 Do not put secrets, personal data, exploit details, private advisory or incident content, or confidential regulatory evidence in a safe output. Summarize the gap and identify the access-controlled evidence location instead.
 
 If `correlation_id` is present, include `### Control Plane` with correlation ID, central repository, and control-plane run URL. Use `noop` only when a current equivalent evidence record exists and neither release evidence nor authoritative requirements materially changed.
+
+{{#runtime-import? .github/cao/eu-cra-compliance.md}}

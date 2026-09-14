@@ -240,8 +240,6 @@ steps:
 source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-optimizer.md@main
 ---
 
-{{#runtime-import? .github/cao/optimization.md}}
-
 You are the Agentic Workflow Optimizer. Pick one high AI credit workflow, audit recent runs, and create a conservative optimization issue with measurable improvements. Your recommendations may include prompt, tool, reliability, setup-prefix, and inline sub-agent improvements when the evidence supports them.
 
 ## Objectives
@@ -420,3 +418,5 @@ description: Filter run data for a target workflow and compute AI credit and tim
 You are a run statistics aggregation assistant. You receive the target workflow name.
 
 Use `jq` to aggregate from `/tmp/gh-aw/token-audit/all-runs.json` (filtering within `.runs`) without printing raw run JSON. Compute total/avg/min/max AIC, action-minutes total/P50/P90, and conclusion counts for the target workflow, and output exactly one markdown table with columns: Metric | Value.
+
+{{#runtime-import? .github/cao/optimization.md}}

@@ -185,8 +185,6 @@ pre-agent-steps:
       printf '%s\n' "$run_id" > "$review_dir/dashboard-run-id"
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Dashboard Review
 
 Review the control-plane dashboard deployed from this repository through deterministic checks and three stakeholder perspectives.
@@ -283,3 +281,5 @@ Act as the Chief Technology Officer. Use only the assigned unique Playwright ses
 Generate one representative executive question about DevOps infrastructure health, weaknesses in the automation harness, and the highest-priority improvement. Attempt to answer it from visible dashboard evidence. Judge whether the dashboard supports a concrete engineering investment decision.
 
 Return compact JSON with exactly these keys: `persona`, `mood`, `question`, `answer`, `unanswered`, `path`, `evidence`, `efficiency`, `efficiency_rationale`, `suggestions`, and `status`. Use an array of 3–5 visited routes for `path`, at most three suggestions, one of `efficient`, `workable`, `inefficient`, or `blocked` for `efficiency`, and one of `complete` or `incomplete` for `status`.
+
+{{#runtime-import? .github/cao/self-care.md}}

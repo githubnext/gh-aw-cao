@@ -192,8 +192,6 @@ pre-agent-steps:
       EOF
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Dashboard Data Schema
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing repository files.
@@ -207,3 +205,5 @@ Read `/tmp/gh-aw/agent/dashboard-data.generated.md` and compare it with `specs/d
 - Do not modify any other file.
 
 Provide only the unprefixed pull request subject because the configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix. Include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
+
+{{#runtime-import? .github/cao/self-care.md}}
