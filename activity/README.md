@@ -15,14 +15,16 @@ keeping cache-write permission out of the collection job. An incomplete
 extraction fails that job instead of silently skipping the cache save, which
 would strand consumers on a cache miss.
 
-The `gh aw logs` invocation uses `--cached-logs` with a trailing wildcard
-shard prefix instead of a single `--cached-jsonl` file. The wildcard shard
-directory itself is part of the shared activity cache, so `gh aw logs`
-recognizes previously discovered runs across job runs without re-seeding a
-snapshot; new runs are written to a freshly named shard rather than merged
-into an existing one in place, and shards containing only out-of-range dated
-records are pruned automatically. All carried-forward shards are consolidated
-back into `gh-aw-logs.jsonl` so the external cache/publish contract below is
+The `gh aw logs` invocation uses `--cached-jsonl` with a trailing wildcard
+shard prefix (`--cached-jsonl` supports wildcard shard prefixes the same way
+its `--cached-logs` alias does) instead of a single growing JSONL file. The
+wildcard shard directory itself is part of the shared activity cache, so
+`gh aw logs` recognizes previously discovered runs across job runs without
+re-seeding a snapshot; new runs are written to a freshly named shard rather
+than merged into an existing one in place, and shards containing only
+out-of-range dated records are pruned automatically. All carried-forward
+shards are consolidated back into `gh-aw-logs.jsonl` so the external
+cache/publish contract below is
 unchanged. The ingestion step then passes the whole shard directory to
 `cao ingest-jsonl --input-dir`, which ingests every shard one by one and skips
 any shard whose content hash is already recorded in the transactions table, so

@@ -53,7 +53,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?Download agentic workflow logs/,
   );
-  assert.match(workflow, /--cached-logs "\$\{shard_prefix\}\*"/);
+  assert.match(workflow, /--cached-jsonl "\$\{shard_prefix\}\*"/);
   assert.match(
     workflow,
     /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--input-dir "\$REPORT_GH_AW_LOGS_SHARDS"/,

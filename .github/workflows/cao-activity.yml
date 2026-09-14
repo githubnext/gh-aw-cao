@@ -167,7 +167,7 @@ jobs:
           gh aw logs --audit \
             --output "$REPORT_AIC_CACHE" \
             --summary-file "" \
-            --cached-logs "${shard_prefix}*" \
+            --cached-jsonl "${shard_prefix}*" \
             --artifacts usage \
             --start-date "-${REPORT_RUN_WINDOW_DAYS}d" \
             --cache-before "-${REPORT_RUN_WINDOW_DAYS}d" \
@@ -181,7 +181,7 @@ jobs:
           mv "$REPORT_AIC_CACHE/drain3_weights.json" "$REPORT_DRAIN3_WEIGHTS"
           echo "Saved refreshed Drain3 weights to $REPORT_DRAIN3_WEIGHTS"
           # The wildcard shard cache is persisted across runs so `gh aw logs
-          # --cached-logs` reuses known runs; out-of-range shards are pruned
+          # --cached-jsonl` reuses known runs; out-of-range shards are pruned
           # by `--cache-before`. Reconsolidate the remaining shards into the
           # single published file consumed by cao-dashboard.yml and other
           # downstream readers.

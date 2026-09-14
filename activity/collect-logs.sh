@@ -25,7 +25,7 @@ set +e
 gh aw logs --audit \
   --output "$output_directory" \
   --summary-file "" \
-  --cached-logs "${shard_prefix}*" \
+  --cached-jsonl "${shard_prefix}*" \
   --artifacts usage \
   --start-date "-${window_days}d" \
   --cache-before "-${window_days}d" \
@@ -41,7 +41,7 @@ set -e
 printf '%s\n' "$exit_code" > "$exit_code_path"
 
 # The wildcard shard directory is persisted by the caller (mirroring the
-# activity cache managed by cao-activity.yml) so `--cached-logs` reuses known
+# activity cache managed by cao-activity.yml) so `--cached-jsonl` reuses known
 # runs across invocations; out-of-range shards are pruned by `--cache-before`.
 # Reconsolidate the current shards into the single-file snapshot contract
 # that downstream consumers (activity/logs.mjs and its cached-run fallback)
