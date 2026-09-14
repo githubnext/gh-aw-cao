@@ -1032,6 +1032,8 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.match(packageScripts["test:integration"], /control-failure\.test\.mjs/);
   assert.doesNotMatch(packageScripts["test:integration"], /package-lifecycle/);
   assert.match(packageScripts["test:package-lifecycle"], /package-lifecycle\.test\.mjs/);
+  assert.match(packageScripts["test:package-root"], /--test-name-pattern=.\^root package bootstraps/);
+  assert.match(packageScripts["test:package-root"], /package-lifecycle\.test\.mjs/);
   assert.doesNotMatch(packageScripts.test, /package-lifecycle/);
 
   const source = workflow("workflow-contracts.yml");
@@ -1102,7 +1104,8 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(version, /Resolved \$\{bump\} bump from/);
   assert.match(validation, /CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: \$\{\{ github\.repository \}\}@\$\{\{ github\.sha \}\}/);
   assert.match(validation, /GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
-  assert.match(validation, /npm run test:package-lifecycle/);
+  assert.match(validation, /npm run test:package-root/);
+  assert.doesNotMatch(validation, /npm run test:package-lifecycle/);
   assert.match(safeOutputs, /github-token: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
   assert.deepEqual(JSON.parse(processSafeOutputs.env.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG).update_release, { max: 1 });
   assert.deepEqual(jobs.get("prepare-release")?.needs, ["resolve-version", "validate-package"]);

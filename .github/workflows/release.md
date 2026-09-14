@@ -159,11 +159,11 @@ jobs:
           node-version: 24
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw
-      - name: Validate files installed from aw.yml
+      - name: Validate files installed from the root aw.yml package
         env:
           CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: ${{ github.repository }}@${{ github.sha }}
           GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
-        run: npm run test:package-lifecycle
+        run: npm run test:package-root
 
   prepare-release:
     name: Prepare draft release

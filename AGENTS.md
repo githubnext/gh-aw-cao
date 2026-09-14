@@ -47,6 +47,7 @@ Run `npm run check` for complete repository validation. It executes, in order: `
 | `npm run test:unit` | Unit tests only |
 | `npm run test:integration` | Integration tests only (serial) |
 | `npm run test:package-lifecycle` | Clean-room `gh aw add`/`update` tests; requires `GH_TOKEN` and a GitHub App |
+| `npm run test:package-root` | Clean-room install of the root `aw.yml` package only; requires `GH_TOKEN` and a GitHub App |
 | `npm run test:load` | Synthetic enterprise-scale load tests (100 000 repos) |
 | `npm run check:svg` | SVG visual-language compliance via `scripts/check-svg-visual-language.mjs` |
 | `npm run dashboard:local -- --repo OWNER/REPOSITORY` | Download dashboard data and start a local preview |
