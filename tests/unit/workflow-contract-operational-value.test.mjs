@@ -10,9 +10,9 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 test("operational-value graders cap GitHub API usage while collecting logs", () => {
   for (const name of [
-    "optimization-agents-md-curator-operational-value.sh",
-    "optimization-ai-credit-auditor-operational-value.sh",
-    "optimization-ai-credit-optimizer-operational-value.sh",
+    "cao-evolution-agents-md-curator-operational-value.sh",
+    "cao-evolution-ai-credit-auditor-operational-value.sh",
+    "cao-evolution-ai-credit-optimizer-operational-value.sh",
   ]) {
     const source = readFileSync(join(root, ".github", "workflows", "graders", name), "utf8");
     assert.match(source, /gh aw logs[\s\S]*--max-github-api-rate-limit -2000/, name);
@@ -33,9 +33,9 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "eu-cra-compliance-security-requirements-auditor-operational-value.sh",
     "eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
     "eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
-    "optimization-agents-md-curator-operational-value.sh",
-    "optimization-ai-credit-auditor-operational-value.sh",
-    "optimization-ai-credit-optimizer-operational-value.sh",
+    "cao-evolution-agents-md-curator-operational-value.sh",
+    "cao-evolution-ai-credit-auditor-operational-value.sh",
+    "cao-evolution-ai-credit-optimizer-operational-value.sh",
     "self-care-docs-build-time-investigator-operational-value.sh",
     "software-development-practices-github-well-architected-operational-value.sh",
     "software-development-practices-nist-ssdf-operational-value.sh",
@@ -83,10 +83,10 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     ["--definition"],
     { encoding: "utf8" },
   ));
-  const auditorWorker = workflow("optimization-ai-credit-auditor.md");
-  const auditorEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-auditor-operational-value.sh"), "utf8");
-  const optimizerWorker = workflow("optimization-ai-credit-optimizer.md");
-  const optimizerEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-optimizer-operational-value.sh"), "utf8");
+  const auditorWorker = workflow("cao-evolution-ai-credit-auditor.md");
+  const auditorEvaluator = readFileSync(join(gradersDirectory, "cao-evolution-ai-credit-auditor-operational-value.sh"), "utf8");
+  const optimizerWorker = workflow("cao-evolution-ai-credit-optimizer.md");
+  const optimizerEvaluator = readFileSync(join(gradersDirectory, "cao-evolution-ai-credit-optimizer-operational-value.sh"), "utf8");
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
   assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);

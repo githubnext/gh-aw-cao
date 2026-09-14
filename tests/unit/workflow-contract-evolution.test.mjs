@@ -13,10 +13,10 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
   const dashboard = JSON.parse(readFileSync(join(root, "optimization", "dashboard.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const workerNames = [
-    ["optimization-ai-credit-auditor.md", "AW Optimization / AI Credit Audit"],
-    ["optimization-ai-credit-optimizer.md", "AW Optimization / AI Credit Savings"],
-    ["optimization-agents-md-curator.md", "AW Optimization / AGENTS.md"],
-    ["optimization-skills-curator.md", "AW Optimization / Skills"],
+    ["cao-evolution-ai-credit-auditor.md", "AW Optimization / AI Credit Audit"],
+    ["cao-evolution-ai-credit-optimizer.md", "AW Optimization / AI Credit Savings"],
+    ["cao-evolution-agents-md-curator.md", "AW Optimization / AGENTS.md"],
+    ["cao-evolution-skills-curator.md", "AW Optimization / Skills"],
   ];
 
   assert.equal(manifest.name, "AW Optimization");
@@ -25,7 +25,7 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
   assert.match(orchestrator, /worker_credits_per_target: 1650/);
   assert.match(
     orchestrator,
-    /workflows: \[optimization-ai-credit-auditor, optimization-ai-credit-optimizer, optimization-agents-md-curator, optimization-skills-curator\]/,
+    /workflows: \[cao-evolution-ai-credit-auditor, cao-evolution-ai-credit-optimizer, cao-evolution-agents-md-curator, cao-evolution-skills-curator\]/,
   );
   assert.deepEqual(
     Object.keys(policy["control-plane"].packages.optimization.workers).sort(),

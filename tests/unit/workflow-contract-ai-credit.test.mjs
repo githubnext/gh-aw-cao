@@ -6,7 +6,7 @@ import { resolvePolicy, workflow, workflowsDirectory } from "./workflow-contract
 // AI Credit collection, budgets, and admission contracts.
 
 test("AI Credit workers collect all workflow logs with bounded resources", () => {
-  for (const name of ["optimization-ai-credit-auditor.md", "optimization-ai-credit-optimizer.md"]) {
+  for (const name of ["cao-evolution-ai-credit-auditor.md", "cao-evolution-ai-credit-optimizer.md"]) {
     const source = workflow(name);
     const commands = source.match(/gh aw logs \\\n/g) || [];
     assert.equal(commands.length, 1, name);
@@ -33,7 +33,7 @@ test("workers disable costly daily AIC burn checks", () => {
 });
 
 test("AI Credit auditor uses gh-aw forecast for cost projections", () => {
-  const auditor = workflow("optimization-ai-credit-auditor.md");
+  const auditor = workflow("cao-evolution-ai-credit-auditor.md");
 
   assert.match(auditor, /gh aw forecast \\/);
   assert.match(auditor, /--repo "\$TARGET_REPOSITORY"/);

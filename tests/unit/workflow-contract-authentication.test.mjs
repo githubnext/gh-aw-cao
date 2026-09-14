@@ -31,8 +31,8 @@ test("Copilot setup uses Node 24", () => {
 
 test("root CAO workflows use organization-billed Copilot authentication", () => {
   const rootPackageWorkflowIds = [
-    "optimization-agents-md-curator",
-    "optimization-skills-curator",
+    "cao-evolution-agents-md-curator",
+    "cao-evolution-skills-curator",
     "cao-evolution-failures-investigator",
     "cao-evolution-compiler-security",
     "cao-evolution",
@@ -41,8 +41,8 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
     "cao-evolution-reliability",
     "dependabot-release-train-updater",
     "dependabot",
-    "optimization-ai-credit-auditor",
-    "optimization-ai-credit-optimizer",
+    "cao-evolution-ai-credit-auditor",
+    "cao-evolution-ai-credit-optimizer",
     "optimization",
   ];
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
