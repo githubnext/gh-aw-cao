@@ -12,7 +12,7 @@ describe("live Dashboard Language sources", () => {
 
     expect(shell).toContain('<script type="module" src="./src/main.js"></script>');
     expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
-    expect(preview.indexOf("startLoadingProgress(document)")).toBeGreaterThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
+    expect(preview.match(/startLoadingProgress\(document\)/g)).toHaveLength(1);
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain('loading: state === "loading"');
     expect(preview).toContain("dashboard-loading-skeleton");
