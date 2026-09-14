@@ -98,10 +98,10 @@ it('renders compact database summaries and distinct registered repository covera
 });
 
 it.each([
-  ['running healthily with active runs', { 'active-runs': 1 }, 'Your factory is humming.'],
+  ['humming with active runs', { 'active-runs': 1 }, 'Your factory is humming.'],
   ['under strain', { 'failed-runs': 2, 'successful-runs': 1 }, 'Your factory is under strain.'],
   ['needs attention', { 'failed-runs': 1, 'successful-runs': 1 }, 'Your factory needs attention.'],
-  ['running healthily', { 'successful-runs': 1 }, 'Your factory is running healthily.'],
+  ['humming', { 'successful-runs': 1 }, 'Your factory is humming.'],
   ['idle', {}, 'Your factory is idle.']
 ])('describes a factory that is %s', (_state, values, expected) => {
   const rendered = renderFactoryOverview({
@@ -142,7 +142,7 @@ it('retains run status when optional outcome evidence is unavailable', () => {
     })
   });
 
-  expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is running healthily.');
+  expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is humming.');
 });
 
 it('hides the duplicate run and dispatch summary when no useful outputs exist', () => {

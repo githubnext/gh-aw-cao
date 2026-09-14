@@ -258,10 +258,10 @@ function factoryHeading(sources, metrics) {
   const failedRuns = metrics.failedRuns();
   const activeRuns = metrics.activeRuns();
   if (metrics.valueGains() > 0) return 'Your factory is delivering value.';
-  if (activeRuns > 0) return 'Your factory is running healthily.';
+  if (activeRuns > 0) return 'Your factory is humming.';
   if (failedRuns > successfulRuns && failedRuns > 0) return 'Your factory is under strain.';
   if (failedRuns > 0) return 'Your factory needs attention.';
-  if (successfulRuns > 0) return 'Your factory is running healthily.';
+  if (successfulRuns > 0) return 'Your factory is humming.';
   return 'Your factory is idle.';
 }
 
