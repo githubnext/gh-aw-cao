@@ -128,27 +128,29 @@ async function recordJourney(browser, origin, scenario, directory) {
   }
 }
 
-async function auditOverviewIngestion(browser, origin, directory) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  const page = await context.newPage();
-  let releaseIngestion;
-  let markIngestionStarted;
-  const ingestionRelease = new Promise((resolvePromise) => {
-    releaseIngestion = resolvePromise;
+async function auditOverviewIngestion(browser, origin, _directory) {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    serviceWorkers: 'block'
   });
+  const page = await context.newPage();
+  let ingestionStartedAt = 0;
+  let ingestionCompletedAt = 0;
+  let markIngestionStarted;
   const ingestionStarted = new Promise((resolvePromise) => {
     markIngestionStarted = resolvePromise;
   });
-  await page.route(`${origin}/gh-aw-logs.jsonl`, async (route) => {
+  await page.route('**/inventory-sources.json', async (route) => {
+    ingestionStartedAt = performance.now();
     markIngestionStarted();
-    await ingestionRelease;
-    await route.fulfill({ contentType: 'application/x-ndjson', body: '' });
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 1500));
+    ingestionCompletedAt = performance.now();
+    await route.fulfill({ contentType: 'application/json', body: '{}' });
   });
 
   const startedAt = performance.now();
+  const navigation = page.goto(`${origin}/#page-overview`, { waitUntil: 'domcontentloaded' });
   try {
-    await page.goto(`${origin}/#page-overview`, { waitUntil: 'domcontentloaded' });
-    await ingestionStarted;
     await page.locator('[data-page-id="overview"] .agent-factory').waitFor({
       state: 'visible',
       timeout: 2000
@@ -157,9 +159,19 @@ async function auditOverviewIngestion(browser, origin, directory) {
       state: 'visible',
       timeout: 2000
     });
+    await Promise.race([
+      ingestionStarted,
+      new Promise((_, reject) => setTimeout(
+        () => reject(new Error('Dashboard ingestion did not start after page configuration.')),
+        2000
+      ))
+    ]);
     const overviewInteractiveMs = performance.now() - startedAt;
     if (await page.locator('.dashboard-loading-skeleton').count() > 0) {
       throw new Error('Overview retained its page skeleton during ingestion.');
+    }
+    if (ingestionStartedAt === 0 || ingestionCompletedAt !== 0) {
+      throw new Error('Overview did not become interactive while ingestion was pending.');
     }
     return {
       status: 'complete',
@@ -168,7 +180,7 @@ async function auditOverviewIngestion(browser, origin, directory) {
       ingestionPending: true
     };
   } finally {
-    releaseIngestion();
+    await navigation;
     await context.close();
   }
 }
