@@ -2507,7 +2507,7 @@ describe('presenter built-in and custom pages', () => {
       (/** @type {{ kind: string }} */ page) => page.kind === 'built-in'
     );
     expect(Array.isArray(pages)).toBe(true);
-    expect(pages).toHaveLength(11);
+    expect(pages).toHaveLength(12);
     expect(pages.map((/** @type {{ page: string }} */ page) => page.page)).toEqual([
       'overview',
       'organizations',
@@ -2519,6 +2519,7 @@ describe('presenter built-in and custom pages', () => {
       'graders',
       'evals',
       'usage',
+      'audit',
       'findings'
     ]);
 

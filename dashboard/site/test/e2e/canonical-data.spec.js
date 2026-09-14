@@ -122,6 +122,20 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
           'event-type': 'github-api.response', 'event-summary': 'GET /rate_limit',
           'event-status': '200', 'correlation-id': 'request-123',
           'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `audit-finding-${run}`,
+          'event-timestamp': '2026-09-09T04:03:00Z', 'event-source': 'audit',
+          'event-type': 'audit.finding', 'event-summary': 'Missing validation',
+          'event-status': 'high', 'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `audit-recommendation-${run}`,
+          'event-timestamp': '2026-09-09T04:04:00Z', 'event-source': 'audit',
+          'event-type': 'audit.recommendation', 'event-summary': 'Add validation',
+          'event-status': 'high', 'observed-at': '2026-09-09T05:00:00Z'
         }
       ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -383,6 +397,44 @@ test('data worker returns only the canonical payload requested by a view', async
       metadata: { 'source-kind': 'canonical-query' }
     });
   }
+});
+
+test('data worker progressively returns audit findings on initial and navigated requests', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['audit-events'],
+      context,
+      { 'audit-events': { limit: 1 } }
+    );
+    const navigated = await loadCanonicalDashboardPage(
+      ['audit-events'],
+      context,
+      { 'audit-events': { limit: 1, continuationToken: initial['audit-events'].continuationToken } }
+    );
+    return { initial: initial['audit-events'], navigated: navigated['audit-events'] };
+  });
+
+  expect(result.initial).toMatchObject({
+    source: 'audit-events',
+    rows: [{ 'audit-kind': 'audit.recommendation', 'event-summary': 'Add validation' }],
+    metadata: { 'source-kind': 'derived', 'total-row-count': 2 }
+  });
+  expect(result.initial.continuationToken).toEqual(expect.any(String));
+  expect(result.navigated).toMatchObject({
+    source: 'audit-events',
+    rows: [{ 'audit-kind': 'audit.finding', 'event-summary': 'Missing validation' }],
+    metadata: { 'source-kind': 'derived', 'total-row-count': 2 }
+  });
+  expect(result.navigated.continuationToken).toBeUndefined();
 });
 
 test('data worker reports an already ingested payload as unchanged', async ({ page }) => {

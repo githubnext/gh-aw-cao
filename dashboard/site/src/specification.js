@@ -275,6 +275,21 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     findings: ['observed-at', 'issue-link', 'pull-request-link', 'run-link'],
     'operational-values': ['operational-value', 'operational-value-definition', 'observed-at']
   },
+  audit: {
+    'audit-events': [
+      'observed-at',
+      'audit-kind',
+      'event-status',
+      'event-summary',
+      'repository',
+      'workflow',
+      'run',
+      'run-attempt',
+      'session',
+      'event',
+      'run-link'
+    ]
+  },
   organizations: {
     organizations: ['organization'],
     repositories: ['repository'],
