@@ -43,6 +43,7 @@ test("catalog packages declare their current experimental maturity", () => {
   const privateManifests = new Set([
     "uk-ai-advisory/aw.yml",
     "eu-cra-compliance/aw.yml",
+    "self-care/aw.yml",
     "software-development-practices/aw.yml",
   ]);
   const manifests = [

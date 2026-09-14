@@ -110,13 +110,12 @@ test("configured wizard operations require a matching catalog manifest", () => {
   );
 });
 
-test("configured wizard operations exclude private and repository-local packages", () => {
+test("configured wizard operations exclude private packages", () => {
   const first = { slug: "first" };
-  const selfCare = { slug: "self-care" };
   const privatePackage = { slug: "private", private: true };
-  const policy = { "control-plane": { packages: { "self-care": {}, private: {}, first: {} } } };
+  const policy = { "control-plane": { packages: { private: {}, first: {} } } };
 
-  assert.deepEqual(selectConfiguredOperations(policy, [first, selfCare, privatePackage]), [first]);
+  assert.deepEqual(selectConfiguredOperations(policy, [first, privatePackage]), [first]);
 });
 
 test("wizard policy keeps the checked-in package configuration", () => {

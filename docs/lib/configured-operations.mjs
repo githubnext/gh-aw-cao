@@ -2,9 +2,6 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// SelfCare runs repository-local checks against this catalog repository itself.
-const WIZARD_EXCLUDED_SLUGS = new Set(["self-care"]);
-
 export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
   const controlPlane = isRecord(controlPolicy) ? controlPolicy["control-plane"] : undefined;
   const configuredPackages = isRecord(controlPlane) ? controlPlane.packages : undefined;
@@ -35,7 +32,6 @@ export function selectConfiguredOperations(controlPolicy, catalogEntries) {
 
   const catalogEntriesBySlug = new Map(catalogEntries.map((entry) => [entry.slug, entry]));
   return Object.keys(configuredPackages)
-    .filter((slug) => !WIZARD_EXCLUDED_SLUGS.has(slug))
     .map((slug) => {
       const entry = catalogEntriesBySlug.get(slug);
       if (!entry) throw new Error(`Configured package ${slug} must have a catalog manifest`);
