@@ -65,15 +65,19 @@ test("catalog packages declare their current experimental maturity", () => {
   }
 });
 
-test("focused packages reference the root package", () => {
+test("non-core packages reference the root package", () => {
+  const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
+  const rootPackages = new Set(rootManifest.includes.filter((entry) => entry.endsWith("/aw.yml")));
   const manifestPaths = readdirSync(root)
     .map((name) => join(name, "aw.yml"))
-    .filter((relativePath) => relativePath !== "aw.yml" && existsSync(join(root, relativePath)))
+    .filter((relativePath) => relativePath !== "aw.yml"
+      && !rootPackages.has(relativePath)
+      && existsSync(join(root, relativePath)))
     .sort();
 
   for (const relativePath of manifestPaths) {
     const manifest = parse(readFileSync(join(root, relativePath), "utf8"));
-    assert.ok(manifest.includes?.includes("./aw.yml"), relativePath);
+    assert.ok(manifest.includes?.includes("../aw.yml"), relativePath);
   }
 });
 
@@ -111,7 +115,7 @@ test("focused package manifests do not cross-own package files", () => {
     const packageName = relativePath.split("/")[0];
     const manifest = parse(readFileSync(join(root, relativePath), "utf8"));
     const files = [
-      ...(manifest.includes ?? []).filter((entry) => entry !== "./aw.yml").map((entry) => typeof entry === "string" ? {
+      ...(manifest.includes ?? []).filter((entry) => entry !== "../aw.yml").map((entry) => typeof entry === "string" ? {
         source: entry,
         destination: entry,
       } : entry),
@@ -221,10 +225,7 @@ test("root package composes its operational packages through manifests", () => {
   assert.deepEqual(rootManifest.includes, [
     ".github/workflows/aw.json",
     "activity/aw.yml",
-    "cao-evolution/aw.yml",
     "dashboard/aw.yml",
-    "dependabot/aw.yml",
-    "optimization/aw.yml",
   ]);
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));
   assert.deepEqual(project.auto_upgrade.options, ["--pre-releases"]);

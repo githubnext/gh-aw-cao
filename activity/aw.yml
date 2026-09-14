@@ -3,7 +3,6 @@ description: Maintain a shared, bounded snapshot of GitHub Agentic Workflow acti
 min-version: v0.89.12
 experimental: true
 includes:
-  - ./aw.yml
   - .github/workflows/cao-activity.yml
 resources:
   - source: cao.mjs
