@@ -29,11 +29,14 @@ test("Copilot branch cleaner batches discovery and starts in dry-run mode", () =
   assert.match(source, /cron: "23 \* \* \* \*"/);
   assert.match(source, /COPILOT_BRANCH_CLEANER_DRY_RUN != 'false'/);
   assert.match(source, /refPrefix = 'refs\/heads\/copilot\/'/);
-  assert.match(source, /associatedPullRequests\(first: 100\)/);
-  assert.match(source, /pullRequest\.headRefName === ref\.name/);
-  assert.match(source, /pullRequest\.state === 'CLOSED' \|\| pullRequest\.state === 'MERGED'/);
+  assert.match(source, /terminal: associatedPullRequests\([\s\S]*?states: \[MERGED, CLOSED\]/);
+  assert.match(source, /open: associatedPullRequests\(first: 1, states: \[OPEN\]\)/);
+  assert.match(source, /ref\.open\.totalCount === 0 && ref\.terminal\.totalCount > 0/);
   assert.match(source, /mutation DeleteCopilotBranches/);
-  assert.match(source, /deleteRef\(input: \$\$\{variable\}\)/);
+  assert.match(source, /updateRefs\(input: \$input\)/);
+  assert.match(source, /beforeOid: oid/);
+  assert.match(source, /afterOid: zeroOid/);
+  assert.doesNotMatch(source, /deleteRef/);
   assert.doesNotMatch(source, /github\.rest|gh api/);
 });
 

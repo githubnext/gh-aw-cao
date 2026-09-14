@@ -11,22 +11,27 @@ on:
         default: true
         type: boolean
 
-permissions:
-  contents: write
-  pull-requests: read
+permissions: {}
 
 concurrency:
   group: copilot-branch-cleaner
   cancel-in-progress: false
 
 jobs:
-  clean:
+  discover:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      candidates: ${{ steps.discover.outputs.result }}
+      dry_run: ${{ steps.discover.outputs.dry_run }}
     env:
       DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run == true) || (github.event_name == 'schedule' && vars.COPILOT_BRANCH_CLEANER_DRY_RUN != 'false') }}
     steps:
-      - name: Find and clean Copilot branches
+      - name: Find Copilot branches
+        id: discover
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -34,6 +39,7 @@ jobs:
             const refPrefix = 'refs/heads/copilot/'
             const candidates = []
             let cursor
+            let repositoryId
 
             do {
               const { repository } = await github.graphql(
@@ -44,6 +50,7 @@ jobs:
                   $cursor: String
                 ) {
                   repository(owner: $owner, name: $repo) {
+                    id
                     refs(
                       refPrefix: $refPrefix
                       first: 100
@@ -51,24 +58,19 @@ jobs:
                       orderBy: { field: ALPHABETICAL, direction: ASC }
                     ) {
                       nodes {
-                        id
                         name
+                        prefix
                         target {
-                          ... on Commit {
-                            associatedPullRequests(first: 100) {
-                              nodes {
-                                number
-                                state
-                                headRefName
-                                headRepository {
-                                  nameWithOwner
-                                }
-                              }
-                              pageInfo {
-                                hasNextPage
-                              }
-                            }
-                          }
+                          oid
+                        }
+                        terminal: associatedPullRequests(
+                          first: 1
+                          states: [MERGED, CLOSED]
+                        ) {
+                          totalCount
+                        }
+                        open: associatedPullRequests(first: 1, states: [OPEN]) {
+                          totalCount
                         }
                       }
                       pageInfo {
@@ -85,34 +87,14 @@ jobs:
                   cursor,
                 },
               )
+              repositoryId = repository.id
 
               for (const ref of repository.refs.nodes) {
-                const associatedPullRequests = ref.target.associatedPullRequests
-                if (!associatedPullRequests || associatedPullRequests.pageInfo.hasNextPage) {
-                  core.warning(`Skipped ${ref.name}: pull request associations could not be evaluated safely`)
-                  continue
-                }
-                const pullRequests = associatedPullRequests.nodes
-                const matchingPullRequests = pullRequests.filter(
-                  (pullRequest) =>
-                    pullRequest.headRefName === ref.name &&
-                    pullRequest.headRepository?.nameWithOwner.toLowerCase() ===
-                      `${context.repo.owner}/${context.repo.repo}`.toLowerCase(),
-                )
-                const hasOpenPullRequest = matchingPullRequests.some(
-                  (pullRequest) => pullRequest.state === 'OPEN',
-                )
-                const completedPullRequests = matchingPullRequests.filter(
-                  (pullRequest) => pullRequest.state === 'CLOSED' || pullRequest.state === 'MERGED',
-                )
-
-                if (!hasOpenPullRequest && completedPullRequests.length > 0) {
+                if (ref.open.totalCount === 0 && ref.terminal.totalCount > 0) {
                   candidates.push({
-                    id: ref.id,
                     name: ref.name,
-                    pullRequests: completedPullRequests.map(
-                      (pullRequest) => `#${pullRequest.number} (${pullRequest.state.toLowerCase()})`,
-                    ),
+                    qualifiedName: `${ref.prefix}${ref.name}`,
+                    oid: ref.target.oid,
                   })
                 }
               }
@@ -122,43 +104,58 @@ jobs:
                 : undefined
             } while (cursor)
 
+            core.setOutput('dry_run', String(dryRun))
             if (dryRun) {
               await core.summary
                 .addHeading('Branches eligible for deletion (dry run)')
                 .addList(
                   candidates.length === 0
                     ? ['None']
-                    : candidates.map(
-                        ({ name, pullRequests }) => `\`${name}\` — ${pullRequests.join(', ')}`,
-                      ),
+                    : candidates.map(({ name }) => `\`${name}\``),
                 )
                 .write()
               for (const candidate of candidates) {
                 core.info(`Would delete ${candidate.name}`)
               }
-              return
             }
+
+            return { repositoryId, candidates }
+
+  clean:
+    needs: discover
+    if: needs.discover.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Delete Copilot branches
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DISCOVERY: ${{ needs.discover.outputs.candidates }}
+        with:
+          script: |
+            const { repositoryId, candidates } = JSON.parse(process.env.DISCOVERY)
+            const zeroOid = '0000000000000000000000000000000000000000'
 
             for (let offset = 0; offset < candidates.length; offset += 100) {
               const batch = candidates.slice(offset, offset + 100)
-              const variables = {}
-              const variableDefinitions = []
-              const deletions = []
-
-              for (const [index, candidate] of batch.entries()) {
-                const variable = `input${index}`
-                variables[variable] = { refId: candidate.id }
-                variableDefinitions.push(`$${variable}: DeleteRefInput!`)
-                deletions.push(
-                  `delete${index}: deleteRef(input: $${variable}) { clientMutationId }`,
-                )
-              }
-
               await github.graphql(
-                `mutation DeleteCopilotBranches(${variableDefinitions.join(', ')}) {
-                  ${deletions.join('\n')}
+                `mutation DeleteCopilotBranches($input: UpdateRefsInput!) {
+                  updateRefs(input: $input) {
+                    clientMutationId
+                  }
                 }`,
-                variables,
+                {
+                  input: {
+                    repositoryId,
+                    refUpdates: batch.map(({ qualifiedName, oid }) => ({
+                      name: qualifiedName,
+                      beforeOid: oid,
+                      afterOid: zeroOid,
+                    })),
+                  },
+                },
               )
 
               for (const candidate of batch) {
@@ -171,8 +168,6 @@ jobs:
               .addList(
                 candidates.length === 0
                   ? ['None']
-                  : candidates.map(
-                      ({ name, pullRequests }) => `\`${name}\` — ${pullRequests.join(', ')}`,
-                    ),
+                  : candidates.map(({ name }) => `\`${name}\``),
               )
               .write()
