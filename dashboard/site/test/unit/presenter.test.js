@@ -3889,7 +3889,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.custom-table .status-danger')?.textContent).toBe('failure');
   });
 
-  it('routes and reallocates a JSON-selected repository workflow view from a hash query argument', async () => {
+  it('routes and reallocates a JSON-selected repository workflow view from a hash query argument', () => {
     window.history.replaceState(null, '', '/#page-repository-detail?repository=octo-org%2Focto-repo');
     const rendered = renderDashboard({
       document: {

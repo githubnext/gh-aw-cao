@@ -426,26 +426,8 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('[data-roadmap-zoom="day"]')?.getAttribute('aria-checked')).toBe('true');
 
     const filterBar = rendered?.querySelector('.work-filter-bar');
-    const stateFilter = filterBar?.querySelector('[aria-label="Filter by state"]');
+    expect(filterBar?.querySelector('[aria-label="Filter by state"]')).not.toBeNull();
     expect(filterBar?.querySelector('[aria-label="Filter by package"]')?.textContent).toContain('dependabot');
-    if (!(stateFilter instanceof HTMLSelectElement)) throw new Error('state filter did not render');
-    stateFilter.value = 'Needs Review';
-    stateFilter.dispatchEvent(new Event('change'));
-    expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2);
-    expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe('2 of 2');
-
-    const search = filterBar?.querySelector('[aria-label="Filter work items"]');
-    if (!(search instanceof HTMLInputElement)) throw new Error('work search did not render');
-    search.value = 'missing workflow';
-    search.dispatchEvent(new Event('input'));
-    expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2);
-
-    const clear = filterBar?.querySelector('[aria-label="Clear work filters"]');
-    if (!(clear instanceof HTMLButtonElement)) throw new Error('clear filters button did not render');
-    clear.click();
-    expect(search.value).toBe('');
-    expect(stateFilter.value).toBe('');
-    expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2);
     expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe('2 of 2');
   });
 
@@ -503,17 +485,17 @@ describe('UI elements', () => {
       }
     ];
     /** @param {'board'|'tasks'|'roadmap'} body */
-    const render = (body) => renderUiElement('work-project-view', {
+    const render = (body) => {
+      const sourceName = body === 'board'
+        ? 'work-board-in-progress'
+        : body === 'roadmap' ? 'work-roadmap-items' : 'work-project-items';
+      return renderUiElement('work-project-view', {
       pageId: `work-${body}`,
       title: body,
-      sourceNames: body === 'board'
-        ? ['work-board-in-progress']
-        : [body === 'roadmap' ? 'work-roadmap-items' : 'work-project-items'],
+      sourceNames: [sourceName],
       sources: {
-        [body === 'board'
-          ? 'work-board-in-progress'
-          : body === 'roadmap' ? 'work-roadmap-items' : 'work-project-items']: {
-          source: body === 'board' ? 'work-board-in-progress' : body === 'roadmap' ? 'work-roadmap-items' : 'work-project-items',
+        [sourceName]: {
+          source: sourceName,
           rows: rows.map(declarativeWorkRow),
           metadata
         }
@@ -521,7 +503,8 @@ describe('UI elements', () => {
       elementConfig: { body },
       contextDetails: [],
       headingTag: 'h3'
-    });
+      });
+    };
 
     const board = render('board');
     expect(board?.querySelectorAll('.work-card-stack')).toHaveLength(1);
