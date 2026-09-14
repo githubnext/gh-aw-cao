@@ -17,6 +17,7 @@ export function workflow(name, directory = workflowsDirectory) {
   return readFileSync(join(directory, name), "utf8");
 }
 
+// Extract and parse the leading YAML frontmatter block; name labels assertion failures.
 export function frontmatter(source, name = "workflow") {
   const normalized = source.replace(/\r\n/g, "\n");
   const match = /^---\n([\s\S]*?)\n---/.exec(normalized);
