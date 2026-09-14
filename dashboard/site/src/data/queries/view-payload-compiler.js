@@ -252,9 +252,31 @@ function compileTimePredicates(time) {
 
 /** @param {string} routeField @param {string} routeValue */
 function compileRoutePredicates(routeField, routeValue) {
-  const value = routeValue.trim();
+  const value = decodeRouteValue(routeValue.trim());
   if (!routeField || !value) return [];
+  if (routeField === 'workflow') {
+    const separator = value.indexOf(':');
+    const repository = separator > 0 ? value.slice(0, separator) : '';
+    const workflow = separator > 0 ? value.slice(separator + 1) : value;
+    const slash = repository.indexOf('/');
+    return [
+      ...(slash > 0 ? [
+        { field: 'organization', equals: repository.slice(0, slash) },
+        { field: 'repository', equals: repository.slice(slash + 1) }
+      ] : []),
+      { field: 'workflow', equals: workflow }
+    ];
+  }
   return [{ field: routeField, equals: value }];
+}
+
+/** @param {string} value */
+function decodeRouteValue(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 /** @param {unknown} value */

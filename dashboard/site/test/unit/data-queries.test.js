@@ -854,6 +854,10 @@ describe('declarative dashboard queries', () => {
     expect(derived['package-inventory'].rows).toEqual([{
       package: 'aw-doctor',
       'package-name': 'AW Doctor',
+      'package-dashboard-link': {
+        'dashboard-href': '#page-package-insights?package=aw-doctor',
+        'dashboard-label': 'View AW Doctor package dashboard'
+      },
       workflows: 2,
       roles: 'orchestrator, worker',
       modes: 'review',

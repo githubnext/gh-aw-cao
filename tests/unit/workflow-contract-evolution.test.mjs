@@ -67,7 +67,6 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     },
   });
   assert.deepEqual(manifest.includes.sort(), [
-    "../aw.yml",
     ".github/workflows/cao-evolution-catalog-advisor.md",
     ".github/workflows/cao-evolution-compiler-security.md",
     ".github/workflows/cao-evolution-efficiency.md",

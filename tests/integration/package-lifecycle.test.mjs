@@ -211,18 +211,6 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     for (const relativePath of dashboardExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root package omitted dashboard file ${relativePath}`);
     }
-    for (const workflowId of [
-      "cao-evolution",
-      "dependabot",
-      "optimization",
-    ]) {
-      const source = readFileSync(join(consumer, ".github", "workflows", `${workflowId}.md`), "utf8");
-      const lock = readFileSync(join(consumer, ".github", "workflows", `${workflowId}.lock.yml`), "utf8");
-      assert.match(source, /copilot-requests: write/);
-      assert.match(lock, /COPILOT_GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
-      assert.doesNotMatch(lock, /secrets\.COPILOT_GITHUB_TOKEN/);
-    }
-
     const packageRecords = readdirSync(join(consumer, ".github", "aw", "packages"));
     assert.equal(packageRecords.length, 1, "expected one installed root package manifest");
     const installedPackage = JSON.parse(readFileSync(

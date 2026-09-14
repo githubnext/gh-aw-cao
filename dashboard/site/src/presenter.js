@@ -1876,11 +1876,11 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     return renderCustomViewState(pageId, title, null, 'unavailable', ['Source unavailable.'], headingTag);
   }
 
-  const sourceName = resolveViewSourceName(sources, pageId, view, index, authoredSourceName, 0);
+  const resolvedSourceName = resolveViewSourceName(sources, pageId, view, index, authoredSourceName, 0);
 
-  const sourceInput = sources[sourceName];
+  const sourceInput = sources[resolvedSourceName];
   if (!sourceInput || !Array.isArray(sourceInput.rows)) {
-    return renderCustomViewState(pageId, title, sourceName, 'unavailable', [`Source unavailable: ${sourceName}`], headingTag);
+    return renderCustomViewState(pageId, title, authoredSourceName, 'unavailable', [`Source unavailable: ${authoredSourceName}`], headingTag);
   }
 
   const filteredRows = sourceInput.rows;
@@ -1895,7 +1895,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     return renderCustomViewState(
       pageId,
       title,
-      sourceName,
+      authoredSourceName,
       state,
       contextDetails,
       headingTag,
@@ -1904,7 +1904,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
   }
 
   if (filteredRows.length === 0 && view.mark !== 'table' && !isMetricCard) {
-    return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
+    return renderCustomViewState(pageId, title, authoredSourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 
   // Swimlanes consume the same paginated run source as their companion lazy
@@ -1916,7 +1916,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     pageId,
     title,
     view,
-    sourceName,
+    sourceName: authoredSourceName,
     rows: filteredRows,
     rowLimit: Number(/** @type {Record<PropertyKey, unknown>} */ (view.data ?? {})[TABLE_ROW_LIMIT]),
     metadata,
@@ -1940,7 +1940,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
   });
   if (rendered) return rendered;
 
-  return renderCustomViewState(pageId, title, sourceName, 'unavailable', [...contextDetails, 'Unsupported view mark.'], headingTag);
+  return renderCustomViewState(pageId, title, authoredSourceName, 'unavailable', [...contextDetails, 'Unsupported view mark.'], headingTag);
 }
 
 /**

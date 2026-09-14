@@ -854,7 +854,7 @@ dashboard:
       });
     }
     expect(packagesView.data.source).toBe('package-inventory');
-    expect(packagesView.encoding.href).toEqual({ field: 'package-link', type: 'nominal' });
+    expect(packagesView.encoding.href).toEqual({ field: 'package-dashboard-link', type: 'nominal' });
     expect(packagesView.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
       'Package',
       'Workflows',

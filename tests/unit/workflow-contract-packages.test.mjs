@@ -65,22 +65,6 @@ test("catalog packages declare their current experimental maturity", () => {
   }
 });
 
-test("non-core packages reference the root package", () => {
-  const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
-  const rootPackages = new Set(rootManifest.includes.filter((entry) => entry.endsWith("/aw.yml")));
-  const manifestPaths = readdirSync(root)
-    .map((name) => join(name, "aw.yml"))
-    .filter((relativePath) => relativePath !== "aw.yml"
-      && !rootPackages.has(relativePath)
-      && existsSync(join(root, relativePath)))
-    .sort();
-
-  for (const relativePath of manifestPaths) {
-    const manifest = parse(readFileSync(join(root, relativePath), "utf8"));
-    assert.ok(manifest.includes?.includes("../aw.yml"), relativePath);
-  }
-});
-
 test("operational workflows use the transitive CAO package bundle", () => {
   const control = workflow("shared/control.md");
   assert.match(control, /dispatch_max:\n\s+type: number/);

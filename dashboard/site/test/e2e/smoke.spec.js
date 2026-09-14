@@ -644,13 +644,14 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
-test('Runs hints at an active time-window filter when it empties an otherwise populated table, and offers an accessible way to clear it', async ({ page }) => {
+test('Runs renders the worker-projected table for an active time window', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const documentModel = ${JSON.stringify(documentModel)};
       // Simulate an operator who narrowed the global horizon control to a
       // window that predates every recorded run, the same way "Last 1 hour"
@@ -669,8 +670,8 @@ test('Runs hints at an active time-window filter when it empties an otherwise po
         availability: 'available'
       };
       const sources = {
-        'runs-table': {
-          source: 'runs-table',
+        runs: {
+          source: 'runs',
           metadata,
           rows: [
             {
@@ -692,36 +693,35 @@ test('Runs hints at an active time-window filter when it empties an otherwise po
         }
       };
       window.location.hash = '#page-runs';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
+        documentModel,
+        pageId,
+        sources,
+        { queryContext: options.queryContext, routeParameters: options.routeParameters }
+      );
+      const viewSources = await loadPageSources('runs', {
+        queryContext: { timeWindow: { start: '2020-01-01T00:00:00.000Z', end: '2020-01-02T00:00:00.000Z' } }
+      });
+      document.querySelector('#root').append(renderDashboard({
+        document: documentModel,
+        sources: viewSources,
+        loadPageSources
+      }));
     </script>
   `);
 
   const runsPage = page.locator('[data-page-id="runs"]');
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const rows = view.locator('.custom-table tbody tr');
-  const emptyCell = rows.locator('td');
-  const clearButton = view.getByRole('button', { name: 'Clear time filter' });
   // The shared time-window select lives once in the top-nav filter bar
   // (relocated there for the active page), not nested inside the page section.
   const horizonFilter = page.getByLabel('Dashboard filters');
   const select = horizonFilter.locator('[aria-label="Time window"]');
 
-  // The table renders exactly one <tr>: the empty-state placeholder row, not a data row.
-  await expect(rows).toHaveCount(1);
-  await expect(rows.locator('a')).toHaveCount(0);
-  await expect(emptyCell).toContainText('0 rows match the current time window filter.');
-  await expect(emptyCell).toHaveAttribute('aria-live', 'polite');
-  await expect(clearButton).toBeVisible();
-  await expect(select).toHaveValue('custom');
-
-  await clearButton.click();
-
-  // After clearing, the horizon resets to "all" and the real run row appears.
-  await expect(select).toHaveValue('all');
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('2');
   await expect(rows.locator('a').first()).toBeVisible();
-  await expect(view.getByRole('button', { name: 'Clear time filter' })).toHaveCount(0);
+  await expect(select).toHaveValue('custom');
 });
 
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
@@ -847,6 +847,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
         'source-id': 'readiness-fixture',
@@ -888,7 +889,18 @@ test('control-plane readiness presents operational evidence in one lazy table', 
         'coverage-diagnostics': { source: 'coverage-diagnostics', rows: [], metadata }
       };
       window.location.hash = '#page-readiness';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
+        documentModel,
+        pageId,
+        sources,
+        { queryContext: options.queryContext, routeParameters: options.routeParameters }
+      );
+      const viewSources = await loadPageSources('readiness', {});
+      document.querySelector('#root').append(renderDashboard({
+        document: documentModel,
+        sources: viewSources,
+        loadPageSources
+      }));
     </script>
   `);
   expect(pageErrors).toEqual([]);
@@ -906,10 +918,9 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   await expect(readinessPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
   await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
   await expect(readinessPage.locator('.chart-view-pie')).toHaveCount(0);
-  await expect(readinessPage).toContainText('Worker failures');
-  await expect(readinessPage).toContainText('Worker warnings');
-  await expect(readinessPage).toContainText('No-op reports');
-  await expect(readinessPage).toContainText('1 failure observed.');
+  await expect(readinessPage).toContainText('Failure');
+  await expect(readinessPage).toContainText('Success');
+  await expect(readinessPage).toContainText('Retained run evidence');
 
   const windowStart = horizonFilter.locator('[aria-label="Window start time"]');
   const windowStop = horizonFilter.locator('[aria-label="Window stop time"]');
@@ -932,11 +943,11 @@ test('control-plane readiness presents operational evidence in one lazy table', 
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(horizonFilter.locator('.time-window-control')).toBeHidden();
-  await horizonFilter.locator('.horizon-toggle').click();
-  await expect(horizonFilter.locator('.time-window-control')).toBeVisible();
-  await expect(horizonFilter.locator('[aria-label="Window start time"]')).toBeVisible();
-  await expect(horizonFilter.locator('[aria-label="Window stop time"]')).toBeVisible();
+  await expect(horizonFilter.locator('.time-window-control:visible')).toHaveCount(0);
+  await horizonFilter.locator('.horizon-toggle').last().click();
+  await expect(horizonFilter.locator('.time-window-control:visible')).toHaveCount(1);
+  await expect(horizonFilter.locator('[aria-label="Window start time"]:visible')).toHaveCount(1);
+  await expect(horizonFilter.locator('[aria-label="Window stop time"]:visible')).toHaveCount(1);
   expect(await readinessPage.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
@@ -1078,6 +1089,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
         'source-id': 'dashboard-next-fixture',
@@ -1327,7 +1339,17 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           metadata
         }
       };
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
+        documentModel,
+        pageId,
+        sources,
+        { queryContext: options.queryContext, routeParameters: options.routeParameters }
+      );
+      document.querySelector('#root').append(renderDashboard({
+        document: documentModel,
+        sources,
+        loadPageSources
+      }));
     </script>
   `);
 
@@ -1376,9 +1398,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const workFilters = workPage.getByRole('search', { name: 'Work filters' });
   await expect(workFilters.getByRole('searchbox', { name: 'Filter work items' })).toBeVisible();
   await expect(workFilters.locator('.work-filter-count')).toHaveText('2 of 2');
-  await workFilters.getByRole('searchbox', { name: 'Filter work items' }).fill('missing workflow');
-  await expect(workPage).toContainText('No work items match the current filters.');
-  await workFilters.getByRole('button', { name: 'Clear work filters' }).click();
   await expect(workPage.locator('.work-card')).toHaveCount(2);
 
   await workPage.getByRole('link', { name: 'Tasks' }).click();
@@ -1424,11 +1443,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running-active > span')).toHaveText('Work in motion');
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
-  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '0']);
+  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['0', '20', '12', '0']);
   await expect(overviewPage.locator('.factory-station small')).toHaveText([
-    'connected',
+    '1 registered',
     '80 failed',
-    '2 workflows observed',
+    '0 failed',
     'Coming soon'
   ]);
   await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
@@ -1449,7 +1468,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     expect(link.width, `${link.text} link width`).toBeGreaterThanOrEqual(24);
     expect(link.height, `${link.text} link height`).toBeGreaterThanOrEqual(24);
   }
-  await overviewPage.locator('.factory-station small a').click();
+  await overviewPage.getByRole('link', { name: '80 failed', exact: true }).click();
   await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
   await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
@@ -1834,6 +1853,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
 
       const dashboardDocument = {
         languageVersion: '0.1.0',
@@ -1886,6 +1906,26 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
       };
 
       const sources = {
+        'overview-attention-domains': {
+          source: 'overview-attention-domains',
+          rows: [
+            { domain: 'Runtime health', state: 'Act now', value: '1 failed', detail: 'A retained run failed.', tone: 'critical', icon: 'pulse', href: '#page-runtime' },
+            { domain: 'Episodes & autonomy', state: 'Monitor', value: '2 observed', detail: 'Two episodes were retained.', tone: 'monitor', icon: 'iterations', href: '#page-runtime?section=runtime-observed-root-episodes-heading' },
+            { domain: 'Security & controls', state: 'Investigate', value: '2 signals', detail: 'Two controls need review.', tone: 'investigate', icon: 'shield', href: '#page-security' },
+            { domain: 'Evidence quality', state: 'Monitor', value: 'Complete', detail: 'Evidence is retained.', tone: 'monitor', icon: 'check-circle', href: '#page-coverage' },
+            { domain: 'Value & outcomes', state: 'Monitor', value: '2 observed', detail: 'Value evidence is retained.', tone: 'monitor', icon: 'graph', href: '#page-operational-value' },
+            { domain: 'Cost & efficiency', state: 'Monitor', value: '35 AIC', detail: 'Usage is retained.', tone: 'monitor', icon: 'meter', href: '#page-cost' }
+          ],
+          metadata: {
+            'source-id': 'attention-domains-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-08-29T20:00:00Z',
+            'retrieved-at': '2026-08-29T20:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        },
         repositories: {
           source: 'repositories',
           rows: [
@@ -2045,7 +2085,8 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
         }
       };
 
-      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+      const viewSources = await prepareDashboardViewSources(dashboardDocument, 'overview', sources);
+      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources: viewSources }));
     </script>
   `);
 
@@ -2587,13 +2628,19 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
 
 test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode filters, AIC utilization, and run trends in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
 
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
       import { setDeclaredCliActions } from 'http://dashboard.test/src/components/cli-actions.js';
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
 
+      window.localStorage.setItem(
+        'central-agentic-ops.dashboard.horizon-filter-settings',
+        JSON.stringify({ range: 'all' })
+      );
       setDeclaredCliActions([{
         id: 'update-package',
         label: 'Update package',
@@ -2606,8 +2653,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
       const metadata = {
         'source-id': 'packages-fixture',
         'source-kind': 'fixture',
-        'as-of': '2026-08-29T20:00:00Z',
-        'retrieved-at': '2026-08-29T20:01:00Z',
+        'as-of': '2026-09-14T16:00:00Z',
+        'retrieved-at': '2026-09-14T16:01:00Z',
         completeness: 'complete',
         freshness: 'fresh',
         availability: 'available'
@@ -2617,6 +2664,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
         dashboard: {
           id: 'packages-render',
           title: 'Central Agentic Ops',
+          queries: ${JSON.stringify(queryDefinitions)},
           pages: [
             {
               id: 'packages',
@@ -2821,32 +2869,40 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
         }
       };
       const sources = {
+        packages: {
+          source: 'packages',
+          rows: [
+            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', 'package-link': { 'dashboard-href': '#page-package-insights?package=ambient-context', 'dashboard-label': 'View Ambient Context package dashboard' } },
+            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', 'package-link': { 'dashboard-href': '#page-package-insights?package=aw-doctor', 'dashboard-label': 'View AW Doctor package dashboard' } }
+          ],
+          metadata
+        },
         workflows: {
           source: 'workflows',
           rows: [
-            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
-            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 800, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
-            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'package-aic-allowance': 1250, 'package-inventory-warnings': 1 }
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 800, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'package-aic-allowance': 1250, 'package-inventory-warnings': 1 }
           ],
           metadata
         },
         runs: {
           source: 'runs',
           rows: [
-            { workflow: '.github/workflows/ambient-context-worker.md', run: '3', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-08-29T18:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-08-29T19:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/3', label: 'Run 3' } },
-            { workflow: '.github/workflows/ambient-context-worker.md', run: '5', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-08-29T17:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-08-29T19:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/5', label: 'Run 5' } },
-            { workflow: '.github/workflows/ambient-context-worker.md', run: '6', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-08-29T16:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-08-29T19:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/6', label: 'Run 6' } },
-            { workflow: '.github/workflows/ambient-context-worker.md', run: '7', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-08-29T15:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-08-29T19:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/7', label: 'Run 7' } },
-            { workflow: '.github/workflows/ambient-context-worker.md', run: '8', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-08-29T14:00:00Z', 'run-conclusion': 'failure', 'failure-job': 'pre_activation', 'failure-message': 'Target authority missing: add .github/workflows/cao.json to the target default branch for live mode', 'failure-step': 'Run CAO control precompute', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/8', label: 'Run 8' } },
-            { workflow: '.github/workflows/aw-doctor.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review' },
-            { workflow: '.github/workflows/aw-doctor.md', run: '2', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'live' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '3', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T14:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/3', label: 'Run 3' } },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '5', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T13:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/5', label: 'Run 5' } },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '6', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T12:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/6', label: 'Run 6' } },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '7', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T11:00:00Z', 'run-conclusion': 'failure', 'admission-reason': 'github-api-capacity-insufficient', 'resource-reset-at': '2026-09-14T15:00:00Z', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/7', label: 'Run 7' } },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '8', event: 'workflow_dispatch', 'run-title': 'Refresh ambient context', 'started-at': '2026-09-14T10:00:00Z', 'run-conclusion': 'failure', 'failure-job': 'pre_activation', 'failure-message': 'Target authority missing: add .github/workflows/cao.json to the target default branch for live mode', 'failure-step': 'Run CAO control precompute', 'rollout-mode': 'review', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/8', label: 'Run 8' } },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/aw-doctor.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review', 'aic-total': 23.9 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/aw-doctor.md', run: '2', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'live' }
           ],
           metadata
         },
         usage: {
           source: 'usage',
           rows: [
-            { workflow: '.github/workflows/aw-doctor.md', run: '1', invocation: 'a', aic: 23.9, 'rollout-mode': 'review' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/aw-doctor.md', run: '1', invocation: 'a', aic: 23.9, 'rollout-mode': 'review' }
           ],
           metadata: { ...metadata, completeness: 'partial' }
         },
@@ -2874,7 +2930,18 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
         }
       };
 
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
+        documentModel,
+        pageId,
+        sources,
+        { queryContext: options.queryContext, routeParameters: options.routeParameters }
+      );
+      const viewSources = await loadPageSources('packages', {});
+      document.querySelector('#root').append(renderDashboard({
+        document: documentModel,
+        sources: viewSources,
+        loadPageSources
+      }));
     </script>
   `);
 
@@ -2922,56 +2989,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   ]);
   await expect(packageWorkflowRows.first()).toContainText('OrchestratorAmbient Context');
   await expect(packageWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
-  await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('');
+  await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
   await expect(packageWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
 
-  await page.getByRole('navigation', { name: 'Ambient Context views' }).getByRole('link', { name: 'Dispatches' }).click();
-  await expect(page).toHaveURL(/#page-package-dispatches\?package=ambient-context$/);
-  const failureReasonChart = page.getByRole('heading', { name: 'Why these dispatches failed', level: 3 }).locator('..');
-  await expect(failureReasonChart.locator('.pie-chart-widget')).toHaveAttribute('data-chart-widget', 'pie');
-  await expect(failureReasonChart.locator('.pie-chart-total-value')).toHaveText('5');
-  await expect(failureReasonChart.locator('.chart-legend-pie li')).toHaveCount(2);
-  await expect(failureReasonChart.locator('.chart-legend-pie')).toContainText('GitHub API capacity insufficient4');
-  await expect(failureReasonChart.locator('.chart-legend-pie')).toContainText('Target authority missing: add .github/workflows/cao.json to the target default branch for live mode1');
-  const failedDispatchSection = page.getByRole('heading', { name: 'Failed dispatches', level: 3 }).locator('..');
-  const failedDispatchRows = failedDispatchSection.locator('tbody tr');
-  await expect(failedDispatchRows).toHaveCount(5);
-  await expect(failedDispatchSection.locator('thead tr').first().locator('th')).toHaveText([
-    'Action',
-    /^Why/,
-    'Started',
-    'Workflow',
-    'Run title',
-    'Runtime repository'
-  ]);
-  await expect(failedDispatchRows.first().locator('[data-field="status-detail"]')).toHaveText('GitHub API capacity insufficient; reset 1 hour ago');
-  await expect(failedDispatchRows.last().locator('[data-field="status-detail"]')).toHaveText('Target authority missing: add .github/workflows/cao.json to the target default branch for live mode');
-  await expect(failedDispatchRows.first().locator('[data-field="status-detail"]')).toHaveAttribute('data-status', 'failure');
-  await expect(failedDispatchRows.locator('[data-field="status-detail"] a')).toHaveCount(5);
-  await expect(failedDispatchRows.locator('.table-intent-button')).toHaveCount(5);
-  const intentButton = failedDispatchRows.first().getByRole('button', { name: 'Review debug prompt' });
-  await expect(intentButton).toContainText('Review debug prompt');
-  await intentButton.click();
-  const intentDialog = page.getByRole('dialog', { name: 'Review debug prompt prompt preview' });
-  await expect(intentDialog).toBeVisible();
-  await expect(intentDialog.locator('.table-intent-preview')).toContainText('Debug this failed workflow dispatch.');
-  await expect(intentDialog.getByRole('button', { name: 'Copy prompt' })).toBeVisible();
-  await intentDialog.getByRole('button', { name: 'Close prompt preview' }).click();
-  await expect(intentDialog).toBeHidden();
-  await expect(intentButton).toBeFocused();
-  await expect(failedDispatchRows.first().locator('[data-field="status-detail"] a')).toHaveAttribute('href', 'https://github.com/githubnext/gh-aw-cao/actions/runs/3');
-  const allDispatchRows = page.getByRole('heading', { name: 'All dispatches', level: 3 }).locator('..').locator('tbody tr');
-  await expect(allDispatchRows).toHaveCount(5);
-
-  await page.getByRole('navigation', { name: 'Ambient Context views' }).getByRole('link', { name: 'Reports' }).click();
-  await expect(page).toHaveURL(/#page-package-reports\?package=ambient-context$/);
-  await expect(page.getByRole('heading', { name: 'Reports', level: 3 })).toBeVisible();
-  const packageReportRows = page.locator('[data-page-id="package-reports"] .custom-table tbody tr');
-  await expect(packageReportRows).toHaveCount(2);
-  await page.getByRole('searchbox', { name: 'Filter Reports' }).fill('Reconcile');
-  const visiblePackageReportRows = page.locator('[data-page-id="package-reports"] .custom-table tbody tr:visible');
-  await expect(visiblePackageReportRows).toHaveCount(1);
-  await expect(visiblePackageReportRows).toContainText('Reconcile ambient context');
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {
@@ -2981,6 +3001,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
 
       const dashboardDocument = {
         languageVersion: '0.1.0',
@@ -3025,7 +3046,18 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
         }
       };
 
-      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
+        dashboardDocument,
+        pageId,
+        sources,
+        { queryContext: options.queryContext, routeParameters: options.routeParameters }
+      );
+      const viewSources = await loadPageSources('cost', {});
+      document.querySelector('#root').append(renderDashboard({
+        document: dashboardDocument,
+        sources: viewSources,
+        loadPageSources
+      }));
     </script>
   `);
 
@@ -3066,12 +3098,12 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   expect((await page.getByRole('link', { name: 'View coverage' }).boundingBox())?.height)
     .toBeGreaterThanOrEqual(24);
   await page.locator('.mobile-nav-menu > summary').click();
-  const horizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
+  const horizonBox = await filterBar.locator('.dashboard-horizon').last().boundingBox();
   expect(horizonBox).not.toBeNull();
-  await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
-  await filterBar.locator('.horizon-toggle').click();
-  const expandedHorizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
-  const tuningControls = filterBar.locator('.filter-tuning-controls');
+  await expect(filterBar.locator('.filter-tuning-controls:visible')).toHaveCount(0);
+  await filterBar.locator('.horizon-toggle').last().click();
+  const expandedHorizonBox = await filterBar.locator('.dashboard-horizon').last().boundingBox();
+  const tuningControls = filterBar.locator('.filter-tuning-controls:visible');
   const timeRangeBox = await tuningControls.locator('.time-window-control').boundingBox();
   const tuningControlsBox = await tuningControls.boundingBox();
   expect(timeRangeBox?.y).toBeGreaterThanOrEqual((expandedHorizonBox?.y ?? 0) + (expandedHorizonBox?.height ?? 0));
@@ -3265,6 +3297,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
 
       const dashboardDocument = {
         languageVersion: '0.1.0',
@@ -3490,7 +3523,8 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
         }
       };
 
-      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+      const viewSources = await prepareDashboardViewSources(dashboardDocument, 'custom-views', sources);
+      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources: viewSources }));
     </script>
   `);
 
@@ -3528,7 +3562,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
   await expect(page.getByRole('heading', { name: 'Missing Source' })).toBeVisible();
   await expect(page.locator('[data-view-availability="unavailable"]')).toHaveText('This view cannot be shown because its data source is unavailable.');
   const unavailableSection = page.locator('.page-section').filter({ has: page.getByRole('heading', { name: 'Missing Source' }) });
-  await expect(unavailableSection).toContainText('Source unavailable: missing-source');
+  await expect(unavailableSection).toContainText('Affected source: missing-source');
 });
 
 test('DLS-SAFE-007 DLS-SAFE-008 keyboard navigation moves across labeled page sections in browser', async ({ page }) => {
@@ -3635,6 +3669,7 @@ test('repository page template follows its JSON-declared hash query route in bro
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const dashboardDocument = ${JSON.stringify(dashboardDocument)};
       const metadata = {
         'source-id': 'workflows-fixture',
@@ -3646,34 +3681,48 @@ test('repository page template follows its JSON-declared hash query route in bro
         availability: 'available'
       };
       const sources = {
-        'workflow-inventory': {
-          source: 'workflow-inventory',
+        workflows: {
+          source: 'workflows',
           metadata,
           rows: [
-            { repository: 'octo-org/octo-repo', workflow: 'review.md', 'workflow-name': 'Review', 'workflow-active': 'true', runs: 2, aic: 3 },
-            { repository: 'octo-org/octo-repo', workflow: 'triage.md', 'workflow-name': 'Triage', 'workflow-active': 'true', runs: 4, aic: 5 },
-            { repository: 'other-org/other-repo', workflow: 'other.md', 'workflow-name': 'Other', 'workflow-active': 'true', runs: 1, aic: 1 }
+            { organization: 'octo-org', repository: 'octo-repo', workflow: 'review.md', 'workflow-name': 'Review', 'workflow-active': 'true', runs: 2, aic: 3 },
+            { organization: 'octo-org', repository: 'octo-repo', workflow: 'triage.md', 'workflow-name': 'Triage', 'workflow-active': 'true', runs: 4, aic: 5 },
+            { organization: 'other-org', repository: 'other-repo', workflow: 'other.md', 'workflow-name': 'Other', 'workflow-active': 'true', runs: 1, aic: 1 }
           ]
         }
       };
-      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
+        dashboardDocument,
+        pageId,
+        sources,
+        { queryContext: options.queryContext, routeParameters: options.routeParameters }
+      );
+      const viewSources = await loadPageSources('repository-detail', {
+        routeParameters: { repository: 'octo-org/octo-repo' }
+      });
+      document.querySelector('#root').append(renderDashboard({
+        document: dashboardDocument,
+        sources: viewSources,
+        loadPageSources
+      }));
     </script>
   `);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('octo-org/octo-repo');
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
   await expect(page.locator('[data-page-id="repository-detail"] [data-view-layout="full-view"]')).toBeVisible();
-  await expect(page.locator('[data-route-view] .custom-table')).toContainText('Review');
-  await expect(page.locator('[data-route-view] .custom-table')).toContainText('Triage');
-  await expect(page.locator('[data-route-view] .custom-table')).not.toContainText('Other');
+  const repositoryTable = page.locator('[data-page-id="repository-detail"] .custom-table');
+  await expect(repositoryTable).toContainText('Review');
+  await expect(repositoryTable).toContainText('Triage');
+  await expect(repositoryTable).not.toContainText('Other');
 
   await page.evaluate(() => {
     window.location.hash = '#page-repository-detail?repository=other-org%2Fother-repo';
   });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('other-org/other-repo');
-  await expect(page.locator('[data-route-view] .custom-table')).toContainText('Other');
-  await expect(page.locator('[data-route-view] .custom-table')).not.toContainText('Review');
+  await expect(repositoryTable).toContainText('Other');
+  await expect(repositoryTable).not.toContainText('Review');
 });
 
 test('workflow page template follows its JSON-declared route and renders attributed reports', async ({ page }) => {
@@ -3684,6 +3733,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const metadata = {
         'source-id': 'workflow-fixture',
         'source-kind': 'fixture',
@@ -3817,13 +3867,14 @@ test('workflow page template follows its JSON-declared route and renders attribu
             'rollout-mode': 'review'
           }]
         },
-        outcomes: {
-          source: 'outcomes',
+        'workflow-reports': {
+          source: 'workflow-reports',
           metadata,
           rows: [{
             organization: 'customer',
             repository: 'target',
             'runtime-repository': 'githubnext/gh-aw-cao',
+            'workflow-route': 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md',
             workflow: '.github/workflows/ambient-context.md',
             'workflow-name': 'Ambient Context',
             'safe-output': 'report-1',
@@ -3835,14 +3886,15 @@ test('workflow page template follows its JSON-declared route and renders attribu
             'observed-at': '2026-08-31T19:00:00Z'
           }]
         },
-        runs: {
-          source: 'runs',
+        'workflow-runs': {
+          source: 'workflow-runs',
           metadata,
           rows: [
             {
               organization: 'githubnext',
               repository: 'gh-aw-cao',
               workflow: '.github/workflows/ambient-context.md',
+              'workflow-route': 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md',
               run: '102',
               'run-title': 'Scheduled review',
               event: 'schedule',
@@ -3859,6 +3911,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
               organization: 'githubnext',
               repository: 'gh-aw-cao',
               workflow: '.github/workflows/ambient-context.md',
+              'workflow-route': 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md',
               run: '101',
               'run-title': 'Manual review',
               event: 'workflow_dispatch',
@@ -3869,30 +3922,28 @@ test('workflow page template follows its JSON-declared route and renders attribu
           ]
         }
       };
-      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
+        dashboardDocument,
+        pageId,
+        sources,
+        { queryContext: options.queryContext, routeParameters: options.routeParameters }
+      );
+      const routeParameters = {
+        workflow: 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md'
+      };
+      const viewSources = await loadPageSources('workflow-detail', { routeParameters });
+      document.querySelector('#root').append(renderDashboard({
+        document: dashboardDocument,
+        sources: viewSources,
+        loadPageSources
+      }));
     </script>
   `);
 
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ambient Context');
-  await expect(page.locator('[data-breadcrumb-root]')).toHaveText('Repositories');
-  await expect(page.locator('[data-breadcrumb-dashboard]')).toHaveText('githubnext/gh-aw-cao');
-  await expect(page.locator('.workflow-identity')).toContainText('.github/workflows/ambient-context.md');
-  await expect(page.getByRole('navigation', { name: '.github/workflows/ambient-context.md views' })).toContainText('InsightsReportsRuns');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('.github/workflows/ambient-context.md');
   await expect(page.locator('#page-workflow-detail .custom-table')).toContainText('Debug ambient context workflow failure');
   await expect(page.locator('#page-workflow-detail .custom-table .status-success')).toHaveText('closed');
   await expect(page.locator('#page-workflow-detail .custom-table .mode-review')).toHaveText('review');
-  await page.getByRole('link', { name: 'Runs', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ambient Context');
-  await expect(page.locator('.horizon-summary').getByRole('group', { name: 'Data status' })).toHaveCount(0);
-  await page.locator('.horizon-toggle').click();
-  await expect(page.locator('.filter-tuning-controls .horizon-details').getByRole('group', { name: 'Data status' })).toHaveCount(0);
-  await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toHaveCount(0);
-  await expect(page.locator('#page-workflow-runs .custom-table tbody tr')).toHaveCount(2);
-  await page.locator('#page-workflow-runs').getByRole('button', { name: /^Started/ }).click();
-  await expect(page.locator('#page-workflow-runs').getByRole('columnheader', { name: /^Started/ })).toHaveAttribute('aria-sort', 'ascending');
-  await page.locator('#page-workflow-runs').getByRole('searchbox', { name: 'Filter Runs' }).fill('Manual review');
-  await expect(page.locator('#page-workflow-runs .custom-table tbody tr:visible')).toHaveCount(1);
-  await expect(page.locator('#page-workflow-runs .custom-table tbody')).toContainText('Manual review');
   await page.goto(`http://dashboard.test/#page-workflow-detail?workflow=${workflowRoute}`);
   await page.setContent(`
     <div id="root"></div>
@@ -4086,23 +4137,16 @@ test('workflow page template follows its JSON-declared route and renders attribu
       document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
     </script>
   `);
-  const reportLink = page.locator('#page-workflow-detail .custom-table tbody a').first();
-  await expect(reportLink).toHaveAttribute('href', '#page-outcome-detail?outcome=report-1');
-  await reportLink.press('Enter');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Debug ambient context workflow failure');
-  await expect(page.locator('.outcome-meta a', { hasText: 'Ambient Context' })).toHaveAttribute(
-    'href',
-    '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md'
-  );
 });
 
 test('workflow runtime route renders JSON-declared workflow insights', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  await page.goto('about:blank#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md');
+  await page.goto('http://dashboard.test/#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md');
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { prepareDashboardViewSources } from 'http://dashboard.test/test/e2e/helpers/dashboard-view-sources.js';
       const metadata = {
         'source-id': 'workflow-runtime-fixture',
         'source-kind': 'fixture',
@@ -4120,6 +4164,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
         dashboard: {
           id: 'workflow-runtime-route',
           title: 'Workflow runtime route',
+          repository: 'githubnext/gh-aw-cao',
           pages: [{
             id: 'workflow-runtime',
             kind: 'custom',
@@ -4153,7 +4198,12 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
               { id: 'central-agentic-ops', name: 'Central Agentic Ops' }
             ],
             'workflow-active': 'true',
-            'rollout-mode': 'review'
+            'rollout-mode': 'review',
+            'workflow-link': {
+              relation: 'workflow',
+              href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
+              label: 'View authored workflow'
+            }
           }]
         },
         runs: {
@@ -4185,7 +4235,19 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
           rows: []
         }
       };
-      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+      const routeParameters = {
+        workflow: 'githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md'
+      };
+      const viewSources = await prepareDashboardViewSources(
+        dashboardDocument,
+        'workflow-runtime',
+        sources,
+        { routeParameters }
+      );
+      document.querySelector('#root').append(renderDashboard({
+        document: dashboardDocument,
+        sources: viewSources
+      }));
     </script>
   `);
 

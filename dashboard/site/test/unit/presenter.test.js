@@ -3195,14 +3195,14 @@ describe('presenter built-in and custom pages', () => {
     expect(emptyCard?.getAttribute('role')).toBe('status');
     expect(emptyCard?.querySelector('.octicon-info')).not.toBeNull();
     expect(emptySection?.querySelector('[data-view-availability="empty"]')?.textContent).toBe('No observations matched the effective context.');
-    expect(emptySection?.textContent).toContain('Affected source: view:custom-views:empty-usage:empty-usage');
+    expect(emptySection?.textContent).toContain('Affected source: empty-usage');
 
     const unavailableSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Missing Source'));
     const unavailableCard = unavailableSection?.querySelector('.view-state-card[data-view-state="unavailable"]');
     expect(unavailableCard?.getAttribute('role')).toBe('alert');
     expect(unavailableCard?.querySelector('.octicon-alert')).not.toBeNull();
     expect(unavailableSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data source is unavailable.');
-    expect(unavailableSection?.textContent).toContain('Affected source: view:custom-views:missing-source:missing-source');
+    expect(unavailableSection?.textContent).toContain('Affected source: missing-source');
 
     const missingElementSourceSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Missing Element Source'));
     expect(missingElementSourceSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data source is unavailable.');

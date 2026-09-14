@@ -3406,6 +3406,60 @@
                 "value": 0
               }
             ]
+          },
+          {
+            "as": "encoded-package",
+            "function": "url-encode",
+            "args": [
+              {
+                "field": "package"
+              }
+            ]
+          },
+          {
+            "as": "package-dashboard-href",
+            "function": "concat",
+            "args": [
+              {
+                "value": "#page-package-insights?package="
+              },
+              {
+                "field": "encoded-package"
+              }
+            ]
+          },
+          {
+            "as": "package-dashboard-label",
+            "function": "concat",
+            "args": [
+              {
+                "value": "View "
+              },
+              {
+                "field": "package-name"
+              },
+              {
+                "value": " package dashboard"
+              }
+            ]
+          },
+          {
+            "as": "package-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              {
+                "value": ""
+              },
+              {
+                "field": "package-dashboard-href"
+              },
+              {
+                "field": "package-dashboard-label"
+              },
+              {
+                "field": "package"
+              }
+            ]
           }
         ],
         "select": [
@@ -3414,6 +3468,9 @@
           },
           {
             "field": "package-name"
+          },
+          {
+            "field": "package-dashboard-link"
           },
           {
             "field": "workflows"
@@ -4844,7 +4901,7 @@
               "empty-message": "No packages discovered.",
               "encoding": {
                 "href": {
-                  "field": "package-link",
+                  "field": "package-dashboard-link",
                   "type": "nominal"
                 },
                 "columns": [
