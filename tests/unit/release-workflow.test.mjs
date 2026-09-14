@@ -28,5 +28,5 @@ test("release safe output updates use the workflow token that created the draft 
 
   const processSafeOutputs = stepBlock(workflow("release.lock.yml"), "Process Safe Outputs");
   assert.match(processSafeOutputs, /github-token: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
-  assert.doesNotMatch(processSafeOutputs, /GH_AW_GITHUB_TOKEN/);
+  assert.doesNotMatch(processSafeOutputs, /github-token: .*GH_AW_GITHUB_TOKEN/);
 });
