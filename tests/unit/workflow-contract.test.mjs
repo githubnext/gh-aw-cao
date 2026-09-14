@@ -23,6 +23,20 @@ function script(name, directory) {
   return readFileSync(join(directory, name), "utf8").replace(/\r?\n$/, "");
 }
 
+test("Copilot branch cleaner batches discovery and starts in dry-run mode", () => {
+  const source = workflow("copilot-branch-cleaner.yml");
+
+  assert.match(source, /cron: "23 \* \* \* \*"/);
+  assert.match(source, /COPILOT_BRANCH_CLEANER_DRY_RUN != 'false'/);
+  assert.match(source, /refPrefix = 'refs\/heads\/copilot\/'/);
+  assert.match(source, /associatedPullRequests\(first: 100\)/);
+  assert.match(source, /pullRequest\.headRefName === ref\.name/);
+  assert.match(source, /pullRequest\.state === 'CLOSED' \|\| pullRequest\.state === 'MERGED'/);
+  assert.match(source, /mutation DeleteCopilotBranches/);
+  assert.match(source, /deleteRef\(input: \$\$\{variable\}\)/);
+  assert.doesNotMatch(source, /github\.rest|gh api/);
+});
+
 test("Actions lint failures create new pull request comments without comment lookup", () => {
   const source = workflow("action-lint.yml");
   const pullRequestReporter = source.slice(source.indexOf("- name: Create pull request comment"));

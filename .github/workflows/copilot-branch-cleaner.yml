@@ -1,0 +1,178 @@
+name: Copilot branch cleaner
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List eligible branches without deleting them.
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: copilot-branch-cleaner
+  cancel-in-progress: false
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run == true) || (github.event_name == 'schedule' && vars.COPILOT_BRANCH_CLEANER_DRY_RUN != 'false') }}
+    steps:
+      - name: Find and clean Copilot branches
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const dryRun = process.env.DRY_RUN === 'true'
+            const refPrefix = 'refs/heads/copilot/'
+            const candidates = []
+            let cursor
+
+            do {
+              const { repository } = await github.graphql(
+                `query CopilotBranches(
+                  $owner: String!
+                  $repo: String!
+                  $refPrefix: String!
+                  $cursor: String
+                ) {
+                  repository(owner: $owner, name: $repo) {
+                    refs(
+                      refPrefix: $refPrefix
+                      first: 100
+                      after: $cursor
+                      orderBy: { field: ALPHABETICAL, direction: ASC }
+                    ) {
+                      nodes {
+                        id
+                        name
+                        target {
+                          ... on Commit {
+                            associatedPullRequests(first: 100) {
+                              nodes {
+                                number
+                                state
+                                headRefName
+                                headRepository {
+                                  nameWithOwner
+                                }
+                              }
+                              pageInfo {
+                                hasNextPage
+                              }
+                            }
+                          }
+                        }
+                      }
+                      pageInfo {
+                        endCursor
+                        hasNextPage
+                      }
+                    }
+                  }
+                }`,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  refPrefix,
+                  cursor,
+                },
+              )
+
+              for (const ref of repository.refs.nodes) {
+                const associatedPullRequests = ref.target.associatedPullRequests
+                if (!associatedPullRequests || associatedPullRequests.pageInfo.hasNextPage) {
+                  core.warning(`Skipped ${ref.name}: pull request associations could not be evaluated safely`)
+                  continue
+                }
+                const pullRequests = associatedPullRequests.nodes
+                const matchingPullRequests = pullRequests.filter(
+                  (pullRequest) =>
+                    pullRequest.headRefName === ref.name &&
+                    pullRequest.headRepository?.nameWithOwner.toLowerCase() ===
+                      `${context.repo.owner}/${context.repo.repo}`.toLowerCase(),
+                )
+                const hasOpenPullRequest = matchingPullRequests.some(
+                  (pullRequest) => pullRequest.state === 'OPEN',
+                )
+                const completedPullRequests = matchingPullRequests.filter(
+                  (pullRequest) => pullRequest.state === 'CLOSED' || pullRequest.state === 'MERGED',
+                )
+
+                if (!hasOpenPullRequest && completedPullRequests.length > 0) {
+                  candidates.push({
+                    id: ref.id,
+                    name: ref.name,
+                    pullRequests: completedPullRequests.map(
+                      (pullRequest) => `#${pullRequest.number} (${pullRequest.state.toLowerCase()})`,
+                    ),
+                  })
+                }
+              }
+
+              cursor = repository.refs.pageInfo.hasNextPage
+                ? repository.refs.pageInfo.endCursor
+                : undefined
+            } while (cursor)
+
+            if (dryRun) {
+              await core.summary
+                .addHeading('Branches eligible for deletion (dry run)')
+                .addList(
+                  candidates.length === 0
+                    ? ['None']
+                    : candidates.map(
+                        ({ name, pullRequests }) => `\`${name}\` — ${pullRequests.join(', ')}`,
+                      ),
+                )
+                .write()
+              for (const candidate of candidates) {
+                core.info(`Would delete ${candidate.name}`)
+              }
+              return
+            }
+
+            for (let offset = 0; offset < candidates.length; offset += 100) {
+              const batch = candidates.slice(offset, offset + 100)
+              const variables = {}
+              const variableDefinitions = []
+              const deletions = []
+
+              for (const [index, candidate] of batch.entries()) {
+                const variable = `input${index}`
+                variables[variable] = { refId: candidate.id }
+                variableDefinitions.push(`$${variable}: DeleteRefInput!`)
+                deletions.push(
+                  `delete${index}: deleteRef(input: $${variable}) { clientMutationId }`,
+                )
+              }
+
+              await github.graphql(
+                `mutation DeleteCopilotBranches(${variableDefinitions.join(', ')}) {
+                  ${deletions.join('\n')}
+                }`,
+                variables,
+              )
+
+              for (const candidate of batch) {
+                core.info(`Deleted ${candidate.name}`)
+              }
+            }
+
+            await core.summary
+              .addHeading('Deleted branches')
+              .addList(
+                candidates.length === 0
+                  ? ['None']
+                  : candidates.map(
+                      ({ name, pullRequests }) => `\`${name}\` — ${pullRequests.join(', ')}`,
+                    ),
+              )
+              .write()
