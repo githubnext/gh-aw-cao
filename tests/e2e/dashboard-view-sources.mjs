@@ -1,8 +1,10 @@
 import { deriveDataHealthSources } from "../../dashboard/site/src/data-health.js";
-import { deriveOverviewSources } from "../../dashboard/site/src/overview-data.js";
-import { deriveRepositorySources } from "../../dashboard/site/src/repository-data.js";
-import { deriveRuntimeSources } from "../../dashboard/site/src/runtime-data.js";
-import { deriveWorkflowSources } from "../../dashboard/site/src/workflow-data.js";
+import { readFileSync } from "node:fs";
+import { processDataRequest } from "../../dashboard/site/src/data-worker.js";
+
+const dashboard = JSON.parse(readFileSync(
+  new URL("../../dashboard/site/dashboard.json", import.meta.url),
+)).dashboard;
 
 function declaredSourceNames(value, names = new Set()) {
   if (Array.isArray(value)) {
@@ -15,13 +17,12 @@ function declaredSourceNames(value, names = new Set()) {
 }
 
 export function effectiveDashboardSources(rawSources) {
-  const derivedSources = deriveRuntimeSources(
-    deriveRepositorySources(
-      deriveOverviewSources(
-        deriveWorkflowSources(rawSources),
-      ),
-    ),
-  );
+  const derivedSources = processDataRequest({
+    operation: "execute-dashboard-queries",
+    queries: dashboard.queries,
+    sources: rawSources,
+    sourceNames: dashboard.queries.map((query) => query.name),
+  });
   const dataHealthSources = deriveDataHealthSources(rawSources);
   return {
     ...derivedSources,

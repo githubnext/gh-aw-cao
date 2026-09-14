@@ -10,7 +10,7 @@ const available = {
   completeness: "complete",
 };
 
-test("dashboard view assessment recognizes renderer-derived sources", () => {
+test("dashboard view assessment recognizes worker-produced sources", () => {
   const sources = effectiveDashboardSources({
     repositories: { rows: [], metadata: available },
     workflows: { rows: [], metadata: available },
@@ -21,7 +21,7 @@ test("dashboard view assessment recognizes renderer-derived sources", () => {
   });
   const page = {
     views: [
-      { data: { source: "readiness-activity" } },
+      { data: { source: "readiness-observations" } },
       { data: { source: "repository-activity" } },
       { data: { source: "workflow-runs" } },
       { data: { source: "packaged-workflows" } },

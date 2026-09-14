@@ -85,6 +85,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/queries/declarative.js
   - source: site/src/data/queries/index.js
     destination: .github/aw/dashboard/site/src/data/queries/index.js
+  - source: site/src/data/queries/view-payload-compiler.js
+    destination: .github/aw/dashboard/site/src/data/queries/view-payload-compiler.js
   - source: site/src/data/queries/view-sources.js
     destination: .github/aw/dashboard/site/src/data/queries/view-sources.js
   - source: site/src/data/storage/indexeddb.js
@@ -127,12 +129,8 @@ resources:
     destination: .github/aw/dashboard/site/src/debounce.js
   - source: site/src/horizon.js
     destination: .github/aw/dashboard/site/src/horizon.js
-  - source: site/src/inferred-sources.js
-    destination: .github/aw/dashboard/site/src/inferred-sources.js
   - source: site/src/loading-progress.js
     destination: .github/aw/dashboard/site/src/loading-progress.js
-  - source: site/src/notification-stories.js
-    destination: .github/aw/dashboard/site/src/notification-stories.js
   - source: site/src/notification-service.js
     destination: .github/aw/dashboard/site/src/notification-service.js
   - source: site/src/octicon-names.json
@@ -141,16 +139,10 @@ resources:
     destination: .github/aw/dashboard/site/src/octicons.js
   - source: site/src/octicons.svg
     destination: .github/aw/dashboard/site/src/octicons.svg
-  - source: site/src/overview-data.js
-    destination: .github/aw/dashboard/site/src/overview-data.js
   - source: site/src/presenter.js
     destination: .github/aw/dashboard/site/src/presenter.js
   - source: site/src/reactive.js
     destination: .github/aw/dashboard/site/src/reactive.js
-  - source: site/src/repository-data.js
-    destination: .github/aw/dashboard/site/src/repository-data.js
-  - source: site/src/runtime-data.js
-    destination: .github/aw/dashboard/site/src/runtime-data.js
   - source: site/src/scatter-clustering.js
     destination: .github/aw/dashboard/site/src/scatter-clustering.js
   - source: site/src/smells.svg
@@ -171,8 +163,6 @@ resources:
     destination: .github/aw/dashboard/site/src/validator.js
   - source: site/src/view-formatters.js
     destination: .github/aw/dashboard/site/src/view-formatters.js
-  - source: site/src/workflow-data.js
-    destination: .github/aw/dashboard/site/src/workflow-data.js
   - source: site/src/components/anomaly-readiness.js
     destination: .github/aw/dashboard/site/src/components/anomaly-readiness.js
   - source: site/src/components/attention-rules.js
@@ -219,8 +209,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/linked-text.js
   - source: site/src/components/outcome-detail.js
     destination: .github/aw/dashboard/site/src/components/outcome-detail.js
-  - source: site/src/components/notifications-inbox.js
-    destination: .github/aw/dashboard/site/src/components/notifications-inbox.js
   - source: site/src/components/outcome-detail-sections.js
     destination: .github/aw/dashboard/site/src/components/outcome-detail-sections.js
   - source: site/src/components/package-aic-utilization-thresholds.json

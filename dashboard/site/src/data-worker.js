@@ -3,6 +3,7 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import {
+  cachedJsonlAdaptationContext,
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
   isCachedGhAwJsonlCurrent,
@@ -387,8 +388,8 @@ export function processDataRequest(request, signal) {
           const collectionContext = request.context && typeof request.context === 'object'
             ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
             : undefined;
-          const adaptationContext = JSON.stringify({
-            context: collectionContext ?? null,
+          const adaptationContext = cachedJsonlAdaptationContext({
+            context: collectionContext,
             workflowHints
           });
           const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', sourceUrl.href);

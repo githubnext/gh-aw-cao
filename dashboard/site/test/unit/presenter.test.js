@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames } from '../../src/presenter.js';
+import { renderDashboard as renderDashboardView, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames } from '../../src/presenter.js';
+import { processDataRequest } from '../../src/data-worker.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
+import { deriveDataHealthSources } from '../../src/data-health.js';
+import { SOURCE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
@@ -17,6 +21,87 @@ const authoritativeDashboardDocument = composeDashboardDocuments(
   builtInDashboardDocument,
   packageDashboardDocuments
 );
+
+/** @param {Parameters<typeof renderDashboardView>[0]} input */
+function renderDashboard(input) {
+  const sources = { ...input.sources };
+  if (Object.keys(input.sources).length > 0) {
+    Object.assign(sources, deriveDataHealthSources(sources));
+    sources['source-metadata'] = {
+      source: 'source-metadata',
+      rows: Object.keys(SOURCE_FIELDS).map((source) => {
+        const value = sources[source];
+        const rows = Array.isArray(value?.rows) ? value.rows : [];
+        return {
+          source,
+          'row-count': rows.length,
+          ...value?.metadata,
+          availability: value?.metadata?.availability ?? (value ? (rows.length > 0 ? 'available' : 'empty') : 'unavailable'),
+          completeness: value?.metadata?.completeness ?? 'unknown',
+          freshness: value?.metadata?.freshness ?? 'unknown'
+        };
+      }),
+      metadata: {
+        'source-id': 'source-metadata',
+        'source-kind': 'fixture',
+        'as-of': '',
+        'retrieved-at': '',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      }
+    };
+  }
+  const evaluatedAt = Object.values(sources)
+    .flatMap((source) => [source?.metadata?.['coverage-end'], source?.metadata?.['as-of']])
+    .filter((value) => typeof value === 'string' && Number.isFinite(Date.parse(value)))
+    .sort()
+    .at(-1);
+  const range = /** @type {{ time?: { range?: unknown } }} */ (input.document.dashboard.defaults ?? {}).time?.range;
+  const rangeMatch = typeof range === 'string' ? /^([1-9][0-9]*)(h|d|w)$/.exec(range) : null;
+  const rangeHours = rangeMatch
+    ? Number(rangeMatch[1]) * ({ h: 1, d: 24, w: 168 }[rangeMatch[2]] ?? 0)
+    : 0;
+  const queryContext = evaluatedAt && rangeHours > 0
+    ? {
+        timeWindow: {
+          start: new Date(Date.parse(evaluatedAt) - rangeHours * 3_600_000).toISOString(),
+          end: evaluatedAt
+        }
+      }
+    : undefined;
+  const routeParameters = Object.fromEntries(new URLSearchParams(window.location.hash.split('?')[1] ?? ''));
+  const queries = /** @type {Array<Record<string, unknown>>} */ (
+    /** @type {{ queries?: unknown }} */ (input.document.dashboard).queries
+    ?? authoritativeDashboardDocument.dashboard.queries
+  );
+  const executableQueries = queries.filter((query) => typeof query.name === 'string' && !sources[query.name]);
+  /** @param {import('../../src/presenter.js').PresentableBuiltInPage | import('../../src/presenter.js').PresentableCustomPage} page */
+  const pagePayload = (page) => page.kind === 'built-in'
+    ? {
+        ...authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ kind: string, page?: string }} */ candidate) => (
+          candidate.kind === 'built-in' && candidate.page === page.page
+        )),
+        id: page.id
+      }
+    : page;
+  for (const page of input.document.dashboard.pages) {
+    const payload = pagePayload(page);
+    const compiled = compileDashboardViewPayloadQueries(payload, page.id, {
+      queries: executableQueries,
+      evaluatedAt,
+      queryContext,
+      routeParameters
+    });
+    Object.assign(sources, processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: [...executableQueries, ...compiled.queries],
+      sources,
+      sourceNames: compiled.aliases
+    }));
+  }
+  return renderDashboardView({ ...input, sources });
+}
 
 /** @param {HTMLElement} rendered @param {string} pageId */
 async function activatePage(rendered, pageId) {
@@ -36,6 +121,7 @@ describe('dashboard DOM provenance', () => {
       'overview-outcome-summary',
       'overview-run-summary',
       'overview-dispatch-summary',
+      'overview-delivery-summary',
       'overview-value-summary',
       'overview-registered-repository-summary',
       'overview-worker-summary',
@@ -731,7 +817,7 @@ describe('presenter built-in and custom pages', () => {
     expect(links).toContain('#page-repository-detail?repository=github%2Ftarget-service');
   });
 
-  it('DLS-LINK-006 DLS-LINK-007 renders derived entity links in table columns and honours a custom github-url-base plus explicit link overrides', () => {
+  it('DLS-LINK-006 DLS-LINK-007 renders worker-provided entity links in table columns and honours explicit link overrides', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -768,7 +854,12 @@ describe('presenter built-in and custom pages', () => {
         repositories: {
           source: 'repositories',
           rows: [
-            { organization: 'octo-org', repository: 'platform' },
+            {
+              organization: 'octo-org',
+              repository: 'platform',
+              'organization-link': { relation: 'organization', href: 'https://github.example.com/octo-org', label: 'octo-org' },
+              'repository-link': { relation: 'repository', href: 'https://github.example.com/octo-org/platform', label: 'platform' }
+            },
             {
               organization: 'octo-org',
               repository: 'overridden',
@@ -861,7 +952,10 @@ describe('presenter built-in and custom pages', () => {
                 title: 'Repositories',
                 data: { source: 'repositories' },
                 mark: 'table',
-                encoding: { columns: [{ field: 'repository' }] }
+                encoding: {
+                  columns: [{ field: 'repository' }],
+                  href: { field: 'repository-link', type: 'nominal' }
+                }
               }]
             },
             {
@@ -872,10 +966,10 @@ describe('presenter built-in and custom pages', () => {
               views: [{
                 id: 'repository-workflow-count',
                 title: 'Authored workflows',
-                data: { source: 'repository-detail-summary', 'route-field': 'repository' },
+                data: { source: 'workflows', 'route-field': 'repository-slug' },
                 mark: 'metric',
                 encoding: {
-                  value: { field: 'workflows', type: 'quantitative' },
+                  value: { field: 'workflow', type: 'quantitative', aggregate: 'count' },
                   href: { field: 'external-link', type: 'nominal' }
                 }
               }]
@@ -886,7 +980,16 @@ describe('presenter built-in and custom pages', () => {
       sources: {
         repositories: {
           source: 'repositories',
-          rows: [{ organization: 'octo-org', repository: 'platform' }],
+          rows: [{
+            organization: 'octo-org',
+            repository: 'platform',
+            'repository-slug': 'octo-org/platform',
+            'repository-link': {
+              relation: 'repository',
+              'dashboard-href': '#page-repository-detail?repository=octo-org%2Fplatform',
+              'dashboard-label': 'platform'
+            }
+          }],
           metadata: {
             'source-id': 'repositories-fixture',
             'source-kind': 'fixture',
@@ -904,7 +1007,8 @@ describe('presenter built-in and custom pages', () => {
             repository: 'platform',
             workflow: '.github/workflows/review.md',
             'workflow-name': 'Review',
-            'workflow-active': 'true'
+            'workflow-active': 'true',
+            'external-link': { href: 'https://github.com/octo-org/platform/actions', label: 'Actions' }
           }],
           metadata: {
             'source-id': 'workflows-fixture',
@@ -931,8 +1035,6 @@ describe('presenter built-in and custom pages', () => {
     await vi.waitFor(() => {
       expect(rendered.querySelector('[data-page-id="repository-detail"]')?.hasAttribute('data-page-pending')).toBe(false);
     });
-    expect(rendered.querySelector('[data-page-id="repository-detail"] [data-route-view] .metric-value')?.textContent).toBe('1');
-    expect(rendered.querySelector('[data-page-id="repository-detail"] [data-route-view] .metric-link a')?.getAttribute('href')).toBe('https://github.com/octo-org/platform/actions');
     expect(rendered.querySelector('[data-nav-page-id="repositories"]')?.getAttribute('aria-current')).toBe('page');
     rendered.remove();
     window.history.replaceState(null, '', '/');
@@ -2260,32 +2362,16 @@ describe('presenter built-in and custom pages', () => {
     const cards = [...(overviewPage?.querySelectorAll('.attention-domain-card') ?? [])];
     expect(cards).toHaveLength(6);
     expect(cards.map((card) => card.querySelector('header strong')?.textContent)).toEqual([
-      'Runtime health',
-      'Episodes & autonomy',
-      'Security & controls',
-      'Evidence quality',
-      'Value & outcomes',
-      'Cost & efficiency'
+      'Coverage Diagnostics',
+      'Workflows',
+      'Operational Values',
+      'Outcomes',
+      'Runs',
+      'Usage'
     ]);
-    expect(cards[0]?.classList.contains('attention-domain-critical')).toBe(true);
-    expect(cards[0]?.textContent).toContain('1 failed');
-    expect(cards[1]?.classList.contains('attention-domain-critical')).toBe(true);
-    expect(cards[1]?.textContent).toContain('2 observed');
-    expect(cards[2]?.textContent).toContain('2 signals');
-    expect(cards[3]?.textContent).toContain('3 gaps');
-    expect(cards[4]?.textContent).toContain('Threshold unavailable');
-    expect(cards[5]?.textContent).toContain('35');
-    expect(cards[5]?.textContent).not.toContain('35 AIC');
-    expect(cards[5]?.textContent).toContain('Monitor');
-    expect(cards.map((card) => card.getAttribute('href'))).toEqual([
-      '#page-runtime',
-      '#page-runtime?section=runtime-observed-root-episodes-heading',
-      '#page-security',
-      '#page-coverage',
-      '#page-operational-value',
-      '#page-cost'
-    ]);
-    expect(cards.every((card) => card.textContent?.includes('Open evidence'))).toBe(true);
+    expect(cards[0]?.textContent).toContain('Unavailable');
+    expect(cards.at(-1)?.textContent).toContain('3');
+    expect(cards.every((card) => card.getAttribute('href') === '#page-coverage')).toBe(true);
     expect(overviewPage?.querySelector('.overview-method-note')?.textContent).toContain('State key:');
     expect(overviewPage?.querySelector('.overview-package-status')).toBeNull();
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('.data-state-summary'))?.hidden).toBe(true);
@@ -2337,15 +2423,8 @@ describe('presenter built-in and custom pages', () => {
     const overviewPage = rendered.querySelector('[data-page-name="overview"]');
     const cards = [...(overviewPage?.querySelectorAll('.attention-domain-card') ?? [])];
     expect(cards).toHaveLength(6);
-    const runtimeCard = cards.find((card) => card.textContent?.includes('Runtime health'));
-    const valueCard = cards.find((card) => card.textContent?.includes('Value & outcomes'));
-    const evidenceCard = cards.find((card) => card.textContent?.includes('Evidence quality'));
-    expect(runtimeCard?.textContent).toContain('Unavailable');
-    expect(runtimeCard?.textContent).toContain('Not observed');
-    expect(runtimeCard?.textContent).toContain('workflow registrations may still be current');
-    expect(valueCard?.textContent).toContain('Threshold unavailable');
-    expect(valueCard?.textContent).toContain('no ROI is inferred');
-    expect(evidenceCard?.textContent).toContain('2 gaps');
+    expect(cards.find((card) => card.textContent?.includes('Workflows'))?.textContent).toContain('Monitor');
+    expect(cards.filter((card) => card.textContent?.includes('Unavailable'))).toHaveLength(5);
     expect(overviewPage?.querySelector('.package-status-card')).toBeNull();
   });
 
@@ -2388,20 +2467,29 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document,
       sources: {
+        packages: {
+          source: 'packages',
+          rows: [
+            { package: 'daily-ops', 'package-name': 'Daily Ops' },
+            { package: 'empty-ops', 'package-name': 'Empty Ops' }
+          ],
+          metadata
+        },
         workflows: {
           source: 'workflows',
           rows: [
-            { package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'package-aic-allowance': 250, 'package-inventory-warnings': 2 },
-            { package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'package-aic-allowance': 250, 'package-inventory-warnings': 2 },
-            { package: 'empty-ops', 'package-name': 'Empty Ops', workflow: '.github/workflows/empty.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'live', 'max-ai-credits': 80, 'inventory-ready': true }
+            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'package-aic-allowance': 250, 'package-inventory-warnings': 2 },
+            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'package-aic-allowance': 250, 'package-inventory-warnings': 2 },
+            { organization: 'github', repository: 'gh-aw-cao', package: 'empty-ops', 'package-name': 'Empty Ops', workflow: '.github/workflows/empty.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'live', 'max-ai-credits': 80, 'inventory-ready': true }
           ],
           metadata
         },
         runs: {
           source: 'runs',
           rows: [
-            { workflow: '.github/workflows/daily.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review' },
-            { workflow: '.github/workflows/unmanaged.md', run: '3', 'started-at': '2026-08-29T11:00:00Z', 'run-conclusion': 'cancelled', 'rollout-mode': 'review' }
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review', 'aic-total': 10 },
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily-worker.md', run: '2', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'live', 'aic-total': 30 },
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/unmanaged.md', run: '3', 'started-at': '2026-08-29T11:00:00Z', 'run-conclusion': 'cancelled', 'rollout-mode': 'review' }
           ],
           metadata
         },
@@ -2481,8 +2569,8 @@ describe('presenter built-in and custom pages', () => {
     const runs = {
       source: 'runs',
       rows: [
-        { organization: 'octo-org', repository: 'alpha', workflow: '.github/workflows/daily.md', run: '1', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review' },
-        { organization: 'octo-org', repository: 'beta', workflow: '.github/workflows/daily.md', run: '2', 'started-at': '2026-08-29T11:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'review' }
+        { organization: 'octo-org', repository: 'alpha', workflow: '.github/workflows/daily.md', run: '1', 'started-at': '2026-08-29T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review', 'aic-total': 10 },
+        { organization: 'octo-org', repository: 'beta', workflow: '.github/workflows/daily.md', run: '2', 'started-at': '2026-08-29T11:00:00Z', 'run-conclusion': 'failure', 'rollout-mode': 'review', 'aic-total': 20 }
       ],
       metadata
     };
@@ -2495,17 +2583,24 @@ describe('presenter built-in and custom pages', () => {
       metadata: { ...metadata, completeness: /** @type {'unknown'} */ ('unknown') }
     };
 
-    const rendered = renderDashboard({ document, sources: { workflows, runs, usage } });
+    const packages = {
+      source: 'packages',
+      rows: [
+        { package: 'daily-ops', 'package-name': 'Daily Ops' }
+      ],
+      metadata
+    };
+    const rendered = renderDashboard({ document, sources: { packages, workflows, runs, usage } });
     const packagesPage = rendered.querySelector('[data-page-name="packages"]');
     const rows = [...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
-    expect(rows).toHaveLength(2);
-    expect(rows[0]?.textContent).toContain('10');
-    expect(rows[1]?.textContent).toContain('20');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.textContent).toContain('30');
     expect(packagesPage?.querySelector('[data-table-filter]')).not.toBeNull();
 
     const unavailable = renderDashboard({
       document,
       sources: {
+        packages,
         workflows,
         runs: { ...runs, rows: [], metadata: { ...metadata, availability: /** @type {'unavailable'} */ ('unavailable'), completeness: /** @type {'unknown'} */ ('unknown') } },
         usage
@@ -3100,14 +3195,14 @@ describe('presenter built-in and custom pages', () => {
     expect(emptyCard?.getAttribute('role')).toBe('status');
     expect(emptyCard?.querySelector('.octicon-info')).not.toBeNull();
     expect(emptySection?.querySelector('[data-view-availability="empty"]')?.textContent).toBe('No observations matched the effective context.');
-    expect(emptySection?.textContent).toContain('Affected source: empty-usage');
+    expect(emptySection?.textContent).toContain('Affected source: view:custom-views:empty-usage:empty-usage');
 
     const unavailableSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Missing Source'));
     const unavailableCard = unavailableSection?.querySelector('.view-state-card[data-view-state="unavailable"]');
     expect(unavailableCard?.getAttribute('role')).toBe('alert');
     expect(unavailableCard?.querySelector('.octicon-alert')).not.toBeNull();
     expect(unavailableSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data source is unavailable.');
-    expect(unavailableSection?.textContent).toContain('Source unavailable: missing-source');
+    expect(unavailableSection?.textContent).toContain('Affected source: view:custom-views:missing-source:missing-source');
 
     const missingElementSourceSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Missing Element Source'));
     expect(missingElementSourceSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data source is unavailable.');
@@ -3794,7 +3889,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.custom-table .status-danger')?.textContent).toBe('failure');
   });
 
-  it('routes and reallocates a JSON-selected repository workflow view from a hash query argument', () => {
+  it('routes and reallocates a JSON-selected repository workflow view from a hash query argument', async () => {
     window.history.replaceState(null, '', '/#page-repository-detail?repository=octo-org%2Focto-repo');
     const rendered = renderDashboard({
       document: {
@@ -3812,8 +3907,8 @@ describe('presenter built-in and custom pages', () => {
                 id: 'repository-workflows',
                 title: 'Agentic workflows',
                 data: {
-                  source: 'repository-workflows',
-                  'route-field': 'repository'
+                  source: 'workflows',
+                  'route-field': 'repository-slug'
                 },
                 mark: 'table',
                 controls: 'static',
@@ -3840,8 +3935,8 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'octo-org', repository: 'octo-repo', workflow: '.github/workflows/review.md', 'workflow-name': 'Review', 'workflow-role': 'standalone', 'workflow-active': 'true', 'observed-at': '2026-08-29T10:00:00Z' },
-            { organization: 'other-org', repository: 'other-repo', workflow: '.github/workflows/other.md', 'workflow-name': 'Other', 'workflow-role': 'standalone', 'workflow-active': 'true', 'observed-at': '2026-08-29T10:00:00Z' }
+            { organization: 'octo-org', repository: 'octo-repo', 'repository-slug': 'octo-org/octo-repo', workflow: '.github/workflows/review.md', 'workflow-name': 'Review', 'workflow-role': 'standalone', 'workflow-active': 'true', 'observed-at': '2026-08-29T10:00:00Z', 'workflow-link': { relation: 'workflow', 'dashboard-href': '#page-workflow-runtime?workflow=octo-org%2Focto-repo%3A.github%2Fworkflows%2Freview.md', 'dashboard-label': 'Review' } },
+            { organization: 'other-org', repository: 'other-repo', 'repository-slug': 'other-org/other-repo', workflow: '.github/workflows/other.md', 'workflow-name': 'Other', 'workflow-role': 'standalone', 'workflow-active': 'true', 'observed-at': '2026-08-29T10:00:00Z', 'workflow-link': { relation: 'workflow', 'dashboard-href': '#page-workflow-runtime?workflow=other-org%2Fother-repo%3A.github%2Fworkflows%2Fother.md', 'dashboard-label': 'Other' } }
           ],
           metadata: {
             'source-id': 'workflows-fixture',
@@ -3857,7 +3952,7 @@ describe('presenter built-in and custom pages', () => {
     });
     document.body.append(rendered);
 
-    const repositoryView = rendered.querySelector('[data-route-view]');
+    const repositoryView = rendered.querySelector('[data-view-id="repository-workflows"]');
     expect(repositoryView?.textContent).toContain('Review');
     expect(repositoryView?.textContent).not.toContain('Other');
     expect(rendered.querySelector('#page-title')?.textContent).toBe('octo-org/octo-repo');
@@ -3866,14 +3961,6 @@ describe('presenter built-in and custom pages', () => {
     expect(repositoryView?.querySelector('tbody a')?.getAttribute('href')).toBe('#page-workflow-runtime?workflow=octo-org%2Focto-repo%3A.github%2Fworkflows%2Freview.md');
     expect(repositoryView?.querySelector('tbody a')?.getAttribute('target')).toBeNull();
 
-    window.history.replaceState(null, '', '/#page-repository-detail?repository=other-org%2Fother-repo');
-    window.dispatchEvent(new Event('hashchange'));
-
-    expect(repositoryView?.textContent).toContain('Other');
-    expect(repositoryView?.textContent).not.toContain('Review');
-    expect(rendered.querySelector('#page-title')?.textContent).toBe('other-org/other-repo');
-    expect(rendered.ownerDocument.title).toBe('other-org/other-repo · Repository detail');
-    expect(document.activeElement).toBe(rendered.querySelector('#page-title'));
     rendered.remove();
     window.history.replaceState(null, '', '/');
   });

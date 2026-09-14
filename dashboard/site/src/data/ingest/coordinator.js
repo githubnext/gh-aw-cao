@@ -78,7 +78,7 @@ async function transactionId(kind, scope) {
 }
 
 /** @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options */
-function cachedJsonlAdaptationContext(options) {
+export function cachedJsonlAdaptationContext(options) {
   return JSON.stringify({
     ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
     context: options.context ?? null,
