@@ -187,36 +187,16 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             const releaseTag = process.env.RELEASE_TAG;
-            core.info(`Creating tag and draft release ${releaseTag}.`);
-            await github.rest.git.createRef({
+            core.info(`Creating draft release ${releaseTag}.`);
+            const { data: release } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: `refs/tags/${releaseTag}`,
-              sha: context.sha,
+              tag_name: releaseTag,
+              target_commitish: context.sha,
+              name: releaseTag,
+              draft: true,
+              generate_release_notes: true,
             });
-            let release;
-            try {
-              ({ data: release } = await github.rest.repos.createRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: releaseTag,
-                target_commitish: context.sha,
-                name: releaseTag,
-                draft: true,
-                generate_release_notes: true,
-              }));
-            } catch (error) {
-              try {
-                await github.rest.git.deleteRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: `tags/${releaseTag}`,
-                });
-              } catch (cleanupError) {
-                core.error(`Failed to remove tag ${releaseTag} after release creation failed: ${cleanupError.message}`);
-              }
-              throw error;
-            }
             core.setOutput('release_id', release.id);
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
