@@ -4,7 +4,7 @@
  * element independently as results arrive.
  */
 
-import { batch, state } from './reactive.js';
+import { batch, state, untracked } from './reactive.js';
 import { createDebug } from './debug.js';
 
 const debug = createDebug('data:source-store');
@@ -68,11 +68,6 @@ export function configureSourceLoader(loader) {
   loadSource = loader;
 }
 
-/** @returns {boolean} */
-export function hasSourceLoader() {
-  return loadSource !== null;
-}
-
 /**
  * Requests one source asynchronously when a loader is configured. Repeated
  * requests for the same source reuse the first in-flight query.
@@ -102,7 +97,7 @@ async function loadRequestedSource(name) {
   const entry = sourceState(name);
   // Rows handed over by a rendered view are refreshed by the next render, so a
   // query result must not silently replace them with unfiltered rows.
-  const current = entry.get();
+  const current = untracked(() => entry.get());
   if (current.origin === 'view' && current.status === 'ready') return;
   const generation = (generations.get(name) ?? 0) + 1;
   generations.set(name, generation);

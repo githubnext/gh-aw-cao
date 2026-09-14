@@ -50,6 +50,23 @@ export function batch(fn) {
 }
 
 /**
+ * Reads reactive state without subscribing the running effect to it, so
+ * bookkeeping reads never widen an effect's dependencies.
+ * @template T
+ * @param {() => T} fn
+ * @returns {T}
+ */
+export function untracked(fn) {
+  const previous = activeEffect;
+  activeEffect = null;
+  try {
+    return fn();
+  } finally {
+    activeEffect = previous;
+  }
+}
+
+/**
  * Registers lifecycle cleanup with the currently running effect.
  * @param {() => void} cleanup
  */
@@ -177,13 +194,14 @@ export function state(initialValue) {
 /**
  * @template T
  * @param {() => T} compute
+ * @param {{ signal?: AbortSignal }} [options]
  * @returns {Derived<T>}
  */
-export function derived(compute) {
+export function derived(compute, options = {}) {
   const value = state(compute());
   const handle = effect(() => {
     value.set(compute());
-  }, { computed: true });
+  }, { computed: true, signal: options.signal });
 
   return {
     get() {

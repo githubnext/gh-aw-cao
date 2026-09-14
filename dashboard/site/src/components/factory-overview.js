@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { batch, derived, effect, state } from '../reactive.js';
-import { clearSources, hasSourceLoader, publishSource, requestSource, sourceState } from '../source-store.js';
+import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { formatCount } from './count-formatters.js';
 
 const DAY_MS = 86_400_000;
@@ -69,9 +69,7 @@ function releaseFactoryOverviewEffects() {
  * @returns {() => T}
  */
 function memo(compute) {
-  const value = derived(compute);
-  overviewLifetime.signal.addEventListener('abort', () => value.dispose(), { once: true });
-  return () => value.get();
+  return derived(compute, { signal: overviewLifetime.signal }).get;
 }
 
 /**
@@ -130,13 +128,15 @@ function bindOverviewSources(context) {
   const filterRows = typeof context.filterRows === 'function' ? context.filterRows : null;
   /** @type {SourceBindings} */
   const bindings = {};
-  for (const name of OVERVIEW_SOURCE_NAMES) {
-    const provided = context.sources?.[name];
-    // Grouped so bound elements observe one settled set of sources per render.
-    batch(() => {
+  // Grouped so bound elements observe one settled set of sources per render.
+  batch(() => {
+    for (const name of OVERVIEW_SOURCE_NAMES) {
+      const provided = context.sources?.[name];
       if (provided && Array.isArray(provided.rows)) publishSource(name, provided);
       else requestSource(name);
-    });
+    }
+  });
+  for (const name of OVERVIEW_SOURCE_NAMES) {
     const entryState = sourceState(name);
     bindings[name] = {
       rows: () => {
@@ -146,12 +146,9 @@ function bindOverviewSources(context) {
         // straight from a query still need the view's own row filter.
         return entry.origin === 'query' && filterRows ? filterRows(entry.source.rows) : entry.source.rows;
       },
-      // A requested source is pending until its query settles; without a
-      // loader nothing is in flight, so idle rows render as they are.
-      pending: () => {
-        const status = entryState.get().status;
-        return (status === 'loading' || status === 'idle') && hasSourceLoader();
-      },
+      // A requested query is `loading` until it settles; a source nothing ever
+      // queried stays `idle` and renders the rows it has.
+      pending: () => entryState.get().status === 'loading',
       unavailable: () => {
         const entry = entryState.get();
         return entry.status === 'failed' || entry.source?.metadata?.availability === 'unavailable';
@@ -205,8 +202,9 @@ function renderIntroduction(sources, metrics) {
   const heading = h('h2', { id: 'agent-factory-heading' });
   const summary = h('p', {});
 
+  const liveMotion = memo(() => factoryMotion(sources.runs.rows(), sources.workflows.rows()));
   bind(() => {
-    const motion = factoryMotion(sources.runs.rows(), sources.workflows.rows());
+    const motion = liveMotion();
     if (rhythmSelection.get() !== null) return;
     factoryMotionState.set((current) => (sameMotion(current, motion) ? current : motion));
   });
@@ -424,8 +422,6 @@ function renderFactoryRhythm(sources, metrics) {
   const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
   const bars = h('div', { className: 'factory-rhythm-bars' });
   const rhythmDays = memo(() => activityDays(metrics.successfulRunRows(), latestTimestamp(sources.runs.rows())));
-  /** @type {HTMLButtonElement[]} */
-  let dayButtons = [];
   const showFullWeek = () => {
     section.dispatchEvent(new CustomEvent('dashboard-time-window-range-change', {
       bubbles: true,
@@ -469,13 +465,11 @@ function renderFactoryRhythm(sources, metrics) {
     const maximum = Math.max(...days.map((day) => day.count), 1);
     // The bars are updated in place so an arriving query never discards the
     // focused or pressed day button.
-    if (dayButtons.length !== days.length) {
-      dayButtons = days.map((_, index) => createRhythmDayButton(() => selectDay(index)));
-      bars.replaceChildren(...dayButtons);
+    if (bars.childElementCount !== days.length) {
+      bars.replaceChildren(...days.map((_, index) => createRhythmDayButton(() => selectDay(index))));
     }
-    for (const [index, button] of dayButtons.entries()) {
+    for (const [index, button] of dayButtonsOf(bars).entries()) {
       const day = days[index];
-      if (!day) continue;
       button.setAttribute('aria-label', `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`);
       const bar = button.querySelector('.factory-rhythm-current');
       if (bar instanceof HTMLElement) bar.style.height = `${Math.max(5, day.count / maximum * 100)}%`;
@@ -486,10 +480,9 @@ function renderFactoryRhythm(sources, metrics) {
 
   bind(() => {
     const days = rhythmDays();
-    const buttons = dayButtons;
     const selected = rhythmSelection.get();
     const index = selected ? days.findIndex((day) => day.date === selected.date) : -1;
-    for (const [buttonIndex, button] of buttons.entries()) {
+    for (const [buttonIndex, button] of dayButtonsOf(bars).entries()) {
       button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
     }
     const day = days[index];
@@ -499,6 +492,11 @@ function renderFactoryRhythm(sources, metrics) {
   });
 
   return section;
+}
+
+/** @param {HTMLElement} bars @returns {HTMLButtonElement[]} */
+function dayButtonsOf(bars) {
+  return [...bars.querySelectorAll('.factory-rhythm-day')].filter((button) => button instanceof HTMLButtonElement);
 }
 
 /** @param {() => void} onSelect */

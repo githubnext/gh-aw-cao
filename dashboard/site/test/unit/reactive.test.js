@@ -1,9 +1,40 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { batch, derived, effect, onCleanup, state } from '../../src/reactive.js';
+import { batch, derived, effect, onCleanup, state, untracked } from '../../src/reactive.js';
 import { h, keyed } from '../../src/dom.js';
 
 describe('reactive core', () => {
+  it('keeps untracked reads out of an effect\'s dependencies', () => {
+    const tracked = state(0);
+    const bookkeeping = state(0);
+    let runs = 0;
+    const handle = effect(() => {
+      tracked.get();
+      untracked(() => bookkeeping.get());
+      runs += 1;
+    });
+
+    bookkeeping.set(1);
+    expect(runs).toBe(1);
+
+    tracked.set(1);
+    expect(runs).toBe(2);
+    handle.stop();
+  });
+
+  it('stops a derived value when its lifetime signal aborts', () => {
+    const count = state(1);
+    const controller = new AbortController();
+    const doubled = derived(() => count.get() * 2, { signal: controller.signal });
+
+    count.set(2);
+    expect(doubled.get()).toBe(4);
+
+    controller.abort();
+    count.set(3);
+    expect(doubled.get()).toBe(4);
+  });
+
   it('DLS-CONF-004 updates state and derived values deterministically', () => {
     const count = state(1);
     const doubled = derived(() => count.get() * 2);
