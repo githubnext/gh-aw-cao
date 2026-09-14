@@ -4,7 +4,7 @@
 
 Treat top-level Central Agentic Ops packages as operational packages by default. They contain an orchestrator and at least one independently dispatchable worker, use `shared/control.md`, and follow `.github/skills/create-ops-package/SKILL.md`.
 
-The `dashboard/` package is the deterministic exception. It contains conventional GitHub Actions workflows, data producers, and the Dashboard Language renderer under `dashboard/site/`, not an orchestrator or workers. Install it from root `aw.yml` by default while retaining `dashboard/aw.yml` for focused dashboard-only installations; never fold it into an operational package.
+The `.github/cao/dashboard/` package is the deterministic exception. It contains conventional GitHub Actions workflows, data producers, and the Dashboard Language renderer under `.github/cao/dashboard/site/`, not an orchestrator or workers. Install it from root `aw.yml` by default while retaining `.github/cao/dashboard/aw.yml` for focused dashboard-only installations; never fold it into an operational package.
 
 ## CAO and gh-aw authority
 
@@ -18,15 +18,15 @@ Orchestrators select and dispatch within the resolved rollout envelope; they do 
 
 ## Deterministic core packages
 
-- Install the `activity/` package from the root manifest. It owns the scheduled and manually dispatchable data-collection workflow, cache key contract, and activity index schema.
+- Install the `.github/cao/activity/` package from the root manifest. It owns the scheduled and manually dispatchable data-collection workflow, cache key contract, and activity index schema.
 - Keep data collection and cache publication out of operational packages and dashboard build jobs. Consumers may restore the activity cache and must fall back narrowly when its scope, freshness, or completeness is insufficient.
 - The activity cache is an evictable optimization, not historical authority. Do not use it to widen CAO policy or credential reach.
 
 ## Dashboard contract
 
-- Install with the root package by default. Use `gh aw add githubnext/gh-aw-cao/dashboard@<release>` only for a focused dashboard-only installation.
+- Install with the root package by default. Use `gh aw add githubnext/gh-aw-cao/.github/cao/dashboard@<release>` only for a focused dashboard-only installation.
 - Keep `.github/workflows/cao-dashboard.yml` as the single dashboard builder and optional Pages publisher. It must support manual dispatch and rebuild after changes to CAO policy or dashboard package files, always upload the reusable dashboard artifact, honor `control-plane.packages.dashboard.deploy` (default `true`) for Pages publication, pass `enablement: false` to `actions/configure-pages`, and must not add a schedule or another enable variable.
-- Keep report source modules under `dashboard/report/` and install them under `.github/aw/dashboard/report/` through matching root and `dashboard/aw.yml` resources.
+- Keep report source modules under `.github/cao/dashboard/report/` and install them under `.github/aw/dashboard/report/` through matching root and `.github/cao/dashboard/aw.yml` resources.
 - Restore the complete collected-data snapshot from the activity cache; do not recreate collection or cache publication in the dashboard builder.
-- Keep the production renderer under `dashboard/site/` and install its runtime assets under `.github/aw/dashboard/site/` through matching root and `dashboard/aw.yml` resources.
+- Keep the production renderer under `.github/cao/dashboard/site/` and install its runtime assets under `.github/aw/dashboard/site/` through matching root and `.github/cao/dashboard/aw.yml` resources.
 - Require Pages to be configured for GitHub Actions with appropriate access control before any standalone deployment.

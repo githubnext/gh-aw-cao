@@ -8,7 +8,7 @@ description: Normative mapping of cached schema-v2 gh-aw JSONL into canonical da
 The schema-v2 `gh-aw-logs.jsonl` source SHALL be mapped into the existing
 canonical stores without adding source-shaped stores, indexes, or
 relationships. The normative ingestion expression is
-`dashboard/site/src/data/ingest/expressions/gh-aw-logs-v2.json`.
+`.github/cao/dashboard/site/src/data/ingest/expressions/gh-aw-logs-v2.json`.
 
 The mapping SHALL preserve these mandatory relationships:
 

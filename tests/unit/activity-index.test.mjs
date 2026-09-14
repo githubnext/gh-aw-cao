@@ -71,7 +71,7 @@ graders:
     fallback: false,
   }));
   try {
-    await execFileAsync(process.execPath, [path.resolve("activity/index.mjs")], {
+    await execFileAsync(process.execPath, [path.resolve(".github/cao/activity/index.mjs")], {
       cwd: path.resolve("."),
       env: {
         ...process.env,
@@ -119,7 +119,7 @@ test("activity index reports fields missing from gh aw usage artifacts", async (
   await writeFile(logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":42,"workflow_name":"Sample"}}\n');
   await writeFile(statePath, '{"available":true,"complete":true,"targetCount":1,"fallback":false}\n');
   try {
-    await execFileAsync(process.execPath, [path.resolve("activity/index.mjs")], {
+    await execFileAsync(process.execPath, [path.resolve(".github/cao/activity/index.mjs")], {
       cwd: path.resolve("."),
       env: {
         ...process.env,
@@ -175,7 +175,7 @@ role: orchestrator
   } }) + "\n");
   await writeFile(statePath, '{"available":true,"complete":true,"targetCount":1,"fallback":false}\n');
   try {
-    await execFileAsync(process.execPath, [path.resolve("activity/index.mjs")], {
+    await execFileAsync(process.execPath, [path.resolve(".github/cao/activity/index.mjs")], {
       cwd: path.resolve("."),
       env: {
         ...process.env,

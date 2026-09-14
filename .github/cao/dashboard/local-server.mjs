@@ -568,7 +568,7 @@ async function isWorkspaceDashboardServer(pid, workingDirectory) {
     const arguments_ = commandLine.split("\0").filter(Boolean);
     return processDirectory === workingDirectory
       && arguments_.some((argument) =>
-        argument === "dashboard/local-server.mjs"
+        argument === ".github/cao/dashboard/local-server.mjs"
         || argument.endsWith("/dashboard/local-server.mjs")
         || argument.endsWith("/.github/aw/dashboard/local-server.mjs"));
   } catch (error) {

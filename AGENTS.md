@@ -11,14 +11,14 @@ Apply the guidance for every role that is present. Do not infer a role from the 
 
 ## Sources of truth
 
-- In the catalog, root and package `aw.yml` manifests define package contents. The root manifest installs the deterministic dashboard by default and must mirror the dashboard destinations declared by `dashboard/aw.yml`. Editable gh-aw workflow sources are `.github/workflows/*.md`; shared control is `.github/workflows/shared/control.md` and its dependencies.
+- In the catalog, root and package `aw.yml` manifests define package contents. The root manifest installs the deterministic dashboard by default and must mirror the dashboard destinations declared by `.github/cao/dashboard/aw.yml`. Editable gh-aw workflow sources are `.github/workflows/*.md`; shared control is `.github/workflows/shared/control.md` and its dependencies.
 - For authoritative information about the dashboard data model, refer to https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md.
 - Eliminate every JavaScript-based dashboard query. All selection, filtering, searching, joins, grouping, aggregation, computation, ordering, pagination, and source derivation must be declared in Dashboard Language and executed by the query engine in the data Web Worker against the canonical database. Do not implement or preserve presenter/component query callbacks, derived source modules, main-thread row filtering, or test-only JavaScript source synthesis as compatibility paths.
 - Keep the active page or view subscribed to its worker query with an explicit abort-scoped lifetime. Database changes must produce a fresh query result and update the active UX; one-shot navigation loads are not sufficient.
 - Effects may synchronize query results and local interaction state to owned DOM only. Effects and UI components must not query data, derive business state, filter source rows, or reconstruct database relationships.
 - A dashboard view contract change must update its declarative query, view declaration, contract fixture, and focused tests together. Enforcement tests must resolve sources through the production worker/query boundary and fail closed when a declared source cannot be produced there.
 - Treat dashboard IndexedDB as disposable, per-browser derived state. Operational workflows and package workers have no browser session and must not query it as a service or authority; use the activity cache, `gh-aw-logs.jsonl`, checked-in CAO policy and package identity, safe-output review items, and operational-value evidence that feed the dashboard.
-- When debugging the dashboard itself, inspect IndexedDB through the canonical storage and query APIs under `dashboard/site/src/data/` or through Playwright, not ad hoc view code. Reproduce findings from the authoritative input, adapter, normalization, canonical query, and view-payload stages before changing collection or control-plane behavior.
+- When debugging the dashboard itself, inspect IndexedDB through the canonical storage and query APIs under `.github/cao/dashboard/site/src/data/` or through Playwright, not ad hoc view code. Reproduce findings from the authoritative input, adapter, normalization, canonical query, and view-payload stages before changing collection or control-plane behavior.
 - In a control repository, `.github/workflows/cao.json` is the only persistent non-secret rollout policy. Keep workflow and policy changes in one reviewed commit because runs resolve policy at the exact workflow SHA.
 - `.github/workflows/*.lock.yml` files are generated artifacts. Never edit them directly; change their Markdown sources and run `gh aw compile`.
 - When merging, resolve conflicts in the editable workflow sources first. Resolve conflicts in `.github/workflows/*.lock.yml` by running `npm run compile:locks` during the merge (which invokes `gh aw compile` with the required schedule seed), then stage the regenerated lock files instead of editing conflict markers manually.
@@ -61,9 +61,9 @@ Run `npm run check` for complete repository validation. It executes, in order: `
 
 Always pass `--schedule-seed githubnext/gh-aw-cao` when running `gh aw compile` manually (the `compile` script already includes it); omitting the seed causes non-deterministic cron scattering in lock files.
 
-### Dashboard site (`dashboard/site/`)
+### Dashboard site (`.github/cao/dashboard/site/`)
 
-Run these commands from the `dashboard/site/` directory:
+Run these commands from the `.github/cao/dashboard/site/` directory:
 
 | Command | Purpose |
 |---------|---------|
@@ -76,7 +76,7 @@ Run these commands from the `dashboard/site/` directory:
 
 ### Dashboard debug logging
 
-- Create a category logger with `createDebug(category)` from `dashboard/site/src/debug.js`; call it with structured, non-sensitive metadata only.
+- Create a category logger with `createDebug(category)` from `.github/cao/dashboard/site/src/debug.js`; call it with structured, non-sensitive metadata only.
 - Logging is off by default. Enable all categories with `?debug=1` or `?debug=*`, or filter with comma-separated names and wildcards, such as `?debug=data,render:*`. Prefix a pattern with `-` to exclude it.
 - Use stable lowercase categories, adding `:` for subcategories. Never log secrets, tokens, prompts, raw records, payloads, or URLs containing credentials.
 - Preserve the existing `?debug=1` DOM-provenance behavior and `dashboard-data` / `dashboard-render` custom events when adding logging.
@@ -86,16 +86,16 @@ Run these commands from the `dashboard/site/` directory:
 | Workflow file | Scope | Trigger |
 |---------------|-------|---------|
 | `workflow-contracts.yml` | `npm run check` + `test:package-lifecycle` | PR / push |
-| `cid.yml` | Dashboard site lint, typecheck, unit tests, sharded E2E | PR / push to `dashboard/site/**` |
+| `cid.yml` | Dashboard site lint, typecheck, unit tests, sharded E2E | PR / push to `.github/cao/dashboard/site/**` |
 | `svg-contrast-check.yml` | Playwright SVG WCAG contrast validation | PR / push to SVG files |
 | `docs.yml` | Documentation build | Schedule / push to main |
 
 ### Choosing which tests to run
 
 - Editing control-plane sources under `.github/workflows/shared/` → `npm run typecheck:cao && npm test`
-- Editing dashboard site under `dashboard/site/` → from that directory: `npm test && npm run test:e2e && npm run test:performance && npm run lint && npm run typecheck`
+- Editing dashboard site under `.github/cao/dashboard/site/` → from that directory: `npm test && npm run test:e2e && npm run test:performance && npm run lint && npm run typecheck`
 - Debugging downloaded dashboard data → use `npm run dashboard:local -- --repo OWNER/REPOSITORY`
-- Editing the Activity workflow or JSONL parser under `activity/` → run the focused activity tests and `npm run compile`
+- Editing the Activity workflow or JSONL parser under `.github/cao/activity/` → run the focused activity tests and `npm run compile`
 - Editing workflow `.md` files → `npm run compile` (add `compile:locks` if lock files should update)
 - Editing SVGs → `npm run check:svg`
 - Editing documentation under `docs/` → `npm run docs:build`

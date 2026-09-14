@@ -28,8 +28,8 @@ test("GitHub telemetry records rate-limit and bounded cache metadata without tok
       ledgerPath,
       now: () => new Date("2026-09-04T12:00:00Z"),
       stackTrace: [
-        "at recordGithubTelemetry (activity/github-telemetry.mjs:100:16)",
-        "at main (activity/github-telemetry.mjs:150:9)",
+        "at recordGithubTelemetry (.github/cao/activity/github-telemetry.mjs:100:16)",
+        "at main (.github/cao/activity/github-telemetry.mjs:150:9)",
       ],
       execute: () => ({
         status: 0,
@@ -52,8 +52,8 @@ test("GitHub telemetry records rate-limit and bounded cache metadata without tok
       resetAt: "2026-09-04T13:20:00.000Z",
     });
     assert.deepEqual(entry.stackTrace, [
-      "at recordGithubTelemetry (activity/github-telemetry.mjs:100:16)",
-      "at main (activity/github-telemetry.mjs:150:9)",
+      "at recordGithubTelemetry (.github/cao/activity/github-telemetry.mjs:100:16)",
+      "at main (.github/cao/activity/github-telemetry.mjs:150:9)",
     ]);
     const ledger = await readFile(ledgerPath, "utf8");
     assert.doesNotMatch(ledger, /secret-token-value/);
@@ -115,7 +115,7 @@ test("activity cache state is explicit when the cache is absent", async () => {
 
 test("GitHub telemetry caps captured frames to keep ledger growth bounded", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-gh-stack-limit-"));
-  const frames = Array.from({ length: GITHUB_TELEMETRY_STACK_TRACE_LIMIT + 5 }, (_, index) => `at frame ${index} (activity/github-telemetry.mjs:${index}:1)`);
+  const frames = Array.from({ length: GITHUB_TELEMETRY_STACK_TRACE_LIMIT + 5 }, (_, index) => `at frame ${index} (.github/cao/activity/github-telemetry.mjs:${index}:1)`);
   try {
     const entry = await recordGithubTelemetry({
       phase: "before",

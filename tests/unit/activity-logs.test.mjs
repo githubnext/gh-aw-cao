@@ -59,8 +59,8 @@ process.stderr.write("Fetched 1 run\\n");
       GH_ARGS_PATH: item.argumentsPath,
       GITHUB_OUTPUT: item.githubOutput,
     };
-    const collection = await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
-    const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { env });
+    const collection = await execFileAsync("bash", [path.resolve(".github/cao/activity/collect-logs.sh")], { env });
+    const { stdout } = await execFileAsync(process.execPath, [path.resolve(".github/cao/activity/logs.mjs")], { env });
     const args = JSON.parse(await readFile(item.argumentsPath, "utf8"));
     assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--audit"]);
     assert.equal(args.includes("--json"), false);
@@ -101,7 +101,7 @@ test("activity logs preserves cached runs and records collection failure", async
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
-    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+    await execFileAsync(process.execPath, [path.resolve(".github/cao/activity/logs.mjs")], {
       env: {
         ...process.env,
         PATH: `${item.bin}:${process.env.PATH}`,
@@ -140,7 +140,7 @@ process.exit(99);
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
-    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+    await execFileAsync(process.execPath, [path.resolve(".github/cao/activity/logs.mjs")], {
       env: {
         ...process.env,
         PATH: `${item.bin}:${process.env.PATH}`,
@@ -175,7 +175,7 @@ test("activity logs records a failure when workflow discovery is unavailable", a
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
-    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+    await execFileAsync(process.execPath, [path.resolve(".github/cao/activity/logs.mjs")], {
       env: {
         ...process.env,
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",

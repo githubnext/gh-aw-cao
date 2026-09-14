@@ -158,8 +158,8 @@ The root Central Agentic Ops package installs the deterministic activity index a
 
 ```bash
 CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-gh aw add "githubnext/gh-aw-cao/activity@${CAO_RELEASE}"
-gh aw add "githubnext/gh-aw-cao/dashboard@${CAO_RELEASE}"
+gh aw add "githubnext/gh-aw-cao/.github/cao/activity@${CAO_RELEASE}"
+gh aw add "githubnext/gh-aw-cao/.github/cao/dashboard@${CAO_RELEASE}"
 ```
 
 Both installation paths add an independently dispatchable dashboard builder, a manual standalone Pages publisher, and their deterministic report modules. There is no additional dashboard enable variable, and installation does not deploy or enable Pages.

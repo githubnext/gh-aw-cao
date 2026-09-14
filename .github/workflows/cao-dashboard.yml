@@ -9,7 +9,7 @@ on:
       - .github/workflows/cao.json
       - .github/workflows/cao-dashboard.yml
       - "*/dashboard.json"
-      - dashboard/**
+      - .github/cao/dashboard/**
 
 permissions:
   contents: read
@@ -49,11 +49,11 @@ jobs:
               core.exportVariable('DASHBOARD_SITE_ROOT', '.github/aw/dashboard/site')
               core.info('Resolved dashboard source layout: installed')
             } else if (
-              fs.existsSync('dashboard/report/records.mjs')
-              && fs.existsSync('dashboard/site/scripts/build.mjs')
+              fs.existsSync('.github/cao/dashboard/report/records.mjs')
+              && fs.existsSync('.github/cao/dashboard/site/scripts/build.mjs')
             ) {
               core.exportVariable('DASHBOARD_LAYOUT', 'source')
-              core.exportVariable('DASHBOARD_SITE_ROOT', 'dashboard/site')
+              core.exportVariable('DASHBOARD_SITE_ROOT', '.github/cao/dashboard/site')
               core.info('Resolved dashboard source layout: source')
             } else {
               throw new Error('Dashboard package sources are unavailable')
@@ -166,8 +166,8 @@ jobs:
           script: |
             const fs = require('fs')
             core.info('Resolving activity SQLite doctor')
-            const doctorScript = fs.existsSync('activity/cao.mjs')
-              ? 'activity/cao.mjs'
+            const doctorScript = fs.existsSync('.github/cao/activity/cao.mjs')
+              ? '.github/cao/activity/cao.mjs'
               : fs.existsSync('.github/aw/activity/cao.mjs')
                 ? '.github/aw/activity/cao.mjs'
                 : undefined

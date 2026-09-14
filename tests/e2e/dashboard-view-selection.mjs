@@ -4,7 +4,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
-const primaryDashboardPath = "dashboard/site/dashboard.json";
+const primaryDashboardPath = ".github/cao/dashboard/site/dashboard.json";
 
 function dashboardPaths() {
   return [
@@ -82,7 +82,7 @@ function canScopeComponent(path) {
   ];
   if (exports.length !== 1) return false;
 
-  const sourceRoot = join(repositoryRoot, "dashboard/site/src");
+  const sourceRoot = join(repositoryRoot, ".github/cao/dashboard/site/src");
   const candidates = readdirSync(sourceRoot, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
     .map((entry) => join(entry.parentPath, entry.name));
@@ -108,7 +108,7 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       for (const pageId of changedDashboardPageIds(current, previous)) selected.add(pageId);
       continue;
     }
-    if (path.startsWith("dashboard/site/src/components/") && path.endsWith(".js")) {
+    if (path.startsWith(".github/cao/dashboard/site/src/components/") && path.endsWith(".js")) {
       const element = basename(path, ".js");
       const matchingPages = pagesUsingElement(dashboard, element);
       if (matchingPages.length > 0 && canScopeComponent(path)) {
@@ -125,14 +125,14 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       || path === "tests/e2e/dashboard-view-selection.mjs"
       || path === "package.json"
       || path === "package-lock.json"
-      || path === "dashboard/site/package.json"
-      || path === "dashboard/site/package-lock.json"
-      || path === "dashboard/local-server.mjs"
-      || path === "dashboard/report/compose-dashboard-documents.mjs"
-      || path === "dashboard/report/bundle-dashboards.mjs"
-      || path === "dashboard/site/index.html"
-      || path.startsWith("dashboard/site/src/")
-      || path.startsWith("dashboard/report/")
+      || path === ".github/cao/dashboard/site/package.json"
+      || path === ".github/cao/dashboard/site/package-lock.json"
+      || path === ".github/cao/dashboard/local-server.mjs"
+      || path === ".github/cao/dashboard/report/compose-dashboard-documents.mjs"
+      || path === ".github/cao/dashboard/report/bundle-dashboards.mjs"
+      || path === ".github/cao/dashboard/site/index.html"
+      || path.startsWith(".github/cao/dashboard/site/src/")
+      || path.startsWith(".github/cao/dashboard/report/")
     ) {
       return allPageIds;
     }

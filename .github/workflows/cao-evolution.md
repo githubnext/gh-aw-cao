@@ -123,7 +123,7 @@ Skip archived repositories, repositories without a readable default branch, repo
 
 ## Workers
 
-- `cao-evolution-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
+- `cao-evolution-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and .github/cao/dashboard/control-model drift.
 - `cao-evolution-reliability`: checks the last 24 full hours of CAO admission, dispatch, worker, activity-cache, review-bundle, dashboard-build, and dashboard-data-health evidence for actionable recurring failures.
 - `cao-evolution-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It does not duplicate per-workflow prompt or ambient-context optimization owned by `optimization`.
 - `cao-evolution-catalog-advisor`: compares recurring, evidence-complete capability gaps with public operations in the official catalog and suggests one bounded review-mode trial or custom operation gap. It never installs, enables, or dispatches a recommended operation.

@@ -24,7 +24,7 @@ Choose validation from the changed paths:
 | Changed area | Required validation |
 |---|---|
 | `.github/workflows/shared/*.mjs` | `npm run typecheck:cao && npm test` |
-| `dashboard/site/` | From `dashboard/site/`: `npm test && npm run test:e2e && npm run lint && npm run typecheck` |
+| `.github/cao/dashboard/site/` | From `.github/cao/dashboard/site/`: `npm test && npm run test:e2e && npm run lint && npm run typecheck` |
 | `.github/workflows/*.md` | `npm run compile`; use `npm run compile:locks` only when lock files must be regenerated |
 | SVG files | `npm run check:svg` |
 | `docs/` | `npm run docs:build` |

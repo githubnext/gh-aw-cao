@@ -47,4 +47,4 @@ Before treating a source as complete, run `cao audit-jsonl --input FILE`. Distin
 - Store an operation package's production Dashboard Language document at `<package>/dashboard.json`.
 - Declare it in `<package>/aw.yml` as a resource whose destination is `.github/aw/dashboards/<package>.json`, where `<package>` is the package's canonical identifier.
 - Keep each package dashboard independently valid. The dashboard package bundles installed `.github/aw/dashboards/*.json` documents into the single deployed `dashboard.json` that the browser loads.
-- Do not add package pages directly to `dashboard/site/dashboard.json`; that file contains the built-in dashboard configuration.
+- Do not add package pages directly to `.github/cao/dashboard/site/dashboard.json`; that file contains the built-in dashboard configuration.

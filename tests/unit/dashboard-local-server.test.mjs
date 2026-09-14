@@ -730,7 +730,7 @@ test("local dashboard server rejects paths outside its workspace", async () => {
 
 test("local dashboard CLI runs directly without a permission sandbox relaunch", () => {
   const repositoryRoot = path.resolve(import.meta.dirname, "../..");
-  const result = spawnSync(process.execPath, ["dashboard/local-server.mjs", "--help"], {
+  const result = spawnSync(process.execPath, [".github/cao/dashboard/local-server.mjs", "--help"], {
     cwd: repositoryRoot,
     encoding: "utf8",
   });

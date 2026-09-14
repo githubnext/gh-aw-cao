@@ -11,7 +11,7 @@ Draft
 
 ## Context
 
-The dashboard local dev server (`dashboard/local-server.mjs`) previously exposed a single-shot POST endpoint `/__dashboard_copilot` (`copilotEndpoint`) that read a JSON request body via `readJsonRequest`, validated Origin and Content-Type headers, ran one Copilot prompt synchronously through `copilotRuntime.prompt(...)`, and returned a single JSON response (`{ ok: true }` or `{ error: ... }`). Only one Copilot request could be active at a time, enforced by a `copilotRequestActive` flag that caused the endpoint to return HTTP 409 when busy.
+The dashboard local dev server (`.github/cao/dashboard/local-server.mjs`) previously exposed a single-shot POST endpoint `/__dashboard_copilot` (`copilotEndpoint`) that read a JSON request body via `readJsonRequest`, validated Origin and Content-Type headers, ran one Copilot prompt synchronously through `copilotRuntime.prompt(...)`, and returned a single JSON response (`{ ok: true }` or `{ error: ... }`). Only one Copilot request could be active at a time, enforced by a `copilotRequestActive` flag that caused the endpoint to return HTTP 409 when busy.
 
 Separately, the server already maintained a WebSocket connection for pushing dashboard preview-reload notifications, using a minimal, non-standard "receivedHeaderBytes" 2-byte header scheme rather than real WebSocket framing.
 
