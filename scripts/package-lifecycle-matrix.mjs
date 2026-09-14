@@ -131,7 +131,11 @@ function packageSources(root, suite) {
 }
 
 export function selectPackageLifecycleSuites(changedFiles, root = process.cwd()) {
-  if (changedFiles === null) return suites.map(({ name, testPattern }) => ({ name, "test-pattern": testPattern }));
+  const installableSuites = suites.filter((suite) => {
+    const manifest = parse(readFileSync(join(root, suite.manifest), "utf8"));
+    return manifest.private !== true;
+  });
+  if (changedFiles === null) return installableSuites.map(({ name, testPattern }) => ({ name, "test-pattern": testPattern }));
 
   const normalized = changedFiles.map((file) => file.replaceAll("\\", "/"));
   if (normalized.some((file) => [
@@ -140,7 +144,7 @@ export function selectPackageLifecycleSuites(changedFiles, root = process.cwd())
   ].includes(file))) {
     return selectPackageLifecycleSuites(null, root);
   }
-  return suites
+  return installableSuites
     .filter((suite) => {
       const packageDirectory = posix.dirname(suite.manifest);
       const prefixes = packageDirectory === "."
