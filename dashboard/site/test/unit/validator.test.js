@@ -633,6 +633,8 @@ describe('dashboard document validation', () => {
           { field: 'run-title' },
           { field: 'run-status' },
           { field: 'run-conclusion' },
+          { field: 'run-card-status' },
+          { field: 'run-check-summary' },
           { field: 'rollout-mode' },
           { field: 'event' },
           { field: 'started-at' }

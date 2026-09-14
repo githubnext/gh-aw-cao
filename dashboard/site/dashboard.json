@@ -3497,6 +3497,17 @@
                   "display": "status"
                 },
                 {
+                  "field": "run-card-status",
+                  "type": "nominal",
+                  "title": "Activity",
+                  "display": "status"
+                },
+                {
+                  "field": "run-check-summary",
+                  "type": "nominal",
+                  "title": "Checks"
+                },
+                {
                   "field": "rollout-mode",
                   "type": "nominal",
                   "title": "Mode",

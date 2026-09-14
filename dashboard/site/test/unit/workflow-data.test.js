@@ -291,6 +291,8 @@ describe('deriveWorkflowSources', () => {
             workflow: '.github/workflows/dependabot.md',
             run: '41',
             'run-title': 'Older run',
+            'run-status': 'completed',
+            'run-conclusion': 'failure',
             'started-at': '2026-08-31T00:00:00Z',
             'run-link': {
               relation: 'run',
@@ -304,6 +306,8 @@ describe('deriveWorkflowSources', () => {
             workflow: '.github/workflows/dependabot.md',
             run: '42',
             'run-title': 'Newer run',
+            'run-status': 'completed',
+            'run-conclusion': 'success',
             'gh-aw-version': 'v0.89.4',
             'started-at': '2026-09-01T00:00:00Z'
           },
@@ -313,6 +317,15 @@ describe('deriveWorkflowSources', () => {
             run: '43'
           }
         ]
+      },
+      jobs: {
+        source: 'jobs',
+        metadata,
+        rows: [
+          { organization: 'githubnext', repository: 'control', workflow: '.github/workflows/dependabot.md', run: '42', 'job-id': 'lint' },
+          { organization: 'githubnext', repository: 'control', workflow: '.github/workflows/dependabot.md', run: '42', 'job-id': 'test' },
+          { organization: 'githubnext', repository: 'control', workflow: '.github/workflows/dependabot.md', run: '41', 'job-id': 'build' }
+        ]
       }
     });
 
@@ -320,6 +333,10 @@ describe('deriveWorkflowSources', () => {
     expect(sources['workflow-runs'].rows[0]['workflow-route']).toBe(
       'githubnext/control:.github/workflows/dependabot.md'
     );
+    expect(sources['workflow-runs'].rows[0]['run-card-status']).toBe('up to date');
+    expect(sources['workflow-runs'].rows[0]['run-check-summary']).toBe('2 checks');
+    expect(sources['workflow-runs'].rows[1]['run-card-status']).toBe('something new to look at');
+    expect(sources['workflow-runs'].rows[1]['run-check-summary']).toBe('1 check');
     expect(sources['workflow-runs'].rows[0]['gh-aw-version']).toBe('v0.89.4');
     expect(sources['workflow-runs'].rows[1]['run-link']).toEqual(expect.objectContaining({
       href: 'https://github.com/githubnext/control/actions/runs/41'

@@ -3,6 +3,7 @@
  */
 
 import { titleCase } from './components/count-formatters.js';
+import { isFailureConclusion } from './components/run-classification.js';
 
 /** @typedef {Record<string, unknown>} Row */
 const AIC_TO_USD = 0.01;
@@ -15,8 +16,10 @@ export function deriveWorkflowSources(sources) {
   const workflows = Array.isArray(sources.workflows?.rows) ? sources.workflows.rows : [];
   const runsAvailable = sources.runs?.metadata?.availability !== 'unavailable' && Array.isArray(sources.runs?.rows);
   const runs = runsAvailable ? sources.runs.rows : [];
+  const jobs = Array.isArray(sources.jobs?.rows) ? sources.jobs.rows : [];
   const usage = Array.isArray(sources.usage?.rows) ? sources.usage.rows : [];
   const outcomes = Array.isArray(sources.outcomes?.rows) ? sources.outcomes.rows : [];
+  const workflowRunChecks = summarizeWorkflowRunChecks(jobs);
   const workflowRuns = summarizeWorkflowRuns(workflows, runsAvailable ? runs : null);
   const workflowAic = summarizeWorkflowAic(workflows, usage);
   const usageMetadata = sources.usage?.metadata ?? unavailableMetadata();
@@ -72,7 +75,7 @@ export function deriveWorkflowSources(sources) {
     'workflow-runs': {
       source: 'workflow-runs',
       rows: runs.flatMap((row) => {
-        const run = deriveWorkflowRun(row);
+        const run = deriveWorkflowRun(row, workflowRunChecks.get(runIdentity(row)));
         return run ? [run] : [];
       }).sort(compareRuns),
       metadata: sources.runs?.metadata ?? unavailableMetadata()
@@ -140,15 +143,49 @@ function summarizePackageInventory(workflows) {
   }).sort((left, right) => text(left['package-name']).localeCompare(text(right['package-name'])));
 }
 
-/** @param {Row} row @returns {Row | null} */
-function deriveWorkflowRun(row) {
+/** @param {Row} row @param {{ total: number } | undefined} checks @returns {Row | null} */
+function deriveWorkflowRun(row, checks) {
   const repository = qualifiedRepository(row);
   const workflow = text(row.workflow);
   if (!repository || repository.toLowerCase() === 'unknown' || !workflow || !text(row.run)) return null;
+  const checkCount = checks?.total ?? 0;
   return {
     'workflow-route': `${repository}:${workflow}`,
+    'run-card-status': workflowRunCardStatus(row),
+    'run-check-summary': `${checkCount} check${checkCount === 1 ? '' : 's'}`,
     ...row
   };
+}
+
+/** @param {Row} row */
+function workflowRunCardStatus(row) {
+  const status = text(row['run-status']).toLowerCase();
+  const conclusion = text(row['run-conclusion']).toLowerCase();
+  if (status === 'in-progress' || status === 'in_progress' || status === 'queued') return 'working';
+  if (isFailureConclusion(conclusion) || ['action-required', 'cancelled', 'stale'].includes(conclusion)) return 'something new to look at';
+  if (conclusion === 'success') return 'up to date';
+  return 'watching';
+}
+
+/**
+ * @param {Row[]} jobs
+ * @returns {Map<string, { total: number }>}
+ */
+function summarizeWorkflowRunChecks(jobs) {
+  /** @type {Map<string, Set<string>>} */
+  const checksByRun = new Map();
+  for (const job of jobs) {
+    const key = runIdentity(job);
+    if (!key.replace(/:/g, '')) continue;
+    const checks = checksByRun.get(key) ?? new Set();
+    const checkId = text(job['job-id']) || text(job.job) || `check-${checks.size + 1}`;
+    checks.add(checkId);
+    checksByRun.set(key, checks);
+  }
+  /** @type {Map<string, { total: number }>} */
+  const summaries = new Map();
+  for (const [key, checks] of checksByRun.entries()) summaries.set(key, { total: checks.size });
+  return summaries;
 }
 
 /** @param {Row} row @returns {Row | null} */
