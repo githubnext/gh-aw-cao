@@ -71,6 +71,7 @@ export const SWIMLANE_LAYOUT = Object.freeze({
   viewBoxHeight: SWIMLANE_VIEWBOX_HEIGHT
 });
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
+const SWIMLANE_LANE_INDEX = new Map(SWIMLANE_DEFINITIONS.map(([lane], index) => [lane, index]));
 const CHART_SERIES_COLOR_COUNT = 12;
 const SEMANTIC_SERIES_TERMS = {
   failure: new Set(['0', 'denied', 'error', 'errored', 'fail', 'failed', 'failing', 'failure', 'false', 'invalid', 'no', 'rejected', 'stale', 'timeout', 'unhealthy', 'unsuccessful']),
@@ -898,9 +899,16 @@ function renderHeatmapChart(points, valueLabel, unit) {
  * @returns {HTMLElement}
  */
 function renderSwimlaneChart(points, timeRange) {
-  const timestamps = new Float64Array(points.length);
-  const laneIndexes = new Int8Array(points.length);
-  laneIndexes.fill(-1);
+  let start = Date.parse(String(timeRange?.start ?? ''));
+  let end = Date.parse(String(timeRange?.end ?? ''));
+  const hasFixedRange = Number.isFinite(start) && Number.isFinite(end);
+  if (hasFixedRange && start === end) {
+    start -= 43_200_000;
+    end += 43_200_000;
+  }
+  const fixedSpan = hasFixedRange ? Math.max(end - start, 1) : 0;
+  const binsByLane = createSwimlaneBins();
+  const deferred = hasFixedRange ? null : [];
   const counts = Object.fromEntries(SWIMLANE_DEFINITIONS.map(([lane]) => [lane, 0]));
   let plottedCount = 0;
   let firstObserved = Number.POSITIVE_INFINITY;
@@ -910,18 +918,19 @@ function renderSwimlaneChart(points, timeRange) {
     const timestamp = Date.parse(String(point.x));
     const lane = swimlaneConclusion(point.category ?? point.color);
     if (!Number.isFinite(timestamp) || !lane) continue;
-    timestamps[index] = timestamp;
-    laneIndexes[index] = SWIMLANE_DEFINITIONS.findIndex(([candidate]) => candidate === lane);
     counts[lane] += 1;
     plottedCount += 1;
     firstObserved = Math.min(firstObserved, timestamp);
     lastObserved = Math.max(lastObserved, timestamp);
+    if (deferred) {
+      deferred.push({ point, lane, timestamp });
+    } else {
+      addSwimlaneObservation(binsByLane, point, lane, timestamp, start, fixedSpan);
+    }
   }
   if (plottedCount === 0) {
     return renderChartWidgetEmptyState('swimlane', 'No workflow runs to show.');
   }
-  let start = Date.parse(String(timeRange?.start ?? ''));
-  let end = Date.parse(String(timeRange?.end ?? ''));
   if (!Number.isFinite(start)) start = firstObserved;
   if (!Number.isFinite(end)) end = lastObserved;
   if (start === end) {
@@ -929,6 +938,11 @@ function renderSwimlaneChart(points, timeRange) {
     end += 43_200_000;
   }
   const span = Math.max(end - start, 1);
+  if (deferred) {
+    for (const { point, lane, timestamp } of deferred) {
+      addSwimlaneObservation(binsByLane, point, lane, timestamp, start, span);
+    }
+  }
   const successes = counts.success;
   const summary = [
     `${formatCount(plottedCount)} runs`,
@@ -941,7 +955,7 @@ function renderSwimlaneChart(points, timeRange) {
   /** @param {number} timestamp */
   const xCoordinate = (timestamp) => SWIMLANE_LAYOUT.startX
     + (Math.min(1, Math.max(0, (timestamp - start) / span)) * (SWIMLANE_LAYOUT.endX - SWIMLANE_LAYOUT.startX));
-  const sectionsByLane = buildSwimlaneSections(points, timestamps, laneIndexes, xCoordinate);
+  const sectionsByLane = buildSwimlaneSections(binsByLane);
 
   return renderChartWidgetShell(
     'swimlane',
@@ -986,34 +1000,42 @@ function renderSwimlaneChart(points, timeRange) {
 /**
  * Coalesces observations into a fixed number of visual buckets per lane, then
  * combines neighboring occupied buckets into contiguous sections.
- * @param {ChartPointLike[]} points
- * @param {Float64Array} timestamps
- * @param {Int8Array} laneIndexes
- * @param {(timestamp: number) => number} xCoordinate
+ * @returns {Map<string, Array<{ count: number, first: number, last: number, point: ChartPointLike & { lane: string, timestamp: number } } | null>>}
  */
-function buildSwimlaneSections(points, timestamps, laneIndexes, xCoordinate) {
-  const binCount = MAX_SWIMLANE_SECTIONS_PER_LANE;
-  const sectionWidth = (SWIMLANE_LAYOUT.endX - SWIMLANE_LAYOUT.startX) / binCount;
-  /** @type {Map<string, Array<{ count: number, first: number, last: number, point: ChartPointLike & { lane: string, timestamp: number } } | null>>} */
-  const binsByLane = new Map(SWIMLANE_DEFINITIONS.map(([lane]) => [lane, Array(binCount).fill(null)]));
-  for (let pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
-    const laneIndex = laneIndexes[pointIndex];
-    if (laneIndex < 0) continue;
-    const timestamp = timestamps[pointIndex];
-    const lane = SWIMLANE_DEFINITIONS[laneIndex][0];
-    const x = xCoordinate(timestamp);
-    const index = Math.min(binCount - 1, Math.max(0, Math.floor((x - SWIMLANE_LAYOUT.startX) / sectionWidth)));
-    const bins = /** @type {NonNullable<ReturnType<typeof binsByLane.get>>} */ (binsByLane.get(lane));
-    const bin = bins[index];
-    if (bin) {
-      bin.count += 1;
-      bin.first = Math.min(bin.first, timestamp);
-      bin.last = Math.max(bin.last, timestamp);
-    } else {
-      bins[index] = { count: 1, first: timestamp, last: timestamp, point: { ...points[pointIndex], lane, timestamp } };
-    }
-  }
+function createSwimlaneBins() {
+  return new Map(SWIMLANE_DEFINITIONS.map(([lane]) => [lane, Array(MAX_SWIMLANE_SECTIONS_PER_LANE).fill(null)]));
+}
 
+/**
+ * @param {ReturnType<typeof createSwimlaneBins>} binsByLane
+ * @param {ChartPointLike} point
+ * @param {string} lane
+ * @param {number} timestamp
+ * @param {number} start
+ * @param {number} span
+ */
+function addSwimlaneObservation(binsByLane, point, lane, timestamp, start, span) {
+  const progress = Math.min(1, Math.max(0, (timestamp - start) / span));
+  const index = Math.min(
+    MAX_SWIMLANE_SECTIONS_PER_LANE - 1,
+    Math.floor(progress * MAX_SWIMLANE_SECTIONS_PER_LANE)
+  );
+  const bins = /** @type {NonNullable<ReturnType<typeof binsByLane.get>>} */ (binsByLane.get(lane));
+  const bin = bins[index];
+  if (bin) {
+    bin.count += 1;
+    bin.first = Math.min(bin.first, timestamp);
+    bin.last = Math.max(bin.last, timestamp);
+  } else {
+    bins[index] = { count: 1, first: timestamp, last: timestamp, point: { ...point, lane, timestamp } };
+  }
+}
+
+/**
+ * @param {ReturnType<typeof createSwimlaneBins>} binsByLane
+ */
+function buildSwimlaneSections(binsByLane) {
+  const sectionWidth = (SWIMLANE_LAYOUT.endX - SWIMLANE_LAYOUT.startX) / MAX_SWIMLANE_SECTIONS_PER_LANE;
   /** @type {Map<string, Array<{ lane: string, x1: number, x2: number, count: number, first: number, last: number, point: ChartPointLike & { lane: string, timestamp: number } }>>} */
   const sectionsByLane = new Map();
   for (const [lane, bins] of binsByLane) {
@@ -1081,7 +1103,7 @@ function swimlaneTooltipLines(point) {
 function swimlaneConclusion(value) {
   const conclusion = String(value ?? '').toLowerCase();
   if (SWIMLANE_FAILURES.has(conclusion)) return 'failure';
-  return SWIMLANE_DEFINITIONS.some(([lane]) => lane === conclusion) ? conclusion : null;
+  return SWIMLANE_LANE_INDEX.has(conclusion) ? conclusion : null;
 }
 
 /** @param {number} instant @param {number} span */

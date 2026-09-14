@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "test": "vitest run --environment jsdom",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
-    "test:performance": "npm run build && node ./test/performance/lighthouse.mjs",
+    "test:performance": "npm run build && node ./test/performance/lighthouse.mjs && npm run test:performance:swimlane",
+    "test:performance:swimlane": "node ./test/performance/swimlane.mjs",
     "validate:corpus": "node ./scripts/validate-corpus.mjs",
     "dev": "cd .. && node local-server.mjs --copilot"
   },
