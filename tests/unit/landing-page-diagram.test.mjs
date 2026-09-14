@@ -109,10 +109,15 @@ test("configured wizard operations require a matching catalog manifest", () => {
   );
 });
 
-test("configured wizard operations exclude the repository-local self-care package", () => {
+test("configured wizard operations exclude private and repository-local packages", () => {
   const first = { slug: "first" };
   const selfCare = { slug: "self-care" };
-  const policy = { "control-plane": { packages: { "self-care": {}, first: {} } } };
+  const privatePackages = {
+    "eu-cra-compliance": {},
+    "software-development-practices": {},
+    "uk-ai-advisory": {},
+  };
+  const policy = { "control-plane": { packages: { "self-care": {}, ...privatePackages, first: {} } } };
 
   assert.deepEqual(selectConfiguredOperations(policy, [first, selfCare]), [first]);
 });

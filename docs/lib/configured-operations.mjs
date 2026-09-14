@@ -2,11 +2,15 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// SelfCare runs repository-local live checks against this catalog repository
-// itself, so it isn't meant to be installed into a consumer's control plane.
-// Exclude it from the wizard's operations list even though it's configured
-// in cao.json for this repository's own control plane.
-const WIZARD_EXCLUDED_SLUGS = new Set(["self-care"]);
+// Private packages are unavailable to consumers, while SelfCare runs
+// repository-local checks against this catalog repository itself. Exclude them
+// from the wizard even though this repository's control plane configures them.
+const WIZARD_EXCLUDED_SLUGS = new Set([
+  "eu-cra-compliance",
+  "self-care",
+  "software-development-practices",
+  "uk-ai-advisory",
+]);
 
 export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
   const controlPlane = isRecord(controlPolicy) ? controlPolicy["control-plane"] : undefined;
