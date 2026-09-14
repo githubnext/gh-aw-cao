@@ -572,14 +572,13 @@ function exceedsThreshold(row) {
 
 /** @param {Row[]} workflows @param {Row[]} repositories @param {Row[]} runs */
 function connectedRepositoryCoverage(workflows, repositories, runs) {
-  const observed = new Map();
+  const inventory = new Map();
   for (const repository of repositories) {
     const name = String(repository.repository ?? '').trim();
     const owner = String(repository.organization ?? '').trim();
     const coordinate = name.includes('/') || !owner ? name : `${owner}/${name}`;
-    if (coordinate) observed.set(coordinate, normalizedMode(repository['rollout-mode']));
+    if (coordinate) inventory.set(coordinate, normalizedMode(repository['rollout-mode']));
   }
-  if (observed.size > 0) return modeCoverage(observed);
 
   const targets = new Map();
   for (const workflow of workflows) {
@@ -589,15 +588,16 @@ function connectedRepositoryCoverage(workflows, repositories, runs) {
       if (repository) targets.set(repository, normalizedMode(target?.mode));
     }
   }
-  if (targets.size > 0) return modeCoverage(targets);
+  if (targets.size > 0) return { ...modeCoverage(targets), total: inventory.size || targets.size };
 
+  const observed = new Map(inventory);
   for (const repository of runs) {
     const name = String(repository.repository ?? '').trim();
     const owner = String(repository.organization ?? '').trim();
     const coordinate = name.includes('/') || !owner ? name : `${owner}/${name}`;
     if (coordinate) observed.set(coordinate, normalizedMode(repository['rollout-mode']));
   }
-  return modeCoverage(observed);
+  return { ...modeCoverage(observed), total: inventory.size || observed.size };
 }
 
 /** @param {Map<string, string>} repositories */

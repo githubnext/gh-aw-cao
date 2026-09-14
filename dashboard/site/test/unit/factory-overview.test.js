@@ -128,7 +128,7 @@ it('uses the complete repository inventory for the overview repository counter',
     }
   });
 
-  expect(rendered.querySelector('.factory-station:first-child')?.textContent).toBe('Repositories76 review · 1 live');
+  expect(rendered.querySelector('.factory-station:first-child')?.textContent).toBe('Repositories70 review · 1 live');
   expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('7 repositories in scope');
 });
 
