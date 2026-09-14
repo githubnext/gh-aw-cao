@@ -5,11 +5,17 @@ on:
     paths:
       - .github/workflows/cid.yml
       - dashboard/site/**
+      - playwright.dashboard-ingestion.config.mjs
+      - tests/e2e/dashboard-ingestion-scale.spec.mjs
+      - tests/helpers/synthetic-gh-aw-logs.mjs
   push:
     branches: [main]
     paths:
       - .github/workflows/cid.yml
       - dashboard/site/**
+      - playwright.dashboard-ingestion.config.mjs
+      - tests/e2e/dashboard-ingestion-scale.spec.mjs
+      - tests/helpers/synthetic-gh-aw-logs.mjs
 
 permissions:
   contents: read
@@ -79,6 +85,39 @@ jobs:
           npx playwright install --with-deps chromium
       - name: End-to-end tests
         run: npm run test:e2e -- --shard=${{ matrix.shard }}
+
+  ingestion-scale:
+    name: Synthetic ingestion scale test
+    # The synthetic payload ingestion is slow, so keep it on main instead of
+    # every pull request.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Cache Chromium
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('package-lock.json') }}-chromium
+      - name: Install Chromium
+        # Playwright's system dependencies come from the Ubuntu archives. The runner
+        # image also configures Google's Chrome repository, whose index intermittently
+        # fails checksum verification and breaks `apt-get update`; CI never installs
+        # from it, so drop it before resolving dependencies.
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps chromium
+      - name: Synthetic ingestion scale test
+        run: npm run test:e2e:dashboard-ingestion
 
   lighthouse-performance:
     name: Lighthouse performance scenarios

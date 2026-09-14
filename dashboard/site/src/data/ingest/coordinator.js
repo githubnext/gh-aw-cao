@@ -296,6 +296,7 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
  */
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
+  let phase = 'adapting';
   try {
     const adaptationContext = cachedJsonlAdaptationContext(options);
     const streamed = typeof content !== 'string'
@@ -331,7 +332,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       /** @type {string | Uint8Array} */ (content),
       { context: options.context, workflowHints: options.workflowHints }
     );
-    const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), {
+    phase = 'normalizing';
+    const batch = normalize(adapted.observations);
+    phase = 'writing';
+    const result = await ingestCanonicalBatch(indexedDB, batch, {
       ...options,
       preserveWorkflowPackageMappings: true,
       preserveRepositoryRecords: true
@@ -377,6 +381,6 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       error: error instanceof Error ? error.name : 'Error'
     }).catch(() => undefined);
     if (error instanceof CanonicalIngestionError) throw error;
-    throw new CanonicalIngestionError(classifyIngestionError(error, 'adapting'), 'adapting', error);
+    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
   }
 }
