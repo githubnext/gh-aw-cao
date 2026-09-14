@@ -572,6 +572,15 @@ function exceedsThreshold(row) {
 
 /** @param {Row[]} workflows @param {Row[]} repositories @param {Row[]} runs */
 function connectedRepositoryCoverage(workflows, repositories, runs) {
+  const observed = new Map();
+  for (const repository of repositories) {
+    const name = String(repository.repository ?? '').trim();
+    const owner = String(repository.organization ?? '').trim();
+    const coordinate = name.includes('/') || !owner ? name : `${owner}/${name}`;
+    if (coordinate) observed.set(coordinate, normalizedMode(repository['rollout-mode']));
+  }
+  if (observed.size > 0) return modeCoverage(observed);
+
   const targets = new Map();
   for (const workflow of workflows) {
     if (!Array.isArray(workflow['package-targets'])) continue;
@@ -581,8 +590,8 @@ function connectedRepositoryCoverage(workflows, repositories, runs) {
     }
   }
   if (targets.size > 0) return modeCoverage(targets);
-  const observed = new Map();
-  for (const repository of [...repositories, ...runs]) {
+
+  for (const repository of runs) {
     const name = String(repository.repository ?? '').trim();
     const owner = String(repository.organization ?? '').trim();
     const coordinate = name.includes('/') || !owner ? name : `${owner}/${name}`;
