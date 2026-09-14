@@ -3,6 +3,7 @@ description: Control-plane and agentic-workflow health, security maintenance, an
 min-version: v0.89.15
 experimental: true
 includes:
+  - ../aw.yml
   - .github/workflows/cao-evolution-catalog-advisor.md
   - .github/workflows/cao-evolution-failures-investigator.md
   - .github/workflows/cao-evolution-compiler-security.md
