@@ -67,6 +67,28 @@ const dashboardDocument = JSON.parse(readFileSync(`${process.cwd()}/dashboard.js
 const dashboardQueries = dashboardDocument.dashboard.queries;
 
 describe('declarative dashboard queries', () => {
+  it('counts the distinct repositories registered in the resolved control-plane scope', () => {
+    const repositories = [
+      ['github', 'gh-aw'],
+      ['github', 'gh-aw-firewall'],
+      ['github', 'gh-aw-mcpg'],
+      ['github', 'gh-aw-actions'],
+      ['github', 'gh-aw-threat-detection'],
+      ['githubnext', 'gh-aw-cao'],
+      ['githubnext', 'gh-aw-cao']
+    ].map(([organization, repository]) => ({ organization, repository }));
+
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      { repositories: { source: 'repositories', rows: repositories, metadata: metadata('repositories') } },
+      ['overview-registered-repository-summary']
+    );
+
+    expect(result['overview-registered-repository-summary'].rows).toEqual([
+      { 'registered-repositories': 6 }
+    ]);
+  });
+
   it('counts database entities through the declared horizon queries', () => {
     const sources = {
       packages: {

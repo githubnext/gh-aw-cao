@@ -1040,7 +1040,9 @@
           );
           try {
             cachedSources = await loadInitialSources(
-              (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+              (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination, {
+                pageId: initialPageId,
+              }),
             );
           } catch {
             // An empty or incompatible database is rebuilt from the published sources below.
@@ -1086,6 +1088,7 @@
                 initialSources,
                 dashboardContext,
                 refreshPagination,
+                { pageId: initialPageId },
               )).then(
                 ({ sources, changed }) => {
                   refreshPending = false;
@@ -1117,6 +1120,7 @@
                   requested,
                   dashboardContext,
                   pagination,
+                  { pageId: initialPageId },
                 ),
               ),
               "ready",

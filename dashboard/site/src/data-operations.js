@@ -11,7 +11,7 @@ import { formatPercent } from './view-formatters.js';
  * @typedef {Record<string, unknown>} Row
  * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }} Predicate
  * @typedef {{ op: 'filter', predicates?: Predicate[], search?: { fields: string[], query: string } }} FilterOperator
- * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
+ * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'calendar-week-rhythm'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
  * @typedef {{ op: 'slice', offset?: number, limit: number }} SliceOperator
  * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
@@ -34,6 +34,7 @@ export const COMPUTE_FUNCTION_ARITY = {
   trim: [1, 1],
   'url-encode': [1, 1],
   'date-day': [1, 1],
+  'calendar-week-point': [3, 3],
   'dashboard-link': [3, 4],
   'equals-any': [2, 8],
   'greater-than': [2, 2],
@@ -49,7 +50,7 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'date-day', 'format-count', 'format-percent'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'date-day', 'calendar-week-point', 'format-count', 'format-percent'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
@@ -131,6 +132,12 @@ export function computeValue(row, definition) {
   if (definition.function === 'date-day') {
     const timestamp = parseTimestamp(values[0]);
     return timestamp === null ? null : new Date(timestamp).toISOString().slice(0, 10);
+  }
+  if (definition.function === 'calendar-week-point') {
+    const timestamp = parseTimestamp(values[0]);
+    const reference = parseTimestamp(values[1]);
+    if (timestamp === null || reference === null) return null;
+    return JSON.stringify([timestamp, reference, values[2] === 'success']);
   }
   if (definition.function === 'dashboard-link') {
     const existing = isPlainObject(values[0]) ? values[0] : {};
@@ -303,12 +310,59 @@ function reduceValues(input, reducer) {
   if (reducer === 'distinct-count') return new Set(present.map(String)).size;
   if (reducer === 'distinct-list') return [...new Set(present.map(String))].sort().join(', ');
   if (reducer === 'distinct-values') return [...new Set(present.map(String))].sort();
+  if (reducer === 'calendar-week-rhythm') return calendarWeekRhythm(present);
   const values = present.map(Number).filter(Number.isFinite);
   if (reducer === 'sum') return values.reduce((total, value) => total + value, 0);
   if (values.length === 0) return null;
   if (reducer === 'mean') return values.reduce((total, value) => total + value, 0) / values.length;
   if (reducer === 'min') return Math.min(...values);
   return Math.max(...values);
+}
+
+/** @param {unknown[]} input */
+function calendarWeekRhythm(input) {
+  const points = input.flatMap((value) => {
+    try {
+      const point = JSON.parse(String(value));
+      return Array.isArray(point)
+        && point.length === 3
+        && point.slice(0, 2).every(Number.isFinite)
+        && typeof point[2] === 'boolean'
+        ? [/** @type {[number, number, boolean]} */ (point)]
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  if (points.length === 0) return null;
+  const DAY_MS = 86_400_000;
+  const WEEK_MS = 7 * DAY_MS;
+  const reference = points[0][1];
+  const referenceDay = Date.UTC(
+    new Date(reference).getUTCFullYear(),
+    new Date(reference).getUTCMonth(),
+    new Date(reference).getUTCDate()
+  );
+  const currentWeekStart = referenceDay - ((new Date(referenceDay).getUTCDay() + 6) % 7) * DAY_MS;
+  const dayCounts = new Map();
+  for (const [timestamp, , successful] of points) {
+    const day = new Date(timestamp);
+    const dayStart = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate());
+    if (successful) dayCounts.set(dayStart, (dayCounts.get(dayStart) ?? 0) + 1);
+  }
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const days = labels.map((label, index) => {
+    const date = currentWeekStart + index * DAY_MS;
+    const current = dayCounts.get(date) ?? 0;
+    return {
+      label,
+      date: new Date(date).toISOString().slice(0, 10),
+      current,
+      previous: dayCounts.get(date - WEEK_MS) ?? 0,
+      reached: date <= referenceDay
+    };
+  });
+  return { days };
 }
 
 /** @param {Row[]} rows @param {ArrangeOperator} operator */

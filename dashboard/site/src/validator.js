@@ -2690,6 +2690,9 @@ function validateQueries(queries, queriesNode, errors) {
     validateRequiredIdentifier(query.name, `${path}.name`, 'query name', errors);
     validateStringField(query.intent, `${path}.intent`, true, errors);
     validateOptionalStringField(query.description, `${path}.description`, errors);
+    if (query.time !== undefined) {
+      validateTime(getValueNodeByKey(queryNode, 'time'), query.time, `${path}.time`, errors);
+    }
     const name = typeof query.name === 'string' ? query.name : null;
     if (name && (SOURCE_VALUES.includes(name) || declared.has(name))) {
       errors.push(createError(
@@ -2983,10 +2986,11 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
             );
             const hasField = argument.field !== undefined;
             const hasValue = argument.value !== undefined;
-            if (hasField === hasValue) {
+            const hasContext = argument.context !== undefined;
+            if (Number(hasField) + Number(hasValue) + Number(hasContext) !== 1) {
               errors.push(createError(
                 ERROR_CODES.missingOrInvalidRequiredField,
-                'computed argument must declare exactly one of field or value.',
+                'computed argument must declare exactly one of field, value, or context.',
                 argumentPath
               ));
               continue;
@@ -3001,7 +3005,13 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
                   : NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function) ? 'numeric'
                     : ['coalesce', 'dashboard-link'].includes(computed.function) ? 'read' : 'scalar'
               );
-            } else if (!['string', 'number', 'boolean'].includes(typeof argument.value)) {
+            } else if (hasContext && argument.context !== 'time-end') {
+              errors.push(createError(
+                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+                'computed argument context must be time-end.',
+                `${argumentPath}.context`
+              ));
+            } else if (hasValue && !['string', 'number', 'boolean'].includes(typeof argument.value)) {
               errors.push(createError(
                 ERROR_CODES.missingOrInvalidRequiredField,
                 'computed argument value must be a string, number, or boolean literal.',

@@ -66,10 +66,14 @@ let nextIngestionProgressId = 0;
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
   let message = 'Preparing source data...';
-  const report = () => publishWorkerNotification({ id, message, tone: 'info', duration: 0 }, target);
+  let completed = false;
+  const report = () => {
+    if (!completed) publishWorkerNotification({ id, message, tone: 'info', duration: 0 }, target);
+  };
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let interval;
   const delay = setTimeout(() => {
+    if (completed) return;
     report();
     interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
   }, INGESTION_PROGRESS_DELAY_MS);
@@ -87,6 +91,8 @@ export function startIngestionProgress(target = self) {
       message = `Storing data... ${storedRecords} of ${totalRecords} records stored.`;
     },
     complete() {
+      if (completed) return;
+      completed = true;
       clearTimeout(delay);
       if (interval) clearInterval(interval);
       publishWorkerNotification({ id, dismiss: true }, target);
@@ -158,6 +164,7 @@ async function queryLiveDashboard(
     ? compileDashboardViewPayloadQueries(page, pageId, {
         routeParameters,
         queryContext,
+        evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
         queries: context.queries
       })
     : { aliases: [], queries: [], replacedSources: [] };
@@ -177,6 +184,24 @@ async function queryLiveDashboard(
     /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
     continuationRevision(context.queries, dashboard.revision)
   );
+}
+
+/** @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources */
+function latestCanonicalInstant(sources) {
+  let latest = Number.NEGATIVE_INFINITY;
+  for (const source of Object.values(sources)) {
+    for (const value of [source.metadata?.['as-of'], source.metadata?.['retrieved-at']]) {
+      const timestamp = Date.parse(String(value ?? ''));
+      if (Number.isFinite(timestamp)) latest = Math.max(latest, timestamp);
+    }
+    for (const row of source.rows ?? []) {
+      for (const field of ['observed-at', 'started-at', 'ended-at']) {
+        const timestamp = Date.parse(String(row[field] ?? ''));
+        if (Number.isFinite(timestamp)) latest = Math.max(latest, timestamp);
+      }
+    }
+  }
+  return Number.isFinite(latest) ? new Date(latest).toISOString() : undefined;
 }
 
 /** @param {Iterable<string>} [ids] */
@@ -433,6 +458,7 @@ export function processDataRequest(request, signal) {
           revision: (liveDashboard?.revision ?? 0) + 1
         };
         scheduleDashboardSubscriptions();
+        progress.complete();
         const projected = await queryLiveDashboard(
           requested,
           context,

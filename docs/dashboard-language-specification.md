@@ -220,14 +220,14 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
-| Query definition | `name`, `intent`, `description`, `from`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, `limit` |
+| Query definition | `name`, `intent`, `description`, `from`, `time`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, `limit` |
 | Query `joins` entry | `source`, `type`, `on`, `fields` |
 | Query join key | `left`, `right` |
 | Query join field | `field`, `as` |
 | Query `filter` | `predicates` |
 | Query predicate | `field`, `equals`, `in`, `includes` |
 | Query computed field | `as`, `function`, `args` |
-| Query computed argument | `field` or `value` |
+| Query computed argument | exactly one of `field`, `value`, or `context`; `context` is `time-end` |
 | Query `aggregate` | `by`, `values` |
 | Query aggregate value | `field`, `as`, `reducer` |
 | Query `select` entry | `field`, `as` |
@@ -416,13 +416,15 @@ queries:
 
 #### 5.5.1 Computed-Field Vocabulary
 
-Computed fields use only the following typed, deterministic functions with the stated inclusive argument counts. Each argument is either one `field` reference valid at that point in the query or one scalar `value` literal.
+Computed fields use only the following typed, deterministic functions with the stated inclusive argument counts. Each argument is exactly one `field` reference valid at that point in the query, one scalar `value` literal, or the execution `context` value `time-end`.
 
 | Function | Arguments | Result |
 |---|---|---|
 | `coalesce` | 2–8 | first argument that is not null, empty text, or a structured value |
 | `concat` | 2–8 | text |
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
+| `date-day` | 1 | UTC calendar date text |
+| `calendar-week-point` | 3 | serializable calendar point from timestamp, `time-end`, and run conclusion |
 | `equals-any` | 2–8 | whether the first argument equals any later argument |
 | `greater-than` | 2 | whether the first numeric argument is greater than the second |
 | `if` | 3 | second argument when the first is true; otherwise the third |
@@ -433,7 +435,7 @@ Computed fields use only the following typed, deterministic functions with the s
 
 #### 5.5.2 Normative Query Requirements
 
-- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` source; **MAY** declare `description`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` source; **MAY** declare `description`, `time`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 source name. A declared query name **MAY** be used wherever a view selects a logical source.
 - **DLS-QUERY-003:** `from` and every `joins[].source` **MUST** name one Section 5.1 source or one query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected.
 - **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `joins` in declaration order, then `filter`, `compute` in declaration order, `aggregate`, `select`, `order-by`, and finally `limit`.
@@ -442,8 +444,8 @@ Computed fields use only the following typed, deterministic functions with the s
 - **DLS-QUERY-007:** The joined source **MUST** contain at most one row per join key. A duplicate join key **MUST** fail the query rather than expand rows, so many-to-many expansion cannot occur.
 - **DLS-QUERY-008:** For an unmatched `left` join row, every imported join field **MUST** be null; an unmatched `inner` join row **MUST** be dropped.
 - **DLS-QUERY-009:** Every output name **MUST** be unique. A join field alias, computed field name, aggregate output name, or `select` alias that collides with an existing output name **MUST** be rejected.
-- **DLS-QUERY-010:** Computed fields **MUST** use only the Section 5.5.1 vocabulary with a valid argument count. A missing, null, empty, or structured input to a numeric function, a non-numeric text input, and division by zero **MUST** produce null. Text functions **MUST** treat null, missing, and structured inputs as empty text. A computation **MUST NOT** produce `NaN`, `Infinity`, or an error value.
-- **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. Query aggregates additionally permit `distinct-list`, which returns distinct non-null scalar values sorted as text and joined with `, `. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
+- **DLS-QUERY-010:** Computed fields **MUST** use only the Section 5.5.1 vocabulary with a valid argument count. An argument **MUST** declare exactly one valid `field`, scalar `value`, or `context`; Version 0.1.0 defines only `time-end` context, resolved to the active query window's exclusive UTC endpoint. A missing, null, empty, or structured input to a numeric function, a non-numeric text input, and division by zero **MUST** produce null. Text functions **MUST** treat null, missing, and structured inputs as empty text. A computation **MUST NOT** produce `NaN`, `Infinity`, or an error value.
+- **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. Query aggregates additionally permit `distinct-list`, which returns distinct non-null scalar values sorted as text and joined with `, `, and `calendar-week-rhythm`, which consumes `calendar-week-point` values and returns seven Monday-to-Sunday UTC slots containing current-week and matching previous-week counts. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
 - **DLS-QUERY-012:** The output field schema of a query **MUST** be statically derivable from its declaration so encodings, filters, and `order-by` references can be validated before execution. A reference to a field the preceding clauses do not produce **MUST** be rejected with `DLS-E010`.
 - **DLS-QUERY-013:** A query **MUST NOT** read more than 200000 input rows per source, produce more than 200000 joined rows, or produce more than 100000 output rows; `limit` **MUST NOT** exceed 100000. Exceeding a limit **MUST** fail the query closed and **MUST NOT** truncate results silently.
 - **DLS-QUERY-014:** A derived source's metadata **MUST** compose its inputs' provenance: it **MUST** report `source-kind` `derived`, the oldest input `as-of` and `retrieved-at`, and the weakest input completeness and freshness. A missing or unavailable `from` or `inner`-join input **MUST** produce `unavailable` availability. A missing or unavailable `left`-join input **MUST** be evaluated as an empty enrichment, preserve the primary rows with null imported fields under **DLS-QUERY-008**, and degrade completeness without making a non-empty result unavailable. An executed query with zero output rows **MUST** report `empty` availability under **DLS-DATA-004**.
@@ -452,6 +454,7 @@ Computed fields use only the following typed, deterministic functions with the s
 - **DLS-QUERY-017:** An execution layer **MUST NOT** assume its query definitions were validated. Before it reads any rows it **MUST** reject a query that reads itself, participates in a dependency cycle, reads a query declared later in the sequence, shares its name with another query, declares a join without equality keys, declares more joins than **DLS-QUERY-005** permits, or declares a `limit` outside **DLS-QUERY-013**. Every query that reads a rejected query **MUST** also be rejected. Rejected queries **MUST** fail closed under **DLS-QUERY-015**, and a query that does not depend on a rejected query **MUST** still execute.
 - **DLS-QUERY-018:** Query execution **MUST** be cancelable from outside the execution layer through an abort signal, **MUST** stop after 60000 milliseconds of execution, and **MUST** stop after 5000000 row operations. A stopped execution **MUST NOT** report a partial projection: it **MUST** surface an explicit cancellation distinct from a query fault, and **MUST** identify only the cancellation cause without source payloads or secrets. A presenter **MUST** offer a command that cancels a runaway computation, and **MUST** terminate a data worker that does not acknowledge cancellation.
 - **DLS-QUERY-019:** A validator **MUST** reject a query whose field references are incompatible with the source schema, with `DLS-E011`. A field that only exists after a presenter derives it from an executed projection **MUST NOT** be read by a query. A structured link field **MUST NOT** be a join key, filter field, computed-field argument, grouping field, aggregate measure, or `order-by` field, because **DLS-QUERY-006** and **DLS-QUERY-010** define no scalar value for it; a query **MAY** still project one. A temporal field **MUST NOT** be a numeric computed-field argument or the measure of a `sum`, `mean`, `min`, or `max` reducer.
+- **DLS-QUERY-020:** Query `time`, when present, **MUST** satisfy Section 6 time syntax. A relative query range **MUST** resolve against the active view window's exclusive end and replace only that view's temporal bounds for the query; scope, route, and dimension filters **MUST** remain in force.
 
 ---
 

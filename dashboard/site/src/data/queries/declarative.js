@@ -24,6 +24,7 @@ import { tidy } from '../../data-operations.js';
  *   name: string,
  *   description?: string,
  *   from: string,
+ *   time?: { range?: string, start?: string, end?: string },
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }> },
  *   compute?: import('../../data-operations.js').ComputedField[],

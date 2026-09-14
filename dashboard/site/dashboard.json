@@ -321,7 +321,7 @@
       },
       {
         "name": "overview-run-summary",
-        "intent": "Summarize successful, failed, and active runs with active package and rollout-mode counts.",
+        "intent": "Summarize successful, failed, and active runs with rollout-mode counts.",
         "from": "runs",
         "joins": [
           {
@@ -345,8 +345,7 @@
           { "as": "failed-count", "function": "if", "args": [{ "field": "failed" }, { "value": 1 }, { "value": 0 }] },
           { "as": "active-count", "function": "if", "args": [{ "field": "active" }, { "value": 1 }, { "value": 0 }] },
           { "as": "active-live", "function": "if", "args": [{ "field": "live-mode" }, { "field": "active-count" }, { "value": 0 }] },
-          { "as": "active-review", "function": "if", "args": [{ "field": "review-mode" }, { "field": "active-count" }, { "value": 0 }] },
-          { "as": "active-package", "function": "if", "args": [{ "field": "active" }, { "field": "declared-package" }, { "value": "" }] }
+          { "as": "active-review", "function": "if", "args": [{ "field": "review-mode" }, { "field": "active-count" }, { "value": 0 }] }
         ],
         "aggregate": {
           "values": [
@@ -354,8 +353,7 @@
             { "field": "failed-count", "as": "failed-runs", "reducer": "sum" },
             { "field": "active-count", "as": "active-runs", "reducer": "sum" },
             { "field": "active-live", "as": "active-live", "reducer": "sum" },
-            { "field": "active-review", "as": "active-review", "reducer": "sum" },
-            { "field": "active-package", "as": "active-packages", "reducer": "distinct-count" }
+            { "field": "active-review", "as": "active-review", "reducer": "sum" }
           ]
         }
       },
@@ -377,20 +375,13 @@
         "aggregate": { "values": [{ "field": "value-gain", "as": "value-gains", "reducer": "sum" }] }
       },
       {
-        "name": "overview-repository-summary",
-        "intent": "Count distinct repositories with successful shipments in the selected horizon.",
-        "from": "runs",
-        "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] },
+        "name": "overview-registered-repository-summary",
+        "intent": "Count the distinct target repositories registered in the resolved control-plane scope.",
+        "from": "repositories",
         "compute": [
-          { "as": "repository-coordinate", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] }
+          { "as": "registered-repository", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] }
         ],
-        "aggregate": { "values": [{ "field": "repository-coordinate", "as": "repositories", "reducer": "distinct-count" }] }
-      },
-      {
-        "name": "overview-capacity-summary",
-        "intent": "Sum the applicable package repository maxima.",
-        "from": "packages",
-        "aggregate": { "values": [{ "field": "package-max-repositories", "as": "repository-max", "reducer": "sum" }] }
+        "aggregate": { "values": [{ "field": "registered-repository", "as": "registered-repositories", "reducer": "distinct-count" }] }
       },
       {
         "name": "overview-worker-summary",
@@ -401,17 +392,23 @@
       },
       {
         "name": "overview-rhythm",
-        "intent": "Count successful runs by UTC activity day in the selected horizon.",
+        "intent": "Show current-week successful runs from Monday through today and the matching previous-week count for weekdays not yet reached.",
         "from": "runs",
-        "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] },
+        "time": { "range": "15d" },
         "compute": [
-          { "as": "activity-date", "function": "date-day", "args": [{ "field": "started-at" }] }
+          {
+            "as": "rhythm-point",
+            "function": "calendar-week-point",
+            "args": [
+              { "field": "started-at" },
+              { "context": "time-end" },
+              { "field": "run-conclusion" }
+            ]
+          }
         ],
         "aggregate": {
-          "by": ["activity-date"],
-          "values": [{ "field": "run", "as": "successful-runs", "reducer": "count" }]
-        },
-        "order-by": [{ "field": "activity-date", "direction": "asc" }]
+          "values": [{ "field": "rhythm-point", "as": "rhythm", "reducer": "calendar-week-rhythm" }]
+        }
       },
       {
         "name": "overview-failed-run-count",
@@ -7332,15 +7329,14 @@
           {
             "id": "overview-outcomes",
             "title": "How are we doing?",
-            "description": "Repositories shows the distinct number of repositories we regularly ship to within the selected horizon, with the applicable repositoryMax shown underneath.",
+            "description": "Repositories delivered to counts distinct targets with retained completed delivery evidence in the selected horizon and compares them with the distinct registered target set.",
             "data": {
               "sources": [
                 "overview-outcome-summary",
                 "overview-run-summary",
                 "overview-dispatch-summary",
                 "overview-value-summary",
-                "overview-repository-summary",
-                "overview-capacity-summary",
+                "overview-registered-repository-summary",
                 "overview-worker-summary",
                 "overview-rhythm"
               ]
@@ -7350,16 +7346,16 @@
             "config": {
               "labels": {
                 "repositories": {
-                  "singular": "Repository",
-                  "plural": "Repositories"
+                  "singular": "Repository delivered to",
+                  "plural": "Repositories delivered to"
                 },
                 "successful-runs": {
                   "singular": "Successful run",
                   "plural": "Successful runs"
                 },
                 "dispatches": {
-                  "singular": "Dispatch",
-                  "plural": "Dispatches"
+                  "singular": "Successful dispatch",
+                  "plural": "Successful dispatches"
                 },
                 "value-gains": {
                   "singular": "Value gain",

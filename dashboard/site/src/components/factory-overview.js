@@ -12,18 +12,17 @@ const OVERVIEW_SOURCE_NAMES = [
   'overview-run-summary',
   'overview-dispatch-summary',
   'overview-value-summary',
-  'overview-repository-summary',
-  'overview-capacity-summary',
+  'overview-registered-repository-summary',
   'overview-worker-summary',
   'overview-rhythm'
 ];
 
 /** @typedef {Record<string, unknown>} Row */
-/** @typedef {{ label: string, date: string, count: number }} RhythmDay */
-/** @typedef {{ packages: number, operations: number, live: number, review: number }} Motion */
+/** @typedef {{ label: string, date: string, count: number, previous: number, reached: boolean }} RhythmDay */
+/** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ rows: () => Row[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ total: number, maximum: number }} Coverage */
+/** @typedef {{ total: number, registered: number, unavailable: boolean, registeredUnavailable: boolean }} Coverage */
 /**
  * Values shared by more than one bound element. Each one is memoised so a
  * source update recomputes it once instead of once per element.
@@ -44,7 +43,7 @@ const rhythmSelection = state(/** @type {RhythmDay | null} */ (null));
  * scoped to a single rhythm day, because a past day cannot report live motion.
  * @type {import('../reactive.js').State<Motion>}
  */
-const factoryMotionState = state(/** @type {Motion} */ ({ packages: 0, operations: 0, live: 0, review: 0 }));
+const factoryMotionState = state(/** @type {Motion} */ ({ operations: 0, live: 0, review: 0 }));
 
 /**
  * Lifetime of the rendered overview. Effects and memoised values are bound to
@@ -57,7 +56,7 @@ export function resetFactoryOverviewState() {
   releaseFactoryOverviewEffects();
   clearSources(OVERVIEW_SOURCE_NAMES);
   rhythmSelection.set(null);
-  factoryMotionState.set({ packages: 0, operations: 0, live: 0, review: 0 });
+  factoryMotionState.set({ operations: 0, live: 0, review: 0 });
 }
 
 /** Stops the effects and memoised values owned by a superseded render. */
@@ -87,15 +86,14 @@ function bind(render) {
 
 /** @param {Motion} current @param {Motion} next */
 function sameMotion(current, next) {
-  return current.packages === next.packages
-    && current.operations === next.operations
+  return current.operations === next.operations
     && current.live === next.live
     && current.review === next.review;
 }
 
 /** @type {Record<string, PluralText>} */
 const DEFAULT_STATION_LABELS = {
-  repositories: { singular: 'Repository', plural: 'Repositories' },
+  repositories: { singular: 'Repository delivered to', plural: 'Repositories delivered to' },
   'successful-runs': { singular: 'Successful run', plural: 'Successful runs' },
   dispatches: { singular: 'Dispatch', plural: 'Dispatches' },
   'value-gains': { singular: 'Value gain', plural: 'Value gains' }
@@ -181,8 +179,7 @@ function createOverviewMetrics(sources) {
   const runs = memo(() => firstRow(sources['overview-run-summary']));
   const dispatch = memo(() => firstRow(sources['overview-dispatch-summary']));
   const value = memo(() => firstRow(sources['overview-value-summary']));
-  const repositories = memo(() => firstRow(sources['overview-repository-summary']));
-  const capacity = memo(() => firstRow(sources['overview-capacity-summary']));
+  const registeredRepositories = memo(() => firstRow(sources['overview-registered-repository-summary']));
   const workers = memo(() => firstRow(sources['overview-worker-summary']));
   return {
     successfulRuns: memo(() => numberField(runs(), 'successful-runs')),
@@ -190,15 +187,16 @@ function createOverviewMetrics(sources) {
     activeRuns: memo(() => numberField(runs(), 'active-runs')),
     valueGains: memo(() => numberField(value(), 'value-gains')),
     coverage: memo(() => ({
-      total: numberField(repositories(), 'repositories'),
-      maximum: numberField(capacity(), 'repository-max')
+      total: numberField(outcome(), 'delivered-repositories'),
+      registered: numberField(registeredRepositories(), 'registered-repositories'),
+      unavailable: sources['overview-outcome-summary'].unavailable(),
+      registeredUnavailable: sources['overview-registered-repository-summary'].unavailable()
     })),
     workers: memo(() => numberField(workers(), 'workers')),
     dispatches: memo(() => numberField(dispatch(), 'dispatches')),
     usefulOutputs: memo(() => numberField(outcome(), 'useful-outputs')),
     deliveredRepositories: memo(() => numberField(outcome(), 'delivered-repositories')),
     motion: memo(() => ({
-      packages: numberField(runs(), 'active-packages'),
       operations: numberField(runs(), 'active-runs'),
       live: numberField(runs(), 'active-live'),
       review: numberField(runs(), 'active-review')
@@ -236,9 +234,9 @@ function renderIntroduction(sources, metrics) {
       ? h(
         'span',
         {},
-        h('strong', {}, formatCount(motion.packages)),
-        motion.packages === 1 ? ' package in motion ' : ' packages in motion ',
-        h('span', { className: 'factory-running-detail' }, `(${formatCount(motion.live)} live, ${formatCount(motion.review)}, in review)`)
+        h('strong', {}, formatCount(motion.operations)),
+        motion.operations === 1 ? ' operation in motion ' : ' operations in motion ',
+        h('span', { className: 'factory-running-detail' }, `(${formatCount(motion.live)} live, ${formatCount(motion.review)} in review)`)
       )
       : 'Actions activity observed');
   });
@@ -250,11 +248,10 @@ function renderIntroduction(sources, metrics) {
   bind(() => {
     const usefulOutputs = metrics.usefulOutputs();
     const deliveredRepositories = metrics.deliveredRepositories();
-    const successfulRuns = metrics.successfulRuns();
-    const dispatches = metrics.dispatches();
+    summary.hidden = usefulOutputs === 0;
     summary.textContent = usefulOutputs > 0
       ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
-      : `${formatCount(successfulRuns)} successful ${successfulRuns === 1 ? 'run' : 'runs'} and ${formatCount(dispatches)} workflow ${dispatches === 1 ? 'dispatch' : 'dispatches'} are retained in this period.`;
+      : '';
   });
 
   return h(
@@ -296,10 +293,20 @@ function renderFactoryFloor(sources, metrics, label) {
   repositories.bind(() => {
     const coverage = metrics.coverage();
     return {
-      pending: sources['overview-repository-summary'].pending() || sources['overview-capacity-summary'].pending(),
+      pending: sources['overview-outcome-summary'].pending() || sources['overview-registered-repository-summary'].pending(),
+      unavailable: coverage.unavailable,
       label: label('repositories', coverage.total),
       value: coverage.total,
-      detail: `${formatCount(coverage.maximum)} repository max`
+      detail: coverage.registeredUnavailable
+        ? 'Registered targets unavailable'
+        : coverage.unavailable
+          ? h('a', { href: '#page-repositories' }, `${formatCount(coverage.registered)} registered`)
+          : h(
+              'span',
+              {},
+              `${formatCount(coverage.total)} of `,
+              h('a', { href: '#page-repositories' }, `${formatCount(coverage.registered)} registered`)
+            )
     };
   });
 
@@ -346,7 +353,9 @@ function renderFactoryFloor(sources, metrics, label) {
     floor.className = `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`;
     floor.setAttribute(
       'aria-label',
-      `${formatCount(coverage.total)} ${label('repositories', coverage.total).toLowerCase()} regularly shipped to against a repository max of ${formatCount(coverage.maximum)}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
+      `${coverage.unavailable
+        ? `Repository delivery evidence unavailable; ${coverage.registeredUnavailable ? 'registered targets unavailable' : `${formatCount(coverage.registered)} registered`}`
+        : `${formatCount(coverage.total)} ${label('repositories', coverage.total).toLowerCase()} out of ${formatCount(coverage.registered)} registered`}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
     );
   });
 
@@ -366,7 +375,7 @@ function renderFactoryFloor(sources, metrics, label) {
  * counts up on its own when its query resolves.
  * @param {string} icon
  * @param {{ final?: boolean, href?: string }} [options]
- * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, label: string, value: number, detail: string | HTMLElement }) => void }}
+ * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail: string | HTMLElement }) => void }}
  */
 function renderStation(icon, options = {}) {
   const stationLabel = h('span', {});
@@ -387,12 +396,12 @@ function renderStation(icon, options = {}) {
         const station = read();
         element.className = `factory-station${options.final ? ' factory-station-final' : ''}`
           + `${station.pending ? ' factory-station-pending' : ''}`
-          + `${!station.pending && station.value === 0 ? ' factory-station-empty' : ''}`;
+          + `${!station.pending && !station.unavailable && station.value === 0 ? ' factory-station-empty' : ''}`;
         if (station.pending) element.setAttribute('aria-busy', 'true');
         else element.removeAttribute('aria-busy');
         stationLabel.textContent = station.label;
-        const count = station.pending ? '' : formatCount(station.value);
-        value.replaceChildren(options.href && !station.pending ? h('a', { href: options.href }, count) : count);
+        const count = station.pending ? '' : station.unavailable ? 'Unavailable' : formatCount(station.value);
+        value.replaceChildren(options.href && !station.pending && !station.unavailable ? h('a', { href: options.href }, count) : count);
         detail.replaceChildren(station.pending ? '' : station.detail);
       });
     }
@@ -403,14 +412,8 @@ function renderStation(icon, options = {}) {
 function renderFactoryRhythm(sources) {
   const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
   const bars = h('div', { className: 'factory-rhythm-bars' });
-  const rhythmDays = memo(() => sources['overview-rhythm'].rows().map((row) => {
-    const date = String(row['activity-date'] ?? '');
-    return {
-      date,
-      label: date ? new Date(`${date}T00:00:00Z`).toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' }) : '',
-      count: numberField(row, 'successful-runs')
-    };
-  }));
+  const rhythm = memo(() => rhythmPayload(sources['overview-rhythm']));
+  const rhythmDays = memo(() => rhythm().days);
   const showFullWeek = () => {
     section.dispatchEvent(new CustomEvent('dashboard-time-window-range-change', {
       bubbles: true,
@@ -435,13 +438,19 @@ function renderFactoryRhythm(sources) {
     'section',
     {
       className: 'factory-rhythm',
-      'aria-label': 'Successful Actions runs over the last seven observed days',
+      'aria-label': 'Successful Actions runs from Monday through Sunday',
       onClick: resetDay
     },
     h(
       'div',
       { className: 'factory-rhythm-heading' },
       h('span', {}, 'Factory rhythm'),
+      h(
+        'ul',
+        { className: 'factory-rhythm-legend', 'aria-label': 'Factory rhythm legend' },
+        h('li', {}, h('i', { className: 'factory-rhythm-legend-current', 'aria-hidden': 'true' }), 'This week'),
+        h('li', {}, h('i', { className: 'factory-rhythm-legend-previous', 'aria-hidden': 'true' }), 'Last week')
+      ),
       summary
     ),
     bars
@@ -451,7 +460,7 @@ function renderFactoryRhythm(sources) {
   // drawn as soon as rows arrive, without waiting for any other query.
   bind(() => {
     const days = rhythmDays();
-    const maximum = Math.max(...days.map((day) => day.count), 1);
+    const maximum = Math.max(...days.flatMap((day) => [day.count, day.previous]), 1);
     // The bars are updated in place so an arriving query never discards the
     // focused or pressed day button.
     if (bars.childElementCount !== days.length) {
@@ -459,9 +468,21 @@ function renderFactoryRhythm(sources) {
     }
     for (const [index, button] of dayButtonsOf(bars).entries()) {
       const day = days[index];
-      button.setAttribute('aria-label', `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`);
-      const bar = button.querySelector('.factory-rhythm-current');
-      if (bar instanceof HTMLElement) bar.style.height = `${Math.max(5, day.count / maximum * 100)}%`;
+      const value = day.reached ? day.count : day.previous;
+      button.classList.toggle('factory-rhythm-day-future', !day.reached);
+      button.setAttribute('aria-label', day.reached
+        ? `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week`
+        : `${day.label} ${day.date}: ${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week; this week has not reached this day`);
+      const current = button.querySelector('.factory-rhythm-current');
+      if (current instanceof HTMLElement) {
+        current.hidden = !day.reached;
+        current.style.height = `${Math.max(5, value / maximum * 100)}%`;
+      }
+      const baseline = button.querySelector('.factory-rhythm-baseline');
+      if (baseline instanceof HTMLElement) {
+        baseline.hidden = day.reached;
+        baseline.style.height = `${Math.max(5, value / maximum * 100)}%`;
+      }
       const label = button.querySelector('small');
       if (label) label.textContent = day.label;
     }
@@ -476,11 +497,46 @@ function renderFactoryRhythm(sources) {
     }
     const day = days[index];
     summary.textContent = day
-      ? `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}.`
+      ? day.reached
+        ? `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week.`
+        : `${day.label} ${day.date}: ${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week.`
       : '';
   });
 
   return section;
+}
+
+/** @param {SourceBinding} source @returns {{ days: RhythmDay[] }} */
+function rhythmPayload(source) {
+  const row = source.rows()[0];
+  const value = row?.rhythm;
+  const configured = value && typeof value === 'object' && !Array.isArray(value)
+    ? /** @type {Record<string, unknown>} */ (value)
+    : {};
+  const input = Array.isArray(configured.days) ? configured.days : [];
+  const days = input.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
+    const day = /** @type {Record<string, unknown>} */ (candidate);
+    if (typeof day.label !== 'string' || typeof day.date !== 'string' || typeof day.reached !== 'boolean') return [];
+    return [{
+      label: day.label,
+      date: day.date,
+      count: numberField(day, 'current'),
+      previous: numberField(day, 'previous'),
+      reached: day.reached
+    }];
+  });
+  return {
+    days: days.length === 7
+      ? days
+      : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label) => ({
+          label,
+          date: '',
+          count: 0,
+          previous: 0,
+          reached: false
+        }))
+  };
 }
 
 /** @param {HTMLElement} bars @returns {HTMLButtonElement[]} */
@@ -499,6 +555,7 @@ function createRhythmDayButton(onSelect) {
       onClick: onSelect
     },
     h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
+      h('i', { className: 'factory-rhythm-baseline' }),
       h('i', { className: 'factory-rhythm-current' })
     ),
     h('small', {})

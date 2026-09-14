@@ -778,14 +778,13 @@ describe('dashboard document validation', () => {
 
     expect(page.views).toEqual([expect.objectContaining({
       id: 'overview-outcomes',
-      description: 'Repositories shows the distinct number of repositories we regularly ship to within the selected horizon, with the applicable repositoryMax shown underneath.',
+      description: 'Repositories delivered to counts distinct targets with retained completed delivery evidence in the selected horizon and compares them with the distinct registered target set.',
       data: { sources: expect.arrayContaining([
         'overview-outcome-summary',
         'overview-run-summary',
         'overview-dispatch-summary',
         'overview-value-summary',
-        'overview-repository-summary',
-        'overview-capacity-summary',
+        'overview-registered-repository-summary',
         'overview-worker-summary',
         'overview-rhythm'
       ]) },

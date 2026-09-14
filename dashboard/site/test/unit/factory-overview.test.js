@@ -19,15 +19,31 @@ function source(name, rows, metadataOverride = {}) {
   return { source: name, rows, metadata: { ...metadata, ...metadataOverride } };
 }
 
+/** @param {Partial<Record<'Mon'|'Tue'|'Wed'|'Thu'|'Fri'|'Sat'|'Sun', { current: number, previous: number, reached: boolean }>>} [overrides] */
+function rhythmSource(overrides = {}) {
+  const labels = /** @type {const} */ (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  return source('overview-rhythm', [{
+    rhythm: {
+      days: labels.map((label, index) => ({
+        label,
+        date: `2026-09-${String(7 + index).padStart(2, '0')}`,
+        current: 0,
+        previous: 0,
+        reached: index < 3,
+        ...overrides[label]
+      }))
+    }
+  }]);
+}
+
 /** @param {Record<string, import('../../src/presenter.js').LogicalSourceInput>} [overrides] */
 function overviewSources(overrides = {}) {
   return {
     'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 0, 'delivered-repositories': 0 }]),
-    'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 0, 'failed-runs': 0, 'active-runs': 0, 'active-packages': 0, 'active-live': 0, 'active-review': 0 }]),
+    'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 0, 'failed-runs': 0, 'active-runs': 0, 'active-live': 0, 'active-review': 0 }]),
     'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 0 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
-    'overview-repository-summary': source('overview-repository-summary', [{ repositories: 0 }]),
-    'overview-capacity-summary': source('overview-capacity-summary', [{ 'repository-max': 0 }]),
+    'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 0 }]),
     'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }]),
     'overview-rhythm': source('overview-rhythm', []),
     ...overrides
@@ -41,33 +57,40 @@ afterEach(() => {
   configureSourceLoader(null);
 });
 
-it('renders compact database summaries and the applicable repository maximum', () => {
+it('renders compact database summaries and distinct registered repository coverage', () => {
   const rendered = renderFactoryOverview({
     sources: overviewSources({
-      'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2, 'delivered-repositories': 1 }]),
-      'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 2, 'failed-runs': 2, 'active-runs': 1, 'active-packages': 1, 'active-live': 1, 'active-review': 0 }]),
+      'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2, 'delivered-repositories': 2 }]),
+      'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 2, 'failed-runs': 2, 'active-runs': 4, 'active-live': 1, 'active-review': 3 }]),
       'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 4 }]),
       'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
-      'overview-repository-summary': source('overview-repository-summary', [{ repositories: 2 }]),
-      'overview-capacity-summary': source('overview-capacity-summary', [{ 'repository-max': 12 }]),
+      'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
       'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }]),
-      'overview-rhythm': source('overview-rhythm', [
-        { 'activity-date': '2026-09-09', 'successful-runs': 2 },
-        { 'activity-date': '2026-09-11', 'successful-runs': 1 }
-      ])
+      'overview-rhythm': rhythmSource({ Wed: { current: 2, previous: 1, reached: true } })
     })
   });
 
-  expect(rendered.querySelector('.factory-running')?.textContent).toContain('1 package in motion (1 live, 0, in review)');
+  expect(rendered.querySelector('.factory-running')?.textContent).toContain('4 operations in motion (1 live, 3 in review)');
   expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
   expect([...rendered.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
-    'Repositories212 repository max',
+    'Repositories delivered to22 of 6 registered',
     'Successful runs22 failed',
     'Dispatches42 workflows observed',
     'Value gain1Coming soon'
   ]);
-  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('2 repositories regularly shipped to against a repository max of 12');
-  expect(rendered.querySelectorAll('.factory-rhythm-day')).toHaveLength(2);
+  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('2 repositories delivered to out of 6 registered');
+  expect(rendered.querySelector('.factory-station:first-child small a')?.getAttribute('href')).toBe('#page-repositories');
+  expect(rendered.querySelector('.factory-station:first-child small a')?.textContent).toBe('6 registered');
+  expect([...rendered.querySelectorAll('.factory-rhythm-day small')].map((day) => day.textContent)).toEqual([
+    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+  ]);
+  expect(rendered.querySelector('.factory-rhythm-legend')?.getAttribute('aria-label')).toBe('Factory rhythm legend');
+  expect([...rendered.querySelectorAll('.factory-rhythm-legend li')].map((item) => item.textContent)).toEqual([
+    'This week', 'Last week'
+  ]);
+  expect(rendered.querySelectorAll('.factory-rhythm-day-future')).toHaveLength(4);
+  expect(rendered.querySelectorAll('.factory-rhythm-current:not([hidden])')).toHaveLength(3);
+  expect(rendered.querySelectorAll('.factory-rhythm-baseline:not([hidden])')).toHaveLength(4);
 });
 
 it.each([
@@ -83,7 +106,6 @@ it.each([
         'successful-runs': 0,
         'failed-runs': 0,
         'active-runs': 0,
-        'active-packages': 0,
         'active-live': 0,
         'active-review': 0,
         ...values
@@ -102,13 +124,33 @@ it('reports unavailable query evidence instead of inferring a factory state', ()
   expect(rendered.querySelector('h2')?.textContent).toBe('Your factory status is unavailable.');
 });
 
+it('hides the duplicate run and dispatch summary when no useful outputs exist', () => {
+  const rendered = renderFactoryOverview({ sources: overviewSources() });
+  const summary = rendered.querySelector('.factory-intro-copy > p:last-child');
+
+  expect(summary?.hasAttribute('hidden')).toBe(true);
+  expect(summary?.textContent).toBe('');
+});
+
+it('reports unavailable repository delivery evidence instead of counting control runs', () => {
+  const rendered = renderFactoryOverview({
+    sources: overviewSources({
+      'overview-outcome-summary': source('overview-outcome-summary', [], { availability: 'unavailable' }),
+      'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }])
+    })
+  });
+
+  expect(rendered.querySelector('.factory-station')?.textContent).toBe('Repositories delivered toUnavailable6 registered');
+  expect(rendered.querySelector('.factory-station:first-child strong a')).toBeNull();
+  expect(rendered.querySelector('.factory-station:first-child small a')?.getAttribute('href')).toBe('#page-repositories');
+  expect(rendered.querySelector('.factory-station:first-child small a')?.textContent).toBe('6 registered');
+  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('Repository delivery evidence unavailable; 6 registered');
+});
+
 it('keeps rhythm selection local while requesting the one-week horizon', () => {
   const rendered = renderFactoryOverview({
     sources: overviewSources({
-      'overview-rhythm': source('overview-rhythm', [
-        { 'activity-date': '2026-09-09', 'successful-runs': 2 },
-        { 'activity-date': '2026-09-11', 'successful-runs': 1 }
-      ])
+      'overview-rhythm': rhythmSource({ Mon: { current: 2, previous: 0, reached: true } })
     })
   });
   /** @type {CustomEvent[]} */
@@ -120,7 +162,7 @@ it('keeps rhythm selection local while requesting the one-week horizon', () => {
   const buttons = [...rendered.querySelectorAll('.factory-rhythm-day')];
   buttons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-  expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('Wed 2026-09-09: 2 successful runs.');
+  expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('Mon 2026-09-07: 2 successful runs this week.');
   expect(buttons[0]?.getAttribute('aria-pressed')).toBe('true');
   expect(horizonChanges.at(-1)?.detail).toEqual({ range: '1w' });
 });
@@ -141,8 +183,7 @@ it('requests only compact query outputs and updates each station independently',
     'overview-run-summary',
     'overview-dispatch-summary',
     'overview-value-summary',
-    'overview-repository-summary',
-    'overview-capacity-summary',
+    'overview-registered-repository-summary',
     'overview-worker-summary',
     'overview-rhythm'
   ]);

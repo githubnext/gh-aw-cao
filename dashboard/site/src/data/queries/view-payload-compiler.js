@@ -34,7 +34,7 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
 /**
  * @param {unknown} page
  * @param {string} pageId
- * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, queries?: unknown }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown }} [options]
  * @returns {{ aliases: string[], queries: Array<Record<string, unknown>>, replacedSources: string[] }}
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
@@ -75,7 +75,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileTimePredicates(options.queryContext?.timeWindow),
         ...compileRoutePredicates(routeField, routeValue)
       ];
-      const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queryContext?.search, options.queryContext?.orderBy, options.queries);
+      const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queryContext?.search, options.queryContext?.orderBy, options.evaluatedAt, options.queries);
       queries.push(compiled.query);
       if (compiled.replacesSource) replacedSources.add(sourceName);
     });
@@ -90,9 +90,10 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
  * @param {Array<Record<string, unknown>>} predicates
  * @param {GlobalQueryContext['search']} search
  * @param {GlobalQueryContext['orderBy']} orderBy
+ * @param {string | undefined} evaluatedAt
  * @param {unknown} definitions
  */
-function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, definitions) {
+function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, evaluatedAt, definitions) {
   const declaredQueries = Array.isArray(definitions) ? definitions.filter(isPlainObject) : [];
   const declared = declaredQueries
     .find((definition) => definition.name === sourceName);
@@ -114,7 +115,14 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, def
   const declaredPredicates = declaredFilter && Array.isArray(declaredFilter.predicates)
     ? declaredFilter.predicates.filter(isPlainObject)
     : [];
-  const combinedPredicates = [...declaredPredicates, ...predicates];
+  const combinedPredicates = applyQueryTime(
+    [...declaredPredicates, ...predicates],
+    sourceQuery?.time,
+    evaluatedAt
+  );
+  const executableSourceQuery = sourceQuery
+    ? resolveQueryContext(sourceQuery, queryTimeEnd(combinedPredicates) ?? evaluatedAt)
+    : undefined;
   const runtimeSearch = search && search.query.trim() && search.fields.length > 0
     ? { fields: search.fields, query: search.query.trim() }
     : undefined;
@@ -125,9 +133,9 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, def
   };
   return {
     replacesSource: Boolean(sourceQuery),
-    query: sourceQuery
+    query: executableSourceQuery
       ? {
-        ...sourceQuery,
+        ...executableSourceQuery,
         name: alias,
         ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined }),
         ...(runtimeOrder ? { 'order-by': runtimeOrder } : {})
@@ -138,6 +146,47 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, def
         ...(Object.keys(filter).length > 0 ? { filter } : {}),
         ...(runtimeOrder ? { 'order-by': runtimeOrder } : {})
       }
+  };
+}
+
+/** @param {Array<Record<string, unknown>>} predicates @param {unknown} time @param {string | undefined} evaluatedAt */
+function applyQueryTime(predicates, time, evaluatedAt) {
+  if (!isPlainObject(time) || typeof time.range !== 'string') return predicates;
+  const end = queryTimeEnd(predicates) ?? evaluatedAt;
+  const match = /^([1-9][0-9]*)(h|d|w)$/.exec(time.range);
+  if (!end || !match) return predicates;
+  const unitHours = { h: 1, d: 24, w: 168 }[match[2]];
+  const endMs = Date.parse(end);
+  if (!unitHours || !Number.isFinite(endMs)) return predicates;
+  const start = new Date(endMs - Number(match[1]) * unitHours * 3_600_000).toISOString();
+  return [
+    ...predicates.filter((predicate) => predicate.field !== '@time'),
+    { field: '@time', gte: start },
+    { field: '@time', lt: end }
+  ];
+}
+
+/** @param {Array<Record<string, unknown>>} predicates */
+function queryTimeEnd(predicates) {
+  const end = predicates.findLast((predicate) => predicate.field === '@time' && typeof predicate.lt === 'string')?.lt;
+  return typeof end === 'string' ? end : undefined;
+}
+
+/** @param {Record<string, unknown>} query @param {string | undefined} timeEnd */
+function resolveQueryContext(query, timeEnd) {
+  if (!Array.isArray(query.compute)) return query;
+  return {
+    ...query,
+    compute: query.compute.map((computed) => !isPlainObject(computed) || !Array.isArray(computed.args)
+      ? computed
+      : {
+          ...computed,
+          args: computed.args.map((argument) => (
+            isPlainObject(argument) && argument.context === 'time-end'
+              ? { value: timeEnd ?? '' }
+              : argument
+          ))
+        })
   };
 }
 

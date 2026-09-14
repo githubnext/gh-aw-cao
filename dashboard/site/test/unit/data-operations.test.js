@@ -34,6 +34,42 @@ describe('dashboard data operations', () => {
     expect(rows.map((row) => row.repository)).toEqual(['bravo', 'alpha', 'charlie']);
   });
 
+  it('builds a Monday-to-Sunday rhythm with prior-week baselines for future days', () => {
+    const reference = '2026-09-09T12:00:00Z';
+    const activity = [
+      { at: '2026-09-07T08:00:00Z', conclusion: 'success' },
+      { at: '2026-09-08T08:00:00Z', conclusion: 'failure' },
+      { at: '2026-09-09T08:00:00Z', conclusion: 'success' },
+      { at: '2026-09-03T08:00:00Z', conclusion: 'success' },
+      { at: '2026-09-04T08:00:00Z', conclusion: 'success' },
+      { at: '2026-08-28T08:00:00Z', conclusion: 'success' }
+    ];
+
+    const result = tidy(activity, [
+      {
+        op: 'compute',
+        values: [{
+          as: 'point',
+          function: 'calendar-week-point',
+          args: [{ field: 'at' }, { value: reference }, { field: 'conclusion' }]
+        }]
+      },
+      { op: 'summarize', values: [{ field: 'point', as: 'rhythm', reducer: 'calendar-week-rhythm' }] }
+    ]);
+
+    expect(result[0]?.rhythm).toEqual({
+      days: [
+        { label: 'Mon', date: '2026-09-07', current: 1, previous: 0, reached: true },
+        { label: 'Tue', date: '2026-09-08', current: 0, previous: 0, reached: true },
+        { label: 'Wed', date: '2026-09-09', current: 1, previous: 0, reached: true },
+        { label: 'Thu', date: '2026-09-10', current: 0, previous: 1, reached: false },
+        { label: 'Fri', date: '2026-09-11', current: 0, previous: 1, reached: false },
+        { label: 'Sat', date: '2026-09-12', current: 0, previous: 0, reached: false },
+        { label: 'Sun', date: '2026-09-13', current: 0, previous: 0, reached: false }
+      ]
+    });
+  });
+
   it('supports text search, alternatives, limits, and the worker request shape', () => {
     expect(processDataRequest({
       data: rows,

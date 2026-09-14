@@ -3,6 +3,7 @@ import { startIngestionProgress } from '../../src/data-worker.js';
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('data-worker ingestion progress', () => {
@@ -21,6 +22,25 @@ describe('data-worker ingestion progress', () => {
       })
     });
     progress.complete();
+  });
+
+  it('does not publish when the delayed report was already queued at completion', () => {
+    let delayedReport = () => {};
+    vi.spyOn(globalThis, 'setTimeout').mockImplementationOnce((callback) => {
+      delayedReport = /** @type {() => void} */ (callback);
+      return /** @type {ReturnType<typeof setTimeout>} */ (/** @type {unknown} */ (1));
+    });
+    const postMessage = vi.fn();
+    const progress = startIngestionProgress({ postMessage });
+
+    progress.complete();
+    delayedReport();
+
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'notification',
+      notification: expect.objectContaining({ dismiss: true })
+    });
   });
 
   it('reports the storage phase so long writes never freeze the notification', () => {

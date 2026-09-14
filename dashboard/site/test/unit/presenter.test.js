@@ -37,8 +37,7 @@ describe('dashboard DOM provenance', () => {
       'overview-run-summary',
       'overview-dispatch-summary',
       'overview-value-summary',
-      'overview-repository-summary',
-      'overview-capacity-summary',
+      'overview-registered-repository-summary',
       'overview-worker-summary',
       'overview-rhythm',
       'data-health-collections'
