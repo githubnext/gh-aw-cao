@@ -151,24 +151,21 @@ it('reports unavailable repository delivery evidence instead of counting control
   expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('Repository delivery evidence unavailable; 6 registered');
 });
 
-it('keeps rhythm selection local while requesting the one-week horizon', () => {
+it('renders rhythm days as non-interactive bars with concise hover descriptions', () => {
   const rendered = renderFactoryOverview({
     sources: overviewSources({
-      'overview-rhythm': rhythmSource({ Mon: { current: 2, previous: 0, reached: true } })
+      'overview-rhythm': rhythmSource({
+        Mon: { current: 2, previous: 0, reached: true },
+        Wed: { current: 0, previous: 90, reached: false }
+      })
     })
   });
-  /** @type {CustomEvent[]} */
-  const horizonChanges = [];
-  rendered.addEventListener('dashboard-time-window-range-change', (event) => {
-    if (event instanceof CustomEvent) horizonChanges.push(event);
-  });
 
-  const buttons = [...rendered.querySelectorAll('.factory-rhythm-day')];
-  buttons[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-  expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('Mon 2026-09-07: 2 successful runs this week.');
-  expect(buttons[0]?.getAttribute('aria-pressed')).toBe('true');
-  expect(horizonChanges.at(-1)?.detail).toEqual({ range: '1w' });
+  const days = [...rendered.querySelectorAll('.factory-rhythm-day')];
+  expect(rendered.querySelectorAll('button.factory-rhythm-day')).toHaveLength(0);
+  expect(days[0]?.getAttribute('title')).toBe('Mon 2026-09-07: 2 successful runs this week.');
+  expect(days[2]?.getAttribute('title')).toBe('Wed 2026-09-09: 90 successful runs last week.');
+  expect(days.every((day) => day.getAttribute('aria-pressed') === null)).toBe(true);
 });
 
 it('requests only compact query outputs and updates each station independently', async () => {

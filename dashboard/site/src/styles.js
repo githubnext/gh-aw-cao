@@ -1542,9 +1542,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-summary { margin: 0; color: var(--fg-muted); font-size: .75rem; }
 .factory-rhythm-heading strong { font-size: .875rem; }
 .factory-rhythm-bars { height: 74px; position: relative; display: grid; grid-template-columns: repeat(7, minmax(18px, 1fr)); align-items: end; gap: 9px; }
-.factory-rhythm-bars > .factory-rhythm-day { height: 100%; position: relative; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 5px; border: 0; border-radius: 3px; background: transparent; outline: none; text-align: center; cursor: pointer; }
-.factory-rhythm-bars > .factory-rhythm-day:focus-visible { box-shadow: 0 0 0 2px var(--focus); }
-.factory-rhythm-bars > .factory-rhythm-day[aria-pressed='true'] .factory-rhythm-current { background: color-mix(in srgb, var(--accent) 72%, var(--purple)); }
+.factory-rhythm-bars > .factory-rhythm-day { height: 100%; position: relative; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 5px; border: 0; border-radius: 3px; background: transparent; text-align: center; cursor: default; }
 .factory-rhythm-bar-pair { height: 100%; display: flex; align-items: end; justify-content: center; gap: 2px; }
 .factory-rhythm-bar-pair i { min-width: 4px; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; }
 .factory-rhythm-bar-pair i[hidden] { display: none; }

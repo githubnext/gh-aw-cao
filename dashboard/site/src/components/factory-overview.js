@@ -33,15 +33,7 @@ const OVERVIEW_SOURCE_NAMES = [
 /** @typedef {{ singular: string, plural: string }} PluralText */
 
 /**
- * Horizon selected from the factory rhythm. The selection outlives a single
- * render so a refreshed overview restores the pressed bar and its summary.
- * @type {import('../reactive.js').State<RhythmDay | null>}
- */
-const rhythmSelection = state(/** @type {RhythmDay | null} */ (null));
-
-/**
- * Operations in motion right now. It is not refreshed while the horizon is
- * scoped to a single rhythm day, because a past day cannot report live motion.
+ * Operations in motion right now.
  * @type {import('../reactive.js').State<Motion>}
  */
 const factoryMotionState = state(/** @type {Motion} */ ({ operations: 0, live: 0, review: 0 }));
@@ -56,7 +48,6 @@ let overviewLifetime = new AbortController();
 export function resetFactoryOverviewState() {
   releaseFactoryOverviewEffects();
   clearSources(OVERVIEW_SOURCE_NAMES);
-  rhythmSelection.set(null);
   factoryMotionState.set({ operations: 0, live: 0, review: 0 });
 }
 
@@ -226,7 +217,6 @@ function renderIntroduction(sources, metrics) {
 
   bind(() => {
     const motion = metrics.motion();
-    if (rhythmSelection.get() !== null) return;
     factoryMotionState.set((current) => (sameMotion(current, motion) ? current : motion));
   });
 
@@ -404,36 +394,14 @@ function renderStation(icon, options = {}) {
 
 /** @param {SourceBindings} sources */
 function renderFactoryRhythm(sources) {
-  const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
   const bars = h('div', { className: 'factory-rhythm-bars' });
   const rhythm = memo(() => rhythmPayload(sources['overview-rhythm']));
   const rhythmDays = memo(() => rhythm().days);
-  const showFullWeek = () => {
-    section.dispatchEvent(new CustomEvent('dashboard-time-window-range-change', {
-      bubbles: true,
-      detail: { range: '1w' }
-    }));
-  };
-  /** @param {number} index */
-  const selectDay = (index) => {
-    const day = rhythmDays()[index];
-    if (!day) return;
-    rhythmSelection.set(day);
-    showFullWeek();
-  };
-  /** @param {MouseEvent} event */
-  const resetDay = (event) => {
-    if (event.target instanceof Element && event.target.closest('.factory-rhythm-day')) return;
-    if (rhythmSelection.get() === null) return;
-    rhythmSelection.set(null);
-    showFullWeek();
-  };
   const section = h(
     'section',
     {
       className: 'factory-rhythm',
-      'aria-label': 'Successful Actions runs from Monday through Sunday',
-      onClick: resetDay
+      'aria-label': 'Successful Actions runs from Monday through Sunday'
     },
     h(
       'div',
@@ -444,8 +412,7 @@ function renderFactoryRhythm(sources) {
         { className: 'factory-rhythm-legend', 'aria-label': 'Factory rhythm legend' },
         h('li', {}, h('i', { className: 'factory-rhythm-legend-current', 'aria-hidden': 'true' }), 'This week'),
         h('li', {}, h('i', { className: 'factory-rhythm-legend-previous', 'aria-hidden': 'true' }), 'Last week')
-      ),
-      summary
+      )
     ),
     bars
   );
@@ -455,49 +422,40 @@ function renderFactoryRhythm(sources) {
   bind(() => {
     const days = rhythmDays();
     const maximum = Math.max(...days.flatMap((day) => [day.count, day.previous]), 1);
-    // The bars are updated in place so an arriving query never discards the
-    // focused or pressed day button.
+    // The bars are updated in place so an arriving query does not rebuild the chart.
     if (bars.childElementCount !== days.length) {
-      bars.replaceChildren(...days.map((_, index) => createRhythmDayButton(() => selectDay(index))));
+      bars.replaceChildren(...days.map(() => createRhythmDay()));
     }
-    for (const [index, button] of dayButtonsOf(bars).entries()) {
+    for (const [index, element] of rhythmDayElements(bars).entries()) {
       const day = days[index];
       const value = day.reached ? day.count : day.previous;
-      button.classList.toggle('factory-rhythm-day-future', !day.reached);
-      button.setAttribute('aria-label', day.reached
-        ? `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week`
-        : `${day.label} ${day.date}: ${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week; this week has not reached this day`);
-      const current = button.querySelector('.factory-rhythm-current');
+      const description = rhythmDayDescription(day);
+      element.classList.toggle('factory-rhythm-day-future', !day.reached);
+      element.setAttribute('aria-label', description);
+      element.title = description;
+      const current = element.querySelector('.factory-rhythm-current');
       if (current instanceof HTMLElement) {
         current.hidden = !day.reached;
         current.style.height = `${Math.max(5, value / maximum * 100)}%`;
       }
-      const baseline = button.querySelector('.factory-rhythm-baseline');
+      const baseline = element.querySelector('.factory-rhythm-baseline');
       if (baseline instanceof HTMLElement) {
         baseline.hidden = day.reached;
         baseline.style.height = `${Math.max(5, value / maximum * 100)}%`;
       }
-      const label = button.querySelector('small');
+      const label = element.querySelector('small');
       if (label) label.textContent = day.label;
     }
   });
 
-  bind(() => {
-    const days = rhythmDays();
-    const selected = rhythmSelection.get();
-    const index = selected ? days.findIndex((day) => day.date === selected.date) : -1;
-    for (const [buttonIndex, button] of dayButtonsOf(bars).entries()) {
-      button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
-    }
-    const day = days[index];
-    summary.textContent = day
-      ? day.reached
-        ? `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'} this week.`
-        : `${day.label} ${day.date}: ${formatCount(day.previous)} successful ${day.previous === 1 ? 'run' : 'runs'} last week.`
-      : '';
-  });
-
   return section;
+}
+
+/** @param {RhythmDay} day */
+function rhythmDayDescription(day) {
+  const count = day.reached ? day.count : day.previous;
+  const period = day.reached ? 'this week' : 'last week';
+  return `${day.label} ${day.date}: ${formatCount(count)} successful ${count === 1 ? 'run' : 'runs'} ${period}.`;
 }
 
 /** @param {SourceBinding} source @returns {{ days: RhythmDay[] }} */
@@ -533,26 +491,23 @@ function rhythmPayload(source) {
   };
 }
 
-/** @param {HTMLElement} bars @returns {HTMLButtonElement[]} */
-function dayButtonsOf(bars) {
-  return [...bars.querySelectorAll('.factory-rhythm-day')].filter((button) => button instanceof HTMLButtonElement);
+/** @param {HTMLElement} bars @returns {HTMLElement[]} */
+function rhythmDayElements(bars) {
+  return [...bars.querySelectorAll('.factory-rhythm-day')].filter((element) => element instanceof HTMLElement);
 }
 
-/** @param {() => void} onSelect */
-function createRhythmDayButton(onSelect) {
-  return /** @type {HTMLButtonElement} */ (h(
-    'button',
+function createRhythmDay() {
+  return h(
+    'div',
     {
       className: 'factory-rhythm-day',
-      type: 'button',
-      'aria-pressed': 'false',
-      onClick: onSelect
+      role: 'img'
     },
     h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
       h('i', { className: 'factory-rhythm-baseline' }),
       h('i', { className: 'factory-rhythm-current' })
     ),
     h('small', {})
-  ));
+  );
 }
 
