@@ -8,8 +8,8 @@ test("release context paginates before filtering complete API responses", () => 
 
   assert.doesNotMatch(fetchReleaseContext, /gh api[^\n]*--slurp/);
   assert.equal(
-    fetchReleaseContext.match(/jq --slurp/g)?.length,
+    fetchReleaseContext.match(/gh api --paginate[\s\S]*?\|\n\s+jq --slurp/g)?.length,
     2,
-    "each paginated API response should be slurped by local jq",
+    "each API request should paginate before local jq slurps its responses",
   );
 });
