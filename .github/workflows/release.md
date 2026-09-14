@@ -263,7 +263,7 @@ steps:
       test -s /tmp/gh-aw/agent/release-data/current_release.json
 
       gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-        --jq '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
+        | jq '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
         > /tmp/gh-aw/agent/release-data/previous_release.json
 
       PREVIOUS_TAG=$(jq -r '.tag_name // empty' /tmp/gh-aw/agent/release-data/previous_release.json)
@@ -291,7 +291,7 @@ steps:
           fi
           COMMIT_PRS=$(gh api --paginate --slurp \
             "/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100" \
-            --jq 'add | map({
+            | jq 'add | map({
               number,
               title,
               author: {login: .user.login},

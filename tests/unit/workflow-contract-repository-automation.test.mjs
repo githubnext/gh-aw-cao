@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { generatedJobs, root, workflow } from "./workflow-contract.helpers.mjs";
+import { generatedJobs, root, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
 // Repository maintenance automation and release workflow contracts.
 
@@ -45,6 +45,14 @@ test("Actions lint issue reporter uses GraphQL issue APIs", () => {
   assert.match(issueReporter, /closeIssue\(input: \$input\)/);
   assert.match(issueReporter, /createIssue\(input: \$input\)/);
   assert.doesNotMatch(issueReporter, /github\.rest\.issues/);
+});
+
+test("release context filters slurped API pages with standalone jq", () => {
+  const fetchContext = stepBlock(workflow("release.md"), "Fetch release context");
+
+  assert.doesNotMatch(fetchContext, /--jq/);
+  assert.equal(fetchContext.match(/gh api --paginate --slurp/g)?.length, 2);
+  assert.equal(fetchContext.match(/\| jq /g)?.length, 2);
 });
 
 test("workflow contracts isolate authenticated package lifecycle checks", () => {
