@@ -251,7 +251,7 @@ function renderIntroduction(sources, metrics) {
 
 /** @param {SourceBindings} sources @param {OverviewMetrics} metrics */
 function factoryHeading(sources, metrics) {
-  if (sources['overview-run-summary'].unavailable() || sources['overview-outcome-summary'].unavailable()) {
+  if (sources['overview-run-summary'].unavailable()) {
     return 'Your factory status is unavailable.';
   }
   const successfulRuns = metrics.successfulRuns();
@@ -261,7 +261,7 @@ function factoryHeading(sources, metrics) {
   if (activeRuns > 0) return 'Your factory is humming.';
   if (failedRuns > successfulRuns && failedRuns > 0) return 'Your factory is under strain.';
   if (failedRuns > 0) return 'Your factory needs attention.';
-  if (successfulRuns > 0) return 'Your factory completed its shift.';
+  if (successfulRuns > 0) return 'Your factory is running healthily.';
   return 'Your factory is idle.';
 }
 
