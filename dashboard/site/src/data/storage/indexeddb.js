@@ -271,7 +271,7 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
  *
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} [options]
+ * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, previousBatch?: import('../model/schema.js').CanonicalBatch }} [options]
  */
 export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const errors = relationshipErrors(batch);
@@ -280,7 +280,15 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   if (!Number.isInteger(batchSize) || batchSize < 1) {
     throw new TypeError('Write batch size must be a positive integer');
   }
-  const totalRecords = ENTITY_STORES.reduce((total, storeName) => total + batch[storeName].length, 0);
+  const recordsToWrite = Object.fromEntries(ENTITY_STORES.map((storeName) => {
+    const previous = new Map((options.previousBatch?.[storeName] ?? [])
+      .map((record) => [String(record.id), record]));
+    return [storeName, batch[storeName].filter((record) => previous.get(String(record.id)) !== record)];
+  }));
+  const totalRecords = ENTITY_STORES.reduce(
+    (total, storeName) => total + recordsToWrite[storeName].length,
+    0
+  );
   let storedRecords = 0;
   const database = await openCanonicalDatabase(indexedDB);
   try {
@@ -293,8 +301,9 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
       const existing = await requestResult(removalStore.getAllKeys());
       for (const id of existing) if (!retained.has(String(id))) removalStore.delete(id);
       await transactionDone(removal);
-      for (let offset = 0; offset < records.length; offset += batchSize) {
-        const boundedRecords = records.slice(offset, offset + batchSize);
+      const changedRecords = recordsToWrite[storeName];
+      for (let offset = 0; offset < changedRecords.length; offset += batchSize) {
+        const boundedRecords = changedRecords.slice(offset, offset + batchSize);
         const transaction = database.transaction(storeName, 'readwrite');
         const store = transaction.objectStore(storeName);
         for (const record of boundedRecords) store.put(record);

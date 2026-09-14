@@ -60,7 +60,7 @@ describe('canonical dashboard worker ingestion order', () => {
     /** @type {string[]} */
     const storedRunIds = [];
     const originalPut = IDBObjectStore.prototype.put;
-    const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (value, key) {
+    const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(/** @this {IDBObjectStore} */ function (value, key) {
       if (this.name === 'runs') storedRunIds.push(String(value.id));
       return key === undefined
         ? originalPut.call(this, value)

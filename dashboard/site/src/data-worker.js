@@ -357,15 +357,6 @@ export function processDataRequest(request, signal) {
             context: collectionContext ?? null,
             workflowHints
           });
-          if (inventoryResponse.ok) {
-            const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
-              storage: globalThis.navigator?.storage,
-              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-              payloadScope: inventoryUrl.href,
-              onWriteProgress: (written) => progress.store(written)
-            });
-            changed ||= inventoryIngestion.updated;
-          }
           const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', sourceUrl.href);
           const currentEtag = current?.adaptationContext === adaptationContext
             && typeof current.payloadEtag === 'string'
@@ -409,6 +400,15 @@ export function processDataRequest(request, signal) {
               });
               changed ||= ingestion.updated;
             }
+          }
+          if (inventoryResponse.ok) {
+            const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
+              storage: globalThis.navigator?.storage,
+              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              payloadScope: inventoryUrl.href,
+              onWriteProgress: (written) => progress.store(written)
+            });
+            changed ||= inventoryIngestion.updated;
           }
         } else {
           const ingestion = await ingestDashboardSources(indexedDB, sources, {
