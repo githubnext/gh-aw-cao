@@ -88,20 +88,35 @@ const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
+const directionalViewTransitions = new WeakMap();
 
 /**
  * @param {Document} document
  * @param {() => void} update
+ * @param {'forward'|'backward'} [direction]
  */
-export function updateWithViewTransition(document, update) {
-  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown> } | void }} */ (document);
+export function updateWithViewTransition(document, update, direction) {
+  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown>, finished?: Promise<unknown> } | void }} */ (document);
   const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
   if (typeof transitionDocument.startViewTransition !== 'function' || prefersReducedMotion) {
     update();
     return;
   }
 
-  trackViewTransition(document, transitionDocument.startViewTransition(update));
+  if (direction) document.documentElement.dataset.navigationDirection = direction;
+  const transition = transitionDocument.startViewTransition(update);
+  trackViewTransition(document, transition);
+  if (!direction) return;
+  if (!transition?.finished) {
+    delete document.documentElement.dataset.navigationDirection;
+    return;
+  }
+  directionalViewTransitions.set(document, transition);
+  void Promise.resolve(transition.finished).catch(() => {}).then(() => {
+    if (directionalViewTransitions.get(document) !== transition) return;
+    directionalViewTransitions.delete(document);
+    delete document.documentElement.dataset.navigationDirection;
+  });
 }
 
 /** @type {Record<string, PresentableCustomPage>} */
@@ -1577,6 +1592,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   let navigationIndex = Number.isSafeInteger(initialNavigationIndex) && initialNavigationIndex >= 0
     ? initialNavigationIndex
     : 0;
+  /** @type {'forward'|'backward'|undefined} */
+  let pendingNavigationDirection;
   const previousEntryIsDashboard = () => {
     const currentEntry = browserNavigation?.currentEntry;
     const entries = browserNavigation?.entries?.();
@@ -1618,7 +1635,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     navigationIndex += 1;
     defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
     syncHistoryBack();
-    updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true));
+    updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true), 'forward');
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   });
 
@@ -1664,7 +1681,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       return;
     }
     const index = event.state?.[NAVIGATION_INDEX_STATE_KEY];
-    navigationIndex = Number.isSafeInteger(index) && index >= 0 ? index : 0;
+    const nextNavigationIndex = Number.isSafeInteger(index) && index >= 0 ? index : 0;
+    pendingNavigationDirection = nextNavigationIndex < navigationIndex
+      ? 'backward'
+      : nextNavigationIndex > navigationIndex
+        ? 'forward'
+        : undefined;
+    navigationIndex = nextNavigationIndex;
     syncHistoryBack();
   };
   const onHashChange = () => {
@@ -1676,11 +1699,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
     syncHistoryBack();
     const route = routeFromHash();
+    const navigationDirection = pendingNavigationDirection;
+    pendingNavigationDirection = undefined;
     updateWithViewTransition(root.ownerDocument, () => activate(
       route?.pageId ?? initialPageId,
       route?.parameters,
       true
-    ));
+    ), navigationDirection);
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   };
   browserNavigation?.addEventListener('currententrychange', syncHistoryBack);

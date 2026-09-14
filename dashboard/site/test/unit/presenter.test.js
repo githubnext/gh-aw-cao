@@ -1396,6 +1396,40 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('sets forward and backward transition directions from browser history', async () => {
+    window.history.replaceState(null, '', '/');
+    const directions = [];
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        directions.push(document.documentElement.dataset.navigationDirection);
+        callback();
+        return { finished: Promise.resolve() };
+      })
+    });
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    const cost = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'));
+
+    cost?.click();
+    window.history.replaceState(
+      { centralAgenticOpsNavigationIndex: 0 },
+      '',
+      '/#page-home'
+    );
+    window.dispatchEvent(new PopStateEvent('popstate', {
+      state: { centralAgenticOpsNavigationIndex: 0 }
+    }));
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+    expect(directions).toEqual(['forward', 'backward']);
+    await Promise.resolve();
+    Reflect.deleteProperty(document, 'startViewTransition');
+    window.history.replaceState(null, '', '/');
+  });
+
   it('uses browser navigation entries to show back only when the previous page is in the dashboard', () => {
     window.history.replaceState(null, '', '/#page-cost');
     let currentIndex = 1;

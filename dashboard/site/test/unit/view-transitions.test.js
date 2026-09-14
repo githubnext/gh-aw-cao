@@ -64,4 +64,27 @@ describe('dashboard view transitions', () => {
     expect(startViewTransition).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledOnce();
   });
+
+  it('exposes navigation direction for the lifetime of a transition', async () => {
+    let finishTransition = () => {};
+    const finished = new Promise((resolve) => {
+      finishTransition = resolve;
+    });
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        expect(document.documentElement.dataset.navigationDirection).toBe('forward');
+        callback();
+        return { finished };
+      })
+    });
+
+    updateWithViewTransition(document, vi.fn(), 'forward');
+
+    expect(document.documentElement.dataset.navigationDirection).toBe('forward');
+    finishTransition();
+    await finished;
+    await Promise.resolve();
+    expect(document.documentElement.dataset.navigationDirection).toBeUndefined();
+  });
 });
