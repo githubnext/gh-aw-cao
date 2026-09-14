@@ -1966,14 +1966,24 @@ function validateView(view, viewNode, path, viewIds, errors) {
     const invalidListLazyList = view.mark === 'list'
       && view['lazy-list'] === true
       && (!isPlainObject(view.list) || view.list.style !== 'cards');
-    if (
-      (view.mark !== 'table' && view.mark !== 'list')
-      || invalidTableLazyList
-      || invalidListLazyList
-    ) {
+    if (view.mark !== 'table' && view.mark !== 'list') {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
-        'lazy-list is allowed only on interactive table views and list card views.',
+        'lazy-list is allowed only on table and list views.',
+        `${path}.lazy-list`
+      ));
+    }
+    if (invalidTableLazyList) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'lazy-list is allowed only on interactive table views.',
+        `${path}.lazy-list`
+      ));
+    }
+    if (invalidListLazyList) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'lazy-list on list views requires list.style to be "cards".',
         `${path}.lazy-list`
       ));
     }

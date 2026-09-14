@@ -305,11 +305,13 @@ function renderListView(context) {
   if (listAction) headerChildren.push(listAction);
   const sectionContent = [
     ...renderViewSectionChrome(metadata, contextDetails),
-    h('header', { className: 'document-list-header' }, ...headerChildren),
-    renderedRowCount > 0
-      ? listRoot
-      : h('p', { className: 'document-list-empty' }, emptyMessage)
+    h('header', { className: 'document-list-header' }, ...headerChildren)
   ];
+  if (renderedRowCount > 0 || continuationToken) {
+    sectionContent.push(listRoot);
+  } else {
+    sectionContent.push(h('p', { className: 'document-list-empty' }, emptyMessage));
+  }
   if (loadMore instanceof HTMLButtonElement) {
     sectionContent.push(loadMore, loadStatus);
   }
