@@ -182,7 +182,7 @@ async function installPackage(source) {
   });
 }
 
-test("root package bootstraps an empty CAO and preserves resources during workflow update", { timeout: 240_000 }, async () => {
+test("root package bootstraps an empty CAO, passes doctor, and preserves resources during workflow update", { timeout: 240_000 }, async () => {
   const consumer = await installPackage(packageSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
