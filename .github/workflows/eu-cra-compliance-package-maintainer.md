@@ -68,6 +68,7 @@ graders:
 safe-outputs:
   create-pull-request:
     title-prefix: "[eu-cra:implementation-status] "
+    labels: [eu-cra-compliance, eu-cra-compliance:package-maintainer]
     draft: true
     max: 1
     if-no-changes: ignore
@@ -79,6 +80,7 @@ safe-outputs:
   create-issue:
     expires: 30d
     title-prefix: "[eu-cra:package-improvement] "
+    labels: [eu-cra-compliance, eu-cra-compliance:package-maintainer]
     close-older-issues: false
     deduplicate-by-title: true
     max: 1
