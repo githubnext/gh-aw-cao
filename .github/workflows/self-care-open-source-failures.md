@@ -211,8 +211,6 @@ steps:
       EOF
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Open Source Failures
 
 Scan the same bounded activity snapshot used by the CAO dashboard, cluster related failed runs across represented public projects, surface the result, and file focused remediation issues.
@@ -268,3 +266,5 @@ Otherwise name the human reviewer and required decision, or use `**Action:** Non
 The digest must summarize the snapshot timestamp, seven-day window, public projects scanned, failed runs, cluster counts by severity, existing coverage, and the prioritized remediation list. Each remediation issue must name one repository and cluster, link representative runs, state the evidence-supported cause, propose a bounded fix, and define an acceptance check.
 
 When `correlation_id` is present, append `### Control Plane` with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control-plane run `${{ inputs.control_plane_run_url }}` to every issue.
+
+{{#runtime-import? .github/cao/self-care.md}}

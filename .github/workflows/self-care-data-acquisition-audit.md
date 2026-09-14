@@ -89,8 +89,6 @@ safe-outputs:
       - "specs/data-acquisition-audit.md"
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # Data Acquisition Audit Refresher
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without investigating or changing files.
@@ -123,3 +121,5 @@ Re-audit the target repository and update `specs/data-acquisition-audit.md` only
 Review the final diff and run `git diff --check`. If the audit remains materially accurate, call `noop` with a short reason and do not create a pull request. Otherwise, call `create_pull_request` exactly once with a concise draft PR describing the changed findings and validation. Include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
 
 Provide only the unprefixed subject as the safe-output title. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
+
+{{#runtime-import? .github/cao/self-care.md}}

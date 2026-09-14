@@ -123,8 +123,6 @@ safe-outputs:
 timeout-minutes: 30
 ---
 
-{{#runtime-import? .github/cao/software-development-practices.md}}
-
 # Dev Practices / NIST SSDF
 
 Review one repository against the current final NIST Secure Software Development Framework and create one prioritized, evidence-backed improvement issue when useful.
@@ -179,3 +177,5 @@ Create one issue containing:
 State prominently that the issue is advisory and non-binding and does not prove security, compliance, certification, endorsement, or SSDF conformance. If `correlation_id` is present, include `### Control Plane` with the correlation ID, central repository, and control-plane run URL.
 
 Call `noop` only when the authoritative and repository-observable review completed successfully and either no actionable evidence-backed improvement exists or current issues already track every recommendation.
+
+{{#runtime-import? .github/cao/software-development-practices.md}}

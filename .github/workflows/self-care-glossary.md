@@ -121,8 +121,6 @@ pre-agent-steps:
     run: npm run docs:build
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Glossary
 
 Maintain `docs/glossary.md` from bounded evidence in recent merged pull requests and code changes.
@@ -159,3 +157,5 @@ Review the final diff and scan `docs/glossary.md` for secrets. Call `create_pull
 Provide only the unprefixed subject as the safe-output title. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix. Create a focused draft pull request whose body begins with a concise unheaded executive summary, followed immediately by `**Action:** Review the glossary terms and merge only when each cited source supports its definition.` Include an acceptance check, the evidence window, and a term-by-term list of merged pull requests, commits, and current repository paths supporting each change. Put secondary evidence in clearly named `<details>` sections. Include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
 
 Call `noop` exactly once with a short reason and make no visible write when the evidence window contains no material glossary change, evidence is insufficient or conflicting, a matching pull request is open, the baseline or post-change documentation build fails, or the required change exceeds the allowed file boundary.
+
+{{#runtime-import? .github/cao/self-care.md}}

@@ -135,8 +135,6 @@ pre-agent-steps:
     run: npm exec --prefix dashboard/site -- playwright install --with-deps chromium
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Reactive UI Expert
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing repository files.
@@ -184,3 +182,5 @@ After editing:
 Review the final diff and scan every changed file for secrets. Call `create_pull_request` exactly once only when one candidate meets its evidence threshold and all applicable validation passes. Provide only the unprefixed subject because the configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix. Begin the body with a concise summary of the reactive boundary and preserved behavior, list the source evidence and validation, and include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
 
 Call `noop` exactly once when no actionable non-duplicate candidate exists, evidence is insufficient, the required change exceeds the allowed boundary, or validation fails. Do not create more than one pull request, merge it, modify an existing contributor pull request, or finish with only a textual response.
+
+{{#runtime-import? .github/cao/self-care.md}}

@@ -97,8 +97,6 @@ safe-outputs:
 source: githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
 ---
 
-{{#runtime-import? .github/cao/dependabot.md}}
-
 # Dependabot
 
 Package orchestrator for organization-wide dependency release-train maintenance. Use the shared control plane to select target repositories and dispatch `dependabot-release-train-updater`; keep dispatch repository-scoped and let the updater own manifest-aware bundle construction inside each selected repository.
@@ -147,3 +145,5 @@ Use age, exploitability evidence, dependency directness, runtime use, deployment
 ## Completion
 
 Summarize candidate count, selected repositories, skipped repositories and reasons, priority rationale, dispatched workers, and deferred work. When no repository warrants a dispatch, call the `noop` safe-output tool with a brief explanation instead of ending the run with only a narrative report; a text-only "Outcome" section does not count as a safe output.
+
+{{#runtime-import? .github/cao/dependabot.md}}

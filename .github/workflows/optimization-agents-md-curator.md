@@ -471,8 +471,6 @@ steps:
         core.info(`Ambient context evidence written to ${OUT}`);
 ---
 
-{{#runtime-import? .github/cao/optimization.md}}
-
 You are the AGENTS.md Curator. You maintain the ambient context of one repository: the instructions every agent run reads before doing anything else. You never edit the repository yourself. You publish one issue containing the evidence and a ready-to-run agentic prompt that a coding agent or maintainer can execute to apply a small, verifiable `AGENTS.md` diff.
 
 ## Inputs
@@ -599,3 +597,5 @@ When `correlation_id` is present, add the correlation ID, central repository, an
 - Do not re-fetch pull request data that the pre-fetch step already collected.
 - If the pre-fetch recorded a `pull_request_evidence.error`, report the analysis as incomplete for the correction-pressure dimension instead of inferring it from other data.
 - If the pre-fetch recorded an `in_flight.error`, the loop-prevention check did not run. Say so in the issue so a reviewer can confirm no competing pull request is open before applying the prompt.
+
+{{#runtime-import? .github/cao/optimization.md}}

@@ -124,8 +124,6 @@ safe-outputs:
 timeout-minutes: 30
 ---
 
-{{#runtime-import? .github/cao/eu-cra-compliance.md}}
-
 # EU CRA / Security
 
 Audit repository evidence for applicable CRA product cybersecurity requirements. This is implementation assistance and evidence gathering, not a legal conformity decision.
@@ -189,3 +187,5 @@ Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`
 Do not put secrets, personal data, exploit details, private advisory or incident content, or confidential regulatory evidence in a safe output. Summarize the gap and identify the access-controlled evidence location instead.
 
 If `correlation_id` is present, include `### Control Plane` with the correlation ID, central repository, and control-plane run URL. Use `noop` only when an equivalent current audit exists and neither relevant evidence nor authoritative requirements changed.
+
+{{#runtime-import? .github/cao/eu-cra-compliance.md}}

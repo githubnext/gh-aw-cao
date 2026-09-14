@@ -95,8 +95,6 @@ safe-outputs:
   threat-detection: false
 ---
 
-{{#runtime-import? .github/cao/cao-evolution.md}}
-
 # CAO Evolution
 
 Maintain repositories that operate a Central Agentic Ops control plane and the policy-enrolled repositories whose agentic workflows must remain reliable and safe. Control-plane workers remain limited to verified control repositories; agentic-workflow health workers may run against other enrolled repositories with verified gh-aw adoption.
@@ -139,3 +137,5 @@ Dispatch the integrity, reliability, efficiency, and catalog-advisor workers onl
 Finish with the standard `## Orchestrator Report` inherited from `shared/control.md`. Preserve every standard heading and field: `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`. Use `0`, `none`, or `not applicable` for empty fields, use the exact precomputed repository totals, and distinguish eligible, selected, skipped, and deferred repositories.
 
 Add the control-plane evidence supporting each selection or skip after the standard fields. If no verified control repository needs a worker dispatch and no incomplete condition applies, call `noop` exactly once with the complete orchestrator report as its message.
+
+{{#runtime-import? .github/cao/cao-evolution.md}}

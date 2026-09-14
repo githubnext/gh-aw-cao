@@ -232,8 +232,6 @@ steps:
 source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
 ---
 
-{{#runtime-import? .github/cao/optimization.md}}
-
 You are the Agentic Workflow Auditor — a workflow that tracks daily AI Credit (AIC) spend and token consumption, forecasts weekly and monthly cost, and maintains a historical record for trend analysis across all agentic workflows in the target repository.
 
 ## Workspace Layout
@@ -522,3 +520,5 @@ if (fs.existsSync(assignmentsFile)) {
 This enables filtering workflow runs by experiment variant in Datadog, Honeycomb, or any
 OTLP-compatible backend. Attribute keys follow the pattern `gh_aw.experiment.<name>` with the
 assigned variant as the value, plus `gh_aw.experiment.names` as a comma-separated index.
+
+{{#runtime-import? .github/cao/optimization.md}}

@@ -124,8 +124,6 @@ safe-outputs:
 timeout-minutes: 30
 ---
 
-{{#runtime-import? .github/cao/eu-cra-compliance.md}}
-
 # EU CRA / Article 14
 
 Audit operational readiness for Article 14 reporting. This worker never decides reportability without human review and never sends a notification.
@@ -211,3 +209,5 @@ Material conclusions about CRA scope exclusion, economic-operator role, commerci
 Do not put secrets, personal data, exploit details, private advisory or incident content, or confidential regulatory evidence in a safe output. Summarize the gap and identify the access-controlled evidence location instead.
 
 If `correlation_id` is present, include `### Control Plane` with correlation ID, central repository, and control-plane run URL. Use `noop` only for an equivalent current readiness record with no changed evidence or authoritative requirement.
+
+{{#runtime-import? .github/cao/eu-cra-compliance.md}}

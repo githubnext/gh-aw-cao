@@ -152,8 +152,6 @@ pre-agent-steps:
       exit 0
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare Pages Health
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without auditing or publishing findings.
@@ -189,3 +187,5 @@ Use `###` headings only and include:
 - no more than three relevant references, including the deployed site and this workflow run.
 
 Fix only the selected quick wins, keep the change set small, add or update focused behavioral coverage when relevant, and do not finish without exactly one PR or one explicit `noop`.
+
+{{#runtime-import? .github/cao/self-care.md}}

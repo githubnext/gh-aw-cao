@@ -97,8 +97,6 @@ safe-outputs:
 source: githubnext/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
 ---
 
-{{#runtime-import? .github/cao/self-care.md}}
-
 # SelfCare
 
 ## Discovery
@@ -132,3 +130,5 @@ Immediately after selecting the authorized target, dispatch `self-care-experimen
 Finish with the standard orchestrator report inherited from `shared/control.md`. Preserve `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`, including every standard field. Use exact precomputed totals for repositories scanned and distinguish eligible, selected, skipped, and deferred repositories. Use `0`, `none`, or `not applicable` for every empty field.
 
 In `Outcome`, additionally state whether the sole authorized live target was selected, whether all twelve regular SelfCare workers were dispatched, whether the dashboard data schema and glossary workers were daily-eligible and dispatched, and whether the Pages Health worker was six-hour-eligible and dispatched.
+
+{{#runtime-import? .github/cao/self-care.md}}
