@@ -65,7 +65,7 @@ let nextIngestionProgressId = 0;
  */
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
-  let message = 'Reading source data... 0 records read.';
+  let message = 'Preparing source data...';
   const report = () => publishWorkerNotification({ id, message, tone: 'info', duration: 0 }, target);
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let interval;

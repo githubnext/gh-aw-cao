@@ -1546,6 +1546,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { processDashboardQueries } from ${JSON.stringify('http://dashboard.test/src/data-processor.js')};
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
         'source-id': 'mobile-work-fixture',
@@ -1568,8 +1569,21 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
           ]
         }
       };
+      const workSources = await processDashboardQueries(documentModel.dashboard.queries, sources, {
+        sourceNames: [
+          'work-project-items',
+          'work-board-todo',
+          'work-board-in-progress',
+          'work-board-needs-review',
+          'work-board-done',
+          'work-roadmap-items'
+        ]
+      });
       window.location.hash = '#page-work';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+      document.querySelector('#root').append(renderDashboard({
+        document: documentModel,
+        sources: { ...sources, ...workSources }
+      }));
     </script>
   `);
 

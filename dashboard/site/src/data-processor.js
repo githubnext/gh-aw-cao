@@ -129,12 +129,12 @@ export function processCanonicalDashboardSources(sources) {
  * There is no main-thread fallback: queries either run in the worker or fail.
  * @param {unknown[]} queries
  * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
- * @param {{ signal?: AbortSignal, pagination?: Record<string, { limit: number, continuationToken?: string }> }} [options] cancels the request from outside
+ * @param {{ signal?: AbortSignal, pagination?: Record<string, { limit: number, continuationToken?: string }>, sourceNames?: string[] }} [options] cancels the request from outside
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function processDashboardQueries(queries, sources, options = {}) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'execute-dashboard-queries', queries, sources, pagination: options.pagination },
+    { operation: 'execute-dashboard-queries', queries, sources, sourceNames: options.sourceNames, pagination: options.pagination },
     () => Promise.reject(new Error('Declarative dashboard queries require a data worker.')),
     false,
     options.signal

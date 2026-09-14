@@ -6,7 +6,7 @@ afterEach(() => {
 });
 
 describe('data-worker ingestion progress', () => {
-  it('reports zero source records before the first JSONL record is read', () => {
+  it('reports preparation before the first JSONL record is read', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
@@ -16,7 +16,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Reading source data... 0 records read.',
+        message: 'Preparing source data...',
         duration: 0
       })
     });

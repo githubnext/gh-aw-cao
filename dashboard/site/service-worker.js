@@ -197,21 +197,22 @@ self.addEventListener('fetch', (event) => {
     })());
     return;
   }
-  event.respondWith((async () => {
-    if (event.request.cache === 'no-store') return fetch(event.request);
-    try {
-      const response = await fetch(event.request);
-      if (response.ok) {
-        const cache = await caches.open(DATA_CACHE);
-        await cache.put(event.request, response.clone()).catch(() => undefined);
-      }
-      return response;
-    } catch (error) {
+  if (event.request.cache === 'no-store') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  const networkResponse = fetch(event.request);
+  event.waitUntil(networkResponse.then(async (response) => {
+    if (!response.ok) return;
+    const copy = response.clone();
+    const cache = await caches.open(DATA_CACHE);
+    await cache.put(event.request, copy);
+  }).catch(() => undefined));
+  event.respondWith(networkResponse.catch(async (error) => {
       const cached = await caches.match(event.request);
       if (cached) return cached;
       throw error;
-    }
-  })());
+  }));
 });
 
 self.addEventListener('periodicsync', (event) => {

@@ -13,7 +13,7 @@ function serviceWorkerHarness(cacheKeys = []) {
   const entries = new Map();
   const cache = {
     /** @param {string | Request} key @param {Response} response */
-    put: async (key, response) => entries.set(String(key), response.clone()),
+    put: async (key, response) => { entries.set(String(key), response.clone()); },
     /** @param {string | Request} key */
     match: async (key) => entries.get(String(key))?.clone(),
     /** @param {string | Request} key */
@@ -64,6 +64,7 @@ function serviceWorkerHarness(cacheKeys = []) {
     listeners,
     worker,
     fetch,
+    cache,
     entries,
     deleteCache
   };
@@ -206,9 +207,38 @@ describe('dashboard service worker', () => {
     fetch.mockRejectedValueOnce(new TypeError('offline'));
     listeners.fetch({
       request: dataRequest,
-      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; },
+      waitUntil: () => {}
     });
     await expect((await response)?.text()).resolves.toBe('cached data');
+  });
+
+  it('streams foreground dashboard data before its cache write completes', async () => {
+    const { listeners, fetch, cache, entries } = serviceWorkerHarness();
+    let finishCacheWrite = () => {};
+    const cacheWriteBlocked = new Promise((resolve) => { finishCacheWrite = () => resolve(undefined); });
+    vi.spyOn(cache, 'put').mockImplementation(async (key, response) => {
+      await cacheWriteBlocked;
+      entries.set(String(key), response.clone());
+    });
+    fetch.mockResolvedValueOnce(new Response('streamed data'));
+    const request = new Request('https://example.test/dashboard/gh-aw-logs.jsonl');
+    /** @type {Promise<Response> | undefined} */
+    let response;
+    /** @type {Promise<unknown> | undefined} */
+    let cacheWrite;
+
+    listeners.fetch({
+      request,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; },
+      waitUntil: (/** @type {Promise<unknown>} */ value) => { cacheWrite = value; }
+    });
+
+    await expect((await response)?.text()).resolves.toBe('streamed data');
+    expect(entries.has(String(request))).toBe(false);
+    finishCacheWrite();
+    await cacheWrite;
+    expect(entries.has(String(request))).toBe(true);
   });
 
   it('falls back to the cached application shell for offline navigation', async () => {
