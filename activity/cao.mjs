@@ -15,6 +15,7 @@ import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
+import { doctorCaoInstallation } from './installation-doctor.mjs';
 
 const ENTITY_COLLECTIONS = [
   'repositories',
@@ -37,7 +38,8 @@ const USAGE = `Usage:
   cao ingest-jsonl [--database FILE] [--input GH_AW_LOGS_JSONL] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input GH_AW_LOGS_JSONL]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
-  cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
+  cao doctor [--dir DIRECTORY]
+  cao doctor --database FILE [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
@@ -430,7 +432,14 @@ export async function runCli(arguments_, input = process.stdin) {
     : undefined;
   const databasePath = option(options, 'database', false) || DEFAULT_DATABASE_PATH;
   if (command === 'doctor') {
-    rejectUnknownOptions(options, ['database', 'ttl-days', 'run-ttl-days']);
+    rejectUnknownOptions(options, ['database', 'dir', 'ttl-days', 'run-ttl-days']);
+    if (options.dir !== undefined && options.database !== undefined) {
+      throw new Error('--dir cannot be combined with --database');
+    }
+    if (options.dir !== undefined && (options['ttl-days'] !== undefined || options['run-ttl-days'] !== undefined)) {
+      throw new Error('--ttl-days and --run-ttl-days require --database');
+    }
+    if (options.dir !== undefined) return doctorCaoInstallation(option(options, 'dir'));
     return doctorSqliteDatabase(databasePath, {
       ttlDays: ttlDays(options),
       runTtlDays: runTtlDays(options)

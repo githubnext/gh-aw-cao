@@ -235,6 +235,13 @@ cao query \
   --limit 20
 ```
 
+Verify an installed CAO package's ownership records, required files, and recorded
+SHA-256 hashes:
+
+```bash
+cao doctor --dir .
+```
+
 Diagnose and repair the local database:
 
 ```bash

@@ -33,6 +33,30 @@ test("exposes the dashboard data CLI as cao", async () => {
     assert.match(stdout, /^Usage:\n  cao ingest /);
     assert.match(stdout, /\n  cao download /);
     assert.match(stdout, /cao query .*--stdin/);
+    assert.match(stdout, /cao doctor \[--dir DIRECTORY\]/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("installation doctor exits unsuccessfully with parseable diagnostics", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-doctor-"));
+  try {
+    await assert.rejects(
+      executeFile(cao, ["doctor", "--dir", root]),
+      (error) => {
+        assert.equal(error.code, 2);
+        const result = JSON.parse(error.stdout);
+        assert.equal(result.command, "doctor");
+        assert.equal(result.kind, "installation");
+        assert.equal(result.healthy, false);
+        return true;
+      },
+    );
+    await assert.rejects(
+      executeFile(cao, ["doctor", "--dir", root, "--database", "data.sqlite"]),
+      /--dir cannot be combined with --database/,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
