@@ -17,6 +17,7 @@ function parseArguments(argv) {
     shardCount: 1,
     shardIndex: 0,
     concurrency: 2,
+    before: "",
   };
   for (let index = 0; index < argv.length; index += 1) {
     const name = argv[index];
@@ -28,8 +29,9 @@ function parseArguments(argv) {
     else if (name === "--shard-count") options.shardCount = Number(value);
     else if (name === "--shard-index") options.shardIndex = Number(value);
     else if (name === "--concurrency") options.concurrency = Number(value);
+    else if (name === "--before") options.before = value;
     else if (name === "--help") {
-      console.log("Usage: download-runs.mjs [--repo OWNER/REPO] [--workflow FILE] [--runs N] [--output DIR] [--shard-count N] [--shard-index N] [--concurrency N]");
+      console.log("Usage: download-runs.mjs [--repo OWNER/REPO] [--workflow FILE] [--runs N] [--output DIR] [--shard-count N] [--shard-index N] [--concurrency N] [--before ISO-TIMESTAMP]");
       process.exit(0);
     } else {
       throw new Error(`Unknown or incomplete option: ${name}`);
@@ -47,6 +49,7 @@ function parseArguments(argv) {
     throw new Error("--shard-index must be an integer between zero and shard-count minus one");
   }
   if (!/^[^/]+\/[^/]+$/.test(options.repo)) throw new Error("--repo must use OWNER/REPO syntax");
+  if (options.before && Number.isNaN(Date.parse(options.before))) throw new Error("--before must be an ISO timestamp");
   return options;
 }
 
@@ -60,6 +63,10 @@ const requestLedger = [];
 
 function recordRequest(url, response, category) {
   const parsed = new URL(url);
+  const headerNumber = (name) => {
+    const value = response.headers.get(name);
+    return value == null || value === "" ? null : Number(value);
+  };
   requestLedger.push({
     category,
     method: "GET",
@@ -68,10 +75,10 @@ function recordRequest(url, response, category) {
     primaryUnits: parsed.origin === new URL(apiBase).origin && parsed.pathname !== "/rate_limit" ? 1 : 0,
     rateLimit: {
       resource: response.headers.get("x-ratelimit-resource"),
-      limit: Number(response.headers.get("x-ratelimit-limit")) || null,
-      remaining: Number(response.headers.get("x-ratelimit-remaining")) || null,
-      used: Number(response.headers.get("x-ratelimit-used")) || null,
-      reset: Number(response.headers.get("x-ratelimit-reset")) || null,
+      limit: headerNumber("x-ratelimit-limit"),
+      remaining: headerNumber("x-ratelimit-remaining"),
+      used: headerNumber("x-ratelimit-used"),
+      reset: headerNumber("x-ratelimit-reset"),
     },
   });
 }
@@ -106,6 +113,19 @@ async function listPages(url, field, category) {
     next = match?.[1] || "";
   }
   return values;
+}
+
+async function listLatestSuccessfulRuns(url, count) {
+  const values = [];
+  let next = url;
+  while (next && values.length < count) {
+    const response = await githubFetch(next, "run-list");
+    const body = await response.json();
+    values.push(...(body.workflow_runs || []).filter((run) => run.conclusion === "success"));
+    const match = response.headers.get("link")?.match(/<([^>]+)>;\s*rel="next"/);
+    next = match?.[1] || "";
+  }
+  return values.slice(0, count);
 }
 
 async function downloadRedirect(url, destination, category) {
@@ -159,20 +179,21 @@ async function mapConcurrent(values, concurrency, operation) {
   return results;
 }
 
-const workflowRuns = await listPages(
-  `${apiBase}/repos/${owner}/${repository}/actions/workflows/${encodeURIComponent(options.workflow)}/runs?status=completed&per_page=100`,
-  "workflow_runs",
-  "run-list",
+const workflowRunsUrl = new URL(
+  `${apiBase}/repos/${owner}/${repository}/actions/workflows/${encodeURIComponent(options.workflow)}/runs`,
 );
+workflowRunsUrl.searchParams.set("status", "completed");
+workflowRunsUrl.searchParams.set("per_page", "100");
+if (options.before) workflowRunsUrl.searchParams.set("created", `<=${new Date(options.before).toISOString()}`);
+const workflowRuns = await listLatestSuccessfulRuns(workflowRunsUrl.toString(), options.runs);
 const selected = workflowRuns
-  .filter((run) => run.conclusion === "success")
-  .slice(0, options.runs)
   .filter((_, index) => index % options.shardCount === options.shardIndex);
 const downloaded = await mapConcurrent(selected, options.concurrency, downloadRun);
 const manifest = {
   generatedAt: new Date().toISOString(),
   repository: options.repo,
   workflow: options.workflow,
+  before: options.before || null,
   requestedSuccessfulRuns: options.runs,
   shard: { count: options.shardCount, index: options.shardIndex },
   downloaded,

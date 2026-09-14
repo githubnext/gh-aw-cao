@@ -42,13 +42,17 @@ to estimate the GitHub REST API cost incurred inside each run by
      --runs 8 \
      --shard-count 2 \
      --shard-index 0 \
+     --before 2026-09-14T22:45:00Z \
      --output /tmp/activity-api-cost
    ```
 
-   Run shard index `1` separately with the same arguments. For one machine,
-   `--shard-count 1 --concurrency 2` avoids repeating run discovery. Each shard
-   writes a manifest containing endpoint paths, response status, rate-limit
-   headers, modeled primary units, byte counts, and no authorization values.
+   Run shard index `1` separately with the same arguments, including the same
+   `--before` cutoff; otherwise a run completing between distributed shard
+   starts can shift modulo positions and cause overlap or omission. For one
+   machine, `--shard-count 1 --concurrency 2` avoids repeating run discovery.
+   Each shard writes a manifest containing endpoint paths, response status,
+   rate-limit headers, modeled primary units, byte counts, and no authorization
+   values.
 3. Inspect the job-log summary without extracting every file:
 
    ```bash
@@ -144,18 +148,22 @@ The scripts were applied to four recent successful
 `githubnext/gh-aw-cao` Activity runs. Run 66 used the legacy monolithic snapshot;
 runs 70–72 used one new wildcard JSONL shard per refresh.
 
-| Run | Run ID | Successful workflow queries | Runs discovered | Reports analyzed | Artifact ZIP | Download step | Normal primary units |
+| Run | Run ID | Successful workflow queries | Run-list candidates | Reports analyzed | Artifact ZIP | Download step | Normal primary units |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 66 | 34899408774 | 10 | 754 | 517 | 194.9 MB | 958 s | 2,605 |
-| 70 | 34901567011 | 9 | 675 | 384 | 7.6 MB | 906 s | 1,938 |
-| 71 | 34901839217 | 11 | 715 | 445 | 13.5 MB | 904 s | 2,247 |
-| 72 | 34903596189 | 12 | 857 | 624 | 22.8 MB | 935 s | 3,144 |
+| 66 | 34899408774 | 10 | 755 | 517 | 194.9 MB | 958 s | 2,605 |
+| 70 | 34901567011 | 9 | 676 | 384 | 7.6 MB | 906 s | 1,938 |
+| 71 | 34901839217 | 11 | 718 | 445 | 13.5 MB | 904 s | 2,247 |
+| 72 | 34903596189 | 12 | 866 | 624 | 22.8 MB | 935 s | 3,144 |
 
 The sample contains 1,970 analyzed reports and 42 successful workflow queries,
 for 9,934 modeled primary units, or **5.04 units per report** including
 amortized discovery. With the observed 15,000-unit installation limit and the
 workflow's 4,000-unit reserve, the predictive capacity is about **2,181 fresh
 reports per rate-limit window**.
+
+The JSONL contained 3,015 raw run-list candidates. The human-readable job
+summaries reported 3,001 discovered runs after gh-aw filtering (754, 675, 715,
+and 857 respectively); use report count, not either discovery count, as \(N\).
 
 Repository capacity depends on density:
 

@@ -84,8 +84,9 @@ async function analyzeInput(file) {
   const source = inputStream(file);
   let bytes = 0;
   let invalidLines = 0;
-  let discoverySincePreviousMarker = { workflowQueries: 0, discoveredRuns: 0 };
-  let latestDiscovery = { ...discoverySincePreviousMarker };
+  let workflowQueriesSincePreviousMarker = 0;
+  let discoveredSincePreviousMarker = new Set();
+  let latestDiscovery = { workflowQueries: 0, discoveredRuns: 0 };
   let reportsAfterLatestMarker = new Set();
   let sawRateLimitMarker = false;
   const allReports = new Set();
@@ -100,11 +101,17 @@ async function analyzeInput(file) {
       continue;
     }
     if (row.kind === "workflow_runs") {
-      discoverySincePreviousMarker.workflowQueries += 1;
-      discoverySincePreviousMarker.discoveredRuns += Array.isArray(row.payload) ? row.payload.length : 0;
+      workflowQueriesSincePreviousMarker += 1;
+      for (const run of row.payload || []) {
+        if (run.databaseId != null) discoveredSincePreviousMarker.add(String(run.databaseId));
+      }
     } else if (row.kind === "github_api_rate_limit") {
-      latestDiscovery = { ...discoverySincePreviousMarker };
-      discoverySincePreviousMarker = { workflowQueries: 0, discoveredRuns: 0 };
+      latestDiscovery = {
+        workflowQueries: workflowQueriesSincePreviousMarker,
+        discoveredRuns: discoveredSincePreviousMarker.size,
+      };
+      workflowQueriesSincePreviousMarker = 0;
+      discoveredSincePreviousMarker = new Set();
       reportsAfterLatestMarker = new Set();
       sawRateLimitMarker = true;
     } else if (row.kind === "run" && row.run?.run_id != null) {
@@ -112,9 +119,12 @@ async function analyzeInput(file) {
       if (sawRateLimitMarker) reportsAfterLatestMarker.add(String(row.run.run_id));
     }
   }
+  if (sawRateLimitMarker && reportsAfterLatestMarker.size === 0) {
+    throw new Error(`${source.name} has no analyzed run records after its final rate-limit marker`);
+  }
   const reports = sawRateLimitMarker ? reportsAfterLatestMarker.size : allReports.size;
-  const workflowQueries = sawRateLimitMarker ? latestDiscovery.workflowQueries : discoverySincePreviousMarker.workflowQueries;
-  const discoveredRuns = sawRateLimitMarker ? latestDiscovery.discoveredRuns : discoverySincePreviousMarker.discoveredRuns;
+  const workflowQueries = sawRateLimitMarker ? latestDiscovery.workflowQueries : workflowQueriesSincePreviousMarker;
+  const discoveredRuns = sawRateLimitMarker ? latestDiscovery.discoveredRuns : discoveredSincePreviousMarker.size;
   return {
     file,
     source: source.name,
@@ -162,7 +172,7 @@ const prediction = {
 if (options.format === "json") {
   console.log(JSON.stringify({ analyses, totals, prediction }, null, 2));
 } else {
-  console.log("| Input | Workflow queries | Runs discovered | Reports analyzed | ZIP size | Normal primary units |");
+  console.log("| Input | Workflow queries | Run-list candidates | Reports analyzed | ZIP size | Normal primary units |");
   console.log("| --- | ---: | ---: | ---: | ---: | ---: |");
   for (const analysis of analyses) {
     const name = path.basename(path.dirname(analysis.file)) || path.basename(analysis.file);
