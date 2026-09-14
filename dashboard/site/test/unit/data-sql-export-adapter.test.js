@@ -34,6 +34,10 @@ describe('SQL export adapter', () => {
       [0, 'message.user'],
       [1, 'firewall.request.allowed']
     ]);
+    expect(batch.events[0]).toMatchObject({
+      safeOutputType: 'create_issue',
+      githubEntityType: 'issue'
+    });
   });
 
   it('rejects unknown schema versions', () => {

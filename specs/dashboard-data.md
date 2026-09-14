@@ -582,6 +582,14 @@ Events MUST NOT be stored as one ever-growing array inside the Session record.
 
 Every operational occurrence associated with a Session SHOULD become an Event.
 
+Safe-output Events SHALL preserve the safe-output action and, when the affected
+entity is hosted by GitHub, its canonical GitHub entity type. The SQLite
+interchange SHALL expose these values as nullable `safe_output_type` and
+`github_entity_type` columns, and the IndexedDB Event record SHALL expose the
+equivalent nullable `safeOutputType` and `githubEntityType` fields. Missing
+entity-type evidence MUST remain absent rather than be inferred as a generic
+issue.
+
 Example:
 
 ```js
@@ -605,6 +613,8 @@ Example:
 
   correlationId: null,
   payloadRef: null,
+  safeOutputType: null,
+  githubEntityType: null,
 
   generation: "..."
 }

@@ -158,6 +158,8 @@ export function adaptSqlExport(input) {
           summary: optionalString(row.event_summary),
           correlationId: optionalString(row.correlation_id),
           payloadRef: optionalString(row.payload_ref),
+          safeOutputType: optionalString(row.safe_output_type),
+          githubEntityType: optionalString(row.github_entity_type),
           sourceSequence: row.source_sequence === undefined || row.source_sequence === null
             ? undefined
             : Number(row.source_sequence)

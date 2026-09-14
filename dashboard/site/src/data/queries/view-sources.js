@@ -319,6 +319,8 @@ function eventsSource(events, sessionsById, runsById, sources) {
           'event-status': event.status,
           'correlation-id': event.correlationId,
           'payload-ref': event.payloadRef,
+          'safe-output-type': event.safeOutputType,
+          'github-entity-type': event.githubEntityType,
           'source-sequence': event.sourceSequence,
           'observed-at': event.observedAt
         })

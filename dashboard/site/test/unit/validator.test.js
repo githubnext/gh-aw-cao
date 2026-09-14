@@ -1460,9 +1460,10 @@ dashboard:
     const rejected = validateDashboardDocument(JSON.stringify(obsoleteConfiguration));
     expect(rejected.ok).toBe(false);
     if (!rejected.ok) {
+      const costPageIndex = obsoleteConfiguration.dashboard.pages.indexOf(costPage);
       expect(rejected.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E004',
-        path: '$.dashboard.pages[3].filter-bar'
+        path: `$.dashboard.pages[${costPageIndex}].filter-bar`
       }));
     }
   });

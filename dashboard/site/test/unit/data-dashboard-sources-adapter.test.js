@@ -206,8 +206,9 @@ describe('current dashboard source adapter', () => {
       events: {
         rows: [{
           session: 'githubnext/gh-aw-cao:303:1:gh-aw', event: 'event-1',
-          'event-timestamp': '2026-09-09T04:00:01Z', 'event-source': 'agent',
-          'event-type': 'agent_turn', 'source-sequence': 1
+          'event-timestamp': '2026-09-09T04:00:01Z', 'event-source': 'safe-output',
+          'event-type': 'safe_output.created', 'safe-output-type': 'create_issue',
+          'github-entity-type': 'issue', 'source-sequence': 1
         }],
         metadata
       }
@@ -221,7 +222,8 @@ describe('current dashboard source adapter', () => {
       runId: 'github:run:303:attempt:1', jobId: 'github:job:404'
     })]);
     expect(batch.events).toEqual([expect.objectContaining({
-      sequence: 0, source: 'agent', type: 'agent_turn'
+      sequence: 0, source: 'safe-output', type: 'safe_output.created',
+      safeOutputType: 'create_issue', githubEntityType: 'issue'
     })]);
   });
 

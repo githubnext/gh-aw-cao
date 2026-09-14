@@ -294,6 +294,8 @@ export function adaptDashboardSources(sources) {
         status: row['event-status'],
         correlationId: row['correlation-id'],
         payloadRef: row['payload-ref'],
+        safeOutputType: row['safe-output-type'],
+        githubEntityType: row['github-entity-type'],
         sourceSequence: Number.isInteger(sourceSequence) && sourceSequence >= 0 ? sourceSequence : undefined
       }
     });

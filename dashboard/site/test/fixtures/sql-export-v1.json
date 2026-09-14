@@ -75,6 +75,8 @@
       "event_timestamp": "2026-09-09T04:00:01Z",
       "event_source": "agent",
       "event_type": "message.user",
+      "safe_output_type": "create_issue",
+      "github_entity_type": "issue",
       "source_sequence": 1
     }
   ]

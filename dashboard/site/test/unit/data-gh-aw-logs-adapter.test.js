@@ -293,6 +293,8 @@ describe('gh-aw logs adapter', () => {
       expect.objectContaining({
         source: 'safe-output',
         type: 'safe_output.created',
+        safeOutputType: 'create_pull_request',
+        githubEntityType: 'pull_request',
         correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
         sessionId: batch.sessions.find((session) => session.runId === 'github:run:303:attempt:1')?.id,
         payloadRef: 'gh-aw-logs.jsonl#L4'

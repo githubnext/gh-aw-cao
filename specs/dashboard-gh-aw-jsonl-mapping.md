@@ -187,7 +187,11 @@ Each `safe_output_item` envelope SHALL emit `safe_output.created` with source
 same `run_id`. When no item envelopes are present for a Run, `safe_outputs[]`,
 or `audit.created_items[]` when `safe_outputs` is absent, SHALL provide the
 Events instead. This precedence prevents the duplicated projection in the Run
-envelope from creating duplicate Events.
+envelope from creating duplicate Events. The Event SHALL preserve the source
+item's `type` as `safeOutputType` and SHALL preserve or derive
+`githubEntityType` from explicit target kind, canonical github.com URL shape,
+or the safe-output action. Non-GitHub provider items and items without
+conclusive GitHub entity evidence SHALL leave `githubEntityType` absent.
 
 Event records SHALL populate only the existing Event model fields:
 
@@ -202,6 +206,8 @@ status
 correlationId
 payloadRef
 sourceSequence
+safeOutputType
+githubEntityType
 sequence
 observedAt
 provenance

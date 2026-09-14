@@ -1618,6 +1618,99 @@
         ]
       },
       {
+        "name": "safe-output-items",
+        "intent": "Inspect safe-output items with their GitHub entity type and producing workflow run.",
+        "description": "Safe-output item events retain entity, action, repository, workflow, and run provenance.",
+        "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              },
+              {
+                "left": "run-attempt",
+                "right": "run-attempt"
+              }
+            ],
+            "fields": [
+              {
+                "field": "run-link",
+                "as": "linked-run"
+              }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            {
+              "field": "event-type",
+              "equals": "safe_output.created"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "event-timestamp",
+            "as": "observed-at"
+          },
+          {
+            "field": "github-entity-type"
+          },
+          {
+            "field": "safe-output-type"
+          },
+          {
+            "field": "event-summary"
+          },
+          {
+            "field": "correlation-id",
+            "as": "entity-url"
+          },
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "linked-run",
+            "as": "run-link"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          },
+          {
+            "field": "entity-url",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "workflow-inventory",
         "intent": "List declared workflows with their package, repository, configuration, and observed execution totals.",
         "description": "Central package and repository-owned workflow inventory with observed execution totals.",
@@ -3881,6 +3974,85 @@
                   "field": "correlation-id",
                   "type": "nominal",
                   "title": "Correlation"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "safe-output-items",
+        "kind": "custom",
+        "title": "Safe output items",
+        "navigation-label": "Safe output items",
+        "icon": "issue-opened",
+        "description": "GitHub entities created or modified by safe outputs with their producing workflow run.",
+        "views": [
+          {
+            "id": "safe-output-item-events",
+            "title": "Safe output items",
+            "description": "Safe-output item events retain GitHub entity type, action, target, and workflow provenance.",
+            "data": {
+              "source": "safe-output-items",
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No safe-output item events were observed in the selected time range.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
+                },
+                {
+                  "field": "github-entity-type",
+                  "type": "nominal",
+                  "title": "GitHub entity"
+                },
+                {
+                  "field": "safe-output-type",
+                  "type": "nominal",
+                  "title": "Action"
+                },
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Item"
+                },
+                {
+                  "field": "entity-url",
+                  "type": "nominal",
+                  "title": "Entity URL"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "format": "workflow-relative-path",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
                 }
               ]
             }
@@ -7902,6 +8074,7 @@
         "label": "Explore",
         "experimental": true,
         "pages": [
+          "safe-output-items",
           "safe-outputs",
           "detection",
           "dispatches",

@@ -89,7 +89,8 @@ const sources = {
         run: '42', 'run-attempt': 2, session: 'session:run-42', event: 'event:tool-call',
         'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
         'event-summary': 'github.list_issues', 'event-status': 'requested',
-        'correlation-id': 'call-1', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
+        'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
+        'github-entity-type': 'issue', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
       },
       {
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
@@ -331,7 +332,9 @@ describe('canonical view sources', () => {
         'event-type': 'tool.call',
         'event-source': 'mcp',
         'event-summary': 'github.list_issues',
-        'correlation-id': 'call-1'
+        'correlation-id': 'call-1',
+        'safe-output-type': 'create_issue',
+        'github-entity-type': 'issue'
       }),
       expect.objectContaining({ event: 'event:agent-turn', 'event-source': 'agent', 'event-type': 'agent_turn' })
     ]);

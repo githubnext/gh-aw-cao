@@ -47,6 +47,8 @@ CREATE TABLE cao_dashboard_export_rows_v1 (
   event_summary VARCHAR(1024),
   correlation_id VARCHAR(255),
   payload_ref VARCHAR(1024),
+  safe_output_type VARCHAR(128),
+  github_entity_type VARCHAR(128),
   source_sequence INTEGER,
   PRIMARY KEY (entity_kind, source_id),
   CHECK (entity_kind IN ('repository', 'workflow', 'run', 'job', 'session', 'event')),
@@ -84,7 +86,7 @@ VALUES
   ('session', 'session-505', '2026-09-09T05:00:00Z', '303', 1, '404', 'agent', 'completed');
 
 INSERT INTO cao_dashboard_export_rows_v1
-  (entity_kind, source_id, observed_at, session_source_id, event_timestamp, event_source, event_type, source_sequence)
+  (entity_kind, source_id, observed_at, session_source_id, event_timestamp, event_source, event_type, safe_output_type, github_entity_type, source_sequence)
 VALUES
-  ('event', 'event-2', '2026-09-09T05:00:00Z', 'session-505', '2026-09-09T04:00:02Z', 'firewall', 'firewall.request.allowed', 2),
-  ('event', 'event-1', '2026-09-09T05:00:00Z', 'session-505', '2026-09-09T04:00:01Z', 'agent', 'message.user', 1);
+  ('event', 'event-2', '2026-09-09T05:00:00Z', 'session-505', '2026-09-09T04:00:02Z', 'firewall', 'firewall.request.allowed', NULL, NULL, 2),
+  ('event', 'event-1', '2026-09-09T05:00:00Z', 'session-505', '2026-09-09T04:00:01Z', 'agent', 'message.user', 'create_issue', 'issue', 1);

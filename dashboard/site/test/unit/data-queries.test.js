@@ -755,6 +755,43 @@ describe('declarative dashboard queries', () => {
       ]);
     });
 
+  it('projects safe-output item entity types and run provenance', () => {
+    const events = {
+      source: 'events',
+      rows: [{
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+        event: 'safe-output-1', 'event-type': 'safe_output.created',
+        'event-timestamp': '2026-09-02T00:00:00Z', 'event-summary': 'create_pull_request/gh-aw-cao/43',
+        'safe-output-type': 'create_pull_request', 'github-entity-type': 'pull_request',
+        'correlation-id': 'https://github.com/githubnext/gh-aw-cao/pull/43'
+      }],
+      metadata: metadata('events')
+    };
+    const runs = {
+      source: 'runs',
+      rows: [{
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1',
+        'run-attempt': 1, 'run-link': { href: 'run-1' }
+      }],
+      metadata: metadata('runs')
+    };
+
+    const derived = executeDashboardQueries(dashboardQueries, { events, runs }, ['safe-output-items']);
+
+    expect(derived['safe-output-items'].rows).toEqual([{
+      'observed-at': '2026-09-02T00:00:00Z',
+      'github-entity-type': 'pull_request',
+      'safe-output-type': 'create_pull_request',
+      'event-summary': 'create_pull_request/gh-aw-cao/43',
+      'entity-url': 'https://github.com/githubnext/gh-aw-cao/pull/43',
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow: 'a.md',
+      run: '1',
+      'run-link': { href: 'run-1' }
+    }]);
+  });
+
   it('caps event inspection at the query output limit instead of becoming unavailable', () => {
       const events = {
         source: 'events',
