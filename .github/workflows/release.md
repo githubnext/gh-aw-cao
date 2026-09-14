@@ -50,7 +50,7 @@ safe-outputs:
 jobs:
   resolve-version:
     name: Authorize and resolve release version
-    if: needs.activation.outputs.daily_ai_credits_exceeded != 'true'
+    needs: activation
     runs-on: ubuntu-latest
     permissions:
       contents: read
