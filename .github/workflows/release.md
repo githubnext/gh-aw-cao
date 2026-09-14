@@ -262,8 +262,8 @@ steps:
 
       test -s /tmp/gh-aw/agent/release-data/current_release.json
 
-      gh api --paginate --slurp "/repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-        --jq '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
+      gh api --paginate "/repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+        jq --slurp '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
         > /tmp/gh-aw/agent/release-data/previous_release.json
 
       PREVIOUS_TAG=$(jq -r '.tag_name // empty' /tmp/gh-aw/agent/release-data/previous_release.json)
@@ -289,9 +289,9 @@ steps:
             echo "Invalid commit SHA in release range." >&2
             exit 1
           fi
-          COMMIT_PRS=$(gh api --paginate --slurp \
-            "/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100" \
-            --jq 'add | map({
+          COMMIT_PRS=$(gh api --paginate \
+            "/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100" |
+            jq --slurp 'add | map({
               number,
               title,
               author: {login: .user.login},
