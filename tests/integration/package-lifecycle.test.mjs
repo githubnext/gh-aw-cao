@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -161,7 +162,13 @@ function workflowBody(content) {
   return content.slice(frontmatterEnd + 5).trimEnd();
 }
 
-async function installPackage(source) {
+async function writePackageFile(root, relativePath, content) {
+  const path = join(root, relativePath);
+  mkdirSync(join(path, ".."), { recursive: true });
+  writeFileSync(path, content);
+}
+
+function installPackage(source) {
   return retryTransientPackageInstall(() => {
     const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
     try {
@@ -180,6 +187,44 @@ async function installPackage(source) {
     }
   });
 }
+
+test("gh aw add resolves root files included through a nested manifest", { timeout: 180_000 }, () => {
+  const packageRoot = mkdtempSync(join(tmpdir(), "central-agentic-ops-nested-package-"));
+  const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-consumer-"));
+  try {
+    writePackageFile(packageRoot, "README.md", "# Nested package\n");
+    writePackageFile(packageRoot, "aw.yml", `name: Nested package
+includes:
+  - .github/workflows/root-one.md
+  - .github/workflows/root-two.md
+  - child/aw.yml
+`);
+    writePackageFile(packageRoot, "child/aw.yml", `name: Child package
+includes:
+  - ./aw.yml
+`);
+    writePackageFile(packageRoot, ".github/workflows/root-one.md", "# Root one\n");
+    writePackageFile(packageRoot, ".github/workflows/root-two.md", "# Root two\n");
+    run("git", ["init", "--quiet"], consumer);
+    run("gh", [
+      "aw",
+      "add",
+      packageRoot,
+      "--force",
+      "--no-security-scanner",
+    ], consumer);
+
+    for (const relativePath of [
+      ".github/workflows/root-one.md",
+      ".github/workflows/root-two.md",
+    ]) {
+      assert.ok(existsSync(join(consumer, relativePath)), `nested package omitted ${relativePath}`);
+    }
+  } finally {
+    rmSync(packageRoot, { recursive: true, force: true });
+    rmSync(consumer, { recursive: true, force: true });
+  }
+});
 
 test("root package bootstraps an empty CAO and preserves resources during workflow update", { timeout: 240_000 }, async () => {
   const consumer = await installPackage(packageSource);
