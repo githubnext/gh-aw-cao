@@ -51,7 +51,6 @@ jobs:
   resolve-version:
     name: Authorize and resolve release version
     needs: activation
-    if: needs.activation.outputs.daily_ai_credits_exceeded != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
