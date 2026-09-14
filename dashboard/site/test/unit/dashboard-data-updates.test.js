@@ -128,6 +128,30 @@ describe('automatic dashboard data updates', () => {
     stop();
   });
 
+  it('retries an interrupted application update check', async () => {
+    const serviceWorkers = new EventTarget();
+    const register = vi.fn().mockRejectedValue(new TypeError('connection lost'));
+    Object.assign(serviceWorkers, {
+      controller: null,
+      register
+    });
+    const setTimer = vi.fn();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const stop = startDashboardAppUpdates({
+      serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+      scriptUrl: new URL('https://example.test/service-worker.js'),
+      setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
+    });
+    await vi.waitFor(() => expect(setTimer).toHaveBeenCalledWith(expect.any(Function), 5 * 60 * 1000));
+
+    setTimer.mock.calls[0][0]();
+    await vi.waitFor(() => expect(register).toHaveBeenCalledTimes(2));
+
+    stop();
+    consoleError.mockRestore();
+  });
+
   it('detects Periodic Background Sync browser support', () => {
     expect(periodicBackgroundSyncSupported(
       /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
