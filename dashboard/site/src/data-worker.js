@@ -278,7 +278,7 @@ function publishedPayloadIdentity(hashes, fileName) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown }} request
+ * @param {{ id?: unknown, operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -424,6 +424,10 @@ export function processDataRequest(request, signal) {
           revision: (liveDashboard?.revision ?? 0) + 1
         };
         scheduleDashboardSubscriptions();
+        progress.complete();
+        if (Number.isSafeInteger(request.id) && typeof self !== 'undefined') {
+          self.postMessage({ type: 'data-ingestion-complete', requestId: request.id });
+        }
         const projected = await queryLiveDashboard(
           requested,
           context,

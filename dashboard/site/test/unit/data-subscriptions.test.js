@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cancelDataProcessing,
+  loadCanonicalDashboardSources,
   processDashboardQueries,
   subscribeCanonicalDashboardView
 } from '../../src/data-processor.js';
@@ -337,5 +338,26 @@ describe('canonical dashboard view subscriptions', () => {
     vi.advanceTimersByTime(180);
     expect(document.querySelector('.dashboard-notification')).toBeNull();
     unsubscribe();
+  });
+
+  it('reports when ingestion completes before the projected query resolves', async () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    const onIngestionComplete = vi.fn();
+    const result = loadCanonicalDashboardSources(
+      'https://dashboard.example/gh-aw-logs.jsonl',
+      ['runs'],
+      { pages: [] },
+      undefined,
+      { onIngestionComplete }
+    );
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+    const request = worker.messages.at(-1);
+
+    worker.emit({ type: 'data-ingestion-complete', requestId: request?.id });
+    expect(onIngestionComplete).toHaveBeenCalledOnce();
+
+    worker.emit({ id: request?.id, data: { runs: { source: 'runs', rows: [] } } });
+    await expect(result).resolves.toHaveProperty('runs');
   });
 });

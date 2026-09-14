@@ -2,7 +2,8 @@
       import { startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries, refreshCanonicalDashboardSources, subscribeCanonicalDashboardView } from "./data-processor.js";
-      import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
+      import { projectCanonicalViewSources } from "./data/queries/view-sources.js";
+      import { ingestDashboardSources } from "./data/ingest/coordinator.js";
       import { DATABASE_COUNT_SOURCE_NAMES } from "./database-counts.js";
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
@@ -54,13 +55,13 @@
 
       /**
        * @template T
-       * @param {() => Promise<T>} task
+       * @param {(complete: () => void) => Promise<T>} task
        * @returns {Promise<T>}
        */
       const runWithDataIngestionProgress = async (task) => {
         const progress = startLoadingProgress(document);
         try {
-          return await task();
+          return await task(progress.complete);
         } finally {
           progress.complete();
         }
@@ -907,21 +908,12 @@
         },
       });
 
-      /**
-       * @param {Record<string, unknown>} sources
-       * @param {boolean} [ingest]
-       * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
-       */
-      async function withCanonicalViewSources(sources, ingest = false) {
-        return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (loadCanonicalViewSources(window.indexedDB, sources, {
-          ingest,
-          storage: navigator.storage,
-        }));
-      }
-
       if (new URLSearchParams(window.location.search).has("fixtures")) {
-        const fixtureProjection = await runWithDataIngestionProgress(
-          () => withCanonicalViewSources(fixtureSources, true),
+        await runWithDataIngestionProgress(
+          () => ingestDashboardSources(window.indexedDB, fixtureSources, { storage: navigator.storage }),
+        );
+        const fixtureProjection = /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (
+          await projectCanonicalViewSources(window.indexedDB, fixtureSources)
         );
         renderSources({
           ...fixtureProjection,
@@ -1034,11 +1026,12 @@
                 status: "started",
               });
               renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
-              void runWithDataIngestionProgress(() => refreshCanonicalDashboardSources(
+              void runWithDataIngestionProgress((complete) => refreshCanonicalDashboardSources(
                 sourceUrl,
                 initialSources,
                 dashboardContext,
                 refreshPagination,
+                { onIngestionComplete: complete },
               )).then(
                 ({ sources, changed }) => {
                   refreshPending = false;
@@ -1085,11 +1078,12 @@
             renderSources(
               await loadInitialSources(
                 (requested, pagination) => runWithDataIngestionProgress(
-                  () => loadCanonicalDashboardSources(
+                  (complete) => loadCanonicalDashboardSources(
                     sourceUrl,
                     requested,
                     dashboardContext,
                     pagination,
+                    { onIngestionComplete: complete },
                   ),
                 ),
               ),

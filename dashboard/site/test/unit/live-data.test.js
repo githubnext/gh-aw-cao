@@ -19,12 +19,13 @@ describe("live Dashboard Language sources", () => {
     expect(preview).not.toContain("Loading dashboard data…");
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("runWithDataIngestionProgress");
-    expect(preview).toContain("runWithDataIngestionProgress(\n          () => withCanonicalViewSources(fixtureSources, true)");
+    expect(preview).toContain("runWithDataIngestionProgress(\n          () => ingestDashboardSources(");
     expect(preview).not.toContain("runWithLoadingProgress");
     expect(preview).not.toContain("loadingProgress.complete()");
     expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
-    expect(preview).toContain("runWithDataIngestionProgress(() => refreshCanonicalDashboardSources(");
-    expect(preview).toContain("runWithDataIngestionProgress(\n                  () => loadCanonicalDashboardSources(");
+    expect(preview).toContain("runWithDataIngestionProgress((complete) => refreshCanonicalDashboardSources(");
+    expect(preview).toContain("runWithDataIngestionProgress(\n                  (complete) => loadCanonicalDashboardSources(");
+    expect(preview).toContain("{ onIngestionComplete: complete }");
     expect(preview).not.toMatch(/runWithDataIngestionProgress\([^)]*loadCanonicalDashboardPage/s);
     expect(preview).toContain("subscribeCanonicalDashboardView(");
     expect(preview).toContain("emitCurrent: false");
@@ -46,7 +47,8 @@ describe("live Dashboard Language sources", () => {
     expect(preview).not.toContain('./source-cache.js');
     expect(preview).not.toContain("Showing cached data…");
     expect(preview).not.toContain("Showing cached data while loading the latest dashboard data…");
-    expect(preview).toContain('loadCanonicalViewSources(window.indexedDB, sources, {');
+    expect(preview).toContain('ingestDashboardSources(window.indexedDB, fixtureSources');
+    expect(preview).toContain('projectCanonicalViewSources(window.indexedDB, fixtureSources)');
     expect(preview).toContain('storage: navigator.storage');
     expect(preview).toContain('has("fixtures")');
     expect(preview).toContain("Unable to load live dashboard data:");

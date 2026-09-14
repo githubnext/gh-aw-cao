@@ -12,7 +12,7 @@ const CANCELLATION_GRACE_MS = 250;
 /** @type {Worker | null} */
 let worker = null;
 let nextRequestId = 0;
-/** @type {Map<number, { resolve: (value: unknown) => void, reject: (reason: Error) => void, cleanup: () => void, processor: Worker }>} */
+/** @type {Map<number, { resolve: (value: unknown) => void, reject: (reason: Error) => void, cleanup: () => void, processor: Worker, onProgress?: () => void }>} */
 const pending = new Map();
 /**
  * @typedef {{ notify: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void, onError?: (error: Error) => void, cleanup: () => void, frame: number | null }} SubscriptionListener
@@ -146,13 +146,16 @@ export function processDashboardQueries(queries, sources, options = {}) {
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {{ onIngestionComplete?: () => void }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
-export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination) {
+export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
     { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination },
     () => Promise.reject(new Error('Live canonical dashboard loading requires a data worker.')),
-    false
+    false,
+    undefined,
+    options.onIngestionComplete
   ));
 }
 
@@ -162,13 +165,16 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {{ onIngestionComplete?: () => void }} [options]
  * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
  */
-export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination) {
+export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
   return /** @type {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>} */ (processRequest(
     { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination, reportActivation: true },
     () => Promise.reject(new Error('Live canonical dashboard refresh requires a data worker.')),
-    false
+    false,
+    undefined,
+    options.onIngestionComplete
   ));
 }
 
@@ -380,9 +386,10 @@ function cancelSubscriberFrame(listener) {
  * @param {() => T} fallback
  * @param {boolean} [recoverWorkerError]
  * @param {AbortSignal} [signal]
+ * @param {() => void} [onProgress]
  * @returns {T|Promise<T>}
  */
-function processRequest(request, fallback, recoverWorkerError = true, signal) {
+function processRequest(request, fallback, recoverWorkerError = true, signal, onProgress) {
   if (signal?.aborted) {
     const cancellation = new Error('Data processing was cancelled.');
     cancellation.name = 'DataProcessingCancelledError';
@@ -400,7 +407,8 @@ function processRequest(request, fallback, recoverWorkerError = true, signal) {
       resolve: (value) => resolve(/** @type {T} */ (value)),
       reject,
       cleanup: () => signal?.removeEventListener('abort', onAbort),
-      processor
+      processor,
+      onProgress
     });
     processor.postMessage({ id, ...request });
     if (signal?.aborted) onAbort();
@@ -435,6 +443,10 @@ function getWorker() {
       } catch {
         // Ignore malformed worker notifications without disrupting data processing.
       }
+      return;
+    }
+    if (event.data?.type === 'data-ingestion-complete') {
+      pending.get(event.data.requestId)?.onProgress?.();
       return;
     }
     if (typeof event.data?.subscriptionId === 'string') {
