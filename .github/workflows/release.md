@@ -45,6 +45,7 @@ tools:
 
 safe-outputs:
   threat-detection: false
+  github-token: ${{ secrets.GITHUB_TOKEN }}
   update-release:
 
 jobs:

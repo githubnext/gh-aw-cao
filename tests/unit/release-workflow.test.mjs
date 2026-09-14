@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { parse } from "yaml";
 
 import { stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
@@ -12,4 +13,20 @@ test("release context paginates before filtering complete API responses", () => 
     2,
     "each API request should paginate before local jq slurps its responses",
   );
+});
+
+test("release safe output updates use the workflow token that created the draft release", () => {
+  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(workflow("release.md"))?.[1];
+  assert.ok(frontmatter, "release workflow must have frontmatter");
+
+  const safeOutputs = parse(frontmatter)["safe-outputs"];
+  assert.equal(safeOutputs["github-token"], "${{ secrets.GITHUB_TOKEN }}");
+  assert.ok(
+    Object.hasOwn(safeOutputs, "update-release"),
+    "release workflow must enable update-release safe outputs",
+  );
+
+  const processSafeOutputs = stepBlock(workflow("release.lock.yml"), "Process Safe Outputs");
+  assert.match(processSafeOutputs, /github-token: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
+  assert.doesNotMatch(processSafeOutputs, /GH_AW_GITHUB_TOKEN/);
 });
