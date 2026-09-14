@@ -65,7 +65,7 @@ to estimate the GitHub REST API cost incurred inside each run by
 4. Analyze artifacts as streams:
 
    ```bash
-   node spec/activity-api-cost/analyze-runs.mjs \
+   cao api-cost \
      --input /tmp/activity-api-cost \
      --hourly-limit 15000 \
      --reserve 4000
@@ -79,7 +79,7 @@ to estimate the GitHub REST API cost incurred inside each run by
 5. Re-run with deployment assumptions to predict repository capacity:
 
    ```bash
-   node spec/activity-api-cost/analyze-runs.mjs \
+   cao api-cost \
      --input /tmp/activity-api-cost \
      --workflows-per-repository 5 \
      --fresh-runs-per-workflow 10

@@ -8,6 +8,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
+import { analyzeActivityApiCost } from './api-cost.mjs';
 import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, cachedJsonlPayloadIdentity } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
@@ -35,7 +36,7 @@ const DEFAULT_OUTPUT_DIRECTORY = '.cao';
 const DEFAULT_LOGS_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.jsonl`;
 const DEFAULT_DATABASE_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.sqlite`;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads']);
+const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'api-cost']);
 
 const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
@@ -45,6 +46,7 @@ const USAGE = `Usage:
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
   cao hash-payloads [--input GH_AW_LOGS_JSONL] [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
+  cao api-cost [--input DIR|ZIP|JSONL] [--hourly-limit COUNT] [--reserve COUNT] [--workflows-per-repository COUNT] [--fresh-runs-per-workflow COUNT] [--format markdown|json]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
@@ -519,6 +521,10 @@ export async function runCli(arguments_, input = process.stdin) {
   if (command === 'audit-jsonl') {
     rejectUnknownOptions(options, ['input']);
     return auditJsonl(option(options, 'input', false) || DEFAULT_LOGS_PATH);
+  }
+  if (command === 'api-cost') {
+    rejectUnknownOptions(options, ['input', 'hourly-limit', 'reserve', 'workflows-per-repository', 'fresh-runs-per-workflow', 'format']);
+    return analyzeActivityApiCost(options);
   }
   if (command === 'hash-payloads') {
     rejectUnknownOptions(options, ['input', 'database', 'shard-dir', 'output']);

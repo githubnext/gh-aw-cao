@@ -1,48 +1,29 @@
-#!/usr/bin/env node
-
 import { createReadStream } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { spawn, spawnSync } from "node:child_process";
 
-function parseArguments(argv) {
-  const options = {
-    input: "activity-api-cost-data",
-    hourlyLimit: 15000,
-    reserve: 4000,
-    workflowsPerRepository: 1,
-    freshRunsPerWorkflow: 10,
-    format: "markdown",
+function normalizeOptions(options) {
+  const normalized = {
+    input: options.input || "activity-api-cost-data",
+    hourlyLimit: Number(options["hourly-limit"] ?? 15000),
+    reserve: Number(options.reserve ?? 4000),
+    workflowsPerRepository: Number(options["workflows-per-repository"] ?? 1),
+    freshRunsPerWorkflow: Number(options["fresh-runs-per-workflow"] ?? 10),
+    format: options.format || "markdown",
   };
-  for (let index = 0; index < argv.length; index += 1) {
-    const name = argv[index];
-    const value = argv[index + 1];
-    if (name === "--input") options.input = value;
-    else if (name === "--hourly-limit") options.hourlyLimit = Number(value);
-    else if (name === "--reserve") options.reserve = Number(value);
-    else if (name === "--workflows-per-repository") options.workflowsPerRepository = Number(value);
-    else if (name === "--fresh-runs-per-workflow") options.freshRunsPerWorkflow = Number(value);
-    else if (name === "--format") options.format = value;
-    else if (name === "--help") {
-      console.log("Usage: analyze-runs.mjs [--input DIR|ZIP|JSONL] [--hourly-limit N] [--reserve N] [--workflows-per-repository N] [--fresh-runs-per-workflow N] [--format markdown|json]");
-      process.exit(0);
-    } else {
-      throw new Error(`Unknown or incomplete option: ${name}`);
-    }
-    index += 1;
-  }
   for (const [name, value] of [
-    ["hourly-limit", options.hourlyLimit],
-    ["reserve", options.reserve],
-    ["workflows-per-repository", options.workflowsPerRepository],
-    ["fresh-runs-per-workflow", options.freshRunsPerWorkflow],
+    ["hourly-limit", normalized.hourlyLimit],
+    ["reserve", normalized.reserve],
+    ["workflows-per-repository", normalized.workflowsPerRepository],
+    ["fresh-runs-per-workflow", normalized.freshRunsPerWorkflow],
   ]) {
     if (!Number.isFinite(value) || value < 0) throw new Error(`--${name} must be a non-negative number`);
   }
-  if (options.reserve >= options.hourlyLimit) throw new Error("--reserve must be smaller than --hourly-limit");
-  if (!["json", "markdown"].includes(options.format)) throw new Error("--format must be markdown or json");
-  return options;
+  if (normalized.reserve >= normalized.hourlyLimit) throw new Error("--reserve must be smaller than --hourly-limit");
+  if (!["json", "markdown"].includes(normalized.format)) throw new Error("--format must be markdown or json");
+  return normalized;
 }
 
 async function findInputs(input) {
@@ -142,44 +123,50 @@ async function analyzeInput(file) {
   };
 }
 
-const options = parseArguments(process.argv.slice(2));
-const analyses = await Promise.all((await findInputs(options.input)).map(analyzeInput));
-if (analyses.length === 0) throw new Error(`No cao-activity-index.zip or JSONL files found under ${path.resolve(options.input)}`);
-const totals = analyses.reduce((result, analysis) => {
-  result.workflowQueries += analysis.workflowQueries;
-  result.discoveredRuns += analysis.discoveredRuns;
-  result.analyzedReports += analysis.analyzedReports;
-  result.normalPrimaryUnits += analysis.model.normalPrimaryUnits;
-  return result;
-}, { workflowQueries: 0, discoveredRuns: 0, analyzedReports: 0, normalPrimaryUnits: 0 });
-const usablePrimaryUnits = options.hourlyLimit - options.reserve;
-const observedUnitsPerRun = totals.analyzedReports > 0 ? totals.normalPrimaryUnits / totals.analyzedReports : 5;
-const repositoryCost = options.workflowsPerRepository * (2 + (5 * options.freshRunsPerWorkflow));
-const prediction = {
-  hourlyLimit: options.hourlyLimit,
-  reserve: options.reserve,
-  usablePrimaryUnits,
-  observedUnitsPerRun,
-  runsPerRateLimitWindow: Math.floor(usablePrimaryUnits / observedUnitsPerRun),
-  scenario: {
-    workflowsPerRepository: options.workflowsPerRepository,
-    freshRunsPerWorkflow: options.freshRunsPerWorkflow,
-    primaryUnitsPerRepository: repositoryCost,
-    repositoriesPerRateLimitWindow: repositoryCost > 0 ? Math.floor(usablePrimaryUnits / repositoryCost) : null,
-  },
-};
+export async function analyzeActivityApiCost(rawOptions = {}) {
+  const options = normalizeOptions(rawOptions);
+  const analyses = await Promise.all((await findInputs(options.input)).map(analyzeInput));
+  if (analyses.length === 0) throw new Error(`No cao-activity-index.zip or JSONL files found under ${path.resolve(options.input)}`);
+  const totals = analyses.reduce((result, analysis) => {
+    result.workflowQueries += analysis.workflowQueries;
+    result.discoveredRuns += analysis.discoveredRuns;
+    result.analyzedReports += analysis.analyzedReports;
+    result.normalPrimaryUnits += analysis.model.normalPrimaryUnits;
+    return result;
+  }, { workflowQueries: 0, discoveredRuns: 0, analyzedReports: 0, normalPrimaryUnits: 0 });
+  const usablePrimaryUnits = options.hourlyLimit - options.reserve;
+  const observedUnitsPerRun = totals.analyzedReports > 0 ? totals.normalPrimaryUnits / totals.analyzedReports : 5;
+  const repositoryCost = options.workflowsPerRepository * (2 + (5 * options.freshRunsPerWorkflow));
+  const prediction = {
+    hourlyLimit: options.hourlyLimit,
+    reserve: options.reserve,
+    usablePrimaryUnits,
+    observedUnitsPerRun,
+    runsPerRateLimitWindow: Math.floor(usablePrimaryUnits / observedUnitsPerRun),
+    scenario: {
+      workflowsPerRepository: options.workflowsPerRepository,
+      freshRunsPerWorkflow: options.freshRunsPerWorkflow,
+      primaryUnitsPerRepository: repositoryCost,
+      repositoriesPerRateLimitWindow: repositoryCost > 0 ? Math.floor(usablePrimaryUnits / repositoryCost) : null,
+    },
+  };
 
-if (options.format === "json") {
-  console.log(JSON.stringify({ analyses, totals, prediction }, null, 2));
-} else {
-  console.log("| Input | Workflow queries | Run-list candidates | Reports analyzed | ZIP size | Normal primary units |");
-  console.log("| --- | ---: | ---: | ---: | ---: | ---: |");
+  if (options.format === "json") return { analyses, totals, prediction };
+
+  const lines = [
+    "| Input | Workflow queries | Run-list candidates | Reports analyzed | ZIP size | Normal primary units |",
+    "| --- | ---: | ---: | ---: | ---: | ---: |",
+  ];
   for (const analysis of analyses) {
     const name = path.basename(path.dirname(analysis.file)) || path.basename(analysis.file);
     const size = analysis.compressedBytes == null ? "n/a" : `${(analysis.compressedBytes / 1_000_000).toFixed(1)} MB`;
-    console.log(`| ${name} | ${analysis.workflowQueries} | ${analysis.discoveredRuns} | ${analysis.analyzedReports} | ${size} | ${analysis.model.normalPrimaryUnits} |`);
+    lines.push(`| ${name} | ${analysis.workflowQueries} | ${analysis.discoveredRuns} | ${analysis.analyzedReports} | ${size} | ${analysis.model.normalPrimaryUnits} |`);
   }
-  console.log(`\nAggregate: ${totals.analyzedReports} reports at ${observedUnitsPerRun.toFixed(2)} modeled primary units/report.`);
-  console.log(`Capacity: ${prediction.runsPerRateLimitWindow} fresh reports per rate-limit window with ${usablePrimaryUnits} usable units.`);
-  console.log(`Scenario: ${prediction.scenario.repositoriesPerRateLimitWindow} repositories per window at ${repositoryCost} units/repository.`);
+  lines.push(
+    "",
+    `Aggregate: ${totals.analyzedReports} reports at ${observedUnitsPerRun.toFixed(2)} modeled primary units/report.`,
+    `Capacity: ${prediction.runsPerRateLimitWindow} fresh reports per rate-limit window with ${usablePrimaryUnits} usable units.`,
+    `Scenario: ${prediction.scenario.repositoriesPerRateLimitWindow} repositories per window at ${repositoryCost} units/repository.`,
+  );
+  return lines.join("\n");
 }
