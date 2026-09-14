@@ -33,9 +33,10 @@ test("Copilot branch cleaner batches discovery and starts in dry-run mode", () =
   assert.match(source, /query: \$branchPrefix/);
   assert.match(source, /ref\.name\.startsWith\(branchPrefix\) && ref\.target/);
   assert.match(source, /qualifiedName: `refs\/heads\/\$\{ref\.name\}`/);
-  assert.match(source, /pullRequests\$\{index\}: pullRequests\([\s\S]*?states: \[OPEN, MERGED, CLOSED\]/);
+  assert.match(source, /open\$\{index\}: pullRequests\([\s\S]*?states: \[OPEN\]/);
+  assert.match(source, /terminal\$\{index\}: pullRequests\([\s\S]*?states: \[MERGED, CLOSED\]/);
   assert.match(source, /headRefName: \$head\$\{index\}/);
-  assert.match(source, /pullRequest\.headRepository\?\.nameWithOwner === nameWithOwner/);
+  assert.match(source, /headRepository\?\.nameWithOwner === nameWithOwner/);
   assert.match(source, /if \(!open && terminal\)/);
   assert.doesNotMatch(source, /associatedPullRequests/);
   assert.match(source, /mutation DeleteCopilotBranches/);

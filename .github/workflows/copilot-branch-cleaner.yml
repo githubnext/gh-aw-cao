@@ -113,14 +113,24 @@ jobs:
               const selections = batch
                 .map(
                   (_, index) => `
-                      pullRequests${index}: pullRequests(
+                      open${index}: pullRequests(
                         headRefName: $head${index}
                         first: 20
-                        states: [OPEN, MERGED, CLOSED]
+                        states: [OPEN]
+                      ) {
+                        nodes {
+                          headRepository {
+                            nameWithOwner
+                          }
+                        }
+                      }
+                      terminal${index}: pullRequests(
+                        headRefName: $head${index}
+                        first: 20
+                        states: [MERGED, CLOSED]
                         orderBy: { field: UPDATED_AT, direction: DESC }
                       ) {
                         nodes {
-                          state
                           headRepository {
                             nameWithOwner
                           }
@@ -149,15 +159,14 @@ jobs:
               )
 
               for (const [index, branch] of batch.entries()) {
-                const pullRequests = repository[
-                  `pullRequests${index}`
-                ].nodes.filter(
-                  (pullRequest) =>
-                    pullRequest.headRepository?.nameWithOwner === nameWithOwner,
-                )
-                const open = pullRequests.some(({ state }) => state === 'OPEN')
-                const terminal = pullRequests.some(
-                  ({ state }) => state === 'MERGED' || state === 'CLOSED',
+                const fromThisRepository = (connection) =>
+                  connection.nodes.some(
+                    ({ headRepository }) =>
+                      headRepository?.nameWithOwner === nameWithOwner,
+                  )
+                const open = fromThisRepository(repository[`open${index}`])
+                const terminal = fromThisRepository(
+                  repository[`terminal${index}`],
                 )
                 if (!open && terminal) {
                   candidates.push(branch)
