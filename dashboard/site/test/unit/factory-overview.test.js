@@ -57,7 +57,7 @@ it('summarizes retained Actions activity and useful outputs while routing failur
         metadata
       },
       'factory-rhythm-baseline': { source: 'factory-rhythm-baseline', rows: [{ 'daily-averages': [1, 2, 3, 4, 5, 6, 7], weeks: 4 }], metadata },
-      repositories: { source: 'repositories', rows: [{ repository: 'githubnext/gh-aw-cao', 'rollout-mode': 'review' }], metadata },
+      'overview-repository-count': { source: 'overview-repository-count', rows: [{ repositories: 1, 'rollout-mode': 'review' }], metadata },
       workflows: {
         source: 'workflows',
         rows: [
@@ -260,7 +260,7 @@ it('reflects arity with declared plural text variables and falls back to built-i
     },
     dispatches: { source: 'dispatches', rows: [{ run: '1' }], metadata },
     'grader-observations': { source: 'grader-observations', rows: [{ grader: 'quality', run: '1', value: 0.9, threshold: 0.8 }], metadata },
-    repositories: { source: 'repositories', rows: [{ repository: 'githubnext/gh-aw-cao', 'rollout-mode': 'live' }], metadata },
+    'overview-repository-count': { source: 'overview-repository-count', rows: [{ repositories: 1, 'rollout-mode': 'live' }], metadata },
     workflows: { source: 'workflows', rows: [{ workflow: 'review', 'workflow-role': 'worker' }], metadata }
   };
   const labels = {
@@ -360,7 +360,7 @@ it('renders the overview before its queries resolve and counts each one up on it
 
   const rendered = renderFactoryOverview({ sources: {} });
 
-  expect(requestedSources).toEqual(['outcomes', 'runs', 'dispatches', 'grader-observations', 'repositories', 'workflows']);
+  expect(requestedSources).toEqual(['outcomes', 'runs', 'dispatches', 'grader-observations', 'overview-repository-count', 'workflows']);
   expect(rendered.classList.contains('agent-factory')).toBe(true);
   expect(rendered.querySelectorAll('.factory-station')).toHaveLength(4);
   expect(rendered.querySelectorAll('.factory-station-pending')).toHaveLength(4);

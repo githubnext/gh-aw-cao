@@ -12,7 +12,7 @@ const FAILURE_STATES = new Set(['failure', 'startup-failure', 'stale', 'timed-ou
  * Queries the overview binds to. Each one is requested on its own and renders
  * into its own UI elements, so the page never waits for the slowest query.
  */
-const OVERVIEW_SOURCE_NAMES = ['outcomes', 'runs', 'dispatches', 'grader-observations', 'repositories', 'workflows'];
+const OVERVIEW_SOURCE_NAMES = ['outcomes', 'runs', 'dispatches', 'grader-observations', 'overview-repository-count', 'workflows'];
 
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ label: string, date: string, start: number, end: number, count: number }} RhythmDay */
@@ -191,7 +191,11 @@ function createOverviewMetrics(sources) {
     activeRunRows: memo(() => sources.runs.rows().filter((row) => ['queued', 'in-progress'].includes(normalizedStatus(row['run-status'])))),
     successfulRunRows: memo(() => sources.runs.rows().filter((row) => String(row['run-conclusion']) === 'success')),
     valueGains: memo(() => sources['grader-observations'].rows().filter(exceedsThreshold).length),
-    coverage: memo(() => connectedRepositoryCoverage(sources.workflows.rows(), sources.repositories.rows(), sources.runs.rows())),
+    coverage: memo(() => connectedRepositoryCoverage(
+      sources.workflows.rows(),
+      sources['overview-repository-count'].rows(),
+      sources.runs.rows()
+    )),
     workers: memo(() => workerCount(sources.workflows.rows(), dispatchRows()))
   };
 }
@@ -306,7 +310,7 @@ function renderFactoryFloor(sources, metrics, label) {
   repositories.bind(() => {
     const coverage = metrics.coverage();
     return {
-      pending: sources.repositories.pending() || sources.workflows.pending() || sources.runs.pending(),
+      pending: sources['overview-repository-count'].pending() || sources.workflows.pending() || sources.runs.pending(),
       label: label('repositories', coverage.total),
       value: coverage.total,
       detail: repositoryModeDetail(coverage)
@@ -570,8 +574,8 @@ function exceedsThreshold(row) {
   return Number.isFinite(value) && Number.isFinite(threshold) && value > threshold;
 }
 
-/** @param {Row[]} workflows @param {Row[]} repositories @param {Row[]} runs */
-function connectedRepositoryCoverage(workflows, repositories, runs) {
+/** @param {Row[]} workflows @param {Row[]} repositoryCounts @param {Row[]} runs */
+function connectedRepositoryCoverage(workflows, repositoryCounts, runs) {
   const targets = new Map();
   for (const workflow of workflows) {
     if (!Array.isArray(workflow['package-targets'])) continue;
@@ -581,8 +585,19 @@ function connectedRepositoryCoverage(workflows, repositories, runs) {
     }
   }
   if (targets.size > 0) return modeCoverage(targets);
+  if (repositoryCounts.length > 0) {
+    const coverage = { total: 0, review: 0, live: 0 };
+    for (const row of repositoryCounts) {
+      const count = Number(row.repositories);
+      if (!Number.isFinite(count) || count < 0) continue;
+      coverage.total += count;
+      const mode = normalizedMode(row['rollout-mode']);
+      if (mode === 'review' || mode === 'live') coverage[mode] += count;
+    }
+    return coverage;
+  }
   const observed = new Map();
-  for (const repository of [...repositories, ...runs]) {
+  for (const repository of runs) {
     const name = String(repository.repository ?? '').trim();
     const owner = String(repository.organization ?? '').trim();
     const coordinate = name.includes('/') || !owner ? name : `${owner}/${name}`;

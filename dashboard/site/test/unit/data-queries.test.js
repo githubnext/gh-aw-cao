@@ -76,7 +76,11 @@ describe('declarative dashboard queries', () => {
       },
       repositories: {
         source: 'repositories',
-        rows: [{ repository: 'gh-aw' }, { repository: 'gh-aw-cao' }, { repository: 'next' }],
+        rows: [
+          { repository: 'gh-aw', 'rollout-mode': 'review' },
+          { repository: 'gh-aw-cao', 'rollout-mode': 'live' },
+          { repository: 'next', 'rollout-mode': 'review' }
+        ],
         metadata: metadata('repositories')
       },
       workflows,
@@ -87,11 +91,15 @@ describe('declarative dashboard queries', () => {
     const result = executeDashboardQueries(
       dashboardQueries,
       sources,
-      ['database-package-count', 'database-repository-count', 'database-workflow-count', 'database-run-count', 'database-event-count']
+      ['database-package-count', 'database-repository-count', 'overview-repository-count', 'database-workflow-count', 'database-run-count', 'database-event-count']
     );
 
     expect(result['database-package-count'].rows).toEqual([{ packages: 2 }]);
     expect(result['database-repository-count'].rows).toEqual([{ repositories: 3 }]);
+    expect(result['overview-repository-count'].rows).toEqual([
+      { 'rollout-mode': 'review', repositories: 2 },
+      { 'rollout-mode': 'live', repositories: 1 }
+    ]);
     expect(result['database-workflow-count'].rows).toEqual([{ workflows: 2 }]);
     expect(result['database-run-count'].rows).toEqual([{ runs: 2 }]);
     expect(result['database-event-count'].rows).toEqual([{ events: 3 }]);

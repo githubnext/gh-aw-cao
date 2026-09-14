@@ -182,6 +182,23 @@
         }
       },
       {
+        "name": "overview-repository-count",
+        "intent": "Count repositories by rollout mode for the overview.",
+        "from": "repositories",
+        "aggregate": {
+          "by": [
+            "rollout-mode"
+          ],
+          "values": [
+            {
+              "field": "repository",
+              "as": "repositories",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
         "name": "database-workflow-count",
         "intent": "Count workflows in the dashboard database.",
         "from": "workflows",
@@ -6321,7 +6338,7 @@
                 "dispatches",
                 "factory-rhythm-baseline",
                 "grader-observations",
-                "repositories",
+                "overview-repository-count",
                 "workflows"
               ]
             },

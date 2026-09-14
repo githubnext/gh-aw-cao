@@ -784,7 +784,7 @@ describe('dashboard document validation', () => {
         'dispatches',
         'factory-rhythm-baseline',
         'grader-observations',
-        'repositories',
+        'overview-repository-count',
         'workflows'
       ]) },
       mark: 'element',
