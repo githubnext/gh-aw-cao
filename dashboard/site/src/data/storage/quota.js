@@ -36,7 +36,9 @@ export async function withQuotaRecovery(operation, reclaim) {
   try {
     return await operation();
   } catch (error) {
-    if (!(error instanceof DOMException) || error.name !== 'QuotaExceededError') throw error;
+    if (typeof error !== 'object'
+      || error === null
+      || /** @type {{ name?: unknown }} */ (error).name !== 'QuotaExceededError') throw error;
     await reclaim();
     return operation();
   }

@@ -23,6 +23,39 @@ describe('data-worker ingestion progress', () => {
     progress.complete();
   });
 
+  it('reports the storage phase so long writes never freeze the notification', () => {
+    vi.useFakeTimers();
+    const postMessage = vi.fn();
+    const progress = startIngestionProgress({ postMessage });
+
+    progress.update(1_000);
+    progress.store({ storedRecords: 250, totalRecords: 1_000 });
+    vi.advanceTimersByTime(3_000);
+
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: 'notification',
+      notification: expect.objectContaining({
+        message: 'Storing data... 250 of 1000 records stored.',
+        duration: 0
+      })
+    });
+
+    progress.store({ storedRecords: 1_000, totalRecords: 1_000 });
+    vi.advanceTimersByTime(1_000);
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: 'notification',
+      notification: expect.objectContaining({
+        message: 'Storing data... 1000 of 1000 records stored.'
+      })
+    });
+
+    progress.complete();
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: 'notification',
+      notification: expect.objectContaining({ dismiss: true })
+    });
+  });
+
   it('shows progress after three seconds, updates every second, and dismisses it when complete', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();

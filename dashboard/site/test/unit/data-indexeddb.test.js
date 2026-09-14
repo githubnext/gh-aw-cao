@@ -5,6 +5,7 @@ import {
   openCanonicalDatabase,
   readCollection,
   readRecord,
+  replaceCanonicalBatch,
   upsertCanonicalBatch
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
@@ -116,6 +117,31 @@ describe('canonical IndexedDB', () => {
     expect(progress.at(-1)).toEqual({ committedBatches: 20, committedRecords: 100_000 });
     expect(result).toEqual({ committedBatches: 20, committedRecords: 100_000 });
   }, 45_000);
+
+  it('replaces retained records in bounded writes and reports storage progress', async () => {
+    const replacement = normalize(Array.from({ length: 2_500 }, (_, index) => ({
+      kind: /** @type {const} */ ('repository'),
+      source: 'fixture',
+      sourceId: `repo-${index}`,
+      observedAt: '2026-09-09T05:00:00Z',
+      data: { id: `repository:${index}`, fullName: `githubnext/repo-${index}` }
+    })));
+    await upsertCanonicalBatch(indexedDB, batch());
+    /** @type {{ storedRecords: number, totalRecords: number }[]} */
+    const progress = [];
+
+    await replaceCanonicalBatch(indexedDB, replacement, {
+      batchSize: 1_000,
+      onProgress: (written) => progress.push(written)
+    });
+
+    expect(progress.map((entry) => entry.storedRecords)).toEqual([1_000, 2_000, 2_500, 2_500]);
+    expect(progress.every((entry) => entry.totalRecords === 2_500)).toBe(true);
+    const stored = await readCollection(indexedDB, 'repositories');
+    expect(stored).toHaveLength(2_500);
+    expect(await readRecord(indexedDB, 'repositories', 'repository:1'))
+      .toEqual(expect.objectContaining({ fullName: 'githubnext/repo-1' }));
+  });
 
   it('validates relationships before changing stored records', async () => {
     await upsertCanonicalBatch(indexedDB, batch());

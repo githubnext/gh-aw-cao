@@ -83,6 +83,14 @@ export function startIngestionProgress(target = self) {
     update(recordsProcessed) {
       message = `Ingesting data... ${recordsProcessed} ${recordsProcessed === 1 ? 'record' : 'records'} processed.`;
     },
+    /**
+     * Reports the storage phase, which dominates large ingestions and would
+     * otherwise leave the notification frozen on the last parsed record count.
+     * @param {{ storedRecords: number, totalRecords: number }} progress
+     */
+    store({ storedRecords, totalRecords }) {
+      message = `Storing data... ${storedRecords} of ${totalRecords} records stored.`;
+    },
     complete() {
       clearTimeout(delay);
       if (interval) clearInterval(interval);
@@ -384,6 +392,7 @@ export function processDataRequest(request, signal) {
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
                 workflowHints,
                 onProgress: ({ linesProcessed }) => progress.update(linesProcessed),
+                onWriteProgress: (written) => progress.store(written),
                 payloadIdentity: publishedIdentity ?? (etag ? `${sourceUrl.href}:${etag}` : undefined),
                 payloadEtag: etag ?? undefined,
                 payloadScope: sourceUrl.href,
@@ -396,7 +405,8 @@ export function processDataRequest(request, signal) {
             const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-              payloadScope: inventoryUrl.href
+              payloadScope: inventoryUrl.href,
+              onWriteProgress: (written) => progress.store(written)
             });
             changed ||= inventoryIngestion.updated;
           }
@@ -404,7 +414,8 @@ export function processDataRequest(request, signal) {
           const ingestion = await ingestDashboardSources(indexedDB, sources, {
             storage: globalThis.navigator?.storage,
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-            payloadScope: sourceUrl.href
+            payloadScope: sourceUrl.href,
+            onWriteProgress: (written) => progress.store(written)
           });
           changed ||= ingestion.updated;
         }

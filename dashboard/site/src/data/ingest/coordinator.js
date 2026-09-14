@@ -24,6 +24,19 @@ import {
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 2;
+const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
+const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
+
+/**
+ * Recognizes storage exhaustion across browsers that report it as a
+ * `DOMException` and browsers that report it as a standalone error class.
+ * @param {unknown} error
+ */
+function isQuotaExceededError(error) {
+  return typeof error === 'object'
+    && error !== null
+    && /** @type {{ name?: unknown }} */ (error).name === 'QuotaExceededError';
+}
 
 /**
  * @param {unknown} payload
@@ -113,7 +126,7 @@ function serializeIngestion(indexedDB, task) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowPackageMappings?: boolean, preserveRepositoryRecords?: boolean }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowPackageMappings?: boolean, preserveRepositoryRecords?: boolean, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} options
  */
 async function ingestCanonicalBatch(indexedDB, incoming, options) {
   if (options.storage) {
@@ -136,26 +149,30 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings,
     preserveRepositoryRecords: options.preserveRepositoryRecords
   }), targetDatabaseBytes);
-  for (;;) {
+  const write = () => replaceCanonicalBatch(indexedDB, batch, { onProgress: options.onWriteProgress });
+  // Every write of a large batch costs minutes in a constrained browser, so
+  // recovery halves the batch a bounded number of times and then reports the
+  // quota failure instead of retrying until the tab looks stuck.
+  for (let attempt = 0; ; attempt += 1) {
     try {
-      await replaceCanonicalBatch(indexedDB, batch);
+      await write();
       break;
     } catch (error) {
-      if (!(error instanceof DOMException) || error.name !== 'QuotaExceededError') throw error;
-      const reduced = capCanonicalBatchSize(batch, Math.floor(estimateCanonicalBatchBytes(batch) * 0.75));
+      if (!isQuotaExceededError(error) || attempt >= MAX_QUOTA_RECOVERY_ATTEMPTS) throw error;
+      const reduced = capCanonicalBatchSize(batch, Math.floor(estimateCanonicalBatchBytes(batch) * 0.5));
       if (reduced.runs.length === batch.runs.length) throw error;
       batch = reduced;
     }
   }
   if (options.storage) {
-    for (;;) {
+    for (let attempt = 0; attempt < MAX_USAGE_RECOVERY_ATTEMPTS; attempt += 1) {
       const databaseUsage = await inspectDatabaseUsage(options.storage).catch(() => null);
       if (databaseUsage === null || databaseUsage <= maxDatabaseBytes || batch.runs.length === 0) break;
       const target = Math.floor(estimateCanonicalBatchBytes(batch) * (maxDatabaseBytes / databaseUsage) * 0.9);
       const reduced = capCanonicalBatchSize(batch, target);
       if (reduced.runs.length === batch.runs.length) break;
       batch = reduced;
-      await replaceCanonicalBatch(indexedDB, batch);
+      await write();
     }
   }
   return {
@@ -170,7 +187,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} [options]
  */
 export function ingestDashboardSources(indexedDB, sources, options = {}) {
   return serializeIngestion(indexedDB, () => ingestDashboardSourcesNow(indexedDB, sources, options));
@@ -179,7 +196,7 @@ export function ingestDashboardSources(indexedDB, sources, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} options
  */
 async function ingestDashboardSourcesNow(indexedDB, sources, options) {
   let phase = 'adapting';
@@ -266,7 +283,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number, recordsIngested: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
  */
 export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   return serializeIngestion(indexedDB, () => ingestCachedGhAwJsonlNow(indexedDB, content, options));
@@ -275,7 +292,7 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number, recordsIngested: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} options
  */
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();

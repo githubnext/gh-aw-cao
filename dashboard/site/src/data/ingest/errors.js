@@ -25,7 +25,11 @@ export class CanonicalIngestionError extends Error {
  * @param {string} phase
  */
 export function classifyIngestionError(error, phase) {
-  if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+  // Browsers report storage exhaustion either as a DOMException or as a
+  // standalone QuotaExceededError class, so classify by name.
+  if (typeof error === 'object'
+    && error !== null
+    && /** @type {{ name?: unknown }} */ (error).name === 'QuotaExceededError') {
     return INGESTION_ERROR_CODES.quotaExceeded;
   }
   const message = error instanceof Error ? error.message : String(error);

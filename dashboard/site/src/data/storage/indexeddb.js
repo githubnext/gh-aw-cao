@@ -263,23 +263,47 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
 }
 
 /**
+ * Replaces retained canonical records with the supplied batch.
+ *
+ * Records are written in bounded transactions so a constrained browser reports
+ * quota pressure after one chunk instead of after a whole store, and so callers
+ * can report progress while very large batches are stored.
+ *
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} batch
+ * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} [options]
  */
-export async function replaceCanonicalBatch(indexedDB, batch) {
+export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const errors = relationshipErrors(batch);
   if (errors.length > 0) throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
+  const batchSize = options.batchSize ?? DEFAULT_WRITE_BATCH_SIZE;
+  if (!Number.isInteger(batchSize) || batchSize < 1) {
+    throw new TypeError('Write batch size must be a positive integer');
+  }
+  const totalRecords = ENTITY_STORES.reduce((total, storeName) => total + batch[storeName].length, 0);
+  let storedRecords = 0;
   const database = await openCanonicalDatabase(indexedDB);
   try {
     for (const storeName of ENTITY_STORES) {
-      const transaction = database.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const retained = new Set(batch[storeName].map((record) => String(record.id)));
-      const existing = await requestResult(store.getAllKeys());
-      for (const id of existing) if (!retained.has(String(id))) store.delete(id);
-      for (const record of batch[storeName]) store.put(record);
-      await transactionDone(transaction);
+      const records = batch[storeName];
+      const retained = new Set(records.map((record) => String(record.id)));
+      // Evict first so reclaimed space is available to the writes that follow.
+      const removal = database.transaction(storeName, 'readwrite');
+      const removalStore = removal.objectStore(storeName);
+      const existing = await requestResult(removalStore.getAllKeys());
+      for (const id of existing) if (!retained.has(String(id))) removalStore.delete(id);
+      await transactionDone(removal);
+      for (let offset = 0; offset < records.length; offset += batchSize) {
+        const boundedRecords = records.slice(offset, offset + batchSize);
+        const transaction = database.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        for (const record of boundedRecords) store.put(record);
+        await transactionDone(transaction);
+        storedRecords += boundedRecords.length;
+        options.onProgress?.({ storedRecords, totalRecords });
+      }
     }
+    options.onProgress?.({ storedRecords, totalRecords });
   } finally {
     database.close();
   }
