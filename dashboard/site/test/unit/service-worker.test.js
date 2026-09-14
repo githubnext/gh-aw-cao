@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 const source = readFileSync(resolve('service-worker.js'), 'utf8');
 
-function serviceWorkerHarness() {
+/** @param {string[]} [cacheKeys] */
+function serviceWorkerHarness(cacheKeys = []) {
   /** @type {Record<string, (event: any) => void>} */
   const listeners = {};
   /** @type {Map<string, Response>} */
@@ -22,8 +23,8 @@ function serviceWorkerHarness() {
     /** @type {string | URL | Request} */ _url,
     /** @type {RequestInit | undefined} */ _init
   ) => new Response('updated data'));
-  const deleteCache = vi.fn(async () => {
-    entries.clear();
+  const deleteCache = vi.fn(async (key) => {
+    cacheKeys = cacheKeys.filter((candidate) => candidate !== key);
     return true;
   });
   const worker = {
@@ -46,7 +47,7 @@ function serviceWorkerHarness() {
     self: worker,
     caches: {
       open: async () => cache,
-      keys: async () => [],
+      keys: async () => cacheKeys,
       delete: deleteCache,
       match: cache.match
     },
@@ -199,6 +200,35 @@ describe('dashboard service worker', () => {
       respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
     });
     await expect((await response)?.text()).resolves.toBe('online');
+
+    const dataRequest = new Request('https://example.test/dashboard/gh-aw-logs.jsonl');
+    entries.set(String(dataRequest), new Response('cached data'));
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    listeners.fetch({
+      request: dataRequest,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+    await expect((await response)?.text()).resolves.toBe('cached data');
+  });
+
+  it('falls back to the cached application shell for offline navigation', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+    entries.set('https://example.test/dashboard/', new Response('cached shell'));
+    fetch.mockRejectedValueOnce(new TypeError('offline'));
+    /** @type {Promise<Response> | undefined} */
+    let response;
+
+    listeners.fetch({
+      request: {
+        method: 'GET',
+        url: 'https://example.test/dashboard/repositories',
+        cache: 'default',
+        mode: 'navigate'
+      },
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+
+    await expect((await response)?.text()).resolves.toBe('cached shell');
   });
 
   it('caches application assets independently of background data updates', async () => {
@@ -218,6 +248,65 @@ describe('dashboard service worker', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(entries.has('https://example.test/dashboard/')).toBe(true);
     expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(true);
+  });
+
+  it('keeps successful assets when the connection drops part way through caching', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+    fetch.mockImplementation(async (url) => {
+      if (String(url).endsWith('/src/main.js')) throw new TypeError('connection lost');
+      return new Response(`cached ${url}`);
+    });
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'CACHE_APP_ASSETS',
+        urls: [
+          'https://example.test/dashboard/',
+          'https://example.test/dashboard/src/main.js',
+          'https://example.test/dashboard/manifest.webmanifest'
+        ]
+      }
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(entries.has('https://example.test/dashboard/')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(false);
+    expect(entries.has('https://example.test/dashboard/manifest.webmanifest')).toBe(true);
+  });
+
+  it('preserves a cached asset when its network refresh is interrupted', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const request = new Request('https://example.test/dashboard/src/main.js');
+    entries.set(String(request), new Response('previous version'));
+    fetch.mockRejectedValueOnce(new TypeError('connection lost'));
+    /** @type {Promise<Response> | undefined} */
+    let response;
+
+    listeners.fetch({
+      request,
+      respondWith: (/** @type {Promise<Response>} */ value) => { response = value; }
+    });
+
+    await expect((await response)?.text()).resolves.toBe('previous version');
+    await expect(entries.get(String(request))?.text()).resolves.toBe('previous version');
+  });
+
+  it('removes obsolete versioned caches after activation', async () => {
+    const { listeners, worker, deleteCache } = serviceWorkerHarness([
+      'central-agentic-ops-dashboard-data-development',
+      'central-agentic-ops-dashboard-data-old',
+      'central-agentic-ops-dashboard-app-development',
+      'central-agentic-ops-dashboard-app-old',
+      'central-agentic-ops-dashboard-config',
+      'unrelated-cache'
+    ]);
+
+    await dispatchExtendedEvent(listeners.activate, {});
+
+    expect(deleteCache).toHaveBeenCalledTimes(2);
+    expect(deleteCache).toHaveBeenCalledWith('central-agentic-ops-dashboard-data-old');
+    expect(deleteCache).toHaveBeenCalledWith('central-agentic-ops-dashboard-app-old');
+    expect(worker.clients.claim).toHaveBeenCalledOnce();
   });
 
   it('does not use stale cached data for hash-identified foreground downloads', async () => {
