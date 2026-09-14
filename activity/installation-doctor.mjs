@@ -1,17 +1,12 @@
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile, readdir, lstat } from 'node:fs/promises';
+import { readFile, readdir, lstat, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 const CAO_PACKAGE = 'githubnext/gh-aw-cao';
-const REQUIRED_CAO_FILES = [
-  '.github/aw/activity/cao.mjs',
-  '.github/aw/default-AGENTS.md',
-  '.github/workflows/cao-activity.yml',
-  '.github/workflows/cao-dashboard.yml',
-  '.github/workflows/shared/control.mjs',
-  '.github/workflows/shared/policy.mjs',
-  '.github/workflows/shared/setup-github-apps.mjs'
-];
+const executeFile = promisify(execFile);
 
 function issue(code, message, details = {}) {
   return { code, message, ...details };
@@ -21,6 +16,40 @@ function safeDestination(root, destination) {
   if (typeof destination !== 'string' || !destination || path.isAbsolute(destination)) return null;
   const resolved = path.resolve(root, destination);
   return resolved === root || resolved.startsWith(`${root}${path.sep}`) ? resolved : null;
+}
+
+async function typecheckModules(root, modules) {
+  if (modules.length === 0) return [];
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'cao-doctor-'));
+  const declarations = path.join(directory, 'globals.d.ts');
+  try {
+    await writeFile(declarations, "declare module '*';\ndeclare const process: any;\n");
+    await executeFile('tsc', [
+      '--allowJs',
+      '--checkJs',
+      '--noEmit',
+      '--noResolve',
+      '--target', 'ES2023',
+      '--module', 'NodeNext',
+      '--moduleResolution', 'NodeNext',
+      '--skipLibCheck',
+      '--noImplicitAny', 'false',
+      declarations,
+      ...modules
+    ], { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    return [];
+  } catch (error) {
+    const output = error && typeof error === 'object' && 'stdout' in error
+      ? String(error.stdout).trim()
+      : '';
+    return [issue(
+      'typescript-typecheck-failed',
+      output || `TypeScript typecheck could not run: ${error instanceof Error ? error.message : String(error)}`,
+      { files: modules.map((module) => path.relative(root, module).split(path.sep).join('/')) }
+    )];
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 }
 
 export async function doctorCaoInstallation(directory) {
@@ -74,7 +103,7 @@ export async function doctorCaoInstallation(directory) {
   }
 
   const destinations = new Set();
-  const caoDestinations = new Set();
+  const modules = [];
   for (const { name, record } of records) {
     const recordPath = path.join('.github', 'aw', 'packages', name);
     if (record.schemaVersion !== 1 || typeof record.source !== 'string'
@@ -109,7 +138,6 @@ export async function doctorCaoInstallation(directory) {
         continue;
       }
       destinations.add(comparisonKey);
-      if (record.package === CAO_PACKAGE) caoDestinations.add(comparisonKey);
       try {
         const metadata = await lstat(absolutePath);
         if (!metadata.isFile() || metadata.isSymbolicLink()) {
@@ -120,6 +148,7 @@ export async function doctorCaoInstallation(directory) {
           ));
           continue;
         }
+        if (normalized.endsWith('.mjs')) modules.push(absolutePath);
         const actualHash = createHash('sha256').update(await readFile(absolutePath)).digest('hex');
         if (actualHash !== file.sha256) {
           issues.push(issue(
@@ -137,16 +166,7 @@ export async function doctorCaoInstallation(directory) {
       }
     }
   }
-
-  for (const required of REQUIRED_CAO_FILES) {
-    if (!caoDestinations.has(required.toLowerCase())) {
-      issues.push(issue(
-        'required-file-untracked',
-        `Required CAO file ${required} is not tracked by the package ownership record`,
-        { path: required }
-      ));
-    }
-  }
+  issues.push(...await typecheckModules(root, modules));
 
   return {
     command: 'doctor',
@@ -159,7 +179,7 @@ export async function doctorCaoInstallation(directory) {
       resolvedCommit: record.resolvedCommit ?? null,
       files: Array.isArray(record.files) ? record.files.length : 0
     })),
-    files: { checked: destinations.size, required: REQUIRED_CAO_FILES.length },
+    files: { checked: destinations.size, modulesTypechecked: modules.length },
     issues
   };
 }

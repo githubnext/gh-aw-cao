@@ -235,8 +235,8 @@ cao query \
   --limit 20
 ```
 
-Verify an installed CAO package's ownership records, required files, and recorded
-SHA-256 hashes:
+Verify every file installed from the CAO package manifests against its ownership
+record and SHA-256 hash, then TypeScript-check the installed `.mjs` modules:
 
 ```bash
 cao doctor

@@ -40,6 +40,7 @@ const activityExpectedFiles = [
   ".github/aw/activity/cao.mjs",
   ".github/aw/activity/control-settings.mjs",
   ".github/aw/activity/gh-aw-logs.mjs",
+  ".github/aw/activity/installation-doctor.mjs",
   ".github/aw/activity/inventory.mjs",
   ".github/aw/activity/inventory-sources.mjs",
   ".github/workflows/cao-activity.yml",
@@ -211,6 +212,14 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     for (const relativePath of dashboardExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root package omitted dashboard file ${relativePath}`);
     }
+    const doctor = JSON.parse(run(
+      process.execPath,
+      [".github/aw/activity/cao.mjs", "doctor"],
+      consumer,
+    ));
+    assert.equal(doctor.healthy, true, JSON.stringify(doctor.issues));
+    assert.ok(doctor.files.checked > 0);
+    assert.ok(doctor.files.modulesTypechecked > 0);
     for (const workflowId of [
       "cao-evolution",
       "dependabot",

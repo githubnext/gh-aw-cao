@@ -20,7 +20,9 @@ async function installationFixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cao-installation-doctor-'));
   const files = [];
   for (const destination of requiredFiles) {
-    const content = `installed ${destination}\n`;
+    const content = destination.endsWith('.mjs')
+      ? `export const installed = ${JSON.stringify(destination)};\n`
+      : `installed ${destination}\n`;
     await mkdir(path.dirname(path.join(root, destination)), { recursive: true });
     await writeFile(path.join(root, destination), content);
     files.push({
@@ -48,7 +50,7 @@ test('installation doctor verifies the CAO package inventory and hashes', async 
     const result = await doctorCaoInstallation(root);
     assert.equal(result.healthy, true);
     assert.equal(result.kind, 'installation');
-    assert.deepEqual(result.files, { checked: requiredFiles.length, required: requiredFiles.length });
+    assert.deepEqual(result.files, { checked: requiredFiles.length, modulesTypechecked: 4 });
     assert.deepEqual(result.issues, []);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -58,7 +60,7 @@ test('installation doctor verifies the CAO package inventory and hashes', async 
 test('installation doctor reports modified and missing package files', async () => {
   const { root } = await installationFixture();
   try {
-    await writeFile(path.join(root, requiredFiles[0]), 'modified\n');
+    await writeFile(path.join(root, requiredFiles[0]), 'export const modified = true;\n');
     await rm(path.join(root, requiredFiles[1]));
     const result = await doctorCaoInstallation(root);
     assert.equal(result.healthy, false);
@@ -98,6 +100,25 @@ test('installation doctor verifies every package record in the repository', asyn
   }
 });
 
+test('installation doctor TypeScript-checks installed modules', async () => {
+  const { root, recordPath } = await installationFixture();
+  try {
+    const record = JSON.parse(await readFile(recordPath, 'utf8'));
+    const module = record.files.find(({ destination }) => destination.endsWith('cao.mjs'));
+    const content = "const value = 1;\nvalue = 'broken';\n";
+    await writeFile(path.join(root, module.destination), content);
+    module.sha256 = createHash('sha256').update(content).digest('hex');
+    await writeFile(recordPath, JSON.stringify(record));
+
+    const result = await doctorCaoInstallation(root);
+    assert.equal(result.healthy, false);
+    assert.ok(result.issues.some(({ code, message }) =>
+      code === 'typescript-typecheck-failed' && message.includes('TS2588')));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('installation doctor rejects malformed records and unsafe entries', async () => {
   const { root, recordPath } = await installationFixture();
   try {
@@ -128,7 +149,6 @@ test('installation doctor requires a CAO ownership record and required inventory
     const result = await doctorCaoInstallation(root);
     assert.equal(result.healthy, false);
     assert.ok(result.issues.some(({ code }) => code === 'cao-package-record-missing'));
-    assert.equal(result.issues.filter(({ code }) => code === 'required-file-untracked').length, requiredFiles.length);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
