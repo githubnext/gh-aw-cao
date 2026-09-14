@@ -6,13 +6,16 @@ import { generatedJobs, root, workflow } from "./workflow-contract.helpers.mjs";
 
 // Repository maintenance automation and release workflow contracts.
 
-test("Copilot branch cleaner batches discovery and starts in dry-run mode", () => {
+test("Copilot branch cleaner limits weekly discovery and starts in dry-run mode", () => {
   const source = workflow("copilot-branch-cleaner.yml");
 
-  assert.match(source, /cron: "23 \* \* \* \*"/);
+  assert.match(source, /cron: "23 3 \* \* 1"/);
   assert.match(source, /COPILOT_BRANCH_CLEANER_DRY_RUN != 'false'/);
   assert.match(source, /refPrefix = 'refs\/heads\/'/);
   assert.match(source, /branchNamePrefix = 'copilot\/'/);
+  assert.match(source, /\$branchNamePrefix: String!/);
+  assert.match(source, /query: \$branchNamePrefix/);
+  assert.match(source, /refPrefix,\n\s+branchNamePrefix,\n\s+cursor/);
   assert.match(source, /ref\.name\.startsWith\(branchNamePrefix\)/);
   assert.match(source, /terminal: associatedPullRequests\([\s\S]*?states: \[MERGED, CLOSED\]/);
   assert.match(source, /open: associatedPullRequests\(first: 1, states: \[OPEN\]\)/);

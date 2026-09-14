@@ -3,7 +3,7 @@ name: Copilot branch cleaner
 
 on:
   schedule:
-    - cron: "23 * * * *"
+    - cron: "23 3 * * 1"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -34,8 +34,8 @@ jobs:
             const dryRun = process.env.DRY_RUN === 'true'
             // The GraphQL `refs` field only accepts a top-level ref prefix
             // such as `refs/heads/` or `refs/tags/`; sub-paths like
-            // `refs/heads/copilot/` silently match nothing. Query all
-            // branches and filter by the `copilot/` name prefix ourselves.
+            // `refs/heads/copilot/` silently match nothing. Query the
+            // top-level prefix with a server-side name filter instead.
             const refPrefix = 'refs/heads/'
             const branchNamePrefix = 'copilot/'
             const zeroOid = '0000000000000000000000000000000000000000'
@@ -49,12 +49,14 @@ jobs:
                   $owner: String!
                   $repo: String!
                   $refPrefix: String!
+                  $branchNamePrefix: String!
                   $cursor: String
                 ) {
                   repository(owner: $owner, name: $repo) {
                     id
                     refs(
                       refPrefix: $refPrefix
+                      query: $branchNamePrefix
                       first: 100
                       after: $cursor
                       orderBy: { field: ALPHABETICAL, direction: ASC }
@@ -86,6 +88,7 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   refPrefix,
+                  branchNamePrefix,
                   cursor,
                 },
               )
