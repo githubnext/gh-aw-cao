@@ -2,15 +2,8 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Private packages are unavailable to consumers, while SelfCare runs
-// repository-local checks against this catalog repository itself. Exclude them
-// from the wizard even though this repository's control plane configures them.
-const WIZARD_EXCLUDED_SLUGS = new Set([
-  "eu-cra-compliance",
-  "self-care",
-  "software-development-practices",
-  "uk-ai-advisory",
-]);
+// SelfCare runs repository-local checks against this catalog repository itself.
+const WIZARD_EXCLUDED_SLUGS = new Set(["self-care"]);
 
 export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
   const controlPlane = isRecord(controlPolicy) ? controlPolicy["control-plane"] : undefined;
@@ -47,5 +40,6 @@ export function selectConfiguredOperations(controlPolicy, catalogEntries) {
       const entry = catalogEntriesBySlug.get(slug);
       if (!entry) throw new Error(`Configured package ${slug} must have a catalog manifest`);
       return entry;
-    });
+    })
+    .filter((entry) => !entry.private);
 }

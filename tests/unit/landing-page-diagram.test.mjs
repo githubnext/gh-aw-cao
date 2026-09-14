@@ -80,7 +80,8 @@ test("landing wizard client imports its prompt generation dependencies", () => {
 
 test("landing wizard operations come from the checked-in control policy", () => {
   assert.match(catalog, /import controlPolicy from "\.\.\/\.\.\/\.github\/workflows\/cao\.json"/);
-  assert.match(catalog, /selectConfiguredOperations\(controlPolicy, catalogEntries\)/);
+  assert.match(catalog, /export const catalogEntries = packageEntries\s+\.filter\(\(entry\) => !entry\.private\)/);
+  assert.match(catalog, /selectConfiguredOperations\(controlPolicy, packageEntries\)/);
   assert.match(wizard, /configuredOperationEntries as operations/);
   assert.doesNotMatch(wizard, /operation\.slug === "dependabot"/);
 });
@@ -112,14 +113,10 @@ test("configured wizard operations require a matching catalog manifest", () => {
 test("configured wizard operations exclude private and repository-local packages", () => {
   const first = { slug: "first" };
   const selfCare = { slug: "self-care" };
-  const privatePackages = {
-    "eu-cra-compliance": {},
-    "software-development-practices": {},
-    "uk-ai-advisory": {},
-  };
-  const policy = { "control-plane": { packages: { "self-care": {}, ...privatePackages, first: {} } } };
+  const privatePackage = { slug: "private", private: true };
+  const policy = { "control-plane": { packages: { "self-care": {}, private: {}, first: {} } } };
 
-  assert.deepEqual(selectConfiguredOperations(policy, [first, selfCare]), [first]);
+  assert.deepEqual(selectConfiguredOperations(policy, [first, selfCare, privatePackage]), [first]);
 });
 
 test("wizard policy keeps the checked-in package configuration", () => {
