@@ -7,7 +7,7 @@
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
-      import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
+      import { DASHBOARD_DATA_EVENT, DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
       import { startAutomaticDashboardDataUpdates, startDashboardAppUpdates } from "./dashboard-data-updates.js";

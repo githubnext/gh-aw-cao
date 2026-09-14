@@ -116,16 +116,8 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
-  it('loads the factory overview through one page-scoped worker subscription', () => {
+  it('leaves factory overview queries to its independently reactive element', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
-      'overview-outcome-summary',
-      'overview-run-summary',
-      'overview-dispatch-summary',
-      'overview-delivery-summary',
-      'overview-value-summary',
-      'overview-registered-repository-summary',
-      'overview-worker-summary',
-      'overview-rhythm',
       'data-health-collections'
     ]);
   });

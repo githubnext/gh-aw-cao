@@ -128,6 +128,51 @@ async function recordJourney(browser, origin, scenario, directory) {
   }
 }
 
+async function auditOverviewIngestion(browser, origin, directory) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  let releaseIngestion;
+  let markIngestionStarted;
+  const ingestionRelease = new Promise((resolvePromise) => {
+    releaseIngestion = resolvePromise;
+  });
+  const ingestionStarted = new Promise((resolvePromise) => {
+    markIngestionStarted = resolvePromise;
+  });
+  await page.route(`${origin}/gh-aw-logs.jsonl`, async (route) => {
+    markIngestionStarted();
+    await ingestionRelease;
+    await route.fulfill({ contentType: 'application/x-ndjson', body: '' });
+  });
+
+  const startedAt = performance.now();
+  try {
+    await page.goto(`${origin}/#page-overview`, { waitUntil: 'domcontentloaded' });
+    await ingestionStarted;
+    await page.locator('[data-page-id="overview"] .agent-factory').waitFor({
+      state: 'visible',
+      timeout: 2000
+    });
+    await page.locator('.factory-station:not(.factory-station-pending)').first().waitFor({
+      state: 'visible',
+      timeout: 2000
+    });
+    const overviewInteractiveMs = performance.now() - startedAt;
+    if (await page.locator('.dashboard-loading-skeleton').count() > 0) {
+      throw new Error('Overview retained its page skeleton during ingestion.');
+    }
+    return {
+      status: 'complete',
+      overviewInteractiveMs,
+      budgetMs: 2000,
+      ingestionPending: true
+    };
+  } finally {
+    releaseIngestion();
+    await context.close();
+  }
+}
+
 function auditValue(lhr, auditId) {
   const value = lhr.audits?.[auditId]?.numericValue;
   if (typeof value !== 'number') throw new Error(`Lighthouse report omitted ${auditId}`);
@@ -195,8 +240,12 @@ async function main() {
     args: ['--no-sandbox', '--disable-dev-shm-usage']
   });
   const results = [];
+  let overviewIngestion;
 
   try {
+    const overviewDirectory = join(outputRoot, 'overview-ingestion');
+    await mkdir(overviewDirectory, { recursive: true });
+    overviewIngestion = await auditOverviewIngestion(browser, origin, overviewDirectory);
     for (const scenario of scenarios) {
       const directory = join(outputRoot, scenario.id);
       await mkdir(directory, { recursive: true });
@@ -213,6 +262,7 @@ async function main() {
   const summary = {
     generatedAt: new Date().toISOString(),
     methodology: 'Lighthouse desktop cold navigation plus Playwright traced persona journey',
+    overviewIngestion,
     results
   };
   await writeFile(join(outputRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
@@ -230,6 +280,7 @@ async function main() {
   for (const result of results) {
     console.log(`${result.id}: Lighthouse performance ${(result.score * 100).toFixed(0)}`);
   }
+  console.log(`overview: interactive during ingestion in ${overviewIngestion.overviewInteractiveMs.toFixed(0)}ms`);
   console.log(`Performance evidence: ${outputRoot}`);
   return failures.length > 0 ? 42 : 0;
 }

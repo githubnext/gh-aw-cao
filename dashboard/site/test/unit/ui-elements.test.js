@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { enableLazyViews } from '../../src/components/lazy-view.js';
-import { renderUiElement } from '../../src/components/ui-elements.js';
+import { elementLoadsSourcesAsync, renderUiElement } from '../../src/components/ui-elements.js';
 import { agentSmellNotifications } from '../../src/components/agent-marketplace-view.js';
 import { primerStylesheet } from '../../src/styles.js';
 
@@ -41,6 +41,10 @@ function declarativeWorkRow(row) {
 }
 
 describe('UI elements', () => {
+  it('lets the factory overview load its declared queries independently', () => {
+    expect(elementLoadsSourcesAsync('outcomes-overview')).toBe(true);
+  });
+
   it('uses auto-fill to keep agent marketplace card widths stable when results shrink', () => {
     const styles = primerStylesheet();
     expect(styles).toContain(
