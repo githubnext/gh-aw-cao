@@ -177,6 +177,7 @@ jobs:
       contents: write
     outputs:
       release_id: ${{ steps.release.outputs.release_id }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
     steps:
       - name: Generate draft release notes without assets
         id: release
@@ -198,6 +199,7 @@ jobs:
               generate_release_notes: true,
             });
             core.setOutput('release_id', release.id);
+            core.setOutput('release_tag', release.tag_name);
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
               .addRaw('The release highlights agent will update this draft. A maintainer must then review the complete notes, publish the draft, and mark it as the latest release from the GitHub website. Control repositories install or update this package only with gh aw add or gh aw update.')
@@ -208,7 +210,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ steps.release.outputs.release_id }}
-          RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/release-context"
           gh api "/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
@@ -235,7 +237,7 @@ steps:
   - name: Fetch release context
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
+      RELEASE_TAG: ${{ needs.prepare-release.outputs.release_tag }}
     run: |
       set -euo pipefail
       mkdir -p /tmp/gh-aw/agent/release-data
@@ -357,7 +359,7 @@ Follow GitHub release-notes best practices:
 
 Call `safeoutputs/update_release` exactly once with:
 
-- `tag`: `${{ needs.resolve-version.outputs.release_tag }}`
+- `tag`: `${{ needs.prepare-release.outputs.release_tag }}`
 - `operation`: `prepend`
 - `body`: the complete Markdown highlights, beginning with `## Release highlights`
 

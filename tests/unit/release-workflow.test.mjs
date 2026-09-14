@@ -10,6 +10,7 @@ test("draft release exists before the agent job starts", () => {
 
   assert.match(prepareRelease, /github\.rest\.repos\.createRelease/);
   assert.match(prepareRelease, /draft: true/);
+  assert.match(prepareRelease, /core\.setOutput\('release_tag', release\.tag_name\)/);
   assert.doesNotMatch(prepareRelease, /github\.rest\.git\.createRef/);
   assert.ok(jobs.get("agent")?.needs.includes("prepare-release"));
 });
@@ -37,4 +38,13 @@ test("release context fetches tags before local git inspection", () => {
   assert.ok(fetchReleaseTag !== -1, "new draft release tag must be fetched");
   assert.ok(fetchPreviousTag < verifyPreviousTag, "previous tag must be fetched before verification");
   assert.ok(fetchReleaseTag < verifyReleaseTag, "release tag must be fetched before verification");
+});
+
+test("agent consumes release tag from draft release job output", () => {
+  const source = workflow("release.md");
+  const fetchReleaseContext = stepBlock(source, "Fetch release context");
+
+  assert.match(source, /prepare-release:[\s\S]*outputs:[\s\S]*release_tag: \$\{\{ steps\.release\.outputs\.release_tag \}\}/);
+  assert.match(fetchReleaseContext, /RELEASE_TAG: \$\{\{ needs\.prepare-release\.outputs\.release_tag \}\}/);
+  assert.match(source, /- `tag`: `\$\{\{ needs\.prepare-release\.outputs\.release_tag \}\}`/);
 });
