@@ -117,20 +117,20 @@ test("orchestrators dispatch workers only through safe-output tools", () => {
   assert.match(precompute, /const item = inWorkflows/);
 });
 
-test("AW Optimization emits a no-op safe output when no workers are dispatched", () => {
-  const optimization = workflow("optimization.md");
+test("CAO Evolution emits a no-op safe output when no workers are dispatched", () => {
+  const evolution = workflow("cao-evolution.md");
 
   assert.match(
-    optimization,
-    /If no worker is dispatched and no incomplete condition applies, call `noop` exactly once with the complete orchestrator report as its message\./,
+    evolution,
+    /If no verified control repository needs a worker dispatch and no incomplete condition applies, call `noop` exactly once with the complete orchestrator report as its message\./,
   );
 });
 
 test("every worker uses the standard dispatch envelope and safe mode vocabulary", () => {
   const workerNames = [
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory", "operational-resilience"],
-    ["cao-evolution-agents-md-curator.md", "optimization", "agents-md-curator"],
-    ["cao-evolution-skills-curator.md", "optimization", "skills-curator"],
+    ["cao-evolution-agents-md-curator.md", "cao-evolution", "agents-md-curator"],
+    ["cao-evolution-skills-curator.md", "cao-evolution", "skills-curator"],
     ["cao-evolution-failures-investigator.md", "cao-evolution", "failures-investigator"],
     ["cao-evolution-compiler-security.md", "cao-evolution", "compiler-security"],
     ["cao-evolution-efficiency.md", "cao-evolution", "efficiency"],
@@ -143,8 +143,8 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["eu-cra-compliance-security-requirements-auditor.md", "eu-cra-compliance", "security-requirements-auditor"],
     ["eu-cra-compliance-supply-chain-sbom-auditor.md", "eu-cra-compliance", "supply-chain-sbom-auditor"],
     ["eu-cra-compliance-vulnerability-handling-auditor.md", "eu-cra-compliance", "vulnerability-handling-auditor"],
-    ["cao-evolution-ai-credit-auditor.md", "optimization", "ai-credit-auditor"],
-    ["cao-evolution-ai-credit-optimizer.md", "optimization", "ai-credit-optimizer"],
+    ["cao-evolution-ai-credit-auditor.md", "cao-evolution", "ai-credit-auditor"],
+    ["cao-evolution-ai-credit-optimizer.md", "cao-evolution", "ai-credit-optimizer"],
     ["software-development-practices-github-well-architected.md", "software-development-practices", "github-well-architected"],
     ["software-development-practices-nist-ssdf.md", "software-development-practices", "nist-ssdf"],
     ["self-care-accessibility-checker.md", "self-care", "accessibility-checker"],

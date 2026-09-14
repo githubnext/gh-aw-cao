@@ -2,13 +2,13 @@
   "language-version": "0.1.0",
   "dashboard": {
     "id": "cao-evolution-optimization-dashboard",
-    "title": "AW Optimization",
-    "description": "Track AI Credit and ambient context optimization runs, retained recommendations, and matured accuracy and efficiency evidence.",
+    "title": "CAO Evolution / Optimization",
+    "description": "Track CAO Evolution AI Credit and ambient context runs, retained recommendations, and matured accuracy and efficiency evidence.",
     "repository": "githubnext/gh-aw-cao",
     "queries": [
       {
         "name": "cao-evolution-optimization-run-observations",
-        "intent": "Show AW Optimization orchestrator and worker runs so operators can verify activation across AI Credit and ambient-context operations.",
+        "intent": "Show CAO Evolution orchestrator and optimization worker runs so operators can verify activation across AI Credit and ambient-context operations.",
         "from": "runs",
         "filter": {
           "predicates": [
@@ -33,7 +33,7 @@
       },
       {
         "name": "cao-evolution-optimization-retained-outcomes",
-        "intent": "List retained AW Optimization audits and recommendations without presenting proposed savings or context changes as realized value.",
+        "intent": "List retained CAO Evolution optimization audits and recommendations without presenting proposed savings or context changes as realized value.",
         "from": "outcomes",
         "filter": {
           "predicates": [
@@ -64,7 +64,7 @@
       },
       {
         "name": "cao-evolution-optimization-attainment-observations",
-        "intent": "Show matured accuracy and efficiency observations for graded AW Optimization workers while preserving each evaluator definition.",
+        "intent": "Show matured accuracy and efficiency observations for graded CAO Evolution optimization workers while preserving each evaluator definition.",
         "from": "operational-values",
         "filter": {
           "predicates": [
@@ -90,13 +90,13 @@
       {
         "id": "cao-evolution-optimization-dashboard",
         "kind": "custom",
-        "title": "AW Optimization",
-        "description": "Track AI Credit and ambient context optimization runs, retained recommendations, and matured accuracy and efficiency evidence.",
+        "title": "CAO Evolution / Optimization",
+        "description": "Track CAO Evolution AI Credit and ambient context runs, retained recommendations, and matured accuracy and efficiency evidence.",
         "icon": "meter",
         "views": [
           {
-            "id": "optimization-runs",
-            "title": "AW Optimization runs by conclusion",
+            "id": "cao-evolution-optimization-runs",
+            "title": "Optimization runs by conclusion",
             "disclosure": "essential",
             "data": {
               "source": "cao-evolution-optimization-run-observations",
@@ -129,7 +129,7 @@
             }
           },
           {
-            "id": "optimization-outcomes",
+            "id": "cao-evolution-optimization-outcomes",
             "title": "Audit and optimization outputs",
             "description": "Retained snapshots and recommendations expose repository evidence without treating a recommendation as realized savings or context improvement.",
             "disclosure": "essential",
@@ -202,7 +202,7 @@
             }
           },
           {
-            "id": "optimization-attainment",
+            "id": "cao-evolution-optimization-attainment",
             "disclosure-label": "Accuracy and efficiency evidence",
             "description": "AI Credit and ambient context evidence matures on each worker's frozen evaluation schedule.",
             "disclosure": "supplemental",
@@ -263,7 +263,7 @@
             }
           },
           {
-            "id": "optimization-value-trend",
+            "id": "cao-evolution-optimization-value-trend",
             "title": "Operational-value trend",
             "description": "AI Credit and ambient context attainment remain separate evaluator series and are not inferred from activity totals alone.",
             "disclosure": "essential",

@@ -113,8 +113,8 @@ safe-outputs:
   create-issue:
     expires: 30d
     deduplicate-by-title: true
-    title-prefix: "[optimization:skills-curator] "
-    labels: [optimization, optimization:skills-curator]
+    title-prefix: "[cao-evolution:skills-curator] "
+    labels: [cao-evolution, cao-evolution:skills-curator]
     close-older-issues: true
     max: 1
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}

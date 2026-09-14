@@ -5,32 +5,38 @@ import test from "node:test";
 import { parse } from "yaml";
 import { root, workflow } from "./workflow-contract.helpers.mjs";
 
-// CAO Evolution and AW Optimization operation contracts.
+// CAO Evolution operation contracts.
 
-test("AW Optimization combines AI Credit and ambient-context workers", () => {
-  const orchestrator = workflow("optimization.md");
-  const manifest = parse(readFileSync(join(root, "optimization", "aw.yml"), "utf8"));
-  const dashboard = JSON.parse(readFileSync(join(root, "optimization", "dashboard.json"), "utf8"));
+test("CAO Evolution combines health, AI Credit, and ambient-context workers", () => {
+  const orchestrator = workflow("cao-evolution.md");
+  const manifest = parse(readFileSync(join(root, "cao-evolution", "aw.yml"), "utf8"));
+  const dashboard = JSON.parse(readFileSync(join(root, "cao-evolution", "cao-evolution-optimization-dashboard.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const workerNames = [
-    ["cao-evolution-ai-credit-auditor.md", "AW Optimization / AI Credit Audit"],
-    ["cao-evolution-ai-credit-optimizer.md", "AW Optimization / AI Credit Savings"],
-    ["cao-evolution-agents-md-curator.md", "AW Optimization / AGENTS.md"],
-    ["cao-evolution-skills-curator.md", "AW Optimization / Skills"],
+    ["cao-evolution-ai-credit-auditor.md", "CAO Evolution / AI Credit Audit"],
+    ["cao-evolution-ai-credit-optimizer.md", "CAO Evolution / AI Credit Savings"],
+    ["cao-evolution-agents-md-curator.md", "CAO Evolution / AGENTS.md"],
+    ["cao-evolution-skills-curator.md", "CAO Evolution / Skills"],
   ];
 
-  assert.equal(manifest.name, "AW Optimization");
-  assert.equal(dashboard.dashboard.title, "AW Optimization");
-  assert.match(orchestrator, /^name: "AW Optimization"$/m);
-  assert.match(orchestrator, /worker_credits_per_target: 1650/);
+  assert.equal(manifest.name, "CAO Evolution");
+  assert.equal(dashboard.dashboard.title, "CAO Evolution / Optimization");
+  assert.match(orchestrator, /^name: "CAO Evolution"$/m);
+  assert.match(orchestrator, /worker_credits_per_target: 4350/);
   assert.match(
     orchestrator,
     /workflows: \[cao-evolution-ai-credit-auditor, cao-evolution-ai-credit-optimizer, cao-evolution-agents-md-curator, cao-evolution-skills-curator\]/,
   );
   assert.deepEqual(
-    Object.keys(policy["control-plane"].packages.optimization.workers).sort(),
+    Object.keys(policy["control-plane"].packages["cao-evolution"].workers).filter((name) => [
+      "ai-credit-auditor",
+      "ai-credit-optimizer",
+      "agents-md-curator",
+      "skills-curator",
+    ].includes(name)).sort(),
     ["ai-credit-auditor", "ai-credit-optimizer", "agents-md-curator", "skills-curator"].sort(),
   );
+  assert.equal(policy["control-plane"].packages.optimization, undefined);
   assert.equal(policy["control-plane"].packages["ambient-context"], undefined);
   for (const [name, displayName] of workerNames) {
     assert.match(workflow(name), new RegExp(`^name: "${displayName.replace("/", "\\/")}"$`, "m"));
@@ -49,6 +55,10 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     ["failures-investigator", "cao-evolution-failures-investigator"],
     ["integrity", "cao-evolution-integrity"],
     ["reliability", "cao-evolution-reliability"],
+    ["ai-credit-auditor", "cao-evolution-ai-credit-auditor"],
+    ["ai-credit-optimizer", "cao-evolution-ai-credit-optimizer"],
+    ["agents-md-curator", "cao-evolution-agents-md-curator"],
+    ["skills-curator", "cao-evolution-skills-curator"],
   ];
 
   assert.equal(manifest.name, "CAO Evolution");
@@ -73,6 +83,10 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     ".github/workflows/cao-evolution-failures-investigator.md",
     ".github/workflows/cao-evolution-integrity.md",
     ".github/workflows/cao-evolution-reliability.md",
+    ".github/workflows/cao-evolution-agents-md-curator.md",
+    ".github/workflows/cao-evolution-ai-credit-auditor.md",
+    ".github/workflows/cao-evolution-ai-credit-optimizer.md",
+    ".github/workflows/cao-evolution-skills-curator.md",
     ".github/workflows/cao-evolution.md",
   ]);
   assert.deepEqual(policy["control-plane"].packages["cao-evolution"], {
@@ -86,7 +100,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   });
   assert.match(orchestrator, /A \*\*control repository\*\* has `\.github\/workflows\/cao\.json`/);
   assert.match(orchestrator, /An \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` package manifest/);
-  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security\]/);
+  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security, cao-evolution-ai-credit-auditor, cao-evolution-ai-credit-optimizer, cao-evolution-agents-md-curator, cao-evolution-skills-curator\]/);
   assert.match(orchestrator, /Dispatch each eligible worker at most once for each selected repository and effective mode/);
   for (const [workerName, workflowName] of workers) {
     const source = workflow(`${workflowName}.md`);
@@ -106,7 +120,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(efficiency, /Never attempt to open, download, or treat browser IndexedDB as shared or authoritative storage/);
   assert.match(efficiency, /open review backlog, oldest review age, review-decision latency, accepted outcomes, rejected or closed-unmerged outcomes/);
   assert.match(efficiency, /Select one package and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
-  assert.match(efficiency, /Do not duplicate `AW Optimization`/);
+  assert.match(efficiency, /Do not duplicate the package's optimization workers/);
 
   const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
   assert.match(packageSkill, /When a worker optimizes a package or package portfolio/);
@@ -177,7 +191,6 @@ test("slower package orchestrators run hourly", () => {
   for (const name of [
     "dependabot.md",
     "eu-cra-compliance.md",
-    "optimization.md",
     "software-development-practices.md",
     "uk-ai-advisory.md",
   ]) {

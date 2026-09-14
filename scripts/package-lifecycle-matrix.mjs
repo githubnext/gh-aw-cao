@@ -12,10 +12,8 @@ const suites = [
     prefixes: [
       ".github/aw/cao-evolution/graders/",
       ".github/aw/dependabot/graders/",
-      ".github/aw/optimization/graders/",
       ".github/workflows/graders/cao-evolution-",
       ".github/workflows/graders/dependabot-",
-      ".github/workflows/graders/optimization-",
       ".github/workflows/shared/",
     ],
   },

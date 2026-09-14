@@ -115,8 +115,8 @@ safe-outputs:
   create-issue:
     expires: 3d
     deduplicate-by-title: true
-    title-prefix: "[optimization:ai-credit-auditor] "
-    labels: [optimization, optimization:ai-credit-auditor]
+    title-prefix: "[cao-evolution:ai-credit-auditor] "
+    labels: [cao-evolution, cao-evolution:ai-credit-auditor]
     max: 1
     close-older-issues: true
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}

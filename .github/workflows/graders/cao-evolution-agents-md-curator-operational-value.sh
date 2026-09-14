@@ -68,7 +68,7 @@ find_proposal() {
       | jq -s 'add // []' >"$tmp_dir/issues.json" 2>/dev/null || return 1
     jq -ce --arg target "$target_repo" --arg from "$created_at" --arg to "$window_end" '
       [.[] | select((.pull_request | not)
-        and ((.title // "") | startswith("[optimization:agents-md-curator] "))
+        and ((.title // "") | startswith("[cao-evolution:agents-md-curator] "))
         and ((.body // "") | contains($target))
         and .created_at >= $from and .created_at < $to)]
       | first // empty | {number, createdAt: .created_at}

@@ -17,7 +17,6 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
     "dashboard/aw.yml",
     "dependabot/aw.yml",
     "eu-cra-compliance/aw.yml",
-    "optimization/aw.yml",
     "self-care/aw.yml",
     "software-development-practices/aw.yml",
   ];
@@ -48,7 +47,6 @@ test("catalog packages declare their current experimental maturity", () => {
     "dashboard/aw.yml",
     "dependabot/aw.yml",
     "eu-cra-compliance/aw.yml",
-    "optimization/aw.yml",
     "self-care/aw.yml",
     "software-development-practices/aw.yml",
   ];
@@ -206,7 +204,6 @@ test("root package composes its operational packages through manifests", () => {
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
     "dependabot/aw.yml",
-    "optimization/aw.yml",
   ]);
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));
   assert.deepEqual(project.auto_upgrade.options, ["--pre-releases"]);

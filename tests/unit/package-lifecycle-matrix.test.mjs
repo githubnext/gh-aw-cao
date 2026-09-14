@@ -24,16 +24,16 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     ["root", "CAO Evolution"],
   );
   assert.deepEqual(
-    names([".github/aw/optimization/graders/cao-evolution-ai-credit-auditor-operational-value.sh"]),
-    ["root"],
+    names([".github/aw/cao-evolution/graders/cao-evolution-ai-credit-auditor-operational-value.sh"]),
+    ["root", "CAO Evolution"],
   );
   assert.deepEqual(
     names([".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh"]),
     ["EU CRA"],
   );
   assert.deepEqual(
-    names(["optimization/.github/graders/cao-evolution-ai-credit-auditor-operational-value.sh"]),
-    ["root"],
+    names(["cao-evolution/.github/graders/cao-evolution-ai-credit-auditor-operational-value.sh"]),
+    ["root", "CAO Evolution"],
   );
   assert.deepEqual(
     names(["dependabot/.github/graders/dependabot-release-train-updater-operational-value.sh"]),
