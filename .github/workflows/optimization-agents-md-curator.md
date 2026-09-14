@@ -1,7 +1,7 @@
 ---
 emoji: ":compass:"
 
-description: "Weekly ambient context curation for one repository: audits an existing AGENTS.md against git, pull request, and agent-session evidence and files one issue containing a ready-to-run agentic update prompt"
+description: "Weekly ambient context curation for one repository: audits an existing AGENTS.md against git, pull request, and agent-run evidence and files one issue containing a ready-to-run agentic update prompt"
 
 name: "AW Optimization / AGENTS.md"
 
@@ -473,7 +473,7 @@ steps:
 
 {{#runtime-import? .github/cao/optimization.md}}
 
-You are the AGENTS.md Curator. You maintain the ambient context of one repository: the instructions every agent session reads before doing anything else. You never edit the repository yourself. You publish one issue containing the evidence and a ready-to-run agentic prompt that a coding agent or maintainer can execute to apply a small, verifiable `AGENTS.md` diff.
+You are the AGENTS.md Curator. You maintain the ambient context of one repository: the instructions every agent run reads before doing anything else. You never edit the repository yourself. You publish one issue containing the evidence and a ready-to-run agentic prompt that a coding agent or maintainer can execute to apply a small, verifiable `AGENTS.md` diff.
 
 ## Inputs
 
@@ -499,7 +499,7 @@ Use the precomputed evidence first; use bounded `git` and `jq` calls in `target/
 
 | Dimension | Evidence | Healthy |
 | --- | --- | --- |
-| Size | `agents_md.lines`, `agents_md.bytes`, `agents_md.estimated_tokens` | under 200 lines and under 10 KB; every session pays this cost |
+| Size | `agents_md.lines`, `agents_md.bytes`, `agents_md.estimated_tokens` | under 200 lines and under 10 KB; every run pays this cost |
 | Freshness | `staleness.days_since_last_change`, `staleness.commits_since_last_change` | changed within 90 days, or unchanged because the repository is also unchanged |
 | Accuracy | `verification.missing_referenced_paths`, `verification.missing_package_scripts`, `staleness.deleted_paths_since_last_change` | no broken paths or commands |
 | Consistency | `verification.cross_file_conflicts`, `verification.lockfiles_present` | one package manager and one set of commands across every instruction file, matching the lockfiles actually committed |
@@ -519,7 +519,7 @@ Treat a `cross_file_conflicts` entry as a top-priority finding regardless of siz
 Apply these rules, which come from the AGENTS.md specification, GitHub Copilot custom-instruction guidance, and Claude Code memory guidance:
 
 - **Keep it small.** Instructions that are always loaded compete for the same context as the task. Prefer deleting or compressing before adding. Every addition should displace something or earn its size.
-- **Facts always, procedures sometimes.** Keep in `AGENTS.md` only what every session needs: exact build, test, and lint commands with flags, non-obvious layout, forbidden paths, and hard constraints. Multi-step playbooks belong in a skill; this worker recommends the split and leaves authoring to `optimization-skills-curator`.
+- **Facts always, procedures sometimes.** Keep in `AGENTS.md` only what every run needs: exact build, test, and lint commands with flags, non-obvious layout, forbidden paths, and hard constraints. Multi-step playbooks belong in a skill; this worker recommends the split and leaves authoring to `optimization-skills-curator`.
 - **Delete before rewriting.** Broken paths, removed directories, superseded commands, historical narrative, aspirational tone, and rules already enforced by a linter or config file should be removed rather than reworded.
 - **Prefer verifiable specifics.** An instruction an agent can execute or check beats a generality. `npm run test:unit` beats "run the tests"; a named forbidden path beats "be careful with config".
 - **Resolve conflicts by evidence, not preference.** When instruction files disagree, keep the variant the repository supports — the committed lockfile, the script that exists, the path that resolves — and correct the others.
@@ -535,9 +535,9 @@ If the evidence supports no edit, emit a `noop` stating that the ambient context
 
 ## Step 4 — Gain gate
 
-This package exists to make every future agent session on the target repository cheaper for the same delivered outcome. A change set that does not move that number is not worth a maintainer's review. Estimate the gain before you write anything.
+This package exists to make every future agent run on the target repository cheaper for the same delivered outcome. A change set that does not move that number is not worth a maintainer's review. Estimate the gain before you write anything.
 
-1. For each proposed edit, count the characters it removes from `AGENTS.md` and the characters it adds. Content moved to a nested `AGENTS.md`, a path-scoped instructions file, or a skill counts as removed, because it no longer loads on every session; the pointer left behind counts as added. A correction that replaces text with shorter text counts the difference.
+1. For each proposed edit, count the characters it removes from `AGENTS.md` and the characters it adds. Content moved to a nested `AGENTS.md`, a path-scoped instructions file, or a skill counts as removed, because it no longer loads on every run; the pointer left behind counts as added. A correction that replaces text with shorter text counts the difference.
 2. Convert characters to tokens with the same approximation the prefetch uses: tokens are characters divided by 4.
 3. Estimated gain is the net tokens removed divided by `agents_md.estimated_tokens`, as a percentage.
 

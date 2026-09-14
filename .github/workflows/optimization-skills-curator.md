@@ -327,7 +327,7 @@ If `in_flight.open_instruction_pull_requests` is non-empty, a previous proposal 
 
 Only a skill's `name` and `description` are loaded up front; the body loads when the skill is selected. That makes the split between always-loaded facts and on-demand procedures the central design decision.
 
-- **Belongs in `AGENTS.md`**: facts every session needs — exact commands, layout, hard constraints.
+- **Belongs in `AGENTS.md`**: facts every run needs — exact commands, layout, hard constraints.
 - **Belongs in a skill**: a named procedure needed only sometimes — a multi-step playbook, checklist, or task recipe.
 - **Belongs in a nested `AGENTS.md` or path-scoped instructions file**: a rule that applies only to one directory, so it loads only when that area is touched.
 - **Belongs in config or CI**: an absolute rule that a linter, formatter, or required check can enforce deterministically, at no context cost.
@@ -356,7 +356,7 @@ A description is the whole selection signal: it is loaded up front and the body 
 - Every change must cite prefetch evidence.
 - Prefer sharpening one description over authoring a new skill.
 - Never propose a skill whose procedure is not already written down somewhere in the repository.
-- When a procedure moves out of `AGENTS.md`, the pointer left behind must keep the facts a session needs even without opening the skill, so routine tasks do not pay an extra file read.
+- When a procedure moves out of `AGENTS.md`, the pointer left behind must keep the facts a run needs even without opening the skill, so routine tasks do not pay an extra file read.
 - If nothing qualifies, emit a `noop` with the skill count, size numbers, and the reason no change is warranted. A clean no-op is a successful run.
 
 Then apply the gain gate. Always-loaded context here is `agents_md.estimated_tokens` plus the tokens in every skill's `name` and `description`, since those load up front while skill bodies do not. For each proposed change, count the characters removed from that always-loaded total and the characters added back, including the pointer left behind by an extraction and any rewritten description. Convert with tokens as characters divided by 4, and divide the net by the always-loaded total.
