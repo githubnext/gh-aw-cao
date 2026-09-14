@@ -76,14 +76,15 @@ it('renders compact database summaries and distinct registered repository covera
   expect(rendered.querySelector('.factory-running-active > span')?.textContent).toBe('Work in motion');
   expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
   expect([...rendered.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
-    'Repositories delivered to36 registered',
+    'Repositories registered6',
     'Successful runs22 failed',
     'Dispatches42 failed',
     'Value gain1Coming soon'
   ]);
-  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('3 repositories delivered to out of 6 registered');
-  expect(rendered.querySelector('.factory-station:first-child small a')?.getAttribute('href')).toBe('#page-repositories');
-  expect(rendered.querySelector('.factory-station:first-child small a')?.textContent).toBe('6 registered');
+  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('6 repositories registered with 3 delivered to');
+  expect(rendered.querySelector('.factory-station:first-child strong a')?.getAttribute('href')).toBe('#page-repositories');
+  expect(rendered.querySelector('.factory-station:first-child strong a')?.textContent).toBe('6');
+  expect(rendered.querySelector('.factory-station:first-child small')?.textContent).toBe('');
   expect(rendered.querySelector('.factory-station:nth-child(3) small a')?.getAttribute('href')).toBe('#page-dispatches?package-worker-dispatches.status=failure');
   expect([...rendered.querySelectorAll('.factory-rhythm-day small')].map((day) => day.textContent)).toEqual([
     'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
@@ -153,19 +154,18 @@ it('hides the duplicate run and dispatch summary when no useful outputs exist', 
   expect(summary?.textContent).toBe('');
 });
 
-it('reports unavailable repository delivery evidence instead of counting control runs', () => {
+it('reports unavailable registered repository evidence instead of counting delivery', () => {
   const rendered = renderFactoryOverview({
     sources: overviewSources({
-      'overview-delivery-summary': source('overview-delivery-summary', [], { availability: 'unavailable' }),
-      'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }])
+      'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
+      'overview-registered-repository-summary': source('overview-registered-repository-summary', [], { availability: 'unavailable' })
     })
   });
 
-  expect(rendered.querySelector('.factory-station')?.textContent).toBe('Repositories delivered toUnavailable6 registered');
+  expect(rendered.querySelector('.factory-station')?.textContent).toBe('Repositories registeredUnavailable');
   expect(rendered.querySelector('.factory-station:first-child strong a')).toBeNull();
-  expect(rendered.querySelector('.factory-station:first-child small a')?.getAttribute('href')).toBe('#page-repositories');
-  expect(rendered.querySelector('.factory-station:first-child small a')?.textContent).toBe('6 registered');
-  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('Repository delivery evidence unavailable; 6 registered');
+  expect(rendered.querySelector('.factory-station:first-child small')?.textContent).toBe('');
+  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('Registered repositories unavailable');
 });
 
 it('renders rhythm days as non-interactive bars with concise hover descriptions', () => {

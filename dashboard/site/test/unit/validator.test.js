@@ -778,7 +778,7 @@ describe('dashboard document validation', () => {
 
     expect(page.views).toEqual([expect.objectContaining({
       id: 'overview-outcomes',
-      description: 'Repositories delivered to counts distinct targets with retained completed delivery evidence in the selected horizon and compares them with the distinct registered target set.',
+      description: 'Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
       data: { sources: expect.arrayContaining([
         'overview-outcome-summary',
         'overview-run-summary',

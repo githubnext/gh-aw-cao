@@ -85,7 +85,7 @@ function sameMotion(current, next) {
 
 /** @type {Record<string, PluralText>} */
 const DEFAULT_STATION_LABELS = {
-  repositories: { singular: 'Repository delivered to', plural: 'Repositories delivered to' },
+  repositories: { singular: 'Repository registered', plural: 'Repositories registered' },
   'successful-runs': { singular: 'Successful run', plural: 'Successful runs' },
   dispatches: { singular: 'Dispatch', plural: 'Dispatches' },
   'value-gains': { singular: 'Value gain', plural: 'Value gains' }
@@ -280,13 +280,11 @@ function renderFactoryFloor(sources, metrics, label) {
   repositories.bind(() => {
     const coverage = metrics.coverage();
     return {
-      pending: sources['overview-delivery-summary'].pending() || sources['overview-registered-repository-summary'].pending(),
-      unavailable: coverage.unavailable,
-      label: label('repositories', coverage.total),
-      value: coverage.total,
-      detail: coverage.registeredUnavailable
-        ? 'Registered targets unavailable'
-        : h('a', { href: '#page-repositories' }, `${formatCount(coverage.registered)} registered`)
+      pending: sources['overview-registered-repository-summary'].pending(),
+      unavailable: coverage.registeredUnavailable,
+      label: label('repositories', coverage.registered),
+      value: coverage.registered,
+      detail: ''
     };
   });
 
@@ -335,11 +333,12 @@ function renderFactoryFloor(sources, metrics, label) {
     const usefulOutputs = metrics.usefulOutputs();
     const activeRuns = factoryMotionState.get().operations;
     floor.className = `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`;
+    const repositoriesDescription = coverage.registeredUnavailable
+      ? 'Registered repositories unavailable'
+      : `${formatCount(coverage.registered)} ${label('repositories', coverage.registered).toLowerCase()}${coverage.unavailable ? '; repository delivery evidence unavailable' : ` with ${formatCount(coverage.total)} delivered to`}`;
     floor.setAttribute(
       'aria-label',
-      `${coverage.unavailable
-        ? `Repository delivery evidence unavailable; ${coverage.registeredUnavailable ? 'registered targets unavailable' : `${formatCount(coverage.registered)} registered`}`
-        : `${formatCount(coverage.total)} ${label('repositories', coverage.total).toLowerCase()} out of ${formatCount(coverage.registered)} registered`}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
+      `${repositoriesDescription}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
     );
   });
 

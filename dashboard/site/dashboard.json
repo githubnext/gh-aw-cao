@@ -7426,7 +7426,7 @@
           {
             "id": "overview-outcomes",
             "title": "How are we doing?",
-            "description": "Repositories delivered to counts distinct targets with retained completed delivery evidence in the selected horizon and compares them with the distinct registered target set.",
+            "description": "Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.",
             "data": {
               "sources": [
                 "overview-outcome-summary",
@@ -7444,8 +7444,8 @@
             "config": {
               "labels": {
                 "repositories": {
-                  "singular": "Repository delivered to",
-                  "plural": "Repositories delivered to"
+                  "singular": "Repository registered",
+                  "plural": "Repositories registered"
                 },
                 "successful-runs": {
                   "singular": "Successful run",
