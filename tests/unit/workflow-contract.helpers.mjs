@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse } from "yaml";
 
 // Shared fixtures and helpers for the workflow-contract-*.test.mjs suites.
 
@@ -14,6 +15,13 @@ export const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 export function workflow(name, directory = workflowsDirectory) {
   return readFileSync(join(directory, name), "utf8");
+}
+
+export function frontmatter(source, name = "workflow") {
+  const normalized = source.replace(/\r\n/g, "\n");
+  const match = /^---\n([\s\S]*?)\n---/.exec(normalized);
+  assert.ok(match, `${name} must have frontmatter`);
+  return parse(match[1]);
 }
 
 export function script(name, directory) {

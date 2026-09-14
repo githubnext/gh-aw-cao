@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parse } from "yaml";
 
-import { stepBlock, workflow } from "./workflow-contract.helpers.mjs";
+import { frontmatter, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
 test("release context paginates before filtering complete API responses", () => {
   const fetchReleaseContext = stepBlock(workflow("release.md"), "Fetch release context");
@@ -16,10 +15,7 @@ test("release context paginates before filtering complete API responses", () => 
 });
 
 test("release safe output updates use the workflow token that created the draft release", () => {
-  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(workflow("release.md"))?.[1];
-  assert.ok(frontmatter, "release workflow must have frontmatter");
-
-  const safeOutputs = parse(frontmatter)["safe-outputs"];
+  const safeOutputs = frontmatter(workflow("release.md"), "release workflow")["safe-outputs"];
   assert.ok(safeOutputs, "release workflow must configure safe outputs");
   assert.equal(safeOutputs["github-token"], "${{ secrets.GITHUB_TOKEN }}");
   assert.ok(
