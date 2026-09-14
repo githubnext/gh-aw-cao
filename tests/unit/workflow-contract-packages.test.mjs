@@ -262,7 +262,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /What do you want CAO to do with the catalog operations installed by the root package/);
   assert.match(setupSkill, /immutable root package installs its core catalog workflows as one unit/);
   assert.match(setupSkill, /Do you also want to create an operation package of your own/);
-  assert.match(setupSkill, /plan an explicit handoff to `.github\/skills\/create-ops-package\/SKILL\.md` after step 13/);
+  assert.match(setupSkill, /plan an explicit handoff to `.github\/skills\/create-ops-package\/SKILL\.md` after step 14/);
   assert.match(setupSkill, /Never silently default the package to Dependabot/);
   assert.match(setupSkill, /read the control repository's `.github\/workflows\/cao\.json` and the current dashboard state/);
   assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the dashboard/);
@@ -275,6 +275,9 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Offer `<organization>\/<control-repository>` as the default/);
   assert.match(setupSkill, /target_repo="<target-owner>\/<target-repository>"/);
   assert.doesNotMatch(setupSkill, /Always target the control repository itself for the first run/);
+  assert.match(setupSkill, /^1\. Install or verify the `gh-aw` CLI before any other setup work/m);
+  assert.match(setupSkill, /install-gh-aw\.sh \| bash/);
+  assert.match(setupSkill, /github\/gh-aw\/blob\/main\/install\.md/);
   assert.match(setupSkill, /gh aw add githubnext\/gh-aw-cao/);
   assert.match(setupSkill, /gh-aw resolves the latest published release, retries transient package-install failures/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
