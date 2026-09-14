@@ -1433,6 +1433,44 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('does not reuse history direction when popstate leaves the hash unchanged', async () => {
+    window.history.replaceState(null, '', '/');
+    /** @type {Array<string | undefined>} */
+    const directions = [];
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        directions.push(document.documentElement.dataset.navigationDirection);
+        callback();
+        return { finished: Promise.resolve() };
+      })
+    });
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    document.body.append(rendered);
+    const cost = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'));
+
+    cost?.click();
+    cost?.click();
+    window.dispatchEvent(new PopStateEvent('popstate', {
+      state: { centralAgenticOpsNavigationIndex: 1 }
+    }));
+    window.history.replaceState(
+      { centralAgenticOpsNavigationIndex: 1 },
+      '',
+      '/#page-home'
+    );
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+    expect(directions).toEqual(['forward', 'forward', undefined]);
+    await Promise.resolve();
+    rendered.remove();
+    Reflect.deleteProperty(document, 'startViewTransition');
+    window.history.replaceState(null, '', '/');
+  });
+
   it('uses browser navigation entries to show back only when the previous page is in the dashboard', () => {
     window.history.replaceState(null, '', '/#page-cost');
     let currentIndex = 1;

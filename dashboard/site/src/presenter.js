@@ -103,7 +103,12 @@ export function updateWithViewTransition(document, update, direction) {
     return;
   }
 
-  if (direction) document.documentElement.dataset.navigationDirection = direction;
+  if (direction) {
+    document.documentElement.dataset.navigationDirection = direction;
+  } else {
+    directionalViewTransitions.delete(document);
+    delete document.documentElement.dataset.navigationDirection;
+  }
   const transition = transitionDocument.startViewTransition(update);
   trackViewTransition(document, transition);
   if (!direction) return;
@@ -1594,6 +1599,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     : 0;
   /** @type {'forward'|'backward'|undefined} */
   let pendingNavigationDirection;
+  /** @type {string | undefined} */
+  let pendingNavigationHash;
   const previousEntryIsDashboard = () => {
     const currentEntry = browserNavigation?.currentEntry;
     const entries = browserNavigation?.entries?.();
@@ -1630,6 +1637,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
     if (!(link instanceof HTMLAnchorElement)) return;
     event.preventDefault();
+    pendingNavigationDirection = undefined;
+    pendingNavigationHash = undefined;
     const pageId = getNavigationPageId(link);
     if (!pageId || !availableIds.has(pageId)) return;
     navigationIndex += 1;
@@ -1687,6 +1696,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       : nextNavigationIndex > navigationIndex
         ? 'forward'
         : undefined;
+    pendingNavigationHash = defaultView?.location.hash;
     navigationIndex = nextNavigationIndex;
     syncHistoryBack();
   };
@@ -1699,8 +1709,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
     syncHistoryBack();
     const route = routeFromHash();
-    const navigationDirection = pendingNavigationDirection;
+    const navigationDirection = pendingNavigationHash === defaultView?.location.hash
+      ? pendingNavigationDirection
+      : undefined;
     pendingNavigationDirection = undefined;
+    pendingNavigationHash = undefined;
     updateWithViewTransition(root.ownerDocument, () => activate(
       route?.pageId ?? initialPageId,
       route?.parameters,
