@@ -43,8 +43,9 @@ $RUNNER_TEMP/cao-activity/inventory-sources.json
 $RUNNER_TEMP/cao-activity/drain3_weights.json
 ```
 
-`payload-hashes.json` maps the JSONL source and SQLite projection filenames to
-their SHA-256 checksums. The dashboard publishes it beside both payloads so
+`payload-hashes.json` maps the JSONL source and SQLite projection filenames,
+plus each retained `gh-aw-logs-shards/<shard>.jsonl` wildcard shard, to their
+SHA-256 checksums. The dashboard publishes it beside both payloads so
 clients can detect unchanged data without downloading either complete payload.
 Dashboard ingestion checks this sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is usable.

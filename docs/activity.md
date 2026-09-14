@@ -53,6 +53,7 @@ The cache holds:
 ```text
 $RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
+$RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
 $RUNNER_TEMP/cao-activity/payload-hashes.json
 $RUNNER_TEMP/cao-activity/control-settings.json
 $RUNNER_TEMP/cao-activity/inventory-sources.json
@@ -60,9 +61,10 @@ $RUNNER_TEMP/cao-activity/drain3_weights.json
 ```
 
 `payload-hashes.json` maps the current JSONL source and SQLite projection
-filenames to their SHA-256 checksums. The dashboard publishes this small file
-beside both payloads so clients can detect unchanged data without downloading
-either payload.
+filenames, plus each retained `gh-aw-logs-shards/<shard>.jsonl` wildcard shard,
+to their SHA-256 checksums. The dashboard publishes this small file beside
+both payloads so clients can detect unchanged data without downloading either
+payload.
 Dashboard ingestion checks the sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is
 usable.

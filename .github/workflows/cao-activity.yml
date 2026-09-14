@@ -221,10 +221,18 @@ jobs:
       - name: Hash activity payloads
         run: |
           cd "$RUNNER_TEMP/cao-activity"
+          shard_hashes="{}"
+          if compgen -G "gh-aw-logs-shards/*.jsonl" > /dev/null; then
+            shard_hashes="$(sha256sum gh-aw-logs-shards/*.jsonl | jq -R -s '
+              split("\n") | map(select(length > 0) | capture("^(?<hash>[0-9a-f]+)\\s+(?<file>.+)$")) |
+              map({(.file): .hash}) | add // {}
+            ')"
+          fi
           jq -n \
             --arg jsonl "$(sha256sum gh-aw-logs.jsonl | cut -d' ' -f1)" \
             --arg sqlite "$(sha256sum gh-aw-logs.sqlite | cut -d' ' -f1)" \
-            '{"gh-aw-logs.jsonl": $jsonl, "gh-aw-logs.sqlite": $sqlite}' \
+            --argjson shards "$shard_hashes" \
+            '{"gh-aw-logs.jsonl": $jsonl, "gh-aw-logs.sqlite": $sqlite} + $shards' \
             > payload-hashes.json
 
       - name: Upload activity snapshot
