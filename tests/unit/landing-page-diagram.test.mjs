@@ -118,6 +118,14 @@ test("configured wizard operations exclude private packages", () => {
   assert.deepEqual(selectConfiguredOperations(policy, [first, privatePackage]), [first]);
 });
 
+test("configured wizard operations exclude builtin packages", () => {
+  const first = { slug: "first" };
+  const builtinPackage = { slug: "builtin", builtin: true };
+  const policy = { "control-plane": { packages: { builtin: {}, first: {} } } };
+
+  assert.deepEqual(selectConfiguredOperations(policy, [first, builtinPackage]), [first]);
+});
+
 test("wizard policy keeps the checked-in package configuration", () => {
   const policy = buildWizardPolicy(controlPolicy, "acme", "dependabot");
   const { icon, ...expectedPackage } = controlPolicy["control-plane"].packages.dependabot;

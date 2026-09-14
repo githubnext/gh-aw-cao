@@ -1,6 +1,7 @@
 import type { MarkdownInstance } from "astro";
 import { parse } from "yaml";
 import controlPolicy from "../../.github/workflows/cao.json";
+import rootManifestSource from "../../aw.yml?raw";
 import { selectConfiguredOperations } from "./configured-operations.mjs";
 
 type PackageReadme = MarkdownInstance<Record<string, unknown>>;
@@ -20,6 +21,7 @@ export type CatalogEntry = {
   description: string;
   minVersion: string;
   private: boolean;
+  builtin: boolean;
   experimental: boolean;
   includes: string[];
   manifestFile: string;
@@ -33,6 +35,7 @@ const manifests = import.meta.glob<string>("../../*/aw.{yml,yaml}", {
   eager: true,
 });
 const readmes = import.meta.glob<PackageReadme>("../../*/README.md", { eager: true });
+const rootManifest = parse(rootManifestSource) as PackageManifest;
 
 function requiredString(value: unknown, field: string, manifestPath: string): string {
   if (typeof value !== "string" || value.trim() === "") {
@@ -65,6 +68,17 @@ function workflowList(value: unknown, manifestPath: string): string[] {
   });
 }
 
+function builtinPackageSlugs(root: PackageManifest): Set<string> {
+  const includes = workflowList(root.includes, "../../aw.yml");
+  return new Set(
+    includes
+      .map((entry) => entry.match(/^([^/]+)\/aw\.ya?ml$/)?.[1])
+      .filter((slug): slug is string => Boolean(slug)),
+  );
+}
+
+const builtinSlugs = builtinPackageSlugs(rootManifest);
+
 const packageEntries: CatalogEntry[] = Object.entries(manifests)
   .map(([manifestPath, source]) => {
     const slug = manifestPath.split("/").at(-2);
@@ -82,6 +96,7 @@ const packageEntries: CatalogEntry[] = Object.entries(manifests)
       description: requiredString(manifest.description, "description", manifestPath),
       minVersion: requiredString(manifest["min-version"], "min-version", manifestPath),
       private: optionalBoolean(manifest.private, "private", manifestPath),
+      builtin: builtinSlugs.has(slug),
       experimental: optionalBoolean(manifest.experimental, "experimental", manifestPath),
       includes: workflowList(manifest.includes, manifestPath),
       manifestFile,
