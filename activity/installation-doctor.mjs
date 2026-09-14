@@ -74,6 +74,7 @@ export async function doctorCaoInstallation(directory) {
   }
 
   const destinations = new Set();
+  const caoDestinations = new Set();
   for (const { name, record } of records) {
     const recordPath = path.join('.github', 'aw', 'packages', name);
     if (record.schemaVersion !== 1 || typeof record.source !== 'string'
@@ -108,6 +109,7 @@ export async function doctorCaoInstallation(directory) {
         continue;
       }
       destinations.add(comparisonKey);
+      if (record.package === CAO_PACKAGE) caoDestinations.add(comparisonKey);
       try {
         const metadata = await lstat(absolutePath);
         if (!metadata.isFile() || metadata.isSymbolicLink()) {
@@ -137,7 +139,7 @@ export async function doctorCaoInstallation(directory) {
   }
 
   for (const required of REQUIRED_CAO_FILES) {
-    if (!destinations.has(required.toLowerCase())) {
+    if (!caoDestinations.has(required.toLowerCase())) {
       issues.push(issue(
         'required-file-untracked',
         `Required CAO file ${required} is not tracked by the package ownership record`,
