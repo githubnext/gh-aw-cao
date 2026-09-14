@@ -410,6 +410,8 @@ function renderStation(icon, options = {}) {
         else element.removeAttribute('aria-busy');
         stationLabel.textContent = station.label;
         const count = station.pending ? '' : formatCount(station.value);
+        if (station.pending) delete value.dataset.value;
+        else value.dataset.value = String(station.value);
         value.replaceChildren(options.href && !station.pending ? h('a', { href: options.href }, count) : count);
         detail.replaceChildren(station.pending ? '' : station.detail);
       });

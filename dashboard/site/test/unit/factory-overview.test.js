@@ -379,8 +379,10 @@ it('renders the overview before its queries resolve and counts each one up on it
   await Promise.resolve();
 
   expect(rendered.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Successful run11 failed');
+  expect(rendered.querySelector('.factory-station:nth-child(2) strong')?.getAttribute('data-value')).toBe('1');
   expect(rendered.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(false);
   expect(rendered.querySelector('.factory-station:nth-child(4)')?.classList.contains('factory-station-pending')).toBe(true);
+  expect(rendered.querySelector('.factory-station:nth-child(4) strong')?.hasAttribute('data-value')).toBe(false);
   expect(rendered.querySelector('h2')?.textContent).toBe('Your factory needs attention.');
   expect([...rendered.querySelectorAll('.factory-rhythm-day')].at(-1)?.getAttribute('aria-label'))
     .toBe('Fri 2026-09-11: 1 successful run');

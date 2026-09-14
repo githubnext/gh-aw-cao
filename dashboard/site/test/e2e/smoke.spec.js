@@ -1513,6 +1513,17 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator('.factory-running')).toContainText('1 package in motion (0 live, 0, in review)');
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '0']);
+  const animatedRunCount = await overviewPage.locator('.factory-station:nth-child(2) strong').evaluate((element) => {
+    const animation = element.getAnimations().find((candidate) => candidate.animationName === 'factory-station-value-count');
+    if (!animation) return null;
+    animation.pause();
+    animation.currentTime = 450;
+    const current = Number.parseInt(getComputedStyle(element).getPropertyValue('--factory-station-value'), 10);
+    animation.finish();
+    return current;
+  });
+  expect(animatedRunCount).toBeGreaterThan(0);
+  expect(animatedRunCount).toBeLessThan(20);
   await expect(overviewPage.locator('.factory-station small')).toHaveText([
     'connected',
     '80 failed',
