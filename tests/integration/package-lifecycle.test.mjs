@@ -188,7 +188,7 @@ async function installPackage(source) {
   });
 }
 
-test("gh aw add resolves root files included through a nested manifest", { timeout: 180_000 }, () => {
+test("gh aw add resolves root files included through a nested manifest", { timeout: 180_000 }, async () => {
   const packageRoot = mkdtempSync(join(tmpdir(), "central-agentic-ops-nested-package-"));
   const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-consumer-"));
   const rootFiles = [
@@ -228,13 +228,15 @@ test("gh aw add resolves root files included through a nested manifest", { timeo
     run("git", ["add", "."], packageRoot);
     run("git", ["commit", "--quiet", "-m", "Add package fixture"], packageRoot);
     run("git", ["init", "--quiet"], consumer);
-    run("gh", [
-      "aw",
-      "add",
-      packageRoot,
-      "--force",
-      "--no-security-scanner",
-    ], consumer);
+    await retryTransientPackageInstall(() => {
+      run("gh", [
+        "aw",
+        "add",
+        packageRoot,
+        "--force",
+        "--no-security-scanner",
+      ], consumer);
+    });
 
     for (const [relativePath, content] of rootFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `nested package omitted ${relativePath}`);
