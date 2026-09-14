@@ -62,7 +62,7 @@ jobs:
           RELEASE_BUMP: ${{ inputs.bump }}
           TRIGGERING_ACTOR: ${{ github.triggering_actor }}
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          github-token: ${{ github.token }}
           script: |
             const requestedBump = process.env.RELEASE_BUMP;
             const triggeringActor = process.env.TRIGGERING_ACTOR;
@@ -162,7 +162,7 @@ jobs:
       - name: Validate files installed from the root aw.yml package
         env:
           CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: ${{ github.repository }}@${{ github.sha }}
-          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: npm run test:package-root
 
   prepare-release:
@@ -180,7 +180,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
         with:
-          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          github-token: ${{ github.token }}
           script: |
             const releaseTag = process.env.RELEASE_TAG;
             core.info(`Creating tag and draft release ${releaseTag}.`);

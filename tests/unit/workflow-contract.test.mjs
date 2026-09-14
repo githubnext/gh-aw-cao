@@ -1101,7 +1101,7 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.deepEqual(config.on.workflow_dispatch.inputs.bump.options, ["patch", "minor", "major"]);
   assert.match(version, /RELEASE_BUMP: \$\{\{ inputs\.bump \}\}/);
   assert.match(version, /TRIGGERING_ACTOR: \$\{\{ github\.triggering_actor \}\}/);
-  assert.match(version, /github-token: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
+  assert.match(version, /github-token: \$\{\{ github\.token \}\}/);
   assert.match(version, /const bump = \['patch', 'minor', 'major'\]\.includes\(requestedBump\) \? requestedBump : 'patch'/);
   assert.match(version, /Unknown release bump.*defaulting to patch/);
   assert.match(version, /context\.payload\.repository\.fork/);
@@ -1122,13 +1122,13 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(version, /else if \(bump === 'minor'\)/);
   assert.match(version, /Resolved \$\{bump\} bump from/);
   assert.match(validation, /CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: \$\{\{ github\.repository \}\}@\$\{\{ github\.sha \}\}/);
-  assert.match(validation, /GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
+  assert.match(validation, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(validation, /npm run test:package-root/);
   assert.doesNotMatch(validation, /npm run test:package-lifecycle/);
   assert.match(safeOutputs, /github-token: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
   assert.deepEqual(JSON.parse(processSafeOutputs.env.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG).update_release, { max: 1 });
   assert.deepEqual(jobs.get("prepare-release")?.needs, ["resolve-version", "validate-package"]);
-  assert.match(prepare, /github-token: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
+  assert.match(prepare, /github-token: \$\{\{ github\.token \}\}/);
   assert.match(prepare, /git\.createRef/);
   assert.match(prepare, /ref: `refs\/tags\/\$\{releaseTag\}`/);
   assert.match(prepare, /sha: context\.sha/);
