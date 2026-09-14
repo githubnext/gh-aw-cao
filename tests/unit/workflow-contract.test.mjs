@@ -3241,7 +3241,6 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
   const activityIndexJob = activityWorkflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const activityCacheJob = activityWorkflow.match(/\n  cache:\n([\s\S]*)/)?.[1];
-  const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
   const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
   const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8");
   const dashboardBuildJob = dashboardWorkflow.match(/\n  build:\n([\s\S]*?)\n  cache:\n/)?.[1];
@@ -3291,9 +3290,6 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.doesNotMatch(activityWorkflow, /(?:key|restore-keys): cao-activity-(?!v3-)/);
   assert.doesNotMatch(dashboardWorkflow, /(?:key|restore-keys): cao-activity-(?!v3-)/);
   assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?Validate restored activity data[\s\S]*?Assemble Dashboard Language site/);
-  assert.match(maintenanceWorkflow, /workflow_dispatch:[\s\S]*?command:[\s\S]*?clear-cache/);
-  assert.match(maintenanceWorkflow, /permissions:[\s\S]*?actions: write/);
-  assert.match(maintenanceWorkflow, /gh api --paginate[\s\S]*?gh cache delete/);
   assert.match(dashboardWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?REPORT_PAYLOAD_HASHES: \$\{\{ runner\.temp \}\}\/cao-activity\/payload-hashes\.json[\s\S]*?REPORT_CONTROL_SETTINGS: \$\{\{ runner\.temp \}\}\/cao-activity\/control-settings\.json[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?const activityFiles = \[[\s\S]*?process\.env\.REPORT_GH_AW_LOGS[\s\S]*?process\.env\.ACTIVITY_DATABASE[\s\S]*?process\.env\.REPORT_PAYLOAD_HASHES[\s\S]*?process\.env\.REPORT_CONTROL_SETTINGS[\s\S]*?process\.env\.REPORT_INVENTORY_SOURCES/);
   assert.match(dashboardWorkflow, /Required activity data file is missing[\s\S]*?fs\.statSync[\s\S]*?Required activity data file is empty[\s\S]*?Restored activity cache directory contents/);
   assert.match(activityWorkflow, /name: Save activity cache[\s\S]*?path: \|[\s\S]*?gh-aw-logs\.jsonl[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?control-settings\.json[\s\S]*?inventory-sources\.json/);
@@ -3416,14 +3412,12 @@ test("Activity package owns the shared collected-data cache contract", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
   const activityManifest = parse(readFileSync(join(root, "activity", "aw.yml"), "utf8"));
   const workflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
-  const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
   const readme = readFileSync(join(root, "activity", "README.md"), "utf8");
   const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.equal(activityManifest.name, "CAO Activity");
   assert.deepEqual(activityManifest.includes, [
     ".github/workflows/activity.yml",
-    ".github/workflows/cao-maintenance.yml",
   ]);
   assert.deepEqual(activityManifest.resources, [
     { source: "cao.mjs", destination: ".github/aw/activity/cao.mjs" },
@@ -3469,7 +3463,6 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.equal(packageDocument.scripts["activity:local"], undefined);
   assert.equal(packageDocument.scripts["activity:local:node"], undefined);
   assert.equal(packageDocument.scripts["activity:run-workflow:local"], undefined);
-  assert.match(maintenanceWorkflow, /name: CAO Maintenance/);
   assert.match(readme, /gh-aw-logs\.jsonl/);
 });
 

@@ -4,7 +4,6 @@ min-version: v0.89.12
 experimental: true
 includes:
   - .github/workflows/activity.yml
-  - .github/workflows/cao-maintenance.yml
 resources:
   - source: cao.mjs
     destination: .github/aw/activity/cao.mjs

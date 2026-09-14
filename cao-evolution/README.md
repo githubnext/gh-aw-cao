@@ -28,6 +28,6 @@ Declare the package and its workers in `.github/workflows/cao.json`. Begin in `r
 - Catalog recommendations use an immutable published catalog release. They never install packages, edit `.github/workflows/cao.json`, enable workers, promote rollout mode, or dispatch suggested operations.
 - Package health uses the authoritative activity and safe-output evidence that feeds the dashboard. Browser IndexedDB remains disposable per-browser derived state and is never queried as workflow authority.
 - Agentic-workflow failure investigation and compiler-security maintenance are part of CAO Evolution. General gh-aw upgrades remain outside this package. Per-workflow prompt, model, AI Credit, `AGENTS.md`, and skill optimization remain with AW Optimization.
-- The existing conventional `cao-maintenance.yml` workflow owns cache cleanup; this package does not delete caches or artifacts.
+- This package does not delete caches or artifacts.
 
 Operational-value design is intentionally deferred until each worker has adoption-time evidence.
