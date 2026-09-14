@@ -61,6 +61,13 @@ to the same workflow run. Inputs are limited to compiled workflow metadata in th
 repository, a compatible prior JSONL cache entry, and the bounded run metadata,
 audits, and declared artifacts acquired by one `gh aw logs` invocation.
 
+The prior JSONL cache entry MAY be maintained internally as a carried-forward
+set of wildcard shard files rather than one growing file. Shard-based caching
+is a collection and ingestion efficiency mechanism only: it MUST NOT change
+the evidence scope, window, or completeness of a refresh, and it MUST NOT
+allow a shard's data to be skipped from the published snapshot merely because
+it was skipped from re-ingestion.
+
 The publisher MUST bound remote acquisition by repository scope, evidence
 window, pagination, or another explicit limit. It MUST NOT discover workflows
 in target repositories merely because those repositories appear in rollout
@@ -84,7 +91,10 @@ use and MUST NOT infer those properties from row counts.
 
 The concrete cache file and identity rule are defined by
 [`activity/README.md`](../activity/README.md). Changing the file or identity
-rule is a contract change and MUST be reviewed with affected consumers.
+rule is a contract change and MUST be reviewed with affected consumers. Any
+internal wildcard shard directory used to carry forward cache entries across
+runs is an implementation detail of that cache file; it MUST NOT be treated as
+an alternate or partial published snapshot by a consumer.
 
 The cache is a reusable transport and efficiency mechanism. It MUST NOT be
 represented as durable historical authority.

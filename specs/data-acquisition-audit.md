@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Audit date:** 2026-09-13
+**Audit date:** 2026-09-14
 
 The control bootstrap checks out the control repository's `.github` tree at `github.workflow_sha`. The CAO package installs the runtime under `.github/workflows/shared`, so installed and source-managed control repositories use that single checkout without fetching a second copy.
 
@@ -22,7 +22,7 @@ The control bootstrap checks out the control repository's `.github` tree at `git
 
 </details>
 
-**Current acquisition state:** The inventory below supersedes historical details in the parenthetical refresh notes above. Activity now requests only compact usage artifacts with audit generation, performs no Actions fallback or Jobs API enrichment, and supplies run attribution to `records.mjs`. Report collection no longer reads repository details, remote workflow inventories, lock sources, gh-aw releases, or Actions run details.
+**Current acquisition state:** The inventory below supersedes historical details in the parenthetical refresh notes above. Activity now requests only compact usage artifacts with audit generation, performs no Actions fallback or Jobs API enrichment, and supplies run attribution to `records.mjs`. Report collection no longer reads repository details, remote workflow inventories, lock sources, gh-aw releases, or Actions run details. Activity's `gh aw logs` invocation now uses `--cached-logs` with a trailing wildcard shard prefix instead of `--cached-jsonl`; new data lands in a freshly named shard rather than a rescanned single growing file, and ingestion processes the carried-forward shard directory one shard at a time, skipping shards whose content hash already matches the transactions table.
 
 **Refresh ledger:** See [Data Acquisition Audit History](./data-acquisition-audit-history.md) for compact dated refresh notes.
 
@@ -45,7 +45,7 @@ The inventory distinguishes:
 
 | Caller | Selection | Persistence | Observation |
 | --- | --- | --- | --- |
-| `.github/workflows/cao-activity.yml` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **5** runs | `gh-aw-logs.jsonl` and `gh-aw-logs.sqlite` in the shared `cao-activity-v3` cache | The workflow runs `gh aw logs --audit --artifacts usage` directly, then ingests the refreshed JSONL through the canonical Node.js data pipeline. Artifacts remain job-local. |
+| `.github/workflows/cao-activity.yml` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **5** runs | `gh-aw-logs.jsonl`, `gh-aw-logs-shards/` wildcard shards, and `gh-aw-logs.sqlite` in the shared `cao-activity-v3` cache | The workflow runs `gh aw logs --cached-logs "<prefix>*" --audit --artifacts usage`, writing new data to a freshly named shard instead of rescanning the carried-forward shard set; all shards are reconsolidated into `gh-aw-logs.jsonl` to keep the published snapshot single-file. Ingestion passes the whole shard directory to `cao ingest-jsonl --input-dir`, which ingests shards one by one and skips any whose content hash already matches its transactions-table record, so only new or changed shards are reprocessed. |
 | `.github/workflows/optimization-ai-credit-auditor.md` | Target repository, two days, at most 100 runs; locally filtered to the preceding 24 hours | `/tmp` for the current run | Overlaps the dashboard usage window and the evaluator's later evidence window. A separate API call first reads the current run's creation time. |
 | `.github/workflows/optimization-ai-credit-optimizer.md` | Target repository, seven days, at most 50 runs | `/tmp` for the current run | Overlaps the auditor and dashboard collections. Monitoring workflows are filtered only after download. |
 | `.github/workflows/graders/optimization-ai-credit-auditor-operational-value.sh` | Evaluator-defined before/after window, up to 10,000 runs | Evaluator temporary directory | Re-fetches evidence rather than consuming the worker's predownload, which is necessary for maturation but duplicates historical portions of earlier scans. |
@@ -118,9 +118,9 @@ Administrative setup (`.github/workflows/shared/setup-github-apps.mjs`), release
 
 | Cache or index | Producer | Consumer | Reuse boundary |
 | --- | --- | --- | --- |
-| `cao-activity-v3-*` Actions cache | `.github/workflows/cao-activity.yml` | Next activity run, dashboard builder, and agent jobs | Refreshed `gh-aw-logs.jsonl` and queryable `gh-aw-logs.sqlite`; latest matching key across runs |
+| `cao-activity-v3-*` Actions cache | `.github/workflows/cao-activity.yml` | Next activity run, dashboard builder, and agent jobs | Refreshed `gh-aw-logs.jsonl`, carried-forward `gh-aw-logs-shards/` wildcard shards, and queryable `gh-aw-logs.sqlite`; latest matching key across runs |
 | `deployed-workflows.json` local run index | `activity/index.mjs` | Activity collectors | Rebuilt from checked-out metadata and the shared logs snapshot without API fallback |
-| Shared gh-aw logs JSONL | `.github/workflows/cao-activity.yml` | Consumers | Persistent activity cache |
+| Shared gh-aw logs JSONL | `.github/workflows/cao-activity.yml` | Consumers | Persistent activity cache; internally carried as per-run `gh-aw-logs-shards/` wildcard shards and reconsolidated into the published single-file snapshot each run, so only new or changed shards are re-ingested instead of the whole rolling window |
 | `records.mjs` run map | `activity/index.mjs` via `deployed-workflows.json` | `dashboard/report/records.mjs` | In-memory join by runtime repository and run ID; no run-detail request |
 | Maintenance activity and forecast logs | `agentics-maintenance.yml` | Later maintenance runs | Separate Actions caches, outside the CAO activity snapshot |
 | GitHub API telemetry ledger (`cao-gh.jsonl`) | `activity/github-telemetry.mjs` | Next activity run's dashboard quota history and the `cao-gh` artifact | Rolling 24-hour window retained inside the `cao-activity` cache; trimmed on restore by `prepare`, not a fresh discard per run |
