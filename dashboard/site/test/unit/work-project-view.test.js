@@ -6,6 +6,24 @@ import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
 import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
 import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
+import { applyDashboardQueries } from '../workflow-inventory-query.js';
+
+const metadata = {
+  'source-id': 'work-fixture',
+  'source-kind': 'fixture',
+  'as-of': '2026-09-14T00:00:00Z',
+  'retrieved-at': '2026-09-14T00:00:00Z',
+  completeness: /** @type {'complete'} */ ('complete'),
+  freshness: /** @type {'fresh'} */ ('fresh'),
+  availability: /** @type {'available'} */ ('available')
+};
+
+/** @param {Array<Record<string, unknown>>} rows */
+function workSources(rows) {
+  return applyDashboardQueries({
+    'work-items': { source: 'work-items', rows, metadata }
+  }, ['work-project-items', 'work-board-todo', 'work-board-in-progress', 'work-board-needs-review', 'work-board-done', 'work-roadmap-items']);
+}
 
 const item = {
   name: 'Dependabot release train',
@@ -117,7 +135,7 @@ describe('work project view primitives', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work-tasks',
       title: 'Tasks',
-      sources: { 'work-items': { rows } },
+      sources: workSources(rows),
       elementConfig: { body: 'tasks' }
     }));
 
@@ -131,30 +149,40 @@ describe('work project view primitives', () => {
     ]);
     expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Beta task', 'Alpha task']);
 
+    /** @type {unknown[]} */
+    const changes = [];
+    rendered.addEventListener('dashboard-query-context-change', (event) => {
+      if (event instanceof CustomEvent) changes.push(event.detail);
+    });
     const sort = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Sort tasks by"]'));
     sort.value = 'name';
     sort.dispatchEvent(new Event('change'));
+    expect(changes.at(-1)).toEqual({
+      pageId: 'work-tasks',
+      queryContext: { orderBy: [{ field: 'work-name', direction: 'asc' }] }
+    });
     expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Beta task', 'Alpha task']);
 
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Sort descending"]')).click();
-    expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Alpha task', 'Beta task']);
-    expect(rendered.querySelector('[aria-label="Sort ascending"]')).not.toBeNull();
+    expect(changes.at(-1)).toEqual({
+      pageId: 'work-tasks',
+      queryContext: { orderBy: [{ field: 'work-name', direction: 'desc' }] }
+    });
 
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Sort by owned by"]')).click();
-    expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Beta task', 'Alpha task']);
+    expect(changes.at(-1)).toEqual({
+      pageId: 'work-tasks',
+      queryContext: { orderBy: [{ field: 'work-owner', direction: 'asc' }] }
+    });
   });
 
   it('highlights the first rendered section when declarative sections override body', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work-custom',
       title: 'Custom work',
-      sources: {
-        'work-items': {
-          rows: [
-            { 'work-item-id': 'task', name: 'Section-driven task', 'lifecycle-state': 'active' }
-          ]
-        }
-      },
+      sources: workSources([
+        { 'work-item-id': 'task', name: 'Section-driven task', 'lifecycle-state': 'active' }
+      ]),
       elementConfig: {
         body: 'roadmap',
         sections: ['tasks']
@@ -177,7 +205,7 @@ describe('work project view primitives', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work',
       title: 'Work',
-      sources: { 'work-items': { rows } }
+      sources: workSources(rows)
     }));
     const columns = [...rendered.querySelectorAll('.work-board-column')];
 
@@ -191,7 +219,7 @@ describe('work project view primitives', () => {
     expect(rendered.textContent).not.toContain('Active');
   });
 
-  it('provides a one-group mobile Board with tap-based moves and full-screen details', () => {
+  it('provides a one-group mobile Board with canonical state and full-screen details', () => {
     const rows = [
       { 'work-item-id': 'todo', name: 'Queued item', owner: 'operations', package: 'core', 'lifecycle-state': 'waiting' },
       { 'work-item-id': 'review', name: 'Blocked item', owner: 'security', package: 'review', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision' }
@@ -199,7 +227,7 @@ describe('work project view primitives', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work',
       title: 'Work',
-      sources: { 'work-items': { rows } }
+      sources: workSources(rows)
     }));
     const tabs = [...rendered.querySelectorAll('.work-board-group-tab')];
 
@@ -211,11 +239,7 @@ describe('work project view primitives', () => {
     /** @type {HTMLButtonElement} */ (tabs[0]).click();
     expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Todo');
 
-    const queuedCard = [...rendered.querySelectorAll('.work-card')].find((card) => card.textContent?.includes('Queued item'));
-    const move = /** @type {HTMLSelectElement} */ (queuedCard?.querySelector('[aria-label="Move Queued item to"]'));
-    move.value = 'in-progress';
-    move.dispatchEvent(new Event('change'));
-    expect(rendered.querySelector('.work-board-in-progress')?.textContent).toContain('Queued item');
+    expect(rendered.querySelector('[aria-label="Move Queued item to"]')).toBeNull();
 
     const blockedCard = [...rendered.querySelectorAll('.work-card')].find((card) => card.textContent?.includes('Blocked item'));
     if (!(blockedCard instanceof HTMLElement)) throw new Error('blocked card did not render');
@@ -224,9 +248,10 @@ describe('work project view primitives', () => {
     expect(detail?.hasAttribute('open')).toBe(true);
     expect(detail?.textContent).toContain('Approval required');
     expect(detail?.textContent).toContain('reviewer decision');
+    expect(detail?.textContent).not.toContain('Quick update');
   });
 
-  it('reapplies active filters after a mobile quick update', () => {
+  it('requests worker filtering when a facet changes', () => {
     const rows = [
       { 'work-item-id': 'todo', name: 'Queued item', 'lifecycle-state': 'waiting' },
       { 'work-item-id': 'review', name: 'Blocked item', 'lifecycle-state': 'blocked' }
@@ -234,17 +259,21 @@ describe('work project view primitives', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work',
       title: 'Work',
-      sources: { 'work-items': { rows } }
+      sources: workSources(rows)
     }));
+    /** @type {unknown[]} */
+    const changes = [];
+    rendered.addEventListener('dashboard-query-context-change', (event) => {
+      if (event instanceof CustomEvent) changes.push(event.detail);
+    });
     const stateFilter = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Filter by state"]'));
     stateFilter.value = 'Needs Review';
     stateFilter.dispatchEvent(new Event('change'));
 
-    const move = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Move Blocked item to"]'));
-    move.value = 'todo';
-    move.dispatchEvent(new Event('change'));
-
-    expect(rendered.textContent).toContain('No work items match the current filters.');
+    expect(changes).toEqual([{
+      pageId: 'work',
+      queryContext: { filters: { 'work-state-label': ['Needs Review'] } }
+    }]);
   });
 
   it('defaults Roadmap to a period-grouped mobile timeline with an explicit visual mode', () => {
@@ -255,7 +284,7 @@ describe('work project view primitives', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work-roadmap',
       title: 'Roadmap',
-      sources: { 'work-items': { rows } },
+      sources: workSources(rows),
       elementConfig: { body: 'roadmap' }
     }));
 

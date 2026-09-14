@@ -37,7 +37,7 @@ async function* responseChunks(body) {
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -586,7 +586,7 @@ function routeParameters(value) {
 /** @param {unknown} value */
 function queryContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const context = /** @type {{ filters?: unknown, timeWindow?: unknown }} */ (value);
+  const context = /** @type {{ filters?: unknown, search?: unknown, orderBy?: unknown, timeWindow?: unknown }} */ (value);
   const filters = context.filters && typeof context.filters === 'object' && !Array.isArray(context.filters)
     ? Object.fromEntries(Object.entries(context.filters)
       .map(([field, candidates]) => [field, Array.isArray(candidates)
@@ -594,6 +594,25 @@ function queryContext(value) {
         : []])
       .filter(([, candidates]) => candidates.length > 0))
     : undefined;
+  const rawSearch = context.search && typeof context.search === 'object' && !Array.isArray(context.search)
+    ? /** @type {Record<string, unknown>} */ (context.search)
+    : null;
+  const searchFields = rawSearch && Array.isArray(rawSearch.fields)
+    ? rawSearch.fields.filter((field) => typeof field === 'string' && field.trim()).map(String)
+    : [];
+  const searchQuery = rawSearch && typeof rawSearch.query === 'string' ? rawSearch.query.trim() : '';
+  const search = searchQuery && searchFields.length > 0 ? { fields: searchFields, query: searchQuery } : undefined;
+  const orderBy = Array.isArray(context.orderBy)
+    ? context.orderBy.flatMap((ordering) => {
+        if (!ordering || typeof ordering !== 'object' || Array.isArray(ordering)) return [];
+        const candidate = /** @type {Record<string, unknown>} */ (ordering);
+        if (typeof candidate.field !== 'string' || !candidate.field.trim()) return [];
+        const direction = candidate.direction === 'asc' || candidate.direction === 'desc'
+          ? /** @type {'asc'|'desc'} */ (candidate.direction)
+          : undefined;
+        return [{ field: candidate.field, ...(direction ? { direction } : {}) }];
+      })
+    : [];
   const rawTimeWindow = context.timeWindow && typeof context.timeWindow === 'object' && !Array.isArray(context.timeWindow)
     ? /** @type {Record<string, unknown>} */ (context.timeWindow)
     : null;
@@ -605,6 +624,8 @@ function queryContext(value) {
     : undefined;
   return {
     ...(filters ? { filters } : {}),
+    ...(search ? { search } : {}),
+    ...(orderBy.length > 0 ? { orderBy } : {}),
     ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {})
   };
 }

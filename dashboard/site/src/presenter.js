@@ -70,7 +70,7 @@ import { scopedStorageKey } from './storage-scope.js';
  */
 
 /**
- * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
+ * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
  */
 
 /**
@@ -291,7 +291,7 @@ export function renderDashboard(input) {
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => showInitialLoadingSkeleton
         ? renderPageLoadingSkeleton(page)
-        : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
+        : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, options.queryContext);
       if (input.loadPageSources) {
         options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
         return input.loadPageSources(pageId, options).then(render);
@@ -954,17 +954,18 @@ function renderPageSkeleton() {
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
+ * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderPage(page, sources, units, dashboardDefaults) {
+function renderPage(page, sources, units, dashboardDefaults, queryContext) {
   const title = getPageTitle(page);
 
   if (page.kind === 'built-in') {
     const payload = getBuiltInPagePayload(page);
-    return renderCustomPage(payload, title, sources, units, dashboardDefaults);
+    return renderCustomPage(payload, title, sources, units, dashboardDefaults, true, queryContext);
   }
 
-  return renderCustomPage(page, title, sources, units, dashboardDefaults);
+  return renderCustomPage(page, title, sources, units, dashboardDefaults, true, queryContext);
 }
 
 /**
@@ -974,9 +975,10 @@ function renderPage(page, sources, units, dashboardDefaults) {
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
  * @param {boolean} [withFilterBar]
+ * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderCustomPage(page, title, sources, units, dashboardDefaults, withFilterBar = true) {
+function renderCustomPage(page, title, sources, units, dashboardDefaults, withFilterBar = true, queryContext) {
   const effectiveDashboardDefaults = inventoryPage(page.id)
     ? { ...dashboardDefaults, time: undefined }
     : dashboardDefaults;
@@ -1020,7 +1022,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       )
     );
     const render = () => {
-      const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
+      const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter, queryContext);
       suppressSupplementalTableHeading(rendered, view, index);
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
@@ -1901,6 +1903,21 @@ function normalizeDashboardQueryContext(value) {
         return normalized.length > 0 ? [[field, normalized]] : [];
       }))
     : undefined;
+  const search = isPlainObject(value.search)
+    && Array.isArray(value.search.fields)
+    && typeof value.search.query === 'string'
+    ? {
+        fields: value.search.fields.filter((field) => typeof field === 'string' && field.trim()).map(String),
+        query: value.search.query.trim()
+      }
+    : undefined;
+  const orderBy = Array.isArray(value.orderBy)
+    ? value.orderBy.flatMap((ordering) => {
+        if (!isPlainObject(ordering) || typeof ordering.field !== 'string' || !ordering.field.trim()) return [];
+        const direction = ordering.direction === 'asc' || ordering.direction === 'desc' ? ordering.direction : undefined;
+        return [{ field: ordering.field, ...(direction ? { direction } : {}) }];
+      })
+    : [];
   const timeWindow = isPlainObject(value.timeWindow)
     ? {
         start: typeof value.timeWindow.start === 'string' ? value.timeWindow.start : undefined,
@@ -1909,6 +1926,8 @@ function normalizeDashboardQueryContext(value) {
     : undefined;
   return {
     ...(filters && Object.keys(filters).length > 0 ? { filters } : {}),
+    ...(search && search.fields.length > 0 && search.query ? { search } : {}),
+    ...(orderBy.length > 0 ? { orderBy } : {}),
     ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {})
   };
 }
@@ -1961,9 +1980,10 @@ function summarizeDataState(pageSources) {
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {'h3'|'h4'} [headingTag]
  * @param {string} [routeParameter]
+ * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3', routeParameter) {
+function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3', routeParameter, queryContext) {
   const fallbackTitle = `View ${index + 1}`;
   if (!isPlainObject(view)) {
     return renderCustomViewState(pageId, fallbackTitle, null, 'unavailable', ['Invalid custom view definition.'], headingTag);
@@ -1975,7 +1995,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
   const contextDetails = [];
 
   if (view.mark === 'element') {
-    return renderElementView(pageId, title, view, index, sources, contextDetails, headingTag, routeParameter);
+    return renderElementView(pageId, title, view, index, sources, contextDetails, headingTag, routeParameter, queryContext);
   }
   if (view.mark === 'callout') {
     return renderCalloutView(pageId, view, title, headingTag);
@@ -2130,9 +2150,10 @@ function suppressSupplementalTableHeading(rendered, view, index) {
  * @param {string[]} contextDetails
  * @param {'h3'|'h4'} headingTag
  * @param {string} [routeParameter]
+ * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderElementView(pageId, title, view, viewIndex, sources, contextDetails, headingTag, routeParameter) {
+function renderElementView(pageId, title, view, viewIndex, sources, contextDetails, headingTag, routeParameter, queryContext) {
   const elementName = typeof view.element === 'string' ? view.element : '';
   const sourceNames = getViewSources(view);
   const viewData = isPlainObject(view.data) ? view.data : undefined;
@@ -2174,6 +2195,7 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
     time: isPlainObject(viewData?.time) ? viewData.time : undefined,
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
+    queryContext,
     viewId: typeof view.id === 'string' ? view.id : undefined,
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag

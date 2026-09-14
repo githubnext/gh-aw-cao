@@ -24,7 +24,7 @@ const pending = new Map();
  *   context: { githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] },
  *   pageId?: string,
  *   routeParameters?: Record<string, string>,
- *   queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } },
+ *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } },
  *   pagination?: Record<string, { limit: number, continuationToken?: string }>,
  *   listeners: Set<SubscriptionListener>,
  *   registeredWorker: Worker | null,
@@ -149,7 +149,7 @@ export function processDashboardQueries(queries, sources, options = {}) {
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
+ * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
@@ -166,7 +166,7 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
+ * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
  */
 export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
@@ -182,7 +182,7 @@ export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
+ * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardPage(sourceNames, context, pagination, options = {}) {
@@ -203,7 +203,7 @@ export function loadCanonicalDashboardPage(sourceNames, context, pagination, opt
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] }} context
  * @param {(sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void} listener
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ signal?: AbortSignal, onError?: (error: Error) => void, emitCurrent?: boolean, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
+ * @param {{ signal?: AbortSignal, onError?: (error: Error) => void, emitCurrent?: boolean, pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {() => void}
  */
 export function subscribeCanonicalDashboardView(viewId, sourceNames, context, listener, pagination, options = {}) {
@@ -282,7 +282,7 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
   return unsubscribe;
 }
 
-/** @param {ViewSubscription} subscription @param {string[]} sourceNames @param {ViewSubscription['context']} context @param {ViewSubscription['pagination']} pagination @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options] */
+/** @param {ViewSubscription} subscription @param {string[]} sourceNames @param {ViewSubscription['context']} context @param {ViewSubscription['pagination']} pagination @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options] */
 function sameSubscription(subscription, sourceNames, context, pagination, options = {}) {
   return sameContext(subscription.context, context)
     && samePagination(subscription.pagination, pagination)
@@ -314,7 +314,15 @@ function sameQueryContext(left, right) {
         && candidate.every((value, index) => value === values[index]);
     });
   if (!sameFilters) return false;
-  return left?.timeWindow?.start === right?.timeWindow?.start
+  const sameSearch = left?.search?.query === right?.search?.query
+    && (left?.search?.fields ?? []).length === (right?.search?.fields ?? []).length
+    && (left?.search?.fields ?? []).every((field, index) => field === right?.search?.fields[index]);
+  const sameOrder = (left?.orderBy ?? []).length === (right?.orderBy ?? []).length
+    && (left?.orderBy ?? []).every((ordering, index) => ordering.field === right?.orderBy?.[index]?.field
+      && ordering.direction === right?.orderBy?.[index]?.direction);
+  return sameSearch
+    && sameOrder
+    && left?.timeWindow?.start === right?.timeWindow?.start
     && left?.timeWindow?.end === right?.timeWindow?.end;
 }
 

@@ -499,6 +499,158 @@
         }
       },
       {
+        "name": "work-project-base",
+        "intent": "Normalize canonical delegated work into stable project fields for worker-owned filtering, grouping, and ordering.",
+        "from": "work-items",
+        "compute": [
+          { "as": "work-repository-coordinate", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+          { "as": "work-repository", "function": "coalesce", "args": [{ "field": "scope" }, { "field": "work-repository-coordinate" }, { "value": "Repository unavailable" }] },
+          { "as": "work-owner", "function": "coalesce", "args": [{ "field": "owner" }, { "field": "organization" }, { "value": "Unassigned" }] },
+          { "as": "work-type-normalized", "function": "coalesce", "args": [{ "field": "work-type" }, { "field": "workflow-role" }, { "value": "unknown" }] },
+          { "as": "work-managed-role", "function": "equals-any", "args": [{ "field": "work-type-normalized" }, { "value": "orchestrator" }, { "value": "worker" }] },
+          { "as": "work-package-fallback", "function": "if", "args": [{ "field": "work-managed-role" }, { "field": "work-owner" }, { "value": "" }] },
+          { "as": "work-package", "function": "coalesce", "args": [{ "field": "package" }, { "field": "package-name" }, { "field": "work-package-fallback" }, { "value": "" }] },
+          { "as": "work-id", "function": "coalesce", "args": [{ "field": "work-item-id" }, { "field": "workflow" }, { "field": "objective" }, { "value": "unknown-work" }] },
+          { "as": "work-name", "function": "coalesce", "args": [{ "field": "name" }, { "field": "workflow-name" }, { "field": "objective" }, { "value": "Unknown workflow" }] },
+          { "as": "work-icon", "function": "coalesce", "args": [{ "field": "workflow-icon" }, { "field": "package-icon" }, { "value": "workflow" }] },
+          { "as": "work-safe-output-kind", "function": "coalesce", "args": [{ "field": "safe-output-kind" }, { "value": "workflow-output" }] },
+          { "as": "work-started", "function": "coalesce", "args": [{ "field": "started-at" }, { "field": "observed-at" }] },
+          { "as": "work-stopped", "function": "coalesce", "args": [{ "field": "ended-at" }, { "value": "" }] },
+          { "as": "work-active-state", "function": "equals-any", "args": [{ "field": "lifecycle-state" }, { "value": "active" }, { "value": "in-progress" }, { "value": "in_progress" }, { "value": "running" }] },
+          { "as": "work-review-state", "function": "equals-any", "args": [{ "field": "lifecycle-state" }, { "value": "blocked" }, { "value": "review" }, { "value": "needs-review" }, { "value": "needs_review" }, { "value": "action-required" }] },
+          { "as": "work-done-state", "function": "equals-any", "args": [{ "field": "lifecycle-state" }, { "value": "completed" }, { "value": "cancelled" }, { "value": "success" }, { "value": "failure" }, { "value": "done" }] },
+          { "as": "work-done-or-todo", "function": "if", "args": [{ "field": "work-done-state" }, { "value": "done" }, { "value": "todo" }] },
+          { "as": "work-review-or-rest", "function": "if", "args": [{ "field": "work-review-state" }, { "value": "needs-review" }, { "field": "work-done-or-todo" }] },
+          { "as": "work-state", "function": "if", "args": [{ "field": "work-active-state" }, { "value": "in-progress" }, { "field": "work-review-or-rest" }] },
+          { "as": "work-state-label", "function": "title-case", "args": [{ "field": "work-state" }] },
+          { "as": "work-reviewer-actor", "function": "equals-any", "args": [{ "field": "lifecycle-state" }, { "value": "review" }, { "value": "needs-review" }, { "value": "needs_review" }, { "value": "completed" }, { "value": "cancelled" }, { "value": "success" }, { "value": "done" }] },
+          { "as": "work-maintainer-actor", "function": "equals-any", "args": [{ "field": "lifecycle-state" }, { "value": "blocked" }, { "value": "action-required" }, { "value": "failure" }] },
+          { "as": "work-maintainer-or-scheduler", "function": "if", "args": [{ "field": "work-maintainer-actor" }, { "value": "maintainer" }, { "value": "scheduler" }] },
+          { "as": "work-reviewer-or-rest", "function": "if", "args": [{ "field": "work-reviewer-actor" }, { "value": "reviewer" }, { "field": "work-maintainer-or-scheduler" }] },
+          { "as": "work-inferred-actor", "function": "if", "args": [{ "field": "work-active-state" }, { "value": "agent" }, { "field": "work-reviewer-or-rest" }] },
+          { "as": "work-actor", "function": "coalesce", "args": [{ "field": "next-actor" }, { "field": "work-inferred-actor" }] },
+          { "as": "work-search-base", "function": "concat", "args": [{ "field": "work-name" }, { "value": " " }, { "field": "work-repository" }, { "value": " " }, { "field": "work-owner" }, { "value": " " }, { "field": "work-package" }] },
+          { "as": "work-search", "function": "concat", "args": [{ "field": "work-search-base" }, { "value": " " }, { "field": "work-state-label" }] },
+          { "as": "work-facet-key", "function": "concat", "args": [{ "value": "work" }, { "value": "" }] }
+        ]
+      },
+      {
+        "name": "work-project-orchestrator-packages",
+        "intent": "Identify packages represented by orchestrator work in the current canonical Work inventory.",
+        "from": "work-project-base",
+        "filter": { "predicates": [{ "field": "work-type-normalized", "equals": "orchestrator" }] },
+        "aggregate": {
+          "by": ["work-package"],
+          "values": [{ "field": "work-id", "as": "work-orchestrator-count", "reducer": "count" }]
+        }
+      },
+      {
+        "name": "work-project-worker-packages",
+        "intent": "Identify packages represented by worker work in the current canonical Work inventory.",
+        "from": "work-project-base",
+        "filter": { "predicates": [{ "field": "work-type-normalized", "equals": "worker" }] },
+        "aggregate": {
+          "by": ["work-package"],
+          "values": [{ "field": "work-id", "as": "work-worker-count", "reducer": "count" }]
+        }
+      },
+      {
+        "name": "work-project-facets",
+        "intent": "Produce structured Work filter options once in the data worker.",
+        "from": "work-project-base",
+        "aggregate": {
+          "by": ["work-facet-key"],
+          "values": [
+            { "field": "work-state-label", "as": "work-state-options", "reducer": "distinct-values" },
+            { "field": "work-repository", "as": "work-repository-options", "reducer": "distinct-values" },
+            { "field": "work-owner", "as": "work-owner-options", "reducer": "distinct-values" },
+            { "field": "work-package", "as": "work-package-options", "reducer": "distinct-values" },
+            { "field": "work-item-id", "as": "work-total-count", "reducer": "count" }
+          ]
+        }
+      },
+      {
+        "name": "work-project-items",
+        "intent": "Return project-ready delegated work with worker-owned facets for the active Work view.",
+        "from": "work-project-base",
+        "joins": [
+          {
+            "source": "work-project-facets",
+            "type": "left",
+            "on": [{ "left": "work-facet-key", "right": "work-facet-key" }],
+            "fields": [
+              { "field": "work-state-options", "as": "work-state-options" },
+              { "field": "work-repository-options", "as": "work-repository-options" },
+              { "field": "work-owner-options", "as": "work-owner-options" },
+              { "field": "work-package-options", "as": "work-package-options" },
+              { "field": "work-total-count", "as": "work-total-count" }
+            ]
+          },
+          {
+            "source": "work-project-orchestrator-packages",
+            "type": "left",
+            "on": [{ "left": "work-package", "right": "work-package" }],
+            "fields": [{ "field": "work-orchestrator-count", "as": "work-orchestrator-count" }]
+          },
+          {
+            "source": "work-project-worker-packages",
+            "type": "left",
+            "on": [{ "left": "work-package", "right": "work-package" }],
+            "fields": [{ "field": "work-worker-count", "as": "work-worker-count" }]
+          }
+        ],
+        "compute": [
+          { "as": "work-orchestrators", "function": "coalesce", "args": [{ "field": "work-orchestrator-count" }, { "value": 0 }] },
+          { "as": "work-workers", "function": "coalesce", "args": [{ "field": "work-worker-count" }, { "value": 0 }] },
+          { "as": "work-has-orchestrator", "function": "greater-than", "args": [{ "field": "work-orchestrators" }, { "value": 0 }] },
+          { "as": "work-has-worker", "function": "greater-than", "args": [{ "field": "work-workers" }, { "value": 0 }] },
+          { "as": "work-grouped", "function": "if", "args": [{ "field": "work-has-orchestrator" }, { "field": "work-has-worker" }, { "value": false }] },
+          { "as": "work-item-group-id", "function": "concat", "args": [{ "value": "item:" }, { "field": "work-id" }] },
+          { "as": "work-package-group-id", "function": "concat", "args": [{ "value": "package:" }, { "field": "work-package" }] },
+          { "as": "work-group-id", "function": "if", "args": [{ "field": "work-grouped" }, { "field": "work-package-group-id" }, { "field": "work-item-group-id" }] },
+          { "as": "work-group-label", "function": "if", "args": [{ "field": "work-grouped" }, { "field": "work-package" }, { "field": "work-name" }] },
+          { "as": "work-is-orchestrator", "function": "equals-any", "args": [{ "field": "work-type-normalized" }, { "value": "orchestrator" }] },
+          { "as": "work-is-worker", "function": "equals-any", "args": [{ "field": "work-type-normalized" }, { "value": "worker" }] },
+          { "as": "work-worker-order", "function": "if", "args": [{ "field": "work-is-worker" }, { "value": 1 }, { "value": 2 }] },
+          { "as": "work-role-order", "function": "if", "args": [{ "field": "work-is-orchestrator" }, { "value": 0 }, { "field": "work-worker-order" }] }
+        ],
+        "order-by": [{ "field": "started-at", "direction": "desc" }]
+      },
+      {
+        "name": "work-board-todo",
+        "intent": "Return Todo board cards in worker-computed package and role order.",
+        "from": "work-project-items",
+        "filter": { "predicates": [{ "field": "work-state", "equals": "todo" }] },
+        "order-by": [{ "field": "work-group-id", "direction": "asc" }, { "field": "work-role-order", "direction": "asc" }, { "field": "work-name", "direction": "asc" }]
+      },
+      {
+        "name": "work-board-in-progress",
+        "intent": "Return in-progress board cards in worker-computed package and role order.",
+        "from": "work-project-items",
+        "filter": { "predicates": [{ "field": "work-state", "equals": "in-progress" }] },
+        "order-by": [{ "field": "work-group-id", "direction": "asc" }, { "field": "work-role-order", "direction": "asc" }, { "field": "work-name", "direction": "asc" }]
+      },
+      {
+        "name": "work-board-needs-review",
+        "intent": "Return needs-review board cards in worker-computed package and role order.",
+        "from": "work-project-items",
+        "filter": { "predicates": [{ "field": "work-state", "equals": "needs-review" }] },
+        "order-by": [{ "field": "work-group-id", "direction": "asc" }, { "field": "work-role-order", "direction": "asc" }, { "field": "work-name", "direction": "asc" }]
+      },
+      {
+        "name": "work-board-done",
+        "intent": "Return Done board cards in worker-computed package and role order.",
+        "from": "work-project-items",
+        "filter": { "predicates": [{ "field": "work-state", "equals": "done" }] },
+        "order-by": [{ "field": "work-group-id", "direction": "asc" }, { "field": "work-role-order", "direction": "asc" }, { "field": "work-name", "direction": "asc" }]
+      },
+      {
+        "name": "work-roadmap-items",
+        "intent": "Return Work roadmap rows in ascending canonical start order.",
+        "from": "work-project-items",
+        "order-by": [{ "field": "work-started", "direction": "asc" }]
+      },
+      {
         "name": "experiments-table",
         "intent": "List experiments with their workflow, variants, primary metric, evidence, readiness, decision, and latest observation.",
         "from": "experiments",
@@ -7456,7 +7608,10 @@
             "description": "Delegated work grouped by its current lifecycle state.",
             "data": {
               "sources": [
-                "work-items"
+                "work-board-todo",
+                "work-board-in-progress",
+                "work-board-needs-review",
+                "work-board-done"
               ]
             },
             "mark": "element",
@@ -7486,7 +7641,7 @@
             "description": "A structured record list with owners, repositories, lifecycle state, and runtime windows.",
             "data": {
               "sources": [
-                "work-items"
+                "work-project-items"
               ]
             },
             "mark": "element",
@@ -7516,7 +7671,7 @@
             "description": "Start dates, durations, owners, and completion points aligned on one calendar.",
             "data": {
               "sources": [
-                "work-items"
+                "work-roadmap-items"
               ]
             },
             "mark": "element",

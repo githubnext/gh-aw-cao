@@ -1756,6 +1756,13 @@ describe('computed field vocabulary', () => {
     ])).toEqual([{ value: 'xy' }]);
   });
 
+  it('returns structured distinct values for worker-owned facet controls', () => {
+    expect(tidy([{ state: 'Done' }, { state: 'Todo' }, { state: 'Done' }], [{
+      op: 'summarize',
+      values: [{ field: 'state', as: 'states', reducer: 'distinct-values' }]
+    }])).toEqual([{ states: ['Done', 'Todo'] }]);
+  });
+
   it('executes declared queries through the data worker request handler', () => {
     const response = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',

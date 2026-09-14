@@ -20,6 +20,7 @@ describe('dashboard query architecture', () => {
     const main = read('src/main.js');
     const presenter = read('src/presenter.js');
     const factoryOverview = read('src/components/factory-overview.js');
+    const workProject = read('src/components/work-project-view.js');
     const presentationQueryFixture = read('test/workflow-inventory-query.js');
 
     expect(worker).toContain('executeDashboardQueries(context.queries, canonicalPayload, directRequests');
@@ -33,6 +34,7 @@ describe('dashboard query architecture', () => {
     expect(main).not.toMatch(/const loadPageSources = async[\s\S]{0,600}loadCanonicalDashboardPage/);
     expect(presenter).not.toMatch(/filterDashboardSources|filterRowsForView|deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
     expect(factoryOverview).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
+    expect(workProject).not.toMatch(/normalizeState|actorForLifecycle|compareWorkItems|orchestratedPackageNames/);
     expect(read('src/components/ui-elements.js')).not.toContain('filterRows');
     expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");
     expect(presentationQueryFixture).not.toMatch(/executeDashboardQueries|compileDashboardViewPayloadQueries|deriveDashboardLinkSources/);

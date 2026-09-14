@@ -2212,8 +2212,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .work-board-cards { overflow: visible; scrollbar-gutter: auto; }
   .work-card dl { display: none; }
   .work-card { gap: 7px; }
-  .work-mobile-item-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding-top: 4px; }
-  .work-mobile-item-actions select, .work-mobile-details-button { min-width: 0; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; }
+  .work-mobile-item-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+  .work-mobile-details-button { min-width: 0; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; }
   .work-mobile-details-button { display: inline-flex; align-items: center; gap: 4px; }
   .work-mobile-details-icon { display: grid; }
   .work-mobile-detail[open] { width: 100vw; max-width: none; height: 100dvh; max-height: none; display: grid; grid-template-rows: auto minmax(0, 1fr); inset: 0; margin: 0; padding: 0; overflow: hidden; border: 0; background: var(--canvas); color: var(--fg); }
@@ -2228,10 +2228,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .work-mobile-detail dl > div + div { border-top: 1px solid var(--border); }
   .work-mobile-detail dt { color: var(--muted); font-size: .6875rem; font-weight: 600; }
   .work-mobile-detail dd { margin: 0; font-size: .8125rem; font-weight: 600; }
-  .work-mobile-quick-update { display: grid; gap: 10px; }
-  .work-mobile-quick-update h3 { margin: 0; font-size: .875rem; }
-  .work-mobile-detail-control { display: grid; gap: 5px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
-  .work-mobile-detail-control select { min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; }
   .work-tasks { overflow: visible; border: 0; background: transparent; }
   .work-task-viewbar { width: 100%; position: static; border: 1px solid var(--border); border-radius: 8px; }
   .work-task-settings { display: block; margin-left: auto; }

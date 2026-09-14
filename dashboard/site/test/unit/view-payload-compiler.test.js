@@ -76,6 +76,24 @@ it('injects route and runtime predicates before a declared aggregate executes', 
   expect(results[payload.aliases[0]].rows).toEqual([{ count: 1 }]);
 });
 
+it('compiles request search into the worker query alias', () => {
+  const payload = compileDashboardViewPayloadQueries({
+    views: [{ id: 'work', data: { source: 'work-project-items' } }]
+  }, 'work', {
+    queryContext: {
+      search: { fields: ['work-search'], query: ' release train ' },
+      orderBy: [{ field: 'work-name', direction: 'asc' }]
+    }
+  });
+
+  expect(payload.queries[0]).toMatchObject({
+    name: 'view:work:work:work-project-items',
+    from: 'work-project-items',
+    filter: { search: { fields: ['work-search'], query: 'release train' } },
+    'order-by': [{ field: 'work-name', direction: 'asc' }]
+  });
+});
+
 it('supports optional filters, temporal bounds, and UTC-day computation in row operators', () => {
   const rows = tidy([
     { id: 'missing-mode', 'started-at': '2026-09-10T23:30:00-02:00' },

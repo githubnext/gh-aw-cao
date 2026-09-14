@@ -13,10 +13,10 @@ import { workRoutePageConfigs } from './work-view-route-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
 const BOARD_COLUMNS = [
-  { title: 'Todo', states: ['todo'], tone: 'todo' },
-  { title: 'In progress', states: ['in-progress'], tone: 'in-progress' },
-  { title: 'Needs review', states: ['needs-review'], tone: 'needs-review' },
-  { title: 'Done', states: ['done'], tone: 'done' }
+  { title: 'Todo', tone: 'todo', source: 'work-board-todo' },
+  { title: 'In progress', tone: 'in-progress', source: 'work-board-in-progress' },
+  { title: 'Needs review', tone: 'needs-review', source: 'work-board-needs-review' },
+  { title: 'Done', tone: 'done', source: 'work-board-done' }
 ];
 
 /** @typedef {{ id: string, className: string, landmarkLabel: string, title: string }} WorkSection */
@@ -27,20 +27,28 @@ const BOARD_COLUMNS = [
  * @returns {HTMLElement}
  */
 export function renderWorkProjectView(context) {
-  const items = rowsFor(context.sources, 'work-items').map(normalizeWorkItem);
   const sections = workViewComposition(context.elementConfig);
   const activeSection = sections[0].key;
+  const boardItems = Object.fromEntries(BOARD_COLUMNS.map((column) => [
+    column.tone,
+    rowsFor(context.sources, column.source).map(normalizeWorkItem)
+  ]));
+  const sourceRows = activeSection === 'board'
+    ? BOARD_COLUMNS.flatMap((column) => rowsFor(context.sources, column.source))
+    : rowsFor(context.sources, activeSection === 'roadmap' ? 'work-roadmap-items' : 'work-project-items');
+  const items = sourceRows.map(normalizeWorkItem);
+  const facetRow = sourceRows[0] ?? {};
+  const totalItems = Number(facetRow['work-total-count']) || items.length;
   const viewBody = h('div', { className: 'work-project-body' });
-  let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
   const renderers = {
-    renderBoard: (filteredItems, section) => renderBoard(filteredItems, section, reapplyFilters),
-    renderTasks: (filteredItems, section) => renderTasks(filteredItems, section, reapplyFilters),
-    renderRoadmap: (filteredItems, section) => renderRoadmap(filteredItems, section, reapplyFilters)
+    renderBoard: (_filteredItems, section) => renderBoard(boardItems, section),
+    renderTasks: (filteredItems, section) => renderTasks(filteredItems, section, context),
+    renderRoadmap: (filteredItems, section) => renderRoadmap(filteredItems, section)
   };
   /** @param {Array<ReturnType<typeof normalizeWorkItem>>} filteredItems */
   const renderItems = (filteredItems) => {
-    if (items.length === 0) {
+    if (items.length === 0 && !hasWorkQueryContext(context.queryContext)) {
       viewBody.replaceChildren(renderEmptyMessage('No work-item telemetry is available in the selected scope.', { role: 'status' }));
       return;
     }
@@ -63,13 +71,23 @@ export function renderWorkProjectView(context) {
       })
       .filter((element) => element instanceof HTMLElement));
   };
-  const filterBar = renderWorkFilterBar(items, renderItems);
-  reapplyFilters = filterBar.apply;
+  const filterBar = renderWorkFilterBar({
+    pageId: context.pageId,
+    queryContext: context.queryContext,
+    visible: items.length,
+    total: totalItems,
+    facets: {
+      states: stringValues(facetRow['work-state-options']),
+      repositories: stringValues(facetRow['work-repository-options']),
+      owners: stringValues(facetRow['work-owner-options']),
+      packages: stringValues(facetRow['work-package-options'])
+    }
+  });
   const root = h(
     'section',
     { className: 'work-project-view', 'aria-label': 'Work' },
     renderWorkViewNavigation(workRoutePageConfigs(), activeSection),
-    filterBar.element,
+    filterBar,
     viewBody
   );
   renderItems(items);
@@ -77,16 +95,21 @@ export function renderWorkProjectView(context) {
 }
 
 /**
- * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
- * @param {(items: Array<ReturnType<typeof normalizeWorkItem>>) => void} onChange
- * @returns {{ element: HTMLElement, apply: () => void }}
+ * @param {{ pageId: string, queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'], visible: number, total: number, facets: { states: string[], repositories: string[], owners: string[], packages: string[] } }} options
+ * @returns {HTMLElement}
  */
-function renderWorkFilterBar(items, onChange) {
+function renderWorkFilterBar(options) {
   const search = renderSearchInput('Filter work items');
-  const state = renderFacetSelect('State', items.map((item) => item.stateLabel));
-  const repository = renderFacetSelect('Repository', items.map((item) => item.repository));
-  const owner = renderFacetSelect('Workflow owner', items.map((item) => item.owner));
-  const packageName = renderFacetSelect('Package', items.map((item) => item.packageName).filter(Boolean));
+  const selectedFilters = options.queryContext?.filters ?? {};
+  search.value = options.queryContext?.search?.query ?? '';
+  const state = renderFacetSelect('State', withSelected(options.facets.states, selectedFilters['work-state-label']?.[0]));
+  const repository = renderFacetSelect('Repository', withSelected(options.facets.repositories, selectedFilters['work-repository']?.[0]));
+  const owner = renderFacetSelect('Workflow owner', withSelected(options.facets.owners, selectedFilters['work-owner']?.[0]));
+  const packageName = renderFacetSelect('Package', withSelected(options.facets.packages, selectedFilters['work-package']?.[0]));
+  state.value = selectedFilters['work-state-label']?.[0] ?? '';
+  repository.value = selectedFilters['work-repository']?.[0] ?? '';
+  owner.value = selectedFilters['work-owner']?.[0] ?? '';
+  packageName.value = selectedFilters['work-package']?.[0] ?? '';
   const resultCount = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'work-filter-count'));
   const clear = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
@@ -118,20 +141,28 @@ function renderWorkFilterBar(items, onChange) {
   });
   const controls = [search, state, repository, owner, packageName];
   const apply = () => {
-    const query = search.value.trim().toLowerCase();
-    const filteredItems = items.filter((item) => {
-      const searchable = [item.name, item.repository, item.owner, item.packageName, item.stateLabel].join(' ').toLowerCase();
-      return (!query || searchable.includes(query))
-        && (!state.value || item.stateLabel === state.value)
-        && (!repository.value || item.repository === repository.value)
-        && (!owner.value || item.owner === owner.value)
-        && (!packageName.value || item.packageName === packageName.value);
-    });
     const activeFilterCount = controls.filter((control) => control.value !== '').length;
-    resultCount.textContent = formatCountOf(filteredItems.length, items.length);
-    resultCount.setAttribute('aria-label', `${filteredItems.length} of ${items.length} work items shown`);
     clear.disabled = activeFilterCount === 0;
-    onChange(filteredItems);
+    const filters = { ...(options.queryContext?.filters ?? {}) };
+    for (const [field, value] of [
+      ['work-state-label', state.value],
+      ['work-repository', repository.value],
+      ['work-owner', owner.value],
+      ['work-package', packageName.value]
+    ]) {
+      if (value) filters[field] = [value];
+      else delete filters[field];
+    }
+    const query = search.value.trim();
+    const queryContext = {
+      ...(Object.keys(filters).length > 0 ? { filters } : {}),
+      ...(query ? { search: { fields: ['work-search'], query } } : {}),
+      ...(options.queryContext?.timeWindow ? { timeWindow: options.queryContext.timeWindow } : {})
+    };
+    element.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
+      bubbles: true,
+      detail: { pageId: options.pageId, queryContext }
+    }));
   };
   search.addEventListener('input', apply);
   for (const select of [state, repository, owner, packageName]) select.addEventListener('change', apply);
@@ -140,8 +171,6 @@ function renderWorkFilterBar(items, onChange) {
     apply();
     search.focus();
   });
-  queueMicrotask(apply);
-
   const element = h('form', {
     className: 'work-filter-bar',
     role: 'search',
@@ -156,7 +185,25 @@ function renderWorkFilterBar(items, onChange) {
   facets,
   resultCount,
   clear);
-  return { element, apply };
+  resultCount.textContent = formatCountOf(options.visible, options.total);
+  resultCount.setAttribute('aria-label', `${options.visible} of ${options.total} work items shown`);
+  clear.disabled = controls.every((control) => control.value === '');
+  return element;
+}
+
+/** @param {unknown} value */
+function stringValues(value) {
+  return Array.isArray(value) ? value.filter((item) => typeof item === 'string').map(String) : [];
+}
+
+/** @param {string[]} values @param {string | undefined} selected */
+function withSelected(values, selected) {
+  return selected && !values.includes(selected) ? [...values, selected] : values;
+}
+
+/** @param {import('./ui-elements.js').ElementRenderContext['queryContext']} queryContext */
+function hasWorkQueryContext(queryContext) {
+  return Boolean(queryContext?.search?.query || Object.keys(queryContext?.filters ?? {}).some((field) => field.startsWith('work-')));
 }
 
 /** @param {string} label @param {string[]} values */
@@ -166,19 +213,16 @@ function renderFacetSelect(label, values) {
 }
 
 /**
- * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
+ * @param {Record<string, Array<ReturnType<typeof normalizeWorkItem>>>} itemsByTone
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
- * @param {() => void} onUpdate
  */
-function renderBoard(items, section, onUpdate) {
-  const orchestratedPackages = orchestratedPackageNames(items);
-  const choices = workItemChoices(items);
+function renderBoard(itemsByTone, section) {
   const populatedAttentionColumn = ['needs-review', 'in-progress', 'todo', 'done']
-    .find((tone) => items.some((item) => item.state === tone));
+    .find((tone) => (itemsByTone[tone]?.length ?? 0) > 0);
   let activeTone = populatedAttentionColumn ?? 'todo';
   const tabs = h('div', { className: 'work-board-group-tabs', role: 'tablist', 'aria-label': 'Board status' });
   const columns = BOARD_COLUMNS.map((column) => {
-    const columnItems = items.filter((item) => column.states.includes(item.state));
+    const columnItems = itemsByTone[column.tone] ?? [];
     return h(
       'section',
       {
@@ -195,13 +239,13 @@ function renderBoard(items, section, onUpdate) {
       h(
         'div',
         { className: 'work-board-cards' },
-        ...groupWorkItems(columnItems, orchestratedPackages).map((group) => group.grouped
+        ...groupWorkItems(columnItems).map((group) => group.grouped
           ? h('section', { className: 'work-card-stack', 'aria-label': `${group.label} work` },
             h('header', null,
               h('strong', null, group.label),
               renderCountBadge(group.items.length, `${group.items.length} work items`)
             ),
-            decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0], choices, onUpdate),
+            decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0]),
             ...(group.items.length > 1
               ? [h('details', { className: 'work-card-workers' },
                 h('summary', null,
@@ -209,16 +253,16 @@ function renderBoard(items, section, onUpdate) {
                   h('span', null, `${group.items.length - 1} worker${group.items.length === 2 ? '' : 's'}`),
                   h('small', null, 'Show cards')
                 ),
-                h('div', { className: 'work-card-worker-list' }, ...group.items.slice(1).map((item) => decorateMobileWorkItem(renderWorkItemCard(item), item, choices, onUpdate)))
+                h('div', { className: 'work-card-worker-list' }, ...group.items.slice(1).map((item) => decorateMobileWorkItem(renderWorkItemCard(item), item)))
               )]
               : [])
           )
-          : decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0], choices, onUpdate))
+          : decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0]))
       )
     );
   });
   tabs.append(...BOARD_COLUMNS.map((column) => {
-    const count = items.filter((item) => column.states.includes(item.state)).length;
+    const count = itemsByTone[column.tone]?.length ?? 0;
     const button = h('button', {
       type: 'button',
       className: 'work-board-group-tab',
@@ -247,11 +291,10 @@ function renderBoard(items, section, onUpdate) {
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
- * @param {() => void} onUpdate
+ * @param {import('./ui-elements.js').ElementRenderContext} context
  */
-function renderTasks(items, section, onUpdate) {
+function renderTasks(items, section, context) {
   const list = h('div', { className: 'work-task-list work-mobile-hide-repository work-mobile-hide-dates', role: 'list' });
-  const choices = workItemChoices(items);
   const sort = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Sort tasks by' },
     h('option', { value: 'started' }, 'Start date'),
     h('option', { value: 'name' }, 'Title'),
@@ -259,18 +302,35 @@ function renderTasks(items, section, onUpdate) {
     h('option', { value: 'owner' }, 'Owned by'),
     h('option', { value: 'package' }, 'Package')));
   const direction = h('button', { type: 'button', className: 'work-task-sort-direction', 'aria-label': 'Sort descending', title: 'Sort descending' }, renderIconSpan('work-task-sort-icon', 'arrow-down', { ariaHidden: true }));
-  let descending = true;
+  const requestedOrder = context.queryContext?.orderBy?.[0];
+  const sortField = Object.entries(TASK_SORT_FIELDS).find(([, field]) => field === requestedOrder?.field)?.[0] ?? 'started';
+  sort.value = sortField;
+  let descending = requestedOrder?.direction ? requestedOrder.direction === 'desc' : true;
   const renderRows = () => {
-    const sorted = items.toSorted((left, right) => compareWorkItems(left, right, sort.value) * (descending ? -1 : 1));
-    list.replaceChildren(...sorted.map((item) => decorateMobileWorkItem(renderWorkItemRow(item), item, choices, onUpdate, 'table')));
+    list.replaceChildren(...items.map((item) => decorateMobileWorkItem(renderWorkItemRow(item), item, 'table')));
   };
-  sort.addEventListener('change', renderRows);
+  const requestSort = () => list.dispatchEvent(new CustomEvent('dashboard-query-context-change', {
+    bubbles: true,
+    detail: {
+      pageId: context.pageId,
+      queryContext: {
+        ...(context.queryContext?.filters ? { filters: context.queryContext.filters } : {}),
+        ...(context.queryContext?.search ? { search: context.queryContext.search } : {}),
+        orderBy: [{ field: TASK_SORT_FIELDS[sort.value] ?? 'started-at', direction: descending ? 'desc' : 'asc' }],
+        ...(context.queryContext?.timeWindow ? { timeWindow: context.queryContext.timeWindow } : {})
+      }
+    }
+  }));
+  sort.addEventListener('change', () => {
+    descending = sort.value === 'started';
+    requestSort();
+  });
   direction.addEventListener('click', () => {
     descending = !descending;
     direction.setAttribute('aria-label', descending ? 'Sort descending' : 'Sort ascending');
     direction.setAttribute('title', descending ? 'Sort descending' : 'Sort ascending');
     direction.replaceChildren(renderIconSpan('work-task-sort-icon', descending ? 'arrow-down' : 'arrow-up', { ariaHidden: true }));
-    renderRows();
+    requestSort();
   });
   /** @param {string} field @param {string} label */
   const sortableHeader = (field, label) => h('button', {
@@ -286,7 +346,7 @@ function renderTasks(items, section, onUpdate) {
       direction.setAttribute('aria-label', descending ? 'Sort descending' : 'Sort ascending');
       direction.setAttribute('title', descending ? 'Sort descending' : 'Sort ascending');
       direction.replaceChildren(renderIconSpan('work-task-sort-icon', descending ? 'arrow-down' : 'arrow-up', { ariaHidden: true }));
-      renderRows();
+      requestSort();
     }
   }, label, renderIconSpan('work-task-header-sort-icon', 'triangle-down', { ariaHidden: true }));
   const sortControls = h('div', { className: 'work-task-sort-controls' },
@@ -361,23 +421,21 @@ function renderTasks(items, section, onUpdate) {
   );
 }
 
-/** @param {ReturnType<typeof normalizeWorkItem>} left @param {ReturnType<typeof normalizeWorkItem>} right @param {string} field */
-function compareWorkItems(left, right, field) {
-  if (field === 'started') return left.startTime - right.startTime;
-  if (field === 'state') return left.state.localeCompare(right.state);
-  if (field === 'owner') return left.owner.localeCompare(right.owner);
-  if (field === 'package') return left.packageName.localeCompare(right.packageName);
-  return left.name.localeCompare(right.name);
-}
+/** @type {Record<string, string>} */
+const TASK_SORT_FIELDS = {
+  started: 'started-at',
+  name: 'work-name',
+  state: 'work-state',
+  owner: 'work-owner',
+  package: 'work-package'
+};
 
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
- * @param {() => void} onUpdate
  */
-function renderRoadmap(items, section, onUpdate) {
+function renderRoadmap(items, section) {
   const body = h('div', { className: 'work-roadmap-body' });
-  const choices = workItemChoices(items);
   const zoomLevels = ['day', 'week', 'month', 'quarter', 'year'];
   let range = 'year';
   let periodOffset = 0;
@@ -474,7 +532,7 @@ function renderRoadmap(items, section, onUpdate) {
             )
           )
         ),
-        ...renderRoadmapItems(items, extents, Math.max(1, ticks.length), choices, onUpdate),
+        ...renderRoadmapItems(items, extents, Math.max(1, ticks.length)),
         todayOffset >= 0 && todayOffset <= 100
           ? h('span', {
             className: 'work-roadmap-today',
@@ -542,29 +600,29 @@ function workSectionId(pageId, key) {
 
 /** @param {Record<string, unknown>} row */
 function normalizeWorkItem(row) {
-  const started = textValue(row['started-at']) || textValue(row['observed-at']);
-  const stopped = textValue(row['ended-at']) || textValue(row['stopped-at']);
+  const started = textValue(row['work-started']);
+  const stopped = textValue(row['work-stopped']);
   const startTime = validTime(started) ?? Date.now();
-  const lifecycleState = textValue(row['lifecycle-state']);
-  const state = normalizeState(lifecycleState);
+  const state = textValue(row['work-state']);
   const inferred = textValue(row['reason-evidence-class']) === 'inferred';
   const pointInTime = inferred || (!stopped && state !== 'in-progress');
   const stopTime = pointInTime ? startTime : validTime(stopped) ?? Math.max(startTime, Date.now());
-  const owner = textValue(row.owner) || textValue(row.organization) || 'Unassigned';
-  const workType = textValue(row['work-type']) || textValue(row['workflow-role']) || 'unknown';
-  const packageName = textValue(row.package)
-    || textValue(row['package-name'])
-    || (workType === 'orchestrator' || workType === 'worker' ? owner : '');
+  const owner = textValue(row['work-owner']);
+  const workType = textValue(row['work-type-normalized']);
+  const packageName = textValue(row['work-package']);
   return {
-    id: textValue(row['work-item-id']) || textValue(row.workflow) || textValue(row.objective),
-    name: textValue(row.name) || textValue(row['workflow-name']) || textValue(row.objective) || 'Unknown workflow',
-    icon: textValue(row['workflow-icon']) || textValue(row['package-icon']) || 'workflow',
-    repository: textValue(row.scope) || [textValue(row.organization), textValue(row.repository)].filter(Boolean).join('/') || 'Repository unavailable',
+    id: textValue(row['work-id']),
+    name: textValue(row['work-name']),
+    icon: textValue(row['work-icon']),
+    repository: textValue(row['work-repository']),
     owner,
     packageName,
     workType,
-    safeOutputKind: textValue(row['safe-output-kind']) || 'workflow-output',
-    actor: textValue(row['next-actor']) || actorForLifecycle(lifecycleState),
+    groupId: textValue(row['work-group-id']),
+    groupLabel: textValue(row['work-group-label']),
+    grouped: row['work-grouped'] === true,
+    safeOutputKind: textValue(row['work-safe-output-kind']),
+    actor: textValue(row['work-actor']),
     state,
     stateLabel: titleCase(state),
     started,
@@ -586,22 +644,12 @@ function normalizeWorkItem(row) {
   };
 }
 
-/** @param {Array<ReturnType<typeof normalizeWorkItem>>} items */
-function workItemChoices(items) {
-  return {
-    owners: [...new Set(items.map((item) => item.owner).filter(Boolean))].sort(),
-    labels: [...new Set(items.map((item) => item.packageName).filter(Boolean))].sort()
-  };
-}
-
 /**
  * @param {HTMLElement} element
  * @param {ReturnType<typeof normalizeWorkItem>} item
- * @param {{ owners: string[], labels: string[] }} choices
- * @param {() => void} onUpdate
  * @param {'board'|'table'|'roadmap'} [variant]
  */
-function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'board') {
+function decorateMobileWorkItem(element, item, variant = 'board') {
   element.setAttribute('data-work-id', item.id);
   if (variant === 'table') {
     element.append(h('span', { className: 'work-mobile-owner' }, item.owner));
@@ -613,36 +661,10 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
       ...(item.waitingOn ? [h('span', null, `Waiting on ${item.waitingOn}`)] : [])
     ));
   }
-  const move = /** @type {HTMLSelectElement} */ (h('select', {
-    'aria-label': `Move ${item.name} to`,
-    onchange: (/** @type {Event} */ event) => {
-      const state = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
-      if (!state) return;
-      item.state = state;
-      item.stateLabel = titleCase(state);
-      onUpdate();
-    }
-  },
-  h('option', { value: '' }, 'Move to…'),
-  ...BOARD_COLUMNS.map((column) => h('option', { value: column.tone }, column.title))));
   const { dialog, open: openDetail, close: closeDetail } = createModalDialog({
     className: 'work-mobile-detail',
     ariaLabel: `${item.name} details`
   });
-  /** @param {string} label @param {string} value @param {string[]} values @param {'owner'|'packageName'} property */
-  const updateSelect = (label, value, values, property) => {
-    const optionValues = [...new Set([value, ...values])];
-    return h('label', { className: 'work-mobile-detail-control' },
-      h('span', null, label),
-      h('select', {
-        'aria-label': `${label} for ${item.name}`,
-        onchange: (/** @type {Event} */ event) => {
-          item[property] = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
-          onUpdate();
-        }
-      }, ...optionValues.map((option) => h('option', { value: option, selected: option === value }, option || 'None')))
-    );
-  };
   dialog.append(
     h('header', null,
       h('div', null, renderIconSpan('work-avatar', item.icon, { ariaHidden: true }), h('h2', null, item.name)),
@@ -661,11 +683,6 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
         ...(item.nextAction ? [mobileDetailRow('Next action', item.nextAction)] : []),
         ...(item.consequenceTier ? [mobileDetailRow('Priority', item.consequenceTier)] : []),
         ...(item.verificationState ? [mobileDetailRow('Verification', item.verificationState)] : [])
-      ),
-      h('section', { className: 'work-mobile-quick-update', 'aria-label': `Quick update ${item.name}` },
-        h('h3', null, 'Quick update'),
-        updateSelect('Owner', item.owner, choices.owners, 'owner'),
-        updateSelect('Label', item.packageName, choices.labels, 'packageName')
       )
     )
   );
@@ -675,7 +692,7 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
     'aria-label': `Open ${item.name} details`,
     onclick: () => openDetail()
   }, 'Details', renderIconSpan('work-mobile-details-icon', 'chevron-right', { ariaHidden: true }));
-  element.append(h('footer', { className: 'work-mobile-item-actions' }, move, detailsButton), dialog);
+  element.append(h('footer', { className: 'work-mobile-item-actions' }, detailsButton), dialog);
   return element;
 }
 
@@ -688,20 +705,17 @@ function mobileDetailRow(label, value) {
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ start: number, duration: number }} extents
  * @param {number} divisions
- * @param {{ owners: string[], labels: string[] }} choices
- * @param {() => void} onUpdate
  */
-function renderRoadmapItems(items, extents, divisions, choices, onUpdate) {
+function renderRoadmapItems(items, extents, divisions) {
   const rendered = [];
   let period = '';
-  const sorted = items.toSorted((left, right) => left.startTime - right.startTime);
-  for (const [index, item] of sorted.entries()) {
+  for (const [index, item] of items.entries()) {
     const itemPeriod = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(item.startTime));
     if (itemPeriod !== period) {
       period = itemPeriod;
       rendered.push(h('h4', { className: 'work-roadmap-period-heading' }, period));
     }
-    rendered.push(decorateMobileWorkItem(renderWorkItemTimelineLane(item, extents, index, divisions), item, choices, onUpdate, 'roadmap'));
+    rendered.push(decorateMobileWorkItem(renderWorkItemTimelineLane(item, extents, index, divisions), item, 'roadmap'));
   }
   return rendered;
 }
@@ -863,62 +877,17 @@ function roadmapRangeSize(range) {
   return { day: 1440, week: 1260, month: 1240, quarter: 960, year: 1440 }[range] ?? 1440;
 }
 
-/** @param {string} state */
-function normalizeState(state) {
-  const normalized = state.toLowerCase();
-  if (['active', 'in-progress', 'in_progress', 'running'].includes(normalized)) return 'in-progress';
-  if (['blocked', 'review', 'needs-review', 'needs_review', 'action-required'].includes(normalized)) return 'needs-review';
-  if (['completed', 'cancelled', 'success', 'failure', 'done'].includes(normalized)) return 'done';
-  return 'todo';
-}
-
-/** @param {string} state */
-function actorForLifecycle(state) {
-  const normalized = state.toLowerCase();
-  if (['active', 'in-progress', 'in_progress', 'running'].includes(normalized)) return 'agent';
-  if (['review', 'needs-review', 'needs_review'].includes(normalized)) return 'reviewer';
-  if (['blocked', 'action-required', 'failure'].includes(normalized)) return 'maintainer';
-  if (['completed', 'cancelled', 'success', 'done'].includes(normalized)) return 'reviewer';
-  return 'scheduler';
-}
-
 /** @param {Array<ReturnType<typeof normalizeWorkItem>>} items */
-function orchestratedPackageNames(items) {
-  const roles = new Map();
+function groupWorkItems(items) {
+  /** @type {Array<{ key: string, label: string, grouped: boolean, items: Array<ReturnType<typeof normalizeWorkItem>> }>} */
+  const groups = [];
   for (const item of items) {
-    if (!item.packageName || item.packageName === 'standalone') continue;
-    const packageRoles = roles.get(item.packageName) ?? new Set();
-    packageRoles.add(item.workType);
-    roles.set(item.packageName, packageRoles);
+    const key = item.groupId || `item:${item.id}`;
+    const current = groups.at(-1);
+    if (current?.key === key) current.items.push(item);
+    else groups.push({ key, label: item.groupLabel || item.name, grouped: item.grouped, items: [item] });
   }
-  return new Set([...roles].filter(([, packageRoles]) => packageRoles.has('orchestrator') && packageRoles.has('worker')).map(([name]) => name));
-}
-
-/**
- * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
- * @param {Set<string>} orchestratedPackages
- */
-function groupWorkItems(items, orchestratedPackages) {
-  /** @type {Map<string, { key: string, label: string, grouped: boolean, items: Array<ReturnType<typeof normalizeWorkItem>> }>} */
-  const groups = new Map();
-  for (const item of items) {
-    const grouped = orchestratedPackages.has(item.packageName);
-    const key = grouped ? `package:${item.packageName}` : `item:${item.id}`;
-    const group = groups.get(key) ?? { key, label: item.packageName || item.name, grouped, items: [] };
-    group.items.push(item);
-    groups.set(key, group);
-  }
-  return [...groups.values()].map((group) => ({
-    ...group,
-    items: group.items.toSorted((left, right) => roleOrder(left.workType) - roleOrder(right.workType))
-  }));
-}
-
-/** @param {string} role */
-function roleOrder(role) {
-  if (role === 'orchestrator') return 0;
-  if (role === 'worker') return 1;
-  return 2;
+  return groups;
 }
 
 /**

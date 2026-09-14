@@ -6,6 +6,8 @@
 /**
  * @typedef {{
  *   filters?: Record<string, string[]>,
+ *   search?: { fields: string[], query: string },
+ *   orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   timeWindow?: { start?: string, end?: string }
  * }} GlobalQueryContext
  */
@@ -73,7 +75,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileTimePredicates(options.queryContext?.timeWindow),
         ...compileRoutePredicates(routeField, routeValue)
       ];
-      const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queries);
+      const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queryContext?.search, options.queryContext?.orderBy, options.queries);
       queries.push(compiled.query);
       if (compiled.replacesSource) replacedSources.add(sourceName);
     });
@@ -86,9 +88,11 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
  * @param {string} sourceName
  * @param {string} alias
  * @param {Array<Record<string, unknown>>} predicates
+ * @param {GlobalQueryContext['search']} search
+ * @param {GlobalQueryContext['orderBy']} orderBy
  * @param {unknown} definitions
  */
-function compileAliasedQuery(sourceName, alias, predicates, definitions) {
+function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, definitions) {
   const declaredQueries = Array.isArray(definitions) ? definitions.filter(isPlainObject) : [];
   const declared = declaredQueries
     .find((definition) => definition.name === sourceName);
@@ -111,18 +115,28 @@ function compileAliasedQuery(sourceName, alias, predicates, definitions) {
     ? declaredFilter.predicates.filter(isPlainObject)
     : [];
   const combinedPredicates = [...declaredPredicates, ...predicates];
+  const runtimeSearch = search && search.query.trim() && search.fields.length > 0
+    ? { fields: search.fields, query: search.query.trim() }
+    : undefined;
+  const runtimeOrder = Array.isArray(orderBy) && orderBy.length > 0 ? orderBy : undefined;
+  const filter = {
+    ...(combinedPredicates.length > 0 ? { predicates: combinedPredicates } : {}),
+    ...(runtimeSearch ? { search: runtimeSearch } : {})
+  };
   return {
     replacesSource: Boolean(sourceQuery),
     query: sourceQuery
       ? {
         ...sourceQuery,
         name: alias,
-        ...(combinedPredicates.length > 0 ? { filter: { predicates: combinedPredicates } } : { filter: undefined })
+        ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined }),
+        ...(runtimeOrder ? { 'order-by': runtimeOrder } : {})
       }
       : {
         name: alias,
         from: sourceName,
-        ...(combinedPredicates.length > 0 ? { filter: { predicates: combinedPredicates } } : {})
+        ...(Object.keys(filter).length > 0 ? { filter } : {}),
+        ...(runtimeOrder ? { 'order-by': runtimeOrder } : {})
       }
   };
 }

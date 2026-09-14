@@ -11,7 +11,7 @@ import { formatPercent } from './view-formatters.js';
  * @typedef {Record<string, unknown>} Row
  * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }} Predicate
  * @typedef {{ op: 'filter', predicates?: Predicate[], search?: { fields: string[], query: string } }} FilterOperator
- * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
+ * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
  * @typedef {{ op: 'slice', offset?: number, limit: number }} SliceOperator
  * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
@@ -302,6 +302,7 @@ function reduceValues(input, reducer) {
   if (reducer === 'count') return present.length;
   if (reducer === 'distinct-count') return new Set(present.map(String)).size;
   if (reducer === 'distinct-list') return [...new Set(present.map(String))].sort().join(', ');
+  if (reducer === 'distinct-values') return [...new Set(present.map(String))].sort();
   const values = present.map(Number).filter(Number.isFinite);
   if (reducer === 'sum') return values.reduce((total, value) => total + value, 0);
   if (values.length === 0) return null;

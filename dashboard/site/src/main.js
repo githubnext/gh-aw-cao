@@ -961,7 +961,7 @@
            * @param {string} pageId
            * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
            * @param {string[]} sourceNames
-           * @param {{ routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
+           * @param {{ routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} [options]
            */
           const bindContinuations = (pageId, sources, sourceNames, options = {}) => bindSourceContinuations(
             sources,
@@ -976,7 +976,7 @@
           );
           /**
            * @param {string} pageId
-           * @param {{ signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} options
+           * @param {{ signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} options
            */
           const loadPageSources = (pageId, options) => {
             const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);

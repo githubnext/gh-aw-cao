@@ -36,6 +36,7 @@ import { renderFactoryOverview } from './factory-overview.js';
  *   scope?: Record<string, unknown>,
  *   time?: Record<string, unknown>,
  *   routeParameter?: string,
+ *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } },
  *   titleLink?: Record<string, unknown>,
  *   element?: string,
  *   viewId?: string,
