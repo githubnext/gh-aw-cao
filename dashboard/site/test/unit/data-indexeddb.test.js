@@ -135,7 +135,7 @@ describe('canonical IndexedDB', () => {
       onProgress: (written) => progress.push(written)
     });
 
-    expect(progress.map((entry) => entry.storedRecords)).toEqual([1_000, 2_000, 2_500, 2_500]);
+    expect(progress.map((entry) => entry.storedRecords)).toEqual([1_000, 2_000, 2_500]);
     expect(progress.every((entry) => entry.totalRecords === 2_500)).toBe(true);
     const stored = await readCollection(indexedDB, 'repositories');
     expect(stored).toHaveLength(2_500);

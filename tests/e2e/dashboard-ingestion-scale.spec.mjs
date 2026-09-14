@@ -1,13 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve } from "node:path";
+import { extname, join, resolve, sep } from "node:path";
 import { syntheticGhAwLogs } from "../helpers/synthetic-gh-aw-logs.mjs";
 
 const siteRoot = resolve("dashboard/site");
-const payload = Buffer.from(syntheticGhAwLogs({
-  runs: Number(process.env.DASHBOARD_INGESTION_RUNS ?? 3000),
-}));
+const runs = Number(process.env.DASHBOARD_INGESTION_RUNS ?? 3000);
+const payload = Buffer.from(syntheticGhAwLogs({ runs }));
 
 /** @type {import('node:http').Server} */
 let server;
@@ -29,8 +28,8 @@ test.beforeAll(async () => {
       response.end(payload);
       return;
     }
-    const filePath = join(siteRoot, normalize(pathname));
-    if (filePath.startsWith(siteRoot) && existsSync(filePath) && statSync(filePath).isFile()) {
+    const filePath = resolve(join(siteRoot, pathname));
+    if (filePath.startsWith(`${siteRoot}${sep}`) && existsSync(filePath) && statSync(filePath).isFile()) {
       response.writeHead(200, {
         "content-type": extname(filePath) === ".json" ? "application/json" : "text/javascript",
       });
@@ -85,7 +84,7 @@ test("ingesting a large synthetic payload terminates and clears its notification
   });
 
   expect(result.failure, `ingestion failed after ${result.elapsed}ms`).toBeNull();
-  expect(result.rows).toBe(Number(process.env.DASHBOARD_INGESTION_RUNS ?? 3000));
+  expect(result.rows).toBe(runs);
   // The parse phase is a small part of a large ingestion, so the storage phase
   // must keep reporting progress instead of freezing the notification.
   const stored = result.messages.filter((message) => message.startsWith("Storing data..."));

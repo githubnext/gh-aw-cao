@@ -165,6 +165,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     }
   }
   if (options.storage) {
+    // Shrinking is best effort: when the cap is exhausted the stored batch is
+    // accepted as is rather than rewritten indefinitely.
     for (let attempt = 0; attempt < MAX_USAGE_RECOVERY_ATTEMPTS; attempt += 1) {
       const databaseUsage = await inspectDatabaseUsage(options.storage).catch(() => null);
       if (databaseUsage === null || databaseUsage <= maxDatabaseBytes || batch.runs.length === 0) break;

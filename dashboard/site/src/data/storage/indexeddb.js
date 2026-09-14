@@ -303,7 +303,8 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
         options.onProgress?.({ storedRecords, totalRecords });
       }
     }
-    options.onProgress?.({ storedRecords, totalRecords });
+    // Empty batches still report a terminal progress update.
+    if (totalRecords === 0) options.onProgress?.({ storedRecords, totalRecords });
   } finally {
     database.close();
   }
