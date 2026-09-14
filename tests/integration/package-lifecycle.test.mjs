@@ -199,6 +199,7 @@ includes:
   - .github/workflows/root-two.md
   - child/aw.yml
 `);
+    // This must resolve the root manifest rather than treating child/aw.yml as a cycle.
     writePackageFile(packageRoot, "child/aw.yml", `name: Child package
 includes:
   - ./aw.yml
@@ -214,11 +215,12 @@ includes:
       "--no-security-scanner",
     ], consumer);
 
-    for (const relativePath of [
-      ".github/workflows/root-one.md",
-      ".github/workflows/root-two.md",
+    for (const [relativePath, content] of [
+      [".github/workflows/root-one.md", "# Root one\n"],
+      [".github/workflows/root-two.md", "# Root two\n"],
     ]) {
       assert.ok(existsSync(join(consumer, relativePath)), `nested package omitted ${relativePath}`);
+      assert.equal(readFileSync(join(consumer, relativePath), "utf8"), content);
     }
   } finally {
     rmSync(packageRoot, { recursive: true, force: true });
