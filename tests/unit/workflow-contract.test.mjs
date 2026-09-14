@@ -3461,7 +3461,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);
   assert.match(workflow, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
-  assert.doesNotMatch(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
+  assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v3-\$\{\{ github\.run_id \}\}-/);
   assert.equal(packageDocument.scripts["activity:local"], undefined);
   assert.equal(packageDocument.scripts["activity:local:node"], undefined);

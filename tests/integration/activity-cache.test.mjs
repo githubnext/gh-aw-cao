@@ -41,7 +41,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(cacheJob, /permissions:\n\s+actions: write\n\s+contents: none/);
   assert.match(
     cacheJob,
-    /Download activity snapshot[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}[\s\S]*?Save activity cache/,
+    /Download activity snapshot[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?Save activity cache/,
   );
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
@@ -69,7 +69,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /Restore activity cache[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?if \[\[ -f "\$REPORT_DRAIN3_WEIGHTS" \]\][\s\S]*?--drain3-weights "\$REPORT_DRAIN3_WEIGHTS"[\s\S]*?mv "\$REPORT_AIC_CACHE\/drain3_weights\.json" "\$REPORT_DRAIN3_WEIGHTS"/,
   );
-  assert.doesNotMatch(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
+  assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.doesNotMatch(workflow, /Skip scheduled run|steps\.freshness/);
   assert.match(workflow, /ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/);
   assert.doesNotMatch(workflow, /Install SQLite|apt-get install.*sqlite3/);
