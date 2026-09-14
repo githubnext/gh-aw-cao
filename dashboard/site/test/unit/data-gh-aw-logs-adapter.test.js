@@ -196,6 +196,18 @@ describe('gh-aw logs adapter', () => {
       },
       {
         schema_version: 2,
+        kind: 'safe_output_item',
+        safe_output: {
+          run_id: 303,
+          type: 'create_pull_request',
+          url: 'https://github.com/githubnext/gh-aw-cao/pull/43',
+          number: 43,
+          repo: 'githubnext/gh-aw-cao',
+          timestamp: '2026-09-09T04:00:50Z'
+        }
+      },
+      {
+        schema_version: 2,
         kind: 'github_api_rate_limit',
         rate_limit: {
           host: 'github.com',
@@ -210,11 +222,13 @@ describe('gh-aw logs adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(adapted).toMatchObject({
-      records: 4,
+      records: 5,
       rawPayloadRecords: 1,
       rawRuns: 1,
       agenticRuns: 1,
       sessions: 2,
+      safeOutputItems: 1,
+      mappedSafeOutputItems: 1,
       rateLimits: 1,
       mappedRateLimits: 1
     });
@@ -279,7 +293,9 @@ describe('gh-aw logs adapter', () => {
       expect.objectContaining({
         source: 'safe-output',
         type: 'safe_output.created',
-        correlationId: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+        correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
+        sessionId: batch.sessions.find((session) => session.runId === 'github:run:303:attempt:1').id,
+        payloadRef: 'gh-aw-logs.jsonl#L4'
       }),
       expect.objectContaining({
         source: 'firewall',

@@ -487,6 +487,8 @@ export function adaptGhAwLogs(input) {
  *   unenrichedRuns: number,
  *   sessions: number,
  *   events: number,
+ *   safeOutputItems: number,
+ *   mappedSafeOutputItems: number,
  *   rateLimits: number,
  *   mappedRateLimits: number
  * }}
@@ -649,11 +651,16 @@ function createCachedGhAwJsonlAccumulator(options) {
   const enrichedRuns = new Map();
   /** @type {{ envelope: Record<string, unknown>, line: number }[]} */
   const rateLimitEnvelopes = [];
+  /** @type {Map<string, { value: Record<string, unknown>, line: number }[]>} */
+  const safeOutputItemsByRun = new Map();
+  /** @type {Map<string, string>} */
+  const latestRunByGithubId = new Map();
   /** @type {Map<string, CachedRun>} */
   const rawRuns = new Map();
   let records = 0;
   let agenticRunRecords = 0;
   let rawPayloadRecords = 0;
+  let safeOutputItems = 0;
   /** @type {Map<string, Set<string>>} */
   const workflowPaths = new Map();
   for (const hint of options.workflowHints ?? []) {
@@ -668,6 +675,21 @@ function createCachedGhAwJsonlAccumulator(options) {
     records += 1;
     if (envelope.kind === 'github_api_rate_limit') {
       rateLimitEnvelopes.push({ envelope, line });
+    }
+    if (envelope.kind === 'safe_output_item') {
+      safeOutputItems += 1;
+      const safeOutput = objectValue(envelope.safe_output, `gh-aw JSONL line ${line}.safe_output`);
+      const githubRunId = identifier(
+        safeOutput.run_id,
+        `gh-aw JSONL line ${line}.safe_output.run_id`
+      );
+      const parentRunId = latestRunByGithubId.get(String(githubRunId));
+      if (parentRunId) {
+        const items = safeOutputItemsByRun.get(parentRunId) ?? [];
+        items.push({ value: safeOutput, line });
+        safeOutputItemsByRun.set(parentRunId, items);
+      }
+      return;
     }
     if (envelope.kind === 'run') {
       agenticRunRecords += 1;
@@ -706,6 +728,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       enrichedRuns.set(id, enrichedRuns.has(id)
         ? preferNewer(/** @type {CachedRun} */ (enrichedRuns.get(id)), candidate)
         : candidate);
+      latestRunByGithubId.set(String(githubRunId), id);
       const lookup = `${coordinates.fullName.toLowerCase()}:${workflowName.toLowerCase()}`;
       const paths = workflowPaths.get(lookup) ?? new Set();
       paths.add(workflowSourcePath(workflowPath));
@@ -1229,12 +1252,17 @@ function createCachedGhAwJsonlAccumulator(options) {
         );
       }
     }
-    const safeOutputs = Array.isArray(run.safe_outputs)
+    const explicitSafeOutputs = safeOutputItemsByRun.get(id) ?? [];
+    const nestedSafeOutputs = Array.isArray(run.safe_outputs)
       ? run.safe_outputs
       : Array.isArray(audit.created_items) ? audit.created_items : [];
-    safeOutputs.forEach((safeOutput, index) => {
-      const record = safeOutput && typeof safeOutput === 'object' && !Array.isArray(safeOutput)
-        ? /** @type {Record<string, unknown>} */ (safeOutput)
+    const safeOutputs = explicitSafeOutputs.length > 0
+      ? explicitSafeOutputs
+      : nestedSafeOutputs.map((value) => ({ value, line: enriched.line }));
+    safeOutputs.forEach((safeOutput) => {
+      const record = safeOutput.value && typeof safeOutput.value === 'object'
+        && !Array.isArray(safeOutput.value)
+        ? /** @type {Record<string, unknown>} */ (safeOutput.value)
         : {};
       emitEvent(
         'safe_output.created',
@@ -1245,10 +1273,11 @@ function createCachedGhAwJsonlAccumulator(options) {
           optionalString(record.number) ?? ''
         ]),
         'created',
-        { type: 'safe-output', index, outputType: record.type, url: record.url },
+        { type: 'safe-output', record },
         {
           source: 'safe-output',
-          correlationId: optionalString(record.url ?? record.temporaryId)
+          correlationId: optionalString(record.url ?? record.temporaryId),
+          payloadRef: `gh-aw-logs.jsonl#L${safeOutput.line}`
         }
       );
     });
@@ -1439,6 +1468,9 @@ function createCachedGhAwJsonlAccumulator(options) {
     unenrichedRuns: runIds.size - enrichedRuns.size,
     sessions: enrichedRuns.size + (mappedRateLimits > 0 ? 1 : 0),
     events: derivedEvents + mappedRateLimits,
+    safeOutputItems,
+    mappedSafeOutputItems: [...safeOutputItemsByRun.values()]
+      .reduce((total, items) => total + items.length, 0),
     rateLimits: rateLimitEnvelopes.length,
     mappedRateLimits
   };

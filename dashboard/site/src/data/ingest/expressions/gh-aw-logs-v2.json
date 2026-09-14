@@ -14,6 +14,11 @@
       "emits": ["repository", "workflow", "run", "job", "session", "event"],
       "identity": ["run_id", "run_attempt"]
     },
+    "safe_output_item": {
+      "payloadPath": "safe_output",
+      "emits": ["event"],
+      "identity": ["run_id", "type", "url", "timestamp"]
+    },
     "github_api_rate_limit": {
       "payloadPath": "rate_limit",
       "emits": ["event"],
