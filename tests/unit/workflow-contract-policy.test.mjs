@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs";
-import { controlPrecompute, generatedJobs, modes, resolvePolicy, root, script, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { controlPrecompute, generatedJobs, modes, resolvePolicy, root, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Central policy resolution, rollout limits, and activation contracts.
 

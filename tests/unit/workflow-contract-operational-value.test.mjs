@@ -4,7 +4,6 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { parse } from "yaml";
 import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 // Operational-value grader, smoke, and canary contracts.

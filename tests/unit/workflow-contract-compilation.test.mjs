@@ -4,7 +4,7 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { generatedJobs, ghAwVersion, root, script, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
+import { generatedJobs, ghAwVersion, root, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Compiled workflow output contracts.
 
