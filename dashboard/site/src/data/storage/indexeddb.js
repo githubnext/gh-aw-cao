@@ -283,7 +283,10 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const recordsToWrite = Object.fromEntries(ENTITY_STORES.map((storeName) => {
     const previous = new Map((options.previousBatch?.[storeName] ?? [])
       .map((record) => [String(record.id), record]));
-    return [storeName, batch[storeName].filter((record) => previous.get(String(record.id)) !== record)];
+    return [storeName, batch[storeName].filter((record) => {
+      const retained = previous.get(String(record.id));
+      return !retained || JSON.stringify(retained) !== JSON.stringify(record);
+    })];
   }));
   const totalRecords = ENTITY_STORES.reduce(
     (total, storeName) => total + recordsToWrite[storeName].length,

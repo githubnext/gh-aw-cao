@@ -143,6 +143,21 @@ describe('canonical IndexedDB', () => {
       .toEqual(expect.objectContaining({ fullName: 'githubnext/repo-1' }));
   });
 
+  it('does not rewrite structurally unchanged retained records', async () => {
+    const canonicalBatch = batch();
+    await upsertCanonicalBatch(indexedDB, canonicalBatch);
+    /** @type {{ storedRecords: number, totalRecords: number }[]} */
+    const progress = [];
+
+    await replaceCanonicalBatch(indexedDB, structuredClone(canonicalBatch), {
+      previousBatch: structuredClone(canonicalBatch),
+      onProgress: (written) => progress.push(written)
+    });
+
+    expect(progress).toEqual([{ storedRecords: 0, totalRecords: 0 }]);
+    expect(await readCollection(indexedDB, 'repositories')).toEqual(canonicalBatch.repositories);
+  });
+
   it('validates relationships before changing stored records', async () => {
     await upsertCanonicalBatch(indexedDB, batch());
     const invalid = normalize([]);

@@ -98,7 +98,7 @@ it('renders compact database summaries and distinct registered repository covera
 });
 
 it.each([
-  ['humming', { 'active-runs': 1 }, 'Your factory is humming.'],
+  ['running healthily with active runs', { 'active-runs': 1 }, 'Your factory is humming.'],
   ['under strain', { 'failed-runs': 2, 'successful-runs': 1 }, 'Your factory is under strain.'],
   ['needs attention', { 'failed-runs': 1, 'successful-runs': 1 }, 'Your factory needs attention.'],
   ['running healthily', { 'successful-runs': 1 }, 'Your factory is running healthily.'],
