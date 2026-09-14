@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 import { retryTransientPackageInstall } from "../helpers/package-install-retry.mjs";
 
@@ -162,13 +162,13 @@ function workflowBody(content) {
   return content.slice(frontmatterEnd + 5).trimEnd();
 }
 
-async function writePackageFile(root, relativePath, content) {
+function writePackageFile(root, relativePath, content) {
   const path = join(root, relativePath);
-  mkdirSync(join(path, ".."), { recursive: true });
+  mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content);
 }
 
-function installPackage(source) {
+async function installPackage(source) {
   return retryTransientPackageInstall(() => {
     const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
     try {
