@@ -1962,10 +1962,14 @@ function validateView(view, viewNode, path, viewIds, errors) {
         `${path}.lazy-list`
       ));
     }
-    if (view.mark !== 'table' || (view['lazy-list'] === true && view.controls === 'static')) {
+    const invalidTableLazyList = view.mark === 'table' && view['lazy-list'] === true && view.controls === 'static';
+    if (
+      (view.mark !== 'table' && view.mark !== 'list')
+      || invalidTableLazyList
+    ) {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
-        'lazy-list is allowed only on interactive table views.',
+        'lazy-list is allowed only on interactive table views and list card views.',
         `${path}.lazy-list`
       ));
     }
@@ -2184,14 +2188,16 @@ function validateView(view, viewNode, path, viewIds, errors) {
       if (typeof view.list.icon === 'string' && !PAGE_ICON_VALUES.includes(view.list.icon)) {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'list icon must use one canonical Octicon name.', `${listPath}.icon`));
       }
-      validateRequiredIdentifier(view.list.action, `${listPath}.action`, 'list action reference', errors);
-      const declaredAction = typeof view.list.action === 'string'
-        ? declaredCliActions.get(view.list.action)
-        : undefined;
-      if (typeof view.list.action === 'string' && !declaredAction) {
-        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list action must reference a declared dashboard CLI action.', `${listPath}.action`));
-      } else if (declaredAction?.placement !== 'view') {
-        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
+      if (view.list.action !== undefined) {
+        validateRequiredIdentifier(view.list.action, `${listPath}.action`, 'list action reference', errors);
+        const declaredAction = typeof view.list.action === 'string'
+          ? declaredCliActions.get(view.list.action)
+          : undefined;
+        if (typeof view.list.action === 'string' && !declaredAction) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list action must reference a declared dashboard CLI action.', `${listPath}.action`));
+        } else if (declaredAction?.placement !== 'view') {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
+        }
       }
     }
     if (view.mark !== 'list') {

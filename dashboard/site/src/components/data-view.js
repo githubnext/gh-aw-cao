@@ -12,7 +12,7 @@ import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderO
 import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
-import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog } from './ui-primitives.js';
+import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog, observeLoadMoreBoundary } from './ui-primitives.js';
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
@@ -167,7 +167,7 @@ function renderMetricView(context) {
 
 /** @param {DataViewContext} context */
 function renderListView(context) {
-  const { pageId, title, view, rows, metadata, contextDetails, headingTag, prepareTableRows, toText, units = {} } = context;
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag, prepareTableRows, toText, units = {}, rowLimit } = context;
   const columns = /** @type {TableField[]} */ (isPlainObject(view.encoding) && Array.isArray(view.encoding.columns)
     ? view.encoding.columns.filter((column) => isPlainObject(column) && typeof column.field === 'string')
     : []);
@@ -190,9 +190,24 @@ function renderListView(context) {
     ),
     toText
   );
-  const cards = preparedRows.map((row, index) => {
+  const effectiveRowLimit = Number.isSafeInteger(rowLimit) && Number(rowLimit) > 0
+    ? Number(rowLimit)
+    : Number.POSITIVE_INFINITY;
+  const listRoot = h('ul', {
+    className: 'document-list',
+    ...(view['lazy-list'] === true ? { 'data-lazy-list': '' } : {})
+  });
+  /**
+   * @param {Record<string, unknown>} row
+   * @param {number} index
+   */
+  const renderCard = (row, index) => {
     const titleColumn = columns[0];
     const titleField = typeof titleColumn?.as === 'string' ? titleColumn.as : titleColumn?.field;
+    const cardTitle = toText(row[titleField ?? '']);
+    const titleContent = titleField === RUN_FIELD
+      ? renderWorkflowRunLink(row, cardTitle)
+      : cardTitle;
     return h(
       'li',
       { className: 'document-list-card', 'data-custom-row-key': `${pageId}-${title}-${index}` },
@@ -200,7 +215,7 @@ function renderListView(context) {
       h(
         'div',
         { className: 'document-list-card-content' },
-        h('strong', { className: 'document-list-card-title' }, toText(row[titleField ?? ''])),
+        h('strong', { className: 'document-list-card-title' }, titleContent),
         h(
           'dl',
           { className: 'document-list-card-details' },
@@ -219,25 +234,87 @@ function renderListView(context) {
         ? [renderTableAction(action, row)]
         : [])
     );
-  });
+  };
+  let renderedRowCount = 0;
+  /** @param {Array<Record<string, unknown>>} nextRows */
+  const appendRows = (nextRows) => {
+    for (const row of nextRows) {
+      listRoot.append(renderCard(row, renderedRowCount));
+      renderedRowCount += 1;
+    }
+  };
+  appendRows(preparedRows.slice(0, effectiveRowLimit));
   const emptyMessage = metadata.availability === 'unavailable'
     ? 'Data is unavailable for this view.'
     : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  const continuation = view['lazy-list'] === true && context.continuation
+    ? context.continuation
+    : undefined;
+  let continuationToken = continuation && renderedRowCount < effectiveRowLimit
+    ? continuation.token
+    : undefined;
+  let continuationLoading = false;
+  const loadStatus = h('output', { className: 'document-list-more-status', 'aria-live': 'polite' });
+  const loadMore = continuationToken
+    ? h('button', { className: 'table-filter-more', type: 'button' }, 'Load more cards')
+    : null;
+  /** @type {IntersectionObserver | null} */
+  let boundaryObserver = null;
+  const refreshLoadMore = () => {
+    if (!(loadMore instanceof HTMLButtonElement)) return;
+    const active = Boolean(continuationToken) && renderedRowCount < effectiveRowLimit;
+    loadMore.hidden = !active;
+    loadMore.disabled = !active || continuationLoading;
+  };
+  const runContinuationLoad = async () => {
+    if (!(loadMore instanceof HTMLButtonElement) || !continuation || !continuationToken || continuationLoading) return;
+    continuationLoading = true;
+    loadMore.disabled = true;
+    loadStatus.textContent = '';
+    try {
+      const next = await continuation.load(continuationToken);
+      const remainingRows = effectiveRowLimit - renderedRowCount;
+      appendRows(prepareTableRows(next.rows, columns, view.data).slice(0, remainingRows));
+      continuationToken = renderedRowCount < effectiveRowLimit ? next.continuationToken : undefined;
+      if (!continuationToken) boundaryObserver?.disconnect();
+    } catch {
+      loadStatus.textContent = 'Unable to load additional cards.';
+    } finally {
+      continuationLoading = false;
+      refreshLoadMore();
+    }
+  };
+  if (loadMore instanceof HTMLButtonElement) {
+    loadMore.addEventListener('click', () => {
+      void runContinuationLoad();
+    });
+    boundaryObserver = observeLoadMoreBoundary(
+      loadMore.ownerDocument.defaultView?.IntersectionObserver,
+      loadMore,
+      () => {
+        void runContinuationLoad();
+      },
+      { rootMargin: '240px' }
+    );
+    refreshLoadMore();
+  }
+  const headerChildren = [];
+  if (view.description) headerChildren.push(h('p', null, view.description));
+  if (listAction) headerChildren.push(listAction);
+  const sectionContent = [
+    ...renderViewSectionChrome(metadata, contextDetails),
+    h('header', { className: 'document-list-header' }, ...headerChildren),
+    renderedRowCount > 0
+      ? listRoot
+      : h('p', { className: 'document-list-empty' }, emptyMessage)
+  ];
+  if (loadMore instanceof HTMLButtonElement) {
+    sectionContent.push(loadMore, loadStatus);
+  }
   return renderPageSection(
     pageId,
     title,
-    [
-      ...renderViewSectionChrome(metadata, contextDetails),
-      h(
-        'header',
-        { className: 'document-list-header' },
-        view.description ? h('p', null, view.description) : null,
-        listAction
-      ),
-      cards.length > 0
-        ? h('ul', { className: 'document-list' }, cards)
-        : h('p', { className: 'document-list-empty' }, emptyMessage)
-    ],
+    sectionContent,
     headingTag
   );
 }

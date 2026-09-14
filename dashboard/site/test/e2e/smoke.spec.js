@@ -3812,8 +3812,8 @@ test('workflow page template follows its JSON-declared route and renders attribu
                   id: 'workflow-runs-table',
                   title: 'Runs',
                   data: { source: 'workflow-runs', 'route-field': 'workflow-route' },
-                  mark: 'table',
-                  controls: 'interactive',
+                  mark: 'list',
+                  list: { style: 'cards', icon: 'play' },
                   encoding: {
                     columns: [
                       { field: 'run', type: 'nominal', title: 'Run' },
@@ -3822,8 +3822,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
                       { field: 'run-conclusion', type: 'nominal', title: 'Conclusion', display: 'status' },
                       { field: 'event', type: 'nominal', title: 'Trigger' },
                       { field: 'started-at', type: 'temporal', title: 'Started' }
-                    ],
-                    href: { field: 'run-link', type: 'nominal' }
+                    ]
                   }
                 }
               ]
@@ -3961,12 +3960,9 @@ test('workflow page template follows its JSON-declared route and renders attribu
   await page.locator('.horizon-toggle').click();
   await expect(page.locator('.filter-tuning-controls .horizon-details').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toHaveCount(0);
-  await expect(page.locator('#page-workflow-runs .custom-table tbody tr')).toHaveCount(2);
-  await page.locator('#page-workflow-runs').getByRole('button', { name: /^Started/ }).click();
-  await expect(page.locator('#page-workflow-runs').getByRole('columnheader', { name: /^Started/ })).toHaveAttribute('aria-sort', 'ascending');
-  await page.locator('#page-workflow-runs').getByRole('searchbox', { name: 'Filter Runs' }).fill('Manual review');
-  await expect(page.locator('#page-workflow-runs .custom-table tbody tr:visible')).toHaveCount(1);
-  await expect(page.locator('#page-workflow-runs .custom-table tbody')).toContainText('Manual review');
+  await expect(page.locator('#page-workflow-runs .document-list-card')).toHaveCount(2);
+  await expect(page.locator('#page-workflow-runs .document-list-card .status-failure')).toContainText('failure');
+  await expect(page.locator('#page-workflow-runs .document-list-card')).toContainText('Manual review');
   await page.goto(`http://dashboard.test/#page-workflow-detail?workflow=${workflowRoute}`);
   await page.setContent(`
     <div id="root"></div>
@@ -4026,8 +4022,8 @@ test('workflow page template follows its JSON-declared route and renders attribu
                   id: 'workflow-runs-table',
                   title: 'Runs',
                   data: { source: 'workflow-runs', 'route-field': 'workflow-route' },
-                  mark: 'table',
-                  controls: 'interactive',
+                  mark: 'list',
+                  list: { style: 'cards', icon: 'play' },
                   encoding: {
                     columns: [
                       { field: 'run', type: 'nominal', title: 'Run' },
@@ -4036,8 +4032,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
                       { field: 'run-conclusion', type: 'nominal', title: 'Conclusion', display: 'status' },
                       { field: 'event', type: 'nominal', title: 'Trigger' },
                       { field: 'started-at', type: 'temporal', title: 'Started' }
-                    ],
-                    href: { field: 'run-link', type: 'nominal' }
+                    ]
                   }
                 }
               ]

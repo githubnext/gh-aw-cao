@@ -189,6 +189,53 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('No repositories were discovered.');
   });
 
+  it('renders lazy card lists and loads continuation pages', async () => {
+    const load = vi.fn(async () => ({
+      rows: [{ run: '101', 'run-status': 'completed' }],
+      continuationToken: undefined
+    }));
+    const rendered = renderDataView('list', {
+      pageId: 'workflow-runs',
+      title: 'Runs',
+      view: {
+        mark: 'list',
+        'lazy-list': true,
+        list: { style: 'cards', icon: 'play' },
+        encoding: {
+          columns: [
+            { field: 'run', title: 'Run' },
+            { field: 'run-status', title: 'Status', display: 'status' }
+          ]
+        }
+      },
+      sourceName: 'workflow-runs',
+      rows: [{
+        run: '102',
+        'run-status': 'in-progress',
+        'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/102', label: 'View run 102' }
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 2, load }
+    });
+
+    expect(rendered?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    expect(rendered?.querySelector('.document-list-card-title a')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/102');
+    const loadMore = rendered?.querySelector('.table-filter-more');
+    expect(loadMore).toBeInstanceOf(HTMLButtonElement);
+    /** @type {HTMLButtonElement} */ (loadMore).click();
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2));
+    expect(load).toHaveBeenCalledWith('page-2');
+    expect(rendered?.querySelector('.table-filter-more')?.hasAttribute('hidden')).toBe(true);
+  });
+
   it('presents an unavailable metric card as empty', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',

@@ -3459,15 +3459,18 @@
           },
           {
             "id": "workflow-runs-table",
-            "disclosure-label": "Runs",
+            "title": "Runs",
             "description": "Answers which recent workflow runs succeeded, failed, or remain in progress.",
             "data": {
               "source": "workflow-runs",
               "route-field": "workflow-route"
             },
-            "mark": "table",
-            "disclosure": "supplemental",
-            "controls": "static",
+            "mark": "list",
+            "list": {
+              "style": "cards",
+              "icon": "play"
+            },
+            "lazy-list": true,
             "empty-message": "No runs have been observed for this workflow.",
             "encoding": {
               "columns": [
@@ -3475,6 +3478,11 @@
                   "field": "run",
                   "type": "nominal",
                   "title": "Run"
+                },
+                {
+                  "field": "run-title",
+                  "type": "nominal",
+                  "title": "Title"
                 },
                 {
                   "field": "run-status",
@@ -3493,14 +3501,21 @@
                   "type": "nominal",
                   "title": "Mode",
                   "display": "mode"
+                },
+                {
+                  "field": "event",
+                  "type": "nominal",
+                  "title": "Trigger"
+                },
+                {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "title": "Started",
+                  "format": "human-friendly-timestamp"
                 }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
+              ]
             },
-            "layout": "full"
+            "layout": "full-view"
           },
           {
             "id": "workflow-run-details",

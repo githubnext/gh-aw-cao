@@ -620,13 +620,22 @@ describe('dashboard document validation', () => {
     const runsPageIndex = document.dashboard.pages.indexOf(runsPage);
     expect(runsView).toMatchObject({
       description: expect.any(String),
-      controls: 'static',
+      mark: 'list',
+      list: {
+        style: 'cards',
+        icon: 'play'
+      },
+      'lazy-list': true,
+      layout: 'full-view',
       encoding: {
         columns: [
           { field: 'run' },
+          { field: 'run-title' },
           { field: 'run-status' },
           { field: 'run-conclusion' },
-          { field: 'rollout-mode' }
+          { field: 'rollout-mode' },
+          { field: 'event' },
+          { field: 'started-at' }
         ]
       }
     });
@@ -4941,6 +4950,33 @@ dashboard:
           encoding:
             columns:
               - field: repository
+                type: nominal
+`);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts a full-view card list with lazy-list rendering', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: full-view-card-list
+  title: Full View Card List
+  pages:
+    - id: workflow-runs
+      kind: custom
+      views:
+        - id: workflow-run-cards
+          data:
+            source: workflow-runs
+          mark: list
+          list:
+            style: cards
+            icon: play
+          lazy-list: true
+          layout: full-view
+          encoding:
+            columns:
+              - field: run
                 type: nominal
 `);
 
