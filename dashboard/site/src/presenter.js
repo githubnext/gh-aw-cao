@@ -12,7 +12,7 @@ import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, elementLoadsSourcesAsync, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
+import { elementHandlesEmptyRows, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -85,7 +85,6 @@ const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
-const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
 const directionalViewTransitions = new WeakMap();
@@ -1125,20 +1124,6 @@ function latestSourceCoverageEnd(sources) {
 }
 
 /**
- * @param {Record<string, unknown>} view
- * @param {Record<string, LogicalSourceInput>} sources
- * @returns {string[]}
- */
-function resolveViewContextDetails(view, sources) {
-  const sourceName = getViewSources(view)[0] ?? null;
-  if (!sourceName) return ['Source unavailable.'];
-  const sourceInput = sources[sourceName];
-  return sourceInput && Array.isArray(sourceInput.rows)
-    ? []
-    : [`Source unavailable: ${sourceName}`];
-}
-
-/**
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
  * @returns {string}
  */
@@ -1731,121 +1716,6 @@ function getNavigationPageId(link) {
   return link.dataset.navPageId ?? link.dataset.mobileNavPageId ?? '';
 }
 
-/**
- * @param {PresentableCustomPage} page
- * @param {string} title
- * @param {Record<string, LogicalSourceInput>} sources
- * @param {Record<string, { name: string, symbol: string, significant: number }>} units
- * @param {Record<string, unknown>} dashboardDefaults
- * @param {boolean} [withFilterBar]
- * @returns {Promise<HTMLElement>}
- */
-async function renderCustomPageAsync(page, title, sources, units, dashboardDefaults, withFilterBar = true) {
-  const effectiveDashboardDefaults = inventoryPage(page.id)
-    ? { ...dashboardDefaults, time: undefined }
-    : dashboardDefaults;
-  const views = Array.isArray(page.views)
-    ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults))
-    : [];
-  const sections = Array.isArray(page.sections) ? page.sections : [];
-  const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
-    if (!Array.isArray(section.views) || section.views.length !== 1) return [];
-    const viewId = section.views[0];
-    const candidate = views.find((entry) => isPlainObject(entry) && entry.id === viewId);
-    return isPlainObject(candidate) && candidate.mark === 'callout' ? [viewId] : [];
-  }));
-  const routeParameter = typeof page.route?.['hash-query-parameter'] === 'string'
-    ? page.route['hash-query-parameter']
-    : undefined;
-  const routeNavigationPage = typeof page.route?.['navigation-page'] === 'string'
-    ? page.route['navigation-page']
-    : undefined;
-  const pageSources = new Map();
-  for (const view of views) {
-    for (const sourceName of getViewSources(view)) {
-      if (sources[sourceName]) pageSources.set(sourceName, sources[sourceName]);
-    }
-  }
-  const renderedViews = await Promise.all(views.map(async (view, index) => {
-    const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : '';
-    const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3';
-    const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
-    const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
-    const render = async () => {
-      const rendered = isPlainObject(view) && (view.mark === 'element' || typeof view.element === 'string')
-        ? await renderElementViewAsync(page.id, getViewTitle(view, index), view, index, sources, resolveViewContextDetails(view, sources), headingTag, routeParameter)
-        : renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
-      suppressSupplementalTableHeading(rendered, view, index);
-      if (disclosure === 'essential') {
-        rendered.classList.add('custom-view');
-        rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
-        rendered.setAttribute('data-view-layout', layout);
-      }
-      rendered.setAttribute('data-disclosure', disclosure);
-      return rendered;
-    };
-    const isRouteView = Boolean(
-      routeParameter
-      && isPlainObject(view)
-      && (
-        view.mark === 'element'
-        || typeof view.element === 'string'
-        || (isPlainObject(view.data) && typeof view.data['route-field'] === 'string')
-      )
-    );
-    const rendered = index === 0
-      || isRouteView
-      || (isPlainObject(view) && (view.locked === true || view.mark === 'callout'))
-      || TOP_LEVEL_VIEW_PAGE_IDS.has(page.id)
-      ? await render()
-      : renderLazyView({
-        label: getViewTitle(view, index),
-        headingLevel: headingTag,
-        minHeight: layout === 'half' || layout === 'third' ? 180 : 280,
-        render
-      });
-    rendered.classList.add('custom-view');
-    rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
-    rendered.setAttribute('data-view-layout', layout);
-    rendered.setAttribute('data-disclosure', disclosure);
-    if (disclosure === 'essential') return rendered;
-    rendered.classList.remove('custom-view');
-    rendered.removeAttribute('data-view-layout');
-    return renderViewDisclosure(rendered, layout, disclosure, getViewTitle(view, index));
-  }));
-  const renderedViewsById = new Map(views.map((view, index) => [
-    isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`,
-    renderedViews[index]
-  ]));
-  const renderedContent = sections.length > 0
-    ? h('div', { className: 'page-layout-grid' }, ...sections.map((section) => renderLayoutSection(page.id, section, renderedViewsById, sources)))
-    : h('div', { className: 'custom-view-grid' }, ...renderedViews);
-  const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0
-    ? ` ${page['class-name']}`
-    : '';
-  const filterBar = withFilterBar
-    ? renderCustomPage(page, title, sources, units, dashboardDefaults, true).firstElementChild
-    : null;
-  return h(
-    'section',
-    {
-      className: `dashboard-page${pageClassName}`,
-      id: `page-${page.id}`,
-      'data-page-kind': 'custom',
-      'data-page-name': page.id,
-      'data-page-id': page.id,
-      'data-page-title': title,
-      'data-page-description': page.description ?? '',
-      'data-route-parameter': routeParameter,
-      'data-route-navigation-page': routeNavigationPage
-    },
-    ...(filterBar ? [filterBar] : []),
-    ...(renderedViews.length > 0
-      ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
-      : [h('p', null, 'No custom views available.')])
-  );
-}
-
 /** @param {string} pageId */
 function inventoryPage(pageId) {
   return pageId === 'agents' || pageId === 'work' || pageId === 'work-tasks' || pageId === 'work-roadmap';
@@ -2206,86 +2076,6 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
   return ['summary-grid', 'readiness-verdict'].includes(elementName)
     ? renderPageSection(pageId, title, [rendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
     : rendered;
-}
-
-/**
- * @param {string} pageId
- * @param {string} title
- * @param {Record<string, unknown>} view
- * @param {number} viewIndex
- * @param {Record<string, LogicalSourceInput>} sources
- * @param {string[]} contextDetails
- * @param {'h3'|'h4'} headingTag
- * @param {string} [routeParameter]
- * @returns {Promise<HTMLElement>}
- */
-async function renderElementViewAsync(pageId, title, view, viewIndex, sources, contextDetails, headingTag, routeParameter) {
-  const elementName = typeof view.element === 'string' ? view.element : '';
-  const sourceNames = getViewSources(view);
-  const viewData = isPlainObject(view.data) ? view.data : undefined;
-  if (sourceNames.length === 0) {
-    return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'No sources declared for element view.'], headingTag);
-  }
-
-  const selectedSources = Object.fromEntries(sourceNames.flatMap((sourceName, sourceIndex) => {
-    const resolvedName = resolveViewSourceName(sources, pageId, view, viewIndex, sourceName, sourceIndex);
-    const source = sources[resolvedName];
-    return source && Array.isArray(source.rows)
-      ? [[sourceName, source]]
-      : [];
-  }));
-
-  if (sourceNames.length === 1) {
-    const sourceName = sourceNames[0];
-    const source = selectedSources[sourceName];
-    if (!source) {
-      return renderCustomViewState(pageId, title, sourceName, 'unavailable', contextDetails, headingTag);
-    }
-    const state = source.metadata?.availability ?? inferAvailability(source.rows);
-    if (state !== 'available' && !(state === 'empty' && elementHandlesEmptyRows(elementName))) {
-      return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag);
-    }
-    if (source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
-      return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag);
-    }
-  }
-
-  const rendered = await renderUiElementAsync(elementName, {
-    pageId,
-    title,
-    description: typeof view.description === 'string' ? view.description : undefined,
-    sourceNames,
-    sources: selectedSources,
-    contextDetails,
-    scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
-    time: isPlainObject(viewData?.time) ? viewData.time : undefined,
-    titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
-    routeParameter,
-    viewId: typeof view.id === 'string' ? view.id : undefined,
-    elementConfig: isPlainObject(view.config) ? view.config : undefined,
-    headingTag
-  });
-  const syncRendered = rendered ?? renderUiElement(elementName, {
-    pageId,
-    title,
-    description: typeof view.description === 'string' ? view.description : undefined,
-    sourceNames,
-    sources: selectedSources,
-    contextDetails,
-    scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
-    time: isPlainObject(viewData?.time) ? viewData.time : undefined,
-    titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
-    routeParameter,
-    viewId: typeof view.id === 'string' ? view.id : undefined,
-    elementConfig: isPlainObject(view.config) ? view.config : undefined,
-    headingTag
-  });
-  if (!syncRendered) {
-    return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'Unsupported UI element.'], headingTag);
-  }
-  return ['summary-grid', 'readiness-verdict'].includes(elementName)
-    ? renderPageSection(pageId, title, [syncRendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
-    : syncRendered;
 }
 
 /**
