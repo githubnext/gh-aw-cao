@@ -3,6 +3,7 @@ description: Deploy an access-controlled, read-only Central Agentic Ops report w
 min-version: v0.89.12
 experimental: true
 includes:
+  - ./aw.yml
   - .github/workflows/cao-dashboard.yml
 resources:
   - source: local-server.mjs

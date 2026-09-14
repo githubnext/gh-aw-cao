@@ -65,6 +65,18 @@ test("catalog packages declare their current experimental maturity", () => {
   }
 });
 
+test("focused packages reference the root package", () => {
+  const manifestPaths = readdirSync(root)
+    .map((name) => join(name, "aw.yml"))
+    .filter((relativePath) => relativePath !== "aw.yml" && existsSync(join(root, relativePath)))
+    .sort();
+
+  for (const relativePath of manifestPaths) {
+    const manifest = parse(readFileSync(join(root, relativePath), "utf8"));
+    assert.ok(manifest.includes?.includes("./aw.yml"), relativePath);
+  }
+});
+
 test("operational workflows use the transitive CAO package bundle", () => {
   const control = workflow("shared/control.md");
   assert.match(control, /dispatch_max:\n\s+type: number/);
@@ -99,7 +111,7 @@ test("focused package manifests do not cross-own package files", () => {
     const packageName = relativePath.split("/")[0];
     const manifest = parse(readFileSync(join(root, relativePath), "utf8"));
     const files = [
-      ...(manifest.includes ?? []).map((entry) => typeof entry === "string" ? {
+      ...(manifest.includes ?? []).filter((entry) => entry !== "./aw.yml").map((entry) => typeof entry === "string" ? {
         source: entry,
         destination: entry,
       } : entry),
