@@ -173,6 +173,10 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.equal(policy.authorized, true);
   assert.equal(policy.package, "dependabot");
   assert.doesNotMatch(rootManifest, /\.github\/aw\/cao/);
+  assert.match(
+    rootManifest,
+    /source: \.github\/actions\/setup-gh-aw\/action\.yml\n\s+destination: \.github\/actions\/setup-gh-aw\/action\.yml/,
+  );
   for (const path of ["control.mjs", "policy.mjs", "setup-github-apps.mjs"]) {
     assert.match(
       rootManifest,
