@@ -7,8 +7,8 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
-import { adaptCachedGhAwJsonlStream } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
-import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../dashboard/site/src/data/ingest/coordinator.js';
+import { adaptCachedGhAwJsonlStream, cachedJsonlPayloadIdentity } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
+import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
@@ -319,6 +319,12 @@ export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirector
  * one, using a payload scope derived from each shard's file name so the
  * transactions table can skip shards whose content hash was already
  * recorded instead of reprocessing the entire shard set on every run.
+ *
+ * Each shard's content hash is computed up front (a cheap byte-level hash,
+ * not a JSONL parse) and checked against the transactions table via
+ * `isCachedGhAwJsonlCurrent` *before* touching the adapter. Shards that are
+ * already current are skipped without ever being parsed, so re-runs only
+ * pay the parsing/normalization cost for shards that are new or changed.
  */
 async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}) {
   let shardNames = [];
@@ -335,9 +341,23 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
   let committedRecords = 0;
   for (const name of shardNames) {
     const shardPath = path.join(shardDirectory, name);
-    const result = await ingestCachedGhAwJsonl(indexedDB, createReadStream(shardPath), {
+    const scope = `gh-aw-jsonl:${name}`;
+    const content = await readFile(shardPath);
+    const payloadIdentity = cachedJsonlPayloadIdentity(content);
+    const current = await isCachedGhAwJsonlCurrent(indexedDB, {
+      payloadIdentity,
+      payloadScope: scope,
+      context: options.context,
+      workflowHints: options.workflowHints
+    });
+    if (current) {
+      shards.push({ shard: name, skipped: true, committedRecords: 0 });
+      continue;
+    }
+    const result = await ingestCachedGhAwJsonl(indexedDB, content, {
       ...options,
-      payloadScope: `gh-aw-jsonl:${name}`
+      payloadScope: scope,
+      payloadIdentity
     });
     if (result.updated) updated = true;
     committedRecords += result.committedRecords ?? 0;
