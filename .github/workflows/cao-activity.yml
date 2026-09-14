@@ -217,23 +217,11 @@ jobs:
           node "$ingestion_script" doctor \
             --database "$ACTIVITY_DATABASE" \
             --run-ttl-days all
-
-      - name: Hash activity payloads
-        run: |
-          cd "$RUNNER_TEMP/cao-activity"
-          shard_hashes="{}"
-          if compgen -G "gh-aw-logs-shards/*.jsonl" > /dev/null; then
-            shard_hashes="$(sha256sum gh-aw-logs-shards/*.jsonl | jq -R -s '
-              split("\n") | map(select(length > 0) | capture("^(?<hash>[0-9a-f]+)\\s+(?<file>.+)$")) |
-              map({(.file): .hash}) | add // {}
-            ')"
-          fi
-          jq -n \
-            --arg jsonl "$(sha256sum gh-aw-logs.jsonl | cut -d' ' -f1)" \
-            --arg sqlite "$(sha256sum gh-aw-logs.sqlite | cut -d' ' -f1)" \
-            --argjson shards "$shard_hashes" \
-            '{"gh-aw-logs.jsonl": $jsonl, "gh-aw-logs.sqlite": $sqlite} + $shards' \
-            > payload-hashes.json
+          node "$ingestion_script" hash-payloads \
+            --input "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" \
+            --database "$ACTIVITY_DATABASE" \
+            --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --output "$RUNNER_TEMP/cao-activity/payload-hashes.json"
 
       - name: Upload activity snapshot
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

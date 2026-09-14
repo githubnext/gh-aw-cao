@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
+import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
-import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
+import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -30,7 +31,7 @@ const DEFAULT_OUTPUT_DIRECTORY = '.cao';
 const DEFAULT_LOGS_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.jsonl`;
 const DEFAULT_DATABASE_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.sqlite`;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download']);
+const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads']);
 
 const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
@@ -39,6 +40,7 @@ const USAGE = `Usage:
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
+  cao hash-payloads [--input GH_AW_LOGS_JSONL] [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
@@ -366,6 +368,36 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
   return { updated, committedRecords, shards };
 }
 
+/**
+ * Computes SHA-256 checksums for the activity snapshot payloads: the
+ * consolidated JSONL file, the SQLite projection, and every retained
+ * `--cached-logs` wildcard shard file. Missing files are tolerated (an
+ * absent shard directory yields no shard entries) so this can run
+ * immediately after ingestion in the same workflow step.
+ */
+async function hashActivityPayloads({ jsonlPath, databasePath, shardDirectory }) {
+  const hashFile = async (filePath) => {
+    const hash = createHash('sha256');
+    for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+    return hash.digest('hex');
+  };
+  const hashes = {};
+  if (jsonlPath) hashes[path.basename(jsonlPath)] = await hashFile(jsonlPath);
+  if (databasePath) hashes[path.basename(databasePath)] = await hashFile(databasePath);
+  if (shardDirectory) {
+    let shardNames = [];
+    try {
+      shardNames = (await readdir(shardDirectory)).filter((name) => name.endsWith('.jsonl')).sort();
+    } catch (error) {
+      if (!(error && error.code === 'ENOENT')) throw error;
+    }
+    for (const name of shardNames) {
+      hashes[`${path.basename(shardDirectory)}/${name}`] = await hashFile(path.join(shardDirectory, name));
+    }
+  }
+  return hashes;
+}
+
 export async function queryCanonicalData(indexedDB, options) {
   const collection = option(options, 'collection');
   if (!QUERY_COLLECTIONS.includes(collection)) {
@@ -476,6 +508,19 @@ export async function runCli(arguments_, input = process.stdin) {
   if (command === 'audit-jsonl') {
     rejectUnknownOptions(options, ['input']);
     return auditJsonl(option(options, 'input', false) || DEFAULT_LOGS_PATH);
+  }
+  if (command === 'hash-payloads') {
+    rejectUnknownOptions(options, ['input', 'database', 'shard-dir', 'output']);
+    const hashes = await hashActivityPayloads({
+      jsonlPath: option(options, 'input', false) ? path.resolve(option(options, 'input', false)) : undefined,
+      databasePath: option(options, 'database', false) ? path.resolve(option(options, 'database', false)) : undefined,
+      shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined
+    });
+    const outputPath = option(options, 'output', false);
+    if (outputPath) {
+      await writeFile(path.resolve(outputPath), `${JSON.stringify(hashes, null, 2)}\n`);
+    }
+    return hashes;
   }
   const rawQuery = command === 'query' && options.stdin
     ? await rawQueryFromStdin(options, input)
