@@ -204,6 +204,7 @@ jobs:
       - name: Ingest activity database
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          NODE_DEBUG: cao:ingest
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
         run: |
           if [[ -f activity/cao.mjs ]]; then

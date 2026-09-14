@@ -340,6 +340,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
     { source: "control-settings.mjs", destination: ".github/aw/activity/control-settings.mjs" },
+    { source: "debug.mjs", destination: ".github/aw/activity/debug.mjs" },
     { source: "gh-aw-logs.mjs", destination: ".github/aw/activity/gh-aw-logs.mjs" },
     { source: "inventory.mjs", destination: ".github/aw/activity/inventory.mjs" },
     { source: "inventory-sources.mjs", destination: ".github/aw/activity/inventory-sources.mjs" },
@@ -362,6 +363,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /--drain3-weights "\$REPORT_DRAIN3_WEIGHTS"/);
   assert.match(workflow, /mv "\$REPORT_AIC_CACHE\/drain3_weights\.json" "\$REPORT_DRAIN3_WEIGHTS"/);
   assert.match(workflow, /Saved refreshed Drain3 weights to \$REPORT_DRAIN3_WEIGHTS/);
+  assert.match(workflow, /Ingest activity database[\s\S]*?NODE_DEBUG: cao:ingest/);
   assert.match(workflow, /REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/);
   assert.match(workflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(workflow, /issues: read/);
