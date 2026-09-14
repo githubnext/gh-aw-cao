@@ -89,6 +89,29 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
+  it('counts failed workflow dispatches separately from total dispatches', () => {
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      {
+        runs: {
+          source: 'runs',
+          rows: [
+            { run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success' },
+            { run: '2', event: 'workflow_dispatch', 'run-conclusion': 'failure' },
+            { run: '3', event: 'workflow_dispatch', 'run-conclusion': 'timed-out' },
+            { run: '4', event: 'push', 'run-conclusion': 'failure' }
+          ],
+          metadata: metadata('runs')
+        }
+      },
+      ['overview-dispatch-summary']
+    );
+
+    expect(result['overview-dispatch-summary'].rows).toEqual([
+      { dispatches: 3, 'failed-dispatches': 2 }
+    ]);
+  });
+
   it('counts distinct targets from successful worker dispatches only', () => {
     const runRows = [
       { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'github/gh-aw' },

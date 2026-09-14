@@ -27,7 +27,7 @@ const OVERVIEW_SOURCE_NAMES = [
 /**
  * Values shared by more than one bound element. Each one is memoised so a
  * source update recomputes it once instead of once per element.
- * @typedef {{ successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} OverviewMetrics
+ * @typedef {{ successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} OverviewMetrics
  */
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {{ singular: string, plural: string }} PluralText */
@@ -196,6 +196,7 @@ function createOverviewMetrics(sources) {
     })),
     workers: memo(() => numberField(workers(), 'workers')),
     dispatches: memo(() => numberField(dispatch(), 'dispatches')),
+    failedDispatches: memo(() => numberField(dispatch(), 'failed-dispatches')),
     usefulOutputs: memo(() => numberField(outcome(), 'useful-outputs')),
     deliveredRepositories: memo(() => numberField(outcome(), 'delivered-repositories')),
     motion: memo(() => ({
@@ -232,15 +233,9 @@ function renderIntroduction(sources, metrics) {
   bind(() => {
     const motion = factoryMotionState.get();
     running.className = `factory-running${motion.operations > 0 ? ' factory-running-active' : ''}`;
-    running.replaceChildren(motion.operations > 0
-      ? h(
-        'span',
-        {},
-        h('strong', {}, formatCount(motion.operations)),
-        motion.operations === 1 ? ' operation in motion ' : ' operations in motion ',
-        h('span', { className: 'factory-running-detail' }, `(${formatCount(motion.live)} live, ${formatCount(motion.review)} in review)`)
-      )
-      : 'Actions activity observed');
+    running.replaceChildren(
+      motion.operations > 0 ? h('span', {}, 'Work in motion') : 'Actions activity observed'
+    );
   });
 
   bind(() => {
@@ -301,14 +296,7 @@ function renderFactoryFloor(sources, metrics, label) {
       value: coverage.total,
       detail: coverage.registeredUnavailable
         ? 'Registered targets unavailable'
-        : coverage.unavailable
-          ? h('a', { href: '#page-repositories' }, `${formatCount(coverage.registered)} registered`)
-          : h(
-              'span',
-              {},
-              `${formatCount(coverage.total)} of `,
-              h('a', { href: '#page-repositories' }, `${formatCount(coverage.registered)} registered`)
-            )
+        : h('a', { href: '#page-repositories' }, `${formatCount(coverage.registered)} registered`)
     };
   });
 
@@ -325,12 +313,16 @@ function renderFactoryFloor(sources, metrics, label) {
 
   dispatches.bind(() => {
     const dispatchCount = metrics.dispatches();
-    const workers = metrics.workers();
+    const failedDispatches = metrics.failedDispatches();
     return {
-      pending: sources['overview-dispatch-summary'].pending() || sources['overview-worker-summary'].pending(),
+      pending: sources['overview-dispatch-summary'].pending(),
       label: label('dispatches', dispatchCount),
       value: dispatchCount,
-      detail: `${formatCount(workers)} ${workers === 1 ? 'workflow' : 'workflows'} observed`
+      detail: h(
+        'a',
+        { href: '#page-dispatches?package-worker-dispatches.status=failure' },
+        `${formatCount(failedDispatches)} failed`
+      )
     };
   });
 

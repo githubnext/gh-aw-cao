@@ -359,10 +359,19 @@
       },
       {
         "name": "overview-dispatch-summary",
-        "intent": "Count workflow dispatch runs in the selected horizon.",
+        "intent": "Count workflow dispatch runs and failures in the selected horizon.",
         "from": "runs",
         "filter": { "predicates": [{ "field": "event", "equals": "workflow_dispatch" }] },
-        "aggregate": { "values": [{ "field": "run", "as": "dispatches", "reducer": "count" }] }
+        "compute": [
+          { "as": "failed", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "failure" }, { "value": "startup-failure" }, { "value": "stale" }, { "value": "timed-out" }] },
+          { "as": "failed-count", "function": "if", "args": [{ "field": "failed" }, { "value": 1 }, { "value": 0 }] }
+        ],
+        "aggregate": {
+          "values": [
+            { "field": "run", "as": "dispatches", "reducer": "count" },
+            { "field": "failed-count", "as": "failed-dispatches", "reducer": "sum" }
+          ]
+        }
       },
       {
         "name": "overview-delivery-summary",
