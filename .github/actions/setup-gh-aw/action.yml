@@ -11,6 +11,6 @@ runs:
         version="$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json)"
         echo "version=$version" >> "$GITHUB_OUTPUT"
     - name: Install gh-aw
-      uses: github/gh-aw-actions/setup-cli@568100884e9818a5d5fb5b524929d2d1b94beba1 # v0.89.12 tag resolves to this commit
+      uses: github/gh-aw-actions/setup-cli@045beb2d14bda8d0c1f2e83b41527f63770d2855 # v0.89.15 tag resolves to this commit
       with:
         version: ${{ steps.compiler.outputs.version }}

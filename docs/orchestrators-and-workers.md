@@ -132,7 +132,7 @@ Example: AW Optimization can be live while `optimization-ai-credit-optimizer` re
 ```json
 {
 	"version": 1,
-	"gh-aw-version": "v0.89.12",
+	"gh-aw-version": "v0.89.15",
 	"control-plane": {
 		"packages": {
 			"optimization": {

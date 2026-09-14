@@ -155,7 +155,7 @@ jobs:
       contents: read
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@v7
@@ -220,7 +220,7 @@ jobs:
             '{id: $id, tag: $tag, sha: $sha}' \
             > "$RUNNER_TEMP/release-context/release.json"
       - name: Upload prepared release context
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: release-context-${{ github.run_id }}
           path: ${{ runner.temp }}/release-context/
@@ -228,7 +228,7 @@ jobs:
 
 steps:
   - name: Download prepared release context
-    uses: actions/download-artifact@v8
+    uses: actions/download-artifact@v8.0.1
     with:
       name: release-context-${{ github.run_id }}
       path: /tmp/gh-aw/agent/release-data
