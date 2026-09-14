@@ -53,8 +53,10 @@ and finally a downloaded-content hash when neither server-side identity is usabl
 `activity/cao.mjs` logs shard skip/ingest decisions and per-file hash results
 through Node's built-in `util.debuglog` (see `activity/debug.mjs`), scoped
 under the `cao:*` namespace (for example `cao:ingest`, `cao:hash-payloads`).
-Logging is a no-op by default; set `NODE_DEBUG=cao:*` (or a specific category)
-to see it.
+Logging is a no-op by default outside the Activity workflow; set
+`NODE_DEBUG=cao:*` (or a specific category) to see it locally. The Activity
+workflow enables `cao:ingest` while building the SQLite projection so each shard
+skip/import decision is visible in run logs without printing record payloads.
 
 Snapshots use the immutable key
 `cao-activity-v3-${github.run_id}-${github.run_attempt}` and restore prefix

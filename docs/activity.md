@@ -69,6 +69,10 @@ Dashboard ingestion checks the sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is
 usable.
 
+Activity database ingestion enables `NODE_DEBUG=cao:ingest` so workflow logs
+show which retained JSONL shard files were skipped or imported as separate
+transactions, without logging record payloads.
+
 Its immutable key is
 `cao-activity-v3-${github.run_id}-${github.run_attempt}`; its restore prefix is
 `cao-activity-v3-`. Consumers dispatched by Activity must restore the exact
