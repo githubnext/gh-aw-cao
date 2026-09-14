@@ -12,6 +12,7 @@ on:
   push:
     paths:
       - .github/workflows/cao.json
+      - .github/workflows/activity.yml
   schedule:
     - cron: "7,22,37,52 * * * *"
 
