@@ -3809,7 +3809,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
                   config: { body: 'runs' }
                 },
                 {
-                  id: 'workflow-runs-table',
+                  id: 'workflow-runs-list',
                   title: 'Runs',
                   data: { source: 'workflow-runs', 'route-field': 'workflow-route' },
                   mark: 'list',
@@ -4019,7 +4019,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
                   config: { body: 'runs' }
                 },
                 {
-                  id: 'workflow-runs-table',
+                  id: 'workflow-runs-list',
                   title: 'Runs',
                   data: { source: 'workflow-runs', 'route-field': 'workflow-route' },
                   mark: 'list',

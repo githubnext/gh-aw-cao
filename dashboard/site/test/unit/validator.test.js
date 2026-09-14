@@ -615,7 +615,7 @@ describe('dashboard document validation', () => {
   it('validates declarative table intents without author-defined context templating', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runs');
-    const runsView = runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-table');
+    const runsView = runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-list');
     const detailsView = runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-run-details');
     const runsPageIndex = document.dashboard.pages.indexOf(runsPage);
     expect(runsView).toMatchObject({

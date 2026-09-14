@@ -3458,7 +3458,7 @@
             "layout": "full"
           },
           {
-            "id": "workflow-runs-table",
+            "id": "workflow-runs-list",
             "title": "Runs",
             "description": "Answers which recent workflow runs succeeded, failed, or remain in progress.",
             "data": {

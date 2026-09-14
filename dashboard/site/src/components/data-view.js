@@ -278,6 +278,8 @@ function renderListView(context) {
       continuationToken = renderedRowCount < effectiveRowLimit ? next.continuationToken : undefined;
       if (!continuationToken) boundaryObserver?.disconnect();
     } catch {
+      boundaryObserver?.disconnect();
+      boundaryObserver = null;
       loadStatus.textContent = 'Unable to load additional cards.';
     } finally {
       continuationLoading = false;
