@@ -287,7 +287,9 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 1);
   assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
-  assert.match(activityWorkflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(activityWorkflow, /Resolve gh-aw compiler version[\s\S]*control\.mjs compiler-version \.github\/workflows\/cao\.json/);
+  assert.match(activityWorkflow, /uses: github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
+  assert.match(activityWorkflow, /version: \$\{\{ steps\.gh-aw-compiler\.outputs\.version \}\}/);
   assert.match(activityWorkflow, /control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(deployedWorkflows, /fetch\(|api\.github\.com|gh api|spawn\(/);
   assert.match(deployedWorkflows, /Build activity index from local workflow inventory/);
@@ -346,7 +348,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(workflow, /Resolve CAO control source|\.github\/aw\/packages|\.cao-runtime/);
-  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-gh-aw/);
+  assert.match(workflow, /uses: github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
   assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);

@@ -13,8 +13,6 @@ resources:
     destination: .github/workflows/shared/policy.mjs
   - source: .github/workflows/shared/setup-github-apps.mjs
     destination: .github/workflows/shared/setup-github-apps.mjs
-  - source: .github/actions/setup-gh-aw/action.yml
-    destination: .github/actions/setup-gh-aw/action.yml
   - source: AGENTS.md
     destination: .github/aw/default-AGENTS.md
   - source: .github/aw/instructions.md

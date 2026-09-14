@@ -17,7 +17,6 @@ const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
   || "githubnext/gh-aw-cao@main";
 const packageUpdateSource = "https://github.com/githubnext/gh-aw-cao";
 const controlRuntimeFiles = [
-  ".github/actions/setup-gh-aw/action.yml",
   ".github/workflows/shared/control.mjs",
   ".github/workflows/shared/policy.mjs",
   ".github/workflows/shared/setup-github-apps.mjs",

@@ -109,11 +109,19 @@ jobs:
           permission-actions: read
           permission-contents: read
 
+      - name: Resolve gh-aw compiler version
+        id: gh-aw-compiler
+        run: |
+          version="$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
+        uses: github/gh-aw-actions/setup-cli@045beb2d14bda8d0c1f2e83b41527f63770d2855 # v0.89.15 tag resolves to this commit
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+        with:
+          version: ${{ steps.gh-aw-compiler.outputs.version }}
 
       - name: Collect dashboard inventory
         env:
