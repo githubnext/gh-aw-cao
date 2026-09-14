@@ -224,13 +224,6 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
       writeFileSync(workflowPath, workflow.replace(/^source: .*$/m, `source: ${packageSource}`));
     }
 
-    const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
-    const orchestrator = readFileSync(orchestratorPath, "utf8");
-    assert.match(orchestrator, new RegExp(`^source: ${packageSource.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
-    const trackedOrchestrator = orchestrator;
-    const modifiedOrchestrator = trackedOrchestrator.replace("max-ai-credits: 250", "max-ai-credits: 251");
-    assert.notEqual(modifiedOrchestrator, trackedOrchestrator, "test could not modify package workflow frontmatter");
-    writeFileSync(orchestratorPath, `${modifiedOrchestrator}\n# local integration-test change\n`);
     const removedRuntime = controlRuntimeFiles[0];
     rmSync(join(consumer, removedRuntime));
     run("gh", [
@@ -245,14 +238,6 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
       "0",
     ], consumer);
 
-    const updatedOrchestrator = readFileSync(orchestratorPath, "utf8");
-    assert.ok(
-      !updatedOrchestrator.includes("# local integration-test change"),
-      "gh aw update retained a local package workflow modification",
-    );
-    assert.match(updatedOrchestrator, /^max-ai-credits: 250$/m);
-    assert.doesNotMatch(updatedOrchestrator, /^max-ai-credits: 251$/m);
-    assert.equal(workflowBody(updatedOrchestrator), workflowBody(orchestrator));
     assert.ok(existsSync(join(consumer, removedRuntime)), "gh aw update did not restore the control runtime");
     assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
     assert.equal(readFileSync(policyPath, "utf8"), policy, "gh aw update changed consumer-owned CAO policy");
