@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardServer } from "../../.github/aw/dashboard/local-server.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
 const outputDirectory = resolve(

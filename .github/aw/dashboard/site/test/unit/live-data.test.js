@@ -207,7 +207,7 @@ describe("live Dashboard Language sources", () => {
     const output = join(temporaryDirectory, "sources.json");
     try {
       execFileSync(process.execPath, [
-        resolve("../../dashboard/report/dashboard-language-sources.mjs"),
+        resolve("../../.github/aw/dashboard/report/dashboard-language-sources.mjs"),
       ], {
         env: {
           ...process.env,
@@ -329,7 +329,7 @@ describe("live Dashboard Language sources", () => {
       };
       writeFileSync(join(temporaryDirectory, "report.json"), JSON.stringify(rateLimitedReport));
       execFileSync(process.execPath, [
-        resolve("../../dashboard/report/dashboard-language-sources.mjs"),
+        resolve("../../.github/aw/dashboard/report/dashboard-language-sources.mjs"),
       ], {
         env: {
           ...process.env,

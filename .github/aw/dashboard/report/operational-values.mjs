@@ -1,8 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { actionsLog as log } from "../../activity/actions-log.mjs";
-import { parseGhAwLogsJsonl } from "../../activity/gh-aw-logs.mjs";
+import { actionsLog as log } from "../../.github/aw/activity/actions-log.mjs";
+import { parseGhAwLogsJsonl } from "../../.github/aw/activity/gh-aw-logs.mjs";
 import {
   mergeOperationalValueRecords,
   operationalValueRunIdentity,

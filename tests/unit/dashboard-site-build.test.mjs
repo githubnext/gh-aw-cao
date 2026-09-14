@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { parse } from "yaml";
-import { buildDashboardSite } from "../../dashboard/site/scripts/build.mjs";
+import { buildDashboardSite } from "../../.github/aw/dashboard/site/scripts/build.mjs";
 
 function localDependencies(source) {
   const dependencies = [];
@@ -76,7 +76,7 @@ test("docs dashboard installs renderer assets and configured package pages", asy
       new RegExp(`const VERSION = '${mainHash}';`),
     );
 
-    const manifest = parse(await readFile(new URL("../../dashboard/aw.yml", import.meta.url), "utf8"));
+    const manifest = parse(await readFile(new URL("../../.github/aw/dashboard/aw.yml", import.meta.url), "utf8"));
     const installedSitePrefix = ".github/aw/dashboard/site/";
     const buildResources = new Set(["package.json", "package-lock.json", "scripts/build.mjs"]);
     for (const resource of manifest.resources.filter(({ destination: resourcePath }) => (
@@ -126,7 +126,7 @@ test("dashboard cache hashes are stable and change with assembled site content",
 });
 
 test("dashboard package includes every transitive site module and asset", async () => {
-  const dashboardRoot = new URL("../../dashboard/", import.meta.url);
+  const dashboardRoot = new URL("../../.github/aw/dashboard/", import.meta.url);
   const manifest = parse(await readFile(new URL("aw.yml", dashboardRoot), "utf8"));
   const packaged = new Set(manifest.resources.map(({ source }) => source));
   const pending = [...packaged].filter((source) => source.startsWith("site/") && source.endsWith(".js"));

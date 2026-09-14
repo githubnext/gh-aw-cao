@@ -6,9 +6,9 @@ Draft
 
 ## Context
 
-The `experiments-evaluation` component (`dashboard/site/src/components/experiments-evaluation.js`) previously combined filter state, readiness overview, decision-table ranking, and detail composition in a single page-specialized renderer. This differed from existing route/body composition primitives already used elsewhere in the dashboard, such as `workflow-route` and `package-route`, which compose pages declaratively rather than through one monolithic renderer.
+The `experiments-evaluation` component (`.github/aw/dashboard/site/src/components/experiments-evaluation.js`) previously combined filter state, readiness overview, decision-table ranking, and detail composition in a single page-specialized renderer. This differed from existing route/body composition primitives already used elsewhere in the dashboard, such as `workflow-route` and `package-route`, which compose pages declaratively rather than through one monolithic renderer.
 
-`dashboard/site/dashboard.json` needed to compose the built-in Experiments page from multiple distinct views (overview, table, detail) while preserving existing experiment behavior, accessibility semantics, filtering, deep linking, and evidence presentation (comparison, eval outcomes, grader diagnostics, observation quality, run evidence).
+`.github/aw/dashboard/site/dashboard.json` needed to compose the built-in Experiments page from multiple distinct views (overview, table, detail) while preserving existing experiment behavior, accessibility semantics, filtering, deep linking, and evidence presentation (comparison, eval outcomes, grader diagnostics, observation quality, run evidence).
 
 ## Decision
 
@@ -17,8 +17,8 @@ Refactor the experiments dashboard composition to use reusable declarative slice
 - Add support in `experiments-evaluation` for a `config.body` vocabulary with values `overview`, `table`, and `detail`, mirroring the shared route/body-style value handling already used for other components.
 - Extract `experiments-view-shell` (`+443` lines, new file) and `experiments-view-composition` (`+25` lines, new file) so the experiments renderer can declaratively select which slice to render.
 - Reduce `experiments-evaluation.js` from a combined renderer to a thin dispatcher (`+27/-331` lines) that delegates to the extracted shell/composition modules based on `config.body`.
-- Update `dashboard/site/dashboard.json` (`+47` lines) to compose the Experiments page from three separate `experiments-evaluation` element views, each configured with a different `config.body` value (`overview`, `table`, `detail`).
-- Register the new `config.body` values in `route-body-specification.js` and validate them in `dashboard/site/src/validator.js` (`+6/-3`) using the existing shared route/body-style value handling.
+- Update `.github/aw/dashboard/site/dashboard.json` (`+47` lines) to compose the Experiments page from three separate `experiments-evaluation` element views, each configured with a different `config.body` value (`overview`, `table`, `detail`).
+- Register the new `config.body` values in `route-body-specification.js` and validate them in `.github/aw/dashboard/site/src/validator.js` (`+6/-3`) using the existing shared route/body-style value handling.
 - Document the normative `config.body` contract for `experiments-evaluation` in `docs/dashboard-language-specification.md` (`+2/-2`).
 - Add unit coverage for valid/invalid `experiments-evaluation` `config.body` values (`validator.test.js`, `+46` lines) and for declarative `overview`/`table` slice rendering (`experiments-evaluation.test.js`, `+54` lines).
 

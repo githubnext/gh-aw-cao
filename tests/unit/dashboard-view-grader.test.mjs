@@ -8,7 +8,7 @@ import test from "node:test";
 import {
   gradeDashboardDocument,
   gradeDashboardView,
-} from "../../dashboard/grader/view-grader.mjs";
+} from "../../.github/aw/dashboard/grader/view-grader.mjs";
 
 const executeFile = promisify(execFile);
 
@@ -99,7 +99,7 @@ test("grades a document and the CLI writes the same report shape", async () => {
       writeFile(sourcesPath, JSON.stringify({ summary: { rows: [{ value: 2 }] } })),
     ]);
     await executeFile(process.execPath, [
-      "dashboard/grader/view-grader.mjs",
+      ".github/aw/dashboard/grader/view-grader.mjs",
       "--dashboard", dashboardPath,
       "--sources", sourcesPath,
       "--output", outputPath,

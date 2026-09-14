@@ -10,7 +10,7 @@ The dashboard needed a consistent way to represent evidence-backed warnings abou
 
 Per `docs/agentic-workflow-smells.md`, findings must be classified "by what the evidence describes" and reviewers must not infer a security finding from high cost, long duration, or broad tool use — implying a need for explicit, evidence-typed classification rather than ad hoc or inferred severity labeling.
 
-The changed files show this classification was implemented across the specification (`docs/dashboard-language-specification.md`, +42 lines), the telemetry/report layer (`dashboard/report/dashboard-language-sources.mjs`, +151 lines; `dashboard/report/aic-usage.mjs`, +28 lines), and the UI (`agent-marketplace-view.js`, `ui-elements.js`, `specification.js`, `dashboard.json`, `index.html`), along with new documentation and tests validating rendering of the new smell observations.
+The changed files show this classification was implemented across the specification (`docs/dashboard-language-specification.md`, +42 lines), the telemetry/report layer (`.github/aw/dashboard/report/dashboard-language-sources.mjs`, +151 lines; `.github/aw/dashboard/report/aic-usage.mjs`, +28 lines), and the UI (`agent-marketplace-view.js`, `ui-elements.js`, `specification.js`, `dashboard.json`, `index.html`), along with new documentation and tests validating rendering of the new smell observations.
 
 ## Decision
 
@@ -25,7 +25,7 @@ Classify all agentic workflow smell observations into exactly four normalized cl
 
 The dashboard normalizes all four classifications into Home attention signals, giving users a single unified place to see warnings regardless of source. Agent smells additionally surface on matching cards in the Agents view (per `agent-marketplace-view.js` changes).
 
-Sourcing is dual: `gh aw audit` supplies the five behavioral assessments listed above, and the dashboard preserves their severity and supporting evidence when emitting them as agent smells; separately, the dashboard's own detectors (implemented in `dashboard/report/dashboard-language-sources.mjs` and `dashboard/report/aic-usage.mjs`, and referenced by telemetry tests in `tests/unit/dashboard-security-telemetry.test.mjs`) detect workflow, security, and control-plane smells against canonical IDs, meanings, categories, and severities defined normatively in the Dashboard Language specification.
+Sourcing is dual: `gh aw audit` supplies the five behavioral assessments listed above, and the dashboard preserves their severity and supporting evidence when emitting them as agent smells; separately, the dashboard's own detectors (implemented in `.github/aw/dashboard/report/dashboard-language-sources.mjs` and `.github/aw/dashboard/report/aic-usage.mjs`, and referenced by telemetry tests in `tests/unit/dashboard-security-telemetry.test.mjs`) detect workflow, security, and control-plane smells against canonical IDs, meanings, categories, and severities defined normatively in the Dashboard Language specification.
 
 Each observation retains its evidence, severity, expected actor, and recommended action, and observations are treated as "a reason to investigate, not proof of a defect."
 

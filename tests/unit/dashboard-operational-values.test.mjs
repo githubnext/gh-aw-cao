@@ -54,7 +54,7 @@ test("operational-value collection processes the shared gh-aw logs JSONL", async
 
   try {
     await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/operational-values.mjs"),
+      path.resolve(".github/aw/dashboard/report/operational-values.mjs"),
     ], {
       cwd: path.resolve("."),
       env: {
@@ -113,7 +113,7 @@ test("operational-value collection defaults its cache to the output path when RE
   } }) + "\n");
 
   const run = () => execFileAsync(process.execPath, [
-    path.resolve("dashboard/report/operational-values.mjs"),
+    path.resolve(".github/aw/dashboard/report/operational-values.mjs"),
   ], {
     cwd: path.resolve("."),
     env: {
@@ -167,7 +167,7 @@ test("operational-value collection treats non-array graders.results as no result
 
   try {
     await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/operational-values.mjs"),
+      path.resolve(".github/aw/dashboard/report/operational-values.mjs"),
     ], {
       cwd: path.resolve("."),
       env: {
@@ -232,7 +232,7 @@ test("operational-value collection ignores malformed diagnostics entries instead
 
   try {
     await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/operational-values.mjs"),
+      path.resolve(".github/aw/dashboard/report/operational-values.mjs"),
     ], {
       cwd: path.resolve("."),
       env: {
@@ -291,7 +291,7 @@ test("operational-value collection degrades to an empty snapshot when the shared
 
   try {
     await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/operational-values.mjs"),
+      path.resolve(".github/aw/dashboard/report/operational-values.mjs"),
     ], {
       cwd: path.resolve("."),
       env: {

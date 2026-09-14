@@ -35,7 +35,7 @@ export async function executeDashboardQueryRequest({
     ),
     resolve(
       extensionDirectory,
-      "../../../dashboard/site/src/data/queries/declarative.js",
+      "../../../.github/aw/dashboard/site/src/data/queries/declarative.js",
     ),
   ]);
   const queryEngine = await import(pathToFileURL(queryEnginePath).href);

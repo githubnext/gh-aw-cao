@@ -12,14 +12,14 @@ async function fixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-ingest-jsonl-shards-'));
   const shardDirectory = path.join(root, 'gh-aw-logs-shards');
   await mkdir(shardDirectory, { recursive: true });
-  const sourceShard = path.resolve('dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
+  const sourceShard = path.resolve('.github/aw/dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
   await cp(sourceShard, path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'));
   return { root, shardDirectory, databasePath: path.join(root, 'gh-aw-logs.sqlite') };
 }
 
 async function ingest(shardDirectory, databasePath) {
   const { stdout } = await execFileAsync(process.execPath, [
-    path.resolve('activity/cao.mjs'),
+    path.resolve('.github/aw/activity/cao.mjs'),
     'ingest-jsonl',
     '--database',
     databasePath,
@@ -31,7 +31,7 @@ async function ingest(shardDirectory, databasePath) {
 
 async function queryTransactions(databasePath) {
   const { stdout } = await execFileAsync(process.execPath, [
-    path.resolve('activity/cao.mjs'),
+    path.resolve('.github/aw/activity/cao.mjs'),
     'query',
     '--database',
     databasePath,
@@ -66,7 +66,7 @@ test('ingest-jsonl --input-dir skips already-ingested shards on repeat runs with
 
   // Adding a brand-new shard alongside the already-ingested one should only
   // ingest the new shard, leaving the previously recorded one skipped.
-  const sourceShard = path.resolve('dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
+  const sourceShard = path.resolve('.github/aw/dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
   const newShardContent = await readFile(sourceShard, 'utf8');
   await writeFile(
     path.join(shardDirectory, 'gh-aw-logs-2000000000-bbbb.jsonl'),

@@ -44,7 +44,7 @@ printf '%s\n' "$exit_code" > "$exit_code_path"
 # activity cache managed by cao-activity.yml) so `--cached-logs` reuses known
 # runs across invocations; out-of-range shards are pruned by `--cache-before`.
 # Reconsolidate the current shards into the single-file snapshot contract
-# that downstream consumers (activity/logs.mjs and its cached-run fallback)
+# that downstream consumers (.github/aw/activity/logs.mjs and its cached-run fallback)
 # expect.
 shopt -s nullglob
 shards=("${shard_prefix}"*.jsonl)

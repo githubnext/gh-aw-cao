@@ -11,9 +11,9 @@ Proposed
 
 ## Context
 
-The dashboard previously rendered its home page and drill-down views without dedicated sources for work-item-level telemetry. This PR adds four new data sources — `work-items`, `attention-signals`, `agent-assignments`, and `evidence-records` — registered in `dashboard/report/dashboard-language-sources.mjs`, and extends `dashboard/site/src/specification.js` with corresponding source fields and entity identifiers.
+The dashboard previously rendered its home page and drill-down views without dedicated sources for work-item-level telemetry. This PR adds four new data sources — `work-items`, `attention-signals`, `agent-assignments`, and `evidence-records` — registered in `.github/aw/dashboard/report/dashboard-language-sources.mjs`, and extends `.github/aw/dashboard/site/src/specification.js` with corresponding source fields and entity identifiers.
 
-Using these new sources, `dashboard/site/dashboard.json` introduces a "home" page of kind "custom" with an "attention-first" layout composed of four views:
+Using these new sources, `.github/aw/dashboard/site/dashboard.json` introduces a "home" page of kind "custom" with an "attention-first" layout composed of four views:
 - `home-attention`: renders `attention-signals` as a full-width signal-list, described as "Unresolved conditions that require an authorized person to act or investigate, ordered by deterministic priority."
 - `home-work`: a `work-items` table limited to 5 rows, keyed on objective/scope/phase/reason/next-action/owner — a grain described as "independent of the number of executions or agents involved."
 - `home-outcomes`: uses the existing `outcomes` source, explicitly described as distinct from runtime success and operational value.

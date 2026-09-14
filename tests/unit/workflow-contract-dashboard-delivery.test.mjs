@@ -172,7 +172,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
     ? { source: entry, destination: entry, kind: "action-workflow" }
     : { ...entry, source: `${sourcePrefix}${entry.source}` };
 
-  assert.ok(rootPackage.includes.includes("dashboard/aw.yml"));
+  assert.ok(rootPackage.includes.includes(".github/aw/dashboard/aw.yml"));
   assert.match(dashboardManifest, /name: CAO Dashboard/);
   assert.match(rootManifest, /^\s+- dashboard\/aw\.yml$/m);
   assert.match(dashboardManifest, /^\s+- \.github\/workflows\/cao-dashboard\.yml$/m);
@@ -344,7 +344,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     { source: "inventory.mjs", destination: ".github/aw/activity/inventory.mjs" },
     { source: "inventory-sources.mjs", destination: ".github/aw/activity/inventory-sources.mjs" },
   ]);
-  assert.ok(rootManifest.includes.includes("activity/aw.yml"));
+  assert.ok(rootManifest.includes.includes(".github/aw/activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
@@ -391,7 +391,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-pages.yml")), false);
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-build.yml")), false);
 
-  assert.doesNotMatch(workflow, /dashboard-build|needs: dashboard/);
+  assert.doesNotMatch(workflow, /dashboard-build|needs: .github/aw/dashboard/);
   assert.match(workflow, /name: Restore node_modules[\s\S]*?id: node-modules-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ runner\.os \}\}-node-24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/);
   assert.match(workflow, /name: Install dependencies\n\s+if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'\n\s+run: npm ci/);
   assert.match(workflow, /name: Save node_modules[\s\S]*?if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ steps\.node-modules-cache\.outputs\.cache-primary-key \}\}/);

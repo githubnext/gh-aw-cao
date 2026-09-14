@@ -110,11 +110,11 @@ safe-outputs:
     protected-files: fallback-to-issue
     max-patch-files: 20
     allowed-files:
-      - "dashboard/site/index.html"
-      - "dashboard/site/src/*.js"
-      - "dashboard/site/src/**/*.js"
-      - "dashboard/site/test/unit/**/*.js"
-      - "dashboard/site/test/e2e/**/*.js"
+      - ".github/aw/dashboard/site/index.html"
+      - ".github/aw/dashboard/site/src/*.js"
+      - ".github/aw/dashboard/site/src/**/*.js"
+      - ".github/aw/dashboard/site/test/unit/**/*.js"
+      - ".github/aw/dashboard/site/test/e2e/**/*.js"
   upload-artifact:
     max-uploads: 1
     retention-days: 14
@@ -125,16 +125,16 @@ safe-outputs:
 pre-agent-steps:
   - name: Install dashboard dependencies
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: npm ci --prefix dashboard/site --ignore-scripts
+    run: npm ci --prefix .github/aw/dashboard/site --ignore-scripts
   - name: Cache Chromium
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
     with:
       path: ~/.cache/ms-playwright
-      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium
+      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('.github/aw/dashboard/site/package-lock.json') }}-chromium
   - name: Install Chromium
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: npm exec --prefix dashboard/site -- playwright install --with-deps chromium
+    run: npm exec --prefix .github/aw/dashboard/site -- playwright install --with-deps chromium
   - name: Collect baseline performance evidence
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: |
@@ -142,7 +142,7 @@ pre-agent-steps:
       evidence_root="$GITHUB_WORKSPACE/self-care-dashboard-performance-evidence"
       mkdir -p "$evidence_root"
       DASHBOARD_PERFORMANCE_OUTPUT_DIR="$evidence_root/before" \
-        npm --prefix dashboard/site run test:performance
+        npm --prefix .github/aw/dashboard/site run test:performance
       printf '%s\n' "$?" > "$evidence_root/baseline-exit-code"
       exit 0
 ---
@@ -157,7 +157,7 @@ Improve exactly one dashboard performance bottleneck evidenced by the determinis
 
 ## Evidence and candidate selection
 
-1. Read `AGENTS.md`, `.github/aw/instructions.md`, `dashboard/site/README.md`, `dashboard/site/package.json`, `${{ github.workspace }}/self-care-dashboard-performance-evidence/baseline-exit-code`, and every `before/summary.json` and `before/*/lighthouse.report.json` file that exists under `${{ github.workspace }}/self-care-dashboard-performance-evidence/`. Treat the Lighthouse reports and saved trace files as measurement evidence, not as permission to change files.
+1. Read `AGENTS.md`, `.github/aw/instructions.md`, `.github/aw/dashboard/site/README.md`, `.github/aw/dashboard/site/package.json`, `${{ github.workspace }}/self-care-dashboard-performance-evidence/baseline-exit-code`, and every `before/summary.json` and `before/*/lighthouse.report.json` file that exists under `${{ github.workspace }}/self-care-dashboard-performance-evidence/`. Treat the Lighthouse reports and saved trace files as measurement evidence, not as permission to change files.
 2. If the baseline produced no complete summary for all three personas, upload any collected evidence, call `noop` with the exact blocker, and stop.
 3. Build a bounded candidate list from Lighthouse audits below score `1`, estimated savings, Core Web Vitals, long tasks, main-thread work, render-blocking resources, unused bytes, and repeated costs visible in the traces. Require a concrete source-level cause inside the allowed file boundary. Ignore network noise, runner startup, Lighthouse simulation artifacts, and issues that require changing data acquisition, Dashboard Language documents, dependencies, CI, or the performance harness.
 4. Read at most the 20 most recent pull requests created by this workflow. Do not repeat an open change or a previously rejected proposal unless new trace evidence proves a materially different cause.
@@ -184,9 +184,9 @@ After every complete evaluation, including a no-op, overwrite the state file and
 
 Collect after-change evidence into `${{ github.workspace }}/self-care-dashboard-performance-evidence/after` with:
 
-`DASHBOARD_PERFORMANCE_OUTPUT_DIR=${{ github.workspace }}/self-care-dashboard-performance-evidence/after npm --prefix dashboard/site run test:performance`
+`DASHBOARD_PERFORMANCE_OUTPUT_DIR=${{ github.workspace }}/self-care-dashboard-performance-evidence/after npm --prefix .github/aw/dashboard/site run test:performance`
 
-Require the selected metric or audit to improve, the performance budget suite to pass, and no persona's Lighthouse performance score to regress by more than 0.02 absolute score points. Then run, from `dashboard/site`, `npm run typecheck`, `npm run lint`, `npm test`, and `npm run test:e2e`. Review the final diff and scan changed files for secrets.
+Require the selected metric or audit to improve, the performance budget suite to pass, and no persona's Lighthouse performance score to regress by more than 0.02 absolute score points. Then run, from `.github/aw/dashboard/site`, `npm run typecheck`, `npm run lint`, `npm test`, and `npm run test:e2e`. Review the final diff and scan changed files for secrets.
 
 Call `upload_artifact` once with name `self-care-dashboard-performance-${{ github.run_id }}` and path `${{ github.workspace }}/self-care-dashboard-performance-evidence` before the final result whenever evidence files exist.
 

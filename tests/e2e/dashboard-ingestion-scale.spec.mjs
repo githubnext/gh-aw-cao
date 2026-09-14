@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { extname, join, resolve, sep } from "node:path";
 import { syntheticGhAwLogs } from "../helpers/synthetic-gh-aw-logs.mjs";
 
-const siteRoot = resolve("dashboard/site");
+const siteRoot = resolve(".github/aw/dashboard/site");
 const runs = Number(process.env.DASHBOARD_INGESTION_RUNS ?? 3000);
 const payload = Buffer.from(syntheticGhAwLogs({ runs }));
 

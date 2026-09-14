@@ -10,7 +10,7 @@ import {
   isWithinCopilotFileRoots,
   shellPermissionRejection,
   startDashboardServer,
-} from "../../dashboard/local-server.mjs";
+} from "../../.github/aw/dashboard/local-server.mjs";
 
 const dashboard = (pageId, cliActions) => JSON.stringify({
   "language-version": "0.1.0",
@@ -231,7 +231,7 @@ test("local dashboard server composes package dashboards and reloads after updat
       await mkdir(path.join(root, ".github", "skills"), { recursive: true });
       await mkdir(path.join(root, ".agents", "skills"), { recursive: true });
       try {
-        const { repositorySkillDirectories } = await import("../../dashboard/local-server.mjs");
+        const { repositorySkillDirectories } = await import("../../.github/aw/dashboard/local-server.mjs");
         assert.deepEqual(await repositorySkillDirectories(root), [
           path.join(root, ".github", "skills"),
           path.join(root, ".agents", "skills"),
@@ -730,7 +730,7 @@ test("local dashboard server rejects paths outside its workspace", async () => {
 
 test("local dashboard CLI runs directly without a permission sandbox relaunch", () => {
   const repositoryRoot = path.resolve(import.meta.dirname, "../..");
-  const result = spawnSync(process.execPath, ["dashboard/local-server.mjs", "--help"], {
+  const result = spawnSync(process.execPath, [".github/aw/dashboard/local-server.mjs", "--help"], {
     cwd: repositoryRoot,
     encoding: "utf8",
   });
@@ -742,7 +742,7 @@ test("local dashboard CLI runs directly without a permission sandbox relaunch", 
 
 test("dashboard local server declares canvas readiness output", async () => {
   const source = await readFile(
-    new URL("../../dashboard/local-server.mjs", import.meta.url),
+    new URL("../../.github/aw/dashboard/local-server.mjs", import.meta.url),
     "utf8",
   );
 

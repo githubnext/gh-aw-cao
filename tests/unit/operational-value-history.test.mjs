@@ -6,7 +6,7 @@ import {
   operationalValueRecordIdentity,
   operationalValueRunIdentity,
   recordsFromOperationalValueReport,
-} from "../../dashboard/report/operational-value-history.mjs";
+} from "../../.github/aw/dashboard/report/operational-value-history.mjs";
 
 const report = {
   schemaVersion: 1,

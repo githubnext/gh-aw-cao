@@ -60,7 +60,7 @@ features:
   gh-aw-detection: true
 pre-agent-steps:
   - name: Install dashboard validator dependencies
-    run: npm ci --prefix dashboard/site --ignore-scripts
+    run: npm ci --prefix .github/aw/dashboard/site --ignore-scripts
 ---
 
 # Dashboard Authoring Corpus
@@ -75,7 +75,7 @@ Grow the generate-dashboard-ir skill's corpus by one validated example. Use the 
 - Dashboard IR skill: `.github/skills/generate-dashboard-ir/SKILL.md`
 - Corpus index: `.github/skills/generate-dashboard-ir/corpus/index.json`
 - Specification: `docs/dashboard-language-specification.md`
-- Validator: `dashboard/site/src/validator.js`
+- Validator: `.github/aw/dashboard/site/src/validator.js`
 
 ## Synthesize one task
 
@@ -100,7 +100,7 @@ Use the installed `generate-dashboard-ir` skill with the synthetic task and oper
 Add one metadata/dashboard pair and update the sorted corpus index exactly as the skill requires. Run:
 
 ```text
-npm --prefix dashboard/site run validate:corpus
+npm --prefix .github/aw/dashboard/site run validate:corpus
 ```
 
 If validation fails, repair the candidate and rerun it. Do not create a pull request unless validation passes. Use `create-pull-request` for exactly the new pair and index update. In the pull request body, summarize the synthetic task, value contract, selected views, duplicate check, and successful validation command.

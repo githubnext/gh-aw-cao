@@ -19,7 +19,7 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "node dashboard/local-server.mjs",
+    command: "node .github/aw/dashboard/local-server.mjs",
     url: "http://127.0.0.1:4173/",
     reuseExistingServer: !process.env.CI,
     timeout: 15_000,

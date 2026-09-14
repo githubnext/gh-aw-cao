@@ -150,7 +150,7 @@ pre-agent-steps:
     run: |
       node --input-type=module <<'EOF'
       import { readFileSync, writeFileSync } from "node:fs";
-      import { deriveDataHealthSources } from "./dashboard/site/src/data-health.js";
+      import { deriveDataHealthSources } from "./.github/aw/dashboard/site/src/data-health.js";
 
       const directory = process.env.DASHBOARD_DATA_DIR + "/sources";
       const manifest = JSON.parse(readFileSync(directory + "/manifest.json", "utf8"));

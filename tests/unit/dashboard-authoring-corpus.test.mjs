@@ -7,7 +7,7 @@ import test from "node:test";
 const root = resolve(import.meta.dirname, "../..");
 
 test("generate-dashboard-ir corpus is indexed and valid", () => {
-  execFileSync("npm", ["--prefix", "dashboard/site", "run", "validate:corpus"], {
+  execFileSync("npm", ["--prefix", ".github/aw/dashboard/site", "run", "validate:corpus"], {
     cwd: root,
     encoding: "utf8",
     stdio: "pipe",
@@ -17,7 +17,7 @@ test("generate-dashboard-ir corpus is indexed and valid", () => {
 test("every production dashboard page starts with an executive summary or prescribed attention view", () => {
   const executiveSummaryCharts = new Set(["pie", "line", "dot", "histogram", "scatter", "swimlane"]);
   const dashboardFiles = [
-    join(root, "dashboard/site/dashboard.json"),
+    join(root, ".github/aw/dashboard/site/dashboard.json"),
     ...readdirSync(root, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
       .map((entry) => join(root, entry.name, "dashboard.json"))

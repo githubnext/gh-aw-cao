@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareVersions, normalizeVersion, updateState } from "../../activity/version.mjs";
+import { compareVersions, normalizeVersion, updateState } from "../../.github/aw/activity/version.mjs";
 
 test("gh-aw versions normalize optional prefixes and build metadata", () => {
   assert.equal(normalizeVersion("0.88.2"), "v0.88.2");

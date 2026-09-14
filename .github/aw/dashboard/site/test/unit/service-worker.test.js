@@ -29,10 +29,10 @@ function serviceWorkerHarness(cacheKeys = []) {
   });
   const worker = {
     location: {
-      href: 'https://example.test/dashboard/service-worker.js',
+      href: 'https://example.test/.github/aw/dashboard/service-worker.js',
       origin: 'https://example.test'
     },
-    registration: { scope: 'https://example.test/dashboard/' },
+    registration: { scope: 'https://example.test/.github/aw/dashboard/' },
     navigator: {
       connection: { type: 'wifi', saveData: false }
     },
@@ -93,9 +93,9 @@ describe('dashboard service worker', () => {
       data: {
         type: 'CONFIGURE_BACKGROUND_DATA',
         urls: [
-          'https://example.test/dashboard/payload-hashes.json',
-          'https://example.test/dashboard/gh-aw-logs.jsonl',
-          'https://example.test/dashboard/inventory-sources.json'
+          'https://example.test/.github/aw/dashboard/payload-hashes.json',
+          'https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl',
+          'https://example.test/.github/aw/dashboard/inventory-sources.json'
         ]
       },
       ports: [{ postMessage: configured }]
@@ -109,15 +109,15 @@ describe('dashboard service worker', () => {
     });
 
     expect(fetch).toHaveBeenCalledTimes(3);
-    expect(entries.has('https://example.test/dashboard/gh-aw-logs.jsonl')).toBe(true);
-    expect(entries.has('https://example.test/dashboard/payload-hashes.json')).toBe(true);
+    expect(entries.has('https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl')).toBe(true);
+    expect(entries.has('https://example.test/.github/aw/dashboard/payload-hashes.json')).toBe(true);
     entries.set(
-      'https://example.test/dashboard/.dashboard-data-update-config',
+      'https://example.test/.github/aw/dashboard/.dashboard-data-update-config',
       new Response(JSON.stringify({
         urls: [
-          'https://example.test/dashboard/payload-hashes.json',
-          'https://example.test/dashboard/gh-aw-logs.jsonl',
-          'https://example.test/dashboard/inventory-sources.json'
+          'https://example.test/.github/aw/dashboard/payload-hashes.json',
+          'https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl',
+          'https://example.test/.github/aw/dashboard/inventory-sources.json'
         ],
         lastSuccess: 0
       }))
@@ -147,20 +147,20 @@ describe('dashboard service worker', () => {
       data: {
         type: 'DOWNLOAD_DATA',
         urls: [
-          'https://example.test/dashboard/payload-hashes.json',
-          'https://example.test/dashboard/gh-aw-logs.jsonl'
+          'https://example.test/.github/aw/dashboard/payload-hashes.json',
+          'https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl'
         ]
       },
       ports: [{ postMessage: completed }]
     });
 
     expect(completed).toHaveBeenCalledWith(expect.objectContaining({ type: 'DOWNLOAD_FAILED' }));
-    expect(entries.has('https://example.test/dashboard/payload-hashes.json')).toBe(false);
+    expect(entries.has('https://example.test/.github/aw/dashboard/payload-hashes.json')).toBe(false);
   });
 
   it('removes an obsolete hash when background downloads fall back to ETags', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const hashesUrl = 'https://example.test/dashboard/payload-hashes.json';
+    const hashesUrl = 'https://example.test/.github/aw/dashboard/payload-hashes.json';
     entries.set(hashesUrl, Response.json({ 'gh-aw-logs.jsonl': 'a'.repeat(64) }));
     fetch.mockImplementation(async (url) => (
       String(url).endsWith('/payload-hashes.json')
@@ -173,7 +173,7 @@ describe('dashboard service worker', () => {
         type: 'DOWNLOAD_DATA',
         urls: [
           hashesUrl,
-          'https://example.test/dashboard/gh-aw-logs.jsonl'
+          'https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl'
         ]
       },
       ports: [{ postMessage: vi.fn() }]
@@ -184,7 +184,7 @@ describe('dashboard service worker', () => {
 
   it('serves cached dashboard assets and data while offline', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const request = new Request('https://example.test/dashboard/src/main.js');
+    const request = new Request('https://example.test/.github/aw/dashboard/src/main.js');
     fetch.mockResolvedValueOnce(new Response('online'));
     /** @type {Promise<Response> | undefined} */
     let response;
@@ -202,7 +202,7 @@ describe('dashboard service worker', () => {
     });
     await expect((await response)?.text()).resolves.toBe('online');
 
-    const dataRequest = new Request('https://example.test/dashboard/gh-aw-logs.jsonl');
+    const dataRequest = new Request('https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl');
     entries.set(String(dataRequest), new Response('cached data'));
     fetch.mockRejectedValueOnce(new TypeError('offline'));
     listeners.fetch({
@@ -222,7 +222,7 @@ describe('dashboard service worker', () => {
       entries.set(String(key), response.clone());
     });
     fetch.mockResolvedValueOnce(new Response('streamed data'));
-    const request = new Request('https://example.test/dashboard/gh-aw-logs.jsonl');
+    const request = new Request('https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl');
     /** @type {Promise<Response> | undefined} */
     let response;
     /** @type {Promise<unknown> | undefined} */
@@ -243,7 +243,7 @@ describe('dashboard service worker', () => {
 
   it('falls back to the cached application shell for offline navigation', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    entries.set('https://example.test/dashboard/', new Response('cached shell'));
+    entries.set('https://example.test/.github/aw/dashboard/', new Response('cached shell'));
     fetch.mockRejectedValueOnce(new TypeError('offline'));
     /** @type {Promise<Response> | undefined} */
     let response;
@@ -251,7 +251,7 @@ describe('dashboard service worker', () => {
     listeners.fetch({
       request: {
         method: 'GET',
-        url: 'https://example.test/dashboard/repositories',
+        url: 'https://example.test/.github/aw/dashboard/repositories',
         cache: 'default',
         mode: 'navigate'
       },
@@ -268,16 +268,16 @@ describe('dashboard service worker', () => {
       data: {
         type: 'CACHE_APP_ASSETS',
         urls: [
-          'https://example.test/dashboard/',
-          'https://example.test/dashboard/src/main.js',
+          'https://example.test/.github/aw/dashboard/',
+          'https://example.test/.github/aw/dashboard/src/main.js',
           'https://outside.example/main.js'
         ]
       }
     });
 
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(entries.has('https://example.test/dashboard/')).toBe(true);
-    expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(true);
+    expect(entries.has('https://example.test/.github/aw/dashboard/')).toBe(true);
+    expect(entries.has('https://example.test/.github/aw/dashboard/src/main.js')).toBe(true);
   });
 
   it('keeps successful assets when the connection drops part way through caching', async () => {
@@ -291,22 +291,22 @@ describe('dashboard service worker', () => {
       data: {
         type: 'CACHE_APP_ASSETS',
         urls: [
-          'https://example.test/dashboard/',
-          'https://example.test/dashboard/src/main.js',
-          'https://example.test/dashboard/manifest.webmanifest'
+          'https://example.test/.github/aw/dashboard/',
+          'https://example.test/.github/aw/dashboard/src/main.js',
+          'https://example.test/.github/aw/dashboard/manifest.webmanifest'
         ]
       }
     });
 
     expect(fetch).toHaveBeenCalledTimes(3);
-    expect(entries.has('https://example.test/dashboard/')).toBe(true);
-    expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(false);
-    expect(entries.has('https://example.test/dashboard/manifest.webmanifest')).toBe(true);
+    expect(entries.has('https://example.test/.github/aw/dashboard/')).toBe(true);
+    expect(entries.has('https://example.test/.github/aw/dashboard/src/main.js')).toBe(false);
+    expect(entries.has('https://example.test/.github/aw/dashboard/manifest.webmanifest')).toBe(true);
   });
 
   it('preserves a cached asset when its network refresh is interrupted', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const request = new Request('https://example.test/dashboard/src/main.js');
+    const request = new Request('https://example.test/.github/aw/dashboard/src/main.js');
     entries.set(String(request), new Response('previous version'));
     fetch.mockRejectedValueOnce(new TypeError('connection lost'));
     /** @type {Promise<Response> | undefined} */
@@ -341,7 +341,7 @@ describe('dashboard service worker', () => {
 
   it('does not use stale cached data for hash-identified foreground downloads', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const request = new Request('https://example.test/dashboard/gh-aw-logs.jsonl', {
+    const request = new Request('https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl', {
       cache: 'no-store'
     });
     entries.set(String(request), new Response('stale data'));
@@ -362,7 +362,7 @@ describe('dashboard service worker', () => {
     await dispatchExtendedEvent(listeners.message, {
       data: {
         type: 'CONFIGURE_BACKGROUND_DATA',
-        urls: ['https://example.test/dashboard/gh-aw-logs.jsonl']
+        urls: ['https://example.test/.github/aw/dashboard/gh-aw-logs.jsonl']
       },
       ports: [{ postMessage: vi.fn() }]
     });

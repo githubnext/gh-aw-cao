@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeAdmissionRecord } from "../../activity/admission-evidence.mjs";
+import { normalizeAdmissionRecord } from "../../.github/aw/activity/admission-evidence.mjs";
 
 const record = {
   schema_version: 1,

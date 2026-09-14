@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import test from "node:test";
-import { readRunTimeline } from "../../dashboard/report/aic-usage.mjs";
+import { readRunTimeline } from "../../.github/aw/dashboard/report/aic-usage.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -69,7 +69,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
   } }) + "\n");
 
   try {
-    await execFileAsync(process.execPath, [path.resolve("dashboard/report/aic-usage.mjs")], {
+    await execFileAsync(process.execPath, [path.resolve(".github/aw/dashboard/report/aic-usage.mjs")], {
       cwd: path.resolve("."),
       env: {
         ...process.env,
@@ -165,7 +165,7 @@ test("AI Credit usage collection reports an unreadable shared snapshot as unavai
   }));
   await writeFile(statePath, '{"available":false}\n');
   try {
-    await execFileAsync(process.execPath, [path.resolve("dashboard/report/aic-usage.mjs")], {
+    await execFileAsync(process.execPath, [path.resolve(".github/aw/dashboard/report/aic-usage.mjs")], {
       cwd: path.resolve("."),
       env: {
         ...process.env,

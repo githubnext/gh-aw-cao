@@ -11,10 +11,10 @@ import { escapedGhAwVersion, ghAwVersion, root, script, workflow, workflowsDirec
 test("packages and repository workflows pin the supported gh-aw version", () => {
   const manifests = [
     "aw.yml",
-    "activity/aw.yml",
+    ".github/aw/activity/aw.yml",
     "uk-ai-advisory/aw.yml",
     "cao-evolution/aw.yml",
-    "dashboard/aw.yml",
+    ".github/aw/dashboard/aw.yml",
     "dependabot/aw.yml",
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
@@ -52,10 +52,10 @@ test("catalog packages declare their current experimental maturity", () => {
   ]);
   const manifests = [
     "aw.yml",
-    "activity/aw.yml",
+    ".github/aw/activity/aw.yml",
     "uk-ai-advisory/aw.yml",
     "cao-evolution/aw.yml",
-    "dashboard/aw.yml",
+    ".github/aw/dashboard/aw.yml",
     "dependabot/aw.yml",
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
@@ -212,8 +212,8 @@ test("root package composes its operational packages through manifests", () => {
 
   assert.deepEqual(rootManifest.includes, [
     ".github/workflows/aw.json",
-    "activity/aw.yml",
-    "dashboard/aw.yml",
+    ".github/aw/activity/aw.yml",
+    ".github/aw/dashboard/aw.yml",
   ]);
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));
   assert.deepEqual(project.auto_upgrade.options, ["--pre-releases"]);
@@ -269,7 +269,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /plan an explicit handoff to `.github\/skills\/create-ops-package\/SKILL\.md` after step 14/);
   assert.match(setupSkill, /Never silently default the package to Dependabot/);
   assert.match(setupSkill, /read the control repository's `.github\/workflows\/cao\.json` and the current dashboard state/);
-  assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the dashboard/);
+  assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the .github/aw/dashboard/);
   assert.match(createPackageSkill, /When invoked from `.github\/skills\/setup-central-agentic-ops\/SKILL\.md`/);
   assert.match(createPackageSkill, /accept the recorded desired outcome and target-repository description/);
   assert.match(createPackageSkill, /compare the intended package state with the current `.github\/workflows\/cao\.json` and the dashboard's live control-plane view/);

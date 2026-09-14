@@ -1,7 +1,7 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { actionsLog as log } from "../../.github/aw/activity/actions-log.mjs";
 import { composeDashboardDocuments } from "./compose-dashboard-documents.mjs";
 
 /** @typedef {import("./compose-dashboard-documents.mjs").DashboardDocument} DashboardDocument */

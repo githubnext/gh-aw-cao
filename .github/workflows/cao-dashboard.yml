@@ -9,7 +9,7 @@ on:
       - .github/workflows/cao.json
       - .github/workflows/cao-dashboard.yml
       - "*/dashboard.json"
-      - dashboard/**
+      - .github/aw/dashboard/**
 
 permissions:
   contents: read
@@ -35,30 +35,6 @@ jobs:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
 
-      - name: Resolve dashboard source layout
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const fs = require('fs')
-            core.info('Resolving dashboard source layout')
-            if (
-              fs.existsSync('.github/aw/dashboard/report/dashboard-language-sources.mjs')
-              && fs.existsSync('.github/aw/dashboard/site/scripts/build.mjs')
-            ) {
-              core.exportVariable('DASHBOARD_LAYOUT', 'installed')
-              core.exportVariable('DASHBOARD_SITE_ROOT', '.github/aw/dashboard/site')
-              core.info('Resolved dashboard source layout: installed')
-            } else if (
-              fs.existsSync('dashboard/report/records.mjs')
-              && fs.existsSync('dashboard/site/scripts/build.mjs')
-            ) {
-              core.exportVariable('DASHBOARD_LAYOUT', 'source')
-              core.exportVariable('DASHBOARD_SITE_ROOT', 'dashboard/site')
-              core.info('Resolved dashboard source layout: source')
-            } else {
-              throw new Error('Dashboard package sources are unavailable')
-            }
-
       - name: Resolve dashboard deployment policy
         id: deployment-policy
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -82,11 +58,11 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            core.info(`Installing dashboard dependencies for ${process.env.DASHBOARD_LAYOUT} layout`)
+            core.info('Installing dashboard dependencies')
             await exec.exec('npm', [
               'ci',
               '--prefix',
-              process.env.DASHBOARD_SITE_ROOT,
+              '.github/aw/dashboard/site',
               '--ignore-scripts',
             ])
             core.info('Dashboard build dependencies installed')
@@ -164,19 +140,9 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const fs = require('fs')
-            core.info('Resolving activity SQLite doctor')
-            const doctorScript = fs.existsSync('activity/cao.mjs')
-              ? 'activity/cao.mjs'
-              : fs.existsSync('.github/aw/activity/cao.mjs')
-                ? '.github/aw/activity/cao.mjs'
-                : undefined
-            if (!doctorScript) {
-              throw new Error('Activity SQLite doctor is unavailable')
-            }
             core.info('Assessing activity database health')
             await exec.exec(process.execPath, [
-              doctorScript,
+              '.github/aw/activity/cao.mjs',
               'doctor',
               '--database',
               process.env.ACTIVITY_DATABASE,
@@ -191,11 +157,11 @@ jobs:
           script: |
             const fs = require('fs')
             const path = require('path')
-            core.info(`Building dashboard site from ${process.env.DASHBOARD_LAYOUT} layout`)
+            core.info('Building dashboard site')
             const controlSettings = path.join(process.env.RUNNER_TEMP, 'cao-activity', 'control-settings.json')
             await exec.exec('npm', [
               '--prefix',
-              process.env.DASHBOARD_SITE_ROOT,
+              '.github/aw/dashboard/site',
               'run',
               'build',
               '--',

@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { actionsLog as log } from "../../activity/actions-log.mjs";
-import { parseGhAwLogsJsonl } from "../../activity/gh-aw-logs.mjs";
+import { actionsLog as log } from "../../.github/aw/activity/actions-log.mjs";
+import { parseGhAwLogsJsonl } from "../../.github/aw/activity/gh-aw-logs.mjs";
 import { adaptGhAwTimelineFiles } from "../site/src/data/adapters/gh-aw-logs.js";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";

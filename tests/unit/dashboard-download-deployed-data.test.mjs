@@ -24,7 +24,7 @@ const packageJson = JSON.parse(
 const cao = path.resolve(packageJson.bin.cao);
 
 test("exposes the dashboard data CLI as cao", async () => {
-  assert.equal(packageJson.bin.cao, "activity/cao.mjs");
+  assert.equal(packageJson.bin.cao, ".github/aw/activity/cao.mjs");
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-"));
   const installedCommand = path.join(root, "cao");
   try {
@@ -81,7 +81,7 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
 
   test("uses default .cao input and database when omitted", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-default-input-database-"));
-    const fixture = path.resolve("dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl");
+    const fixture = path.resolve(".github/aw/dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl");
     const caoRoot = path.join(root, ".cao");
     try {
       await mkdir(caoRoot, { recursive: true });

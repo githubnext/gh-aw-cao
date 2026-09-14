@@ -13,7 +13,7 @@ Proposed
 
 The "Dashboard Next" pages (Home, Work, Agents, Evidence) always rendered "This view is not available." The four sources they depend on — `work-items`, `attention-signals`, `agent-assignments`, `evidence-records` — were registered in the schema and wired into the UI (per ADR 2572), but the report generator never computed real rows for them.
 
-The root cause was in `dashboard/report/dashboard-language-sources.mjs`: every declared source name was initialized to an empty/unavailable placeholder via `Object.fromEntries(sourceNames.map((name) => [name, source(name, [], generatedAt, false, false)]))`, and only some sources (`runs`, `outcomes`, `workflows`, ...) were ever selectively overwritten with real computations. The four work-oriented sources were never given a computation path, so the placeholder remained the final answer regardless of underlying telemetry.
+The root cause was in `.github/aw/dashboard/report/dashboard-language-sources.mjs`: every declared source name was initialized to an empty/unavailable placeholder via `Object.fromEntries(sourceNames.map((name) => [name, source(name, [], generatedAt, false, false)]))`, and only some sources (`runs`, `outcomes`, `workflows`, ...) were ever selectively overwritten with real computations. The four work-oriented sources were never given a computation path, so the placeholder remained the final answer regardless of underlying telemetry.
 
 ## Decision
 

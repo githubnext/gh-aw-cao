@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { bundleDashboards } from "../../dashboard/report/bundle-dashboards.mjs";
+import { bundleDashboards } from "../../.github/aw/dashboard/report/bundle-dashboards.mjs";
 
 function document(id, navigationLabel) {
   return {

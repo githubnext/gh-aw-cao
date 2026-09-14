@@ -106,29 +106,29 @@ safe-outputs:
     protected-files: fallback-to-issue
     max-patch-files: 20
     allowed-files:
-      - "dashboard/site/src/*.js"
-      - "dashboard/site/src/**/*.js"
-      - "dashboard/site/test/**/*.js"
+      - ".github/aw/dashboard/site/src/*.js"
+      - ".github/aw/dashboard/site/src/**/*.js"
+      - ".github/aw/dashboard/site/test/**/*.js"
 pre-agent-steps:
   - name: Install dashboard dependencies
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: npm ci --prefix dashboard/site --ignore-scripts
+    run: npm ci --prefix .github/aw/dashboard/site --ignore-scripts
   - name: Cache Chromium
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
     with:
       path: ~/.cache/ms-playwright
-      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium
+      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('.github/aw/dashboard/site/package-lock.json') }}-chromium
   - name: Install Chromium
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: npm exec --prefix dashboard/site -- playwright install --with-deps chromium
+    run: npm exec --prefix .github/aw/dashboard/site -- playwright install --with-deps chromium
   - name: Validate dashboard baseline
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: |
-      npm --prefix dashboard/site run typecheck
-      npm --prefix dashboard/site run lint
-      npm --prefix dashboard/site test
-      npm --prefix dashboard/site run test:e2e
+      npm --prefix .github/aw/dashboard/site run typecheck
+      npm --prefix .github/aw/dashboard/site run lint
+      npm --prefix .github/aw/dashboard/site test
+      npm --prefix .github/aw/dashboard/site run test:e2e
 ---
 
 # SelfCare Code Improvement
@@ -139,15 +139,15 @@ Grow the JavaScript dashboard component library by extracting one common UI cons
 
 ## Scope and evidence
 
-1. Read `AGENTS.md`, `.github/aw/instructions.md`, `dashboard/aw.yml`, `dashboard/site/package.json`, and the relevant source and tests before editing.
-2. Inspect `dashboard/site/src/` and select exactly one repeated UI construction with at least two concrete call sites. Prefer a small, high-confidence refactor that measurably reduces duplication.
+1. Read `AGENTS.md`, `.github/aw/instructions.md`, `.github/aw/dashboard/aw.yml`, `.github/aw/dashboard/site/package.json`, and the relevant source and tests before editing.
+2. Inspect `.github/aw/dashboard/site/src/` and select exactly one repeated UI construction with at least two concrete call sites. Prefer a small, high-confidence refactor that measurably reduces duplication.
 3. Read the three most recently closed pull requests from this workflow, newest first. Treat merged PRs as positive signals for similar component boundaries. Treat `not planned`, rejecting comments, and requested changes as negative signals; do not repeat those proposals.
 4. Preserve rendered behavior, accessibility semantics, public module APIs, and Dashboard Language behavior. Add or update focused unit and end-to-end coverage when the import graph or rendered output changes.
-5. Prefer extracting into an existing module under `dashboard/site/src/components/`. If a correct extraction requires a new runtime module and therefore a `dashboard/aw.yml` manifest change, call `noop` because that manifest is outside the allowed change boundary.
+5. Prefer extracting into an existing module under `.github/aw/dashboard/site/src/components/`. If a correct extraction requires a new runtime module and therefore a `.github/aw/dashboard/aw.yml` manifest change, call `noop` because that manifest is outside the allowed change boundary.
 
 ## Boundaries
 
-- DO NOT modify files outside `dashboard/site/src/**/*.js` and `dashboard/site/test/**/*.js`.
+- DO NOT modify files outside `.github/aw/dashboard/site/src/**/*.js` and `.github/aw/dashboard/site/test/**/*.js`.
 - DO NOT modify dependency manifests, lockfiles, CI configuration, generated workflow lock files, agent instructions, dashboard specifications, or report producers.
 - DO NOT add dependencies, change product behavior, redesign the interface, broaden the selected refactor, or combine unrelated cleanup.
 - DO NOT weaken, remove, or skip tests to make the change pass.
@@ -156,7 +156,7 @@ Grow the JavaScript dashboard component library by extracting one common UI cons
 
 ## Validation and output
 
-The baseline completed before the agent started. After editing, run all of these from `dashboard/site`:
+The baseline completed before the agent started. After editing, run all of these from `.github/aw/dashboard/site`:
 
 1. `npm run typecheck`
 2. `npm run lint`

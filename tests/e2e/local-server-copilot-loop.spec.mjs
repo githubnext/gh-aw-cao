@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardServer } from "../../.github/aw/dashboard/local-server.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 
@@ -46,7 +46,7 @@ test("Copilot prompt saves a dashboard change, renders it, and correlates browse
   let preview;
   try {
     preview = await startDashboardServer({
-      siteRoot: path.join(repositoryRoot, "dashboard/site"),
+      siteRoot: path.join(repositoryRoot, ".github/aw/dashboard/site"),
       catalogRoot: packageRoot,
       installedDashboardsDirectory: path.join(fixtureRoot, "installed"),
       downloadData: async (destination) => {

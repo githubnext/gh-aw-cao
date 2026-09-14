@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/cid.yml
-      - dashboard/site/**
+      - .github/aw/dashboard/site/**
       - playwright.dashboard-ingestion.config.mjs
       - tests/e2e/dashboard-ingestion-scale.spec.mjs
       - tests/helpers/synthetic-gh-aw-logs.mjs
@@ -12,7 +12,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/cid.yml
-      - dashboard/site/**
+      - .github/aw/dashboard/site/**
       - playwright.dashboard-ingestion.config.mjs
       - tests/e2e/dashboard-ingestion-scale.spec.mjs
       - tests/helpers/synthetic-gh-aw-logs.mjs
@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: dashboard/site
+        working-directory: .github/aw/dashboard/site
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: dashboard/site/package-lock.json
+          cache-dependency-path: .github/aw/dashboard/site/package-lock.json
       - name: Install dependencies
         run: npm ci
       - name: Type check
@@ -58,7 +58,7 @@ jobs:
         shard: [1/4, 2/4, 3/4, 4/4]
     defaults:
       run:
-        working-directory: dashboard/site
+        working-directory: .github/aw/dashboard/site
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -67,14 +67,14 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: dashboard/site/package-lock.json
+          cache-dependency-path: .github/aw/dashboard/site/package-lock.json
       - name: Install dependencies
         run: npm ci
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium-webkit
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('.github/aw/dashboard/site/package-lock.json') }}-chromium-webkit
       - name: Install Chromium and WebKit
         # Playwright's system dependencies come from the Ubuntu archives. The runner
         # image also configures Google's Chrome repository, whose index intermittently
@@ -125,7 +125,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: dashboard/site
+        working-directory: .github/aw/dashboard/site
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -134,14 +134,14 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: dashboard/site/package-lock.json
+          cache-dependency-path: .github/aw/dashboard/site/package-lock.json
       - name: Install dependencies
         run: npm ci
       - name: Cache Chromium
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('.github/aw/dashboard/site/package-lock.json') }}-chromium
       - name: Install Chromium
         # Playwright's system dependencies come from the Ubuntu archives. The runner
         # image also configures Google's Chrome repository, whose index intermittently
@@ -164,7 +164,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dashboard-lighthouse-performance
-          path: dashboard/site/test-results/lighthouse/
+          path: .github/aw/dashboard/site/test-results/lighthouse/
           if-no-files-found: warn
           retention-days: 14
 

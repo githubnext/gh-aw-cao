@@ -128,7 +128,7 @@ export default defineConfig({
             { label: "What is CAO?", link: "/architecture-at-a-glance/" },
             { label: "Dashboard Overview", link: "/dashboard-overview/" },
             { label: "Dashboard Data Model", link: "/dashboard-data-model/" },
-            { label: "CAO Activity", link: "/activity/" },
+            { label: "CAO Activity", link: "/.github/aw/activity/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },
             { label: "Agentic workflow smells", link: "/agentic-workflow-smells/" },

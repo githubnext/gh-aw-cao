@@ -219,7 +219,7 @@ jobs:
                 '2. Reproduce the findings from the repository root with `DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl npm run test:e2e:dashboard-views`; use `DASHBOARD_PAGE_IDS` to narrow the run when appropriate.',
                 '3. Trace each failure through the declarative view, canonical data adapter and normalization, query worker, and view payload stages. Do not add a JavaScript-based dashboard view or treat browser IndexedDB as an authority.',
                 '4. Make the smallest root-cause fix and add or update focused regression coverage.',
-                '5. Validate the affected assessment plus `npm test`, `npm run lint`, and `npm run typecheck` from `dashboard/site/`.',
+                '5. Validate the affected assessment plus `npm test`, `npm run lint`, and `npm run typecheck` from `.github/aw/dashboard/site/`.',
                 '',
                 '</details>',
               ].join('\n')

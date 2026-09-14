@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { actionsLog as log } from "../../.github/aw/activity/actions-log.mjs";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
 import { firstText } from "./text-utils.mjs";
 

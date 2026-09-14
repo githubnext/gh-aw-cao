@@ -196,8 +196,8 @@ Ingest an extracted gh-aw log directory with its run context:
 ```bash
 cao ingest \
   --database /tmp/cao-dashboard.sqlite \
-  --context dashboard/site/test/fixtures/gh-aw-logs/context.json \
-  --logs dashboard/site/test/fixtures/gh-aw-logs/run-303
+  --context .github/aw/dashboard/site/test/fixtures/gh-aw-logs/context.json \
+  --logs .github/aw/dashboard/site/test/fixtures/gh-aw-logs/run-303
 ```
 
 Alternatively, ingest the schema-v2 JSONL produced by `gh aw logs`:

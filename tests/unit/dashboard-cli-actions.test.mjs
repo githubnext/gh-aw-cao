@@ -7,7 +7,7 @@ import {
   parseDashboardCommand,
   resolveGhAwCompilerVersion,
 } from "../../com.github.copilot/extensions/cao-dashboard/cli-actions.mjs";
-import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
+import { composeDashboardDocuments } from "../../.github/aw/dashboard/report/compose-dashboard-documents.mjs";
 
 test("CLI actions read the gh-aw compiler version from cao.json", async () => {
   assert.equal(await resolveGhAwCompilerVersion(), "v0.89.15");

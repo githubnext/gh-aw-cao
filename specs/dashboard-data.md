@@ -1662,7 +1662,7 @@ The completed implementation SHALL use the stable data namespace.
 Example:
 
 ```text
-dashboard/
+.github/aw/dashboard/
   data/
     model/
       ids.mjs

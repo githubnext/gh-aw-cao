@@ -18,7 +18,7 @@ const dashboard = {
 test("selects the page that uses a changed component", () => {
   assert.deepEqual(selectAffectedPageIds({
     dashboard,
-    changedFiles: ["dashboard/site/src/components/configuration-actions.js"],
+    changedFiles: [".github/aw/dashboard/site/src/components/configuration-actions.js"],
     baseRef: "unused",
   }), ["cost"]);
 });
@@ -26,7 +26,7 @@ test("selects the page that uses a changed component", () => {
 test("selects every page for shared renderer changes", () => {
   assert.deepEqual(selectAffectedPageIds({
     dashboard,
-    changedFiles: ["dashboard/site/src/presenter.js"],
+    changedFiles: [".github/aw/dashboard/site/src/presenter.js"],
     baseRef: "unused",
   }), ["experiments", "cost"]);
 });
@@ -75,7 +75,7 @@ test("detects shared dashboard configuration changes", () => {
 test("selects every page for components with transitive consumers", () => {
   assert.deepEqual(selectAffectedPageIds({
     dashboard,
-    changedFiles: ["dashboard/site/src/components/agent-marketplace-view.js"],
+    changedFiles: [".github/aw/dashboard/site/src/components/agent-marketplace-view.js"],
     baseRef: "unused",
   }), ["experiments", "cost"]);
 });
@@ -90,7 +90,7 @@ test("selects every page when a referenced component was deleted", () => {
         ],
       },
     },
-    changedFiles: ["dashboard/site/src/components/deleted-component.js"],
+    changedFiles: [".github/aw/dashboard/site/src/components/deleted-component.js"],
     baseRef: "unused",
   }), ["deleted-consumer", "other"]);
 });
