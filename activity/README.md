@@ -15,6 +15,18 @@ keeping cache-write permission out of the collection job. An incomplete
 extraction fails that job instead of silently skipping the cache save, which
 would strand consumers on a cache miss.
 
+The `gh aw logs` invocation uses `--cached-logs` with a trailing wildcard
+shard prefix instead of a single `--cached-jsonl` file. The consolidated
+`gh-aw-logs.jsonl` snapshot is copied into that transient, per-run shard
+directory as a seed shard before the invocation so `gh aw logs` can still
+recognize previously discovered runs; new runs are written to a freshly named
+shard instead of being merged into the seed in place. Only that newly written
+shard is ingested into the cached SQLite database, so ingestion processes just
+the runs discovered in the current invocation instead of reprocessing the
+whole rolling window every time. All shards (seed and new) are then
+concatenated back into `gh-aw-logs.jsonl` so the cache and consumer contract
+below are unchanged, and the shard directory is discarded before the job ends.
+
 ## Cache contract
 
 The cache contains:

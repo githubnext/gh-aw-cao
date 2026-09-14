@@ -145,10 +145,18 @@ jobs:
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_DRAIN3_WEIGHTS: ${{ runner.temp }}/cao-activity/drain3_weights.json
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-gh-aw-logs-shards
           REPORT_RUN_WINDOW_DAYS: "30"
         run: |
-          mkdir -p "$(dirname "$REPORT_GH_AW_LOGS")"
+          mkdir -p "$(dirname "$REPORT_GH_AW_LOGS")" "$REPORT_GH_AW_LOGS_SHARDS"
           touch "$REPORT_GH_AW_LOGS"
+          shard_prefix="$REPORT_GH_AW_LOGS_SHARDS/logs-"
+          # Seed the wildcard shard cache with the previously consolidated
+          # snapshot so `gh aw logs --cached-logs` can reuse known runs
+          # without rediscovering them.
+          if [[ -s "$REPORT_GH_AW_LOGS" ]]; then
+            cp "$REPORT_GH_AW_LOGS" "${shard_prefix}0.jsonl"
+          fi
           drain3_args=()
           if [[ -f "$REPORT_DRAIN3_WEIGHTS" ]]; then
             echo "Using cached Drain3 weights from $REPORT_DRAIN3_WEIGHTS"
@@ -164,7 +172,7 @@ jobs:
           gh aw logs --audit \
             --output "$REPORT_AIC_CACHE" \
             --summary-file "" \
-            --cached-jsonl "$REPORT_GH_AW_LOGS" \
+            --cached-logs "${shard_prefix}*" \
             --artifacts usage \
             --start-date "-${REPORT_RUN_WINDOW_DAYS}d" \
             --cache-before "-${REPORT_RUN_WINDOW_DAYS}d" \
@@ -177,11 +185,29 @@ jobs:
             "${targets[@]}"
           mv "$REPORT_AIC_CACHE/drain3_weights.json" "$REPORT_DRAIN3_WEIGHTS"
           echo "Saved refreshed Drain3 weights to $REPORT_DRAIN3_WEIGHTS"
+          shopt -s nullglob
+          shards=("${shard_prefix}"*.jsonl)
+          new_shards=()
+          for shard in "${shards[@]}"; do
+            [[ "$shard" == "${shard_prefix}0.jsonl" ]] && continue
+            new_shards+=("$shard")
+          done
+          shopt -u nullglob
+          if [[ ${#shards[@]} -gt 0 ]]; then
+            cat "${shards[@]}" > "$REPORT_GH_AW_LOGS"
+          fi
+          if [[ ${#new_shards[@]} -gt 0 ]]; then
+            cp "${new_shards[0]}" "$REPORT_GH_AW_LOGS_SHARDS/new-shard.jsonl"
+            echo "Collected a new gh-aw-logs shard with $(wc -l < "${new_shards[0]}") run record(s) for incremental ingestion"
+          else
+            rm -f "$REPORT_GH_AW_LOGS_SHARDS/new-shard.jsonl"
+            echo "No new gh-aw-logs shard was collected; skipping incremental ingestion"
+          fi
 
       - name: Ingest activity database
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          REPORT_GH_AW_LOGS_NEW_SHARD: ${{ runner.temp }}/cao-gh-aw-logs-shards/new-shard.jsonl
         run: |
           if [[ -f activity/cao.mjs ]]; then
             ingestion_script=activity/cao.mjs
@@ -191,10 +217,14 @@ jobs:
             echo "Activity SQLite ingestion pipeline is unavailable" >&2
             exit 1
           fi
-          node "$ingestion_script" ingest-jsonl \
-            --database "$ACTIVITY_DATABASE" \
-            --input "$REPORT_GH_AW_LOGS" \
-            --run-retention-days all
+          if [[ -s "$REPORT_GH_AW_LOGS_NEW_SHARD" ]]; then
+            node "$ingestion_script" ingest-jsonl \
+              --database "$ACTIVITY_DATABASE" \
+              --input "$REPORT_GH_AW_LOGS_NEW_SHARD" \
+              --run-retention-days all
+          else
+            echo "No new gh-aw-logs shard to ingest; database already reflects the cached snapshot"
+          fi
           node "$ingestion_script" doctor \
             --database "$ACTIVITY_DATABASE" \
             --run-ttl-days all

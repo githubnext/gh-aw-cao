@@ -31,9 +31,13 @@ test("activity logs uses one bounded gh aw logs invocation with compact usage ar
   const ghPath = path.join(item.bin, "gh");
   await writeFile(ghPath, `#!/usr/bin/env node
 const fs = require("node:fs");
+const path = require("node:path");
 const args = process.argv.slice(2);
 fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args));
-fs.writeFileSync(args[args.indexOf("--cached-jsonl") + 1], JSON.stringify({ schema_version: 2, kind: "run", run: {
+const shardPattern = args[args.indexOf("--cached-logs") + 1];
+const shardPath = shardPattern.replace(/\\*$/, "") + "fixture.jsonl";
+fs.mkdirSync(path.dirname(shardPath), { recursive: true });
+fs.writeFileSync(shardPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
    database_id:42,
    repository:"githubnext/gh-aw-cao",
    workflow_path:".github/workflows/sample.lock.yml",
@@ -65,9 +69,10 @@ process.stderr.write("Fetched 1 run\\n");
       "usage",
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
-    assert.deepEqual(args.slice(args.indexOf("--cached-jsonl"), args.indexOf("--cached-jsonl") + 2), [
-      "--cached-jsonl",
-      item.logsPath,
+    const shardPrefix = path.join(item.root, "cache", "gh-aw-logs-shards", "logs-");
+    assert.deepEqual(args.slice(args.indexOf("--cached-logs"), args.indexOf("--cached-logs") + 2), [
+      "--cached-logs",
+      `${shardPrefix}*`,
     ]);
     assert.equal(args.filter((value) => value === "logs").length, 1);
     assert.deepEqual(args.slice(args.indexOf("--count"), args.indexOf("--count") + 2), ["--count", "10"]);
