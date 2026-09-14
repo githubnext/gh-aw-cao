@@ -99,6 +99,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
+        ingestionVersion: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })
     ]);
@@ -402,6 +403,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-jsonl',
+        ingestionVersion: 2,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })

@@ -60,7 +60,7 @@ describe('gh-aw logs adapter', () => {
           attempt: 1,
           number: 7,
           workflowName: 'Dashboard',
-          displayTitle: 'Build dashboard',
+          displayTitle: 'Dashboard worker · github/gh-aw · review',
           event: 'workflow_dispatch',
           status: 'completed',
           conclusion: 'success',
@@ -82,7 +82,7 @@ describe('gh-aw logs adapter', () => {
           repository: 'githubnext/gh-aw-cao',
           workflow_name: 'Dashboard',
           workflow_path: '.github/workflows/dashboard.md',
-          display_title: 'Build dashboard',
+          display_title: 'Dashboard worker · github/gh-aw · review',
           event: 'workflow_dispatch',
           status: 'completed',
           conclusion: 'success',
@@ -224,6 +224,7 @@ describe('gh-aw logs adapter', () => {
         id: 'github:run:303:attempt:1',
         workflowPath: '.github/workflows/dashboard.md',
         number: 7,
+        targetRepository: 'github/gh-aw',
         aicTotal: 2.5,
         agentId: 'copilot',
         agentVersion: '1.0.83',
@@ -335,6 +336,50 @@ describe('gh-aw logs adapter', () => {
         workflowPath: '.github/workflows/dashboard.md'
       })
     ]);
+  });
+
+  it('does not infer targets outside the workflow dispatch run-name contract', () => {
+    const content = JSON.stringify({
+      schema_version: 2,
+      kind: 'workflow_runs',
+      request: { repository: 'githubnext/gh-aw-cao' },
+      payload: [
+        {
+          databaseId: 304,
+          attempt: 1,
+          workflowName: 'Dashboard',
+          displayTitle: 'Dashboard worker · github/gh-aw · review',
+          event: 'push',
+          status: 'completed',
+          conclusion: 'success',
+          createdAt: '2026-09-09T03:59:00Z',
+          updatedAt: '2026-09-09T04:01:00Z'
+        },
+        {
+          databaseId: 305,
+          attempt: 1,
+          workflowName: 'Dashboard',
+          displayTitle: 'Build dashboard',
+          event: 'workflow_dispatch',
+          status: 'completed',
+          conclusion: 'success',
+          createdAt: '2026-09-09T03:59:00Z',
+          updatedAt: '2026-09-09T04:01:00Z'
+        }
+      ]
+    });
+
+    const batch = normalize(adaptCachedGhAwJsonl(content, {
+      workflowHints: [{
+        owner: 'githubnext',
+        repository: 'gh-aw-cao',
+        name: 'Dashboard',
+        path: '.github/workflows/dashboard.md'
+      }]
+    }).observations);
+
+    expect(batch.runs).toHaveLength(2);
+    expect(batch.runs.every((run) => run.targetRepository === undefined)).toBe(true);
   });
 
   it('rejects unsupported cached JSONL schema versions', () => {

@@ -365,6 +365,37 @@
         "aggregate": { "values": [{ "field": "run", "as": "dispatches", "reducer": "count" }] }
       },
       {
+        "name": "overview-delivery-summary",
+        "intent": "Count distinct target repositories with successful worker dispatch runs in the selected horizon.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "workflow-role", "as": "workflow-role" }]
+          },
+          {
+            "source": "repositories",
+            "type": "inner",
+            "on": [{ "left": "target-repository", "right": "repository-coordinate" }],
+            "fields": [{ "field": "repository-coordinate", "as": "registered-target-repository" }]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            { "field": "event", "equals": "workflow_dispatch" },
+            { "field": "run-conclusion", "equals": "success" },
+            { "field": "workflow-role", "equals": "worker" }
+          ]
+        },
+        "aggregate": { "values": [{ "field": "target-repository", "as": "delivered-repositories", "reducer": "distinct-count" }] }
+      },
+      {
         "name": "overview-value-summary",
         "intent": "Count grader observations whose value exceeds their declared threshold.",
         "from": "grader-observations",
@@ -7335,6 +7366,7 @@
                 "overview-outcome-summary",
                 "overview-run-summary",
                 "overview-dispatch-summary",
+                "overview-delivery-summary",
                 "overview-value-summary",
                 "overview-registered-repository-summary",
                 "overview-worker-summary",

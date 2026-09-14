@@ -89,6 +89,44 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
+  it('counts distinct targets from successful worker dispatches only', () => {
+    const runRows = [
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'github/gh-aw' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '2', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'github/gh-aw' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '3', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'github/gh-aw-firewall' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '4', event: 'workflow_dispatch', 'run-conclusion': 'failure', 'target-repository': 'github/failed' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'orchestrator.md', run: '5', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'github/orchestrated' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '6', event: 'push', 'run-conclusion': 'success', 'target-repository': 'github/pushed' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '7', event: 'workflow_dispatch', 'run-conclusion': 'success' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '8', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'outside/not-registered' }
+    ];
+    const workflowRows = [
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', 'workflow-role': 'worker' },
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'orchestrator.md', 'workflow-role': 'orchestrator' }
+    ];
+
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      {
+        runs: { source: 'runs', rows: runRows, metadata: metadata('runs') },
+        workflows: { source: 'workflows', rows: workflowRows, metadata: metadata('workflows') },
+        repositories: {
+          source: 'repositories',
+          rows: [
+            { 'repository-coordinate': 'github/gh-aw' },
+            { 'repository-coordinate': 'github/gh-aw-firewall' }
+          ],
+          metadata: metadata('repositories')
+        }
+      },
+      ['overview-delivery-summary']
+    );
+
+    expect(result['overview-delivery-summary'].rows).toEqual([
+      { 'delivered-repositories': 2 }
+    ]);
+  });
+
   it('counts database entities through the declared horizon queries', () => {
     const sources = {
       packages: {

@@ -23,7 +23,8 @@ import {
 } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 
-const DASHBOARD_SOURCE_INGESTION_VERSION = 2;
+const DASHBOARD_SOURCE_INGESTION_VERSION = 3;
+const GH_AW_JSONL_INGESTION_VERSION = 2;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 
@@ -79,6 +80,7 @@ async function transactionId(kind, scope) {
 /** @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} options */
 function cachedJsonlAdaptationContext(options) {
   return JSON.stringify({
+    ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
     context: options.context ?? null,
     workflowHints: options.workflowHints ?? []
   });
@@ -353,6 +355,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       payloadHash: hash,
       payloadEtag: options.payloadEtag,
       adaptationContext,
+      ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
       records: adapted.records,
       committedRecords: result.committedRecords,
       rawPayloadRecords: adapted.rawPayloadRecords,

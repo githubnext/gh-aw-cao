@@ -10,6 +10,7 @@ import { canonicalTimestamp, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 
 const OBSERVATION_SOURCE = 'gh-aw-logs';
+const REPOSITORY_COORDINATE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 
 /** @param {unknown} value @param {string} field */
 function objectValue(value, field) {
@@ -37,6 +38,14 @@ function positiveInteger(value, field) {
 /** @param {unknown} value */
 function optionalString(value) {
   return value === undefined || value === null || value === '' ? undefined : String(value);
+}
+
+/** @param {unknown} title @param {unknown} event */
+function dispatchTargetRepository(title, event) {
+  if (event !== 'workflow_dispatch' || typeof title !== 'string') return undefined;
+  const parts = title.split('·').map((part) => part.trim());
+  if (parts.length !== 3 || !['review', 'live'].includes(parts[2])) return undefined;
+  return REPOSITORY_COORDINATE_PATTERN.test(parts[1]) ? parts[1] : undefined;
 }
 
 /** @param {...unknown} values */
@@ -819,6 +828,13 @@ function createCachedGhAwJsonlAccumulator(options) {
       `${id}.attempt`
     );
     const metadata = runMetadata(enrichedValue);
+    const title = optionalString(rawValue.displayTitle)
+      ?? optionalString(enrichedValue.display_title)
+      ?? `Run ${githubRunId}`;
+    const event = optionalString(rawValue.event)
+      ?? optionalString(enrichedValue.event)
+      ?? optionalString(enrichedValue.event_name)
+      ?? 'unknown';
     const status = optionalString(rawValue.status)
       ?? optionalString(enrichedValue.status)
       ?? 'unknown';
@@ -844,13 +860,9 @@ function createCachedGhAwJsonlAccumulator(options) {
         githubRunId,
         attempt,
         number: finiteNumber(rawValue.number) ?? finiteNumber(enrichedValue.number),
-        title: optionalString(rawValue.displayTitle)
-          ?? optionalString(enrichedValue.display_title)
-          ?? `Run ${githubRunId}`,
-        event: optionalString(rawValue.event)
-          ?? optionalString(enrichedValue.event)
-          ?? optionalString(enrichedValue.event_name)
-          ?? 'unknown',
+        title,
+        event,
+        targetRepository: dispatchTargetRepository(title, event),
         status,
         conclusion: optionalString(rawValue.conclusion)
           ?? optionalString(enrichedValue.conclusion)

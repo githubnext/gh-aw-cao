@@ -39,9 +39,10 @@ function rhythmSource(overrides = {}) {
 /** @param {Record<string, import('../../src/presenter.js').LogicalSourceInput>} [overrides] */
 function overviewSources(overrides = {}) {
   return {
-    'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 0, 'delivered-repositories': 0 }]),
+    'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 0 }]),
     'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 0, 'failed-runs': 0, 'active-runs': 0, 'active-live': 0, 'active-review': 0 }]),
     'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 0 }]),
+    'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 0 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 0 }]),
     'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }]),
@@ -60,9 +61,10 @@ afterEach(() => {
 it('renders compact database summaries and distinct registered repository coverage', () => {
   const rendered = renderFactoryOverview({
     sources: overviewSources({
-      'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2, 'delivered-repositories': 2 }]),
+      'overview-outcome-summary': source('overview-outcome-summary', [{ 'useful-outputs': 2 }]),
       'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 2, 'failed-runs': 2, 'active-runs': 4, 'active-live': 1, 'active-review': 3 }]),
       'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 4 }]),
+      'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
       'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
       'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
       'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }]),
@@ -73,12 +75,12 @@ it('renders compact database summaries and distinct registered repository covera
   expect(rendered.querySelector('.factory-running')?.textContent).toContain('4 operations in motion (1 live, 3 in review)');
   expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
   expect([...rendered.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
-    'Repositories delivered to22 of 6 registered',
+    'Repositories delivered to33 of 6 registered',
     'Successful runs22 failed',
     'Dispatches42 workflows observed',
     'Value gain1Coming soon'
   ]);
-  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('2 repositories delivered to out of 6 registered');
+  expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('3 repositories delivered to out of 6 registered');
   expect(rendered.querySelector('.factory-station:first-child small a')?.getAttribute('href')).toBe('#page-repositories');
   expect(rendered.querySelector('.factory-station:first-child small a')?.textContent).toBe('6 registered');
   expect([...rendered.querySelectorAll('.factory-rhythm-day small')].map((day) => day.textContent)).toEqual([
@@ -135,7 +137,7 @@ it('hides the duplicate run and dispatch summary when no useful outputs exist', 
 it('reports unavailable repository delivery evidence instead of counting control runs', () => {
   const rendered = renderFactoryOverview({
     sources: overviewSources({
-      'overview-outcome-summary': source('overview-outcome-summary', [], { availability: 'unavailable' }),
+      'overview-delivery-summary': source('overview-delivery-summary', [], { availability: 'unavailable' }),
       'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }])
     })
   });
@@ -182,6 +184,7 @@ it('requests only compact query outputs and updates each station independently',
     'overview-outcome-summary',
     'overview-run-summary',
     'overview-dispatch-summary',
+    'overview-delivery-summary',
     'overview-value-summary',
     'overview-registered-repository-summary',
     'overview-worker-summary',

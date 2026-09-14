@@ -11,6 +11,7 @@ const OVERVIEW_SOURCE_NAMES = [
   'overview-outcome-summary',
   'overview-run-summary',
   'overview-dispatch-summary',
+  'overview-delivery-summary',
   'overview-value-summary',
   'overview-registered-repository-summary',
   'overview-worker-summary',
@@ -178,6 +179,7 @@ function createOverviewMetrics(sources) {
   const outcome = memo(() => firstRow(sources['overview-outcome-summary']));
   const runs = memo(() => firstRow(sources['overview-run-summary']));
   const dispatch = memo(() => firstRow(sources['overview-dispatch-summary']));
+  const delivery = memo(() => firstRow(sources['overview-delivery-summary']));
   const value = memo(() => firstRow(sources['overview-value-summary']));
   const registeredRepositories = memo(() => firstRow(sources['overview-registered-repository-summary']));
   const workers = memo(() => firstRow(sources['overview-worker-summary']));
@@ -187,9 +189,9 @@ function createOverviewMetrics(sources) {
     activeRuns: memo(() => numberField(runs(), 'active-runs')),
     valueGains: memo(() => numberField(value(), 'value-gains')),
     coverage: memo(() => ({
-      total: numberField(outcome(), 'delivered-repositories'),
+      total: numberField(delivery(), 'delivered-repositories'),
       registered: numberField(registeredRepositories(), 'registered-repositories'),
-      unavailable: sources['overview-outcome-summary'].unavailable(),
+      unavailable: sources['overview-delivery-summary'].unavailable(),
       registeredUnavailable: sources['overview-registered-repository-summary'].unavailable()
     })),
     workers: memo(() => numberField(workers(), 'workers')),
@@ -293,7 +295,7 @@ function renderFactoryFloor(sources, metrics, label) {
   repositories.bind(() => {
     const coverage = metrics.coverage();
     return {
-      pending: sources['overview-outcome-summary'].pending() || sources['overview-registered-repository-summary'].pending(),
+      pending: sources['overview-delivery-summary'].pending() || sources['overview-registered-repository-summary'].pending(),
       unavailable: coverage.unavailable,
       label: label('repositories', coverage.total),
       value: coverage.total,
