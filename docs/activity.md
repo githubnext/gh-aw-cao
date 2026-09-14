@@ -53,7 +53,7 @@ $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 $RUNNER_TEMP/cao-activity/payload-hashes.json
 $RUNNER_TEMP/cao-activity/control-settings.json
 $RUNNER_TEMP/cao-activity/inventory-sources.json
-$RUNNER_TEMP/cao-gh-aw-logs/drain3_weights.json
+$RUNNER_TEMP/cao-activity/drain3_weights.json
 ```
 
 `payload-hashes.json` maps the current JSONL source and SQLite projection
