@@ -247,6 +247,20 @@ steps:
         > /tmp/gh-aw/agent/release-data/previous_release.json
 
       PREVIOUS_TAG=$(jq -r '.tag_name // empty' /tmp/gh-aw/agent/release-data/previous_release.json)
+      GIT_FETCH_AUTH_HEADER=$(printf "x-access-token:%s" "$GH_TOKEN" | base64 -w 0)
+      fetch_release_tag() {
+        local tag="$1"
+        if [ -z "$tag" ]; then
+          return 0
+        fi
+        if git rev-parse --verify "refs/tags/$tag" >/dev/null 2>&1; then
+          return 0
+        fi
+        git -c "http.extraheader=Authorization: Basic ${GIT_FETCH_AUTH_HEADER}" \
+          fetch --force origin "refs/tags/$tag:refs/tags/$tag"
+      }
+      fetch_release_tag "$PREVIOUS_TAG"
+      fetch_release_tag "$RELEASE_TAG"
       echo "[]" > /tmp/gh-aw/agent/release-data/pull_requests.json
       if [ -n "$PREVIOUS_TAG" ]; then
         git rev-parse --verify "refs/tags/$PREVIOUS_TAG" >/dev/null
