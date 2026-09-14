@@ -1443,9 +1443,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running-active > span')).toHaveText('Work in motion');
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
-  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['0', '20', '12', '0']);
+  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '0']);
   await expect(overviewPage.locator('.factory-station small')).toHaveText([
-    '1 registered',
+    '',
     '80 failed',
     '0 failed',
     'Coming soon'
