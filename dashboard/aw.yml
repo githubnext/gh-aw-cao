@@ -11,6 +11,8 @@ resources:
     destination: .github/aw/dashboard/report/aic-usage.mjs
   - source: report/activity-collectors.mjs
     destination: .github/aw/dashboard/report/activity-collectors.mjs
+  - source: report/activity-modules.mjs
+    destination: .github/aw/dashboard/report/activity-modules.mjs
   - source: report/text-utils.mjs
     destination: .github/aw/dashboard/report/text-utils.mjs
   - source: report/operational-values.mjs

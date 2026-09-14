@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "bin": {
-    "cao": "activity/cao.mjs",
+    "cao": ".github/aw/activity/cao.mjs",
     "cao-setup": ".github/workflows/shared/setup-github-apps.mjs"
   },
   "scripts": {
@@ -12,7 +12,7 @@
     "dashboard:local": "node dashboard/local-server.mjs",
     "dashboard:local:copilot": "node dashboard/local-server.mjs --copilot",
     "dashboard:local:mobile": "DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl MOBILE_BROWSER=chromium MOBILE_DEVICE='Pixel 7' MOBILE_PROFILE=low-memory MOBILE_MEMORY_MB=256 playwright test --config=playwright.mobile.config.mjs",
-    "dashboard:data": "node activity/cao.mjs",
+    "dashboard:data": "node .github/aw/activity/cao.mjs",
     "dashboard:data:download": "npm run dashboard:data -- download",
     "dev": "node dashboard/local-server.mjs --copilot --replace-existing --trace-file .cao-dashboard-traces/latest.jsonl",
     "docs:dev": "astro dev",

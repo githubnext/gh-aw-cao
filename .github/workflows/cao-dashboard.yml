@@ -166,11 +166,9 @@ jobs:
           script: |
             const fs = require('fs')
             core.info('Resolving activity SQLite doctor')
-            const doctorScript = fs.existsSync('activity/cao.mjs')
-              ? 'activity/cao.mjs'
-              : fs.existsSync('.github/aw/activity/cao.mjs')
-                ? '.github/aw/activity/cao.mjs'
-                : undefined
+            const doctorScript = fs.existsSync('.github/aw/activity/cao.mjs')
+              ? '.github/aw/activity/cao.mjs'
+              : undefined
             if (!doctorScript) {
               throw new Error('Activity SQLite doctor is unavailable')
             }

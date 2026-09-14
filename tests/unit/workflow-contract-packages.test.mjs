@@ -11,7 +11,7 @@ import { escapedGhAwVersion, ghAwVersion, root, script, workflow, workflowsDirec
 test("packages and repository workflows pin the supported gh-aw version", () => {
   const manifests = [
     "aw.yml",
-    "activity/aw.yml",
+    ".github/aw/activity/aw.yml",
     "uk-ai-advisory/aw.yml",
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
@@ -52,7 +52,7 @@ test("catalog packages declare their current experimental maturity", () => {
   ]);
   const manifests = [
     "aw.yml",
-    "activity/aw.yml",
+    ".github/aw/activity/aw.yml",
     "uk-ai-advisory/aw.yml",
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
@@ -82,7 +82,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
-  assert.match(readFileSync(join(root, "activity", "aw.yml"), "utf8"), /source: gh-aw-logs\.mjs/);
+  assert.match(readFileSync(join(root, ".github", "aw", "activity", "aw.yml"), "utf8"), /source: gh-aw-logs\.mjs/);
 });
 
 test("package manifests exclude repository-only tests", () => {
@@ -212,7 +212,7 @@ test("root package composes its operational packages through manifests", () => {
 
   assert.deepEqual(rootManifest.includes, [
     ".github/workflows/aw.json",
-    "activity/aw.yml",
+    ".github/aw/activity/aw.yml",
     "dashboard/aw.yml",
   ]);
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));

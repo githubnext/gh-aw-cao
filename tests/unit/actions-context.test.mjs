@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { setActionsGlobals } from "../../activity/actions-context.mjs";
+import { setActionsGlobals } from "../../.github/aw/activity/actions-context.mjs";
 
 test("Actions context exposes the github-script singleton as globals", () => {
   const originals = Object.fromEntries(

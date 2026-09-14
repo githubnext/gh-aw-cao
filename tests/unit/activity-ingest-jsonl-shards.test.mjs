@@ -19,7 +19,7 @@ async function fixture() {
 
 async function ingest(shardDirectory, databasePath) {
   const { stdout } = await execFileAsync(process.execPath, [
-    path.resolve('activity/cao.mjs'),
+    path.resolve('.github/aw/activity/cao.mjs'),
     'ingest-jsonl',
     '--database',
     databasePath,
@@ -31,7 +31,7 @@ async function ingest(shardDirectory, databasePath) {
 
 async function queryTransactions(databasePath) {
   const { stdout } = await execFileAsync(process.execPath, [
-    path.resolve('activity/cao.mjs'),
+    path.resolve('.github/aw/activity/cao.mjs'),
     'query',
     '--database',
     databasePath,

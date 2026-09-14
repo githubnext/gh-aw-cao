@@ -36,7 +36,7 @@ test("cao ingests one million cached JSONL rows within a 32 MB JavaScript heap",
   try {
     const result = spawnSync(process.execPath, [
       "--max-old-space-size=32",
-      "activity/cao.mjs",
+      ".github/aw/activity/cao.mjs",
       "ingest-jsonl",
       "--database",
       database,

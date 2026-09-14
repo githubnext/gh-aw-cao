@@ -146,7 +146,7 @@ test("dashboard CI runs the package quality gates", () => {
 
 test("Dashboard package builds artifacts and deploys Pages in one workflow", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
-  const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
+  const activityManifest = readFileSync(join(root, ".github", "aw", "activity", "aw.yml"), "utf8");
   const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
   const rootPackage = parse(rootManifest);
   const dashboardPackage = parse(dashboardManifest);
@@ -160,10 +160,10 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   const dashboardCacheJob = dashboardWorkflow.match(/\n  cache:\n([\s\S]*?)\n  deploy:\n/)?.[1];
   const dashboardDeployJob = dashboardWorkflow.match(/\n  deploy:\n([\s\S]*)/)?.[1];
   const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
-  const deployedWorkflows = readFileSync(join(root, "activity", "index.mjs"), "utf8");
-  const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
-  const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
-  const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
+  const deployedWorkflows = readFileSync(join(root, ".github", "aw", "activity", "index.mjs"), "utf8");
+  const activityCollector = readFileSync(join(root, ".github", "aw", "activity", "collect-logs.sh"), "utf8");
+  const activityLogs = readFileSync(join(root, ".github", "aw", "activity", "logs.mjs"), "utf8");
+  const activityRunner = readFileSync(join(root, ".github", "aw", "activity", "run-activity.mjs"), "utf8");
   const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
   const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-value-history.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
@@ -326,9 +326,9 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
 
 test("Activity package owns the shared collected-data cache contract", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
-  const activityManifest = parse(readFileSync(join(root, "activity", "aw.yml"), "utf8"));
+  const activityManifest = parse(readFileSync(join(root, ".github", "aw", "activity", "aw.yml"), "utf8"));
   const workflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
-  const readme = readFileSync(join(root, "activity", "README.md"), "utf8");
+  const readme = readFileSync(join(root, ".github", "aw", "activity", "README.md"), "utf8");
   const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.equal(activityManifest.name, "CAO Activity");
@@ -337,6 +337,8 @@ test("Activity package owns the shared collected-data cache contract", () => {
   ]);
   assert.deepEqual(activityManifest.resources, [
     { source: "cao.mjs", destination: ".github/aw/activity/cao.mjs" },
+    { source: "dashboard-modules.mjs", destination: ".github/aw/activity/dashboard-modules.mjs" },
+    { source: "debug.mjs", destination: ".github/aw/activity/debug.mjs" },
     { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
     { source: "control-settings.mjs", destination: ".github/aw/activity/control-settings.mjs" },
@@ -344,7 +346,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     { source: "inventory.mjs", destination: ".github/aw/activity/inventory.mjs" },
     { source: "inventory-sources.mjs", destination: ".github/aw/activity/inventory-sources.mjs" },
   ]);
-  assert.ok(rootManifest.includes.includes("activity/aw.yml"));
+  assert.ok(rootManifest.includes.includes(".github/aw/activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
@@ -371,7 +373,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
   assert.doesNotMatch(workflow, /github-script|ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
-  assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);
+  assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity_root=\.github\/aw\/activity[\s\S]*?node "\$activity_root\/inventory-sources\.mjs"/);
   assert.match(workflow, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
@@ -489,7 +491,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "central-agentic-ops-inventory-"));
   const outputPath = join(temporaryRoot, "control-plane.json");
   try {
-    execFileSync(process.execPath, [join(root, "activity", "inventory.mjs")], {
+    execFileSync(process.execPath, [join(root, ".github", "aw", "activity", "inventory.mjs")], {
       env: { ...process.env, REPORT_ROOT: root, REPORT_INVENTORY: outputPath },
     });
     const inventory = JSON.parse(readFileSync(outputPath, "utf8"));

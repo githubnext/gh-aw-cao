@@ -50,8 +50,8 @@ clients can detect unchanged data without downloading either complete payload.
 Dashboard ingestion checks this sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is usable.
 
-`activity/cao.mjs` logs shard skip/ingest decisions and per-file hash results
-through Node's built-in `util.debuglog` (see `activity/debug.mjs`), scoped
+`.github/aw/activity/cao.mjs` logs shard skip/ingest decisions and per-file hash results
+through Node's built-in `util.debuglog` (see `.github/aw/activity/debug.mjs`), scoped
 under the `cao:*` namespace (for example `cao:ingest`, `cao:hash-payloads`).
 Logging is a no-op by default; set `NODE_DEBUG=cao:*` (or a specific category)
 to see it.

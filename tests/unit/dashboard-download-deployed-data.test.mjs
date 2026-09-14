@@ -24,7 +24,7 @@ const packageJson = JSON.parse(
 const cao = path.resolve(packageJson.bin.cao);
 
 test("exposes the dashboard data CLI as cao", async () => {
-  assert.equal(packageJson.bin.cao, "activity/cao.mjs");
+  assert.equal(packageJson.bin.cao, ".github/aw/activity/cao.mjs");
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-"));
   const installedCommand = path.join(root, "cao");
   try {
@@ -40,7 +40,7 @@ test("exposes the dashboard data CLI as cao", async () => {
 
 test("downloads the deployed JSONL and SQLite files without rebuilding", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-data-"));
-  const output = path.join(root, "activity");
+  const output = path.join(root, ".github", "aw", "activity");
   const logsContent = '{"schema_version":2,"kind":"run","run":{"run_id":303}}\n';
   const databaseContent = Buffer.from("published sqlite bytes");
   const requests = [];

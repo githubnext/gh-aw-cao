@@ -4,7 +4,7 @@ min-version: v0.89.15
 experimental: true
 includes:
   - .github/workflows/aw.json
-  - activity/aw.yml
+  - .github/aw/activity/aw.yml
   - dashboard/aw.yml
 resources:
   - source: .github/workflows/shared/control.mjs

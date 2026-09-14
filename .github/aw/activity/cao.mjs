@@ -9,14 +9,22 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import { createDebug } from './debug.mjs';
-import { adaptCachedGhAwJsonlStream, cachedJsonlPayloadIdentity } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
-import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
-import { normalize } from '../dashboard/site/src/data/normalize/index.js';
-import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
-import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
-import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
-import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
-import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
+import {
+  adaptCachedGhAwJsonlStream,
+  cachedJsonlPayloadIdentity,
+  createCanonicalQueries,
+  doctorSqliteDatabase,
+  executeDashboardQuery,
+  ingestCachedGhAwJsonl,
+  ingestGhAwLogs,
+  installSqliteIndexedDB,
+  isCachedGhAwJsonlCurrent,
+  normalize,
+  queryInputNames,
+  readCollection,
+  readRecord,
+  readTransactions
+} from './dashboard-modules.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');

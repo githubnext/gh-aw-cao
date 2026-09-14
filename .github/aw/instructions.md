@@ -18,7 +18,7 @@ Orchestrators select and dispatch within the resolved rollout envelope; they do 
 
 ## Deterministic core packages
 
-- Install the `activity/` package from the root manifest. It owns the scheduled and manually dispatchable data-collection workflow, cache key contract, and activity index schema.
+- Install the `.github/aw/activity/` package from the root manifest. It owns the scheduled and manually dispatchable data-collection workflow, cache key contract, and activity index schema.
 - Keep data collection and cache publication out of operational packages and dashboard build jobs. Consumers may restore the activity cache and must fall back narrowly when its scope, freshness, or completeness is insufficient.
 - The activity cache is an evictable optimization, not historical authority. Do not use it to widen CAO policy or credential reach.
 

@@ -3,8 +3,7 @@ import { pathToFileURL } from "node:url";
 import { collectAicUsage } from "./aic-usage.mjs";
 import { collectOperationalValues } from "./operational-values.mjs";
 import { writeDashboardRecords } from "./records.mjs";
-import { setActionsGlobals } from "../../activity/actions-context.mjs";
-import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { actionsLog as log, setActionsGlobals } from "./activity-modules.mjs";
 
 let recordTelemetry;
 

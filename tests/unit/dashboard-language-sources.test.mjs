@@ -5,7 +5,7 @@ import {
   detectionObservationRows,
   transactionLogRows,
 } from "../../dashboard/report/dashboard-language-sources.mjs";
-import { buildInventoryDashboardSources } from "../../activity/inventory-sources.mjs";
+import { buildInventoryDashboardSources } from "../../.github/aw/activity/inventory-sources.mjs";
 
 function detectionRun(runId, verdict, overrides = {}) {
   return {
@@ -795,8 +795,8 @@ test("dashboard source bridge expands GitHub telemetry resources", () => {
       },
       rateLimitError: null,
       stackTrace: [
-        "at recordGithubTelemetry (activity/github-telemetry.mjs:100:16)",
-        "at main (activity/github-telemetry.mjs:150:9)",
+        "at recordGithubTelemetry (.github/aw/activity/github-telemetry.mjs:100:16)",
+        "at main (.github/aw/activity/github-telemetry.mjs:150:9)",
       ],
       activityCache: { hydrated: true, bytes: 1024, entryCount: 6, folderCount: 2 },
     }],
@@ -899,7 +899,7 @@ test("dashboard source bridge expands GitHub telemetry resources", () => {
       "stack-frame-id": "unknown:after:2026-09-04T11:59:00Z:0",
       "stack-parent-id": "",
       "stack-depth": 0,
-      "stack-frame": "at main (activity/github-telemetry.mjs:150:9)",
+      "stack-frame": "at main (.github/aw/activity/github-telemetry.mjs:150:9)",
     },
     {
       "observed-at": "2026-09-04T11:59:00Z",
@@ -911,7 +911,7 @@ test("dashboard source bridge expands GitHub telemetry resources", () => {
       "stack-frame-id": "unknown:after:2026-09-04T11:59:00Z:1",
       "stack-parent-id": "unknown:after:2026-09-04T11:59:00Z:0",
       "stack-depth": 1,
-      "stack-frame": "at recordGithubTelemetry (activity/github-telemetry.mjs:100:16)",
+      "stack-frame": "at recordGithubTelemetry (.github/aw/activity/github-telemetry.mjs:100:16)",
     },
   ]);
   assert.equal(sources["github-api-rate-limits"].metadata.availability, "available");

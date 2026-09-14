@@ -21,7 +21,7 @@ const suites = [
   },
   {
     name: "activity",
-    manifest: "activity/aw.yml",
+    manifest: ".github/aw/activity/aw.yml",
     testPattern: "focused activity package contract",
     prefixes: [".github/workflows/activity."],
   },

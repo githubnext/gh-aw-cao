@@ -95,7 +95,7 @@ Run these commands from the `dashboard/site/` directory:
 - Editing control-plane sources under `.github/workflows/shared/` → `npm run typecheck:cao && npm test`
 - Editing dashboard site under `dashboard/site/` → from that directory: `npm test && npm run test:e2e && npm run test:performance && npm run lint && npm run typecheck`
 - Debugging downloaded dashboard data → use `npm run dashboard:local -- --repo OWNER/REPOSITORY`
-- Editing the Activity workflow or JSONL parser under `activity/` → run the focused activity tests and `npm run compile`
+- Editing the Activity workflow or JSONL parser under `.github/aw/activity/` → run the focused activity tests and `npm run compile`
 - Editing workflow `.md` files → `npm run compile` (add `compile:locks` if lock files should update)
 - Editing SVGs → `npm run check:svg`
 - Editing documentation under `docs/` → `npm run docs:build`
