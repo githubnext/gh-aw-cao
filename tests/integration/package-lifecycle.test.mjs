@@ -42,7 +42,7 @@ const activityExpectedFiles = [
   ".github/aw/activity/gh-aw-logs.mjs",
   ".github/aw/activity/inventory.mjs",
   ".github/aw/activity/inventory-sources.mjs",
-  ".github/workflows/activity.yml",
+  ".github/workflows/cao-activity.yml",
 ];
 const caoEvolutionExpectedFiles = [
   ".github/aw/cao-evolution/graders/cao-evolution-failures-investigator-operational-value.sh",
