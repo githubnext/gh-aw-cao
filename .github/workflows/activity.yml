@@ -45,7 +45,7 @@ jobs:
 
       - name: Resolve activity cache key
         id: activity-cache-key
-        run: echo "value=cao-activity-v4-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+        run: echo "value=cao-activity-v3-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore activity cache
         id: activity-cache
@@ -60,7 +60,7 @@ jobs:
             ${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
-            cao-activity-v4-
+            cao-activity-v3-
 
       - name: Resolve dashboard control settings
         id: activity-settings

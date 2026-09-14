@@ -18,7 +18,7 @@ sequenceDiagram
   participant Cache as Actions cache
   participant Consumer as Consumer
 
-  Activity->>Cache: Restore latest cao-activity-v4-* snapshot
+  Activity->>Cache: Restore latest cao-activity-v3-* snapshot
   Activity->>Activity: Run gh aw logs once
   Activity->>Activity: Ingest JSONL into SQLite
   Activity->>Cache: Save refreshed JSONL, SQLite, and Drain3 weights
@@ -65,8 +65,8 @@ and finally a downloaded-content hash when neither server-side identity is
 usable.
 
 Its immutable key is
-`cao-activity-v4-${github.run_id}-${github.run_attempt}`; its restore prefix is
-`cao-activity-v4-`. Consumers dispatched by Activity must restore the exact
+`cao-activity-v3-${github.run_id}-${github.run_attempt}`; its restore prefix is
+`cao-activity-v3-`. Consumers dispatched by Activity must restore the exact
 completed run's cache key. Every producer and consumer uses the complete path
 list because GitHub includes paths in the cache version. The cache is evictable
 and is not historical authority: consumers must enforce their own freshness,

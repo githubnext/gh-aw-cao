@@ -32,8 +32,8 @@ Dashboard ingestion checks this sidecar first, then falls back to ETag validatio
 and finally a downloaded-content hash when neither server-side identity is usable.
 
 Snapshots use the immutable key
-`cao-activity-v4-${github.run_id}-${github.run_attempt}` and restore prefix
-`cao-activity-v4-`. Dispatching consumers wait for the exact Activity run and
+`cao-activity-v3-${github.run_id}-${github.run_attempt}` and restore prefix
+`cao-activity-v3-`. Dispatching consumers wait for the exact Activity run and
 reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. The cache is an evictable transport optimization, not durable
