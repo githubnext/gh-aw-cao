@@ -12,16 +12,20 @@ describe("live Dashboard Language sources", () => {
 
     expect(shell).toContain('<script type="module" src="./src/main.js"></script>');
     expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
-    expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
+    expect(preview.indexOf("startLoadingProgress(document)")).toBeGreaterThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain('loading: state === "loading"');
     expect(preview).toContain("dashboard-loading-skeleton");
     expect(preview).not.toContain("Loading dashboard data…");
     expect(preview).toContain("startLoadingProgress(document)");
-    expect(preview).toContain("runWithLoadingProgress");
-    expect(preview).toContain("loadingProgress.complete()");
+    expect(preview).toContain("runWithDataIngestionProgress");
+    expect(preview).toContain("runWithDataIngestionProgress(\n          () => withCanonicalViewSources(fixtureSources, true)");
+    expect(preview).not.toContain("runWithLoadingProgress");
+    expect(preview).not.toContain("loadingProgress.complete()");
     expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
-    expect(preview).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
+    expect(preview).toContain("runWithDataIngestionProgress(() => refreshCanonicalDashboardSources(");
+    expect(preview).toContain("runWithDataIngestionProgress(\n                  () => loadCanonicalDashboardSources(");
+    expect(preview).not.toMatch(/runWithDataIngestionProgress\([^)]*loadCanonicalDashboardPage/s);
     expect(preview).toContain("subscribeCanonicalDashboardView(");
     expect(preview).toContain("emitCurrent: false");
     expect(preview).toContain("dashboardPageLazySourceNames, dashboardPageSourceNames");

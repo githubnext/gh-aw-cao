@@ -52,13 +52,12 @@
         mode: repository === liveRepository ? "live" : "review",
       }));
 
-      const loadingProgress = startLoadingProgress(document);
       /**
        * @template T
        * @param {() => Promise<T>} task
        * @returns {Promise<T>}
        */
-      const runWithLoadingProgress = async (task) => {
+      const runWithDataIngestionProgress = async (task) => {
         const progress = startLoadingProgress(document);
         try {
           return await task();
@@ -77,7 +76,6 @@
           return response.json();
         })
         .catch((error) => {
-          loadingProgress.complete();
           cancelCommand.complete();
           throw error;
         });
@@ -922,12 +920,13 @@
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
-        const fixtureProjection = await withCanonicalViewSources(fixtureSources, true);
+        const fixtureProjection = await runWithDataIngestionProgress(
+          () => withCanonicalViewSources(fixtureSources, true),
+        );
         renderSources({
           ...fixtureProjection,
           ...await processDashboardQueries(dashboardQueries, fixtureProjection),
         });
-        loadingProgress.complete();
         cancelCommand.complete();
       } else {
         renderSources({}, "loading");
@@ -960,31 +959,27 @@
           const bindContinuations = (sources, sourceNames) => bindSourceContinuations(
             sources,
             sourceNames,
-            (requested, pagination) => runWithLoadingProgress(
-              () => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
-            ),
+            (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
           );
           /** @param {string} pageId */
           const loadPageSources = async (pageId) => {
             const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);
             const lazySources = dashboardPageLazySourceNames(dashboardDocument, pageId);
-            return runWithLoadingProgress(async () => bindContinuations(
+            return bindContinuations(
               await loadCanonicalDashboardPage(
                 sourceNames,
                 dashboardContext,
                 continuationRequests(lazySources),
               ),
               lazySources,
-            ));
+            );
           };
           configureSourceLoader(async (name) => (await loadCanonicalDashboardPage([name], dashboardContext))[name]);
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
-          const loadHorizonSources = () => runWithLoadingProgress(
-            () => loadCanonicalDashboardPage(
-              DATABASE_COUNT_SOURCE_NAMES,
-              dashboardContext,
-            ),
+          const loadHorizonSources = () => loadCanonicalDashboardPage(
+            DATABASE_COUNT_SOURCE_NAMES,
+            dashboardContext,
           );
           /**
            * @param {(sourceNames: string[], pagination: Record<string, { limit: number, continuationToken?: string }>) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} load
@@ -1039,7 +1034,7 @@
                 status: "started",
               });
               renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
-              void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
+              void runWithDataIngestionProgress(() => refreshCanonicalDashboardSources(
                 sourceUrl,
                 initialSources,
                 dashboardContext,
@@ -1065,7 +1060,6 @@
               );
             };
             refreshSources();
-            loadingProgress.complete();
             cancelCommand.complete();
             subscribeCanonicalDashboardView(
               `page:${initialPageId}`,
@@ -1090,11 +1084,13 @@
           } else {
             renderSources(
               await loadInitialSources(
-                (requested, pagination) => loadCanonicalDashboardSources(
-                  sourceUrl,
-                  requested,
-                  dashboardContext,
-                  pagination,
+                (requested, pagination) => runWithDataIngestionProgress(
+                  () => loadCanonicalDashboardSources(
+                    sourceUrl,
+                    requested,
+                    dashboardContext,
+                    pagination,
+                  ),
                 ),
               ),
               "ready",
@@ -1114,7 +1110,6 @@
           throw failure;
         } finally {
           if (!cachedSources) {
-            loadingProgress.complete();
             cancelCommand.complete();
           }
         }
