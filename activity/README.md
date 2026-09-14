@@ -9,8 +9,11 @@ control repository, restores the latest compatible log cache, runs one bounded
 `gh aw logs --audit --artifacts usage` command for its compiled workflows, and
 ingests the refreshed JSONL through the canonical Node.js data pipeline. It
 uploads the completed snapshot as a one-day artifact. A dependent job downloads
-that artifact and publishes the source JSONL and its local SQLite projection to
-the shared cache, keeping cache-write permission out of the collection job.
+that artifact, verifies every snapshot file is present and non-empty, and
+publishes the source JSONL and its local SQLite projection to the shared cache,
+keeping cache-write permission out of the collection job. An incomplete
+extraction fails that job instead of silently skipping the cache save, which
+would strand consumers on a cache miss.
 
 ## Cache contract
 

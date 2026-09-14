@@ -235,6 +235,23 @@ jobs:
           name: cao-activity-index
           path: ${{ runner.temp }}/cao-activity
 
+      - name: Verify activity snapshot
+        run: |
+          snapshot_root="$RUNNER_TEMP/cao-activity"
+          missing=0
+          for file in gh-aw-logs.jsonl gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json drain3_weights.json; do
+            if [[ ! -s "$snapshot_root/$file" ]]; then
+              echo "Activity snapshot file is missing or empty: $file" >&2
+              missing=1
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            echo "Extracted activity snapshot contents:" >&2
+            ls -l "$snapshot_root" >&2 || true
+            echo "Refusing to publish an incomplete activity cache" >&2
+            exit 1
+          fi
+
       - name: Save activity cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
