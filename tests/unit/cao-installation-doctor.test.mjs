@@ -71,6 +71,33 @@ test('installation doctor reports modified and missing package files', async () 
   }
 });
 
+test('installation doctor verifies every package record in the repository', async () => {
+  const { root, recordPath } = await installationFixture();
+  try {
+    const destination = '.github/aw/other.txt';
+    await writeFile(path.join(root, destination), 'modified\n');
+    await writeFile(path.join(path.dirname(recordPath), 'other.json'), JSON.stringify({
+      schemaVersion: 1,
+      package: 'example/other',
+      source: 'example/other@v1',
+      installer: 'gh-aw test',
+      files: [{
+        source: 'other.txt',
+        destination,
+        sha256: createHash('sha256').update('original\n').digest('hex')
+      }]
+    }));
+
+    const result = await doctorCaoInstallation(root);
+    assert.equal(result.healthy, false);
+    assert.equal(result.records.length, 2);
+    assert.ok(result.issues.some(({ code, path: issuePath }) =>
+      code === 'package-file-hash-mismatch' && issuePath === destination));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('installation doctor rejects malformed records and unsafe entries', async () => {
   const { root, recordPath } = await installationFixture();
   try {

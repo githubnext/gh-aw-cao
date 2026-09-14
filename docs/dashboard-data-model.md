@@ -239,7 +239,7 @@ Verify an installed CAO package's ownership records, required files, and recorde
 SHA-256 hashes:
 
 ```bash
-cao doctor --dir .
+cao doctor
 ```
 
 Diagnose and repair the local database:

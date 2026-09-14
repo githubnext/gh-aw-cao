@@ -43,6 +43,7 @@ export async function doctorCaoInstallation(directory) {
   }
 
   const records = [];
+  let caoRecordCount = 0;
   for (const name of recordNames) {
     const recordPath = path.join(recordsDirectory, name);
     let record;
@@ -56,19 +57,19 @@ export async function doctorCaoInstallation(directory) {
       ));
       continue;
     }
-    if (record?.package === CAO_PACKAGE) records.push({ name, record });
+    records.push({ name, record });
+    if (record?.package === CAO_PACKAGE) caoRecordCount += 1;
   }
 
-  if (records.length === 0) {
+  if (caoRecordCount === 0) {
     issues.push(issue(
       'cao-package-record-missing',
       `No package ownership record was found for ${CAO_PACKAGE}`
     ));
-  } else if (records.length > 1) {
+  } else if (caoRecordCount > 1) {
     issues.push(issue(
       'duplicate-cao-package-record',
-      `Multiple package ownership records were found for ${CAO_PACKAGE}`,
-      { paths: records.map(({ name }) => path.join('.github', 'aw', 'packages', name)) }
+      `Multiple package ownership records were found for ${CAO_PACKAGE}`
     ));
   }
 
