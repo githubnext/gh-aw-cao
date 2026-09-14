@@ -1259,7 +1259,7 @@ function createCachedGhAwJsonlAccumulator(options) {
     const safeOutputs = explicitSafeOutputs.length > 0
       ? explicitSafeOutputs
       : nestedSafeOutputs.map((value) => ({ value, line: enriched.line }));
-    safeOutputs.forEach((safeOutput) => {
+    safeOutputs.forEach((safeOutput, index) => {
       const record = safeOutput.value && typeof safeOutput.value === 'object'
         && !Array.isArray(safeOutput.value)
         ? /** @type {Record<string, unknown>} */ (safeOutput.value)
@@ -1273,7 +1273,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           optionalString(record.number) ?? ''
         ]),
         'created',
-        { type: 'safe-output', record },
+        { type: 'safe-output', index, outputType: record.type, url: record.url },
         {
           source: 'safe-output',
           correlationId: optionalString(record.url ?? record.temporaryId),
