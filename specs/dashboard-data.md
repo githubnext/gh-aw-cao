@@ -856,7 +856,7 @@ A missing canonical data point MUST NOT immediately be treated as zero, empty, o
 
 Before classifying it as missing, an implementation agent SHALL inspect the current [`gh aw logs` schema](https://github.com/github/gh-aw/blob/main/schemas/logs.schema.json) and determine whether any field in the applicable output variant contains an authoritative observation that can be normalized into the canonical model. This inspection SHALL include nested and aggregate structures, not only fields whose names match the canonical property.
 
-This discovery and normalization SHALL run in the activity-package JavaScript invoked by `.github/workflows/activity.yml`, before the activity snapshot is published. The workflow YAML orchestrates that JavaScript and MUST NOT embed source-field mappings.
+This discovery and normalization SHALL run in the activity-package JavaScript invoked by `.github/workflows/cao-activity.yml`, before the activity snapshot is published. The workflow YAML orchestrates that JavaScript and MUST NOT embed source-field mappings.
 
 When the schema exposes suitable data, the activity-package source adapter SHOULD normalize it. The mapping MUST:
 

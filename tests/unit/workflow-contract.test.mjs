@@ -73,7 +73,7 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
     assert.equal(parse(readFileSync(join(root, manifest), "utf8"))["min-version"], ghAwVersion, manifest);
   }
 
-  for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.lock.yml", "workflow-contracts.yml"]) {
+  for (const name of ["cao-activity.yml", "copilot-setup-steps.yml", "release.lock.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
     assert.match(source, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   }
@@ -1010,7 +1010,7 @@ test("deterministic workflows pin third-party actions by commit SHA", () => {
     join(".github", "workflows", "enterprise-canary.yml"),
     join(".github", "workflows", "enterprise-stress.yml"),
     join(".github", "workflows", "review-smoke.yml"),
-    join(".github", "workflows", "activity.yml"),
+    join(".github", "workflows", "cao-activity.yml"),
     join(".github", "workflows", "cao-dashboard.yml"),
   ]) {
     const source = readFileSync(join(root, relativePath), "utf8");
@@ -1230,7 +1230,7 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
   const admission = readFileSync(join(root, "docs", "admission.md"), "utf8");
   const control = readFileSync(join(root, ".github", "workflows", "shared", "control.md"), "utf8");
-  const activity = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
+  const activity = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
   const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
   const policy = JSON.parse(execFileSync(process.execPath, [
     join(root, ".github", "workflows", "shared", "control.mjs"),
@@ -3238,7 +3238,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   const rootPackage = parse(rootManifest);
   const dashboardPackage = parse(dashboardManifest);
   const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
-  const activityWorkflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
+  const activityWorkflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
   const activityIndexJob = activityWorkflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const activityCacheJob = activityWorkflow.match(/\n  cache:\n([\s\S]*)/)?.[1];
   const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
@@ -3278,7 +3278,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?path: \|[\s\S]*?gh-aw-logs\.jsonl[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?payload-hashes\.json[\s\S]*?control-settings\.json[\s\S]*?inventory-sources\.json/);
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
-  assert.match(activityWorkflow, /push:\n\s+paths:\n\s+- \.github\/workflows\/cao\.json\n\s+- \.github\/workflows\/activity\.yml/);
+  assert.match(activityWorkflow, /push:\n\s+branches: \[main\]\n\s+paths:\n\s+- \.github\/workflows\/cao\.json\n\s+- \.github\/workflows\/cao-activity\.yml/);
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v3-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(activityIndexJob, /permissions:\n\s+actions: read\n\s+contents: read/);
@@ -3415,14 +3415,14 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
 test("Activity package owns the shared collected-data cache contract", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
   const activityManifest = parse(readFileSync(join(root, "activity", "aw.yml"), "utf8"));
-  const workflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
+  const workflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
   const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
   const readme = readFileSync(join(root, "activity", "README.md"), "utf8");
   const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.equal(activityManifest.name, "CAO Activity");
   assert.deepEqual(activityManifest.includes, [
-    ".github/workflows/activity.yml",
+    ".github/workflows/cao-activity.yml",
     ".github/workflows/cao-maintenance.yml",
   ]);
   assert.deepEqual(activityManifest.resources, [

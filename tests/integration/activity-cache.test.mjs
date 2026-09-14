@@ -25,7 +25,7 @@ function assertCachePathSets(workflow, expectedCount) {
 }
 
 test("activity workflow caches gh-aw logs and their SQLite projection", async () => {
-  const workflow = await readFile(".github/workflows/activity.yml", "utf8");
+  const workflow = await readFile(".github/workflows/cao-activity.yml", "utf8");
   const indexJob = workflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const cacheJob = workflow.match(/\n  cache:\n([\s\S]*)/)?.[1];
 
