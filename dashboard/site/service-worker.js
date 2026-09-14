@@ -1,4 +1,4 @@
-const VERSION = '2';
+const VERSION = 'development';
 const DATA_CACHE = `central-agentic-ops-dashboard-data-${VERSION}`;
 const APP_CACHE = `central-agentic-ops-dashboard-app-${VERSION}`;
 const CONFIG_CACHE = 'central-agentic-ops-dashboard-config';
@@ -226,6 +226,10 @@ self.addEventListener('message', (event) => {
   }
   if (event.data?.type === 'ACTIVATE') {
     void self.skipWaiting();
+    return;
+  }
+  if (event.data?.type === 'CACHE_APP_ASSETS' && Array.isArray(event.data.urls)) {
+    event.waitUntil(cacheAppAssets(event.data.urls));
     return;
   }
   if (event.data?.type === 'CLEAR_BACKGROUND_DATA') {

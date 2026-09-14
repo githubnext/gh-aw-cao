@@ -9,6 +9,7 @@ import {
   ensureHealthyDashboardServiceWorker,
   periodicBackgroundSyncSupported,
   setAutomaticDashboardDataUpdatesEnabled,
+  startDashboardAppUpdates,
   startAutomaticDashboardDataUpdates
 } from '../../src/dashboard-data-updates.js';
 
@@ -75,6 +76,56 @@ describe('automatic dashboard data updates', () => {
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     setAutomaticDashboardDataUpdatesEnabled(false);
     expect(automaticDashboardDataUpdatesEnabled()).toBe(false);
+  });
+
+  it('reloads an existing app when an updated worker takes control', async () => {
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    const serviceWorkers = new EventTarget();
+    Object.assign(serviceWorkers, {
+      controller: worker,
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    });
+    const reload = vi.fn();
+    const setTimer = vi.fn();
+
+    const stop = startDashboardAppUpdates({
+      serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+      scriptUrl: new URL('https://example.test/service-worker.js'),
+      reload,
+      setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
+    });
+    await vi.waitFor(() => expect(currentRegistration.update).toHaveBeenCalledOnce());
+
+    serviceWorkers.dispatchEvent(new Event('controllerchange'));
+    serviceWorkers.dispatchEvent(new Event('controllerchange'));
+
+    expect(reload).toHaveBeenCalledOnce();
+    expect(worker.messages).toContainEqual(expect.objectContaining({ type: 'CACHE_APP_ASSETS' }));
+    stop();
+  });
+
+  it('does not reload when the first installed worker takes control', async () => {
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    const serviceWorkers = new EventTarget();
+    Object.assign(serviceWorkers, {
+      controller: null,
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    });
+    const reload = vi.fn();
+
+    const stop = startDashboardAppUpdates({
+      serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+      scriptUrl: new URL('https://example.test/service-worker.js'),
+      reload
+    });
+    await vi.waitFor(() => expect(currentRegistration.update).toHaveBeenCalledOnce());
+
+    serviceWorkers.dispatchEvent(new Event('controllerchange'));
+
+    expect(reload).not.toHaveBeenCalled();
+    stop();
   });
 
   it('detects Periodic Background Sync browser support', () => {
@@ -258,7 +309,7 @@ describe('automatic dashboard data updates', () => {
     await vi.waitFor(() => expect(currentRegistration.periodicSync.unregister)
       .toHaveBeenCalledWith('central-agentic-ops-dashboard-data'));
     expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' });
-    expect(currentRegistration.unregister).toHaveBeenCalledOnce();
+    expect(currentRegistration.unregister).not.toHaveBeenCalled();
     stop();
   });
 
@@ -290,7 +341,7 @@ describe('automatic dashboard data updates', () => {
     setAutomaticDashboardDataUpdatesEnabled(false);
     resolvePermission({ state: 'granted' });
 
-    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' }));
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
     stop();
@@ -314,7 +365,7 @@ describe('automatic dashboard data updates', () => {
       }
     );
 
-    await vi.waitFor(() => expect(orphanedRegistration.unregister).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' }));
     expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' });
     stop();
   });
@@ -342,7 +393,7 @@ describe('automatic dashboard data updates', () => {
       }
     );
 
-    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' }));
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
@@ -400,7 +451,7 @@ describe('automatic dashboard data updates', () => {
       }
     );
 
-    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' }));
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
@@ -430,7 +481,7 @@ describe('automatic dashboard data updates', () => {
       }
     );
 
-    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' }));
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
     expect(setTimer).not.toHaveBeenCalled();

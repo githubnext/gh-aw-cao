@@ -11,6 +11,7 @@ const LOW_BATTERY_LEVEL = 0.2;
 const CANARY_TIMEOUT_MS = 3000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
+const APP_UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 
 /** @typedef {{ saveData?: boolean, metered?: boolean, type?: string, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
 /** @typedef {{ charging: boolean, level: number, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} BatteryState */
@@ -206,14 +207,13 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
 }
 
 /**
- * Removes every dashboard worker registration at the exact app scope. Clearing
- * its persisted schedule first makes a still-running worker fail closed even
- * when browser unregistration is delayed.
+ * Clears background-data state without removing the app worker used for asset
+ * caching and application updates.
  * @param {ServiceWorkerContainer | undefined} serviceWorkers
  * @param {URL} scriptUrl
  * @param {ServiceWorkerRegistration | undefined} current
  */
-async function disableDashboardServiceWorkers(serviceWorkers, scriptUrl, current) {
+async function disableDashboardBackgroundUpdates(serviceWorkers, scriptUrl, current) {
   if (!serviceWorkers) return;
   const scope = new URL('./', scriptUrl).href;
   const discovered = await serviceWorkers.getRegistrations?.().catch(() => []) ?? [];
@@ -245,7 +245,6 @@ async function disableDashboardServiceWorkers(serviceWorkers, scriptUrl, current
     ));
     const periodicSync = /** @type {ServiceWorkerRegistration & { periodicSync?: { unregister: (tag: string) => Promise<void> } }} */ (registration).periodicSync;
     await periodicSync?.unregister(PERIODIC_SYNC_TAG).catch(() => undefined);
-    await registration.unregister();
   }));
 }
 
@@ -342,6 +341,72 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
 }
 
 /**
+ * Keeps the application worker current, activates verified updates, and reloads
+ * an already-controlled page after the replacement worker takes control.
+ * @param {{
+ *   serviceWorkers?: ServiceWorkerContainer,
+ *   scriptUrl?: URL,
+ *   reload?: () => void,
+ *   setTimer?: typeof window.setTimeout,
+ *   clearTimer?: typeof window.clearTimeout
+ * }} [dependencies]
+ */
+export function startDashboardAppUpdates(dependencies = {}) {
+  const serviceWorkers = dependencies.serviceWorkers ?? navigator.serviceWorker;
+  if (!serviceWorkers) return () => {};
+  const scriptUrl = dependencies.scriptUrl ?? new URL('../service-worker.js', import.meta.url);
+  const reload = dependencies.reload ?? window.location.reload.bind(window.location);
+  const setTimer = dependencies.setTimer ?? window.setTimeout.bind(window);
+  const clearTimer = dependencies.clearTimer ?? window.clearTimeout.bind(window);
+  let controlled = Boolean(serviceWorkers.controller);
+  let reloading = false;
+  let stopped = false;
+  /** @type {number | undefined} */
+  let timer;
+
+  const onControllerChange = () => {
+    if (controlled && !reloading) {
+      reloading = true;
+      reload();
+      return;
+    }
+    controlled = true;
+  };
+  serviceWorkers.addEventListener?.('controllerchange', onControllerChange);
+
+  /** @param {number} delay */
+  const schedule = (delay) => {
+    if (stopped) return;
+    if (timer !== undefined) clearTimer(timer);
+    timer = setTimer(() => void checkForUpdate(), delay);
+  };
+  const checkForUpdate = async () => {
+    try {
+      const { worker } = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl);
+      worker.postMessage({
+        type: 'CACHE_APP_ASSETS',
+        urls: [
+          new URL('./', window.location.href).href,
+          new URL('../manifest.webmanifest', import.meta.url).href,
+          ...(globalThis.performance?.getEntriesByType?.('resource') ?? []).map((entry) => entry.name)
+        ]
+      });
+      schedule(APP_UPDATE_INTERVAL_MS);
+    } catch (error) {
+      console.error(`Unable to update dashboard application assets: ${error instanceof Error ? error.message : String(error)}`);
+      schedule(RETRY_INTERVAL_MS);
+    }
+  };
+  void checkForUpdate();
+
+  return () => {
+    stopped = true;
+    if (timer !== undefined) clearTimer(timer);
+    serviceWorkers.removeEventListener?.('controllerchange', onControllerChange);
+  };
+}
+
+/**
  * @param {string[]} dataUrls
  * @param {{
  *   serviceWorkers?: ServiceWorkerContainer,
@@ -403,7 +468,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
     if (stopped) return;
     if (!automaticDashboardDataUpdatesEnabled(storage)) {
       backgroundSyncUnavailable = false;
-      await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
+      await disableDashboardBackgroundUpdates(serviceWorkers, scriptUrl, registration);
       registration = undefined;
       healthyWorker = undefined;
       backgroundConfigured = false;
@@ -423,7 +488,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       } catch (error) {
         console.error(`Unable to configure automatic dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
         markBackgroundUpdatesInactive();
-        await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
+        await disableDashboardBackgroundUpdates(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;
         backgroundSyncUnavailable = isPermissionDeniedError(error);
@@ -450,7 +515,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
           storage.setItem(LAST_SUCCESS_STORAGE_KEY, String(backgroundLastSuccess));
         }
         if (!automaticDashboardDataUpdatesEnabled(storage)) {
-          await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, currentRegistration);
+          await disableDashboardBackgroundUpdates(serviceWorkers, scriptUrl, currentRegistration);
           registration = undefined;
           healthyWorker = undefined;
           return;
@@ -461,7 +526,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       } catch (error) {
         console.error(`Unable to configure background dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
         markBackgroundUpdatesInactive();
-        await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
+        await disableDashboardBackgroundUpdates(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;
         backgroundConfigured = false;
@@ -499,7 +564,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         throw new Error('Service worker data download failed.');
       }
       if (!automaticDashboardDataUpdatesEnabled(storage)) {
-        await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
+        await disableDashboardBackgroundUpdates(serviceWorkers, scriptUrl, registration);
         return;
       }
       storage.setItem(LAST_SUCCESS_STORAGE_KEY, String(now()));

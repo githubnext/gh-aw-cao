@@ -23,6 +23,28 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(favicon).toBe(agenticWorkflowsFavicon);
   });
 
+  it('declares an installable web app manifest and iOS icon', () => {
+    const preview = readFileSync(resolve('index.html'), 'utf8');
+    const manifest = JSON.parse(readFileSync(resolve('manifest.webmanifest'), 'utf8'));
+
+    expect(preview).toContain('<link rel="apple-touch-icon" href="./apple-touch-icon.png">');
+    expect(preview).toContain('<link rel="manifest" href="./manifest.webmanifest">');
+    expect(preview).toContain('<meta name="theme-color" content="#0d1117">');
+    expect(manifest).toMatchObject({
+      id: './',
+      start_url: './',
+      scope: './',
+      display: 'standalone',
+      background_color: '#0d1117',
+      theme_color: '#0d1117'
+    });
+    expect(manifest.icons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ src: './icon-192.png', sizes: '192x192', purpose: 'any' }),
+      expect.objectContaining({ src: './icon-512.png', sizes: '512x512', purpose: 'any' }),
+      expect.objectContaining({ src: './icon-maskable-512.png', sizes: '512x512', purpose: 'maskable' })
+    ]));
+  });
+
   it('sets the dashboard title before the presenter loads', () => {
     const preview = readFileSync(resolve('index.html'), 'utf8');
 

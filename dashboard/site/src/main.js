@@ -10,7 +10,7 @@
       import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
-      import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
+      import { startAutomaticDashboardDataUpdates, startDashboardAppUpdates } from "./dashboard-data-updates.js";
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { configureSourceLoader, refreshSources as refreshBoundSources } from "./source-store.js";
@@ -67,6 +67,10 @@
         }
       };
       const cancelCommand = offerCancelCommand(document);
+      const stopDashboardAppUpdates = startDashboardAppUpdates();
+      window.addEventListener("pagehide", (event) => {
+        if (!event.persisted) stopDashboardAppUpdates();
+      });
       const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
         .then((response) => {
           if (!response.ok) throw new Error(`Unable to load dashboard.json: ${response.status}`);

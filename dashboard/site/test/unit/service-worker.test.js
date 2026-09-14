@@ -201,6 +201,25 @@ describe('dashboard service worker', () => {
     await expect((await response)?.text()).resolves.toBe('online');
   });
 
+  it('caches application assets independently of background data updates', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'CACHE_APP_ASSETS',
+        urls: [
+          'https://example.test/dashboard/',
+          'https://example.test/dashboard/src/main.js',
+          'https://outside.example/main.js'
+        ]
+      }
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(entries.has('https://example.test/dashboard/')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/src/main.js')).toBe(true);
+  });
+
   it('does not use stale cached data for hash-identified foreground downloads', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
     const request = new Request('https://example.test/dashboard/gh-aw-logs.jsonl', {

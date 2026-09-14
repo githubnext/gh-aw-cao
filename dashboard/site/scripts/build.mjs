@@ -26,6 +26,10 @@ export async function buildDashboardSite({
   await Promise.all([
     cp(new URL("index.html", siteRoot), join(destinationPath, "index.html")),
     cp(new URL("favicon.svg", siteRoot), join(destinationPath, "favicon.svg")),
+    cp(new URL("apple-touch-icon.png", siteRoot), join(destinationPath, "apple-touch-icon.png")),
+    cp(new URL("icon-192.png", siteRoot), join(destinationPath, "icon-192.png")),
+    cp(new URL("icon-512.png", siteRoot), join(destinationPath, "icon-512.png")),
+    cp(new URL("icon-maskable-512.png", siteRoot), join(destinationPath, "icon-maskable-512.png")),
     cp(new URL("manifest.webmanifest", siteRoot), join(destinationPath, "manifest.webmanifest")),
     cp(new URL("service-worker.js", siteRoot), join(destinationPath, "service-worker.js")),
     cp(new URL("dashboard.json", siteRoot), join(destinationPath, "dashboard.json")),
@@ -118,14 +122,19 @@ async function cacheBustSiteImports(destinationPath) {
   const sha = siteHash.digest("hex");
 
   const indexPath = join(destinationPath, "index.html");
+  const serviceWorkerPath = join(destinationPath, "service-worker.js");
   const index = await readFile(indexPath, "utf8");
-  await writeFile(
-    indexPath,
-    index.replace(
+  const serviceWorker = await readFile(serviceWorkerPath, "utf8");
+  await Promise.all([
+    writeFile(indexPath, index.replace(
       /(<script\b[^>]*\bsrc=["'])(\.\/src\/main\.js)(["'][^>]*>)/,
       `$1$2?sha=${sha}$3`,
+    )),
+    writeFile(
+      serviceWorkerPath,
+      serviceWorker.replace("const VERSION = 'development';", `const VERSION = '${sha}';`),
     ),
-  );
+  ]);
 }
 
 async function listFiles(directory, root = directory) {

@@ -31,6 +31,14 @@ resources:
     destination: .github/aw/dashboard/site/index.html
   - source: site/favicon.svg
     destination: .github/aw/dashboard/site/favicon.svg
+  - source: site/apple-touch-icon.png
+    destination: .github/aw/dashboard/site/apple-touch-icon.png
+  - source: site/icon-192.png
+    destination: .github/aw/dashboard/site/icon-192.png
+  - source: site/icon-512.png
+    destination: .github/aw/dashboard/site/icon-512.png
+  - source: site/icon-maskable-512.png
+    destination: .github/aw/dashboard/site/icon-maskable-512.png
   - source: site/manifest.webmanifest
     destination: .github/aw/dashboard/site/manifest.webmanifest
   - source: site/service-worker.js
