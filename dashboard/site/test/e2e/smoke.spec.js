@@ -1514,7 +1514,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '0']);
   const animatedRunCount = await overviewPage.locator('.factory-station:nth-child(2) strong').evaluate((element) => {
-    const animation = element.getAnimations().find((candidate) => candidate.animationName === 'factory-station-value-count');
+    const animation = element.getAnimations().find((candidate) => candidate instanceof CSSAnimation && candidate.animationName === 'factory-station-value-count');
     if (!animation) return null;
     animation.pause();
     animation.currentTime = 450;
