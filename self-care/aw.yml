@@ -4,6 +4,7 @@ min-version: v0.89.12
 private: true
 experimental: true
 includes:
+  - ../aw.yml
   - .github/workflows/self-care-data-acquisition-audit.md
   - .github/workflows/self-care-dashboard-performance.md
   - .github/workflows/self-care-dashboard-debug-logging.md

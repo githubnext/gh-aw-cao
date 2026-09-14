@@ -13,7 +13,7 @@ test("package lifecycle matrix selects only packages owning changed files", () =
   );
   assert.deepEqual(
     names(["dashboard/site/index.html"]),
-    ["root", "dashboard"],
+    ["root", "CAO Evolution", "dashboard", "Dependabot"],
   );
   assert.deepEqual(
     names([".github/workflows/graders/dependabot-release-train-updater-operational-value.sh"]),
@@ -33,11 +33,11 @@ test("package lifecycle matrix selects only packages owning changed files", () =
   );
   assert.deepEqual(
     names(["optimization/.github/graders/optimization-ai-credit-auditor-operational-value.sh"]),
-    ["root"],
+    [],
   );
   assert.deepEqual(
     names(["dependabot/.github/graders/dependabot-release-train-updater-operational-value.sh"]),
-    ["root", "Dependabot"],
+    ["Dependabot"],
   );
   assert.deepEqual(
     names(["eu-cra-compliance/.github/graders/eu-cra-compliance-scope-classifier-operational-value.sh"]),
@@ -45,8 +45,8 @@ test("package lifecycle matrix selects only packages owning changed files", () =
   );
 });
 
-test("package lifecycle matrix selects a package when its manifest changes", () => {
-  assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity"]);
+test("package lifecycle matrix selects a package and its dependents when its manifest changes", () => {
+  assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity", "CAO Evolution", "Dependabot"]);
   assert.deepEqual(names(["software-development-practices/aw.yml"]), []);
   assert.deepEqual(names(["self-care/aw.yml"]), []);
 });
