@@ -3438,8 +3438,9 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);
   assert.match(workflow, /actions\/cache\/save@[0-9a-f]{40}/);
   assert.equal((workflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/g) || []).length, 3);
-  assert.equal((workflow.match(/\$\{\{ runner\.temp \}\}\/cao-gh-aw-logs\/drain3_weights\.json/g) || []).length, 3);
-  assert.match(workflow, /--drain3-weights "\$REPORT_AIC_CACHE\/drain3_weights\.json"/);
+  assert.equal((workflow.match(/\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json/g) || []).length, 3);
+  assert.match(workflow, /--drain3-weights "\$REPORT_DRAIN3_WEIGHTS"/);
+  assert.match(workflow, /mv "\$REPORT_AIC_CACHE\/drain3_weights\.json" "\$REPORT_DRAIN3_WEIGHTS"/);
   assert.match(workflow, /REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/);
   assert.match(workflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(workflow, /issues: read/);

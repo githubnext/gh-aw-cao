@@ -22,7 +22,7 @@ $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 $RUNNER_TEMP/cao-activity/payload-hashes.json
 $RUNNER_TEMP/cao-activity/control-settings.json
 $RUNNER_TEMP/cao-activity/inventory-sources.json
-$RUNNER_TEMP/cao-gh-aw-logs/drain3_weights.json
+$RUNNER_TEMP/cao-activity/drain3_weights.json
 ```
 
 `payload-hashes.json` maps the JSONL source and SQLite projection filenames to
@@ -38,6 +38,11 @@ reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. The cache is an evictable transport optimization, not durable
 historical authority.
+
+The Drain3 weights are restored outside the `gh aw logs` output directory and
+passed back with `--drain3-weights`. After each audit, the newly trained weights
+are moved from the logs output directory into the activity snapshot so storage
+accounting does not mistake them for a cached log file.
 
 The scheduled collector is intentionally rolling and bounded. It requests a
 30-day run window and at most five matching enriched runs across all targets in

@@ -8,7 +8,7 @@ const cachePaths = [
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
-  "${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json",
+  "${{ runner.temp }}/cao-activity/drain3_weights.json",
 ];
 
 function assertCachePathSets(workflow, expectedCount) {
@@ -63,11 +63,11 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     cacheJob,
-    /Save activity cache[\s\S]*?path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-gh-aw-logs\/drain3_weights\.json/,
+    /Save activity cache[\s\S]*?path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json/,
   );
   assert.match(
     workflow,
-    /Restore activity cache[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-gh-aw-logs\/drain3_weights\.json[\s\S]*?if \[\[ -f "\$REPORT_AIC_CACHE\/drain3_weights\.json" \]\][\s\S]*?--drain3-weights "\$REPORT_AIC_CACHE\/drain3_weights\.json"/,
+    /Restore activity cache[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?if \[\[ -f "\$REPORT_DRAIN3_WEIGHTS" \]\][\s\S]*?--drain3-weights "\$REPORT_DRAIN3_WEIGHTS"[\s\S]*?mv "\$REPORT_AIC_CACHE\/drain3_weights\.json" "\$REPORT_DRAIN3_WEIGHTS"/,
   );
   assert.doesNotMatch(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
   assert.doesNotMatch(workflow, /Skip scheduled run|steps\.freshness/);
