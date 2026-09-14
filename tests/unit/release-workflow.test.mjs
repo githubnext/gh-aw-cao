@@ -20,6 +20,7 @@ test("release safe output updates use the workflow token that created the draft 
   assert.ok(frontmatter, "release workflow must have frontmatter");
 
   const safeOutputs = parse(frontmatter)["safe-outputs"];
+  assert.ok(safeOutputs, "release workflow must configure safe outputs");
   assert.equal(safeOutputs["github-token"], "${{ secrets.GITHUB_TOKEN }}");
   assert.ok(
     Object.hasOwn(safeOutputs, "update-release"),
