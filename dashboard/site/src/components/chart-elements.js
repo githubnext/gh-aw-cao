@@ -908,6 +908,7 @@ function renderSwimlaneChart(points, timeRange) {
   }
   const fixedSpan = hasFixedRange ? Math.max(end - start, 1) : 0;
   const binsByLane = createSwimlaneBins();
+  /** @type {Array<{ point: ChartPointLike, lane: string, timestamp: number }> | null} */
   const deferred = hasFixedRange ? null : [];
   const counts = Object.fromEntries(SWIMLANE_DEFINITIONS.map(([lane]) => [lane, 0]));
   let plottedCount = 0;
