@@ -8,6 +8,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
+import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, cachedJsonlPayloadIdentity } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
@@ -16,6 +17,9 @@ import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
+
+const debug = createDebug('ingest');
+const debugHash = createDebug('hash-payloads');
 
 const ENTITY_COLLECTIONS = [
   'repositories',
@@ -341,6 +345,7 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
   const shards = [];
   let updated = false;
   let committedRecords = 0;
+  debug('scanning shard directory %s (%d shard(s) found)', shardDirectory, shardNames.length);
   for (const name of shardNames) {
     const shardPath = path.join(shardDirectory, name);
     const scope = `gh-aw-jsonl:${name}`;
@@ -353,9 +358,11 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
       workflowHints: options.workflowHints
     });
     if (current) {
+      debug('skipping shard %s: content hash already recorded in transactions table', name);
       shards.push({ shard: name, skipped: true, committedRecords: 0 });
       continue;
     }
+    debug('ingesting shard %s: content hash is new or changed', name);
     const result = await ingestCachedGhAwJsonl(indexedDB, content, {
       ...options,
       payloadScope: scope,
@@ -363,6 +370,7 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
     });
     if (result.updated) updated = true;
     committedRecords += result.committedRecords ?? 0;
+    debug('ingested shard %s: committedRecords=%d', name, result.committedRecords ?? 0);
     shards.push({ shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
   }
   return { updated, committedRecords, shards };
@@ -379,7 +387,9 @@ async function hashActivityPayloads({ jsonlPath, databasePath, shardDirectory })
   const hashFile = async (filePath) => {
     const hash = createHash('sha256');
     for await (const chunk of createReadStream(filePath)) hash.update(chunk);
-    return hash.digest('hex');
+    const digest = hash.digest('hex');
+    debugHash('hashed %s -> %s', filePath, digest);
+    return digest;
   };
   const hashes = {};
   if (jsonlPath) hashes[path.basename(jsonlPath)] = await hashFile(jsonlPath);
@@ -391,6 +401,7 @@ async function hashActivityPayloads({ jsonlPath, databasePath, shardDirectory })
     } catch (error) {
       if (!(error && error.code === 'ENOENT')) throw error;
     }
+    debugHash('hashing %d shard(s) in %s', shardNames.length, shardDirectory);
     for (const name of shardNames) {
       hashes[`${path.basename(shardDirectory)}/${name}`] = await hashFile(path.join(shardDirectory, name));
     }

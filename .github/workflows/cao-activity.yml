@@ -217,6 +217,20 @@ jobs:
           node "$ingestion_script" doctor \
             --database "$ACTIVITY_DATABASE" \
             --run-ttl-days all
+
+      - name: Hash activity payloads
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+        run: |
+          if [[ -f activity/cao.mjs ]]; then
+            ingestion_script=activity/cao.mjs
+          elif [[ -f .github/aw/activity/cao.mjs ]]; then
+            ingestion_script=.github/aw/activity/cao.mjs
+          else
+            echo "Activity SQLite ingestion pipeline is unavailable" >&2
+            exit 1
+          fi
           node "$ingestion_script" hash-payloads \
             --input "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" \
             --database "$ACTIVITY_DATABASE" \

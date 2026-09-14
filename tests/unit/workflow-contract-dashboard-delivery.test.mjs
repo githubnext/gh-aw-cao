@@ -273,8 +273,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(activityWorkflow, /Set up Node\.js[\s\S]*?node-version: 24/);
   assert.doesNotMatch(activityWorkflow, /Install SQLite|apt-get install.*sqlite3/);
   assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl[\s\S]*?--input-dir "\$REPORT_GH_AW_LOGS_SHARDS"/);
-  assert.match(activityWorkflow, /hash-payloads[\s\S]*?--input "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/);
-  assert.doesNotMatch(activityWorkflow, /Hash activity payloads/);
+  assert.match(activityWorkflow, /Hash activity payloads[\s\S]*?hash-payloads[\s\S]*?--input "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/);
   assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/g) || []).length, 3);
   assert.doesNotMatch(activityCacheJob, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
   assert.match(activityManifest, /source: cao\.mjs[\s\S]*?destination: \.github\/aw\/activity\/cao\.mjs/);

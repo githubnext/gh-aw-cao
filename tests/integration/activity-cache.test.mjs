@@ -64,9 +64,8 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /doctor[\s\S]*?--run-ttl-days all[\s\S]*?hash-payloads[\s\S]*?--input "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl"[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
+    /Hash activity payloads[\s\S]*?hash-payloads[\s\S]*?--input "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl"[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
   );
-  assert.doesNotMatch(workflow, /Hash activity payloads/);
   assert.match(
     cacheJob,
     /Save activity cache[\s\S]*?path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json/,
