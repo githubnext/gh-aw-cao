@@ -1530,6 +1530,12 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.emulateMedia({ forcedColors: 'active' });
   expect(await overviewPage.locator('.factory-station:nth-child(2) strong').evaluate((element) => getComputedStyle(element, '::after').content)).toBe('none');
   await page.emulateMedia({ forcedColors: 'none' });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await overviewPage.locator('.factory-station:nth-child(2) strong').evaluate((element) => ({
+    overlay: getComputedStyle(element, '::after').content,
+    animations: element.getAnimations({ subtree: true }).length
+  }))).toEqual({ overlay: 'none', animations: 0 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(overviewPage.locator('.factory-station small')).toHaveText([
     'connected',
     '80 failed',

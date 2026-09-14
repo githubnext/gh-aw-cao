@@ -1595,7 +1595,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   .factory-status { align-items: flex-start; flex-direction: column; gap: 12px; padding: 16px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .factory-running-active > span::after, .factory-station, .factory-station strong { animation: none; }
+  .factory-running-active > span::after, .factory-station, .factory-station strong[data-value] { animation: none; }
   .factory-station strong[data-value]::after { content: none; }
 }
 @media (forced-colors: active) {
