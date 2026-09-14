@@ -52,6 +52,8 @@ jobs:
     name: Authorize and resolve release version
     if: needs.activation.outputs.daily_ai_credits_exceeded != 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       release_tag: ${{ steps.version.outputs.release_tag }}
     steps:
@@ -149,6 +151,8 @@ jobs:
     name: Validate gh-aw package
     needs: resolve-version
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
