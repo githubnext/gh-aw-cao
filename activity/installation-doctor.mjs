@@ -1,7 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile, readdir, lstat, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
+import { readFile, readdir, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -20,21 +19,15 @@ function safeDestination(root, destination) {
 
 async function typecheckModules(root, modules) {
   if (modules.length === 0) return [];
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'cao-doctor-'));
-  const declarations = path.join(directory, 'globals.d.ts');
   try {
-    await writeFile(declarations, "declare module '*';\ndeclare const process: any;\n");
     await executeFile('tsc', [
       '--allowJs',
-      '--checkJs',
       '--noEmit',
       '--noResolve',
       '--target', 'ES2023',
       '--module', 'NodeNext',
       '--moduleResolution', 'NodeNext',
       '--skipLibCheck',
-      '--noImplicitAny', 'false',
-      declarations,
       ...modules
     ], { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
     return [];
@@ -47,8 +40,6 @@ async function typecheckModules(root, modules) {
       output || `TypeScript typecheck could not run: ${error instanceof Error ? error.message : String(error)}`,
       { files: modules.map((module) => path.relative(root, module).split(path.sep).join('/')) }
     )];
-  } finally {
-    await rm(directory, { recursive: true, force: true });
   }
 }
 

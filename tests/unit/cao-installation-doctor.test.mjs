@@ -105,7 +105,7 @@ test('installation doctor TypeScript-checks installed modules', async () => {
   try {
     const record = JSON.parse(await readFile(recordPath, 'utf8'));
     const module = record.files.find(({ destination }) => destination.endsWith('cao.mjs'));
-    const content = "const value = 1;\nvalue = 'broken';\n";
+    const content = 'export const = ;\n';
     await writeFile(path.join(root, module.destination), content);
     module.sha256 = createHash('sha256').update(content).digest('hex');
     await writeFile(recordPath, JSON.stringify(record));
@@ -113,7 +113,7 @@ test('installation doctor TypeScript-checks installed modules', async () => {
     const result = await doctorCaoInstallation(root);
     assert.equal(result.healthy, false);
     assert.ok(result.issues.some(({ code, message }) =>
-      code === 'typescript-typecheck-failed' && message.includes('TS2588')));
+      code === 'typescript-typecheck-failed' && message.includes('TS1134')));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
