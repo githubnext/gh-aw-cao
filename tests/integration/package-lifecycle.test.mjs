@@ -200,7 +200,13 @@ test("gh aw add resolves root files included through a nested manifest", { timeo
     writePackageFile(
       packageRoot,
       "aw.yml",
-      `name: Nested package\nincludes:\n${rootFiles.map(([path]) => `  - ${path}\n`).join("")}  - child/aw.yml\n`,
+      [
+        "name: Nested package",
+        "includes:",
+        ...rootFiles.map(([path]) => `  - ${path}`),
+        "  - child/aw.yml",
+        "",
+      ].join("\n"),
     );
     // This must resolve the root manifest rather than treating child/aw.yml as a cycle.
     writePackageFile(packageRoot, "child/aw.yml", `name: Child package
@@ -210,6 +216,11 @@ includes:
     for (const [relativePath, content] of rootFiles) {
       writePackageFile(packageRoot, relativePath, content);
     }
+    run("git", ["init", "--quiet"], packageRoot);
+    run("git", ["config", "user.email", "package-test@example.invalid"], packageRoot);
+    run("git", ["config", "user.name", "Package Test"], packageRoot);
+    run("git", ["add", "."], packageRoot);
+    run("git", ["commit", "--quiet", "-m", "Add package fixture"], packageRoot);
     run("git", ["init", "--quiet"], consumer);
     run("gh", [
       "aw",
