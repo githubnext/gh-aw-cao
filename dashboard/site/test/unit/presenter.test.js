@@ -1398,6 +1398,7 @@ describe('presenter built-in and custom pages', () => {
 
   it('sets forward and backward transition directions from browser history', async () => {
     window.history.replaceState(null, '', '/');
+    /** @type {Array<string | undefined>} */
     const directions = [];
     Object.defineProperty(document, 'startViewTransition', {
       configurable: true,
@@ -1411,6 +1412,7 @@ describe('presenter built-in and custom pages', () => {
       document: authoritativeDashboardDocument,
       sources: {}
     });
+    document.body.append(rendered);
     const cost = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'));
 
     cost?.click();
@@ -1426,6 +1428,7 @@ describe('presenter built-in and custom pages', () => {
 
     expect(directions).toEqual(['forward', 'backward']);
     await Promise.resolve();
+    rendered.remove();
     Reflect.deleteProperty(document, 'startViewTransition');
     window.history.replaceState(null, '', '/');
   });

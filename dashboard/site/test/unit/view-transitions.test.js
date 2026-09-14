@@ -67,8 +67,9 @@ describe('dashboard view transitions', () => {
 
   it('exposes navigation direction for the lifetime of a transition', async () => {
     let finishTransition = () => {};
+    /** @type {Promise<void>} */
     const finished = new Promise((resolve) => {
-      finishTransition = resolve;
+      finishTransition = () => resolve();
     });
     Object.defineProperty(document, 'startViewTransition', {
       configurable: true,
