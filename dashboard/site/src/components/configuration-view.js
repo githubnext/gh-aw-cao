@@ -204,6 +204,18 @@ function cloneDocument(value) {
   return /** @type {Record<string, unknown>} */ (JSON.parse(JSON.stringify(value)));
 }
 
+/** @param {Record<string, unknown> | undefined} row */
+function policyDocumentFromRow(row) {
+  if (isPlainObject(row?.document)) return row.document;
+  if (typeof row?.raw !== 'string') return null;
+  try {
+    const document = JSON.parse(row.raw);
+    return isPlainObject(document) ? document : null;
+  } catch {
+    return null;
+  }
+}
+
 /** @param {Record<string, unknown>} policyDocument */
 function renderSettingsEditor(policyDocument) {
   const original = cloneDocument(policyDocument);
@@ -397,7 +409,7 @@ function renderLocalDataSetting() {
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
-  const policyDocument = row?.document;
+  const policyDocument = policyDocumentFromRow(row);
   const headingId = `${context.pageId}-configuration-heading`;
   return h('section', { className: 'configuration-view', 'aria-labelledby': headingId },
     renderSectionHeading({

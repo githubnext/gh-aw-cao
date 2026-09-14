@@ -220,6 +220,19 @@ describe('Configuration dashboard view', () => {
     expect(rendered.querySelector('.configuration-diagnostics-button')).not.toBeNull();
   });
 
+  it('regenerates editable settings from valid raw JSON when the structured policy is missing', () => {
+    const rendered = renderConfigurationView(context({
+      document: null,
+      raw: '{"version":1,"control-plane":{"defaults":{"mode":"review"}}}',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+
+    expect(rendered.querySelector('.configuration-editor')).not.toBeNull();
+    expect(rendered.querySelector('select')?.value).toBe('review');
+    expect(rendered.textContent).not.toContain('The policy cannot be edited');
+  });
+
   it('collects and copies full diagnostics', async () => {
     vi.stubGlobal('indexedDB', indexedDB);
     const writeText = vi.fn().mockResolvedValue(undefined);
