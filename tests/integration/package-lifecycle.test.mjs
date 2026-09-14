@@ -32,6 +32,7 @@ const caoEvolutionPackageSource = focusedPackageSource("cao-evolution");
 const craPackageSource = focusedPackageSource("eu-cra-compliance");
 const dashboardPackageSource = focusedPackageSource("dashboard");
 const dependabotUpdateSource = focusedPackageSource("dependabot");
+const dependabotPackageUpdateSource = `${packageUpdateSource}/dependabot`;
 const selfCarePackageSource = focusedPackageSource("self-care");
 const softwareDevelopmentPracticesPackageSource = focusedPackageSource("software-development-practices");
 const activityExpectedFiles = [
@@ -533,6 +534,7 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
     run("gh", [
       "aw",
       "update",
+      dependabotPackageUpdateSource,
       "--force",
       "--no-merge",
       "--no-compile",
