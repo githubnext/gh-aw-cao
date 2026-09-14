@@ -131,6 +131,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('.dashboard-mobile-overview-actions .primary-nav .nav-item { width: 52px; min-height: 52px; flex: 0 0 52px; gap: 0; padding: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--canvas-subtle); }');
     expect(styles).toContain('.primary-nav .nav-item .nav-label { display: none; }');
     expect(styles).toContain('.dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }');
+    expect(styles).toContain('.mobile-page-header .breadcrumb-context, .mobile-page-header .overview-header .lede { display: none !important; }');
   });
 
   it('stacks the expanded filter panel above the page header and hides the horizon tooltip', () => {
