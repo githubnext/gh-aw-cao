@@ -634,7 +634,7 @@ function renderChartView(context) {
     const failureMessage = h(
       'p',
       { className: 'view-context', role: 'status' },
-      'Showing partial results because additional runs could not be loaded.'
+      'Showing partial results because additional timeline data could not be loaded.'
     );
     const renderEffect = effect(() => {
       const current = continuationState.get();
@@ -698,7 +698,7 @@ function renderChartView(context) {
         } catch (error) {
           if (!active) return;
           const message = error instanceof Error ? error.message : String(error);
-          console.error(`Unable to load additional swimlane runs: ${message}`);
+          console.error(`Unable to load additional swimlane data: ${message}`);
           continuationState.set({ ...current, token: undefined, error: message });
         } finally {
           if (active && !continuationState.get().token) consumeEffect.stop();

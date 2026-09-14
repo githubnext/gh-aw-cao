@@ -369,7 +369,7 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
-      if (page.id === 'safe-outputs' || page.id === 'maintenance') continue;
+      if (page.id === 'safe-outputs' || page.id === 'maintenance' || page.id === 'audit') continue;
       const definition = page.definition ?? page;
       const editableViews = (definition.views ?? []).filter(
         (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
@@ -767,6 +767,35 @@ describe('dashboard document validation', () => {
         y: { field: 'run-conclusion', type: 'ordinal' }
       }
     });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
+  it('defines Audit as a progressive finding timeline and table', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
+      candidate.id === 'audit'
+    );
+
+    expect(page.definition.views).toEqual([
+      expect.objectContaining({
+        id: 'audit-findings-over-time',
+        data: { source: 'audit-events' },
+        mark: 'chart',
+        chart: 'swimlane',
+        encoding: {
+          x: expect.objectContaining({ field: 'observed-at', type: 'temporal' }),
+          y: expect.objectContaining({ field: 'audit-kind', type: 'ordinal' }),
+          color: expect.objectContaining({ field: 'audit-kind', type: 'nominal' }),
+          href: expect.objectContaining({ field: 'run-link', type: 'nominal' })
+        }
+      }),
+      expect.objectContaining({
+        id: 'audit-events-table',
+        data: { source: 'audit-events' },
+        mark: 'table',
+        'lazy-list': true
+      })
+    ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 

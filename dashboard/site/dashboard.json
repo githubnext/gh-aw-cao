@@ -5448,13 +5448,50 @@
       },
       {
         "id": "audit",
-        "kind": "custom",
+       "kind": "built-in",
+       "page": "audit",
         "title": "Audit",
         "icon": "checklist",
         "description": "Inspect observed agent audit events, including findings, recommendations, gaps, and skill activations.",
-        "views": [
-          {
-            "id": "audit-events-table",
+       "definition": {
+         "data-state": {
+           "availability": true
+         },
+         "views": [
+           {
+           "id": "audit-findings-over-time",
+           "title": "Audit findings over time",
+           "description": "Audit finding types observed across the retained run window.",
+           "data": {
+             "source": "audit-events"
+           },
+           "mark": "chart",
+           "chart": "swimlane",
+           "layout": "full",
+           "encoding": {
+             "x": {
+               "field": "observed-at",
+               "type": "temporal",
+               "format": "human-friendly-timestamp",
+               "title": "Observed"
+             },
+             "y": {
+               "field": "audit-kind",
+               "type": "ordinal",
+               "title": "Finding type"
+             },
+             "color": {
+               "field": "audit-kind",
+               "type": "nominal"
+             },
+             "href": {
+               "field": "run-link",
+               "type": "nominal"
+             }
+           }
+           },
+           {
+           "id": "audit-events-table",
             "title": "Audit events",
             "description": "Observed audit events ordered from newest to oldest with their audit kind, status, summary, and run context.",
             "data": {
@@ -5524,8 +5561,9 @@
                 }
               ]
             }
-          }
-        ]
+           }
+         ]
+       }
       },
       {
         "id": "transactions",

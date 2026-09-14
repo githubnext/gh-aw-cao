@@ -516,6 +516,59 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('Showing partial results');
   });
 
+  it('progressively loads audit finding swimlanes', async () => {
+    const row = (/** @type {string} */ event, /** @type {string} */ observedAt, /** @type {string} */ kind) => ({
+      event,
+      'observed-at': observedAt,
+      'audit-kind': kind
+    });
+    const load = vi.fn().mockResolvedValue({
+      rows: [row('event-2', '2026-09-09T04:01:00Z', 'audit.recommendation')]
+    });
+    const rendered = renderDataView('chart', {
+      pageId: 'audit',
+      title: 'Audit findings over time',
+      view: {
+        mark: 'chart',
+        chart: 'swimlane',
+        encoding: {
+          x: { field: 'observed-at', type: 'temporal' },
+          y: { field: 'audit-kind', type: 'ordinal', title: 'Finding type' }
+        }
+      },
+      sourceName: 'audit-events',
+      rows: [row('event-1', '2026-09-09T04:00:00Z', 'audit.finding')],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: (_pageId, _title, chartRows) => chartRows.map((eventRow) => ({
+        key: String(eventRow.event),
+        x: String(eventRow['observed-at']),
+        y: Number.NaN,
+        category: String(eventRow['audit-kind']),
+        color: String(eventRow['audit-kind']),
+        link: null,
+        source: eventRow
+      })),
+      prepareChartPoints: (points) => points,
+      toText: String,
+      continuation: {
+        token: 'page-2',
+        totalRows: 2,
+        load
+      }
+    });
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    expect(rendered?.querySelector('.swimlane-summary')?.textContent).toContain('1 finding');
+    await vi.waitFor(() => {
+      expect(rendered?.querySelector('.swimlane-summary')?.textContent).toContain('2 findings');
+      expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
+    });
+    expect(load).toHaveBeenCalledWith('page-2');
+  });
+
   it('populates the runs-view swimlane within bounded time while yielding between continuation pages', async () => {
     const totalRuns = 20_000;
     const pageSize = 200;
@@ -689,12 +742,12 @@ describe('data view renderer', () => {
 
     await vi.waitFor(() => {
       expect(rendered?.querySelector('.view-context[role="status"]')?.textContent)
-        .toBe('Showing partial results because additional runs could not be loaded.');
+        .toBe('Showing partial results because additional timeline data could not be loaded.');
       expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('aria-busy')).toBe('false');
       expect(rendered?.querySelector('.swimlane-chart-widget')?.getAttribute('data-continuation-state')).toBe('error');
     });
     expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
-    expect(error).toHaveBeenCalledWith('Unable to load additional swimlane runs: worker unavailable');
+    expect(error).toHaveBeenCalledWith('Unable to load additional swimlane data: worker unavailable');
     error.mockRestore();
   });
 

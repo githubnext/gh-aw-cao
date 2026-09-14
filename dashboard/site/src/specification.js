@@ -239,6 +239,7 @@ export const BUILT_IN_PAGE_VALUES = [
   'usage',
   'engines-models',
   'operational-value',
+  'audit',
   'findings'
 ];
 
@@ -261,6 +262,7 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   usage: ['usage'],
   'engines-models': ['model-usage-summary', 'engine-usage-summary', 'run-aggregate-summary'],
   'operational-value': ['operational-values'],
+  audit: ['audit-events'],
   findings: ['findings']
 };
 

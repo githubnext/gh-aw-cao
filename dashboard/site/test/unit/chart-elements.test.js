@@ -159,6 +159,41 @@ describe('chart element helpers', () => {
     expect(singleCategoryPie.querySelector('.pie-chart-total-value')?.textContent).toBe('3');
   });
 
+  it('renders audit finding types as categorical swimlanes', () => {
+    const chart = renderChartWidget('swimlane', [
+      {
+        x: '2026-09-09T04:00:00Z',
+        y: Number.NaN,
+        category: 'audit.finding',
+        color: 'audit.finding',
+        source: { run: '42', 'event-summary': 'Missing validation' }
+      },
+      {
+        x: '2026-09-09T04:01:00Z',
+        y: Number.NaN,
+        category: 'audit.recommendation',
+        color: 'audit.recommendation',
+        source: { run: '42', 'event-summary': 'Add validation' }
+      }
+    ], [], null, 'Finding type');
+
+    expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.textContent)).toEqual([
+      'Finding',
+      'Observability',
+      'Recommendation',
+      'Missing tool',
+      'Missing data',
+      'No-op',
+      'MCP failure',
+      'Skill activation'
+    ]);
+    expect(chart.querySelector('.swimlane-summary')?.textContent).toContain('2 findings');
+    expect(chart.querySelector('.swimlane-summary')?.textContent).toContain('1 recommendation');
+    expect(chart.querySelectorAll('.swimlane-mark')).toHaveLength(2);
+    expect(chart.querySelector('.swimlane-mark[data-swimlane-lane="audit.finding"]')?.getAttribute('aria-label'))
+      .toContain('Finding type: Finding, Summary: Missing validation, Run #42');
+  });
+
   it('renders compact heatmaps as accessible labeled tables without relying on color', () => {
     const chart = renderChartWidget('heatmap', [
       { x: 'build', y: 62, color: 'ubuntu', source: {} },
