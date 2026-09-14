@@ -25,7 +25,7 @@ sequenceDiagram
   Consumer->>Cache: Restore compatible snapshot
 ```
 
-The scheduled and manually dispatchable `.github/workflows/activity.yml`
+The scheduled and manually dispatchable `.github/workflows/cao-activity.yml`
 checks out the trusted control-repository source, restores its cache, collects
 compiled workflow evidence with `gh aw logs --audit --artifacts usage`, ingests
 the resulting JSONL through the dashboard's Node.js canonical data pipeline,

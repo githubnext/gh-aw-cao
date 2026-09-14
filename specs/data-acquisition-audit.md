@@ -45,7 +45,7 @@ The inventory distinguishes:
 
 | Caller | Selection | Persistence | Observation |
 | --- | --- | --- | --- |
-| `.github/workflows/activity.yml` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **5** runs | `gh-aw-logs.jsonl` and `gh-aw-logs.sqlite` in the shared `cao-activity-v3` cache | The workflow runs `gh aw logs --audit --artifacts usage` directly, then ingests the refreshed JSONL through the canonical Node.js data pipeline. Artifacts remain job-local. |
+| `.github/workflows/cao-activity.yml` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **5** runs | `gh-aw-logs.jsonl` and `gh-aw-logs.sqlite` in the shared `cao-activity-v3` cache | The workflow runs `gh aw logs --audit --artifacts usage` directly, then ingests the refreshed JSONL through the canonical Node.js data pipeline. Artifacts remain job-local. |
 | `.github/workflows/optimization-ai-credit-auditor.md` | Target repository, two days, at most 100 runs; locally filtered to the preceding 24 hours | `/tmp` for the current run | Overlaps the dashboard usage window and the evaluator's later evidence window. A separate API call first reads the current run's creation time. |
 | `.github/workflows/optimization-ai-credit-optimizer.md` | Target repository, seven days, at most 50 runs | `/tmp` for the current run | Overlaps the auditor and dashboard collections. Monitoring workflows are filtered only after download. |
 | `.github/workflows/graders/optimization-ai-credit-auditor-operational-value.sh` | Evaluator-defined before/after window, up to 10,000 runs | Evaluator temporary directory | Re-fetches evidence rather than consuming the worker's predownload, which is necessary for maturation but duplicates historical portions of earlier scans. |
@@ -80,7 +80,7 @@ The former two-request Contents API bootstrap in `shared/control.md` has been re
 | `dashboard/report/operational-values.mjs` | Processes operational-value grader results already present in the shared gh-aw logs JSON. | Persistent observations are merged with new results without a second history scan or per-run artifact download. |
 | `dashboard/local-server.mjs` | Reads repository default branch, finds the latest dashboard-data artifact, validates its run, then downloads that artifact before serving. Also issues one additional `gh api user` call at startup to populate a local-only `/viewer.json` (login, name, avatar URL) for the account-menu identity display. | One startup predownload plus one startup identity read, no repeated polling. There is no local reuse between server starts; the viewer identity is re-fetched every time the local server starts. |
 | `.github/workflows/self-care-dashboard-review.md` (live-mode prefetch) | Direct `gh api` calls for default branch, one unpaginated 100-item artifact list, and run provenance, followed by `gh run download` of the dashboard artifact; the agent then separately queries the workflow registry and the latest 100 runs from the last 24 hours through its own `gh-proxy` toolset. | Bounded per-call limits and a trusted-provenance check exist, but this predownload and history query are independent of `activity/index.mjs` and `records.mjs`; every dispatch re-discovers the same artifact and run metadata rather than reusing the `cao-activity` snapshot. |
-| `.github/workflows/activity.yml` and `.github/workflows/cao-dashboard.yml` | Activity produces one coherent cache snapshot; the dashboard workflow restores it and does not recollect. | Correctly centralizes dashboard collection. |
+| `.github/workflows/cao-activity.yml` and `.github/workflows/cao-dashboard.yml` | Activity produces one coherent cache snapshot; the dashboard workflow restores it and does not recollect. | Correctly centralizes dashboard collection. |
 
 ### 3.3 Workflow prefetch and grader paths
 
@@ -118,9 +118,9 @@ Administrative setup (`.github/workflows/shared/setup-github-apps.mjs`), release
 
 | Cache or index | Producer | Consumer | Reuse boundary |
 | --- | --- | --- | --- |
-| `cao-activity-v3-*` Actions cache | `.github/workflows/activity.yml` | Next activity run, dashboard builder, and agent jobs | Refreshed `gh-aw-logs.jsonl` and queryable `gh-aw-logs.sqlite`; latest matching key across runs |
+| `cao-activity-v3-*` Actions cache | `.github/workflows/cao-activity.yml` | Next activity run, dashboard builder, and agent jobs | Refreshed `gh-aw-logs.jsonl` and queryable `gh-aw-logs.sqlite`; latest matching key across runs |
 | `deployed-workflows.json` local run index | `activity/index.mjs` | Activity collectors | Rebuilt from checked-out metadata and the shared logs snapshot without API fallback |
-| Shared gh-aw logs JSONL | `.github/workflows/activity.yml` | Consumers | Persistent activity cache |
+| Shared gh-aw logs JSONL | `.github/workflows/cao-activity.yml` | Consumers | Persistent activity cache |
 | `records.mjs` run map | `activity/index.mjs` via `deployed-workflows.json` | `dashboard/report/records.mjs` | In-memory join by runtime repository and run ID; no run-detail request |
 | Maintenance activity and forecast logs | `agentics-maintenance.yml` | Later maintenance runs | Separate Actions caches, outside the CAO activity snapshot |
 | GitHub API telemetry ledger (`cao-gh.jsonl`) | `activity/github-telemetry.mjs` | Next activity run's dashboard quota history and the `cao-gh` artifact | Rolling 24-hour window retained inside the `cao-activity` cache; trimmed on restore by `prepare`, not a fresh discard per run |

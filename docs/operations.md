@@ -179,7 +179,7 @@ A deliberate custom extension should mint a short-lived GitHub App token install
 The package installs the following components in the control-plane repository:
 
 - `.github/workflows/cao-dashboard.yml`, the dashboard builder, artifact publisher, and optional standalone Pages publisher;
-- `.github/workflows/activity.yml`, the scheduled and manually dispatchable data collector and cache publisher;
+- `.github/workflows/cao-activity.yml`, the scheduled and manually dispatchable data collector and cache publisher;
 - `.github/aw/activity/logs.mjs`, the single bounded `gh aw logs` acquisition entrypoint;
 - `.github/aw/activity/index.mjs`, the local-only deployed-workflow and run-health indexer;
 - `.github/aw/dashboard/report/aic-usage.mjs`, the bounded AI Credit usage collector;

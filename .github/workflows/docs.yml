@@ -14,7 +14,7 @@ on:
     paths:
       - .github/workflows/shared/**
       - .github/workflows/docs.yml
-      - .github/workflows/activity.yml
+      - .github/workflows/cao-activity.yml
       - .github/workflows/*.lock.yml
       - .github/workflows/*.md
       - "*/aw.yml"
