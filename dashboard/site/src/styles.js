@@ -1528,8 +1528,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-station > span:nth-child(2) { color: var(--muted); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
 .factory-station strong { margin-top: 3px; font-size: 1.8rem; font-variant-numeric: tabular-nums; line-height: 1; animation: factory-station-value-enter 520ms cubic-bezier(.2, .8, .2, 1) both; }
 @keyframes factory-station-value-enter {
-  from { opacity: 0; transform: translateY(6px) scale(.88); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .factory-station small { margin-top: 5px; color: var(--muted); font-size: .6875rem; }
 .factory-station a { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; color: inherit; text-decoration: none; }
