@@ -9,7 +9,7 @@ import { formatPercent } from './view-formatters.js';
 
 /**
  * @typedef {Record<string, unknown>} Row
- * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string }} Predicate
+ * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }} Predicate
  * @typedef {{ op: 'filter', predicates?: Predicate[], search?: { fields: string[], query: string } }} FilterOperator
  * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
@@ -33,6 +33,8 @@ export const COMPUTE_FUNCTION_ARITY = {
   'title-case': [1, 1],
   trim: [1, 1],
   'url-encode': [1, 1],
+  'date-day': [1, 1],
+  'dashboard-link': [3, 4],
   'equals-any': [2, 8],
   'greater-than': [2, 2],
   if: [3, 3],
@@ -47,7 +49,7 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'format-count', 'format-percent'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'date-day', 'format-count', 'format-percent'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
@@ -109,7 +111,7 @@ function select(rows, operator) {
  * division by zero yield `null` rather than throwing or propagating `NaN`.
  * @param {Row} row
  * @param {ComputedField} definition
- * @returns {string|number|boolean|null}
+ * @returns {string|number|boolean|Record<string, unknown>|null}
  */
 export function computeValue(row, definition) {
   const values = definition.args.map((argument) => (
@@ -126,6 +128,19 @@ export function computeValue(row, definition) {
   if (definition.function === 'title-case') return titleCase(textValue(values[0]));
   if (definition.function === 'trim') return textValue(values[0]).trim();
   if (definition.function === 'url-encode') return encodeURIComponent(textValue(values[0]));
+  if (definition.function === 'date-day') {
+    const timestamp = parseTimestamp(values[0]);
+    return timestamp === null ? null : new Date(timestamp).toISOString().slice(0, 10);
+  }
+  if (definition.function === 'dashboard-link') {
+    const existing = isPlainObject(values[0]) ? values[0] : {};
+    const href = textValue(values[1]);
+    const label = textValue(values[2]).trim();
+    const identity = values.length < 4 ? href : textValue(values[3]).trim();
+    return href.startsWith('#page-') && label && identity
+      ? { ...existing, 'dashboard-href': href, 'dashboard-label': label }
+      : null;
+  }
   if (definition.function === 'equals-any') {
     return values.slice(1).some((value) => sameValue(values[0], value));
   }
@@ -162,6 +177,11 @@ function scalarValue(value) {
     : /** @type {string | number | boolean} */ (value);
 }
 
+/** @param {unknown} value @returns {value is Record<string, unknown>} */
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 /** @param {unknown} value @returns {number | null} */
 function numericValue(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'object' || typeof value === 'boolean') {
@@ -179,17 +199,73 @@ function filter(rows, operator) {
     const matchesSearch = query === '' || fields.some((field) => String(row[field] ?? '')
       .toLocaleLowerCase('en')
       .includes(query));
-    return matchesSearch && (operator.predicates ?? []).every((predicate) => matches(row[predicate.field], predicate));
+    return matchesSearch && (operator.predicates ?? []).every((predicate) => matches(row, predicate));
   });
 }
 
-/** @param {unknown} value @param {Predicate} predicate */
-function matches(value, predicate) {
+/** @param {Row} row @param {Predicate} predicate */
+function matches(row, predicate) {
+  if (predicate.field === '@time') {
+    return matchesTemporalBounds(pickRowTimeValue(row), predicate);
+  }
+  const value = row[predicate.field];
+  if (predicate.optional === true && (value === null || value === undefined || value === '')) {
+    return true;
+  }
   if (Array.isArray(predicate.in)) return predicate.in.some((candidate) => sameValue(value, candidate));
   if (typeof predicate.includes === 'string') {
     return String(value ?? '').toLocaleLowerCase('en').includes(predicate.includes.toLocaleLowerCase('en'));
   }
+  if (predicate.gte !== undefined || predicate.lt !== undefined) {
+    return matchesComparableBounds(value, predicate);
+  }
   return sameValue(value, predicate.equals);
+}
+
+/** @param {unknown} value @param {Predicate} predicate */
+function matchesComparableBounds(value, predicate) {
+  if (value === null || value === undefined || value === '') return false;
+  if (predicate.gte !== undefined && compareComparable(value, predicate.gte) < 0) return false;
+  if (predicate.lt !== undefined && compareComparable(value, predicate.lt) >= 0) return false;
+  return true;
+}
+
+/** @param {number | null} valueMs @param {Predicate} predicate */
+function matchesTemporalBounds(valueMs, predicate) {
+  if (valueMs === null) return true;
+  const startMs = predicate.gte === undefined ? null : parseTimestamp(predicate.gte);
+  const endMs = predicate.lt === undefined ? null : parseTimestamp(predicate.lt);
+  if (startMs !== null && valueMs < startMs) return false;
+  if (endMs !== null && valueMs >= endMs) return false;
+  return true;
+}
+
+/** @param {Row} row @returns {number | null} */
+function pickRowTimeValue(row) {
+  for (const field of ['observed-at', 'started-at', 'ended-at']) {
+    if (typeof row[field] !== 'string') continue;
+    const value = parseTimestamp(row[field]);
+    return value;
+  }
+  return null;
+}
+
+/** @param {unknown} value @returns {number | null} */
+function parseTimestamp(value) {
+  if (typeof value !== 'string') return null;
+  const instant = Date.parse(value);
+  return Number.isFinite(instant) ? instant : null;
+}
+
+/** @param {unknown} left @param {unknown} right */
+function compareComparable(left, right) {
+  const leftDate = parseTimestamp(left);
+  const rightDate = parseTimestamp(right);
+  if (leftDate !== null && rightDate !== null) return leftDate - rightDate;
+  const leftNumber = numericValue(left);
+  const rightNumber = numericValue(right);
+  if (leftNumber !== null && rightNumber !== null) return leftNumber - rightNumber;
+  return String(left).localeCompare(String(right));
 }
 
 /** @param {unknown} left @param {unknown} right */

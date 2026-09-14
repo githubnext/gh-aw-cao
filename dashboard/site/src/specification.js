@@ -34,7 +34,7 @@ export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
 export const QUERY_JOIN_ON_KEYS = ['left', 'right'];
 export const QUERY_JOIN_FIELD_KEYS = ['field', 'as'];
 export const QUERY_FILTER_KEYS = ['predicates'];
-export const QUERY_PREDICATE_KEYS = ['field', 'equals', 'in', 'includes'];
+export const QUERY_PREDICATE_KEYS = ['field', 'equals', 'in', 'includes', 'gte', 'lt', 'optional'];
 export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
 export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value'];
 export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
@@ -349,10 +349,8 @@ export const SOURCE_VALUES = [
   'coverage-diagnostics',
   'repository-coverage',
   'runtime-episode-summary',
-  'runtime-episodes',
   'runtime-attribution-gaps',
   'workflow-topology-summary',
-  'packaged-workflows',
   'standalone-workflows',
   'outcomes',
   'findings',
@@ -368,12 +366,10 @@ export const SOURCE_VALUES = [
   'overview-execution-health',
   'failed-runs',
   'overview-attention',
-  'overview-attention-domains',
   'overview-managed-packages',
   'overview-package-utilization',
   'readiness-activity',
   'readiness-checks',
-  'readiness-observations',
   'readiness-summary',
   'readiness-signals',
   'security-summary',
@@ -385,7 +381,6 @@ export const SOURCE_VALUES = [
   'cost-signals',
   'runtime-anomaly-readiness',
   'runtime-signals',
-  'dispatches',
   'factory-rhythm-baseline',
   'dispatch-activation-summary',
   'package-dispatch-state',
@@ -394,9 +389,6 @@ export const SOURCE_VALUES = [
   'repository-workflow-status',
   'repository-workflow-usage',
   'repository-workflows',
-  'workflow-runs',
-  'workflow-reports',
-  'package-reports',
   'model-usage-summary',
   'engine-usage-summary',
   'data-health-collections',
@@ -446,7 +438,6 @@ export const SOURCE_FIELDS = {
   'data-health-schema': ['source', 'schema'],
   'source-metadata': ['source', 'row-count', 'source-id', 'source-kind', 'as-of', 'retrieved-at', 'availability', 'completeness', 'freshness', 'collection-operation', 'collection-state', 'collection-progress', 'collection-reason', 'failure-class', 'collector-completed-at', 'coverage-start', 'coverage-end', 'requested-coverage-start', 'requested-coverage-end', 'coverage-expected', 'coverage-observed', 'snapshot-age-seconds', 'fallback-used'],
   'runtime-episode-summary': ['label', 'value'],
-  'runtime-episodes': ['run', 'run-title', 'package', 'workflow', 'started-at', 'duration', 'status', 'control-transition', 'attribution', 'run-link'],
   'runtime-attribution-gaps': ['run', 'run-title', 'workflow', 'status', 'control-transition', 'reason-code', 'evidence', 'run-link'],
   outcomes: ['organization', 'repository', 'package', 'runtime-repository', 'workflow', 'workflow-name', 'run', 'run-conclusion', 'safe-output', 'safe-output-kind', 'outcome-number', 'outcome-title', 'outcome-summary', 'outcome-body-html', 'outcome-category', 'outcome-status', 'outcome-state', 'outcome-warning', 'evidence-strength', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'published-at', 'observed-at', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
   'safe-output-performance': ['organization', 'repository', 'workflow', 'run', 'run-conclusion', 'rollout-mode', 'safe-output-kind', 'safe-output-label', 'safe-output-status', 'safe-output-count', 'observed-at', 'run-link'],
@@ -459,10 +450,8 @@ export const SOURCE_FIELDS = {
   'configuration-policy': ['path', 'document', 'raw', 'diagnostics'],
   'configuration-actions': ['action', 'path', 'current', 'recommended', 'prompt'],
   'failed-runs': ['organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-title', 'started-at', 'ended-at', 'run-status', 'run-conclusion', 'failure-detail', 'run-link'],
-  'overview-attention-domains': ['domain', 'state', 'tone', 'icon', 'value', 'detail', 'href', 'priority', 'order'],
   'readiness-activity': ['activity-hour', 'workflow-role', 'run-count'],
   'readiness-checks': ['check', 'readiness-state', 'detail'],
-  'readiness-observations': ['signal', 'count', 'status', 'detail', 'latest-at', 'evidence-link'],
   'readiness-summary': ['label', 'value'],
   'readiness-signals': ['priority', 'urgency', 'count', 'tone', 'icon', 'kind', 'title', 'detail', 'evidence', 'action', 'navigation-page', 'run-link', 'external-link'],
   'security-summary': ['label', 'value'],
@@ -474,7 +463,6 @@ export const SOURCE_FIELDS = {
   'cost-signals': ['priority', 'count', 'tone', 'icon', 'kind', 'title', 'detail', 'evidence', 'action', 'navigation-page'],
   'runtime-anomaly-readiness': ['icon', 'title', 'detail'],
   'runtime-signals': ['priority', 'count', 'tone', 'icon', 'kind', 'title', 'detail', 'evidence', 'action', 'navigation-href'],
-  dispatches: ['started-at', 'dispatch-type', 'package', 'package-name', 'workflow-name', 'run-title', 'runtime-repository', 'status', 'status-detail', 'status-detail-at', 'run-link'],
   'factory-rhythm-baseline': ['daily-averages', 'weeks'],
   'dispatch-activation-summary': ['label', 'value'],
   'package-dispatch-state': ['package', 'package-name', 'dispatch-runs', 'skipped', 'failed', 'succeeded', 'worker-dispatches', 'aic', 'agent', 'model'],
@@ -484,9 +472,6 @@ export const SOURCE_FIELDS = {
   'repository-workflow-status': ['repository', 'status', 'workflows'],
   'repository-workflow-usage': ['repository', 'workflow', 'invocation', 'aic', 'workflow-link'],
   'repository-workflows': ['repository', 'workflow', 'workflow-name', 'workflow-role', 'package-name', 'rollout-mode', 'workflow-active', 'observed-at', 'aic', 'workflow-link'],
-  'workflow-runs': ['workflow-route', 'organization', 'repository', 'workflow', 'run', 'run-title', 'event', 'started-at', 'ended-at', 'run-status', 'run-conclusion', 'failure-job', 'failure-message', 'failure-step', 'rollout-mode', 'engine', 'engine-version', 'gh-aw-version', 'requested-model', 'resolved-model', 'run-link'],
-  'workflow-reports': ['workflow-route', 'safe-output', 'outcome-title', 'outcome-summary', 'outcome-status', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'outcome-category', 'observed-at', 'external-link'],
-  'package-reports': ['package', 'safe-output', 'outcome-title', 'outcome-summary', 'outcome-status', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'outcome-category', 'observed-at', 'external-link'],
   'model-usage-summary': ['model', 'resolved-model', 'engine', 'requested-model', 'runs', 'invocations', 'total-aic', 'estimated-usd', 'pricing'],
   'engine-usage-summary': ['engine', 'runs', 'invocations', 'total-aic', 'estimated-usd', 'min-engine-version', 'max-engine-version', 'models'],
   'run-aggregate-summary': ['engine', 'engine-version', 'requested-model', 'resolved-model', 'run-conclusion', 'runs', 'run-link'],

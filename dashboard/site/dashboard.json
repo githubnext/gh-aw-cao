@@ -298,6 +298,122 @@
         ]
       },
       {
+        "name": "overview-outcome-summary",
+        "intent": "Summarize distinct retained issue and pull request outputs and their delivered repositories.",
+        "from": "outcomes",
+        "compute": [
+          { "as": "category-useful", "function": "equals-any", "args": [{ "field": "outcome-category" }, { "value": "issue" }, { "value": "pull-request" }] },
+          { "as": "kind-useful", "function": "equals-any", "args": [{ "field": "safe-output-kind" }, { "value": "create-issue" }, { "value": "create-pull-request" }] },
+          { "as": "category-score", "function": "if", "args": [{ "field": "category-useful" }, { "value": 1 }, { "value": 0 }] },
+          { "as": "kind-score", "function": "if", "args": [{ "field": "kind-useful" }, { "value": 1 }, { "value": 0 }] },
+          { "as": "useful-score", "function": "sum", "args": [{ "field": "category-score" }, { "field": "kind-score" }] },
+          { "as": "useful", "function": "greater-than", "args": [{ "field": "useful-score" }, { "value": 0 }] },
+          { "as": "useful-output", "function": "if", "args": [{ "field": "useful" }, { "field": "safe-output" }, { "value": "" }] },
+          { "as": "delivered", "function": "equals-any", "args": [{ "field": "outcome-state" }, { "value": "accepted" }, { "value": "completed" }, { "value": "lifecycle-close" }] },
+          { "as": "delivered-repository", "function": "if", "args": [{ "field": "delivered" }, { "field": "repository" }, { "value": "" }] }
+        ],
+        "aggregate": {
+          "values": [
+            { "field": "useful-output", "as": "useful-outputs", "reducer": "distinct-count" },
+            { "field": "delivered-repository", "as": "delivered-repositories", "reducer": "distinct-count" }
+          ]
+        }
+      },
+      {
+        "name": "overview-run-summary",
+        "intent": "Summarize successful, failed, and active runs with active package and rollout-mode counts.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "package", "as": "declared-package" }]
+          }
+        ],
+        "compute": [
+          { "as": "successful", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "success" }] },
+          { "as": "failed", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "failure" }, { "value": "startup-failure" }, { "value": "stale" }, { "value": "timed-out" }] },
+          { "as": "active", "function": "equals-any", "args": [{ "field": "run-status" }, { "value": "queued" }, { "value": "in-progress" }, { "value": "in_progress" }] },
+          { "as": "live-mode", "function": "equals-any", "args": [{ "field": "rollout-mode" }, { "value": "live" }] },
+          { "as": "review-mode", "function": "equals-any", "args": [{ "field": "rollout-mode" }, { "value": "review" }] },
+          { "as": "successful-count", "function": "if", "args": [{ "field": "successful" }, { "value": 1 }, { "value": 0 }] },
+          { "as": "failed-count", "function": "if", "args": [{ "field": "failed" }, { "value": 1 }, { "value": 0 }] },
+          { "as": "active-count", "function": "if", "args": [{ "field": "active" }, { "value": 1 }, { "value": 0 }] },
+          { "as": "active-live", "function": "if", "args": [{ "field": "live-mode" }, { "field": "active-count" }, { "value": 0 }] },
+          { "as": "active-review", "function": "if", "args": [{ "field": "review-mode" }, { "field": "active-count" }, { "value": 0 }] },
+          { "as": "active-package", "function": "if", "args": [{ "field": "active" }, { "field": "declared-package" }, { "value": "" }] }
+        ],
+        "aggregate": {
+          "values": [
+            { "field": "successful-count", "as": "successful-runs", "reducer": "sum" },
+            { "field": "failed-count", "as": "failed-runs", "reducer": "sum" },
+            { "field": "active-count", "as": "active-runs", "reducer": "sum" },
+            { "field": "active-live", "as": "active-live", "reducer": "sum" },
+            { "field": "active-review", "as": "active-review", "reducer": "sum" },
+            { "field": "active-package", "as": "active-packages", "reducer": "distinct-count" }
+          ]
+        }
+      },
+      {
+        "name": "overview-dispatch-summary",
+        "intent": "Count workflow dispatch runs in the selected horizon.",
+        "from": "runs",
+        "filter": { "predicates": [{ "field": "event", "equals": "workflow_dispatch" }] },
+        "aggregate": { "values": [{ "field": "run", "as": "dispatches", "reducer": "count" }] }
+      },
+      {
+        "name": "overview-value-summary",
+        "intent": "Count grader observations whose value exceeds their declared threshold.",
+        "from": "grader-observations",
+        "compute": [
+          { "as": "above-threshold", "function": "greater-than", "args": [{ "field": "value" }, { "field": "threshold" }] },
+          { "as": "value-gain", "function": "if", "args": [{ "field": "above-threshold" }, { "value": 1 }, { "value": 0 }] }
+        ],
+        "aggregate": { "values": [{ "field": "value-gain", "as": "value-gains", "reducer": "sum" }] }
+      },
+      {
+        "name": "overview-repository-summary",
+        "intent": "Count distinct repositories with successful shipments in the selected horizon.",
+        "from": "runs",
+        "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] },
+        "compute": [
+          { "as": "repository-coordinate", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] }
+        ],
+        "aggregate": { "values": [{ "field": "repository-coordinate", "as": "repositories", "reducer": "distinct-count" }] }
+      },
+      {
+        "name": "overview-capacity-summary",
+        "intent": "Sum the applicable package repository maxima.",
+        "from": "packages",
+        "aggregate": { "values": [{ "field": "package-max-repositories", "as": "repository-max", "reducer": "sum" }] }
+      },
+      {
+        "name": "overview-worker-summary",
+        "intent": "Count declared package worker workflows.",
+        "from": "workflows",
+        "filter": { "predicates": [{ "field": "workflow-role", "equals": "worker" }] },
+        "aggregate": { "values": [{ "field": "workflow", "as": "workers", "reducer": "count" }] }
+      },
+      {
+        "name": "overview-rhythm",
+        "intent": "Count successful runs by UTC activity day in the selected horizon.",
+        "from": "runs",
+        "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] },
+        "compute": [
+          { "as": "activity-date", "function": "date-day", "args": [{ "field": "started-at" }] }
+        ],
+        "aggregate": {
+          "by": ["activity-date"],
+          "values": [{ "field": "run", "as": "successful-runs", "reducer": "count" }]
+        },
+        "order-by": [{ "field": "activity-date", "direction": "asc" }]
+      },
+      {
         "name": "overview-failed-run-count",
         "intent": "Count failed workflow runs that need operator attention.",
         "from": "runs",
@@ -1478,6 +1594,86 @@
                 "value": 0
               }
             ]
+          },
+          {
+            "as": "encoded-package",
+            "function": "url-encode",
+            "args": [{ "field": "package" }]
+          },
+          {
+            "as": "package-dashboard-href",
+            "function": "concat",
+            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
+          },
+          {
+            "as": "package-dashboard-label",
+            "function": "concat",
+            "args": [{ "value": "View " }, { "field": "package-display-name" }, { "value": " package dashboard" }]
+          },
+          {
+            "as": "package-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              { "field": "repository-link" },
+              { "field": "package-dashboard-href" },
+              { "field": "package-dashboard-label" },
+              { "field": "package" }
+            ]
+          },
+          {
+            "as": "encoded-repository",
+            "function": "url-encode",
+            "args": [{ "field": "repository-slug" }]
+          },
+          {
+            "as": "repository-dashboard-href",
+            "function": "concat",
+            "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
+          },
+          {
+            "as": "repository-dashboard-label",
+            "function": "concat",
+            "args": [{ "value": "View " }, { "field": "repository-slug" }, { "value": " repository dashboard" }]
+          },
+          {
+            "as": "repository-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              { "field": "repository-link" },
+              { "field": "repository-dashboard-href" },
+              { "field": "repository-dashboard-label" },
+              { "field": "repository-slug" }
+            ]
+          },
+          {
+            "as": "workflow-identity",
+            "function": "concat",
+            "args": [{ "field": "repository-slug" }, { "value": ":" }, { "field": "workflow" }]
+          },
+          {
+            "as": "encoded-workflow",
+            "function": "url-encode",
+            "args": [{ "field": "workflow-identity" }]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [{ "value": "#page-workflow-runtime?workflow=" }, { "field": "encoded-workflow" }]
+          },
+          {
+            "as": "workflow-dashboard-label",
+            "function": "concat",
+            "args": [{ "value": "View " }, { "field": "workflow-display-name" }, { "value": " workflow dashboard" }]
+          },
+          {
+            "as": "workflow-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              { "field": "workflow-link" },
+              { "field": "workflow-dashboard-href" },
+              { "field": "workflow-dashboard-label" },
+              { "field": "workflow-identity" }
+            ]
           }
         ],
         "select": [
@@ -1523,10 +1719,16 @@
             "as": "runs"
           },
           {
-            "field": "repository-link"
+            "field": "package-dashboard-link",
+            "as": "package-link"
           },
           {
-            "field": "workflow-link"
+            "field": "repository-dashboard-link",
+            "as": "repository-link"
+          },
+          {
+            "field": "workflow-dashboard-link",
+            "as": "workflow-link"
           }
         ],
         "order-by": [
@@ -1809,6 +2011,96 @@
               { "value": "Package worker" },
               { "field": "root-dispatch-type" }
             ]
+          },
+          {
+            "as": "package-display-name",
+            "function": "coalesce",
+            "args": [{ "field": "declared-package-name" }, { "field": "declared-package" }]
+          },
+          {
+            "as": "workflow-display-name",
+            "function": "coalesce",
+            "args": [{ "field": "declared-workflow-name" }, { "field": "workflow" }]
+          },
+          {
+            "as": "encoded-package",
+            "function": "url-encode",
+            "args": [{ "field": "declared-package" }]
+          },
+          {
+            "as": "package-dashboard-href",
+            "function": "concat",
+            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
+          },
+          {
+            "as": "package-dashboard-label",
+            "function": "concat",
+            "args": [{ "value": "View " }, { "field": "package-display-name" }, { "value": " package dashboard" }]
+          },
+          {
+            "as": "package-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              { "field": "repository-link" },
+              { "field": "package-dashboard-href" },
+              { "field": "package-dashboard-label" },
+              { "field": "declared-package" }
+            ]
+          },
+          {
+            "as": "encoded-repository",
+            "function": "url-encode",
+            "args": [{ "field": "runtime-repository" }]
+          },
+          {
+            "as": "repository-dashboard-href",
+            "function": "concat",
+            "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
+          },
+          {
+            "as": "repository-dashboard-label",
+            "function": "concat",
+            "args": [{ "value": "View " }, { "field": "runtime-repository" }, { "value": " repository dashboard" }]
+          },
+          {
+            "as": "repository-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              { "field": "repository-link" },
+              { "field": "repository-dashboard-href" },
+              { "field": "repository-dashboard-label" },
+              { "field": "runtime-repository" }
+            ]
+          },
+          {
+            "as": "workflow-identity",
+            "function": "concat",
+            "args": [{ "field": "runtime-repository" }, { "value": ":" }, { "field": "workflow" }]
+          },
+          {
+            "as": "encoded-workflow",
+            "function": "url-encode",
+            "args": [{ "field": "workflow-identity" }]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [{ "value": "#page-workflow-runtime?workflow=" }, { "field": "encoded-workflow" }]
+          },
+          {
+            "as": "workflow-dashboard-label",
+            "function": "concat",
+            "args": [{ "value": "View " }, { "field": "workflow-display-name" }, { "value": " workflow dashboard" }]
+          },
+          {
+            "as": "workflow-dashboard-link",
+            "function": "dashboard-link",
+            "args": [
+              { "field": "workflow-link" },
+              { "field": "workflow-dashboard-href" },
+              { "field": "workflow-dashboard-label" },
+              { "field": "workflow-identity" }
+            ]
           }
         ],
         "select": [
@@ -1826,8 +2118,9 @@
           { "field": "repository" },
           { "field": "workflow" },
           { "field": "run-link" },
-          { "field": "repository-link" },
-          { "field": "workflow-link" }
+          { "field": "package-dashboard-link", "as": "package-link" },
+          { "field": "repository-dashboard-link", "as": "repository-link" },
+          { "field": "workflow-dashboard-link", "as": "workflow-link" }
         ],
         "order-by": [
           { "field": "started-at", "direction": "desc" }
@@ -1917,15 +2210,6 @@
         "intent": "Summarize recent canonical run conclusions as release-readiness evidence.",
         "description": "Run conclusion counts and latest observations for the readiness ledger.",
         "from": "runs",
-        "aggregate": {
-          "by": [
-            "run-conclusion"
-          ],
-          "values": [
-            { "field": "run", "as": "count", "reducer": "distinct-count" },
-            { "field": "started-at", "as": "latest-at", "reducer": "max" }
-          ]
-        },
         "compute": [
           {
             "as": "signal",
@@ -1943,31 +2227,193 @@
             ]
           },
           {
-            "as": "count-label",
+            "as": "detail",
+            "function": "coalesce",
+            "args": [
+              { "value": "Retained run evidence" },
+              { "value": "Retained run evidence" }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "signal",
+            "status",
+            "detail"
+          ],
+          "values": [
+            { "field": "run", "as": "count", "reducer": "distinct-count" }
+          ]
+        },
+        "select": [
+          { "field": "signal" },
+          { "field": "count" },
+          { "field": "status" },
+          { "field": "detail" }
+        ],
+        "order-by": [
+          { "field": "count", "direction": "desc" },
+          { "field": "signal", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "overview-attention-domains",
+        "intent": "Describe operational attention directly from canonical source availability, completeness, and freshness.",
+        "description": "Database-backed evidence domains ordered by the urgency of their retained collection state.",
+        "from": "source-metadata",
+        "filter": {
+          "predicates": [
+            {
+              "field": "source",
+              "in": [
+                "runs",
+                "workflows",
+                "outcomes",
+                "operational-values",
+                "usage",
+                "coverage-diagnostics"
+              ]
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "domain",
+            "function": "title-case",
+            "args": [
+              { "field": "source" }
+            ]
+          },
+          {
+            "as": "is-unavailable",
+            "function": "equals-any",
+            "args": [
+              { "field": "availability" },
+              { "value": "unavailable" },
+              { "value": "unknown" },
+              { "value": "empty" }
+            ]
+          },
+          {
+            "as": "needs-investigation",
+            "function": "equals-any",
+            "args": [
+              { "field": "completeness" },
+              { "value": "partial" },
+              { "value": "unknown" }
+            ]
+          },
+          {
+            "as": "available-state",
+            "function": "if",
+            "args": [
+              { "field": "needs-investigation" },
+              { "value": "Investigate" },
+              { "value": "Monitor" }
+            ]
+          },
+          {
+            "as": "state",
+            "function": "if",
+            "args": [
+              { "field": "is-unavailable" },
+              { "value": "Unavailable" },
+              { "field": "available-state" }
+            ]
+          },
+          {
+            "as": "available-tone",
+            "function": "if",
+            "args": [
+              { "field": "needs-investigation" },
+              { "value": "investigate" },
+              { "value": "monitor" }
+            ]
+          },
+          {
+            "as": "tone",
+            "function": "if",
+            "args": [
+              { "field": "is-unavailable" },
+              { "value": "unavailable" },
+              { "field": "available-tone" }
+            ]
+          },
+          {
+            "as": "available-priority",
+            "function": "if",
+            "args": [
+              { "field": "needs-investigation" },
+              { "value": 1 },
+              { "value": 2 }
+            ]
+          },
+          {
+            "as": "priority",
+            "function": "if",
+            "args": [
+              { "field": "is-unavailable" },
+              { "value": 0 },
+              { "field": "available-priority" }
+            ]
+          },
+          {
+            "as": "value",
             "function": "format-count",
             "args": [
-              { "field": "count" }
+              { "field": "row-count" }
             ]
           },
           {
             "as": "detail",
             "function": "concat",
             "args": [
-              { "field": "count-label" },
-              { "value": " retained runs" }
+              { "value": "Availability: " },
+              { "field": "availability" },
+              { "value": " · completeness: " },
+              { "field": "completeness" },
+              { "value": " · freshness: " },
+              { "field": "freshness" }
+            ]
+          },
+          {
+            "as": "icon",
+            "function": "coalesce",
+            "args": [
+              { "value": "database" },
+              { "value": "database" }
+            ]
+          },
+          {
+            "as": "href",
+            "function": "coalesce",
+            "args": [
+              { "value": "#page-coverage" },
+              { "value": "#page-coverage" }
+            ]
+          },
+          {
+            "as": "order",
+            "function": "number",
+            "args": [
+              { "field": "row-count" }
             ]
           }
         ],
         "select": [
-          { "field": "signal" },
-          { "field": "count" },
-          { "field": "status" },
+          { "field": "domain" },
+          { "field": "state" },
+          { "field": "tone" },
+          { "field": "icon" },
+          { "field": "value" },
           { "field": "detail" },
-          { "field": "latest-at" }
+          { "field": "href" },
+          { "field": "priority" },
+          { "field": "order" }
         ],
         "order-by": [
-          { "field": "count", "direction": "desc" },
-          { "field": "signal", "direction": "asc" }
+          { "field": "priority", "direction": "asc" },
+          { "field": "domain", "direction": "asc" }
         ]
       },
       {
@@ -3108,12 +3554,6 @@
                   "field": "detail",
                   "type": "nominal",
                   "title": "Evidence"
-                },
-                {
-                  "field": "latest-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Latest"
                 }
               ]
             },
@@ -6740,14 +7180,17 @@
           {
             "id": "overview-outcomes",
             "title": "How are we doing?",
+            "description": "Repositories shows the distinct number of repositories we regularly ship to within the selected horizon, with the applicable repositoryMax shown underneath.",
             "data": {
               "sources": [
-                "outcomes",
-                "runs",
-                "dispatches",
-                "grader-observations",
-                "repositories",
-                "workflows"
+                "overview-outcome-summary",
+                "overview-run-summary",
+                "overview-dispatch-summary",
+                "overview-value-summary",
+                "overview-repository-summary",
+                "overview-capacity-summary",
+                "overview-worker-summary",
+                "overview-rhythm"
               ]
             },
             "mark": "element",

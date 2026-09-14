@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -18,12 +18,34 @@ describe('dashboard query architecture', () => {
   it('executes dashboard queries and subscriptions through the canonical data worker', () => {
     const worker = read('src/data-worker.js');
     const main = read('src/main.js');
+    const presenter = read('src/presenter.js');
+    const factoryOverview = read('src/components/factory-overview.js');
+    const presentationQueryFixture = read('test/workflow-inventory-query.js');
 
-    expect(worker).toContain('executeDashboardQueries(context.queries, canonicalPayload, requested');
+    expect(worker).toContain('executeDashboardQueries(context.queries, canonicalPayload, directRequests');
+    expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
     expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources|deriveDataHealthCalloutSources/);
     expect(worker).toContain("operation === 'subscribe-canonical-dashboard'");
     expect(main).toContain('subscribeCanonicalDashboardView(');
     expect(main).toContain('signal: options.signal');
+    expect(main).toContain('bindContinuations(pageId, sources, lazySources, options)');
+    expect(main).toMatch(/loadCanonicalDashboardPage\(requested, dashboardContext, pagination, \{[\s\S]{0,220}pageId,[\s\S]{0,220}routeParameters: options\.routeParameters,[\s\S]{0,220}queryContext: options\.queryContext/);
     expect(main).not.toMatch(/const loadPageSources = async[\s\S]{0,600}loadCanonicalDashboardPage/);
+    expect(presenter).not.toMatch(/filterDashboardSources|filterRowsForView|deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
+    expect(factoryOverview).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
+    expect(read('src/components/ui-elements.js')).not.toContain('filterRows');
+    expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");
+    expect(presentationQueryFixture).not.toMatch(/executeDashboardQueries|compileDashboardViewPayloadQueries|deriveDashboardLinkSources/);
+    for (const legacyModule of [
+      'inferred-sources.js',
+      'notification-stories.js',
+      'overview-data.js',
+      'repository-data.js',
+      'runtime-data.js',
+      'workflow-data.js',
+      'components/notifications-inbox.js'
+    ]) {
+      expect(existsSync(resolve('src', legacyModule))).toBe(false);
+    }
   });
 });

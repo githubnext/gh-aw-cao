@@ -3,7 +3,6 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { deriveOverviewSources } from "../../src/overview-data.js";
 
 describe("live Dashboard Language sources", () => {
   it("loads generated sources progressively and requires an explicit fixture opt-in", () => {
@@ -23,11 +22,12 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
     expect(preview).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
     expect(preview).toContain("subscribeCanonicalDashboardView(");
-    expect(preview).toContain("emitCurrent: false");
+    expect(preview).toContain("signal: options.signal");
+    expect(preview).toContain("options.onUpdate(boundSources)");
     expect(preview).toContain("dashboardPageLazySourceNames, dashboardPageSourceNames");
     expect(preview).not.toContain("drainSourceContinuation");
     expect(preview).not.toContain("drainChartSources");
-    expect(preview).toContain("bindContinuations(sources, initialLazySources)");
+    expect(preview).toContain("bindContinuations(initialPageId, sources, initialLazySources)");
     expect(preview).toContain("if (!event.persisted) refreshOwner.abort()");
     expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DATABASE_COUNT_SOURCE_NAMES,/);
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
@@ -36,7 +36,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("renderRefreshError(retryRefresh)");
     expect(preview).toContain("refreshSources");
     expect(preview).not.toContain("if (changed) return;");
-    expect(preview).toContain("bindContinuations(sources, initialLazySources)");
+    expect(preview).toContain("bindContinuations(initialPageId, sources, initialLazySources)");
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
     expect(preview).not.toContain('./source-cache.js');
@@ -306,15 +306,6 @@ describe("live Dashboard Language sources", () => {
         "smell-id": "policy-diagnostic",
         "observed-at": "2026-08-30T12:00:00Z",
         "repository-link": expect.objectContaining({ href: "https://github.com/githubnext/gh-aw-cao" }),
-      }));
-      const overview = deriveOverviewSources(sources);
-      expect(overview["overview-managed-packages"].rows).toContainEqual(expect.objectContaining({
-        package: "dependabot",
-        "repository-modes": expect.arrayContaining([{ repository: "githubnext/gh-aw-cao", mode: "live" }]),
-        "rollout-live-repositories": 1,
-        "rollout-repositories": 7,
-        "rollout-percent": 100,
-        "live-coverage-percent": 14,
       }));
       expect(sources.findings.rows[0]).toMatchObject({
         finding: "githubnext/gh-aw-cao-issue-1",

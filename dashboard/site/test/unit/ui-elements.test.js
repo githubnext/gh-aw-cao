@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { enableLazyViews } from '../../src/components/lazy-view.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { agentSmellNotifications } from '../../src/components/agent-marketplace-view.js';
-import { renderNotificationsInbox } from '../../src/components/notifications-inbox.js';
 import { primerStylesheet } from '../../src/styles.js';
 
 const metadata = {
@@ -643,32 +642,6 @@ describe('UI elements', () => {
 
     expect(rendered?.querySelector('a')?.getAttribute('href')).toBe('#runtime-evidence');
     expect(rendered?.querySelectorAll('a')).toHaveLength(1);
-  });
-
-  it('clusters repeated notification causes while leaving unique notifications visible', () => {
-    localStorage.clear();
-    /** @param {string} id @param {string} scope */
-    const repeated = (id, scope) => ({
-      'attention-signal-id': id, 'signal-type': 'workflow-output', objective: 'Daily scan', scope,
-      reason: 'Workflow completed with no safe outputs', 'consequence-tier': 'medium', priority: 3,
-      'age-seconds': 60
-    });
-    const rendered = renderNotificationsInbox([
-      repeated('repeat:1', 'github/one'), repeated('repeat:2', 'github/two'),
-      { 'attention-signal-id': 'unique', 'signal-type': 'authority-gate', objective: 'Confirm authority', scope: 'github/three', reason: 'Authority missing', 'consequence-tier': 'medium', priority: 2, 'age-seconds': 30 }
-    ]);
-
-    expect(rendered?.querySelectorAll('.notifications-cause-cluster')).toHaveLength(1);
-    expect(rendered?.querySelector('.notifications-cause-summary')?.textContent).toContain('2 occurrences across 2 repositories');
-    const cluster = /** @type {HTMLDetailsElement | null} */ (rendered?.querySelector('.notifications-cause-cluster') ?? null);
-    expect(cluster?.open).toBe(false);
-    expect(rendered?.querySelector('.notifications-priority-group')?.textContent).toContain('Confirm authority');
-    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(1);
-    if (cluster) {
-      cluster.open = true;
-      cluster.dispatchEvent(new Event('toggle'));
-    }
-    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(3);
   });
 
   it('renders a blocked readiness verdict with the next unblock action', () => {

@@ -10,10 +10,10 @@ import {
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
+import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
-import { deriveDashboardLinkSources } from './inferred-sources.js';
 
 /** @param {ReadableStream<Uint8Array>} body */
 async function* responseChunks(body) {
@@ -37,7 +37,7 @@ async function* responseChunks(body) {
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -128,9 +128,22 @@ function pageScopedSources(sources, requested) {
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
  * @param {{ aborted?: boolean }} [signal]
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {string} [pageId]
+ * @param {Record<string, string>} [routeParameters]
+ * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } }} [queryContext]
  * @param {typeof liveDashboard} [dashboard]
  */
-async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}, dashboard = liveDashboard) {
+async function queryLiveDashboard(
+  requested,
+  context,
+  requestContext,
+  signal,
+  pagination = {},
+  pageId,
+  routeParameters,
+  queryContext,
+  dashboard = liveDashboard
+) {
   dashboard ??= await loadActiveDashboard();
   const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
@@ -138,12 +151,29 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
     dashboard.logicalSources,
     required
   );
+  const page = pageId
+    ? context.pages.find((candidate) => candidate?.id === pageId)
+    : null;
+  const viewPayload = page && pageId
+    ? compileDashboardViewPayloadQueries(page, pageId, {
+        routeParameters,
+        queryContext,
+        queries: context.queries
+      })
+    : { aliases: [], queries: [], replacedSources: [] };
+  const replacedSources = new Set(viewPayload.replacedSources);
+  const directRequests = new Set([...requested].filter((name) => !replacedSources.has(name)));
   const querySources = {
     ...canonicalPayload,
-    ...executeDashboardQueries(context.queries, canonicalPayload, requested, { signal })
+    ...executeDashboardQueries(context.queries, canonicalPayload, directRequests, { signal })
   };
+  const viewAliases = viewPayload.queries.length > 0
+    ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal, pagination })
+    : {};
+  const selected = pageScopedSources(querySources, requested);
+  const responseSources = { ...selected, ...viewAliases };
   return paginateDashboardSources(
-    deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
+    responseSources,
     /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
     continuationRevision(context.queries, dashboard.revision)
   );
@@ -187,6 +217,9 @@ async function flushDashboardSubscriptions() {
             subscription.requestContext,
             undefined,
             pagination,
+            subscription.pageId,
+            subscription.routeParameters,
+            subscription.queryContext,
             dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
@@ -235,7 +268,7 @@ function dashboardContext(value) {
   return {
     githubUrlBase: typeof context.githubUrlBase === 'string' && context.githubUrlBase
       ? context.githubUrlBase : 'https://github.com',
-    pages: /** @type {import('./inferred-sources.js').DashboardPage[]} */ (context.pages),
+    pages: /** @type {Array<{ id: string, kind: 'built-in' | 'custom', route?: { ['hash-query-parameter']?: string } }>} */ (context.pages),
     queries: /** @type {unknown[]} */ (context.queries ?? [])
   };
 }
@@ -251,7 +284,7 @@ function publishedPayloadIdentity(hashes, fileName) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -264,7 +297,10 @@ export function processDataRequest(request, signal) {
       context,
       /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
       signal,
-      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
+      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
+      typeof request.pageId === 'string' ? request.pageId : undefined,
+      routeParameters(request.routeParameters),
+      queryContext(request.queryContext)
     );
   }
   if (request?.operation === 'load-canonical-dashboard') {
@@ -402,7 +438,10 @@ export function processDataRequest(request, signal) {
           context,
           /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
           signal,
-          /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
+          /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
+          typeof request.pageId === 'string' ? request.pageId : undefined,
+          routeParameters(request.routeParameters),
+          queryContext(request.queryContext)
         );
         return request.reportActivation
           ? { sources: projected, changed }
@@ -419,15 +458,19 @@ export function processDataRequest(request, signal) {
     if (!Array.isArray(request.queries)) {
       throw new TypeError('Dashboard query requests require a queries array.');
     }
-    return executeDashboardQueries(
+    const requested = request.sourceNames === undefined
+      ? undefined
+      : requestedSourceNames(request.sourceNames);
+    const querySources = executeDashboardQueries(
       request.queries,
       /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources),
-      undefined,
+      requested,
       {
         signal,
         pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       }
     );
+    return querySources;
   }
   if (request?.operation === 'summarize-table-columns') {
     if (!Array.isArray(request.columns)) {
@@ -486,6 +529,9 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
         context,
         requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
         pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
+        pageId: typeof event.data.pageId === 'string' ? event.data.pageId : undefined,
+        routeParameters: routeParameters(event.data.routeParameters),
+        queryContext: queryContext(event.data.queryContext),
         revision: liveDashboard?.revision ?? null
       });
       if (liveDashboard && event.data.emitCurrent !== false) {
@@ -527,4 +573,38 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
       settle(failure(error));
     }
   });
+}
+
+/** @param {unknown} value */
+function routeParameters(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([, item]) => typeof item === 'string')
+    .map(([key, item]) => [key, String(item)]));
+}
+
+/** @param {unknown} value */
+function queryContext(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const context = /** @type {{ filters?: unknown, timeWindow?: unknown }} */ (value);
+  const filters = context.filters && typeof context.filters === 'object' && !Array.isArray(context.filters)
+    ? Object.fromEntries(Object.entries(context.filters)
+      .map(([field, candidates]) => [field, Array.isArray(candidates)
+        ? candidates.filter((item) => typeof item === 'string').map(String)
+        : []])
+      .filter(([, candidates]) => candidates.length > 0))
+    : undefined;
+  const rawTimeWindow = context.timeWindow && typeof context.timeWindow === 'object' && !Array.isArray(context.timeWindow)
+    ? /** @type {Record<string, unknown>} */ (context.timeWindow)
+    : null;
+  const timeWindow = rawTimeWindow
+    ? {
+        start: typeof rawTimeWindow.start === 'string' ? rawTimeWindow.start : undefined,
+        end: typeof rawTimeWindow.end === 'string' ? rawTimeWindow.end : undefined
+      }
+    : undefined;
+  return {
+    ...(filters ? { filters } : {}),
+    ...(timeWindow?.start || timeWindow?.end ? { timeWindow } : {})
+  };
 }

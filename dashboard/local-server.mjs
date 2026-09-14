@@ -476,10 +476,15 @@ function redactJsonSecrets(source) {
 
 async function redactJsonlSecretsFile(sourcePath, destinationPath) {
   const decoder = new TextDecoder();
+  const hash = createHash("sha256");
   let pending = "";
   const redactLine = (line) => line.trim()
     ? JSON.stringify(JSON.parse(redactJsonSecrets(line)))
     : "";
+  const emit = (stream, content) => {
+    hash.update(content);
+    stream.push(content);
+  };
   const redactor = new Transform({
     transform(chunk, _encoding, callback) {
       try {
@@ -487,7 +492,7 @@ async function redactJsonlSecretsFile(sourcePath, destinationPath) {
         let newline;
         while ((newline = pending.indexOf("\n")) !== -1) {
           const line = pending.slice(0, newline).replace(/\r$/, "");
-          this.push(`${redactLine(line)}\n`);
+          emit(this, `${redactLine(line)}\n`);
           pending = pending.slice(newline + 1);
         }
         callback();
@@ -498,7 +503,7 @@ async function redactJsonlSecretsFile(sourcePath, destinationPath) {
     flush(callback) {
       try {
         pending += decoder.decode();
-        if (pending) this.push(redactLine(pending));
+        if (pending) emit(this, redactLine(pending));
         callback();
       } catch (error) {
         callback(error);
@@ -506,6 +511,7 @@ async function redactJsonlSecretsFile(sourcePath, destinationPath) {
     },
   });
   await pipeline(createReadStream(sourcePath), redactor, createWriteStream(destinationPath));
+  return hash.digest("hex");
 }
 
 function redactedLogValue(value) {
@@ -1472,6 +1478,7 @@ export async function startDashboardServer({
   let sourceManifestContent;
   let viewerContent;
   let ghAwLogsPath;
+  let payloadHashesContent;
   let inventorySourcesContent;
   const splitSourceContent = new Map();
   try {
@@ -1479,10 +1486,11 @@ export async function startDashboardServer({
     const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
     if (canonicalDataDirectory) {
       ghAwLogsPath = join(temporaryDirectory, "gh-aw-logs.jsonl");
-      await redactJsonlSecretsFile(
+      const ghAwLogsHash = await redactJsonlSecretsFile(
         join(canonicalDataDirectory, "gh-aw-logs.jsonl"),
         ghAwLogsPath,
       );
+      payloadHashesContent = JSON.stringify({ "gh-aw-logs.jsonl": ghAwLogsHash });
       inventorySourcesContent = redactJsonSecrets(
         await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
       );
@@ -2114,6 +2122,14 @@ export async function startDashboardServer({
           return;
         }
         await sendFileContent(request, response, contentTypes.get(".jsonl"), ghAwLogsPath);
+        return;
+      }
+      if (pathname === "/payload-hashes.json") {
+        if (payloadHashesContent === undefined) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        sendContent(request, response, contentTypes.get(".json"), payloadHashesContent);
         return;
       }
       if (pathname === "/inventory-sources.json") {

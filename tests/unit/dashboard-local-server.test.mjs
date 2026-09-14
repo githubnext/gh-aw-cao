@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
@@ -797,10 +798,15 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
     const logsResponse = await fetch(`${preview.url}/gh-aw-logs.jsonl`);
     assert.equal(logsResponse.status, 200);
     assert.equal(logsResponse.headers.get("content-type"), "application/x-ndjson; charset=utf-8");
-    assert.deepEqual(JSON.parse((await logsResponse.text()).trim()), {
+    const logsContent = await logsResponse.text();
+    assert.deepEqual(JSON.parse(logsContent.trim()), {
       schema_version: 2,
       repository: "acme/control",
       token: "[REDACTED]",
+    });
+    const hashesResponse = await fetch(`${preview.url}/payload-hashes.json`);
+    assert.deepEqual(await hashesResponse.json(), {
+      "gh-aw-logs.jsonl": createHash("sha256").update(logsContent).digest("hex"),
     });
     const inventoryResponse = await fetch(`${preview.url}/inventory-sources.json`);
     assert.deepEqual(await inventoryResponse.json(), {

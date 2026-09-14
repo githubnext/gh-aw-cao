@@ -40,7 +40,6 @@ import { renderFactoryOverview } from './factory-overview.js';
  *   element?: string,
  *   viewId?: string,
  *   elementConfig?: { body?: string, sections?: string[], section?: string },
- *   filterRows?: (rows: Array<Record<string, unknown>>) => Array<Record<string, unknown>>,
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -76,11 +75,8 @@ const ELEMENT_RENDERERS = new Map([
   ['outcomes-overview', renderFactoryOverview]
 ]);
 
-/**
- * Elements that bind each declared source to its own reactive state and load it
- * asynchronously, so their page renders before any query resolves.
- */
-const ASYNC_SOURCE_ELEMENTS = new Set(['outcomes-overview']);
+/** Elements that load declared sources independently of the active page subscription. */
+const ASYNC_SOURCE_ELEMENTS = new Set();
 
 /**
  * Reports whether an element loads its declared sources on its own.

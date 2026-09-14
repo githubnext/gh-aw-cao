@@ -432,6 +432,13 @@ test('data worker queries retained canonical data before downloading sources', a
         name: 'cached-run-totals',
         from: 'runs',
         aggregate: { values: [{ field: 'run', as: 'runs', reducer: 'distinct-count' }] }
+      }, {
+        name: 'overview-attention-domains',
+        from: 'source-metadata',
+        select: [
+          { field: 'source', as: 'domain' },
+          { field: 'row-count', as: 'value' }
+        ]
       }]
     };
     const retained = await loadCanonicalDashboardPage(
@@ -454,7 +461,10 @@ test('data worker queries retained canonical data before downloading sources', a
     rows: [{ runs: 1 }],
     metadata: { 'source-kind': 'derived', 'query-name': 'cached-run-totals' }
   });
-  expect(result.retained['overview-attention-domains']).toBeUndefined();
+  expect(result.retained['overview-attention-domains']).toMatchObject({
+    rows: [],
+    metadata: { availability: 'empty', 'source-kind': 'derived' }
+  });
   expect(result.refreshed.changed).toBe(false);
   expect(result.refreshed.sources['overview-attention-domains']).toBeDefined();
 });

@@ -1407,10 +1407,10 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       }
       const seenSources = new Set();
       for (const sourceName of data.sources) {
-        if (typeof sourceName !== 'string' || !SOURCE_VALUES.includes(sourceName)) {
+        if (typeof sourceName !== 'string' || (!SOURCE_VALUES.includes(sourceName) && !declaredQueries.has(sourceName))) {
           errors.push(createError(
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-            'source must use one canonical Section 5.1 source name.',
+            'source must use one canonical Section 5.1 source name or one declared query name.',
             `${viewPath}.data.sources`
           ));
           continue;
@@ -1423,8 +1423,10 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
           ));
         }
         seenSources.add(sourceName);
-        const coverageSource = sourceName;
-        sourceFieldCoverage.set(coverageSource, new Set(getBuiltInRequiredFields(pageName, coverageSource)));
+        const coverageSources = new Set([sourceName, ...(declaredQuerySources.get(sourceName) ?? [])]);
+        for (const coverageSource of coverageSources) {
+          sourceFieldCoverage.set(coverageSource, new Set(getBuiltInRequiredFields(pageName, coverageSource)));
+        }
       }
       continue;
     }
@@ -2997,7 +2999,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
                 `${argumentPath}.field`,
                 typeof computed.function !== 'string' ? 'read'
                   : NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function) ? 'numeric'
-                    : computed.function === 'coalesce' ? 'read' : 'scalar'
+                    : ['coalesce', 'dashboard-link'].includes(computed.function) ? 'read' : 'scalar'
               );
             } else if (!['string', 'number', 'boolean'].includes(typeof argument.value)) {
               errors.push(createError(

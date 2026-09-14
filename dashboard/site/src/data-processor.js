@@ -22,6 +22,9 @@ const pending = new Map();
  *   id: string,
  *   sourceNames: string[],
  *   context: { githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] },
+ *   pageId?: string,
+ *   routeParameters?: Record<string, string>,
+ *   queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } },
  *   pagination?: Record<string, { limit: number, continuationToken?: string }>,
  *   listeners: Set<SubscriptionListener>,
  *   registeredWorker: Worker | null,
@@ -146,11 +149,12 @@ export function processDashboardQueries(queries, sources, options = {}) {
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
-export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination) {
+export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination },
+    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination, ...options },
     () => Promise.reject(new Error('Live canonical dashboard loading requires a data worker.')),
     false
   ));
@@ -162,11 +166,12 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
  * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
  */
-export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination) {
+export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
   return /** @type {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>} */ (processRequest(
-    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination, reportActivation: true },
+    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination, reportActivation: true, ...options },
     () => Promise.reject(new Error('Live canonical dashboard refresh requires a data worker.')),
     false
   ));
@@ -177,11 +182,12 @@ export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
-export function loadCanonicalDashboardPage(sourceNames, context, pagination) {
+export function loadCanonicalDashboardPage(sourceNames, context, pagination, options = {}) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'query-canonical-dashboard', sourceNames, context, pagination },
+    { operation: 'query-canonical-dashboard', sourceNames, context, pagination, ...options },
     () => Promise.reject(new Error('Live canonical dashboard queries require a data worker.')),
     false
   ));
@@ -197,7 +203,7 @@ export function loadCanonicalDashboardPage(sourceNames, context, pagination) {
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] }} context
  * @param {(sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void} listener
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ signal?: AbortSignal, onError?: (error: Error) => void, emitCurrent?: boolean }} [options]
+ * @param {{ signal?: AbortSignal, onError?: (error: Error) => void, emitCurrent?: boolean, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
  * @returns {() => void}
  */
 export function subscribeCanonicalDashboardView(viewId, sourceNames, context, listener, pagination, options = {}) {
@@ -213,7 +219,7 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
   if (options.signal?.aborted) return () => {};
   let subscription = subscriptions.get(viewId);
   if (subscription) {
-    if (!sameSubscription(subscription, sourceNames, context, pagination)) {
+    if (!sameSubscription(subscription, sourceNames, context, pagination, options)) {
       throw new Error(`Canonical dashboard view ${viewId} is already subscribed with different query parameters.`);
     }
   } else {
@@ -221,6 +227,9 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
       id: viewId,
       sourceNames: [...sourceNames],
       context,
+      pageId: options.pageId,
+      routeParameters: options.routeParameters,
+      queryContext: options.queryContext,
       pagination,
       listeners: new Set(),
       registeredWorker: null,
@@ -273,12 +282,40 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
   return unsubscribe;
 }
 
-/** @param {ViewSubscription} subscription @param {string[]} sourceNames @param {ViewSubscription['context']} context @param {ViewSubscription['pagination']} pagination */
-function sameSubscription(subscription, sourceNames, context, pagination) {
+/** @param {ViewSubscription} subscription @param {string[]} sourceNames @param {ViewSubscription['context']} context @param {ViewSubscription['pagination']} pagination @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options] */
+function sameSubscription(subscription, sourceNames, context, pagination, options = {}) {
   return sameContext(subscription.context, context)
     && samePagination(subscription.pagination, pagination)
+    && sameStringMap(subscription.routeParameters, options.routeParameters)
+    && sameQueryContext(subscription.queryContext, options.queryContext)
+    && subscription.pageId === options.pageId
     && subscription.sourceNames.length === sourceNames.length
     && subscription.sourceNames.every((name, index) => name === sourceNames[index]);
+}
+
+/** @param {Record<string, string> | undefined} left @param {Record<string, string> | undefined} right */
+function sameStringMap(left, right) {
+  if (left === right) return true;
+  const leftEntries = Object.entries(left ?? {});
+  const rightEntries = Object.entries(right ?? {});
+  return leftEntries.length === rightEntries.length
+    && leftEntries.every(([key, value]) => right?.[key] === value);
+}
+
+/** @param {ViewSubscription['queryContext']} left @param {ViewSubscription['queryContext']} right */
+function sameQueryContext(left, right) {
+  if (left === right) return true;
+  const leftFilters = left?.filters ?? {};
+  const rightFilters = right?.filters ?? {};
+  const sameFilters = Object.keys(leftFilters).length === Object.keys(rightFilters).length
+    && Object.entries(leftFilters).every(([field, values]) => {
+      const candidate = rightFilters[field] ?? [];
+      return candidate.length === values.length
+        && candidate.every((value, index) => value === values[index]);
+    });
+  if (!sameFilters) return false;
+  return left?.timeWindow?.start === right?.timeWindow?.start
+    && left?.timeWindow?.end === right?.timeWindow?.end;
 }
 
 /** @param {ViewSubscription['context']} left @param {ViewSubscription['context']} right */
@@ -312,6 +349,9 @@ function registerSubscription(processor, subscription) {
     subscriptionId: subscription.id,
     sourceNames: subscription.sourceNames,
     context: subscription.context,
+    pageId: subscription.pageId,
+    routeParameters: subscription.routeParameters,
+    queryContext: subscription.queryContext,
     pagination: subscription.pagination,
     emitCurrent: subscription.emitCurrent
   });

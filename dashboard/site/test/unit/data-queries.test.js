@@ -1703,6 +1703,29 @@ describe('computed field vocabulary', () => {
     expect(compute('if', [{ value: true }, { value: 'yes' }, { value: 'no' }])).toBe('yes');
   });
 
+  it('builds dashboard links while preserving external link metadata', () => {
+    expect(compute('dashboard-link', [
+      { field: 'link' },
+      { value: '#page-repository-detail?repository=octo%2Frepo' },
+      { value: 'View octo/repo repository dashboard' },
+      { value: 'octo/repo' }
+    ], {
+      link: { relation: 'repository', href: 'https://github.com/octo/repo', label: 'View octo/repo on GitHub' }
+    })).toEqual({
+      relation: 'repository',
+      href: 'https://github.com/octo/repo',
+      label: 'View octo/repo on GitHub',
+      'dashboard-href': '#page-repository-detail?repository=octo%2Frepo',
+      'dashboard-label': 'View octo/repo repository dashboard'
+    });
+    expect(compute('dashboard-link', [
+      { field: 'missing' },
+      { value: '#page-package-insights?package=' },
+      { value: 'View package dashboard' },
+      { value: '' }
+    ])).toBeNull();
+  });
+
   it('evaluates every numeric function and returns null for unusable inputs', () => {
     expect(compute('number', [{ value: '12' }])).toBe(12);
     expect(compute('sum', [{ value: 1 }, { value: 2 }, { value: 3 }])).toBe(6);

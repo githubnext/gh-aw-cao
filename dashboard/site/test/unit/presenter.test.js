@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames } from '../../src/presenter.js';
+import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames } from '../../src/presenter.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
@@ -31,6 +31,20 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
+  it('loads the factory overview through one page-scoped worker subscription', () => {
+    expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
+      'overview-outcome-summary',
+      'overview-run-summary',
+      'overview-dispatch-summary',
+      'overview-value-summary',
+      'overview-repository-summary',
+      'overview-capacity-summary',
+      'overview-worker-summary',
+      'overview-rhythm',
+      'data-health-collections'
+    ]);
+  });
+
   it('reports the paginated source shared by the runs page views', () => {
     const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
     expect(lazySourceNames).toContain('runs-table');

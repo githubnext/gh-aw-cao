@@ -957,16 +957,26 @@
            * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
            * @param {string[]} sourceNames
            */
-          const bindContinuations = (sources, sourceNames) => bindSourceContinuations(
+          /**
+           * @param {string} pageId
+           * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+           * @param {string[]} sourceNames
+           * @param {{ routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} [options]
+           */
+          const bindContinuations = (pageId, sources, sourceNames, options = {}) => bindSourceContinuations(
             sources,
             sourceNames,
             (requested, pagination) => runWithLoadingProgress(
-              () => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+              () => loadCanonicalDashboardPage(requested, dashboardContext, pagination, {
+                pageId,
+                routeParameters: options.routeParameters,
+                queryContext: options.queryContext,
+              }),
             ),
           );
           /**
            * @param {string} pageId
-           * @param {{ signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }} options
+           * @param {{ signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } } }} options
            */
           const loadPageSources = (pageId, options) => {
             const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);
@@ -981,7 +991,7 @@
                 sourceNames,
                 dashboardContext,
                 (sources) => {
-                  const boundSources = bindContinuations(sources, lazySources);
+                  const boundSources = bindContinuations(pageId, sources, lazySources, options);
                   if (!receivedInitialSnapshot) {
                     receivedInitialSnapshot = true;
                     options.signal.removeEventListener('abort', abort);
@@ -993,6 +1003,9 @@
                 pagination,
                 {
                   signal: options.signal,
+                  pageId,
+                  routeParameters: options.routeParameters,
+                  queryContext: options.queryContext,
                   onError: (error) => {
                     if (!receivedInitialSnapshot) {
                       options.signal.removeEventListener('abort', abort);
@@ -1018,6 +1031,7 @@
            * @param {(sourceNames: string[], pagination: Record<string, { limit: number, continuationToken?: string }>) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} load
            */
           const loadInitialSources = async (load) => bindContinuations(
+            initialPageId,
             await load(
               initialSources,
               continuationRequests(initialLazySources),
@@ -1082,7 +1096,7 @@
                   });
                   refreshBoundSources();
                   renderSources(
-                    bindContinuations(sources, initialLazySources),
+                    bindContinuations(initialPageId, sources, initialLazySources),
                     "ready",
                     true,
                     loadPageSources,

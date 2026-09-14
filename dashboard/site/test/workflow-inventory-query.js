@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { executeDashboardQueries } from '../src/data/queries/declarative.js';
+import { processDataRequest } from '../src/data-worker.js';
 
-const authoritativeQueries = JSON.parse(
+const authoritativeDashboard = JSON.parse(
   readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
-).dashboard.queries;
+).dashboard;
+const authoritativeQueries = authoritativeDashboard.queries;
 
 /**
  * Applies the authoritative declarative queries the way the data worker does, so
@@ -14,5 +15,15 @@ const authoritativeQueries = JSON.parse(
  * @returns {Record<string, import('../src/presenter.js').LogicalSourceInput>}
  */
 export function applyDashboardQueries(sources, requested = ['workflow-inventory']) {
-  return { ...sources, ...executeDashboardQueries(authoritativeQueries, sources, requested) };
+  return /** @type {Record<string, import('../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+    operation: 'execute-dashboard-queries',
+    queries: authoritativeQueries,
+    sources,
+    sourceNames: requested,
+    context: {
+      githubUrlBase: authoritativeDashboard['github-url-base'],
+      pages: authoritativeDashboard.pages,
+      queries: authoritativeQueries
+    }
+  }));
 }

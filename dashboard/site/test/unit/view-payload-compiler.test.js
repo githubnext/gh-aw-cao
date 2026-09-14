@@ -1,0 +1,93 @@
+import { expect, it } from 'vitest';
+import { tidy } from '../../src/data-operations.js';
+import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
+import {
+  compileDashboardViewPayloadQueries,
+  dashboardViewAliasName
+} from '../../src/data/queries/view-payload-compiler.js';
+
+/** @type {import('../../src/presenter.js').SourceMetadata} */
+const metadata = {
+  'source-id': 'fixture',
+  'source-kind': 'fixture',
+  'as-of': '2026-09-11T12:00:00Z',
+  'retrieved-at': '2026-09-11T12:00:00Z',
+  availability: 'available',
+  completeness: 'complete',
+  freshness: 'fresh'
+};
+
+it('compiles distinct aliases when two views filter the same source differently', () => {
+  const page = {
+    views: [
+      { id: 'successes', data: { source: 'runs', filters: { 'run-conclusion': 'success' } } },
+      { id: 'failures', data: { source: 'runs', filters: { 'run-conclusion': 'failure' } } }
+    ]
+  };
+  const payload = compileDashboardViewPayloadQueries(page, 'operations');
+  const sources = {
+    runs: {
+      source: 'runs',
+      rows: [{ run: '1', 'run-conclusion': 'success' }, { run: '2', 'run-conclusion': 'failure' }],
+      metadata
+    }
+  };
+  const results = executeDashboardQueries(payload.queries, sources, payload.aliases);
+
+  expect(results[dashboardViewAliasName('operations', page.views[0], 0, 'runs')].rows).toEqual([sources.runs.rows[0]]);
+  expect(results[dashboardViewAliasName('operations', page.views[1], 1, 'runs')].rows).toEqual([sources.runs.rows[1]]);
+});
+
+it('injects route and runtime predicates before a declared aggregate executes', () => {
+  const page = {
+    route: { 'hash-query-parameter': 'repository' },
+    views: [{
+      id: 'run-total',
+      data: { source: 'successful-run-total', 'route-field': 'repository' }
+    }]
+  };
+  const definitions = [{
+    name: 'successful-run-total',
+    from: 'runs',
+    filter: { predicates: [{ field: 'run-conclusion', equals: 'success' }] },
+    aggregate: { values: [{ field: 'run', as: 'count', reducer: 'count' }] }
+  }];
+  const payload = compileDashboardViewPayloadQueries(page, 'repository', {
+    queries: definitions,
+    routeParameters: { repository: 'alpha' },
+    queryContext: {
+      filters: { mode: ['live'] },
+      timeWindow: { start: '2026-09-01T00:00:00Z', end: '2026-10-01T00:00:00Z' }
+    }
+  });
+  const results = executeDashboardQueries(payload.queries, {
+    runs: {
+      source: 'runs',
+      rows: [
+        { run: '1', repository: 'alpha', 'run-conclusion': 'success', 'rollout-mode': 'live', 'started-at': '2026-09-10T00:00:00Z' },
+        { run: '2', repository: 'alpha', 'run-conclusion': 'success', 'rollout-mode': 'review', 'started-at': '2026-09-10T00:00:00Z' },
+        { run: '3', repository: 'alpha', 'run-conclusion': 'success', 'rollout-mode': 'live', 'started-at': '2026-08-10T00:00:00Z' },
+        { run: '4', repository: 'beta', 'run-conclusion': 'success', 'rollout-mode': 'live', 'started-at': '2026-09-10T00:00:00Z' }
+      ],
+      metadata
+    }
+  }, payload.aliases);
+
+  expect(results[payload.aliases[0]].rows).toEqual([{ count: 1 }]);
+});
+
+it('supports optional filters, temporal bounds, and UTC-day computation in row operators', () => {
+  const rows = tidy([
+    { id: 'missing-mode', 'started-at': '2026-09-10T23:30:00-02:00' },
+    { id: 'review', mode: 'review', 'started-at': '2026-09-09T00:00:00Z' },
+    { id: 'old', 'started-at': '2026-08-01T00:00:00Z' }
+  ], [
+    { op: 'filter', predicates: [
+      { field: 'mode', in: ['live'], optional: true },
+      { field: '@time', gte: '2026-09-01T00:00:00Z', lt: '2026-10-01T00:00:00Z' }
+    ] },
+    { op: 'compute', values: [{ as: 'day', function: 'date-day', args: [{ field: 'started-at' }] }] }
+  ]);
+
+  expect(rows).toEqual([{ id: 'missing-mode', 'started-at': '2026-09-10T23:30:00-02:00', day: '2026-09-11' }]);
+});

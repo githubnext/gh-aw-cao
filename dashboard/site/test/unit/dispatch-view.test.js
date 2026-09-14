@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { renderDashboard } from '../../src/presenter.js';
+import { applyDashboardQueries } from '../workflow-inventory-query.js';
 
 const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
 const dispatchPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'dispatches');
@@ -26,7 +27,7 @@ describe('declarative dispatch view', () => {
           pages: [dispatchPage]
         }
       },
-      sources: {
+      sources: applyDashboardQueries({
         workflows: {
           source: 'workflows',
           metadata,
@@ -41,7 +42,7 @@ describe('declarative dispatch view', () => {
             { organization: 'githubnext', repository: 'control', workflow: 'worker.yml', run: '3', event: 'workflow_dispatch', 'run-title': 'Update dependencies', 'started-at': '2026-08-30T07:00:00Z', 'run-conclusion': 'action-required', 'run-link': { relation: 'run', href: 'https://github.com/githubnext/control/actions/runs/3', label: 'Run 3' } }
           ]
         }
-      }
+      }, ['dispatches'])
     });
 
     const dispatchTable = dispatchPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-worker-dispatches');
@@ -86,7 +87,7 @@ describe('declarative dispatch view', () => {
     expect(started?.getAttribute('title')).toBe('Aug 30, 2026, 7:00 AM UTC');
     expect(started?.getAttribute('aria-label')).toContain('Aug 30, 2026, 7:00 AM UTC');
     expect(rendered.querySelector('tbody td a[href="https://github.com/githubnext/control/actions/runs/3"]')).not.toBeNull();
-    expect(rendered.querySelector('a[href="https://github.com/githubnext/control/blob/HEAD/worker.yml"]')?.textContent).toBe('Dependency updater');
-    expect(rendered.querySelector('a[href="https://github.com/githubnext/control"]')?.textContent).toBe('githubnext/control');
+    expect(rendered.querySelector('a[href="#page-workflow-runtime?workflow=githubnext%2Fcontrol%3Aworker.yml"]')?.textContent).toBe('Dependency updater');
+    expect(rendered.querySelector('a[href="#page-repository-detail?repository=githubnext%2Fcontrol"]')?.textContent).toBe('githubnext/control');
   });
 });
