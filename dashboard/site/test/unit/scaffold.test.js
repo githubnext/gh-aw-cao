@@ -29,7 +29,13 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
     expect(preview).toContain('<link rel="apple-touch-icon" href="./apple-touch-icon.png">');
     expect(preview).toContain('<link rel="manifest" href="./manifest.webmanifest">');
+    expect(preview).toContain('<meta name="application-name" content="Central Agentic Ops Dashboard">');
     expect(preview).toContain('<meta name="theme-color" content="#0d1117">');
+    expect(preview).toContain('<meta name="mobile-web-app-capable" content="yes">');
+    expect(preview).toContain('<meta name="apple-mobile-web-app-capable" content="yes">');
+    expect(preview).toContain('<meta name="apple-mobile-web-app-title" content="Agentic Ops">');
+    expect(preview).toContain('<meta name="apple-mobile-web-app-status-bar-style" content="black">');
+    expect(preview).toContain('content="Monitor and operate GitHub Agentic Workflows from a unified dashboard."');
     expect(manifest).toMatchObject({
       id: './',
       start_url: './',
