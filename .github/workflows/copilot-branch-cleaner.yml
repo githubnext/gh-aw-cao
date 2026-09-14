@@ -32,7 +32,12 @@ jobs:
         with:
           script: |
             const dryRun = process.env.DRY_RUN === 'true'
-            const refPrefix = 'refs/heads/copilot/'
+            // The GraphQL `refs` field only accepts a top-level ref prefix
+            // such as `refs/heads/` or `refs/tags/`; sub-paths like
+            // `refs/heads/copilot/` silently match nothing. Query all
+            // branches and filter by the `copilot/` name prefix ourselves.
+            const refPrefix = 'refs/heads/'
+            const branchNamePrefix = 'copilot/'
             const zeroOid = '0000000000000000000000000000000000000000'
             const candidates = []
             let cursor
@@ -87,6 +92,9 @@ jobs:
               repositoryId = repository.id
 
               for (const ref of repository.refs.nodes) {
+                if (!ref.name.startsWith(branchNamePrefix)) {
+                  continue
+                }
                 if (ref.open.totalCount === 0 && ref.terminal.totalCount > 0) {
                   candidates.push({
                     name: ref.name,

@@ -11,7 +11,9 @@ test("Copilot branch cleaner batches discovery and starts in dry-run mode", () =
 
   assert.match(source, /cron: "23 \* \* \* \*"/);
   assert.match(source, /COPILOT_BRANCH_CLEANER_DRY_RUN != 'false'/);
-  assert.match(source, /refPrefix = 'refs\/heads\/copilot\/'/);
+  assert.match(source, /refPrefix = 'refs\/heads\/'/);
+  assert.match(source, /branchNamePrefix = 'copilot\/'/);
+  assert.match(source, /ref\.name\.startsWith\(branchNamePrefix\)/);
   assert.match(source, /terminal: associatedPullRequests\([\s\S]*?states: \[MERGED, CLOSED\]/);
   assert.match(source, /open: associatedPullRequests\(first: 1, states: \[OPEN\]\)/);
   assert.match(source, /ref\.open\.totalCount === 0 && ref\.terminal\.totalCount > 0/);
