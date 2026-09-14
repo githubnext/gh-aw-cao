@@ -14,13 +14,6 @@ run_limit="${REPORT_RUN_LIMIT:-10}"
 
 mkdir -p "$output_directory" "$shard_directory" "$(dirname "$logs_path")" "$(dirname "$exit_code_path")"
 
-# Seed the wildcard shard cache with the previously consolidated snapshot so
-# the `--cached-logs` invocation below can reuse it without rediscovering
-# known runs.
-if [[ -s "$logs_path" ]]; then
-  cp "$logs_path" "${shard_prefix}0.jsonl"
-fi
-
 targets=()
 for workflow_path in "$root"/.github/workflows/*.lock.yml; do
   [[ -f "$workflow_path" ]] || continue
@@ -47,13 +40,15 @@ set -e
 
 printf '%s\n' "$exit_code" > "$exit_code_path"
 
-# Consolidate the wildcard shards back into the single-file snapshot contract
+# The wildcard shard directory is persisted by the caller (mirroring the
+# activity cache managed by cao-activity.yml) so `--cached-logs` reuses known
+# runs across invocations; out-of-range shards are pruned by `--cache-before`.
+# Reconsolidate the current shards into the single-file snapshot contract
 # that downstream consumers (activity/logs.mjs and its cached-run fallback)
-# expect, then discard the transient shard directory.
+# expect.
 shopt -s nullglob
 shards=("${shard_prefix}"*.jsonl)
 shopt -u nullglob
 if [[ ${#shards[@]} -gt 0 ]]; then
   cat "${shards[@]}" > "$logs_path"
 fi
-rm -rf "$shard_directory"

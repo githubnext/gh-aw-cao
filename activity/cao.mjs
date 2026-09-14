@@ -34,7 +34,7 @@ const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doc
 
 const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao ingest-jsonl [--database FILE] [--input GH_AW_LOGS_JSONL] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao ingest-jsonl [--database FILE] [--input GH_AW_LOGS_JSONL | --input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input GH_AW_LOGS_JSONL]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
@@ -314,6 +314,38 @@ export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirector
   }, options);
 }
 
+/**
+ * Ingests every `--cached-logs` wildcard shard file in a directory one by
+ * one, using a payload scope derived from each shard's file name so the
+ * transactions table can skip shards whose content hash was already
+ * recorded instead of reprocessing the entire shard set on every run.
+ */
+async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}) {
+  let shardNames = [];
+  try {
+    shardNames = (await readdir(shardDirectory))
+      .filter((name) => name.endsWith('.jsonl'))
+      .sort();
+  } catch (error) {
+    if (error && error.code === 'ENOENT') shardNames = [];
+    else throw error;
+  }
+  const shards = [];
+  let updated = false;
+  let committedRecords = 0;
+  for (const name of shardNames) {
+    const shardPath = path.join(shardDirectory, name);
+    const result = await ingestCachedGhAwJsonl(indexedDB, createReadStream(shardPath), {
+      ...options,
+      payloadScope: `gh-aw-jsonl:${name}`
+    });
+    if (result.updated) updated = true;
+    committedRecords += result.committedRecords ?? 0;
+    shards.push({ shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
+  }
+  return { updated, committedRecords, shards };
+}
+
 export async function queryCanonicalData(indexedDB, options) {
   const collection = option(options, 'collection');
   if (!QUERY_COLLECTIONS.includes(collection)) {
@@ -452,18 +484,28 @@ export async function runCli(arguments_, input = process.stdin) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input', 'context', 'retention-days', 'run-retention-days']);
+    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
+    const inputDirectory = option(options, 'input-dir', false);
+    if (inputDirectory && option(options, 'input', false)) {
+      throw new Error('Options --input and --input-dir cannot be combined');
+    }
     const contextPath = option(options, 'context', false);
+    const context = contextPath
+      ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
+      : undefined;
+    const ingestOptions = {
+      retentionWindowMs: retentionWindowMs(options),
+      retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
+      context
+    };
+    if (inputDirectory) {
+      const result = await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory), ingestOptions);
+      return { result, counts: await databaseCounts(indexedDB) };
+    }
     const result = await ingestCachedGhAwJsonl(
       indexedDB,
       createReadStream(path.resolve(option(options, 'input', false) || DEFAULT_LOGS_PATH)),
-      {
-        retentionWindowMs: retentionWindowMs(options),
-        retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
-        context: contextPath
-          ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
-          : undefined
-      }
+      ingestOptions
     );
     return { result, counts: await databaseCounts(indexedDB) };
   }
