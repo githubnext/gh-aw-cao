@@ -4,10 +4,10 @@ set -euo pipefail
 
 export LC_ALL=C
 
-WORKFLOW_NAME="AW Optimization / AI Credit Audit"
+WORKFLOW_NAME="CAO Evolution / AI Credit Audit"
 MATURATION_SECONDS=86400
 
-tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/optimization-ai-credit-auditor-value.XXXXXX")
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/cao-evolution-ai-credit-auditor-value.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 
 definition() {
@@ -16,8 +16,8 @@ definition() {
   "schemaVersion": 4,
   "grader": "operational-value",
   "repository": "githubnext/gh-aw-cao",
-  "workflowName": "AW Optimization / AI Credit Audit",
-  "sourcePath": ".github/workflows/optimization-ai-credit-auditor.md",
+  "workflowName": "CAO Evolution / AI Credit Audit",
+  "sourcePath": ".github/workflows/cao-evolution-ai-credit-auditor.md",
   "adoption": {
     "commit": "35c7c3cbd319632f85784cce196e57c0f61db9a0",
     "adoptedAt": "2026-08-18T17:54:55Z"
