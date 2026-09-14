@@ -1533,12 +1533,17 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   inherits: false;
 }
 @supports (width: calc(attr(data-value type(<integer>)) * 1px)) {
-  .factory-station strong[data-value] { --factory-station-value: attr(data-value type(<integer>)); position: relative; color: transparent; counter-reset: factory-station-value var(--factory-station-value); animation: factory-station-value-count 900ms ease-out both; }
-  .factory-station strong[data-value]::after { content: counter(factory-station-value); position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg); pointer-events: none; }
+  .factory-station strong[data-value] { --factory-station-value: attr(data-value type(<integer>)); position: relative; counter-reset: factory-station-value var(--factory-station-value); animation: factory-station-value-count 900ms ease-out both; }
+  .factory-station strong[data-value]::after { content: counter(factory-station-value); position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg); pointer-events: none; animation: factory-station-value-overlay 900ms step-end both; }
   .factory-station strong[data-value]:has(a:is(:hover, :focus-visible))::after { color: var(--accent); text-decoration: underline; }
 }
 @keyframes factory-station-value-count {
-  from { --factory-station-value: 0; }
+  from { --factory-station-value: 0; color: transparent; }
+  99.9% { color: transparent; }
+}
+@keyframes factory-station-value-overlay {
+  from, 99.9% { visibility: visible; }
+  to { visibility: hidden; }
 }
 .factory-station small { margin-top: 5px; color: var(--muted); font-size: .6875rem; }
 .factory-station a { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; color: inherit; text-decoration: none; }
@@ -1591,6 +1596,11 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 }
 @media (prefers-reduced-motion: reduce) {
   .factory-running-active > span::after, .factory-station, .factory-station strong { animation: none; }
+  .factory-station strong[data-value]::after { content: none; }
+}
+@media (forced-colors: active) {
+  .factory-station strong[data-value] { animation: none; }
+  .factory-station strong[data-value]::after { content: none; }
 }
 .dashboard-next-work-page .custom-view-grid { display: block; }
 .dashboard-next-insights-page .custom-view-grid { display: block; }
