@@ -10,6 +10,7 @@ import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import { analyzeActivityApiCost } from './api-cost.mjs';
 import { createDebug } from './debug.mjs';
+import { downloadWorkflowRuns } from './run-download.mjs';
 import { adaptCachedGhAwJsonlStream, cachedJsonlPayloadIdentity } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
@@ -36,7 +37,7 @@ const DEFAULT_OUTPUT_DIRECTORY = '.cao';
 const DEFAULT_LOGS_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.jsonl`;
 const DEFAULT_DATABASE_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.sqlite`;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'api-cost']);
+const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'download-runs', 'hash-payloads', 'api-cost']);
 
 const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
@@ -45,6 +46,7 @@ const USAGE = `Usage:
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
+  cao download-runs [--repo OWNER/REPO] [--workflow FILE] [--runs COUNT] [--output DIRECTORY] [--shard-count COUNT] [--shard-index INDEX] [--concurrency COUNT] [--before ISO-TIMESTAMP]
   cao hash-payloads [--input GH_AW_LOGS_JSONL] [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
   cao api-cost [--input DIR|ZIP|JSONL] [--hourly-limit COUNT] [--reserve COUNT] [--workflows-per-repository COUNT] [--fresh-runs-per-workflow COUNT] [--format markdown|json]
 
@@ -517,6 +519,10 @@ export async function runCli(arguments_, input = process.stdin) {
       url: option(options, 'url', false),
       output: option(options, 'output', false)
     });
+  }
+  if (command === 'download-runs') {
+    rejectUnknownOptions(options, ['repo', 'workflow', 'runs', 'output', 'shard-count', 'shard-index', 'concurrency', 'before']);
+    return downloadWorkflowRuns(options);
   }
   if (command === 'audit-jsonl') {
     rejectUnknownOptions(options, ['input']);

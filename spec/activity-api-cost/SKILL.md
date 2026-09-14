@@ -31,13 +31,13 @@ to estimate the GitHub REST API cost incurred inside each run by
 
 1. Select the latest completed successful Activity runs. Exclude in-progress and
    cancelled runs so every sample has a complete output artifact.
-2. Download several runs with `download-runs.mjs`. It lists successful workflow
+2. Download several runs with `cao download-runs`. It lists successful workflow
    runs once, assigns positions modulo the shard count, and downloads each
    assigned run's job logs and `cao-activity-index` artifact with bounded
    concurrency:
 
    ```bash
-   GH_TOKEN=... node spec/activity-api-cost/download-runs.mjs \
+   GH_TOKEN=... cao download-runs \
      --repo OWNER/REPO \
      --runs 8 \
      --shard-count 2 \
