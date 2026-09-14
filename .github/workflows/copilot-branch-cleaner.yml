@@ -32,8 +32,9 @@ jobs:
         with:
           script: |
             const dryRun = process.env.DRY_RUN === 'true'
-            const refPrefix = 'refs/heads/copilot/'
+            const branchPrefix = 'copilot/'
             const zeroOid = '0000000000000000000000000000000000000000'
+            const branches = []
             const candidates = []
             let cursor
             let repositoryId
@@ -43,31 +44,20 @@ jobs:
                 `query CopilotBranches(
                   $owner: String!
                   $repo: String!
-                  $refPrefix: String!
                   $cursor: String
                 ) {
                   repository(owner: $owner, name: $repo) {
                     id
                     refs(
-                      refPrefix: $refPrefix
+                      refPrefix: "refs/heads/"
                       first: 100
                       after: $cursor
                       orderBy: { field: ALPHABETICAL, direction: ASC }
                     ) {
                       nodes {
                         name
-                        prefix
                         target {
                           oid
-                        }
-                        terminal: associatedPullRequests(
-                          first: 1
-                          states: [MERGED, CLOSED]
-                        ) {
-                          totalCount
-                        }
-                        open: associatedPullRequests(first: 1, states: [OPEN]) {
-                          totalCount
                         }
                       }
                       pageInfo {
@@ -80,17 +70,16 @@ jobs:
                 {
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  refPrefix,
                   cursor,
                 },
               )
               repositoryId = repository.id
 
               for (const ref of repository.refs.nodes) {
-                if (ref.open.totalCount === 0 && ref.terminal.totalCount > 0) {
-                  candidates.push({
+                if (ref.name.startsWith(branchPrefix) && ref.target) {
+                  branches.push({
                     name: ref.name,
-                    qualifiedName: `${ref.prefix}${ref.name}`,
+                    qualifiedName: `refs/heads/${ref.name}`,
                     oid: ref.target.oid,
                   })
                 }
@@ -100,6 +89,70 @@ jobs:
                 ? repository.refs.pageInfo.endCursor
                 : undefined
             } while (cursor)
+
+            core.info(`Found ${branches.length} \`${branchPrefix}\` branches`)
+
+            // Pull request association on branch refs is unreliable, so pull
+            // request state is resolved through `pullRequests(headRefName:)`
+            // instead, batched with aliases to limit the number of requests.
+            const lookupBatchSize = 50
+            for (
+              let offset = 0;
+              offset < branches.length;
+              offset += lookupBatchSize
+            ) {
+              const batch = branches.slice(offset, offset + lookupBatchSize)
+              const definitions = batch
+                .map((_, index) => `$head${index}: String!`)
+                .join(', ')
+              const selections = batch
+                .map(
+                  (_, index) => `
+                      open${index}: pullRequests(
+                        headRefName: $head${index}
+                        first: 1
+                        states: [OPEN]
+                      ) {
+                        totalCount
+                      }
+                      terminal${index}: pullRequests(
+                        headRefName: $head${index}
+                        first: 1
+                        states: [MERGED, CLOSED]
+                      ) {
+                        totalCount
+                      }`,
+                )
+                .join('')
+              const variables = {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              }
+              for (const [index, branch] of batch.entries()) {
+                variables[`head${index}`] = branch.name
+              }
+
+              const { repository } = await github.graphql(
+                `query CopilotBranchPullRequests(
+                  $owner: String!
+                  $repo: String!
+                  ${definitions}
+                ) {
+                  repository(owner: $owner, name: $repo) {${selections}
+                  }
+                }`,
+                variables,
+              )
+
+              for (const [index, branch] of batch.entries()) {
+                if (
+                  repository[`open${index}`].totalCount === 0 &&
+                  repository[`terminal${index}`].totalCount > 0
+                ) {
+                  candidates.push(branch)
+                }
+              }
+            }
 
             if (dryRun) {
               await core.summary
