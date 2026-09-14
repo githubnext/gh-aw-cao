@@ -3960,9 +3960,11 @@ test('workflow page template follows its JSON-declared route and renders attribu
   await page.locator('.horizon-toggle').click();
   await expect(page.locator('.filter-tuning-controls .horizon-details').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toHaveCount(0);
-  await expect(page.locator('#page-workflow-runs .document-list-card')).toHaveCount(2);
-  await expect(page.locator('#page-workflow-runs .document-list-card .status-failure')).toContainText('failure');
-  await expect(page.locator('#page-workflow-runs .document-list-card')).toContainText('Manual review');
+  const workflowRunCards = page.locator('#page-workflow-runs .document-list-card');
+  const manualReviewCard = workflowRunCards.filter({ hasText: 'Manual review' });
+  await expect(workflowRunCards).toHaveCount(2);
+  await expect(manualReviewCard).toHaveCount(1);
+  await expect(manualReviewCard.locator('.status-failure')).toContainText('failure');
   await page.goto(`http://dashboard.test/#page-workflow-detail?workflow=${workflowRoute}`);
   await page.setContent(`
     <div id="root"></div>

@@ -1963,9 +1963,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
       ));
     }
     const invalidTableLazyList = view.mark === 'table' && view['lazy-list'] === true && view.controls === 'static';
+    const invalidListLazyList = view.mark === 'list'
+      && view['lazy-list'] === true
+      && (!isPlainObject(view.list) || view.list.style !== 'cards');
     if (
       (view.mark !== 'table' && view.mark !== 'list')
       || invalidTableLazyList
+      || invalidListLazyList
     ) {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
