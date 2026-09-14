@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
@@ -11,10 +11,34 @@ export default defineConfig({
   testDir: './test/e2e',
   timeout: 30000,
   use: {
-    headless: true,
-    launchOptions: {
-      args: ['--no-sandbox'],
-      ...(executablePath ? { executablePath } : {})
+    headless: true
+  },
+  projects: [
+    {
+      name: 'desktop-chrome',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--no-sandbox'],
+          ...(executablePath ? { executablePath } : {})
+        }
+      }
+    },
+    {
+      name: 'desktop-edge',
+      testMatch: ['**/pwa-compatibility.spec.js'],
+      use: {
+        ...devices['Desktop Edge'],
+        launchOptions: {
+          args: ['--no-sandbox'],
+          ...(executablePath ? { executablePath } : {})
+        }
+      }
+    },
+    {
+      name: 'desktop-safari',
+      testMatch: ['**/pwa-compatibility.spec.js'],
+      use: devices['Desktop Safari']
     }
-  }
+  ]
 });

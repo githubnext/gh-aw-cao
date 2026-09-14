@@ -1,0 +1,63 @@
+import { readFileSync } from 'node:fs';
+import { test, expect } from '@playwright/test';
+
+test.beforeEach(async ({ context }) => {
+  await context.route('http://localhost/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const fileName = pathname === '/' ? 'index.html' : pathname.slice(1);
+    if (fileName === 'src/main.js') {
+      await route.fulfill({ contentType: 'application/javascript', body: '' });
+      return;
+    }
+    /** @type {Record<string, string>} */
+    const contentTypes = {
+      '.html': 'text/html',
+      '.json': 'application/manifest+json',
+      '.png': 'image/png',
+      '.svg': 'image/svg+xml'
+    };
+    const extension = fileName.slice(fileName.lastIndexOf('.'));
+    await route.fulfill({
+      contentType: contentTypes[extension] ?? 'application/octet-stream',
+      body: readFileSync(new URL(`../../${fileName}`, import.meta.url))
+    });
+  });
+});
+
+test('desktop browser exposes an installable dashboard application', async ({ page }, testInfo) => {
+  await page.goto('http://localhost/');
+
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', './manifest.webmanifest');
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', './apple-touch-icon.png');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0d1117');
+
+  const result = await page.evaluate(async () => {
+    const manifestUrl = /** @type {HTMLLinkElement | null} */ (
+      document.querySelector('link[rel="manifest"]')
+    )?.href;
+    if (!manifestUrl) throw new Error('Web app manifest link is missing.');
+    const response = await fetch(manifestUrl);
+    return {
+      manifest: await response.json(),
+      serviceWorkerSupported: 'serviceWorker' in navigator,
+      userAgent: navigator.userAgent
+    };
+  });
+
+  expect(result.serviceWorkerSupported).toBe(true);
+  expect(result.manifest).toMatchObject({
+    id: './',
+    start_url: './',
+    scope: './',
+    display: 'standalone'
+  });
+  if (testInfo.project.name === 'desktop-edge') expect(result.userAgent).toContain('Edg/');
+  if (testInfo.project.name === 'desktop-safari') {
+    expect(result.userAgent).toContain('Safari/');
+    expect(result.userAgent).not.toContain('Chrome/');
+  }
+  if (testInfo.project.name === 'desktop-chrome') {
+    expect(result.userAgent).toContain('Chrome/');
+    expect(result.userAgent).not.toContain('Edg/');
+  }
+});
