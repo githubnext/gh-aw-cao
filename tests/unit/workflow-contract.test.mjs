@@ -3508,6 +3508,8 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /concurrency:\n\s+group: mobile-dashboard-integration-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: true/);
   assert.match(workflow, /deployed-data:[\s\S]*?if: github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'/);
   assert.match(workflow, /mobile:[\s\S]*?if: github\.event_name != 'push'/);
+  assert.match(workflow, /include: \$\{\{ fromJSON\(github\.event_name == 'pull_request'/);
+  assert.match(workflow, /pull_request' && '\[\{"browser":"webkit","device":"iPhone 15"\}\]' \|\| '[^']*Pixel 7/);
   assert.match(workflow, /name: Test deployed dashboard data ingestion\n\s+run: node --test tests\/integration\/dashboard-deployed-data\.test\.mjs/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/gh-aw-logs\.jsonl/);
   assert.match(workflow, /Test mobile dashboard with restricted memory[\s\S]*?MOBILE_MEMORY_MB: 256/);
