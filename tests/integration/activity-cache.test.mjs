@@ -41,7 +41,11 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(cacheJob, /permissions:\n\s+actions: write\n\s+contents: none/);
   assert.match(
     cacheJob,
-    /Download activity snapshot[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?Save activity cache/,
+    /Download activity snapshot[\s\S]*?actions\/download-artifact@[0-9a-f]{40}[\s\S]*?name: cao-activity-index[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity[\s\S]*?Verify activity snapshot[\s\S]*?Save activity cache/,
+  );
+  assert.match(
+    cacheJob,
+    /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.jsonl gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?exit 1/,
   );
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(

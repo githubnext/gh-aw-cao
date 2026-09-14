@@ -32,7 +32,10 @@ the resulting JSONL through the dashboard's Node.js canonical data pipeline,
 and stores both data files plus the generated Drain3 weights. Restored weights
 are passed to the next `gh aw logs` invocation so log clustering can continue
 learning across runs. Downloaded artifacts are job-local inputs and are not
-cached.
+cached. The dependent publication job verifies that every snapshot file
+extracted from the artifact exists and is non-empty before saving the cache, so
+a path or packaging regression fails immediately instead of leaving consumers
+with a cache miss.
 
 Activity uses the `central-agentic-ops-activity` concurrency group with
 `cancel-in-progress: false`, so a running refresh is never cancelled mid-flight
