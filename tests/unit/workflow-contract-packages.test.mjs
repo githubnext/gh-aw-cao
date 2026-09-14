@@ -40,6 +40,12 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
 });
 
 test("catalog packages declare their current experimental maturity", () => {
+  const privateManifests = new Set([
+    "uk-ai-advisory/aw.yml",
+    "eu-cra-compliance/aw.yml",
+    "self-care/aw.yml",
+    "software-development-practices/aw.yml",
+  ]);
   const manifests = [
     "aw.yml",
     "activity/aw.yml",
@@ -54,7 +60,7 @@ test("catalog packages declare their current experimental maturity", () => {
   ];
   for (const manifest of manifests) {
     const metadata = parse(readFileSync(join(root, manifest), "utf8"));
-    assert.equal(metadata.private ?? false, false, manifest);
+    assert.equal(metadata.private ?? false, privateManifests.has(manifest), manifest);
     assert.equal(metadata.experimental, true, manifest);
   }
 });
