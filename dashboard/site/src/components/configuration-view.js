@@ -206,7 +206,7 @@ function cloneDocument(value) {
 
 /** @param {Record<string, unknown> | undefined} row */
 function policyDocumentFromRow(row) {
-  if (isPlainObject(row?.document)) return row.document;
+  if (isPlainObject(row?.document)) return structuredClone(row.document);
   if (typeof row?.raw !== 'string') return null;
   try {
     const document = JSON.parse(row.raw);
