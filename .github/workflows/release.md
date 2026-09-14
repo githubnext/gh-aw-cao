@@ -242,7 +242,7 @@ jobs:
 steps:
   - name: Fetch release context
     env:
-      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
+      GH_TOKEN: ${{ github.token }}
       RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
       RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
     run: |

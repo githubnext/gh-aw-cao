@@ -1151,7 +1151,7 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /update-release:/);
   assert.match(agenticSource, /Call `safeoutputs\/update_release` exactly once/);
   assert.match(agenticSource, /`operation`: `prepend`/);
-  assert.equal(fetchReleaseContext.env.GH_TOKEN, "${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}");
+  assert.equal(fetchReleaseContext.env.GH_TOKEN, "${{ github.token }}");
   assert.match(agenticSource, /releases\/\$RELEASE_ID/);
   assert.match(agenticSource, /gh api --paginate --slurp/);
   assert.match(agenticSource, /Keep the existing GitHub-generated notes intact/);
