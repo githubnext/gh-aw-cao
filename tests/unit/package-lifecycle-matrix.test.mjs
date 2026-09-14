@@ -13,7 +13,7 @@ test("package lifecycle matrix selects only packages owning changed files", () =
   );
   assert.deepEqual(
     names(["dashboard/site/index.html"]),
-    ["root", "CAO Evolution", "dashboard", "Dependabot"],
+    ["root", "dashboard"],
   );
   assert.deepEqual(
     names([".github/workflows/graders/dependabot-release-train-updater-operational-value.sh"]),
@@ -46,7 +46,7 @@ test("package lifecycle matrix selects only packages owning changed files", () =
 });
 
 test("package lifecycle matrix selects a package and its dependents when its manifest changes", () => {
-  assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity", "CAO Evolution", "Dependabot"]);
+  assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity"]);
   assert.deepEqual(names(["software-development-practices/aw.yml"]), []);
   assert.deepEqual(names(["self-care/aw.yml"]), []);
 });
