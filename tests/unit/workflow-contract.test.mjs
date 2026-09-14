@@ -2790,6 +2790,7 @@ test("dashboard CI runs the package quality gates", () => {
   const jobs = generatedJobs(source);
   const lintUnit = jobs.get("lint-unit");
   const playwrightIntegration = jobs.get("playwright-integration");
+  const ingestionScale = jobs.get("ingestion-scale");
   const lighthousePerformance = jobs.get("lighthouse-performance");
   const lighthouseComment = jobs.get("lighthouse-comment");
 
@@ -2798,10 +2799,14 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
   assert.deepEqual(
     [...jobs.keys()],
-    ["lint-unit", "playwright-integration", "lighthouse-performance", "lighthouse-comment"]
+    ["lint-unit", "playwright-integration", "ingestion-scale", "lighthouse-performance", "lighthouse-comment"]
   );
   assert.deepEqual(lintUnit.needs, []);
   assert.deepEqual(playwrightIntegration.needs, []);
+  assert.deepEqual(ingestionScale.needs, []);
+  // The synthetic ingestion payload is slow, so the gate stays on main.
+  assert.match(ingestionScale.block, /if: github\.ref == 'refs\/heads\/main'/);
+  assert.match(ingestionScale.block, /run: npm run test:e2e:dashboard-ingestion/);
   assert.deepEqual(lighthousePerformance.needs, []);
   assert.deepEqual(lighthouseComment.needs, ["lighthouse-performance"]);
   for (const command of ["npm run typecheck", "npm run lint", "npm test"]) {
