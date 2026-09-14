@@ -65,7 +65,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: optimization
+      package: cao-evolution
       role: worker
       worker: ai-credit-auditor
   - uses: shared/activity-cache.md
@@ -232,7 +232,7 @@ steps:
 source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
 ---
 
-{{#runtime-import? .github/cao/optimization.md}}
+{{#runtime-import? .github/cao/cao-evolution.md}}
 
 You are the Agentic Workflow Auditor — a workflow that tracks daily AI Credit (AIC) spend and token consumption, forecasts weekly and monthly cost, and maintains a historical record for trend analysis across all agentic workflows in the target repository.
 

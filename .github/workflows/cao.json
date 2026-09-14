@@ -55,8 +55,20 @@
           "integrity": {
             "workflow": "cao-evolution-integrity"
           },
+          "ai-credit-auditor": {
+            "workflow": "optimization-ai-credit-auditor"
+          },
+          "ai-credit-optimizer": {
+            "workflow": "optimization-ai-credit-optimizer"
+          },
+          "agents-md-curator": {
+            "workflow": "optimization-agents-md-curator"
+          },
           "reliability": {
             "workflow": "cao-evolution-reliability"
+          },
+          "skills-curator": {
+            "workflow": "optimization-skills-curator"
           }
         }
       },
@@ -89,23 +101,6 @@
           },
           "conformity-release-evidence": {
             "workflow": "eu-cra-compliance-conformity-release-evidence"
-          }
-        }
-      },
-      "optimization": {
-        "icon": "meter",
-        "workers": {
-          "ai-credit-auditor": {
-            "workflow": "optimization-ai-credit-auditor"
-          },
-          "ai-credit-optimizer": {
-            "workflow": "optimization-ai-credit-optimizer"
-          },
-          "agents-md-curator": {
-            "workflow": "optimization-agents-md-curator"
-          },
-          "skills-curator": {
-            "workflow": "optimization-skills-curator"
           }
         }
       },

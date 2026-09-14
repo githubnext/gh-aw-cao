@@ -1,5 +1,5 @@
 name: CAO Evolution
-description: Control-plane and agentic-workflow health, security maintenance, and evidence-backed operation discovery.
+description: Control-plane and agentic-workflow health, security maintenance, optimization, and evidence-backed operation discovery.
 min-version: v0.89.12
 experimental: true
 includes:
@@ -9,6 +9,10 @@ includes:
   - .github/workflows/cao-evolution-efficiency.md
   - .github/workflows/cao-evolution-integrity.md
   - .github/workflows/cao-evolution-reliability.md
+  - .github/workflows/cao-evolution-agents-md-curator.md
+  - .github/workflows/cao-evolution-ai-credit-auditor.md
+  - .github/workflows/cao-evolution-ai-credit-optimizer.md
+  - .github/workflows/cao-evolution-skills-curator.md
   - .github/workflows/cao-evolution.md
 resources:
   - source: dashboard.json

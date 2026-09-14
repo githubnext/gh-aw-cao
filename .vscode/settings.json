@@ -1,5 +1,32 @@
 {
     "github.copilot.enable": {
         "markdown": true
-    }
+    },
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#c5b1e6",
+        "activityBar.background": "#c5b1e6",
+        "activityBar.foreground": "#15202b",
+        "activityBar.inactiveForeground": "#15202b99",
+        "activityBarBadge.background": "#a96136",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "activityBarTop.activeBackground": "#c5b1e6",
+        "activityBarTop.background": "#c5b1e6",
+        "activityBarTop.foreground": "#15202b",
+        "activityBarTop.inactiveForeground": "#15202b99",
+        "commandCenter.border": "#15202b99",
+        "commandCenter.foreground": "#15202b",
+        "sash.hoverBorder": "#c5b1e6",
+        "statusBar.background": "#a98ada",
+        "statusBar.debuggingBackground": "#a98ada",
+        "statusBar.debuggingForeground": "#15202b",
+        "statusBar.foreground": "#15202b",
+        "statusBarItem.hoverBackground": "#8d63ce",
+        "statusBarItem.remoteBackground": "#91542e",
+        "statusBarItem.remoteForeground": "#15202b",
+        "titleBar.activeBackground": "#a98ada",
+        "titleBar.activeForeground": "#15202b",
+        "titleBar.inactiveBackground": "#a98ada99",
+        "titleBar.inactiveForeground": "#15202b99"
+    },
+    "peacock.color": "#a98ada"
 }

@@ -66,9 +66,9 @@ imports:
     with:
       package: cao-evolution
       role: orchestrator
-      dispatch_max: 6
+      dispatch_max: 10
       orchestrator_credits: 250
-      worker_credits_per_target: 2700
+      worker_credits_per_target: 4350
 
 permissions:
   contents: read
@@ -90,8 +90,8 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security]
-    max: 6
+    workflows: [cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security, optimization-ai-credit-auditor, optimization-ai-credit-optimizer, optimization-agents-md-curator, optimization-skills-curator]
+    max: 10
   threat-detection: false
 ---
 
@@ -99,7 +99,7 @@ safe-outputs:
 
 # CAO Evolution
 
-Maintain repositories that operate a Central Agentic Ops control plane and the policy-enrolled repositories whose agentic workflows must remain reliable and safe. Control-plane workers remain limited to verified control repositories; agentic-workflow health workers may run against other enrolled repositories with verified gh-aw adoption.
+Maintain repositories that operate a Central Agentic Ops control plane and the policy-enrolled repositories whose agentic workflows must remain reliable, safe, and efficient. Control-plane workers remain limited to verified control repositories; agentic-workflow health and optimization workers may run against other enrolled repositories with verified gh-aw adoption.
 
 ## Discovery
 
@@ -120,6 +120,7 @@ Prioritize control repositories with one or more of these signals:
 4. Repeated no-op or incomplete runs, duplicate evidence acquisition, overlapping schedules, high API pressure, or AI Credit allocation that is disproportionate to attained operational value.
 5. Recurring, evidence-complete needs that installed operations do not address and that may match a public operation in the official catalog.
 6. Recent policy, package, workflow, credential-boundary, or dashboard changes that have not yet been checked together.
+7. High-turn, high-token, or high-AI-Credit workflows, or a root `AGENTS.md` and referenced skills that have drifted while the repository kept changing.
 
 Skip archived repositories, repositories without a readable default branch, repositories with neither verified role, and repositories whose evidence is incomplete. Report incomplete evidence rather than widening discovery.
 
@@ -127,12 +128,18 @@ Skip archived repositories, repositories without a readable default branch, repo
 
 - `cao-evolution-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
 - `cao-evolution-reliability`: checks the last 24 full hours of CAO admission, dispatch, worker, activity-cache, review-bundle, dashboard-build, and dashboard-data-health evidence for actionable recurring failures.
-- `cao-evolution-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It does not duplicate per-workflow prompt or ambient-context optimization owned by `optimization`.
+- `cao-evolution-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It leaves per-workflow and ambient-context changes to the optimization workers in this package.
 - `cao-evolution-catalog-advisor`: compares recurring, evidence-complete capability gaps with public operations in the official catalog and suggests one bounded review-mode trial or custom operation gap. It never installs, enables, or dispatches a recommended operation.
 - `cao-evolution-failures-investigator`: checks recent agentic workflow runs and failure logs, groups failures by error signature, and publishes focused fix issues for uncovered failure clusters.
 - `cao-evolution-compiler-security`: compiles all agentic workflows with strict validation, linters, image checks, and the full gh-aw security-scanner suite, then publishes one deduplicated findings report with a local agent fixing loop.
+- `optimization-ai-credit-auditor`: records AI Credit and token snapshots with trend charts, then forecasts weekly and monthly usage and estimated cost scenarios.
+- `optimization-ai-credit-optimizer`: publishes evidence-backed recommendations for the highest-impact workflow not recently optimized.
+- `optimization-agents-md-curator`: proposes a small, evidence-backed update when a repository's root `AGENTS.md` has drifted.
+- `optimization-skills-curator`: proposes improvements to the layering between `AGENTS.md`, agent definitions, and referenced skills.
 
 Dispatch the integrity, reliability, efficiency, and catalog-advisor workers only for verified control repositories. Dispatch the failure investigator and compiler-security workers only for verified agentic-workflow repositories. Dispatch each eligible worker at most once for each selected repository and effective mode. Do not retry a failed dispatch in the same run. Workers own repository analysis and all durable outputs.
+
+Dispatch the AI Credit workers only to verified agentic-workflow repositories with readable recent workflow evidence. Dispatch the ambient-context workers only when the default branch contains a root `AGENTS.md`; never dispatch them to propose creating one. The ambient-context workers retain their 10 percent gain gate and return `noop` when the estimated reduction in always-loaded context is smaller.
 
 ## Completion
 

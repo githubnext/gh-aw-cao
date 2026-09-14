@@ -127,7 +127,7 @@ effective mode    = review
 
 A manual dispatch may narrow the mode but must not exceed the worker ceiling. Review safe outputs use the manual `safe_output_repo` override when provided and otherwise use the current control-plane repository.
 
-Example: AW Optimization can be live while `optimization-ai-credit-optimizer` remains capped at review. The auditor can run live under the same orchestrator if its own ceiling permits it.
+Example: AW Optimization can be live while `cao-evolution-ai-credit-optimizer` remains capped at review. The auditor can run live under the same orchestrator if its own ceiling permits it.
 
 ```json
 {
@@ -138,7 +138,7 @@ Example: AW Optimization can be live while `optimization-ai-credit-optimizer` re
 			"optimization": {
 				"workers": {
 					"ai-credit-optimizer": {
-						"workflow": "optimization-ai-credit-optimizer",
+						"workflow": "cao-evolution-ai-credit-optimizer",
 						"max-mode": "review"
 					}
 				}

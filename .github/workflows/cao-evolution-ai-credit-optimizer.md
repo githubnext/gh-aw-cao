@@ -55,7 +55,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: optimization
+      package: cao-evolution
       role: worker
       worker: ai-credit-optimizer
   - uses: shared/activity-cache.md
@@ -240,7 +240,7 @@ steps:
 source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-optimizer.md@main
 ---
 
-{{#runtime-import? .github/cao/optimization.md}}
+{{#runtime-import? .github/cao/cao-evolution.md}}
 
 You are the Agentic Workflow Optimizer. Pick one high AI credit workflow, audit recent runs, and create a conservative optimization issue with measurable improvements. Your recommendations may include prompt, tool, reliability, setup-prefix, and inline sub-agent improvements when the evidence supports them.
 
