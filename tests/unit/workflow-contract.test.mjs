@@ -1094,6 +1094,7 @@ test("release increments the semantic version, prepares a draft, then updates it
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
   const fetchReleaseContext = compiled.jobs.agent.steps.find((step) => step.name === "Fetch release context");
   const processSafeOutputs = compiled.jobs.safe_outputs.steps.find((step) => step.name === "Process Safe Outputs");
+  const downloadReleaseContext = compiled.jobs.agent.steps.find((step) => step.name === "Download prepared release context");
 
   assert.equal(config.on.workflow_dispatch.inputs.operation, undefined);
   assert.equal(config.on.workflow_dispatch.inputs.bump.required, false);
@@ -1137,7 +1138,11 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(prepare, /tag_name: releaseTag/);
   assert.match(prepare, /name: releaseTag/);
   assert.match(prepare, /core\.setOutput\('release_id', release\.id\)/);
-  assert.match(prepare, /name: Upload prepared release identity/);
+  assert.match(prepare, /name: Persist prepared release context/);
+  assert.match(prepare, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(prepare, /releases\/\$RELEASE_ID/);
+  assert.match(prepare, /current_release\.json/);
+  assert.match(prepare, /name: Upload prepared release context/);
   assert.match(prepare, /name: release-context-\$\{\{ github\.run_id \}\}/);
   assert.match(prepare, /git\.deleteRef/);
   assert.match(prepare, /ref: `tags\/\$\{releaseTag\}`/);
@@ -1153,8 +1158,15 @@ test("release increments the semantic version, prepares a draft, then updates it
   assert.match(agenticSource, /update-release:/);
   assert.match(agenticSource, /Call `safeoutputs\/update_release` exactly once/);
   assert.match(agenticSource, /`operation`: `prepend`/);
+  assert.match(downloadReleaseContext.uses, /^actions\/download-artifact@/);
+  assert.deepEqual(downloadReleaseContext.with, {
+    name: "release-context-${{ github.run_id }}",
+    path: "/tmp/gh-aw/agent/release-data",
+  });
   assert.equal(fetchReleaseContext.env.GH_TOKEN, "${{ github.token }}");
   assert.match(agenticSource, /releases\/\$RELEASE_ID/);
+  assert.match(fetchReleaseContext.run, /test -s \/tmp\/gh-aw\/agent\/release-data\/current_release\.json/);
+  assert.doesNotMatch(fetchReleaseContext.run, /\/releases\/\$RELEASE_ID/);
   assert.match(agenticSource, /gh api --paginate --slurp/);
   assert.match(agenticSource, /Keep the existing GitHub-generated notes intact/);
   assert.equal(config.checkout["fetch-depth"], 0);
