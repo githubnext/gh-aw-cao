@@ -150,7 +150,10 @@ jobs:
           touch "$REPORT_GH_AW_LOGS"
           drain3_args=()
           if [[ -f "$REPORT_DRAIN3_WEIGHTS" ]]; then
+            echo "Using cached Drain3 weights from $REPORT_DRAIN3_WEIGHTS"
             drain3_args+=(--drain3-weights "$REPORT_DRAIN3_WEIGHTS")
+          else
+            echo "No cached Drain3 weights found at $REPORT_DRAIN3_WEIGHTS; gh aw logs will train new weights"
           fi
           targets=()
           for workflow in .github/workflows/*.lock.yml; do
@@ -172,6 +175,7 @@ jobs:
             "${drain3_args[@]}" \
             "${targets[@]}"
           mv "$REPORT_AIC_CACHE/drain3_weights.json" "$REPORT_DRAIN3_WEIGHTS"
+          echo "Saved refreshed Drain3 weights to $REPORT_DRAIN3_WEIGHTS"
 
       - name: Ingest activity database
         env:
