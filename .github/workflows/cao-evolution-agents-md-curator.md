@@ -3,7 +3,7 @@ emoji: ":compass:"
 
 description: "Weekly ambient context curation for one repository: audits an existing AGENTS.md against git, pull request, and agent-session evidence and files one issue containing a ready-to-run agentic update prompt"
 
-name: "AW Optimization / AGENTS.md"
+name: "CAO Evolution / AGENTS.md"
 
 max-ai-credits: 400
 max-daily-ai-credits: -1
@@ -82,7 +82,7 @@ network:
     - defaults
     - github
 
-run-name: "AW Optimization / AGENTS.md · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
+run-name: "CAO Evolution / AGENTS.md · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
   group: "${{ github.workflow }}-${{ inputs.target_repo }}"
@@ -91,9 +91,9 @@ concurrency:
 
 graders:
   operational-value:
-    run: ./graders/optimization-agents-md-curator-operational-value.sh
+    run: ./graders/cao-evolution-agents-md-curator-operational-value.sh
 
-tracker-id: optimization-agents-md-curator
+tracker-id: cao-evolution-agents-md-curator
 
 tools:
   github:
@@ -519,7 +519,7 @@ Treat a `cross_file_conflicts` entry as a top-priority finding regardless of siz
 Apply these rules, which come from the AGENTS.md specification, GitHub Copilot custom-instruction guidance, and Claude Code memory guidance:
 
 - **Keep it small.** Instructions that are always loaded compete for the same context as the task. Prefer deleting or compressing before adding. Every addition should displace something or earn its size.
-- **Facts always, procedures sometimes.** Keep in `AGENTS.md` only what every session needs: exact build, test, and lint commands with flags, non-obvious layout, forbidden paths, and hard constraints. Multi-step playbooks belong in a skill; this worker recommends the split and leaves authoring to `optimization-skills-curator`.
+- **Facts always, procedures sometimes.** Keep in `AGENTS.md` only what every session needs: exact build, test, and lint commands with flags, non-obvious layout, forbidden paths, and hard constraints. Multi-step playbooks belong in a skill; this worker recommends the split and leaves authoring to `cao-evolution-skills-curator`.
 - **Delete before rewriting.** Broken paths, removed directories, superseded commands, historical narrative, aspirational tone, and rules already enforced by a linter or config file should be removed rather than reworded.
 - **Prefer verifiable specifics.** An instruction an agent can execute or check beats a generality. `npm run test:unit` beats "run the tests"; a named forbidden path beats "be careful with config".
 - **Resolve conflicts by evidence, not preference.** When instruction files disagree, keep the variant the repository supports — the committed lockfile, the script that exists, the path that resolves — and correct the others.

@@ -3,7 +3,7 @@ emoji: ":mag:"
 
 description: "Daily audit and forecast of AI Credit (AIC) usage across all agentic workflows with historical trend tracking"
 
-name: "AW Optimization / AI Credit Audit"
+name: "CAO Evolution / AI Credit Audit"
 
 max-ai-credits: 350
 max-daily-ai-credits: -1
@@ -93,9 +93,9 @@ concurrency:
 
 graders:
   operational-value:
-    run: ./graders/optimization-ai-credit-auditor-operational-value.sh
+    run: ./graders/cao-evolution-ai-credit-auditor-operational-value.sh
 
-tracker-id: optimization-ai-credit-auditor
+tracker-id: cao-evolution-ai-credit-auditor
 
 tools:
   github:
@@ -106,7 +106,7 @@ tools:
     - "*"
   repo-memory:
     branch-name: "memory/token-audit-${{ inputs.central_repo }}-${{ inputs.target_repo }}"
-    description: "Historical daily workflow AI credit snapshots (shared with optimization-ai-credit-optimizer)"
+    description: "Historical daily workflow AI credit snapshots (shared with cao-evolution-ai-credit-optimizer)"
     file-glob: ["*.json", "*.jsonl", "*.csv", "*.md"]
     max-file-size: 102400
     max-patch-size: 51200
@@ -229,7 +229,7 @@ steps:
       echo "Forecast exit code: $FORECAST_EXIT_CODE"
       echo "Forecast JSON valid: $FORECAST_JSON_VALID"
 
-source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
+source: githubnext/gh-aw-cao/.github/workflows/cao-evolution-ai-credit-auditor.md@main
 ---
 
 {{#runtime-import? .github/cao/cao-evolution.md}}

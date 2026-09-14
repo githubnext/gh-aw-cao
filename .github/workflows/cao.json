@@ -56,19 +56,19 @@
             "workflow": "cao-evolution-integrity"
           },
           "ai-credit-auditor": {
-            "workflow": "optimization-ai-credit-auditor"
+            "workflow": "cao-evolution-ai-credit-auditor"
           },
           "ai-credit-optimizer": {
-            "workflow": "optimization-ai-credit-optimizer"
+            "workflow": "cao-evolution-ai-credit-optimizer"
           },
           "agents-md-curator": {
-            "workflow": "optimization-agents-md-curator"
+            "workflow": "cao-evolution-agents-md-curator"
           },
           "reliability": {
             "workflow": "cao-evolution-reliability"
           },
           "skills-curator": {
-            "workflow": "optimization-skills-curator"
+            "workflow": "cao-evolution-skills-curator"
           }
         }
       },

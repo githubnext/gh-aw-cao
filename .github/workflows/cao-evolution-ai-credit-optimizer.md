@@ -3,7 +3,7 @@ emoji: ":bar_chart:"
 
 description: "Daily optimization that identifies the highest AI Credit (AIC) agentic workflows, audits its runs, and recommends efficiency improvements including inline sub-agent refactors when warranted"
 
-name: "AW Optimization / AI Credit Savings"
+name: "CAO Evolution / AI Credit Savings"
 
 max-ai-credits: 500
 max-daily-ai-credits: -1
@@ -84,9 +84,9 @@ concurrency:
 
 graders:
   operational-value:
-    run: ./graders/optimization-ai-credit-optimizer-operational-value.sh
+    run: ./graders/cao-evolution-ai-credit-optimizer-operational-value.sh
 
-tracker-id: optimization-ai-credit-optimizer
+tracker-id: cao-evolution-ai-credit-optimizer
 
 tools:
   github:
@@ -96,7 +96,7 @@ tools:
     - "*"
   repo-memory:
     branch-name: "memory/token-audit-${{ inputs.central_repo }}-${{ inputs.target_repo }}"
-    description: "Historical daily workflow AI credit snapshots (shared with optimization-ai-credit-auditor)"
+    description: "Historical daily workflow AI credit snapshots (shared with cao-evolution-ai-credit-auditor)"
     file-glob: ["*.json", "*.jsonl", "*.csv", "*.md"]
     max-file-size: 102400
     max-patch-size: 51200
@@ -162,8 +162,8 @@ steps:
         jq '
             (.runs // [])
             | map(select(
-                (.workflow_path // "") != ".github/workflows/optimization-ai-credit-optimizer.lock.yml"
-                and (.workflow_path // "") != ".github/workflows/optimization-ai-credit-auditor.lock.yml"
+                (.workflow_path // "") != ".github/workflows/cao-evolution-ai-credit-optimizer.lock.yml"
+                and (.workflow_path // "") != ".github/workflows/cao-evolution-ai-credit-auditor.lock.yml"
               )) as $runs
             | {
                 summary: {
@@ -237,7 +237,7 @@ steps:
         echo "ℹ️ No previous optimization history found."
       fi
 
-source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-optimizer.md@main
+source: githubnext/gh-aw-cao/.github/workflows/cao-evolution-ai-credit-optimizer.md@main
 ---
 
 {{#runtime-import? .github/cao/cao-evolution.md}}
@@ -270,7 +270,7 @@ Treat missing numeric fields (`aic`, `token_usage`, `turns`, `action_minutes`) a
 
 - Start from `top-workflows.json`.
 - Exclude workflows optimized in the last 14 days (use `optimization-log.json`).
-- Exclude the AI credit monitoring family — the `optimization-ai-credit-optimizer` and `optimization-ai-credit-auditor` workflows — **unless this workflow is running in `githubnext/gh-aw-cao`** (the source repository that ships them). In downstream repositories these workflows are not valid optimization targets; any optimization suggestions for them belong in `githubnext/gh-aw-cao`. In downstream repos they are pre-filtered from `all-runs.json` and `top-workflows.json`, but never select them even if a stale snapshot still lists them.
+- Exclude the AI credit monitoring family — the `cao-evolution-ai-credit-optimizer` and `cao-evolution-ai-credit-auditor` workflows — **unless this workflow is running in `githubnext/gh-aw-cao`** (the source repository that ships them). In downstream repositories these workflows are not valid optimization targets; any optimization suggestions for them belong in `githubnext/gh-aw-cao`. In downstream repos they are pre-filtered from `all-runs.json` and `top-workflows.json`, but never select them even if a stale snapshot still lists them.
 - Choose the highest AI-credit-spend workflow that remains.
 - If no snapshot/history exists, derive candidates directly from `all-runs.json`.
 - When `target_repo` is present, read and write only the target-specific snapshot and optimization log files using the `<owner>__<repo>__` prefix. Do not mix history between target repositories.

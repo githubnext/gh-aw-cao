@@ -90,7 +90,7 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security, optimization-ai-credit-auditor, optimization-ai-credit-optimizer, optimization-agents-md-curator, optimization-skills-curator]
+    workflows: [cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security, cao-evolution-ai-credit-auditor, cao-evolution-ai-credit-optimizer, cao-evolution-agents-md-curator, cao-evolution-skills-curator]
     max: 10
   threat-detection: false
 ---
@@ -132,10 +132,10 @@ Skip archived repositories, repositories without a readable default branch, repo
 - `cao-evolution-catalog-advisor`: compares recurring, evidence-complete capability gaps with public operations in the official catalog and suggests one bounded review-mode trial or custom operation gap. It never installs, enables, or dispatches a recommended operation.
 - `cao-evolution-failures-investigator`: checks recent agentic workflow runs and failure logs, groups failures by error signature, and publishes focused fix issues for uncovered failure clusters.
 - `cao-evolution-compiler-security`: compiles all agentic workflows with strict validation, linters, image checks, and the full gh-aw security-scanner suite, then publishes one deduplicated findings report with a local agent fixing loop.
-- `optimization-ai-credit-auditor`: records AI Credit and token snapshots with trend charts, then forecasts weekly and monthly usage and estimated cost scenarios.
-- `optimization-ai-credit-optimizer`: publishes evidence-backed recommendations for the highest-impact workflow not recently optimized.
-- `optimization-agents-md-curator`: proposes a small, evidence-backed update when a repository's root `AGENTS.md` has drifted.
-- `optimization-skills-curator`: proposes improvements to the layering between `AGENTS.md`, agent definitions, and referenced skills.
+- `cao-evolution-ai-credit-auditor`: records AI Credit and token snapshots with trend charts, then forecasts weekly and monthly usage and estimated cost scenarios.
+- `cao-evolution-ai-credit-optimizer`: publishes evidence-backed recommendations for the highest-impact workflow not recently optimized.
+- `cao-evolution-agents-md-curator`: proposes a small, evidence-backed update when a repository's root `AGENTS.md` has drifted.
+- `cao-evolution-skills-curator`: proposes improvements to the layering between `AGENTS.md`, agent definitions, and referenced skills.
 
 Dispatch the integrity, reliability, efficiency, and catalog-advisor workers only for verified control repositories. Dispatch the failure investigator and compiler-security workers only for verified agentic-workflow repositories. Dispatch each eligible worker at most once for each selected repository and effective mode. Do not retry a failed dispatch in the same run. Workers own repository analysis and all durable outputs.
 

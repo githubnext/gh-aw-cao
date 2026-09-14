@@ -3,7 +3,7 @@ emoji: ":toolbox:"
 
 description: "Weekly ambient context curation for one repository's agent skills: audits SKILL.md files and oversized AGENTS.md sections and files one issue containing a ready-to-run agentic skills prompt"
 
-name: "AW Optimization / Skills"
+name: "CAO Evolution / Skills"
 
 max-ai-credits: 400
 max-daily-ai-credits: -1
@@ -81,14 +81,14 @@ network:
     - defaults
     - github
 
-run-name: "AW Optimization / Skills · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
+run-name: "CAO Evolution / Skills · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
   group: "${{ github.workflow }}-${{ inputs.target_repo }}"
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-tracker-id: optimization-skills-curator
+tracker-id: cao-evolution-skills-curator
 
 tools:
   github:
@@ -406,5 +406,5 @@ When `correlation_id` is present, add the correlation ID, central repository, an
 - Never publish an issue whose Step 4 estimated gain is below 10 percent; emit a `noop` carrying the evidence instead.
 - Read-only GitHub tools; the issue is the only mutation.
 - Never open a pull request, never modify the target checkout, and never dispatch another workflow.
-- Do not duplicate the `optimization-agents-md-curator` mission: correctness and staleness of `AGENTS.md` prose belong to that worker. Confine this issue to layering between `AGENTS.md` and skills, and to the skills themselves.
+- Do not duplicate the `cao-evolution-agents-md-curator` mission: correctness and staleness of `AGENTS.md` prose belong to that worker. Confine this issue to layering between `AGENTS.md` and skills, and to the skills themselves.
 - If the pre-fetch recorded an `in_flight.error`, the loop-prevention check did not run. Say so in the issue so a reviewer can confirm no competing pull request is open before applying the prompt.

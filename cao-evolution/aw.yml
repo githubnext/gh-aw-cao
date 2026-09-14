@@ -17,7 +17,15 @@ includes:
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/cao-evolution.json
+  - source: cao-evolution-optimization-dashboard.json
+    destination: .github/aw/dashboards/cao-evolution-optimization.json
   - source: .github/graders/cao-evolution-failures-investigator-operational-value.sh
     destination: .github/aw/cao-evolution/graders/cao-evolution-failures-investigator-operational-value.sh
   - source: .github/graders/cao-evolution-compiler-security-operational-value.sh
     destination: .github/aw/cao-evolution/graders/cao-evolution-compiler-security-operational-value.sh
+  - source: .github/graders/cao-evolution-agents-md-curator-operational-value.sh
+    destination: .github/aw/cao-evolution/graders/cao-evolution-agents-md-curator-operational-value.sh
+  - source: .github/graders/cao-evolution-ai-credit-auditor-operational-value.sh
+    destination: .github/aw/cao-evolution/graders/cao-evolution-ai-credit-auditor-operational-value.sh
+  - source: .github/graders/cao-evolution-ai-credit-optimizer-operational-value.sh
+    destination: .github/aw/cao-evolution/graders/cao-evolution-ai-credit-optimizer-operational-value.sh
