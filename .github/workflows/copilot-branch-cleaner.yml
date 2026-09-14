@@ -44,12 +44,14 @@ jobs:
                 `query CopilotBranches(
                   $owner: String!
                   $repo: String!
+                  $branchPrefix: String!
                   $cursor: String
                 ) {
                   repository(owner: $owner, name: $repo) {
                     id
                     refs(
                       refPrefix: "refs/heads/"
+                      query: $branchPrefix
                       first: 100
                       after: $cursor
                       orderBy: { field: ALPHABETICAL, direction: ASC }
@@ -70,6 +72,7 @@ jobs:
                 {
                   owner: context.repo.owner,
                   repo: context.repo.repo,
+                  branchPrefix,
                   cursor,
                 },
               )

@@ -30,6 +30,7 @@ test("Copilot branch cleaner batches discovery and starts in dry-run mode", () =
   assert.match(source, /COPILOT_BRANCH_CLEANER_DRY_RUN != 'false'/);
   assert.match(source, /branchPrefix = 'copilot\/'/);
   assert.match(source, /refPrefix: "refs\/heads\/"/);
+  assert.match(source, /query: \$branchPrefix/);
   assert.match(source, /ref\.name\.startsWith\(branchPrefix\) && ref\.target/);
   assert.match(source, /qualifiedName: `refs\/heads\/\$\{ref\.name\}`/);
   assert.match(source, /open\$\{index\}: pullRequests\([\s\S]*?states: \[OPEN\]/);
