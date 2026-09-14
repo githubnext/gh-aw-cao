@@ -494,6 +494,60 @@ function namedLogicalSources(sources) {
   ]));
 }
 
+/** @param {Record<string, unknown>} sources */
+function sourceMetadataSource(sources) {
+  const rows = Object.entries(sources)
+    .filter(([, value]) => value && typeof value === 'object' && !Array.isArray(value))
+    .map(([sourceName, value]) => {
+      const source = /** @type {{ rows?: unknown[], metadata?: Record<string, unknown> }} */ (value);
+      const metadata = source.metadata ?? {};
+      return {
+        source: sourceName,
+        'row-count': Array.isArray(source.rows) ? source.rows.length : 0,
+        'source-id': metadata['source-id'] ?? sourceName,
+        'source-kind': metadata['source-kind'] ?? 'unknown',
+        'as-of': metadata['as-of'] ?? '',
+        'retrieved-at': metadata['retrieved-at'] ?? '',
+        availability: metadata.availability ?? 'unknown',
+        completeness: metadata.completeness ?? 'unknown',
+        freshness: metadata.freshness ?? 'unknown',
+        'collection-operation': metadata['collection-operation'] ?? sourceName,
+        'collection-state': metadata['collection-state'] ?? '',
+        'collection-progress': metadata['collection-progress'] ?? '',
+        'collection-reason': metadata['collection-reason'] ?? '',
+        'failure-class': metadata['failure-class'] ?? '',
+        'collector-completed-at': metadata['collector-completed-at'] ?? '',
+        'coverage-start': metadata['coverage-start'] ?? '',
+        'coverage-end': metadata['coverage-end'] ?? '',
+        'requested-coverage-start': metadata['requested-coverage-start'] ?? '',
+        'requested-coverage-end': metadata['requested-coverage-end'] ?? '',
+        'coverage-expected': metadata['coverage-expected'] ?? null,
+        'coverage-observed': metadata['coverage-observed'] ?? null,
+        'snapshot-age-seconds': metadata['snapshot-age-seconds'] ?? null,
+        'fallback-used': metadata['fallback-used'] === true
+      };
+    })
+    .sort((left, right) => left.source.localeCompare(right.source));
+  const latestRetrievedAt = rows
+    .map((row) => String(row['retrieved-at']))
+    .filter(Boolean)
+    .sort()
+    .at(-1) ?? '';
+  return {
+    source: 'source-metadata',
+    rows,
+    metadata: /** @type {import('../../presenter.js').SourceMetadata} */ ({
+      'source-id': 'source-metadata',
+      'source-kind': 'canonical-projection',
+      'as-of': latestRetrievedAt,
+      'retrieved-at': latestRetrievedAt,
+      availability: rows.length > 0 ? 'available' : 'empty',
+      completeness: 'complete',
+      freshness: rows.some((row) => row.freshness === 'stale') ? 'stale' : 'fresh'
+    })
+  };
+}
+
 /**
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
@@ -566,6 +620,11 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const sources = namedLogicalSources(logicalSources);
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const projected = {};
+  for (const sourceName of requested) {
+    const source = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[sourceName]);
+    if (source) projected[sourceName] = source;
+  }
+  if (requested.has('source-metadata')) projected['source-metadata'] = sourceMetadataSource(logicalSources);
   if (requested.has('packages')) projected.packages = packagesSource(packages, sources);
   if (requested.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
   if (requested.has('workflows')) projected.workflows = workflowsSource(workflows, repositoriesById, sources);

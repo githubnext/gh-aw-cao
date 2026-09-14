@@ -1541,6 +1541,436 @@
         ]
       },
       {
+        "name": "packaged-workflows",
+        "intent": "List package-owned orchestrator and worker workflows with database-backed execution totals.",
+        "description": "Package workflows projected from the canonical workflow inventory.",
+        "from": "workflow-inventory",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow-role",
+              "in": [
+                "orchestrator",
+                "worker"
+              ]
+            }
+          ]
+        },
+        "select": [
+          { "field": "package" },
+          { "field": "package-name" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "workflow-name" },
+          { "field": "workflow-role" },
+          { "field": "rollout-mode" },
+          { "field": "workflow-active" },
+          { "field": "runs" },
+          { "field": "aic" },
+          { "field": "repository-link" },
+          { "field": "workflow-link" }
+        ],
+        "order-by": [
+          { "field": "package-name", "direction": "asc" },
+          { "field": "workflow-role", "direction": "asc" },
+          { "field": "workflow-name", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "workflow-runs",
+        "intent": "Project canonical runs into route-addressable workflow run evidence.",
+        "description": "Workflow runs with a stable repository and workflow route key.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [
+              { "field": "organization" },
+              { "value": "/" },
+              { "field": "repository" }
+            ]
+          },
+          {
+            "as": "workflow-route",
+            "function": "concat",
+            "args": [
+              { "field": "repository-coordinate" },
+              { "value": ":" },
+              { "field": "workflow" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "workflow-route" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-title" },
+          { "field": "event" },
+          { "field": "started-at" },
+          { "field": "ended-at" },
+          { "field": "run-status" },
+          { "field": "run-conclusion" },
+          { "field": "failure-job" },
+          { "field": "failure-message" },
+          { "field": "failure-step" },
+          { "field": "rollout-mode" },
+          { "field": "engine" },
+          { "field": "engine-version" },
+          { "field": "gh-aw-version" },
+          { "field": "requested-model" },
+          { "field": "resolved-model" },
+          { "field": "run-link" }
+        ],
+        "order-by": [
+          { "field": "started-at", "direction": "desc" },
+          { "field": "run", "direction": "desc" }
+        ]
+      },
+      {
+        "name": "workflow-reports",
+        "intent": "Project retained outcomes into route-addressable workflow reports.",
+        "description": "Workflow outcome reports with stable route keys and disposition fields.",
+        "from": "outcomes",
+        "compute": [
+          {
+            "as": "report-repository",
+            "function": "coalesce",
+            "args": [
+              { "field": "runtime-repository" },
+              { "field": "repository" }
+            ]
+          },
+          {
+            "as": "workflow-route",
+            "function": "concat",
+            "args": [
+              { "field": "report-repository" },
+              { "value": ":" },
+              { "field": "workflow" }
+            ]
+          },
+          {
+            "as": "report-status",
+            "function": "coalesce",
+            "args": [
+              { "field": "outcome-status" },
+              { "field": "outcome-state" },
+              { "value": "unknown" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "workflow-route" },
+          { "field": "safe-output" },
+          { "field": "outcome-title" },
+          { "field": "outcome-summary" },
+          { "field": "report-status", "as": "outcome-status" },
+          { "field": "rollout-mode" },
+          { "field": "engine" },
+          { "field": "engine-version" },
+          { "field": "requested-model" },
+          { "field": "resolved-model" },
+          { "field": "outcome-category" },
+          { "field": "observed-at" },
+          { "field": "external-link" }
+        ],
+        "order-by": [
+          { "field": "observed-at", "direction": "desc" },
+          { "field": "outcome-title", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "package-reports",
+        "intent": "Project retained outcomes into package-addressable report evidence.",
+        "description": "Package outcome reports with database-backed disposition fields.",
+        "from": "outcomes",
+        "compute": [
+          {
+            "as": "report-status",
+            "function": "coalesce",
+            "args": [
+              { "field": "outcome-status" },
+              { "field": "outcome-state" },
+              { "value": "unknown" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "package" },
+          { "field": "safe-output" },
+          { "field": "outcome-title" },
+          { "field": "outcome-summary" },
+          { "field": "report-status", "as": "outcome-status" },
+          { "field": "rollout-mode" },
+          { "field": "engine" },
+          { "field": "engine-version" },
+          { "field": "requested-model" },
+          { "field": "resolved-model" },
+          { "field": "outcome-category" },
+          { "field": "observed-at" },
+          { "field": "external-link" }
+        ],
+        "order-by": [
+          { "field": "observed-at", "direction": "desc" },
+          { "field": "outcome-title", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "dispatches",
+        "intent": "Project workflow-dispatch runs with package attribution and retained failure evidence.",
+        "description": "Canonical workflow-dispatch runs joined to their declared workflow identity.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [
+              { "field": "package", "as": "declared-package" },
+              { "field": "package-name", "as": "declared-package-name" },
+              { "field": "workflow-name", "as": "declared-workflow-name" },
+              { "field": "workflow-role", "as": "declared-workflow-role" }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            { "field": "event", "equals": "workflow_dispatch" }
+          ]
+        },
+        "compute": [
+          {
+            "as": "status",
+            "function": "coalesce",
+            "args": [
+              { "field": "run-conclusion" },
+              { "field": "run-status" },
+              { "value": "unknown" }
+            ]
+          },
+          {
+            "as": "status-detail",
+            "function": "coalesce",
+            "args": [
+              { "field": "failure-detail" },
+              { "field": "failure-message" },
+              { "field": "failure-step" },
+              { "field": "admission-reason" },
+              { "value": "" }
+            ]
+          },
+          {
+            "as": "runtime-repository",
+            "function": "concat",
+            "args": [
+              { "field": "organization" },
+              { "value": "/" },
+              { "field": "repository" }
+            ]
+          },
+          {
+            "as": "is-worker",
+            "function": "equals-any",
+            "args": [
+              { "field": "declared-workflow-role" },
+              { "value": "worker" }
+            ]
+          },
+          {
+            "as": "is-orchestrator",
+            "function": "equals-any",
+            "args": [
+              { "field": "declared-workflow-role" },
+              { "value": "orchestrator" }
+            ]
+          },
+          {
+            "as": "root-dispatch-type",
+            "function": "if",
+            "args": [
+              { "field": "is-orchestrator" },
+              { "value": "Package orchestrator" },
+              { "value": "Standalone workflow" }
+            ]
+          },
+          {
+            "as": "dispatch-type",
+            "function": "if",
+            "args": [
+              { "field": "is-worker" },
+              { "value": "Package worker" },
+              { "field": "root-dispatch-type" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "started-at" },
+          { "field": "dispatch-type" },
+          { "field": "declared-package", "as": "package" },
+          { "field": "declared-package-name", "as": "package-name" },
+          { "field": "declared-workflow-name", "as": "workflow-name" },
+          { "field": "run-title" },
+          { "field": "runtime-repository" },
+          { "field": "status" },
+          { "field": "status-detail" },
+          { "field": "resource-reset-at", "as": "status-detail-at" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run-link" },
+          { "field": "repository-link" },
+          { "field": "workflow-link" }
+        ],
+        "order-by": [
+          { "field": "started-at", "direction": "desc" }
+        ]
+      },
+      {
+        "name": "runtime-episodes",
+        "intent": "Project orchestrator runs as root-only runtime episodes from canonical run and workflow records.",
+        "description": "Root workflow episodes ordered by their observed start time.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "inner",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [
+              { "field": "package-name", "as": "episode-package" },
+              { "field": "workflow-name", "as": "episode-workflow" },
+              { "field": "workflow-role", "as": "episode-role" }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            { "field": "episode-role", "equals": "orchestrator" }
+          ]
+        },
+        "compute": [
+          {
+            "as": "episode-title",
+            "function": "coalesce",
+            "args": [
+              { "field": "run-title" },
+              { "field": "episode-workflow" },
+              { "field": "run" }
+            ]
+          },
+          {
+            "as": "episode-status",
+            "function": "coalesce",
+            "args": [
+              { "field": "run-conclusion" },
+              { "field": "run-status" },
+              { "value": "unknown" }
+            ]
+          },
+          {
+            "as": "control-transition",
+            "function": "coalesce",
+            "args": [
+              { "value": "workflow_dispatch → root run" },
+              { "value": "workflow_dispatch → root run" }
+            ]
+          },
+          {
+            "as": "attribution",
+            "function": "coalesce",
+            "args": [
+              { "value": "Root only" },
+              { "value": "Root only" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "run" },
+          { "field": "episode-title", "as": "run-title" },
+          { "field": "episode-package", "as": "package" },
+          { "field": "episode-workflow", "as": "workflow" },
+          { "field": "started-at" },
+          { "field": "duration" },
+          { "field": "episode-status", "as": "status" },
+          { "field": "control-transition" },
+          { "field": "attribution" },
+          { "field": "run-link" }
+        ],
+        "order-by": [
+          { "field": "started-at", "direction": "desc" }
+        ],
+        "limit": 12
+      },
+      {
+        "name": "readiness-observations",
+        "intent": "Summarize recent canonical run conclusions as release-readiness evidence.",
+        "description": "Run conclusion counts and latest observations for the readiness ledger.",
+        "from": "runs",
+        "aggregate": {
+          "by": [
+            "run-conclusion"
+          ],
+          "values": [
+            { "field": "run", "as": "count", "reducer": "distinct-count" },
+            { "field": "started-at", "as": "latest-at", "reducer": "max" }
+          ]
+        },
+        "compute": [
+          {
+            "as": "signal",
+            "function": "title-case",
+            "args": [
+              { "field": "run-conclusion" }
+            ]
+          },
+          {
+            "as": "status",
+            "function": "coalesce",
+            "args": [
+              { "field": "run-conclusion" },
+              { "value": "unknown" }
+            ]
+          },
+          {
+            "as": "count-label",
+            "function": "format-count",
+            "args": [
+              { "field": "count" }
+            ]
+          },
+          {
+            "as": "detail",
+            "function": "concat",
+            "args": [
+              { "field": "count-label" },
+              { "value": " retained runs" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "signal" },
+          { "field": "count" },
+          { "field": "status" },
+          { "field": "detail" },
+          { "field": "latest-at" }
+        ],
+        "order-by": [
+          { "field": "count", "direction": "desc" },
+          { "field": "signal", "direction": "asc" }
+        ]
+      },
+      {
         "name": "repository-workflow-totals",
         "intent": "Summarize declared and disabled workflow counts by repository.",
         "description": "Declared and disabled workflow totals for each repository.",
@@ -2657,10 +3087,6 @@
             "mark": "table",
             "layout": "full-view",
             "encoding": {
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              },
               "columns": [
                 {
                   "field": "signal",
@@ -3936,7 +4362,7 @@
             "empty-message": "No orchestrator or worker workflows are configured for this package.",
             "encoding": {
               "href": {
-                "field": "external-link",
+                "field": "workflow-link",
                 "type": "nominal"
               },
               "columns": [
@@ -6319,7 +6745,6 @@
                 "outcomes",
                 "runs",
                 "dispatches",
-                "factory-rhythm-baseline",
                 "grader-observations",
                 "repositories",
                 "workflows"

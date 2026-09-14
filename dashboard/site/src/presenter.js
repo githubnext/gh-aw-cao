@@ -76,7 +76,11 @@ import { scopedStorageKey } from './storage-scope.js';
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void }} PageSourceLoadOptions
+ */
+
+/**
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -88,6 +92,8 @@ const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
+/** @type {WeakMap<HTMLElement, () => void>} */
+const dashboardDisposals = new WeakMap();
 const directionalViewTransitions = new WeakMap();
 
 /**
@@ -295,10 +301,10 @@ export function renderDashboard(input) {
     setTimeWindowRange(event.detail?.range, root);
   });
   enableResponsiveReportActions(root);
-  enableDashboardPageNavigation(
+  const disposeNavigation = enableDashboardPageNavigation(
     root,
     document.dashboard.title,
-    (pageId) => {
+    (pageId, options) => {
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
       const page = pages[pageIndex];
       if (!page) return null;
@@ -307,7 +313,8 @@ export function renderDashboard(input) {
         ? renderPageLoadingSkeleton(page)
         : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
       if (input.loadPageSources) {
-        return input.loadPageSources(pageId).then(render);
+        options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
+        return input.loadPageSources(pageId, options).then(render);
       }
       const renderedPage = render(sources);
       /** @param {HTMLElement} rendered */
@@ -319,14 +326,18 @@ export function renderDashboard(input) {
       };
       return renderedPage instanceof Promise ? renderedPage.then(annotate) : annotate(renderedPage);
     },
-    sidebar.dataset.defaultPageId
+    sidebar.dataset.defaultPageId,
+    Boolean(input.loadPageSources)
 
   );
+  dashboardDisposals.set(root, disposeNavigation);
   return root;
 }
 
 /** @param {HTMLElement} root */
 export function disposeDashboard(root) {
+  dashboardDisposals.get(root)?.();
+  dashboardDisposals.delete(root);
   for (const page of root.querySelectorAll('.dashboard-page')) {
     if (page instanceof HTMLElement) disconnectLazyViews(page);
   }
@@ -1291,16 +1302,19 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
  * Shows a single dashboard page and keeps sidebar state synchronized with the URL hash.
  * @param {HTMLElement} root
  * @param {string} dashboardTitle
- * @param {(pageId: string) => HTMLElement | Promise<HTMLElement> | null} [renderPageById]
+ * @param {(pageId: string, options: PageSourceLoadOptions & { renderUpdate: (page: HTMLElement) => void }) => HTMLElement | Promise<HTMLElement> | null} [renderPageById]
  * @param {string} [defaultPageId]
+ * @param {boolean} [reloadPopulatedPages]
+ * @returns {() => void}
  */
-export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '') {
+export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '', reloadPopulatedPages = false) {
   const pages = [...root.querySelectorAll('.dashboard-page')]
     .filter((page) => page instanceof HTMLElement);
   /** @type {Map<string, { details: boolean[], scrollTop: number }>} */
   const pageState = new Map();
   let activePageId = '';
   let activationRevision = 0;
+  let pageOwner = new AbortController();
   const overviewPage = pages.find((page) => page.dataset.pageId === 'overview');
   const links = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')]
     .filter((link) => link instanceof HTMLAnchorElement);
@@ -1325,7 +1339,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     hidden: link instanceof HTMLElement ? link.hidden : false
   }));
   if (pages.length === 0 || links.length === 0) {
-    return;
+    return () => pageOwner.abort();
   }
 
   root.addEventListener('dashboard-route-allocation', (event) => {
@@ -1410,6 +1424,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    */
   const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
     const revision = ++activationRevision;
+    pageOwner.abort();
+    pageOwner = new AbortController();
     let pagePopulated = false;
     const dashboardHorizon = root.querySelector('.dashboard-horizon');
     let activeFilterBar = root.querySelector('.report-actions > .filter-bar');
@@ -1470,13 +1486,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     root.classList.toggle('dashboard-mobile-overview-actions', pageId === overviewPage?.dataset.pageId);
     const pageIndex = pages.findIndex((candidate) => candidate.dataset.pageId === pageId);
     const pendingPage = pages[pageIndex];
-    if (pendingPage?.hasAttribute('data-page-pending')) {
+    if (pendingPage && (pendingPage.hasAttribute('data-page-pending') || reloadPopulatedPages)) {
       const populate = () => {
         if (revision !== activationRevision || activePageId !== pageId) return;
-        const currentPage = pages[pageIndex];
-        if (!currentPage?.hasAttribute('data-page-pending')) return;
-        const rendered = renderPageById?.(pageId);
-        if (!rendered) return;
+        let currentPage = pages[pageIndex];
+        if (!currentPage) return;
         /** @param {HTMLElement} renderedPage */
         const replacePage = (renderedPage) => {
           if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
@@ -1487,6 +1501,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           renderedPage.dataset.routeValue = currentPage.dataset.routeValue ?? '';
           currentPage.replaceWith(renderedPage);
           pages[pageIndex] = renderedPage;
+          currentPage = renderedPage;
           enableLazyViews(renderedPage);
           emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
             kind: 'page',
@@ -1501,9 +1516,17 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
             restoreScroll(renderedPage);
           }
         };
+        const rendered = renderPageById?.(pageId, {
+          signal: pageOwner.signal,
+          onUpdate: () => {},
+          renderUpdate: replacePage
+        });
+        if (!rendered) return;
         if (rendered instanceof Promise) {
-          pendingPage.replaceChildren(renderPageSkeleton());
-          pendingPage.setAttribute('aria-busy', 'true');
+          if (pendingPage.hasAttribute('data-page-pending')) {
+            pendingPage.replaceChildren(renderPageSkeleton());
+            pendingPage.setAttribute('aria-busy', 'true');
+          }
           void rendered.then(replacePage).catch(() => {
             if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
             currentPage.replaceChildren(renderEmptyMessage('Unable to load this page.', { role: 'alert' }));
@@ -1724,6 +1747,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   browserNavigation?.addEventListener('currententrychange', syncHistoryBack);
   defaultView?.addEventListener('popstate', onPopState);
   defaultView?.addEventListener('hashchange', onHashChange);
+  return () => pageOwner.abort();
 }
 
 /**

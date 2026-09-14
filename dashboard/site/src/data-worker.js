@@ -1,7 +1,6 @@
 import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
-import { deriveDataHealthSources } from './data-health.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import {
   ingestCachedGhAwJsonl,
@@ -14,10 +13,6 @@ import { queryCanonicalViewSources } from './data/queries/view-sources.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
-import { deriveOverviewSources } from './overview-data.js';
-import { deriveRepositorySources } from './repository-data.js';
-import { deriveRuntimeSources } from './runtime-data.js';
-import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDashboardLinkSources } from './inferred-sources.js';
 
 /** @param {ReadableStream<Uint8Array>} body */
@@ -143,31 +138,9 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
     dashboard.logicalSources,
     required
   );
-  const hasPublishedSources = Object.keys(dashboard.logicalSources).length > 0;
-  if (!hasPublishedSources) {
-    const querySources = {
-      ...canonicalPayload,
-      ...executeDashboardQueries(context.queries, canonicalPayload, requested, { signal })
-    };
-    return paginateDashboardSources(
-      deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
-      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-      continuationRevision(context.queries, dashboard.revision)
-    );
-  }
-  const derivedSources = deriveRuntimeSources(
-    deriveRepositorySources(
-      deriveOverviewSources(
-        deriveWorkflowSources({ ...dashboard.logicalSources, ...canonicalPayload })
-      )
-    )
-  );
-  const healthSources = [...requested].some((name) => name.startsWith('data-health-'))
-    ? { ...derivedSources, ...deriveDataHealthSources(derivedSources) }
-    : derivedSources;
   const querySources = {
-    ...healthSources,
-    ...executeDashboardQueries(context.queries, healthSources, requested, { signal })
+    ...canonicalPayload,
+    ...executeDashboardQueries(context.queries, canonicalPayload, requested, { signal })
   };
   return paginateDashboardSources(
     deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),

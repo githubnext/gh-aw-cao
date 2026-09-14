@@ -99,7 +99,7 @@
       /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */
       let renderedSources = {};
       let renderedSourcesPrepared = false;
-      /** @type {((pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
+      /** @type {((pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
       let renderedPageSourceLoader;
       /** @type {(() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
       let renderedHorizonSourceLoader;
@@ -196,7 +196,7 @@
        * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
        * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
        * @param {boolean} [prepared]
-       * @param {(pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
+      * @param {(pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
        * @param {() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadHorizonSources]
        * @param {() => void} [retryRefresh]
        */
@@ -964,18 +964,46 @@
               () => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
             ),
           );
-          /** @param {string} pageId */
-          const loadPageSources = async (pageId) => {
+          /**
+           * @param {string} pageId
+           * @param {{ signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }} options
+           */
+          const loadPageSources = (pageId, options) => {
             const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);
             const lazySources = dashboardPageLazySourceNames(dashboardDocument, pageId);
-            return runWithLoadingProgress(async () => bindContinuations(
-              await loadCanonicalDashboardPage(
+            const pagination = continuationRequests(lazySources);
+            return runWithLoadingProgress(() => new Promise((resolve, reject) => {
+              let receivedInitialSnapshot = false;
+              const abort = () => reject(new DOMException('Dashboard page load was cancelled.', 'AbortError'));
+              options.signal.addEventListener('abort', abort, { once: true });
+              subscribeCanonicalDashboardView(
+                `page:${pageId}`,
                 sourceNames,
                 dashboardContext,
-                continuationRequests(lazySources),
-              ),
-              lazySources,
-            ));
+                (sources) => {
+                  const boundSources = bindContinuations(sources, lazySources);
+                  if (!receivedInitialSnapshot) {
+                    receivedInitialSnapshot = true;
+                    options.signal.removeEventListener('abort', abort);
+                    resolve(boundSources);
+                    return;
+                  }
+                  options.onUpdate(boundSources);
+                },
+                pagination,
+                {
+                  signal: options.signal,
+                  onError: (error) => {
+                    if (!receivedInitialSnapshot) {
+                      options.signal.removeEventListener('abort', abort);
+                      reject(error);
+                    } else {
+                      console.error(`Unable to update dashboard page ${pageId}: ${error.message}`);
+                    }
+                  }
+                }
+              );
+            }));
           };
           configureSourceLoader(async (name) => (await loadCanonicalDashboardPage([name], dashboardContext))[name]);
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
@@ -1067,26 +1095,6 @@
             refreshSources();
             loadingProgress.complete();
             cancelCommand.complete();
-            subscribeCanonicalDashboardView(
-              `page:${initialPageId}`,
-              initialSources,
-              dashboardContext,
-              (sources) => {
-                refreshBoundSources();
-                updateWithViewTransition(
-                  document,
-                  () => renderSources(
-                    bindContinuations(sources, initialLazySources),
-                    "ready",
-                    true,
-                    loadPageSources,
-                    loadHorizonSources,
-                  ),
-                );
-              },
-              refreshPagination,
-              { signal: refreshOwner.signal, onError: showStaleSources, emitCurrent: false },
-            );
           } else {
             renderSources(
               await loadInitialSources(

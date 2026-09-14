@@ -215,7 +215,7 @@ describe('canonical view sources', () => {
     ]);
   });
 
-  it('keeps work items and security findings outside canonical entities', async () => {
+  it('returns requested authoritative sources through the canonical query boundary', async () => {
     const loaded = await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
     const projected = await queryCanonicalViewSources(
@@ -224,7 +224,15 @@ describe('canonical view sources', () => {
       ['work-items', 'security-findings']
     );
 
-    expect(projected).toEqual({});
+    expect(projected['work-items']).toMatchObject({
+      source: 'work-items',
+      rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }]
+    });
+    expect(projected['security-findings']).toMatchObject({
+      source: 'security-findings',
+      rows: [{ 'smell-observation-id': 'threat-detection:observation-1', 'smell-severity': 'high' }]
+    });
+    expect(projected).not.toHaveProperty('usage');
     expect(loaded['work-items']).toMatchObject({
       source: 'work-items',
       rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }]
