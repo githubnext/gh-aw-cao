@@ -208,11 +208,17 @@ test("gh aw add resolves root files included through a nested manifest", { timeo
         "",
       ].join("\n"),
     );
-    // This must resolve the root manifest rather than treating child/aw.yml as a cycle.
-    writePackageFile(packageRoot, "child/aw.yml", `name: Child package
-includes:
-  - ./aw.yml
-`);
+    // The child's ./aw.yml import must resolve the package-root manifest, not a self-cycle.
+    writePackageFile(
+      packageRoot,
+      "child/aw.yml",
+      [
+        "name: Child package",
+        "includes:",
+        "  - ./aw.yml",
+        "",
+      ].join("\n"),
+    );
     for (const [relativePath, content] of rootFiles) {
       writePackageFile(packageRoot, relativePath, content);
     }
