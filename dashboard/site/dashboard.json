@@ -1118,6 +1118,14 @@
         "order-by": [{ "field": "aic", "direction": "desc" }, { "field": "workflow", "direction": "asc" }]
       },
       {
+        "name": "cost-top-workflow-aic",
+        "intent": "Concentrate token-efficiency review on the workflows that consume the most AI Credits.",
+        "description": "The ten workflows with the highest measured AI Credit consumption.",
+        "from": "cost-workflow-efficiency",
+        "order-by": [{ "field": "aic", "direction": "desc" }, { "field": "workflow", "direction": "asc" }],
+        "limit": 10
+      },
+      {
         "name": "mcp-tool-results",
         "intent": "Identify completed MCP tool calls by correlation id.",
         "description": "Successful tool results keyed to their originating call.",
@@ -4285,9 +4293,7 @@
             "title": "Top AI Credit consumers",
             "description": "The ten workflows with the highest measured AI Credit consumption concentrate token-efficiency opportunity.",
             "data": {
-              "source": "cost-workflow-efficiency",
-              "order-by": [{ "field": "total-aic", "direction": "desc" }],
-              "limit": 10
+              "source": "cost-top-workflow-aic"
             },
             "mark": "chart",
             "chart": "pie",

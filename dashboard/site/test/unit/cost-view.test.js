@@ -67,6 +67,11 @@ describe('Cost dashboard view', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        'cost-top-workflow-aic': {
+          source: 'cost-top-workflow-aic',
+          rows: efficiencyRows,
+          metadata
+        },
         'cost-workflow-efficiency': {
           source: 'cost-workflow-efficiency',
           rows: efficiencyRows,
@@ -87,7 +92,15 @@ describe('Cost dashboard view', () => {
       id: 'cost-top-workflow-aic',
       mark: 'chart',
       chart: 'pie',
-      data: { source: 'cost-workflow-efficiency', limit: 10 }
+      data: { source: 'cost-top-workflow-aic' }
+    });
+    const topQuery = authoritativeDashboardDocument.dashboard.queries.find(
+      (/** @type {{ name: string }} */ candidate) => candidate.name === 'cost-top-workflow-aic'
+    );
+    expect(topQuery).toMatchObject({
+      from: 'cost-workflow-efficiency',
+      'order-by': expect.arrayContaining([{ field: 'aic', direction: 'desc' }]),
+      limit: 10
     });
     expect(dashboardPage.views[0].encoding.y).toMatchObject({ field: 'aic', aggregate: 'sum', unit: 'aic' });
     expect(dashboardPage.views[1]).toMatchObject({
