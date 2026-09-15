@@ -158,7 +158,9 @@ export function deleteCanonicalDatabase(indexedDB, options = {}) {
       if (blockedTimeout === undefined) {
         blockedTimeout = setTimeout(() => {
           debug('delete database still blocked after timeout', name);
-          reject(new Error('Deleting canonical dashboard data was blocked by another open tab or connection'));
+          const error = new Error('Deleting canonical dashboard data was blocked by another open tab or connection');
+          error.name = 'IndexedDBDeleteBlockedError';
+          reject(error);
         }, blockedTimeoutMs);
       }
     };

@@ -84,8 +84,8 @@ export function renderResetDashboardControl(options = {}) {
         });
         reload();
       } catch (error) {
-        status.textContent = error instanceof Error && error.message
-          ? error.message
+        status.textContent = error instanceof Error && error.name === 'IndexedDBDeleteBlockedError'
+          ? 'Reset timed out because another open dashboard tab is still using local data. Close other tabs and try again.'
           : 'Could not reset local dashboard data.';
         confirm.disabled = false;
         cancel.disabled = false;
