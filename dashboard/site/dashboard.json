@@ -2004,350 +2004,61 @@
           {
             "source": "workflow-run-totals",
             "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "runs",
-                "as": "observed-runs"
-              },
-              {
-                "field": "imported-runs",
-                "as": "observed-imported-runs"
-              }
-            ]
+            "on": [{"left": "organization", "right": "organization"}, {"left": "repository", "right": "repository"}, {"left": "workflow", "right": "workflow"}],
+            "fields": [{"field": "runs", "as": "observed-runs"}, {"field": "imported-runs", "as": "observed-imported-runs"}]
           },
           {
             "source": "workflow-aic-totals",
             "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "aic",
-                "as": "observed-aic"
-              }
-            ]
+            "on": [{"left": "organization", "right": "organization"}, {"left": "repository", "right": "repository"}, {"left": "workflow", "right": "workflow"}],
+            "fields": [{"field": "aic", "as": "observed-aic"}]
           }
         ],
         "compute": [
-          {
-            "as": "package-title",
-            "function": "title-case",
-            "args": [
-              {
-                "field": "package"
-              }
-            ]
-          },
-          {
-            "as": "package-display-name",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "package-name"
-              },
-              {
-                "field": "package-title"
-              },
-              {
-                "value": "Repository-owned"
-              }
-            ]
-          },
-          {
-            "as": "repository-slug",
-            "function": "concat",
-            "args": [
-              {
-                "field": "organization"
-              },
-              {
-                "value": "/"
-              },
-              {
-                "field": "repository"
-              }
-            ]
-          },
-          {
-            "as": "workflow-display-name",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "workflow-name"
-              },
-              {
-                "field": "workflow"
-              }
-            ]
-          },
-          {
-            "as": "declared-role",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "workflow-role"
-              },
-              {
-                "value": "standalone"
-              }
-            ]
-          },
-          {
-            "as": "declared-mode",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "rollout-mode"
-              },
-              {
-                "value": "unknown"
-              }
-            ]
-          },
-          {
-            "as": "declared-registration",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "workflow-active"
-              },
-              {
-                "value": "unknown"
-              }
-            ]
-          },
-          {
-            "as": "total-runs",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-runs"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "total-aic",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-aic"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "total-imported-runs",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-imported-runs"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "ingestion-rate",
-            "function": "quotient",
-            "args": [
-              {
-                "field": "total-imported-runs"
-              },
-              {
-                "field": "total-runs"
-              }
-            ]
-          },
-          {
-            "as": "ingestion",
-            "function": "format-percent",
-            "args": [
-              {
-                "field": "ingestion-rate"
-              }
-            ]
-          },
-          {
-            "as": "encoded-package",
-            "function": "url-encode",
-            "args": [{ "field": "package" }]
-          },
-          {
-            "as": "package-dashboard-href",
-            "function": "concat",
-            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
-          },
-          {
-            "as": "package-dashboard-label",
-            "function": "concat",
-            "args": [{ "value": "View " }, { "field": "package-display-name" }, { "value": " package dashboard" }]
-          },
-          {
-            "as": "package-dashboard-link",
-            "function": "dashboard-link",
-            "args": [
-              { "field": "repository-link" },
-              { "field": "package-dashboard-href" },
-              { "field": "package-dashboard-label" },
-              { "field": "package" }
-            ]
-          },
-          {
-            "as": "encoded-repository",
-            "function": "url-encode",
-            "args": [{ "field": "repository-slug" }]
-          },
-          {
-            "as": "repository-dashboard-href",
-            "function": "concat",
-            "args": [{ "value": "#page-repository-detail?repository=" }, { "field": "encoded-repository" }]
-          },
-          {
-            "as": "repository-dashboard-label",
-            "function": "concat",
-            "args": [{ "value": "View " }, { "field": "repository-slug" }, { "value": " repository dashboard" }]
-          },
-          {
-            "as": "repository-dashboard-link",
-            "function": "dashboard-link",
-            "args": [
-              { "field": "repository-link" },
-              { "field": "repository-dashboard-href" },
-              { "field": "repository-dashboard-label" },
-              { "field": "repository-slug" }
-            ]
-          },
-          {
-            "as": "workflow-identity",
-            "function": "concat",
-            "args": [{ "field": "repository-slug" }, { "value": ":" }, { "field": "workflow" }]
-          },
-          {
-            "as": "encoded-workflow",
-            "function": "url-encode",
-            "args": [{ "field": "workflow-identity" }]
-          },
-          {
-            "as": "workflow-dashboard-href",
-            "function": "concat",
-            "args": [{ "value": "#page-workflow-runtime?workflow=" }, { "field": "encoded-workflow" }]
-          },
-          {
-            "as": "workflow-dashboard-label",
-            "function": "concat",
-            "args": [{ "value": "View " }, { "field": "workflow-display-name" }, { "value": " workflow dashboard" }]
-          },
-          {
-            "as": "workflow-dashboard-link",
-            "function": "dashboard-link",
-            "args": [
-              { "field": "workflow-link" },
-              { "field": "workflow-dashboard-href" },
-              { "field": "workflow-dashboard-label" },
-              { "field": "workflow-identity" }
-            ]
-          }
+          {"as": "package-title", "function": "title-case", "args": [{"field": "package"}]},
+          {"as": "package-display-name", "function": "coalesce", "args": [{"field": "package-name"}, {"field": "package-title"}, {"value": "Repository-owned"}]},
+          {"as": "repository-slug", "function": "concat", "args": [{"field": "organization"}, {"value": "/"}, {"field": "repository"}]},
+          {"as": "workflow-display-name", "function": "coalesce", "args": [{"field": "workflow-name"}, {"field": "workflow"}]},
+          {"as": "declared-role", "function": "coalesce", "args": [{"field": "workflow-role"}, {"value": "standalone"}]},
+          {"as": "declared-mode", "function": "coalesce", "args": [{"field": "rollout-mode"}, {"value": "unknown"}]},
+          {"as": "declared-registration", "function": "coalesce", "args": [{"field": "workflow-active"}, {"value": "unknown"}]},
+          {"as": "total-runs", "function": "coalesce", "args": [{"field": "observed-runs"}, {"value": 0}]},
+          {"as": "total-aic", "function": "coalesce", "args": [{"field": "observed-aic"}, {"value": 0}]},
+          {"as": "total-imported-runs", "function": "coalesce", "args": [{"field": "observed-imported-runs"}, {"value": 0}]},
+          {"as": "ingestion-rate", "function": "quotient", "args": [{"field": "total-imported-runs"}, {"field": "total-runs"}]},
+          {"as": "ingestion", "function": "format-percent", "args": [{"field": "ingestion-rate"}]},
+          {"as": "encoded-package", "function": "url-encode", "args": [{"field": "package"}]},
+          {"as": "package-dashboard-href", "function": "concat", "args": [{"value": "#page-package-insights?package="}, {"field": "encoded-package"}]},
+          {"as": "package-dashboard-label", "function": "concat", "args": [{"value": "View "}, {"field": "package-display-name"}, {"value": " package dashboard"}]},
+          {"as": "package-dashboard-link", "function": "dashboard-link", "args": [{"field": "repository-link"}, {"field": "package-dashboard-href"}, {"field": "package-dashboard-label"}, {"field": "package"}]},
+          {"as": "encoded-repository", "function": "url-encode", "args": [{"field": "repository-slug"}]},
+          {"as": "repository-dashboard-href", "function": "concat", "args": [{"value": "#page-repository-detail?repository="}, {"field": "encoded-repository"}]},
+          {"as": "repository-dashboard-label", "function": "concat", "args": [{"value": "View "}, {"field": "repository-slug"}, {"value": " repository dashboard"}]},
+          {"as": "repository-dashboard-link", "function": "dashboard-link", "args": [{"field": "repository-link"}, {"field": "repository-dashboard-href"}, {"field": "repository-dashboard-label"}, {"field": "repository-slug"}]},
+          {"as": "workflow-identity", "function": "concat", "args": [{"field": "repository-slug"}, {"value": ":"}, {"field": "workflow"}]},
+          {"as": "encoded-workflow", "function": "url-encode", "args": [{"field": "workflow-identity"}]},
+          {"as": "workflow-dashboard-href", "function": "concat", "args": [{"value": "#page-workflow-runtime?workflow="}, {"field": "encoded-workflow"}]},
+          {"as": "workflow-dashboard-label", "function": "concat", "args": [{"value": "View "}, {"field": "workflow-display-name"}, {"value": " workflow dashboard"}]},
+          {"as": "workflow-dashboard-link", "function": "dashboard-link", "args": [{"field": "workflow-link"}, {"field": "workflow-dashboard-href"}, {"field": "workflow-dashboard-label"}, {"field": "workflow-identity"}]}
         ],
         "select": [
-          {
-            "field": "package"
-          },
-          {
-            "field": "package-display-name",
-            "as": "package-name"
-          },
-          {
-            "field": "organization"
-          },
-          {
-            "field": "repository-slug",
-            "as": "repository"
-          },
-          {
-            "field": "workflow"
-          },
-          {
-            "field": "workflow-display-name",
-            "as": "workflow-name"
-          },
-          {
-            "field": "declared-role",
-            "as": "workflow-role"
-          },
-          {
-            "field": "declared-mode",
-            "as": "rollout-mode"
-          },
-          {
-            "field": "declared-registration",
-            "as": "workflow-active"
-          },
-          {
-            "field": "total-aic",
-            "as": "aic"
-          },
-          {
-            "field": "total-runs",
-            "as": "runs"
-          },
-          {
-            "field": "ingestion"
-          },
-          {
-            "field": "package-dashboard-link",
-            "as": "package-link"
-          },
-          {
-            "field": "repository-dashboard-link",
-            "as": "repository-link"
-          },
-          {
-            "field": "workflow-dashboard-link",
-            "as": "workflow-link"
-          }
+          {"field": "package"},
+          {"field": "package-display-name", "as": "package-name"},
+          {"field": "organization"},
+          {"field": "repository-slug", "as": "repository"},
+          {"field": "workflow"},
+          {"field": "workflow-display-name", "as": "workflow-name"},
+          {"field": "declared-role", "as": "workflow-role"},
+          {"field": "declared-mode", "as": "rollout-mode"},
+          {"field": "declared-registration", "as": "workflow-active"},
+          {"field": "total-aic", "as": "aic"},
+          {"field": "total-runs", "as": "runs"},
+          {"field": "ingestion"},
+          {"field": "package-dashboard-link", "as": "package-link"},
+          {"field": "repository-dashboard-link", "as": "repository-link"},
+          {"field": "workflow-dashboard-link", "as": "workflow-link"}
         ],
-        "order-by": [
-          {
-            "field": "repository",
-            "direction": "asc"
-          },
-          {
-            "field": "workflow",
-            "direction": "asc"
-          }
-        ]
+        "order-by": [{"field": "repository", "direction": "asc"}, {"field": "workflow", "direction": "asc"}]
       },
       {
         "name": "packaged-workflows",
@@ -3312,412 +3023,49 @@
         "intent": "Show repository-level execution health, outcome activity, and AI Credit usage in an actionable inventory.",
         "description": "Repository-local execution health and attributed outcome totals.",
         "from": "repository-activity-core",
-        "joins": [
-          {
-            "source": "repository-aic-totals",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              }
-            ],
-            "fields": [
-              {
-                "field": "aic",
-                "as": "observed-aic"
-              }
-            ]
-          }
-        ],
+        "joins": [{"source": "repository-aic-totals", "type": "left", "on": [{"left": "organization", "right": "organization"}, {"left": "repository", "right": "repository"}], "fields": [{"field": "aic", "as": "observed-aic"}]}],
         "compute": [
-          {
-            "as": "repository-slug",
-            "function": "concat",
-            "args": [
-              {
-                "field": "organization"
-              },
-              {
-                "value": "/"
-              },
-              {
-                "field": "repository"
-              }
-            ]
-          },
-          {
-            "as": "workflows",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-workflows"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "disabled",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-disabled"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "runs",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-runs"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "failed",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-failed"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "imported-runs",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-imported-runs"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "ingestion-rate",
-            "function": "quotient",
-            "args": [
-              {
-                "field": "imported-runs"
-              },
-              {
-                "field": "runs"
-              }
-            ]
-          },
-          {
-            "as": "ingestion",
-            "function": "format-percent",
-            "args": [
-              {
-                "field": "ingestion-rate"
-              }
-            ]
-          },
-          {
-            "as": "action-required",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-action-required"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "aic",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "observed-aic"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "has-failures",
-            "function": "greater-than",
-            "args": [
-              {
-                "field": "failed"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "has-action-required",
-            "function": "greater-than",
-            "args": [
-              {
-                "field": "action-required"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "has-runs",
-            "function": "greater-than",
-            "args": [
-              {
-                "field": "runs"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "has-disabled",
-            "function": "greater-than",
-            "args": [
-              {
-                "field": "disabled"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "outcomes-observed",
-            "function": "sum",
-            "args": [
-              {
-                "field": "observed-reports"
-              },
-              {
-                "field": "observed-evaluated-workflows"
-              }
-            ]
-          },
-          {
-            "as": "has-outcomes",
-            "function": "greater-than",
-            "args": [
-              {
-                "field": "outcomes-observed"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "failure-rate",
-            "function": "quotient",
-            "args": [
-              {
-                "field": "failed"
-              },
-              {
-                "field": "runs"
-              }
-            ]
-          },
-          {
-            "as": "failure-percent",
-            "function": "format-percent",
-            "args": [
-              {
-                "field": "failure-rate"
-              }
-            ]
-          },
-          {
-            "as": "failure-count",
-            "function": "format-count",
-            "args": [
-              {
-                "field": "failed"
-              }
-            ]
-          },
-          {
-            "as": "observed-failure-summary",
-            "function": "concat",
-            "args": [
-              {
-                "field": "failure-percent"
-              },
-              {
-                "value": " · "
-              },
-              {
-                "field": "failure-count"
-              },
-              {
-                "value": " failed"
-              }
-            ]
-          },
-          {
-            "as": "failure-summary",
-            "function": "if",
-            "args": [
-              {
-                "field": "has-runs"
-              },
-              {
-                "field": "observed-failure-summary"
-              },
-              {
-                "value": "—"
-              }
-            ]
-          },
-          {
-            "as": "outcome-status",
-            "function": "if",
-            "args": [
-              {
-                "field": "has-outcomes"
-              },
-              {
-                "value": "Outcomes observed"
-              },
-              {
-                "value": "No recent activity"
-              }
-            ]
-          },
-          {
-            "as": "disabled-status",
-            "function": "if",
-            "args": [
-              {
-                "field": "has-disabled"
-              },
-              {
-                "value": "Disabled workflows"
-              },
-              {
-                "field": "outcome-status"
-              }
-            ]
-          },
-          {
-            "as": "run-status",
-            "function": "if",
-            "args": [
-              {
-                "field": "has-runs"
-              },
-              {
-                "value": "No failures observed"
-              },
-              {
-                "field": "disabled-status"
-              }
-            ]
-          },
-          {
-            "as": "action-status",
-            "function": "if",
-            "args": [
-              {
-                "field": "has-action-required"
-              },
-              {
-                "value": "Approval required"
-              },
-              {
-                "field": "run-status"
-              }
-            ]
-          },
-          {
-            "as": "status",
-            "function": "if",
-            "args": [
-              {
-                "field": "has-failures"
-              },
-              {
-                "value": "Needs attention"
-              },
-              {
-                "field": "action-status"
-              }
-            ]
-          }
+          {"as": "repository-slug", "function": "concat", "args": [{"field": "organization"}, {"value": "/"}, {"field": "repository"}]},
+          {"as": "workflows", "function": "coalesce", "args": [{"field": "observed-workflows"}, {"value": 0}]},
+          {"as": "disabled", "function": "coalesce", "args": [{"field": "observed-disabled"}, {"value": 0}]},
+          {"as": "runs", "function": "coalesce", "args": [{"field": "observed-runs"}, {"value": 0}]},
+          {"as": "failed", "function": "coalesce", "args": [{"field": "observed-failed"}, {"value": 0}]},
+          {"as": "imported-runs", "function": "coalesce", "args": [{"field": "observed-imported-runs"}, {"value": 0}]},
+          {"as": "ingestion-rate", "function": "quotient", "args": [{"field": "imported-runs"}, {"field": "runs"}]},
+          {"as": "ingestion", "function": "format-percent", "args": [{"field": "ingestion-rate"}]},
+          {"as": "action-required", "function": "coalesce", "args": [{"field": "observed-action-required"}, {"value": 0}]},
+          {"as": "aic", "function": "coalesce", "args": [{"field": "observed-aic"}, {"value": 0}]},
+          {"as": "has-failures", "function": "greater-than", "args": [{"field": "failed"}, {"value": 0}]},
+          {"as": "has-action-required", "function": "greater-than", "args": [{"field": "action-required"}, {"value": 0}]},
+          {"as": "has-runs", "function": "greater-than", "args": [{"field": "runs"}, {"value": 0}]},
+          {"as": "has-disabled", "function": "greater-than", "args": [{"field": "disabled"}, {"value": 0}]},
+          {"as": "outcomes-observed", "function": "sum", "args": [{"field": "observed-reports"}, {"field": "observed-evaluated-workflows"}]},
+          {"as": "has-outcomes", "function": "greater-than", "args": [{"field": "outcomes-observed"}, {"value": 0}]},
+          {"as": "failure-rate", "function": "quotient", "args": [{"field": "failed"}, {"field": "runs"}]},
+          {"as": "failure-percent", "function": "format-percent", "args": [{"field": "failure-rate"}]},
+          {"as": "failure-count", "function": "format-count", "args": [{"field": "failed"}]},
+          {"as": "observed-failure-summary", "function": "concat", "args": [{"field": "failure-percent"}, {"value": " · "}, {"field": "failure-count"}, {"value": " failed"}]},
+          {"as": "failure-summary", "function": "if", "args": [{"field": "has-runs"}, {"field": "observed-failure-summary"}, {"value": "—"}]},
+          {"as": "outcome-status", "function": "if", "args": [{"field": "has-outcomes"}, {"value": "Outcomes observed"}, {"value": "No recent activity"}]},
+          {"as": "disabled-status", "function": "if", "args": [{"field": "has-disabled"}, {"value": "Disabled workflows"}, {"field": "outcome-status"}]},
+          {"as": "run-status", "function": "if", "args": [{"field": "has-runs"}, {"value": "No failures observed"}, {"field": "disabled-status"}]},
+          {"as": "action-status", "function": "if", "args": [{"field": "has-action-required"}, {"value": "Approval required"}, {"field": "run-status"}]},
+          {"as": "status", "function": "if", "args": [{"field": "has-failures"}, {"value": "Needs attention"}, {"field": "action-status"}]}
         ],
         "select": [
-          {
-            "field": "repository-slug",
-            "as": "repository"
-          },
-          {
-            "field": "workflows"
-          },
-          {
-            "field": "observed-reports",
-            "as": "reports"
-          },
-          {
-            "field": "observed-evaluated-workflows",
-            "as": "evaluated-workflows"
-          },
-          {
-            "field": "runs"
-          },
-          {
-            "field": "ingestion"
-          },
-          {
-            "field": "failure-summary"
-          },
-          {
-            "field": "aic"
-          },
-          {
-            "field": "status"
-          },
-          {
-            "field": "repository-link"
-          },
-          {
-            "field": "failed"
-          }
+          {"field": "repository-slug", "as": "repository"},
+          {"field": "workflows"},
+          {"field": "observed-reports", "as": "reports"},
+          {"field": "observed-evaluated-workflows", "as": "evaluated-workflows"},
+          {"field": "runs"},
+          {"field": "ingestion"},
+          {"field": "failure-summary"},
+          {"field": "aic"},
+          {"field": "status"},
+          {"field": "repository-link"},
+          {"field": "failed"}
         ],
-        "order-by": [
-          {
-            "field": "failed",
-            "direction": "desc"
-          },
-          {
-            "field": "runs",
-            "direction": "desc"
-          },
-          {
-            "field": "repository",
-            "direction": "asc"
-          }
-        ]
+        "order-by": [{"field": "failed", "direction": "desc"}, {"field": "runs", "direction": "desc"}, {"field": "repository", "direction": "asc"}]
       },
       {
         "name": "package-workflow-totals",
