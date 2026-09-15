@@ -168,4 +168,5 @@ jobs:
               for (const candidate of failed) {
                 core.info(`Not deleted ${candidate.name}`)
               }
+              core.warning(`${failed.length} eligible branches were not deleted`)
             }
