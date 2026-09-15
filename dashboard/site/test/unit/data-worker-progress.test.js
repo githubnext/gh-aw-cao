@@ -17,8 +17,8 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Preparing source data... +3s',
-        details: ['Preparing source data... +3s'],
+        message: 'Preparing data... +3s',
+        details: ['Preparing data... +3s'],
         duration: 0
       })
     });
@@ -57,12 +57,12 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Storing data... 250 of 1,000 records stored. +3s',
+        message: 'Storing 250/1,000 rec. +3s',
         details: [
-          'Preparing source data... +0s',
-          'Parsing activity data... 1,000 records, 750 KB of 1.5 MB read. +0s',
+          'Preparing data... +0s',
+          'Parsing 1,000 rec, 750 KB/1.5 MB. +0s',
           'Normalizing parsed records. +0s',
-          'Storing data... 250 of 1,000 records stored. +3s'
+          'Storing 250/1,000 rec. +3s'
         ],
         duration: 0
       })
@@ -73,7 +73,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Storing data... 1,000 of 1,000 records stored. +4s'
+        message: 'Storing 1,000/1,000 rec. +4s'
       })
     });
 
@@ -115,7 +115,7 @@ describe('data-worker ingestion progress', () => {
       type: 'notification',
       notification: expect.objectContaining({
         id: expect.stringMatching(/^ingestion-progress-/),
-        message: 'Parsing activity data... 42 records, 1.0 KB of 2.0 KB read. +3s',
+        message: 'Parsing 42 rec, 1.0 KB/2.0 KB. +3s',
         duration: 0
       })
     });
@@ -125,7 +125,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Parsing activity data... 84 records, 2.0 KB of 2.0 KB read. +4s'
+        message: 'Parsing 84 rec, 2.0 KB/2.0 KB. +4s'
       })
     });
 

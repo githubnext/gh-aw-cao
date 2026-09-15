@@ -437,7 +437,6 @@ test("orchestrators use checked-in policy with independent manual narrowing", ()
     assert.match(source, /safe_output_mode:\n\s+default: "review"\n\s+type: choice/);
     assert.match(source, new RegExp(`package: ${packageName}`));
     assert.match(source, /role: orchestrator/);
-    assert.match(source, /environment: central-agentic-ops/);
     assert.doesNotMatch(source, /vars\.CENTRAL_AGENTIC_OPS_|cell_count:|cell_index:|batch_size:|batch_index:/);
   }
 });

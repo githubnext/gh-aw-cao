@@ -113,14 +113,10 @@ jobs:
             } while (cursor)
 
             if (dryRun) {
-              await core.summary
-                .addHeading('Branches eligible for deletion (dry run)')
-                .addList(
-                  candidates.length === 0
-                    ? ['None']
-                    : candidates.map(({ name }) => `\`${name}\``),
-                )
-                .write()
+              core.info('Branches eligible for deletion (dry run)')
+              if (candidates.length === 0) {
+                core.info('None')
+              }
               for (const candidate of candidates) {
                 core.info(`Would delete ${candidate.name}`)
               }
@@ -149,10 +145,9 @@ jobs:
                     },
                   },
                 )
-
                 for (const candidate of batch) {
                   deleted.push(candidate)
-                  core.info(`Deleted ${candidate.name}`)
+                  deleted.push(candidate)
                 }
               } catch {
                 failed.push(...batch)
@@ -162,19 +157,19 @@ jobs:
               }
             }
 
-            await core.summary
-              .addHeading('Deleted branches')
-              .addList(
-                deleted.length === 0
-                  ? ['None']
-                  : deleted.map(({ name }) => `\`${name}\``),
-              )
-            if (failed.length > 0) {
-              core.summary
-                .addHeading('Branches not deleted')
-                .addList(failed.map(({ name }) => `\`${name}\``))
+            core.info('Deleted branches')
+            if (deleted.length === 0) {
+              core.info('None')
             }
-            await core.summary.write()
+            for (const candidate of deleted) {
+              core.info(`Deleted ${candidate.name}`)
+            }
+            if (failed.length > 0) {
+              core.info('Branches not deleted')
+              for (const candidate of failed) {
+                core.info(`Not deleted ${candidate.name}`)
+              }
+            }
 
             if (failed.length > 0) {
               core.setFailed(`${failed.length} eligible branches could not be deleted`)
