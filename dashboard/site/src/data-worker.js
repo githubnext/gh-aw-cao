@@ -130,7 +130,7 @@ export function startIngestionProgress(target = self) {
       clock.advance(nextMessage);
     },
     /** @param {number} completed @param {number} total */
-    importShards(completed, total) {
+    reportShardImportProgress(completed, total) {
       publishWorkerLoadingProgress({ completed, total }, target);
     },
     complete() {
@@ -422,7 +422,7 @@ export function processDataRequest(request, signal) {
             : null;
           const shards = publishedJsonlShards(payloadHashes);
           const shardCount = shards.length;
-          progress.importShards(0, shardCount);
+          progress.reportShardImportProgress(0, shardCount);
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
             shardCount,
@@ -485,7 +485,7 @@ export function processDataRequest(request, signal) {
                 index: index + 1,
                 shardCount
               });
-              progress.importShards(index + 1, shardCount);
+              progress.reportShardImportProgress(index + 1, shardCount);
               continue;
             }
             progress.log(`Downloading shard ${index + 1}/${shardCount}.`);
@@ -535,7 +535,7 @@ export function processDataRequest(request, signal) {
               });
               progress.log(`Shard ${index + 1}/${shardCount} committed `
                 + `${ingestion.committedRecords.toLocaleString('en-US')} rec.`);
-              progress.importShards(index + 1, shardCount);
+              progress.reportShardImportProgress(index + 1, shardCount);
             }
           }
           if (inventoryResponse.ok) {

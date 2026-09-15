@@ -88,8 +88,8 @@ describe('data-worker ingestion progress', () => {
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
 
-    progress.importShards(0, 4);
-    progress.importShards(2, 4);
+    progress.reportShardImportProgress(0, 4);
+    progress.reportShardImportProgress(2, 4);
 
     expect(postMessage).toHaveBeenNthCalledWith(1, {
       type: 'loading-progress',
