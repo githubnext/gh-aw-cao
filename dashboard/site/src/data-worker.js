@@ -71,6 +71,7 @@ export function startIngestionProgress(target = self) {
   let message = 'Preparing source data...';
   let phase = 'preparing';
   let phaseStartedAt = Date.now();
+  /** @type {string[]} */
   let history = [];
   let nextStep = 0;
   let completed = false;
@@ -89,6 +90,7 @@ export function startIngestionProgress(target = self) {
     .slice(-INGESTION_PROGRESS_HISTORY_LIMIT);
   /** @param {string} nextMessage */
   const append = (nextMessage) => {
+    if (message === nextMessage) return;
     updatePhase(nextMessage, `step-${++nextStep}`);
   };
   const report = () => {
@@ -114,7 +116,7 @@ export function startIngestionProgress(target = self) {
      * @param {{ bytesProcessed: number, recordsIngested: number, totalBytes?: number }} progress
      */
     update({ bytesProcessed, recordsIngested, totalBytes }) {
-      const byteProgress = Number.isFinite(totalBytes) && totalBytes > 0
+      const byteProgress = typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0
         ? `${formatDataSize(bytesProcessed)} of ${formatDataSize(totalBytes)}`
         : formatDataSize(bytesProcessed);
       updatePhase(
