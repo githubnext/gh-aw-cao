@@ -13,6 +13,7 @@ import { renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, ren
  */
 
 const DEFAULT_PAGE_SIZE = 25;
+const FACET_LOOKUP_HORIZON = 1_000;
 
 /**
  * Renders a table inside a scroll region. Column sorting is enabled
@@ -67,7 +68,8 @@ export function renderTableRegion(options) {
   } = options;
   const rowCount = getBodyRowCount(bodyRows);
   const hasRows = rowCount > 0;
-  const facets = getTableFacets(bodyRows, filterFields, rowCount);
+  const facetLookupHorizon = lazyList ? FACET_LOOKUP_HORIZON : Number.POSITIVE_INFINITY;
+  const facets = getTableFacets(bodyRows, filterFields, rowCount, facetLookupHorizon);
   const sortable = options.sortable ?? Boolean(filterLabel);
   const interactive = hasRows && Boolean(filterLabel);
 
@@ -186,7 +188,15 @@ export function renderTableRegion(options) {
     const rows = [...region.querySelectorAll('tbody > tr')]
       .filter((row) => row instanceof HTMLTableRowElement);
     if (sortable) enableTableSort(region, rows);
-    enableTableFilter(region, { filterId, lazyList, pageSize, resultNoun, resultNounPlural, continuation }, rows);
+    enableTableFilter(region, {
+      filterId,
+      lazyList,
+      pageSize,
+      resultNoun,
+      resultNounPlural,
+      continuation,
+      facetLookupHorizon
+    }, rows);
   } else if (hasRows && sortable) {
     enableTableSort(region);
   }
@@ -263,7 +273,7 @@ function cellText(row, columnIndex) {
  */
 /**
  * @param {HTMLElement} region
- * @param {{ filterId?: string, lazyList: boolean, pageSize: number, resultNoun?: string, resultNounPlural?: string, continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: HTMLTableRowElement[], continuationToken?: string }> } }} options
+ * @param {{ filterId?: string, lazyList: boolean, pageSize: number, resultNoun?: string, resultNounPlural?: string, facetLookupHorizon: number, continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: HTMLTableRowElement[], continuationToken?: string }> } }} options
  * @param {HTMLTableRowElement[]} rows
  */
 function enableTableFilter(region, options, rows) {
@@ -304,7 +314,7 @@ function enableTableFilter(region, options, rows) {
       if (!allOption || !Number.isInteger(columnIndex)) continue;
       facet.replaceChildren(
         allOption,
-        ...getFacetValues(rows, columnIndex).map((value) => h('option', { value }, value))
+        ...getFacetValues(rows, columnIndex, options.facetLookupHorizon).map((value) => h('option', { value }, value))
       );
       facet.value = [...facet.options].some((option) => option.value === selected) ? selected : '';
     }
@@ -493,12 +503,13 @@ function formatResultCount(shown, matched, noun = 'result', pluralNoun = `${noun
  * @param {unknown} bodyRows
  * @param {TableFilterField[]} filterFields
  * @param {number} rowCount
+ * @param {number} lookupHorizon
  * @returns {Array<TableFilterField & { values: string[] }>}
  */
-function getTableFacets(bodyRows, filterFields, rowCount) {
+function getTableFacets(bodyRows, filterFields, rowCount, lookupHorizon) {
   if (!Array.isArray(bodyRows)) return [];
   return filterFields.flatMap((field) => {
-   const values = getFacetValues(bodyRows, field.columnIndex);
+   const values = getFacetValues(bodyRows, field.columnIndex, lookupHorizon);
    return ((values.length > 1 && values.length < rowCount && values.length <= 10) || (field.always && values.length > 0))
      ? [{ ...field, values }]
      : [];
@@ -508,10 +519,12 @@ function getTableFacets(bodyRows, filterFields, rowCount) {
 /**
  * @param {HTMLTableRowElement[]} rows
  * @param {number} columnIndex
+ * @param {number} [lookupHorizon]
  * @returns {string[]}
  */
-function getFacetValues(rows, columnIndex) {
+function getFacetValues(rows, columnIndex, lookupHorizon = Number.POSITIVE_INFINITY) {
   return [...new Set(rows
+    .slice(0, lookupHorizon)
     .map((row) => row.cells[columnIndex]?.textContent?.trim() ?? '')
     .filter(Boolean))]
     .sort((left, right) => left.localeCompare(right));

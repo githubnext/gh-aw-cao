@@ -313,6 +313,28 @@ describe('renderTableRegion', () => {
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 50 of 60 results');
   });
 
+  it('limits lazy-list facet lookups to a bounded horizon', () => {
+    const rows = Array.from({ length: 1_001 }, (_, index) => h(
+      'tr',
+      null,
+      h('td', null, `repository-${index + 1}`),
+      h('td', null, index === 1_000 ? 'outside-horizon' : index % 2 === 0 ? 'success' : 'failure')
+    ));
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No repositories available.',
+      colSpan: 2,
+      headCells: ['Repository', 'Status'],
+      bodyRows: rows,
+      filterLabel: 'Filter repositories',
+      filterFields: [{ key: 'status', label: 'Status', columnIndex: 1, always: true }],
+      lazyList: true
+    });
+
+    const status = /** @type {HTMLSelectElement} */ (rendered.querySelector('[data-table-facet="status"]'));
+    expect([...status.options].map((option) => option.value)).toEqual(['', 'failure', 'success']);
+  });
+
   it('loads lazy-list rows from a continuation token', async () => {
     const load = vi.fn(async () => ({
       rows: Array.from({ length: 5 }, (_, index) => h(
