@@ -3,9 +3,10 @@
  * available, keeping peak JSON parsing memory independent of the full payload.
  * @param {typeof fetch} fetchSource
  * @param {string} sourcesUrl
+ * @param {{ onShardLoaded?: (shard: { name: string, sizeBytes: number | null, cacheStatus: string | null }) => void }} [options]
  * @returns {Promise<Record<string, unknown>>}
  */
-export async function loadDashboardSources(fetchSource, sourcesUrl) {
+export async function loadDashboardSources(fetchSource, sourcesUrl, options = {}) {
   const manifestUrl = new URL('./sources/manifest.json', sourcesUrl);
   const manifestResponse = await fetchSource(manifestUrl, { cache: 'no-store' });
   if (!manifestResponse.ok) {
@@ -29,6 +30,14 @@ export async function loadDashboardSources(fetchSource, sourcesUrl) {
   for (const name of manifest.sources) {
     const response = await fetchSource(new URL(`${name}.json`, manifestUrl), { cache: 'no-store' });
     if (!response.ok) throw new Error(`Unable to load dashboard source ${name}: ${response.status}`);
+    const contentLength = response.headers.get('content-length');
+    const sizeBytes = contentLength !== null && /^\d+$/.test(contentLength)
+      ? Number(contentLength)
+      : null;
+    const cacheStatus = ['cache-status', 'cf-cache-status', 'x-cache']
+      .map((header) => response.headers.get(header)?.trim())
+      .find(Boolean) ?? null;
+    options.onShardLoaded?.({ name, sizeBytes, cacheStatus });
     const source = await response.json();
     if (manifest.generation && source?.metadata?.['artifact-generation'] !== manifest.generation) {
       throw new Error(`Dashboard source ${name} does not match the source manifest generation.`);

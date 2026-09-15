@@ -5,6 +5,7 @@ describe('dashboard source loader', () => {
   it('loads split logical sources sequentially', async () => {
     let active = 0;
     let maximumActive = 0;
+    const onShardLoaded = vi.fn();
     const fetchSource = vi.fn(async (input) => {
       const url = String(input);
       const pathname = new URL(url).pathname;
@@ -16,10 +17,16 @@ describe('dashboard source loader', () => {
         return new Response(JSON.stringify({ version: 1, sources: ['runs', 'outcomes'] }));
       }
       const name = pathname.endsWith('/runs.json') ? 'runs' : 'outcomes';
-      return new Response(JSON.stringify({ source: name, rows: [{ id: name }] }));
+      return new Response(JSON.stringify({ source: name, rows: [{ id: name }] }), {
+        headers: pathname.endsWith('/runs.json')
+          ? { 'content-length': '1024', 'x-cache': 'HIT' }
+          : {}
+      });
     });
 
-    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).resolves.toEqual({
+    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json', {
+      onShardLoaded
+    })).resolves.toEqual({
       runs: { source: 'runs', rows: [{ id: 'runs' }] },
       outcomes: { source: 'outcomes', rows: [{ id: 'outcomes' }] }
     });
@@ -28,6 +35,10 @@ describe('dashboard source loader', () => {
       [new URL('https://example.test/cao/sources/manifest.json'), { cache: 'no-store' }],
       [new URL('https://example.test/cao/sources/runs.json'), { cache: 'no-store' }],
       [new URL('https://example.test/cao/sources/outcomes.json'), { cache: 'no-store' }]
+    ]);
+    expect(onShardLoaded.mock.calls).toEqual([
+      [{ name: 'runs', sizeBytes: 1024, cacheStatus: 'HIT' }],
+      [{ name: 'outcomes', sizeBytes: null, cacheStatus: null }]
     ]);
   });
 

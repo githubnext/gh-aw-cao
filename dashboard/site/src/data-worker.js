@@ -364,7 +364,12 @@ export function processDataRequest(request, signal) {
       let changed = false;
       try {
         progress.log(jsonl ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
-        let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
+        let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href, {
+          onShardLoaded: ({ name, sizeBytes, cacheStatus }) => {
+            const size = sizeBytes === null ? 'size unavailable' : `${sizeBytes.toLocaleString()} bytes`;
+            progress.log(`Loaded dashboard source shard ${name} (${size}; cache: ${cacheStatus ?? 'unavailable'}).`);
+          }
+        });
         if (jsonl) {
           const payloadHashesUrl = new URL('./payload-hashes.json', sourceUrl);
           progress.log('Checking the published payload identity.');
