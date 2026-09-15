@@ -504,7 +504,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
-    expect(page?.querySelector('h1')?.textContent).toContain('Models & Agents');
+    expect(page?.getAttribute('data-page-title')).toBe('Models & Agents');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');
     expect(page?.textContent).toContain('claude-sonnet-5');
