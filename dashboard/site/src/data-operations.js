@@ -151,10 +151,17 @@ function fitPrediction(rows, definition, predictors) {
   if (predictors.length !== 1) return null;
   if (method === 'quad' || method === 'poly') {
     const order = method === 'quad' ? 2 : (definition.order ?? 3);
+    const center = observations.reduce((sum, { values: [value] }) => sum + value, 0) / observations.length;
+    const scale = Math.max(...observations.map(({ values: [value] }) => Math.abs(value - center)), 1);
+    /** @param {number} value */
+    const normalize = (value) => (value - center) / scale;
     return fitLinearModel(
       observations,
-      ([value]) => Array.from({ length: order + 1 }, (_, index) => value ** index),
-      (coefficients, [value]) => coefficients.reduce((sum, coefficient, index) => sum + coefficient * value ** index, 0)
+      ([value]) => Array.from({ length: order + 1 }, (_, index) => normalize(value) ** index),
+      (coefficients, [value]) => coefficients.reduce(
+        (sum, coefficient, index) => sum + coefficient * normalize(value) ** index,
+        0
+      )
     );
   }
   if (method === 'log') {
@@ -166,7 +173,9 @@ function fitPrediction(rows, definition, predictors) {
   }
   if (method === 'exp') {
     return fitLinearModel(
-      observations.filter(({ target }) => target > 0).map(({ target, values }) => ({ target: Math.log(target), values })),
+      observations
+        .filter(({ target }) => target > 0)
+        .map(({ target, values }) => ({ target: Math.log(target), values, weight: target })),
       ([value]) => [1, value],
       ([intercept, slope], [value]) => Math.exp(intercept + slope * value)
     );
@@ -185,14 +194,17 @@ function fitPrediction(rows, definition, predictors) {
 
 /**
  * Solves an ordinary least-squares model through modified Gram-Schmidt QR.
- * @param {Array<{ target: number, values: number[] }>} observations
+ * @param {Array<{ target: number, values: number[], weight?: number }>} observations
  * @param {(values: number[]) => number[]} design
  * @param {(coefficients: number[], values: number[]) => number} evaluate
  * @returns {((values: number[]) => number) | null}
  */
 function fitLinearModel(observations, design, evaluate) {
   if (observations.length === 0) return null;
-  const matrix = observations.map(({ values }) => design(values));
+  const matrix = observations.map(({ values, weight = 1 }) => {
+    const scale = Math.sqrt(weight);
+    return design(values).map((value) => value * scale);
+  });
   const columns = matrix[0]?.length ?? 0;
   if (columns === 0 || observations.length < columns || matrix.some((row) => row.length !== columns)) return null;
   const q = Array.from({ length: columns }, () => Array(observations.length).fill(0));
@@ -209,7 +221,8 @@ function fitLinearModel(observations, design, evaluate) {
     if (!Number.isFinite(r[column][column]) || r[column][column] <= Number.EPSILON) return null;
     q[column] = vector.map((value) => value / r[column][column]);
   }
-  const projected = q.map((column) => dot(column, observations.map(({ target }) => target)));
+  const targets = observations.map(({ target, weight = 1 }) => target * Math.sqrt(weight));
+  const projected = q.map((column) => dot(column, targets));
   const coefficients = Array(columns).fill(0);
   for (let row = columns - 1; row >= 0; row -= 1) {
     const known = coefficients.slice(row + 1)

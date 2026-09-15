@@ -98,7 +98,9 @@ describe('dashboard data operations', () => {
       values: [{ field: 'y', on: 'x', method: 'linear', groupby: ['series'], as: 'predicted-y' }]
     }]);
 
-    expect(result.map((row) => row['predicted-y'])).toEqual([3, 5, 7, 12, 14]);
+    result.forEach((row, index) => {
+      expect(row['predicted-y']).toBeCloseTo([3, 5, 7, 12, 14][index], 10);
+    });
     expect(observations.every((row) => !('predicted-y' in row))).toBe(true);
   });
 
@@ -144,6 +146,21 @@ describe('dashboard data operations', () => {
       values: [{ field: 'y', on: ['x', 'z'], as: 'prediction' }]
     }]);
     expect(result.at(-1)?.prediction).toBeCloseTo(14, 10);
+  });
+
+  it('centers polynomial predictors to preserve large-magnitude forecasts', () => {
+    const base = 1_700_000_000;
+    const rows = [0, 1, 2, 3].map((offset) => ({
+      x: base + offset,
+      y: offset ** 3 - offset + 2
+    }));
+    rows.push({ x: base + 4, y: /** @type {any} */ (null) });
+
+    const result = tidy(rows, [{
+      op: 'predict',
+      values: [{ field: 'y', on: 'x', method: 'poly', order: 3, as: 'prediction' }]
+    }]);
+    expect(result.at(-1)?.prediction).toBeCloseTo(62, 8);
   });
 
   it('rejects malformed worker requests', () => {

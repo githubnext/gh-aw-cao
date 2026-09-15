@@ -11,7 +11,7 @@
  * `select` -> `order-by` -> `limit`.
  */
 
-import { tidy } from '../../data-operations.js';
+import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
 
 /**
  * @typedef {Record<string, unknown>} Row
@@ -341,22 +341,35 @@ function queryStructuralDefect(definition) {
     if (!Array.isArray(join?.on) || join.on.length === 0) {
       return `join on "${String(join?.source)}" declares no equality keys`;
     }
-    if (definition.predict !== undefined) {
-      if (!Array.isArray(definition.predict) || definition.predict.length === 0 || definition.predict.length > 8) {
-        return 'predict must contain between 1 and 8 prediction definitions';
+  }
+  if (definition.predict !== undefined) {
+    if (!Array.isArray(definition.predict) || definition.predict.length === 0 || definition.predict.length > 8) {
+      return 'predict must contain between 1 and 8 prediction definitions';
+    }
+    for (const prediction of definition.predict) {
+      const predictors = typeof prediction?.on === 'string'
+        ? [prediction.on]
+        : Array.isArray(prediction?.on) ? prediction.on : [];
+      const groupby = prediction?.groupby ?? [];
+      if (typeof prediction?.field !== 'string' || typeof prediction?.as !== 'string'
+          || predictors.length === 0 || predictors.length > 8
+          || predictors.some((field) => typeof field !== 'string')) {
+        return 'prediction definitions require field, as, and between 1 and 8 predictor fields';
       }
-      for (const prediction of definition.predict) {
-        const predictors = typeof prediction?.on === 'string'
-          ? [prediction.on]
-          : Array.isArray(prediction?.on) ? prediction.on : [];
-        if (typeof prediction?.field !== 'string' || typeof prediction?.as !== 'string'
-            || predictors.length === 0 || predictors.length > 8) {
-          return 'prediction definitions require field, as, and between 1 and 8 predictor fields';
-        }
-        if (prediction.order !== undefined
-            && (!Number.isSafeInteger(prediction.order) || prediction.order < 1 || prediction.order > 10)) {
-          return 'prediction order must be an integer from 1 to 10';
-        }
+      if (!Array.isArray(groupby) || groupby.some((field) => typeof field !== 'string')) {
+        return 'prediction groupby must contain only field names';
+      }
+      if (prediction.method !== undefined
+          && (typeof prediction.method !== 'string' || !PREDICTION_METHODS.includes(prediction.method))) {
+        return `prediction method must be one of ${PREDICTION_METHODS.join(', ')}`;
+      }
+      if ((prediction.method ?? 'linear') !== 'linear' && predictors.length !== 1) {
+        return `prediction method ${String(prediction.method)} requires exactly one predictor field`;
+      }
+      if (prediction.order !== undefined
+          && ((prediction.method ?? 'linear') !== 'poly' || !Number.isSafeInteger(prediction.order)
+            || prediction.order < 1 || prediction.order > 10)) {
+        return 'prediction order is allowed only for poly and must be an integer from 1 to 10';
       }
     }
   }
