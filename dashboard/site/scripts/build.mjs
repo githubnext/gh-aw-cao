@@ -11,6 +11,7 @@ const siteRoot = new URL("../", import.meta.url);
 export async function buildDashboardSite({
   destination,
   controlSettings,
+  commitSha,
   repositoryRoot = new URL("../../../", import.meta.url),
 }) {
   if (!destination) throw new Error("dashboard destination is required");
@@ -38,7 +39,8 @@ export async function buildDashboardSite({
   ]);
 
   const indexPath = join(destinationPath, "index.html");
-  await writeFile(indexPath, configureSite(await readFile(indexPath, "utf8"), controlSettings));
+  const configuredIndex = configureSite(await readFile(indexPath, "utf8"), controlSettings);
+  await writeFile(indexPath, embedDashboardVersion(configuredIndex, commitSha));
 
   const packageDashboards = await findPackageDashboards(repositoryPath, controlSettings);
 
@@ -57,6 +59,16 @@ export async function buildDashboardSite({
     const routeDirectory = join(destinationPath, page.id);
     await mkdir(routeDirectory, { recursive: true });
     await writeFile(join(routeDirectory, "index.html"), redirectDocument(page.id));
+  }
+
+  export function embedDashboardVersion(html, commitSha) {
+    if (commitSha === undefined) return html;
+    if (typeof commitSha !== "string" || !/^[0-9a-f]{40}$/.test(commitSha)) {
+      throw new Error("dashboard commit SHA must be a 40-character lowercase hexadecimal string");
+    }
+    const declaration = '<meta name="dashboard-version" content="development">';
+    if (!html.includes(declaration)) throw new Error("dashboard version declaration is missing");
+    return html.replace(declaration, `<meta name="dashboard-version" content="${commitSha}">`);
   }
 }
 
@@ -195,11 +207,15 @@ function redirectDocument(pageId) {
 `;
 }
 
-async function main([destination, settingsPath]) {
+async function main([destination, settingsPath, commitSha]) {
   const controlSettings = settingsPath
     ? JSON.parse(await readFile(resolve(settingsPath), "utf8"))
     : {};
-  await buildDashboardSite({ destination: destination ?? new URL("dist/", siteRoot), controlSettings });
+  await buildDashboardSite({
+    destination: destination ?? new URL("dist/", siteRoot),
+    controlSettings,
+    commitSha,
+  });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {

@@ -185,6 +185,7 @@ jobs:
 
       - name: Assemble Dashboard Language site
         env:
+          DASHBOARD_COMMIT_SHA: ${{ github.workflow_sha }}
           REPORT_OUTPUT: ${{ runner.temp }}/central-agentic-ops-dashboard
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
@@ -201,6 +202,7 @@ jobs:
               '--',
               process.env.REPORT_OUTPUT,
               controlSettings,
+              process.env.DASHBOARD_COMMIT_SHA,
             ])
             core.info('Dashboard site build completed')
             core.info('Copying collected activity data')

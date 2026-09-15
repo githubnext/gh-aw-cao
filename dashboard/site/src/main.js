@@ -215,6 +215,7 @@
         const dashboard = renderDashboard({
           document: dashboardDocument,
           sources,
+          commitSha: document.querySelector('meta[name="dashboard-version"]')?.getAttribute("content"),
           viewer: localViewer,
           prepared,
           loading: state === "loading",

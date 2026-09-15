@@ -909,6 +909,23 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.repository-link')).toBeNull();
   });
 
+  it('renders the dashboard commit SHA in the footer', () => {
+    const commitSha = '0123456789abcdef0123456789abcdef01234567';
+    const document = {
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'versioned-dashboard',
+        title: 'Versioned Dashboard',
+        pages: [{ id: 'usage', kind: /** @type {'built-in'} */ ('built-in'), page: 'usage', title: 'Usage' }]
+      }
+    };
+
+    const rendered = renderDashboard({ document, sources: {}, commitSha });
+
+    expect(rendered.querySelector('.report-footer-version')?.textContent).toBe('Version 0123456');
+    expect(rendered.querySelector('.report-footer-version')?.getAttribute('title')).toBe(commitSha);
+  });
+
   it('DLS-DOC-012 DLS-SAFE-011 renders a labeled GitHub repository link resolved against a custom github-url-base', () => {
     const document = {
       languageVersion: '0.1.0',

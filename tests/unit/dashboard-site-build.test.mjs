@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { parse } from "yaml";
-import { buildDashboardSite, filterExperimentalDashboardViews } from "../../dashboard/site/scripts/build.mjs";
+import { buildDashboardSite, embedDashboardVersion, filterExperimentalDashboardViews } from "../../dashboard/site/scripts/build.mjs";
 
 function localDependencies(source) {
   const dependencies = [];
@@ -40,6 +40,19 @@ test("dashboard site filters experimental views unless explicitly enabled", () =
   assert.deepEqual(filtered.dashboard.navigation, [{ label: "Main", pages: ["stable"] }]);
   assert.deepEqual(filtered.dashboard.callouts, [{ id: "stable-callout", "navigation-page": "stable" }]);
   assert.equal(filterExperimentalDashboardViews(document, true), document);
+});
+
+test("dashboard site embeds a validated commit SHA", () => {
+  const html = '<meta name="dashboard-version" content="development">';
+  const commitSha = "0123456789abcdef0123456789abcdef01234567";
+  assert.equal(
+    embedDashboardVersion(html, commitSha),
+    `<meta name="dashboard-version" content="${commitSha}">`,
+  );
+  assert.throws(
+    () => embedDashboardVersion(html, "not-a-commit"),
+    /dashboard commit SHA must be a 40-character lowercase hexadecimal string/,
+  );
 });
 
 test("docs dashboard installs renderer assets and configured package pages", async () => {
