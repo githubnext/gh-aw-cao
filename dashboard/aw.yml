@@ -119,8 +119,6 @@ resources:
     destination: .github/aw/dashboard/site/src/cli-action-template.js
   - source: site/src/data-health.js
     destination: .github/aw/dashboard/site/src/data-health.js
-  - source: site/src/database-counts.js
-    destination: .github/aw/dashboard/site/src/database-counts.js
   - source: site/src/debug-events.js
     destination: .github/aw/dashboard/site/src/debug-events.js
   - source: site/src/debug.js
@@ -187,6 +185,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/configuration-view.js
   - source: site/src/components/configuration-actions.js
     destination: .github/aw/dashboard/site/src/components/configuration-actions.js
+  - source: site/src/components/dashboard-horizon.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-horizon.js
   - source: site/src/components/cli-actions.js
     destination: .github/aw/dashboard/site/src/components/cli-actions.js
   - source: site/src/components/chart-elements.js

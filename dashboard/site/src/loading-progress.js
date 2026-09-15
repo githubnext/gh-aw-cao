@@ -9,6 +9,18 @@ const BURST_VARIANCE = 0.22;
 const COMPLETION_DURATION = 240;
 const activeProgress = new WeakMap();
 
+/** @param {{ bar: HTMLElement, progress: number, timer: number, advancing: boolean }} target @param {{ completed: number, total: number }} state */
+function applyShardState(target, state) {
+  const total = Number(state?.total);
+  const completed = Number(state?.completed);
+  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(completed)) return;
+  window.clearTimeout(target.timer);
+  target.advancing = false;
+  target.progress = Math.max(target.progress, INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS)
+    * Math.min(1, Math.max(0, completed / total)));
+  target.bar.style.transform = `scaleX(${target.progress})`;
+}
+
 /**
  * @param {Document} document
  */
@@ -129,4 +141,15 @@ export function startLoadingProgress(document) {
       }, COMPLETION_DURATION);
     },
   };
+}
+
+/**
+ * Applies data-worker progress to the currently visible top progress bar.
+ * @param {Document} document
+ * @param {{ completed: number, total: number }} state
+ */
+export function setLoadingProgressState(document, state) {
+  const active = activeProgress.get(document);
+  if (!active || !active.bar.isConnected) return;
+  applyShardState(active, state);
 }

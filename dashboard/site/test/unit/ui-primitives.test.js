@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCheckbox, renderCloseButton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
+import { effect, state } from '../../src/reactive.js';
 
 describe('ui primitives', () => {
   it('renders a checkbox that can stop click propagation without blocking changes', () => {
@@ -114,6 +115,36 @@ describe('ui primitives', () => {
     expect(tooltip.querySelector('.tooltip-content')?.getAttribute('role')).toBe('tooltip');
     expect(tooltip.querySelector('.tooltip-description')?.textContent).toBe('Additional context.');
     expect(tooltip.querySelector('.tooltip-content strong')).not.toBeNull();
+  });
+
+  it('composes caller-owned trigger and content nodes with reactive updates', () => {
+    const value = state('Loading');
+    const trigger = h('button', { type: 'button', className: 'custom-trigger' });
+    const content = h('strong');
+    const tooltip = renderTooltip({
+      id: 'reactive-tooltip',
+      label: 'Reactive details',
+      trigger,
+      content,
+      className: 'custom-tooltip',
+      contentClassName: 'custom-content'
+    });
+    const binding = effect(() => {
+      content.textContent = value.get();
+    });
+
+    expect(tooltip.classList.contains('custom-tooltip')).toBe(true);
+    expect(tooltip.querySelector('.custom-trigger')).toBe(trigger);
+    expect(trigger.getAttribute('aria-describedby')).toBe('reactive-tooltip');
+    expect(tooltip.querySelector('.custom-content')).toBe(content.parentElement);
+    expect(content.textContent).toBe('Loading');
+
+    value.set('Ready');
+
+    expect(content.textContent).toBe('Ready');
+    expect(tooltip.querySelector('.custom-trigger')).toBe(trigger);
+    expect(tooltip.querySelector('.custom-content strong')).toBe(content);
+    binding.stop();
   });
 
   it('formats UTC date-time text and preserves the unavailable fallback', () => {

@@ -8,7 +8,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
+import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -16,13 +16,13 @@ import { elementHandlesEmptyRows, elementLoadsSourcesAsync, renderUiElement } fr
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
+import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
-import { createDatabaseCountLoader, formatDatabaseCounts } from './database-counts.js';
 import { scopedStorageKey } from './storage-scope.js';
 
 /**
@@ -74,7 +74,7 @@ import { scopedStorageKey } from './storage-scope.js';
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -224,7 +224,7 @@ export function dashboardTableSourceNames(document) {
  * @returns {HTMLElement}
  */
 export function renderDashboard(input) {
-  const { document, sources: rawSources, viewer = null, loadHorizonSources } = input;
+  const { document, sources: rawSources, viewer = null } = input;
   const pages = document.dashboard.pages;
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
@@ -244,12 +244,17 @@ export function renderDashboard(input) {
     ...resolveDashboardDefaults(document.dashboard.defaults, horizonRange, evaluatedAt),
     [TABLE_ROW_LIMIT]: input.tableRowLimit
   };
+  const dashboardHorizon = renderDashboardHorizon({
+    dashboard: document.dashboard,
+    initialValue: resolveDashboardHorizonViewModel(rawSources, dashboardDefaults, horizonRange, evaluatedAt),
+    formatDate: formatReportDate
+  });
 
   const styleEl = h('style', null, getPrimerStyles());
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
   const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation);
-  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer, loadHorizonSources, input.commitSha);
+  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, evaluatedAt, summarizeDataState(new Map(Object.entries(rawSources))), viewer, dashboardHorizon.element, input.commitSha);
 
   const appShell = h(
     'div',
@@ -288,9 +293,19 @@ export function renderDashboard(input) {
       const page = pages[pageIndex];
       if (!page) return null;
       /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const render = (pageSources) => showInitialLoadingSkeleton
-        ? renderPageLoadingSkeleton(page)
-        : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, options.queryContext);
+      const render = (pageSources) => {
+        if (options.signal?.aborted !== true) {
+          dashboardHorizon.update(resolveDashboardHorizonViewModel(
+            pageSources,
+            dashboardDefaults,
+            horizonRange,
+            evaluatedAt
+          ));
+        }
+        return showInitialLoadingSkeleton
+          ? renderPageLoadingSkeleton(page)
+          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, options.queryContext);
+      };
       if (input.loadPageSources) {
         options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
         return input.loadPageSources(pageId, options).then(render);
@@ -309,7 +324,10 @@ export function renderDashboard(input) {
     Boolean(input.loadPageSources)
 
   );
-  dashboardDisposals.set(root, disposeNavigation);
+  dashboardDisposals.set(root, () => {
+    disposeNavigation();
+    dashboardHorizon.dispose();
+  });
   return root;
 }
 
@@ -662,24 +680,20 @@ function getPageIcon(page) {
  * @param {string} githubUrlBase
  * @param {string | null} dashboardRepository
  * @param {Record<string, unknown>} dashboardDefaults
- * @param {string} horizonRange
  * @param {string} evaluatedAt
- * @param {boolean} hasData
- * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
  * @param {LocalViewer | null} viewer
- * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
+ * @param {HTMLElement} dashboardHorizon
  * @param {string | null | undefined} commitSha
  * @returns {HTMLElement}
  */
-function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer, loadHorizonSources, commitSha) {
+function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, evaluatedAt, effectiveState, viewer, dashboardHorizon, commitSha) {
   const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
   const initialPageDescription = initialPage?.description;
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
-  const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
   return h(
     'div',
     { className: 'app-main' },
@@ -714,7 +728,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, loadDatabaseCounts),
+          dashboardHorizon,
           dashboardRepository
             ? h(
               'a',
@@ -763,26 +777,17 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
 }
 
 /**
- * @param {PresentableDashboard} dashboard
+ * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, unknown>} dashboardDefaults
  * @param {string} horizonRange
- * @param {string} evaluatedAt
- * @param {boolean} hasData
- * @param {{ start: string, end: string, hours: number } | null} dataHorizon
- * @param {() => Promise<import('./database-counts.js').DatabaseCounts>} loadDatabaseCounts
- * @returns {HTMLElement}
+ * @param {string} fallbackEvaluatedAt
+ * @returns {{ available: boolean, evaluatedAt: string, duration: string, start: string, end: string }}
  */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, loadDatabaseCounts) {
-  if (!hasData) {
-    return h(
-      'span',
-      { className: 'dashboard-horizon dashboard-horizon-skeleton', 'aria-label': 'Horizon unavailable' },
-      h('span', { 'aria-hidden': 'true' })
-    );
-  }
-
-  const horizon = dashboard.horizon;
-  const label = horizon?.label || 'Horizon';
+function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRange, fallbackEvaluatedAt) {
+  const available = Object.values(sources)
+    .some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
+  const dataHorizon = resolveDataHorizon(sources);
+  const evaluatedAt = dataHorizon?.end ?? latestRetrievedAt(sources) ?? fallbackEvaluatedAt;
   const duration = dataHorizon
     ? formatDashboardHorizonHours(dataHorizon.hours)
     : formatDashboardHorizon(horizonRange);
@@ -792,64 +797,7 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
   const end = dataHorizon?.end ?? (isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.end === 'string'
     ? dashboardDefaults.time.end
     : evaluatedAt);
-  const databaseCounts = h('span', { className: 'horizon-tooltip-counts' }, 'Database counts load on hover');
-  /** @type {Promise<void> | undefined} */
-  let countsPromise;
-  const loadCounts = () => {
-    if (countsPromise) return;
-    databaseCounts.textContent = 'Loading database counts…';
-    countsPromise = loadDatabaseCounts()
-      .then((counts) => {
-        databaseCounts.textContent = formatDatabaseCounts(counts);
-      })
-      .catch(() => {
-        databaseCounts.textContent = 'Database counts unavailable';
-      });
-  };
-
-  return h(
-    'div',
-    { className: 'dashboard-horizon', 'data-dashboard-evaluated-at': evaluatedAt },
-    h(
-      'div',
-      { className: 'horizon-summary', onpointerenter: loadCounts, onfocusin: loadCounts },
-      h(
-        'button',
-        {
-          type: 'button',
-          className: 'horizon-toggle',
-          'aria-expanded': 'false',
-          'aria-label': `${label} ${duration}. Show time and mode filters`,
-          'aria-describedby': 'dashboard-horizon-tooltip'
-        },
-        octicon('clock'),
-        h('span', { className: 'sr-only action-label' }, `${label} ${duration}`)
-      ),
-      h(
-        'span',
-        { id: 'dashboard-horizon-tooltip', className: 'horizon-tooltip', role: 'tooltip' },
-        h('strong', null, duration),
-        h('span', null, label),
-        databaseCounts
-      )
-    ),
-    h(
-      'div',
-      { className: 'horizon-details', role: 'group', 'aria-label': 'Horizon details' },
-      h(
-        'span',
-        { className: 'horizon-details-description' },
-        horizon?.tooltip.description ?? 'Evidence coverage and data quality for this dashboard.'
-      ),
-      h(
-        'span',
-        { className: 'horizon-details-values' },
-        renderLabeledSpan('Start', h('time', { dateTime: start }, `${formatReportDate(start)} UTC`)),
-        renderLabeledSpan('End', h('time', { dateTime: end }, `${formatReportDate(end)} UTC`)),
-        renderLabeledSpan('Duration', duration)
-      )
-    )
-  );
+  return { available, evaluatedAt, duration, start, end };
 }
 
 /**
@@ -1337,6 +1285,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const placeDashboardHorizon = (page) => {
       const filterBar = page?.querySelector('.filter-bar');
       if (dashboardHorizon && filterBar && reportActions) {
+        if (activeFilterBar && activeFilterBar !== filterBar) {
+          // Reclaim component-owned details before discarding the stale filter bar.
+          const previousDetails = activeFilterBar.querySelector('.horizon-details');
+          if (previousDetails) dashboardHorizon.append(previousDetails);
+          activeFilterBar.remove();
+        }
         filterBar.prepend(dashboardHorizon);
         const horizonDetails = dashboardHorizon.querySelector('.horizon-details');
         const tuningControls = filterBar.querySelector('.filter-tuning-controls');

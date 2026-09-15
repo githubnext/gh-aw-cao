@@ -118,7 +118,7 @@ describe('Configuration dashboard view', () => {
     button.click();
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    expect(writeText.mock.calls[0][0]).toContain('Central Agentic Ops console log');
+    expect(writeText.mock.calls[0][0]).toBe('No console entries captured.');
     await vi.waitFor(() => expect(rendered?.querySelector('.configuration-debug-settings output')?.textContent)
       .toBe('Console logs copied.'));
   });

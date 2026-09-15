@@ -3421,7 +3421,7 @@
                   {
                     "field": "aic",
                     "type": "quantitative",
-                    "title": "Local AIC",
+                    "title": "AIC",
                     "unit": "aic"
                   },
                   {

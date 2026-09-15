@@ -3229,23 +3229,36 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
           }
         }
       };
-
-      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
-        dashboardDocument,
-        pageId,
-        sources,
-        { queryContext: options.queryContext, routeParameters: options.routeParameters }
-      );
-      const viewSources = await loadPageSources('cost', {});
+      let publishSources = () => {};
+      let initialLoad = true;
+      const loadPageSources = (pageId, options) => {
+        const prepared = prepareDashboardViewSources(
+          dashboardDocument,
+          pageId,
+          sources,
+          { queryContext: options.queryContext, routeParameters: options.routeParameters }
+        );
+        if (!initialLoad) return Promise.resolve(prepared);
+        initialLoad = false;
+        return new Promise((resolve) => {
+          publishSources = () => resolve(prepared);
+        });
+      };
+      window.publishHorizonSources = () => publishSources();
       document.querySelector('#root').append(renderDashboard({
         document: dashboardDocument,
-        sources: viewSources,
+        sources: {},
         loadPageSources
       }));
     </script>
   `);
 
   const filterBar = page.getByLabel('Dashboard filters');
+  await expect(page.locator('.dashboard-horizon-skeleton')).toBeVisible();
+  await page.evaluate(() => /** @type {{ publishHorizonSources: () => void }} */ (
+    /** @type {unknown} */ (window)
+  ).publishHorizonSources());
+  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
   await expect(filterBar).toBeVisible();
   await expect(filterBar.locator(':scope > .dashboard-horizon')).toHaveCount(1);
   await expect(page.locator('.report-actions > .dashboard-horizon')).toHaveCount(0);
