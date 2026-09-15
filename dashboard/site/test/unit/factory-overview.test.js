@@ -106,7 +106,7 @@ it('animates overview counters only when selected by its JSON element configurat
     })
   });
 
-  const counter = rendered.querySelector('.factory-station:nth-child(2) strong');
+  const counter = rendered.querySelector('.factory-station:nth-child(2) strong .metric-number-animated');
   expect(counter?.classList.contains('metric-number-animated')).toBe(true);
   expect(counter instanceof HTMLElement && counter.style.getPropertyValue('--metric-number-target')).toBe('2');
 });

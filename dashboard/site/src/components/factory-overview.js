@@ -3,6 +3,7 @@ import { octicon } from '../octicons.js';
 import { batch, derived, effect, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { formatCount } from './count-formatters.js';
+import { createAnimatedNumber } from './animated-number.js';
 
 /**
  * Compact worker-query results consumed by the overview.
@@ -364,17 +365,16 @@ function renderFactoryFloor(sources, metrics, label, animateNumbers) {
  */
 function renderStation(icon, options = {}) {
   const stationLabel = h('span', {});
-  const value = h('strong', {});
+  const value = createAnimatedNumber({ animate: options.animate, signal: overviewLifetime.signal });
   const detail = h('small', {});
   const element = h(
     'li',
     { className: 'factory-station' },
     h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
     stationLabel,
-    value,
+    value.element,
     detail
   );
-  let previousAnimationTarget = '';
   return {
     element,
     bind(read) {
@@ -387,20 +387,11 @@ function renderStation(icon, options = {}) {
         else element.removeAttribute('aria-busy');
         stationLabel.textContent = station.label;
         const count = station.pending ? '' : station.unavailable ? 'Unavailable' : formatCount(station.value);
-        value.replaceChildren(options.href && !station.pending && !station.unavailable ? h('a', { href: options.href }, count) : count);
-        const animationTarget = !station.pending && !station.unavailable && options.animate && Number.isSafeInteger(station.value)
-          ? String(station.value)
-          : '';
-        if (animationTarget && animationTarget !== previousAnimationTarget) {
-          value.classList.remove('metric-number-animated');
-          value.style.setProperty('--metric-number-target', animationTarget);
-          void value.offsetWidth;
-          value.classList.add('metric-number-animated');
-        } else if (!animationTarget) {
-          value.classList.remove('metric-number-animated');
-          value.style.removeProperty('--metric-number-target');
-        }
-        previousAnimationTarget = animationTarget;
+        value.set({
+          text: count,
+          target: !station.pending && !station.unavailable ? station.value : undefined,
+          href: options.href && !station.pending && !station.unavailable ? options.href : undefined
+        });
         detail.replaceChildren(station.pending ? '' : station.detail);
       });
     }

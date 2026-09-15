@@ -171,6 +171,8 @@ resources:
     destination: .github/aw/dashboard/site/src/view-formatters.js
   - source: site/src/components/anomaly-readiness.js
     destination: .github/aw/dashboard/site/src/components/anomaly-readiness.js
+  - source: site/src/components/animated-number.js
+    destination: .github/aw/dashboard/site/src/components/animated-number.js
   - source: site/src/components/attention-rules.js
     destination: .github/aw/dashboard/site/src/components/attention-rules.js
   - source: site/src/components/attention-rules.json
