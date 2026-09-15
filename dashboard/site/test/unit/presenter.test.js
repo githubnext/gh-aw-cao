@@ -1880,7 +1880,8 @@ describe('presenter built-in and custom pages', () => {
 
     function optionsOnUpdateWithNoSources() {
       const latestOptions = loadPageSources.mock.calls.at(-1)?.[1];
-      latestOptions?.onUpdate({});
+      expect(latestOptions).toBeDefined();
+      latestOptions.onUpdate({});
     }
   });
 

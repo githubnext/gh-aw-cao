@@ -122,6 +122,7 @@ export function renderDashboardHorizon(options) {
     /** @param {HorizonViewModel} next */
     update(next) {
       value.set((current) => {
+        // Keep the resolved global horizon visible while a page refresh has no rows.
         if (current.available && !next.available) return current;
         return current.available === next.available
           && current.evaluatedAt === next.evaluatedAt

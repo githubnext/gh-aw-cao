@@ -784,6 +784,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
  * @param {Record<string, unknown>} dashboardDefaults
  * @param {string} horizonRange
  * @param {string} fallbackEvaluatedAt
+ * @returns {{ available: boolean, evaluatedAt: string, duration: string, start: string, end: string }}
  */
 function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRange, fallbackEvaluatedAt) {
   const available = Object.values(sources)
@@ -1288,6 +1289,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       const filterBar = page?.querySelector('.filter-bar');
       if (dashboardHorizon && filterBar && reportActions) {
         if (activeFilterBar && activeFilterBar !== filterBar) {
+          // Reclaim component-owned details before discarding the stale filter bar.
           const previousDetails = activeFilterBar.querySelector('.horizon-details');
           if (previousDetails) dashboardHorizon.append(previousDetails);
           activeFilterBar.remove();
