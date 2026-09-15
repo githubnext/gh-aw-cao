@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { batch, derived, effect, state } from '../reactive.js';
+import { batch, derived, effect, render, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { formatCount } from './count-formatters.js';
 import { createAnimatedNumber } from './animated-number.js';
@@ -364,36 +364,31 @@ function renderFactoryFloor(sources, metrics, label, animateNumbers) {
  * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail: string | HTMLElement }) => void }}
  */
 function renderStation(icon, options = {}) {
-  const stationLabel = h('span', {});
+  const element = h('li', { className: 'factory-station' });
   const value = createAnimatedNumber({ animate: options.animate, signal: overviewLifetime.signal });
-  const detail = h('small', {});
-  const element = h(
-    'li',
-    { className: 'factory-station' },
-    h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
-    stationLabel,
-    value.element,
-    detail
-  );
   return {
     element,
     bind(read) {
-      bind(() => {
+      render(element, () => {
         const station = read();
         element.className = `factory-station${options.final ? ' factory-station-final' : ''}`
           + `${station.pending ? ' factory-station-pending' : ''}`
           + `${!station.pending && !station.unavailable && station.value === 0 ? ' factory-station-empty' : ''}`;
         if (station.pending) element.setAttribute('aria-busy', 'true');
         else element.removeAttribute('aria-busy');
-        stationLabel.textContent = station.label;
         const count = station.pending ? '' : station.unavailable ? 'Unavailable' : formatCount(station.value);
         value.set({
           text: count,
           target: !station.pending && !station.unavailable ? station.value : undefined,
           href: options.href && !station.pending && !station.unavailable ? options.href : undefined
         });
-        detail.replaceChildren(station.pending ? '' : station.detail);
-      });
+        return [
+          h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
+          h('span', {}, station.label),
+          value.element,
+          h('small', {}, station.pending ? '' : station.detail)
+        ];
+      }, { signal: overviewLifetime.signal });
     }
   };
 }

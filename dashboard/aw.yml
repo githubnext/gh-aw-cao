@@ -127,6 +127,8 @@ resources:
     destination: .github/aw/dashboard/site/src/diagnostics.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
+  - source: site/src/dom-reconciler.js
+    destination: .github/aw/dashboard/site/src/dom-reconciler.js
   - source: site/src/dom-provenance.js
     destination: .github/aw/dashboard/site/src/dom-provenance.js
   - source: site/src/debounce.js

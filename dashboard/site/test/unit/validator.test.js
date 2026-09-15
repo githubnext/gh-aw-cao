@@ -4950,7 +4950,7 @@ dashboard:
             source: runs
           mark: chart
           chart: pie
-          layout: half
+          layout: horizontal
           encoding:
             x:
               field: run-conclusion

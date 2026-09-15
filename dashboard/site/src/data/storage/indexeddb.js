@@ -428,6 +428,7 @@ export async function readTransaction(indexedDB, id) {
  */
 export async function withCanonicalIngestionLock(indexedDB, task) {
   const owner = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}:${Math.random()}`;
+  const startedAt = Date.now();
   for (;;) {
     const database = await openCanonicalDatabase(indexedDB);
     let acquired;
@@ -446,6 +447,12 @@ export async function withCanonicalIngestionLock(indexedDB, task) {
           owner,
           expiresAt: now + INGESTION_LOCK_LEASE_MS
         });
+      } else {
+        debug('waiting for canonical ingestion lock', {
+          heldBy: existing?.owner ?? null,
+          expiresInMs: Number(existing?.expiresAt ?? 0) - now,
+          waitedMs: now - startedAt
+        });
       }
       await done;
     } finally {
@@ -457,6 +464,7 @@ export async function withCanonicalIngestionLock(indexedDB, task) {
     if (acquired) break;
     await new Promise((resolve) => { setTimeout(resolve, 25); });
   }
+  debug('acquired canonical ingestion lock', { owner, waitedMs: Date.now() - startedAt });
 
   try {
     return await task();
@@ -472,6 +480,7 @@ export async function withCanonicalIngestionLock(indexedDB, task) {
     } finally {
       database.close();
     }
+    debug('released canonical ingestion lock', { owner });
   }
 }
 

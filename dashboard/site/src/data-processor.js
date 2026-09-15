@@ -5,6 +5,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
+import { withDebugParameter } from './debug.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -476,7 +477,7 @@ function processRequest(request, fallback, recoverWorkerError = true, signal) {
 function getWorker() {
   if (worker) return worker;
   if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:')) return null;
-  worker = new Worker(new URL('./data-worker.js', import.meta.url), { type: 'module' });
+  worker = new Worker(withDebugParameter(new URL('./data-worker.js', import.meta.url)), { type: 'module' });
   const processor = worker;
   worker.addEventListener('message', (event) => {
     if (event.data?.type === 'loading-progress') {
