@@ -955,6 +955,7 @@ function renderSwimlaneChart(points, timeRange) {
       'svg',
       {
         viewBox: `0 0 ${SWIMLANE_LAYOUT.viewBoxWidth} ${SWIMLANE_LAYOUT.viewBoxHeight}`,
+        preserveAspectRatio: 'xMinYMid meet',
         role: 'img',
         'aria-label': `Categorical swimlane timeline with ${plottedCount} workflow runs`
       },
