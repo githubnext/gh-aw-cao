@@ -8,7 +8,9 @@ import { generatedJobs, root, workflow } from "./workflow-contract.helpers.mjs";
 
 test("Copilot branch cleaner limits weekly discovery and starts in dry-run mode", () => {
   const source = workflow("copilot-branch-cleaner.yml");
-  const cleaner = source.slice(source.indexOf("const dryRun"));
+  const cleanerStart = source.indexOf("const dryRun");
+  assert.ok(cleanerStart >= 0);
+  const cleaner = source.slice(cleanerStart);
 
   assert.match(source, /cron: "23 3 \* \* 1"/);
   assert.match(source, /COPILOT_BRANCH_CLEANER_DRY_RUN != 'false'/);
@@ -26,7 +28,7 @@ test("Copilot branch cleaner limits weekly discovery and starts in dry-run mode"
   assert.match(source, /beforeOid: oid/);
   assert.match(source, /afterOid: zeroOid/);
   assert.match(source, /catch \{[\s\S]*?failed\.push\(\.\.\.batch\)/);
-  assert.match(cleaner, /core\.warning\(`\$\{failed\.length\} eligible branches were not deleted`\)/);
+  assert.match(cleaner, /\$\{failed\.length\} eligible branches were not deleted because they changed or could not be deleted/);
   assert.doesNotMatch(cleaner, /core\.setFailed/);
   assert.match(source, /core\.info\('Branches eligible for deletion \(dry run\)'\)/);
   assert.match(source, /core\.info\('Deleted branches'\)/);
