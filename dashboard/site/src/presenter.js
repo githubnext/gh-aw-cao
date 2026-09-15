@@ -1601,10 +1601,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const FULL_VIEW_SCROLL_EXIT = 4;
   let fullViewScrollFrame = 0;
   /**
+   * Finds the scroll surface of a full-view table following the event target's view.
    * @param {EventTarget | null} target
    * @returns {HTMLElement | null}
    */
-  const leadingViewScroll = (target) => {
+  const trailingFullViewScrollTarget = (target) => {
     if (!(target instanceof Element)) return null;
     const view = target.closest('.custom-view');
     const fullView = view?.parentElement?.querySelector(':scope > .custom-view[data-view-layout="full-view"]');
@@ -1620,13 +1621,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     return scroll.scrollTop !== previousScrollTop;
   };
   root.addEventListener('wheel', (event) => {
-    const scroll = leadingViewScroll(event.target);
+    const scroll = trailingFullViewScrollTarget(event.target);
     if (scroll && scrollLeadingView(scroll, event.deltaY)) event.preventDefault();
   }, { capture: true, passive: false });
   /** @type {{ scroll: HTMLElement, clientY: number } | null} */
   let leadingViewTouch = null;
   root.addEventListener('touchstart', (event) => {
-    const scroll = leadingViewScroll(event.target);
+    const scroll = trailingFullViewScrollTarget(event.target);
     const touch = event.touches[0];
     leadingViewTouch = scroll && touch ? { scroll, clientY: touch.clientY } : null;
   }, { capture: true, passive: true });
