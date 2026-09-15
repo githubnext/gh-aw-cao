@@ -17,6 +17,39 @@ const metadata = {
   availability: /** @type {'available'} */ ('available')
 };
 
+const efficiencyRows = [
+  {
+    organization: 'githubnext',
+    repository: 'githubnext/gh-aw-cao',
+    workflow: '.github/workflows/daily.md',
+    'workflow-name': 'Daily triage',
+    'agent-model': 'copilot / claude-sonnet-4',
+    runs: 2,
+    aic: 5,
+    'aic-per-run': 2.5,
+    'failed-runs': 1,
+    'mcp-tool-calls': 12,
+    'denied-tool-calls': 2,
+    'firewall-blocked': 3,
+    'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/daily.md', label: 'Daily triage' }
+  },
+  {
+    organization: 'octo-org',
+    repository: 'octo-org/service',
+    workflow: '.github/workflows/review.md',
+    'workflow-name': 'Review worker',
+    'agent-model': 'codex / gpt-5',
+    runs: 1,
+    aic: 4,
+    'aic-per-run': 4,
+    'failed-runs': 0,
+    'mcp-tool-calls': 4,
+    'denied-tool-calls': 0,
+    'firewall-blocked': 0,
+    'workflow-link': { relation: 'workflow', href: 'https://github.com/octo-org/service/blob/main/.github/workflows/review.md', label: 'Review worker' }
+  }
+];
+
 /** @param {HTMLElement} rendered */
 async function activateCostPage(rendered) {
   const link = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'));
@@ -29,18 +62,19 @@ async function activateCostPage(rendered) {
   return rendered.querySelector('[data-page-id="cost"]');
 }
 
-describe('Cost and efficiency dashboard view', () => {
-  it('renders observed AI Credit usage as one full-view lazy table', async () => {
+describe('Cost dashboard view', () => {
+  it('leads with the top AI Credit consumers pie chart and a workflow efficiency table', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        usage: {
-          source: 'usage',
-          rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.md', run: '101', invocation: 'usage-1', aic: 3.5, 'estimated-usd': 0.0341, 'rollout-mode': 'review' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.md', run: '101', invocation: 'usage-2', aic: 1.5, 'estimated-usd': 0.015, 'rollout-mode': 'live' },
-            { organization: 'octo-org', repository: 'service', workflow: '.github/workflows/review.md', run: '202', invocation: 'usage-3', aic: 4, 'estimated-usd': 0.04, 'rollout-mode': 'unknown' }
-          ],
+        'cost-top-workflow-aic': {
+          source: 'cost-top-workflow-aic',
+          rows: efficiencyRows,
+          metadata
+        },
+        'cost-workflow-efficiency': {
+          source: 'cost-workflow-efficiency',
+          rows: efficiencyRows,
           metadata
         }
       }
@@ -51,24 +85,59 @@ describe('Cost and efficiency dashboard view', () => {
       (/** @type {{ id: string }} */ candidate) => candidate.id === 'cost'
     );
 
-    expect(dashboardPage).toMatchObject({ kind: 'custom', icon: 'meter' });
+    expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Cost', icon: 'meter' });
     expect(dashboardPage.sections).toBeUndefined();
-    expect(dashboardPage.views).toHaveLength(1);
+    expect(dashboardPage.views).toHaveLength(2);
     expect(dashboardPage.views[0]).toMatchObject({
-      id: 'cost-usage-records',
+      id: 'cost-top-workflow-aic',
+      mark: 'chart',
+      chart: 'pie',
+      data: { source: 'cost-top-workflow-aic' }
+    });
+    const topQuery = authoritativeDashboardDocument.dashboard.queries.find(
+      (/** @type {{ name: string }} */ candidate) => candidate.name === 'cost-top-workflow-aic'
+    );
+    expect(topQuery).toMatchObject({
+      from: 'cost-workflow-efficiency',
+      'order-by': expect.arrayContaining([{ field: 'aic', direction: 'desc' }]),
+      limit: 10
+    });
+    expect(dashboardPage.views[0].encoding.y).toMatchObject({ field: 'aic', aggregate: 'sum', unit: 'aic' });
+    expect(dashboardPage.views[1]).toMatchObject({
+      id: 'cost-workflow-efficiency',
       mark: 'table',
       controls: 'interactive',
       'lazy-list': true,
       layout: 'full-view',
-      data: { source: 'usage' }
+      data: { source: 'cost-workflow-efficiency' }
     });
+
     expect(rendered.querySelector('[data-nav-page-id="cost"] .octicon-meter')).not.toBeNull();
-    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelectorAll('tbody tr')).toHaveLength(3);
-    expect(page?.textContent).toContain('gh-aw-cao');
-    expect(page?.textContent).toContain('service');
-    expect([...page?.querySelectorAll('[data-field="aic"]') ?? []].map((cell) => cell.textContent)).toContain('4');
-    expect([...page?.querySelectorAll('[data-field="estimated-usd"]') ?? []].map((cell) => cell.textContent)).toContain('0.034');
+    expect(page?.querySelector('[data-view-id="cost-top-workflow-aic"] [data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="cost-workflow-efficiency"] [data-lazy-list]')).not.toBeNull();
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
+    const headers = [...page?.querySelectorAll('thead th') ?? []].map((cell) => cell.textContent);
+    expect(headers).toEqual(expect.arrayContaining([
+      expect.stringContaining('Workflow'),
+      expect.stringContaining('Agent / model'),
+      expect.stringContaining('Runs'),
+      expect.stringContaining('Total AIC'),
+      expect.stringContaining('AIC / run'),
+      expect.stringContaining('Failed runs'),
+      expect.stringContaining('MCP tool calls'),
+      expect.stringContaining('Denied tool calls'),
+      expect.stringContaining('Firewall blocked')
+    ]));
+    expect([...page?.querySelectorAll('[data-field="agent-model"]') ?? []].map((cell) => cell.textContent))
+      .toContain('copilot / claude-sonnet-4');
+    expect([...page?.querySelectorAll('[data-field="aic-per-run"]') ?? []].map((cell) => cell.textContent))
+      .toContain('2.50');
+    expect([...page?.querySelectorAll('[data-field="denied-tool-calls"]') ?? []].map((cell) => cell.textContent))
+      .toContain('2');
+    const workflowCell = page?.querySelector('[data-field="workflow-name"] a');
+    expect(workflowCell?.getAttribute('href')).toBe(
+      'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/daily.md'
+    );
+    rendered.remove();
   });
 });

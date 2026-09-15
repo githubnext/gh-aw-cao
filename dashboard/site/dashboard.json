@@ -114,6 +114,12 @@
         "significant": 1,
         "format": "number"
       },
+      "aic-per-run": {
+        "name": "AI Credits per run",
+        "symbol": "AIC/run",
+        "significant": 0.01,
+        "format": "number"
+      },
       "usd": {
         "name": "US dollars",
         "symbol": "USD",
@@ -995,6 +1001,129 @@
             }
           ]
         }
+      },
+      {
+        "name": "cost-workflow-run-efficiency",
+        "intent": "Summarize observed runs, AI Credit consumption, failures, and agent and model identity for each declared workflow.",
+        "description": "Observed run, AI Credit, failure, and agent and model totals by workflow.",
+        "from": "runs",
+        "compute": [
+          { "as": "run-failed", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "failure" }, { "value": "timed_out" }, { "value": "startup_failure" }] },
+          { "as": "failed-run-count", "function": "if", "args": [{ "field": "run-failed" }, { "value": 1 }, { "value": 0 }] },
+          { "as": "observed-engine", "function": "coalesce", "args": [{ "field": "engine" }, { "value": "unknown engine" }] },
+          { "as": "observed-model", "function": "coalesce", "args": [{ "field": "resolved-model" }, { "field": "requested-model" }, { "field": "model-id" }, { "value": "unknown model" }] },
+          { "as": "observed-agent-model", "function": "concat", "args": [{ "field": "observed-engine" }, { "value": " / " }, { "field": "observed-model" }] }
+        ],
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [
+            { "field": "run", "as": "runs", "reducer": "distinct-count" },
+            { "field": "aic-total", "as": "aic", "reducer": "sum" },
+            { "field": "failed-run-count", "as": "failed-runs", "reducer": "sum" },
+            { "field": "observed-agent-model", "as": "agent-model", "reducer": "distinct-list" }
+          ]
+        }
+      },
+      {
+        "name": "cost-workflow-mcp-tool-call-totals",
+        "intent": "Count observed MCP tool calls for each declared workflow.",
+        "description": "Observed MCP tool-call totals by workflow.",
+        "from": "events",
+        "filter": { "predicates": [{ "field": "event-source", "equals": "mcp" }, { "field": "event-type", "equals": "tool.call" }] },
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [{ "field": "event", "as": "mcp-tool-calls", "reducer": "count" }]
+        }
+      },
+      {
+        "name": "cost-workflow-denied-tool-call-totals",
+        "intent": "Count observed tool calls denied by gateway guard policy or information-flow filtering for each declared workflow.",
+        "description": "Observed denied tool-call totals by workflow.",
+        "from": "events",
+        "filter": { "predicates": [{ "field": "event-source", "equals": "gateway" }, { "field": "event-type", "in": ["guard_blocked", "difc_filtered"] }] },
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [{ "field": "event", "as": "denied-tool-calls", "reducer": "count" }]
+        }
+      },
+      {
+        "name": "cost-workflow-firewall-blocked-totals",
+        "intent": "Sum observed firewall-blocked egress requests for each declared workflow.",
+        "description": "Observed blocked egress request totals by workflow.",
+        "from": "firewall-observations",
+        "filter": { "predicates": [{ "field": "decision", "equals": "denied" }] },
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [{ "field": "request-count", "as": "firewall-blocked", "reducer": "sum" }]
+        }
+      },
+      {
+        "name": "cost-workflow-efficiency",
+        "intent": "Identify opportunities to optimize the token efficiency of agentic workflows by comparing AI Credit consumption per run with failed runs, MCP tool calls, denied tool calls, and blocked egress.",
+        "description": "Per-workflow AI Credit consumption, efficiency, and agent behavior evidence for token-efficiency review.",
+        "from": "cost-workflow-run-efficiency",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "left",
+            "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "workflow-name", "as": "declared-workflow-name" }, { "field": "workflow-link", "as": "declared-workflow-link" }]
+          },
+          {
+            "source": "cost-workflow-mcp-tool-call-totals",
+            "type": "left",
+            "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "mcp-tool-calls", "as": "observed-mcp-tool-calls" }]
+          },
+          {
+            "source": "cost-workflow-denied-tool-call-totals",
+            "type": "left",
+            "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "denied-tool-calls", "as": "observed-denied-tool-calls" }]
+          },
+          {
+            "source": "cost-workflow-firewall-blocked-totals",
+            "type": "left",
+            "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "firewall-blocked", "as": "observed-firewall-blocked" }]
+          }
+        ],
+        "compute": [
+          { "as": "repository-slug", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+          { "as": "workflow-display-name", "function": "coalesce", "args": [{ "field": "declared-workflow-name" }, { "field": "workflow" }] },
+          { "as": "observed-agent-model", "function": "coalesce", "args": [{ "field": "agent-model" }, { "value": "unknown" }] },
+          { "as": "total-runs", "function": "coalesce", "args": [{ "field": "runs" }, { "value": 0 }] },
+          { "as": "total-aic", "function": "coalesce", "args": [{ "field": "aic" }, { "value": 0 }] },
+          { "as": "aic-per-run", "function": "quotient", "args": [{ "field": "total-aic" }, { "field": "total-runs" }] },
+          { "as": "total-failed-runs", "function": "coalesce", "args": [{ "field": "failed-runs" }, { "value": 0 }] },
+          { "as": "total-mcp-tool-calls", "function": "coalesce", "args": [{ "field": "observed-mcp-tool-calls" }, { "value": 0 }] },
+          { "as": "total-denied-tool-calls", "function": "coalesce", "args": [{ "field": "observed-denied-tool-calls" }, { "value": 0 }] },
+          { "as": "total-firewall-blocked", "function": "coalesce", "args": [{ "field": "observed-firewall-blocked" }, { "value": 0 }] }
+        ],
+        "select": [
+          { "field": "organization" },
+          { "field": "repository-slug", "as": "repository" },
+          { "field": "workflow" },
+          { "field": "workflow-display-name", "as": "workflow-name" },
+          { "field": "observed-agent-model", "as": "agent-model" },
+          { "field": "total-runs", "as": "runs" },
+          { "field": "total-aic", "as": "aic" },
+          { "field": "aic-per-run" },
+          { "field": "total-failed-runs", "as": "failed-runs" },
+          { "field": "total-mcp-tool-calls", "as": "mcp-tool-calls" },
+          { "field": "total-denied-tool-calls", "as": "denied-tool-calls" },
+          { "field": "total-firewall-blocked", "as": "firewall-blocked" },
+          { "field": "declared-workflow-link", "as": "workflow-link" }
+        ],
+        "order-by": [{ "field": "aic", "direction": "desc" }, { "field": "workflow", "direction": "asc" }]
+      },
+      {
+        "name": "cost-top-workflow-aic",
+        "intent": "Concentrate token-efficiency review on the workflows that consume the most AI Credits.",
+        "description": "The ten workflows with the highest measured AI Credit consumption.",
+        "from": "cost-workflow-efficiency",
+        "order-by": [{ "field": "aic", "direction": "desc" }, { "field": "workflow", "direction": "asc" }],
+        "limit": 10
       },
       {
         "name": "mcp-tool-results",
@@ -4153,77 +4282,51 @@
       {
         "id": "cost",
         "kind": "custom",
-        "title": "Cost & efficiency",
+        "title": "Cost",
         "navigation-label": "Cost",
         "icon": "meter",
         "class-name": "cost-page",
-        "description": "Measured AI Credit allocation and efficiency evidence for the configured githubnext/gh-aw-cao repository.",
+        "description": "Per-workflow AI Credit consumption and agent behavior evidence for token-efficiency review.",
         "views": [
           {
-            "id": "cost-usage-records",
-            "title": "AI Credit usage",
-            "description": "Observed AI Credit allocation by workflow, repository, engine, model, and rollout mode.",
+            "id": "cost-top-workflow-aic",
+            "title": "Top AI Credit consumers",
+            "description": "The ten workflows with the highest measured AI Credit consumption concentrate token-efficiency opportunity.",
             "data": {
-              "source": "usage",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
+              "source": "cost-top-workflow-aic"
             },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No AI Credit consumption was observed in the selected horizon.",
+            "encoding": {
+              "x": { "field": "workflow-name", "type": "nominal", "title": "Workflow" },
+              "y": { "field": "aic", "type": "quantitative", "aggregate": "sum", "as": "total-aic", "title": "Total AIC", "unit": "aic" },
+              "href": { "field": "workflow-link", "type": "nominal" }
+            }
+          },
+          {
+            "id": "cost-workflow-efficiency",
+            "title": "Workflow token efficiency",
+            "description": "Observed runs, AI Credit consumption per run, failures, tool activity, and blocked egress by workflow.",
+            "data": { "source": "cost-workflow-efficiency" },
             "mark": "table",
             "controls": "interactive",
             "lazy-list": true,
             "column-summaries": true,
             "layout": "full-view",
-            "empty-message": "No AI Credit usage was observed in the selected horizon.",
+            "empty-message": "No workflow AI Credit consumption was observed in the selected horizon.",
             "encoding": {
               "columns": [
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Observed"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "engine",
-                  "type": "nominal",
-                  "title": "Engine"
-                },
-                {
-                  "field": "resolved-model",
-                  "type": "nominal",
-                  "title": "Model"
-                },
-                {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "title": "AIC",
-                  "unit": "aic"
-                },
-                {
-                  "field": "estimated-usd",
-                  "type": "quantitative",
-                  "title": "Estimated USD",
-                  "unit": "usd"
-                }
+                { "field": "workflow-name", "type": "nominal", "title": "Workflow", "display": "workflow-link" },
+                { "field": "agent-model", "type": "nominal", "title": "Agent / model" },
+                { "field": "runs", "type": "quantitative", "title": "Runs" },
+                { "field": "aic", "type": "quantitative", "title": "Total AIC", "unit": "aic" },
+                { "field": "aic-per-run", "type": "quantitative", "title": "AIC / run", "unit": "aic-per-run" },
+                { "field": "failed-runs", "type": "quantitative", "title": "Failed runs" },
+                { "field": "mcp-tool-calls", "type": "quantitative", "title": "MCP tool calls" },
+                { "field": "denied-tool-calls", "type": "quantitative", "title": "Denied tool calls" },
+                { "field": "firewall-blocked", "type": "quantitative", "title": "Firewall blocked" }
               ]
             }
           }
@@ -5245,6 +5348,7 @@
                 "field": "aic",
                 "type": "quantitative",
                 "aggregate": "sum",
+                "as": "total-aic",
                 "title": "Total AIC",
                 "unit": "aic"
               },

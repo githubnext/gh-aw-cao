@@ -29,6 +29,18 @@ async function ingest(shardDirectory, databasePath) {
   return JSON.parse(stdout);
 }
 
+async function ingestFile(inputPath, databasePath) {
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'ingest-jsonl',
+    '--database',
+    databasePath,
+    '--input',
+    inputPath,
+  ]);
+  return JSON.parse(stdout);
+}
+
 async function queryTransactions(databasePath) {
   const { stdout } = await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
@@ -88,4 +100,21 @@ test('ingest-jsonl --input-dir skips already-ingested shards on repeat runs with
     'gh-aw-jsonl:gh-aw-logs-1000000000-aaaa.jsonl',
     'gh-aw-jsonl:gh-aw-logs-2000000000-bbbb.jsonl',
   ]);
+});
+
+test('ingest-jsonl --input ingests a single JSONL file', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'activity-ingest-jsonl-input-'));
+  const inputPath = path.join(root, 'gh-aw-logs.jsonl');
+  const databasePath = path.join(root, 'gh-aw-logs.sqlite');
+  const sourceShard = path.resolve('dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
+  await cp(sourceShard, inputPath);
+
+  const result = await ingestFile(inputPath, databasePath);
+  assert.equal(result.result.updated, true);
+  assert.ok(result.result.committedRecords > 0);
+
+  const transactions = await queryTransactions(databasePath);
+  assert.equal(transactions.length, 1);
+  assert.equal(transactions[0].kind, 'ingest-jsonl');
+  assert.equal(transactions[0].payloadScope, 'gh-aw-jsonl');
 });
