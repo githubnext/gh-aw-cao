@@ -2128,18 +2128,18 @@ export async function startDashboardServer({
         sendContent(request, response, contentTypes.get(".json"), sourcesContent);
         return;
       }
+      if (ghAwLogShards.has(pathname)) {
+        await sendFileContent(
+          request,
+          response,
+          contentTypes.get(".jsonl"),
+          ghAwLogShards.get(pathname),
+        );
+        return;
+      }
       if (pathname === "/gh-aw-logs.jsonl") {
         if (ghAwLogsPath === undefined) {
           response.writeHead(404).end("Not found\n");
-          return;
-        }
-        if (ghAwLogShards.has(pathname)) {
-          await sendFileContent(
-            request,
-            response,
-            contentTypes.get(".jsonl"),
-            ghAwLogShards.get(pathname),
-          );
           return;
         }
         await sendFileContent(request, response, contentTypes.get(".jsonl"), ghAwLogsPath);

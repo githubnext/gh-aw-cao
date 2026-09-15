@@ -481,7 +481,7 @@ export function processDataRequest(request, signal) {
               index: index + 1,
               shardCount
             });
-            const response = await fetch(shardUrl, { cache: 'no-store' });
+            const response = await fetch(shardUrl);
             if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
             if (!response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
             {

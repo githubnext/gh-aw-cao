@@ -215,7 +215,7 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 5))?.data).toMatchObject({ changed: true });
-    expect(jsonlRequests[1]).toEqual({ cache: 'no-store' });
+    expect(jsonlRequests[1]).toBeUndefined();
     dispatch({
       id: 6,
       operation: 'load-canonical-dashboard',
