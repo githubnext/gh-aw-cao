@@ -821,7 +821,7 @@ describe('declarative dashboard queries', () => {
       expect(derived['event-inspection'].rows.at(-1)?.event).toBe('event-000001');
     });
 
-  it('computes the Repositories and Packages view payloads from dashboard queries', () => {
+  it('computes Repositories, Workflows, and Packages view payloads from dashboard queries', () => {
     const repositories = {
       source: 'repositories',
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'repository-link': { href: 'repo' } }],
@@ -861,6 +861,13 @@ describe('declarative dashboard queries', () => {
       ],
       metadata: metadata('runs')
     };
+    const sessions = {
+      source: 'sessions',
+      rows: [
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', session: 'session-1' }
+      ],
+      metadata: metadata('sessions')
+    };
     const outcomes = {
       source: 'outcomes',
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'safe-output': 'report-1' }],
@@ -874,8 +881,8 @@ describe('declarative dashboard queries', () => {
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { packages, repositories, workflows: queryWorkflows, runs, outcomes, 'operational-values': operationalValues, usage },
-      ['repository-activity', 'package-inventory']
+      { packages, repositories, workflows: queryWorkflows, runs, sessions, outcomes, 'operational-values': operationalValues, usage },
+      ['repository-activity', 'workflow-inventory', 'package-inventory']
     );
 
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
@@ -884,10 +891,15 @@ describe('declarative dashboard queries', () => {
       reports: 1,
       'evaluated-workflows': 1,
       runs: 2,
+      ingestion: '50%',
       'failure-summary': '50% · 1 failed',
       aic: 10,
       status: 'Needs attention'
     })]);
+    expect(derived['workflow-inventory'].rows).toEqual([
+      expect.objectContaining({ workflow: 'a.md', runs: 2, ingestion: '50%' }),
+      expect.objectContaining({ workflow: 'b.md', runs: 0, ingestion: null })
+    ]);
     expect(derived['package-inventory'].rows).toEqual([{
       package: 'aw-doctor',
       'package-name': 'AW Doctor',

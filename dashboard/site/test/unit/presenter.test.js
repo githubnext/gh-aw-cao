@@ -2688,12 +2688,26 @@ describe('presenter built-in and custom pages', () => {
           columns: [
             { field: 'repository', type: 'nominal', title: 'Repository' },
             { field: 'runs', type: 'quantitative', title: 'Runs' },
+            { field: 'ingestion', type: 'nominal', title: 'Ingestion %' },
             { field: 'failure-summary', type: 'nominal', title: 'Failure rate', filter: false },
             { field: 'aic', type: 'quantitative', title: 'Local AIC', unit: 'aic' },
             { field: 'workflows', type: 'quantitative', title: 'Local AWs' },
             { field: 'status', type: 'nominal', title: 'Status', display: 'status' }
           ],
           href: { field: 'repository-link', type: 'nominal' }
+        }
+      }
+    ]);
+
+    const workflowsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'workflows');
+    expect(workflowsPage?.definition.views).toMatchObject([
+      {
+        id: 'workflows-inventory',
+        data: { source: 'workflow-inventory' },
+        encoding: {
+          columns: expect.arrayContaining([
+            { field: 'ingestion', type: 'nominal', title: 'Ingestion %' }
+          ])
         }
       }
     ]);

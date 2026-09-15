@@ -977,6 +977,47 @@
         }
       },
       {
+        "name": "workflow-imported-run-totals",
+        "intent": "Summarize distinct runs with an imported session by declared workflow.",
+        "description": "Observed imported run totals for each declared workflow.",
+        "from": "sessions",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "imported-runs",
+              "reducer": "distinct-count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "session-runs",
+        "intent": "Identify each workflow run that has one or more imported sessions.",
+        "description": "Distinct workflow runs represented by imported sessions.",
+        "from": "sessions",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow",
+            "run"
+          ],
+          "values": [
+            {
+              "field": "session",
+              "as": "sessions",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
         "name": "workflow-aic-totals",
         "intent": "Summarize observed AI Credit usage by declared workflow.",
         "description": "Observed AI Credit totals for each declared workflow.",
@@ -1854,6 +1895,30 @@
                 "as": "observed-aic"
               }
             ]
+          },
+          {
+            "source": "workflow-imported-run-totals",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              }
+            ],
+            "fields": [
+              {
+                "field": "imported-runs",
+                "as": "observed-imported-runs"
+              }
+            ]
           }
         ],
         "compute": [
@@ -1965,6 +2030,39 @@
               },
               {
                 "value": 0
+              }
+            ]
+          },
+          {
+            "as": "total-imported-runs",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-imported-runs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "ingestion-rate",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "total-imported-runs"
+              },
+              {
+                "field": "total-runs"
+              }
+            ]
+          },
+          {
+            "as": "ingestion",
+            "function": "format-percent",
+            "args": [
+              {
+                "field": "ingestion-rate"
               }
             ]
           },
@@ -2090,6 +2188,9 @@
           {
             "field": "total-runs",
             "as": "runs"
+          },
+          {
+            "field": "ingestion"
           },
           {
             "field": "package-dashboard-link",
@@ -2870,6 +2971,36 @@
         "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
         "description": "Distinct run and conclusion totals for each repository.",
         "from": "runs",
+        "joins": [
+          {
+            "source": "session-runs",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              }
+            ],
+            "fields": [
+              {
+                "field": "sessions",
+                "as": "imported-sessions"
+              }
+            ]
+          }
+        ],
         "compute": [
           {
             "as": "failed",
@@ -2900,6 +3031,18 @@
                 "value": "action-required"
               }
             ]
+          },
+          {
+            "as": "imported",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "imported-sessions"
+              },
+              {
+                "value": 0
+              }
+            ]
           }
         ],
         "aggregate": {
@@ -2921,6 +3064,11 @@
             {
               "field": "action-required",
               "as": "action-required",
+              "reducer": "sum"
+            },
+            {
+              "field": "imported",
+              "as": "imported-runs",
               "reducer": "sum"
             }
           ]
@@ -3040,6 +3188,10 @@
               {
                 "field": "action-required",
                 "as": "observed-action-required"
+              },
+              {
+                "field": "imported-runs",
+                "as": "observed-imported-runs"
               }
             ]
           }
@@ -3133,6 +3285,39 @@
               },
               {
                 "value": 0
+              }
+            ]
+          },
+          {
+            "as": "imported-runs",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-imported-runs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "ingestion-rate",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "imported-runs"
+              },
+              {
+                "field": "runs"
+              }
+            ]
+          },
+          {
+            "as": "ingestion",
+            "function": "format-percent",
+            "args": [
+              {
+                "field": "ingestion-rate"
               }
             ]
           },
@@ -3389,6 +3574,9 @@
           },
           {
             "field": "runs"
+          },
+          {
+            "field": "ingestion"
           },
           {
             "field": "failure-summary"
@@ -4568,6 +4756,11 @@
                     "field": "runs",
                     "type": "quantitative",
                     "title": "Runs"
+                  },
+                  {
+                    "field": "ingestion",
+                    "type": "nominal",
+                    "title": "Ingestion %"
                   },
                   {
                     "field": "failure-summary",
@@ -5761,6 +5954,11 @@
                     "field": "runs",
                     "type": "quantitative",
                     "title": "Runs"
+                  },
+                  {
+                    "field": "ingestion",
+                    "type": "nominal",
+                    "title": "Ingestion %"
                   },
                   {
                     "field": "workflow-active",
