@@ -13,7 +13,7 @@ describe('dashboard notification service', () => {
     service.publish({ message: 'Dashboard refreshed.', tone: 'success', duration: 1000 });
 
     const notification = document.querySelector('.dashboard-notification');
-    expect(notification?.querySelector('.dashboard-notification-live')?.getAttribute('role')).toBe('status');
+    expect(notification?.querySelector('.dashboard-notification-message')?.getAttribute('role')).toBe('status');
     expect(notification?.querySelector('.dashboard-notification-message')?.textContent).toBe('Dashboard refreshed.');
     expect(notification?.classList.contains('dashboard-notification-success')).toBe(true);
 
@@ -84,7 +84,7 @@ describe('dashboard notification service', () => {
     const service = createNotificationService(document);
     service.publish({ message: 'Refresh failed.', tone: 'error' });
 
-    expect(document.querySelector('.dashboard-notification-live')?.getAttribute('role')).toBe('alert');
+    expect(document.querySelector('.dashboard-notification-message')?.getAttribute('role')).toBe('alert');
     expect(() => service.publish('   ')).toThrow('Notification message must be a non-empty string.');
   });
 

@@ -116,7 +116,10 @@ function normalizeNotification(input) {
  * @param {() => void} onRemove
  */
 function renderNotification(initial, container, onRemove) {
-  const message = h('span', { className: 'dashboard-notification-message' }, initial.message);
+  const message = h('span', {
+    className: 'dashboard-notification-message',
+    role: initial.tone === 'error' ? 'alert' : 'status'
+  }, initial.message);
   const detailId = `dashboard-notification-details-${++nextNotificationDetailId}`;
   const toggle = h('button', {
     className: 'dashboard-notification-toggle',
@@ -125,10 +128,6 @@ function renderNotification(initial, container, onRemove) {
     'aria-controls': detailId,
     'aria-label': `${initial.message} Show ingestion progress history`
   }, message, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
-  const liveMessage = h('span', {
-    className: 'dashboard-notification-live',
-    role: initial.tone === 'error' ? 'alert' : 'status'
-  }, initial.message);
   const details = h('ol', {
     className: 'dashboard-notification-details',
     id: detailId,
@@ -141,7 +140,7 @@ function renderNotification(initial, container, onRemove) {
   });
   const element = h('div', {
     className: `dashboard-notification dashboard-notification-${initial.tone} dashboard-notification-enter`
-  }, content, liveMessage);
+  }, content);
   let current = initial;
   let removed = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -209,9 +208,8 @@ function renderNotification(initial, container, onRemove) {
       if (removed) return;
       current = normalizeNotification(next);
       message.textContent = current.message;
-      liveMessage.textContent = current.message;
       element.className = `dashboard-notification dashboard-notification-${current.tone}`;
-      liveMessage.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
+      message.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
       setDetails();
       setAction();
       scheduleDismissal();
