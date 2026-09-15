@@ -224,7 +224,14 @@ test.beforeEach(async ({ context, page }) => {
       });
       return;
     }
-    if (pathname === '/gh-aw-logs.jsonl') {
+    if (pathname === '/payload-hashes.json') {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) })
+      });
+      return;
+    }
+    if (pathname === '/gh-aw-logs-shards/logs-1.jsonl') {
       await route.fulfill({
         contentType: 'application/x-ndjson',
         body: `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
