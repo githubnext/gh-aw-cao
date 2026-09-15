@@ -3,51 +3,89 @@
 set -uo pipefail
 
 repository="${GITHUB_REPOSITORY:-}"
-root="${REPORT_ROOT:-.}"
 logs_path="${REPORT_GH_AW_LOGS:-_activity/gh-aw-logs.jsonl}"
-shard_directory="$(dirname "$logs_path")/gh-aw-logs-shards"
-shard_prefix="$shard_directory/logs-"
+shard_directory="${REPORT_GH_AW_LOGS_SHARDS:-$(dirname "$logs_path")/gh-aw-logs-shards}"
+control_settings_path="${REPORT_CONTROL_SETTINGS:-}"
 output_directory="${REPORT_AIC_CACHE:-_activity/gh-aw-logs}"
 exit_code_path="${REPORT_GH_AW_LOGS_EXIT_CODE:-_activity/gh-aw-logs-exit-code}"
+drain3_weights_path="${REPORT_DRAIN3_WEIGHTS:-}"
 window_days="${REPORT_RUN_WINDOW_DAYS:-30}"
 run_limit="${REPORT_RUN_LIMIT:-10}"
+request_timeout="${REPORT_LOG_TIMEOUT:-10}"
+rate_limit="${REPORT_MAX_GITHUB_API_RATE_LIMIT:--2000}"
+max_storage="${REPORT_MAX_STORAGE:-1200}"
 
 mkdir -p "$output_directory" "$shard_directory" "$(dirname "$logs_path")" "$(dirname "$exit_code_path")"
 
-targets=()
-for workflow_path in "$root"/.github/workflows/*.lock.yml; do
-  [[ -f "$workflow_path" ]] || continue
-  workflow_file="${workflow_path##*/}"
-  targets+=("$repository/.github/workflows/$workflow_file")
-done
+repositories=()
+add_repository() {
+  local candidate="$1"
+  local normalized_candidate
+  [[ "$candidate" =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$ ]] || return
+  normalized_candidate="$(printf '%s' "$candidate" | tr '[:upper:]' '[:lower:]')"
+  for existing in "${repositories[@]:-}"; do
+    [[ -n "$existing" ]] || continue
+    [[ "$(printf '%s' "$existing" | tr '[:upper:]' '[:lower:]')" == "$normalized_candidate" ]] && return
+  done
+  repositories+=("$candidate")
+}
 
-set +e
-gh aw logs --audit \
-  --output "$output_directory" \
-  --summary-file "" \
-  --cached-logs "${shard_prefix}*" \
-  --artifacts usage \
-  --start-date "-${window_days}d" \
-  --cache-before "-${window_days}d" \
-  --count "$run_limit" \
-  --timeout 10 \
-  --max-github-api-rate-limit -2000 \
-  --max-storage 1200 \
-  --prune-older-runs \
-  "${targets[@]}"
-exit_code=$?
-set -e
+if [[ -n "$control_settings_path" && -f "$control_settings_path" ]]; then
+  while IFS= read -r allowed_repository; do
+    add_repository "$allowed_repository"
+  done < <(jq -r '.allowed_repositories[]?' "$control_settings_path")
+fi
+add_repository "$repository"
+
+exit_code=0
+drain3_args=()
+if [[ -n "$drain3_weights_path" && -f "$drain3_weights_path" ]]; then
+  drain3_args+=(--drain3-weights "$drain3_weights_path")
+fi
+for target_repository in "${repositories[@]}"; do
+  cache_name="${target_repository//\//-}"
+  if [[ "$(printf '%s' "$target_repository" | tr '[:upper:]' '[:lower:]')" == "$(printf '%s' "$repository" | tr '[:upper:]' '[:lower:]')" ]]; then
+    shard_prefix="$shard_directory/logs-"
+  else
+    shard_prefix="$shard_directory/${cache_name}-logs-"
+  fi
+  set +e
+  gh aw logs --audit \
+    --repo "$target_repository" \
+    --output "$output_directory/$cache_name" \
+    --summary-file "" \
+    --cached-logs "${shard_prefix}*" \
+    --artifacts usage \
+    --start-date "-${window_days}d" \
+    --cache-before "-${window_days}d" \
+    --count "$run_limit" \
+    --timeout "$request_timeout" \
+    --max-github-api-rate-limit "$rate_limit" \
+    --max-storage "$max_storage" \
+    --prune-older-runs \
+    "${drain3_args[@]+"${drain3_args[@]}"}"
+  repository_exit_code=$?
+  set -e
+  generated_weights="$output_directory/$cache_name/drain3_weights.json"
+  if [[ -n "$drain3_weights_path" && -f "$generated_weights" ]]; then
+    mv "$generated_weights" "$drain3_weights_path"
+    drain3_args=(--drain3-weights "$drain3_weights_path")
+  fi
+  if [[ $repository_exit_code -ne 0 ]]; then
+    exit_code=$repository_exit_code
+  fi
+done
 
 printf '%s\n' "$exit_code" > "$exit_code_path"
 
-# The wildcard shard directory is persisted by the caller (mirroring the
-# activity cache managed by cao-activity.yml) so `--cached-logs` reuses known
-# runs across invocations; out-of-range shards are pruned by `--cache-before`.
+# The shard directory is persisted by the caller (mirroring the activity
+# cache managed by cao-activity.yml) so each repository reuses known runs;
+# out-of-range shards are pruned by `--cache-before`.
 # Reconsolidate the current shards into the single-file snapshot contract
 # that downstream consumers (activity/logs.mjs and its cached-run fallback)
 # expect.
 shopt -s nullglob
-shards=("${shard_prefix}"*.jsonl)
+shards=("$shard_directory"/*.jsonl)
 shopt -u nullglob
 if [[ ${#shards[@]} -gt 0 ]]; then
   cat "${shards[@]}" > "$logs_path"

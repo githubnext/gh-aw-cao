@@ -13,6 +13,8 @@ resources:
     destination: .github/aw/activity/actions-log.mjs
   - source: control-settings.mjs
     destination: .github/aw/activity/control-settings.mjs
+  - source: collect-logs.sh
+    destination: .github/aw/activity/collect-logs.sh
   - source: gh-aw-logs.mjs
     destination: .github/aw/activity/gh-aw-logs.mjs
   - source: inventory.mjs

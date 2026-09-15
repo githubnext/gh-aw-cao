@@ -79,7 +79,7 @@ export async function collectActivityLogs() {
     const runLabel = snapshot.runs.length === 1 ? "run" : "runs";
     const snapshotWorkflowLabel = workflowCount === 1 ? "workflow" : "workflows";
     log.info`Collected snapshot with ${snapshot.runs.length} ${runLabel} across ${workflowCount} ${snapshotWorkflowLabel}`;
-    log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} with one gh aw logs invocation`;
+    log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} from the resolved repository set`;
     return "success";
   } catch (error) {
     await writeFile(logsPath, serializeGhAwLogsJsonl(cachedRuns));

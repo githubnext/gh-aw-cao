@@ -27,6 +27,7 @@ function assertCachePathSets(workflow, expectedCount) {
 
 test("activity workflow caches gh-aw logs and their SQLite projection", async () => {
   const workflow = await readFile(".github/workflows/cao-activity.yml", "utf8");
+  const collector = await readFile("activity/collect-logs.sh", "utf8");
   const indexJob = workflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const cacheJob = workflow.match(/\n  cache:\n([\s\S]*)/)?.[1];
 
@@ -53,7 +54,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?Download agentic workflow logs/,
   );
-  assert.match(workflow, /--cached-logs "\$\{shard_prefix\}\*"/);
+  assert.match(workflow, /REPORT_CONTROL_SETTINGS:[\s\S]*?bash "\$collector"/);
+  assert.match(collector, /jq -r '\.allowed_repositories\[\]\?'/);
+  assert.match(collector, /--repo "\$target_repository"/);
+  assert.match(collector, /--cached-logs "\$\{shard_prefix\}\*"/);
   assert.match(
     workflow,
     /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--input-dir "\$REPORT_GH_AW_LOGS_SHARDS"/,
@@ -72,14 +76,16 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /Restore activity cache[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?if \[\[ -f "\$REPORT_DRAIN3_WEIGHTS" \]\][\s\S]*?--drain3-weights "\$REPORT_DRAIN3_WEIGHTS"[\s\S]*?mv "\$REPORT_AIC_CACHE\/drain3_weights\.json" "\$REPORT_DRAIN3_WEIGHTS"/,
+    /Restore activity cache[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?Download agentic workflow logs[\s\S]*?REPORT_DRAIN3_WEIGHTS: \$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?bash "\$collector"/,
   );
+  assert.match(collector, /if \[\[ -n "\$drain3_weights_path" && -f "\$drain3_weights_path" \]\]/);
+  assert.match(collector, /drain3_args=\(--drain3-weights "\$drain3_weights_path"\)/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.doesNotMatch(workflow, /Skip scheduled run|steps\.freshness/);
   assert.match(workflow, /ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/);
   assert.doesNotMatch(workflow, /Install SQLite|apt-get install.*sqlite3/);
-  assert.match(workflow, /--count 1000/);
-  assert.match(workflow, /--timeout 15/);
+  assert.match(workflow, /REPORT_RUN_LIMIT: "1000"/);
+  assert.match(workflow, /REPORT_LOG_TIMEOUT: "15"/);
   assert.match(workflow, /ingest-jsonl[\s\S]*?--run-retention-days all[\s\S]*?doctor[\s\S]*?--run-ttl-days all/);
   assert.doesNotMatch(
     workflow,

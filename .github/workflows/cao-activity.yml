@@ -152,53 +152,30 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_DRAIN3_WEIGHTS: ${{ runner.temp }}/cao-activity/drain3_weights.json
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/cao-activity/gh-aw-logs-exit-code
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_LOG_TIMEOUT: "15"
+          REPORT_MAX_GITHUB_API_RATE_LIMIT: "-4000"
+          REPORT_MAX_STORAGE: "1200"
+          REPORT_RUN_LIMIT: "1000"
           REPORT_RUN_WINDOW_DAYS: "30"
         run: |
-          mkdir -p "$(dirname "$REPORT_GH_AW_LOGS")" "$REPORT_GH_AW_LOGS_SHARDS"
-          touch "$REPORT_GH_AW_LOGS"
-          shard_prefix="$REPORT_GH_AW_LOGS_SHARDS/logs-"
-          drain3_args=()
-          if [[ -f "$REPORT_DRAIN3_WEIGHTS" ]]; then
-            echo "Using cached Drain3 weights from $REPORT_DRAIN3_WEIGHTS"
-            drain3_args+=(--drain3-weights "$REPORT_DRAIN3_WEIGHTS")
+          if [[ -f activity/collect-logs.sh ]]; then
+            collector=activity/collect-logs.sh
+          elif [[ -f .github/aw/activity/collect-logs.sh ]]; then
+            collector=.github/aw/activity/collect-logs.sh
           else
-            echo "No cached Drain3 weights found at $REPORT_DRAIN3_WEIGHTS; gh aw logs will train new weights"
+            echo "Activity log collector is unavailable" >&2
+            exit 1
           fi
-          targets=()
-          for workflow in .github/workflows/*.lock.yml; do
-            [[ -f "$workflow" ]] || continue
-            targets+=("${GITHUB_REPOSITORY}/${workflow}")
-          done
-          gh aw logs --audit \
-            --output "$REPORT_AIC_CACHE" \
-            --summary-file "" \
-            --cached-logs "${shard_prefix}*" \
-            --artifacts usage \
-            --start-date "-${REPORT_RUN_WINDOW_DAYS}d" \
-            --cache-before "-${REPORT_RUN_WINDOW_DAYS}d" \
-            --count 1000 \
-            --timeout 15 \
-            --max-github-api-rate-limit -4000 \
-            --max-storage 1200 \
-            --prune-older-runs \
-            "${drain3_args[@]}" \
-            "${targets[@]}"
-          mv "$REPORT_AIC_CACHE/drain3_weights.json" "$REPORT_DRAIN3_WEIGHTS"
-          echo "Saved refreshed Drain3 weights to $REPORT_DRAIN3_WEIGHTS"
-          # The wildcard shard cache is persisted across runs so `gh aw logs
-          # --cached-logs` reuses known runs; out-of-range shards are pruned
-          # by `--cache-before`. Reconsolidate the remaining shards into the
-          # single published file consumed by cao-dashboard.yml and other
-          # downstream readers.
-          shopt -s nullglob
-          shards=("${shard_prefix}"*.jsonl)
-          shopt -u nullglob
-          if [[ ${#shards[@]} -gt 0 ]]; then
-            cat "${shards[@]}" > "$REPORT_GH_AW_LOGS"
-            echo "Consolidated ${#shards[@]} gh-aw-logs shard(s) into $REPORT_GH_AW_LOGS"
+          bash "$collector"
+          collection_exit_code="$(cat "$REPORT_GH_AW_LOGS_EXIT_CODE")"
+          if [[ "$collection_exit_code" -ne 0 ]]; then
+            echo "One or more repository log collections failed" >&2
+            exit "$collection_exit_code"
           fi
 
       - name: Ingest activity database

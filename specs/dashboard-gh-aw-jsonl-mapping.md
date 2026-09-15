@@ -23,6 +23,25 @@ The mapping SHALL NOT emit Package or Transaction observations. Transactions
 remain the database-operation audit ledger maintained by the ingestion
 coordinator. Enriched `job_details` SHALL emit canonical Job observations.
 
+## 0 Acquisition and shard scope
+
+`cao.json` SHALL resolve the bounded set of repositories that Activity may
+inspect; it SHALL NOT provide Workflow or Run identity. Activity SHALL invoke
+`gh aw logs --repo OWNER/REPOSITORY` once for each resolved repository and SHALL
+give each repository an independent `--cached-logs` wildcard prefix. Every
+retained shard is part of the same schema-v2 runtime observation source.
+
+Canonical ingestion SHALL process shards individually and use their content
+hashes to skip unchanged inputs. `gh-aw-logs.jsonl` SHALL contain the
+concatenated retained shards for publication and browser ingestion; it MUST NOT
+be interpreted as a separate observation source in addition to those shards.
+
+Runtime ownership SHALL always come from the execution repository represented
+by `request.repository` or the enriched Run's `organization` and `repository`.
+Target repositories carried in dispatch titles, package policy, safe-output
+records, or other payload fields MUST NOT participate in the Repository,
+Workflow, or Run ownership joins below.
+
 ## 1 `workflow_runs` envelope
 
 The `workflow_runs` envelope contains raw GitHub Actions run listings.

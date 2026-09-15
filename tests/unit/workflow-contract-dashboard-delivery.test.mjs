@@ -257,8 +257,9 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(activityCollector, /--start-date "-\$\{window_days\}d"/);
   assert.match(activityCollector, /--cache-before "-\$\{window_days\}d"/);
   assert.match(activityCollector, /--count "\$run_limit"/);
-  assert.match(activityCollector, /--max-github-api-rate-limit -2000/);
-  assert.match(activityCollector, /--max-storage 1200/);
+  assert.match(activityCollector, /--max-github-api-rate-limit "\$rate_limit"/);
+  assert.match(activityCollector, /--max-storage "\$max_storage"/);
+  assert.match(activityCollector, /--repo "\$target_repository"/);
   assert.match(activityCollector, /--prune-older-runs/);
   assert.equal((activityCollector.match(/gh aw logs/g) || []).length, 1);
   assert.doesNotMatch(activityLogs, /gh aw logs --audit|runGhAw/);
@@ -328,6 +329,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
   const activityManifest = parse(readFileSync(join(root, "activity", "aw.yml"), "utf8"));
   const workflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
+  const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
   const readme = readFileSync(join(root, "activity", "README.md"), "utf8");
   const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
@@ -340,6 +342,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
     { source: "control-settings.mjs", destination: ".github/aw/activity/control-settings.mjs" },
+    { source: "collect-logs.sh", destination: ".github/aw/activity/collect-logs.sh" },
     { source: "gh-aw-logs.mjs", destination: ".github/aw/activity/gh-aw-logs.mjs" },
     { source: "inventory.mjs", destination: ".github/aw/activity/inventory.mjs" },
     { source: "inventory-sources.mjs", destination: ".github/aw/activity/inventory-sources.mjs" },
@@ -357,11 +360,8 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /actions\/cache\/save@[0-9a-f]{40}/);
   assert.equal((workflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/g) || []).length, 3);
   assert.equal((workflow.match(/\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json/g) || []).length, 4);
-  assert.match(workflow, /Using cached Drain3 weights from \$REPORT_DRAIN3_WEIGHTS/);
-  assert.match(workflow, /No cached Drain3 weights found at \$REPORT_DRAIN3_WEIGHTS; gh aw logs will train new weights/);
-  assert.match(workflow, /--drain3-weights "\$REPORT_DRAIN3_WEIGHTS"/);
-  assert.match(workflow, /mv "\$REPORT_AIC_CACHE\/drain3_weights\.json" "\$REPORT_DRAIN3_WEIGHTS"/);
-  assert.match(workflow, /Saved refreshed Drain3 weights to \$REPORT_DRAIN3_WEIGHTS/);
+  assert.match(activityCollector, /--drain3-weights "\$drain3_weights_path"/);
+  assert.match(activityCollector, /mv "\$generated_weights" "\$drain3_weights_path"/);
   assert.match(workflow, /REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/);
   assert.match(workflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(workflow, /issues: read/);
@@ -372,7 +372,8 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.doesNotMatch(workflow, /github-script|ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);
-  assert.match(workflow, /gh aw logs --audit/);
+  assert.match(workflow, /bash "\$collector"/);
+  assert.match(activityCollector, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v3-\$\{\{ github\.run_id \}\}-/);

@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.0.0
+version: 1.0.1
 status: Working Draft
 
 IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
@@ -15,11 +15,11 @@ editors:
 | Browser storage | IndexedDB keeps all available run summaries and expires detailed Job, Session, and Event records after 30 days. |
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.0.0
+**Version:** 1.0.1
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
-**Date:** 2026-09-09
+**Date:** 2026-09-15
 
 ---
 
@@ -282,6 +282,72 @@ publish partial maintenance state. Package and repository maintenance actions
 MUST use these canonical query results and MUST NOT inspect upstream manifests
 or browser storage directly.
 
+## 5.3 Activity acquisition and source roles
+
+Activity acquisition SHALL use one runtime observation path:
+
+```text
+cao.json repository scope
+  -> one gh aw logs --repo call per resolved repository
+  -> repository-specific --cached-logs wildcard shards
+  -> canonical JSONL ingestion
+  -> SQLite and IndexedDB projections
+  -> Dashboard Language queries
+```
+
+`cao.json` and its resolved control settings SHALL define collection authority
+and repository scope. They MUST NOT be treated as evidence that a Workflow or
+Run exists, executed, or executed in a package target repository.
+
+Inventory inputs SHALL provide static declarations and maintenance evidence:
+Package configuration, enrolled Repository metadata, and declared control-plane
+Workflow metadata. Cached gh-aw JSONL SHALL provide observed runtime evidence:
+Repository, Workflow, Run, Job, Session, and Event observations. A declared
+Workflow MAY exist without an observed Run. A runtime Workflow in a remote
+repository MAY be known only after a retained `workflow_runs` or enriched `run`
+observation. Queries MUST preserve that distinction rather than fabricate
+runtime completeness from inventory.
+
+Each resolved Repository SHALL have an independent `--cached-logs` wildcard
+prefix in the shared shard directory. Repeated collection SHALL reuse known
+shards, and canonical ingestion SHALL skip a shard whose content hash already
+exists in the Transaction ledger. Repository collection MAY be serial to bound
+concurrent GitHub API pressure and reuse shared analysis state. The consolidated
+`gh-aw-logs.jsonl` file SHALL be a publication transport assembled from retained
+shards, not an additional authoritative source.
+
+## 5.4 Canonical join contract
+
+The cached JSONL source does not expose immutable Repository and Workflow IDs
+for every envelope. Until it does, Repository identity SHALL use normalized
+`OWNER/REPOSITORY`; Workflow identity SHALL be scoped to that Repository and
+use authoritative workflow path when available, otherwise a source-namespaced
+workflow name. Run identity SHALL use GitHub run ID plus attempt.
+
+The mandatory execution joins are:
+
+```text
+Workflow.repositoryId -> Repository.id
+Run.repositoryId      -> Repository.id
+Run.workflowId        -> Workflow.id
+Job.runId             -> Run.id
+Session.runId         -> Run.id
+Event.sessionId       -> Session.id
+```
+
+`Run.repositoryId` SHALL identify the repository where GitHub Actions executed
+the run. Package targets, dispatch envelopes, safe-output destinations, and
+other repository-shaped payload fields MUST NOT override it. An inventory
+Workflow and a runtime Workflow SHALL converge only when their canonical
+Repository and workflow-path identities match.
+
+Dashboard source projections MAY expose `organization` and `repository` as
+denormalized join keys. Dashboard Language queries SHALL perform all selection,
+grouping, aggregation, and joins in the data Web Worker. The Repositories view
+SHALL begin with Repository inventory, aggregate Workflow and Run facts by
+`organization` and `repository`, and left-join those results so an enrolled
+Repository remains visible when it has no retained runtime observations.
+
 ---
 
 # 6. Canonical Domain Model
@@ -314,6 +380,7 @@ without changing the core execution hierarchy.
 
 ```mermaid
 erDiagram
+  PACKAGE o|--o{ WORKFLOW : classifies
   REPOSITORY ||--o{ WORKFLOW : contains
   REPOSITORY ||--o{ RUN : executes
   WORKFLOW ||--o{ RUN : defines
@@ -322,51 +389,81 @@ erDiagram
   JOB o|--o{ SESSION : scopes
   SESSION ||--o{ EVENT : records
 
+  PACKAGE {
+    string id PK "canonical ID"
+    string slug UK "stable package identity"
+    string name
+    string mode
+    boolean enabled
+    string observedAt
+  }
   REPOSITORY {
-    string id PK
-    number githubId UK
-    string fullName
-    string generation
+    string id PK "canonical ID"
+    number githubId UK "nullable immutable ID"
+    string owner "normalized GitHub owner"
+    string name "normalized repository name"
+    string fullName UK "OWNER/REPOSITORY fallback identity"
+    string visibility
+    string observedAt
   }
   WORKFLOW {
-    string id PK
-    string repositoryId FK
-    number githubId UK
-    string path
-    string generation
+    string id PK "canonical ID"
+    string repositoryId FK "required execution repository"
+    string packageId FK "nullable package classification"
+    number githubId UK "nullable immutable ID"
+    string name "repository-scoped fallback identity"
+    string path "normalized preferred identity"
+    string state
+    string observedAt
   }
   RUN {
-    string id PK
-    string repositoryId FK
-    string workflowId FK
-    number githubRunId
-    number attempt
-    string generation
+    string id PK "githubRunId plus attempt"
+    string repositoryId FK "required execution repository"
+    string workflowId FK "required owning workflow"
+    number githubRunId "composite natural key"
+    number attempt "composite natural key"
+    string status
+    string conclusion
+    string startedAt
+    string observedAt
   }
   JOB {
-    string id PK
-    string runId FK
-    number githubJobId UK
-    string generation
+    string id PK "canonical ID"
+    string runId FK "required owning run"
+    number githubJobId UK "immutable GitHub job ID"
+    string status
+    string conclusion
+    string startedAt
   }
   SESSION {
-    string id PK
-    string runId FK
-    string jobId FK "optional"
+    string id PK "deterministic source ID"
+    string runId FK "required owning run"
+    string jobId FK "nullable job scope"
     string kind
-    string generation
+    string status
+    string startedAt
   }
   EVENT {
-    string id PK
-    string sessionId FK
+    string id PK "deterministic semantic ID"
+    string sessionId FK "required owning session"
     number sequence
     string timestamp
     string source
     string type
-    string correlationId "optional"
-    string generation
+    string status
+    string correlationId "nullable operation correlation"
+    string payloadRef "nullable external payload reference"
   }
 ```
+
+The ERD shows structural fields and query keys, not every optional observation
+field. `PK`, `FK`, and `UK` denote primary, foreign, and unique keys. Nullable
+GitHub IDs are preferred immutable identities when present. When cached JSONL
+does not expose them, Repository falls back to normalized `fullName`, Workflow
+falls back to `(repositoryId, path)` or a source-namespaced
+`(repositoryId, name)`, and Run uses `(githubRunId, attempt)`. These composite
+values are encoded into the canonical string `id`; the individual components
+are not independently unique.
 
 Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. A Session MUST reference a Run and MAY reference a Job. Every Event MUST reference exactly one Session. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
 

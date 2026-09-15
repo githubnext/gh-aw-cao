@@ -5,18 +5,22 @@ Ops. It is deterministic GitHub Actions infrastructure: it has no agent,
 rollout mode, safe-output, target-writing, indexing, or reporting authority.
 
 The scheduled and manually dispatchable `CAO Activity` workflow checks out the
-control repository, restores the latest compatible log cache, runs one bounded
-`gh aw logs --audit --artifacts usage` command for its compiled workflows, and
-ingests the refreshed JSONL through the canonical Node.js data pipeline. It
-uploads the completed snapshot as a one-day artifact. A dependent job downloads
+control repository, restores the latest compatible log cache, and runs one
+bounded `gh aw logs --audit --artifacts usage --repo OWNER/REPOSITORY` command
+for each repository in the distinct union of the control repository and the
+allowed repositories resolved from `cao.json`. `cao.json` bounds collection; it
+does not declare runtime workflow or run identities. The collector then ingests
+the JSONL shards through the canonical Node.js data pipeline and consolidates
+them for publication. It uploads the completed snapshot as a one-day artifact.
+A dependent job downloads
 that artifact, verifies every snapshot file is present and non-empty, and
 publishes the source JSONL and its local SQLite projection to the shared cache,
 keeping cache-write permission out of the collection job. An incomplete
 extraction fails that job instead of silently skipping the cache save, which
 would strand consumers on a cache miss.
 
-The `gh aw logs` invocation uses `--cached-logs` with a trailing wildcard
-shard prefix instead of a single `--cached-jsonl` file. The wildcard shard
+Each `gh aw logs` invocation uses `--cached-logs` with a repository-specific
+trailing wildcard shard prefix instead of a single `--cached-jsonl` file. The wildcard shard
 directory itself is part of the shared activity cache, so `gh aw logs`
 recognizes previously discovered runs across job runs without re-seeding a
 snapshot; new runs are written to a freshly named shard rather than merged
@@ -28,6 +32,39 @@ unchanged. The ingestion step then passes the whole shard directory to
 any shard whose content hash is already recorded in the transactions table, so
 only genuinely new or changed shards are reprocessed instead of the whole
 rolling window every time.
+
+Collection is serial by repository so audits share refreshed Drain3 weights and
+do not multiply concurrent GitHub API pressure. A cold collection must discover
+the bounded run window for every repository. Later collections reuse each
+repository's wildcard shard cache and canonical transaction hashes, making the
+normal refresh incremental.
+
+## Data ownership and joins
+
+Activity has two source classes:
+
+| Input | Authority | Canonical contribution |
+| --- | --- | --- |
+| `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, package configuration, declared control workflows, and maintenance evidence | Package, Repository, and declared Workflow observations |
+| `gh-aw-logs-shards/*.jsonl` | Observed GitHub Actions execution and agentic audit evidence | Repository, Workflow, Run, Job, Session, and Event observations |
+
+`gh-aw-logs.jsonl` is the concatenated publication form of the retained shards,
+not a third source of truth. The SQLite database and browser IndexedDB are
+independently reconstructable projections of these external inputs.
+
+Runtime records join through canonical execution identities. A Repository uses
+the normalized `OWNER/REPOSITORY` coordinate available in cached logs. A
+Workflow belongs to that Repository and uses its workflow path when available,
+falling back to a repository-scoped workflow name. A Run uses the GitHub run ID
+plus attempt and references both the Repository where it executed and its
+Workflow. Package targets and dispatch payloads never replace that execution
+repository relationship.
+
+Dashboard selection, grouping, aggregation, and joins remain declarative. The
+Repositories view starts from repository inventory, aggregates Workflow and Run
+records by `organization` and `repository`, and left-joins those query results
+in the data Web Worker. Activity collection and browser components do not
+reconstruct those relationships.
 
 ## Cache contract
 
@@ -70,8 +107,8 @@ are moved from the logs output directory into the activity snapshot so storage
 accounting does not mistake them for a cached log file.
 
 The scheduled collector is intentionally rolling and bounded. It requests a
-30-day run window and at most five matching enriched runs across all targets in
-one invocation. Cached JSONL can contain repeated observations from later
+30-day run window and at most 1,000 matching enriched runs from each resolved
+repository. Cached JSONL can contain repeated observations from later
 refreshes; canonical ingestion deduplicates them by stable run identity. Use a
 separate source and SQLite database when a complete historical archive is
 required.

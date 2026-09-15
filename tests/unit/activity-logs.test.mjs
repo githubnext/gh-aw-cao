@@ -22,30 +22,35 @@ async function fixture() {
     statePath: path.join(root, "cache", "gh-aw-logs-state.json"),
     outputPath: path.join(root, "cache", "gh-aw-logs"),
     argumentsPath: path.join(root, "arguments.json"),
+    controlSettingsPath: path.join(root, "control-settings.json"),
     githubOutput: path.join(root, "github-output"),
   };
 }
 
-test("activity logs uses one bounded gh aw logs invocation with compact usage artifacts", async () => {
+test("activity logs collects and consolidates owned runs from every configured repository", async () => {
   const item = await fixture();
   const ghPath = path.join(item.bin, "gh");
   await writeFile(ghPath, `#!/usr/bin/env node
 const fs = require("node:fs");
 const path = require("node:path");
 const args = process.argv.slice(2);
-fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args));
+fs.appendFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args) + "\\n");
+const repository = args[args.indexOf("--repo") + 1];
 const shardPattern = args[args.indexOf("--cached-logs") + 1];
 const shardPath = shardPattern.replace(/\\*$/, "") + "fixture.jsonl";
 fs.mkdirSync(path.dirname(shardPath), { recursive: true });
 fs.writeFileSync(shardPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
-   database_id:42,
-   repository:"githubnext/gh-aw-cao",
+   database_id: repository === "githubnext/gh-aw-cao" ? 42 : 43,
+   repository,
    workflow_path:".github/workflows/sample.lock.yml",
    status:"completed"
   } }) + "\\n");
 process.stderr.write("Fetched 1 run\\n");
 `);
   await chmod(ghPath, 0o755);
+  await writeFile(item.controlSettingsPath, JSON.stringify({
+    allowed_repositories: ["github/gh-aw", "githubnext/gh-aw-cao"]
+  }));
   try {
     const env = {
       ...process.env,
@@ -56,12 +61,15 @@ process.stderr.write("Fetched 1 run\\n");
       REPORT_GH_AW_LOGS_STATE: item.statePath,
       REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
       REPORT_AIC_CACHE: item.outputPath,
+      REPORT_CONTROL_SETTINGS: item.controlSettingsPath,
       GH_ARGS_PATH: item.argumentsPath,
       GITHUB_OUTPUT: item.githubOutput,
     };
     const collection = await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
     const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { env });
-    const args = JSON.parse(await readFile(item.argumentsPath, "utf8"));
+    const invocations = (await readFile(item.argumentsPath, "utf8")).trim().split("\n").map(JSON.parse);
+    assert.equal(invocations.length, 2);
+    const args = invocations[0];
     assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--audit"]);
     assert.equal(args.includes("--json"), false);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
@@ -69,7 +77,7 @@ process.stderr.write("Fetched 1 run\\n");
       "usage",
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
-    const shardPrefix = path.join(item.root, "cache", "gh-aw-logs-shards", "logs-");
+    const shardPrefix = path.join(item.root, "cache", "gh-aw-logs-shards", "github-gh-aw-logs-");
     assert.deepEqual(args.slice(args.indexOf("--cached-logs"), args.indexOf("--cached-logs") + 2), [
       "--cached-logs",
       `${shardPrefix}*`,
@@ -77,15 +85,22 @@ process.stderr.write("Fetched 1 run\\n");
     assert.equal(args.filter((value) => value === "logs").length, 1);
     assert.deepEqual(args.slice(args.indexOf("--count"), args.indexOf("--count") + 2), ["--count", "10"]);
     assert.deepEqual(args.slice(args.indexOf("--timeout"), args.indexOf("--timeout") + 2), ["--timeout", "10"]);
-    assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
-    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).run.database_id, 42);
+    assert.deepEqual(invocations.map((invocation) => invocation[invocation.indexOf("--repo") + 1]), [
+      "github/gh-aw",
+      "githubnext/gh-aw-cao",
+    ]);
+    const runs = (await readFile(item.logsPath, "utf8")).trim().split("\n").map(JSON.parse);
+    assert.deepEqual(runs.map((row) => row.run.repository), [
+      "github/gh-aw",
+      "githubnext/gh-aw-cao",
+    ]);
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, true);
     assert.equal(state.complete, true);
     assert.equal(Object.hasOwn(state, "jobDetails"), false);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
-    assert.match(collection.stderr, /Fetched 1 run/);
-    assert.match(stdout, /Collected snapshot with 1 run across 1 workflow/);
+    assert.equal(collection.stderr.match(/Fetched 1 run/g)?.length, 2);
+    assert.match(stdout, /Collected snapshot with 2 runs across 1 workflow/);
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }
