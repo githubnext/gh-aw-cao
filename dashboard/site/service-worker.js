@@ -47,6 +47,8 @@ function isDebugEnabled(category) {
  * Category-scoped debug logger mirroring `dashboard/site/src/debug.js`. The
  * service worker cannot `import` that ES module while it runs as a classic
  * script, so this is a minimal, dependency-free port of the same behavior.
+ * `test/unit/service-worker.test.js` cross-checks pattern-matching parity
+ * with `debug.js` so the two stay in sync.
  * @param {string} category
  * @param {unknown[]} values
  */

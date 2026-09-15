@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import vm from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
+import { isDebugEnabled as pageIsDebugEnabled } from '../../src/debug.js';
 
 const source = readFileSync(resolve('service-worker.js'), 'utf8');
 
@@ -46,7 +47,8 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
       listeners[type] = listener;
     }
   };
-  vm.runInNewContext(source, {
+  /** @type {Record<string, unknown>} */
+  const sandbox = {
     self: worker,
     caches: {
       open: async () => cache,
@@ -64,7 +66,8 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     Promise,
     JSON,
     console: debugConsole
-  });
+  };
+  vm.runInNewContext(source, sandbox);
   return {
     listeners,
     worker,
@@ -72,7 +75,8 @@ function serviceWorkerHarness(cacheKeys = [], options = {}) {
     cache,
     entries,
     deleteCache,
-    debugConsole
+    debugConsole,
+    isDebugEnabled: /** @type {(category: string) => boolean} */ (sandbox.isDebugEnabled)
   };
 }
 
@@ -409,6 +413,21 @@ describe('dashboard service worker', () => {
       '[cao:data:ingestion:sw]',
       'dashboard data download complete'
     );
+  });
+
+  it('matches the page debug logger category semantics for representative patterns', () => {
+    const { isDebugEnabled: workerIsDebugEnabled } = serviceWorkerHarness([], { search: '?debug=data:ingestion:*,-data:ingestion:sw:noisy' });
+    const cases = [
+      'data:ingestion:sw',
+      'data:ingestion:sw:noisy',
+      'data:ingestion',
+      'render',
+      'other'
+    ];
+    for (const category of cases) {
+      expect(workerIsDebugEnabled(category))
+        .toBe(pageIsDebugEnabled(category, '?debug=data:ingestion:*,-data:ingestion:sw:noisy'));
+    }
   });
 
 });

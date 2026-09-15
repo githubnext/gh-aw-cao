@@ -62,9 +62,10 @@ export function fullDebugUrl(href = globalThis.location?.href ?? '') {
  * @returns {URL}
  */
 export function withDebugParameter(url, search = globalThis.location?.search ?? '') {
+  const result = new URL(url);
   const value = new URLSearchParams(search).get(DEBUG_PARAMETER);
-  if (value) url.searchParams.set(DEBUG_PARAMETER, value);
-  return url;
+  if (value) result.searchParams.set(DEBUG_PARAMETER, value);
+  return result;
 }
 
 /**
