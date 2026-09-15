@@ -61,6 +61,8 @@ resources:
     destination: .github/aw/dashboard/site/src/main.js
   - source: site/src/dashboard-app.js
     destination: .github/aw/dashboard/site/src/dashboard-app.js
+  - source: site/src/dashboard-chunks.js
+    destination: .github/aw/dashboard/site/src/dashboard-chunks.js
   - source: site/src/dashboard-data-updates.js
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/adapters/dashboard-sources.js
