@@ -71,14 +71,14 @@ Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
   REPO      GITHUB_REPOSITORY
   WORKFLOW  ${DEFAULT_ACTIVITY_STATS_WORKFLOW}
   ARTIFACT  ${DEFAULT_ACTIVITY_STATS_ARTIFACT}
- LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
+  LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
 
 gh query aliases:
- -R, --repo       Filter by OWNER/REPO
- -w, --workflow   Filter by workflow name or file
- -L, --limit      Maximum results (default ${DEFAULT_GH_LIMIT})
- --since          Include records at or after an ISO 8601 time
- --until          Include records at or before an ISO 8601 time`;
+  -R, --repo       Filter by OWNER/REPO
+  -w, --workflow   Filter by workflow name or file
+  -L, --limit      Maximum results (default ${DEFAULT_GH_LIMIT})
+  --since          Include records at or after an ISO 8601 time
+  --until          Include records at or before an ISO 8601 time`;
 
 async function jsonlFiles(root) {
   const files = [];
@@ -715,8 +715,13 @@ export async function queryGhData(indexedDB, resource, options) {
     });
   } else {
     const entityType = resource === 'issues' ? 'issue' : 'pull_request';
+    const safeOutputType = resource === 'issues' ? 'create_issue' : 'create_pull_request';
     records = events
-      .filter((event) => event.type === 'safe_output.created' && event.githubEntityType === entityType)
+      .filter((event) => (
+        event.type === 'safe_output.created'
+        && event.githubEntityType === entityType
+        && event.safeOutputType === safeOutputType
+      ))
       .map((event) => {
         const session = sessionsById.get(event.sessionId) ?? {};
         const run = runsById.get(session.runId) ?? {};
@@ -729,6 +734,7 @@ export async function queryGhData(indexedDB, resource, options) {
           repository: target?.repository ?? executionRepository.fullName ?? null,
           workflow: workflow.path ?? workflow.name ?? null,
           workflowName: workflow.name ?? null,
+          workflowId: workflow.id ?? null,
           createdAt: event.timestamp ?? event.observedAt ?? null,
           url: target?.url ?? null,
           type: event.safeOutputType ?? null,
@@ -740,7 +746,11 @@ export async function queryGhData(indexedDB, resource, options) {
       })
       .filter((record) => (
         (!repositoryFilter || String(record.repository ?? '').toLowerCase() === repositoryFilter)
-        && matchesWorkflow({ path: record.workflow, name: record.workflowName }, workflowFilter)
+        && matchesWorkflow({
+          id: record.workflowId,
+          path: record.workflow,
+          name: record.workflowName
+        }, workflowFilter)
         && inTimeRange(recordTimestamp(record, ['createdAt']), range)
       ));
   }

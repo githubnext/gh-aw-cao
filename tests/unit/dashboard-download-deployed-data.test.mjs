@@ -100,6 +100,16 @@ test("queries canonical data with the gh-like surface", async () => {
         timestamp: "2026-09-10T04:00:45Z",
       },
     },
+    {
+      schema_version: 2,
+      kind: "safe_output_item",
+      safe_output: {
+        run_id: 404,
+        type: "add_issue_comment",
+        url: "https://github.com/octo/example/issues/12",
+        timestamp: "2026-09-10T04:00:55Z",
+      },
+    },
   ];
 
   try {
