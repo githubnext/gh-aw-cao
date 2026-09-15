@@ -18,6 +18,7 @@ import { renderSiteCallouts } from './components/site-callout.js';
 import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
+import { enableFullViewScrollForwarding, syncFullViewMode as syncFullViewModeForPage } from './components/full-view-scroll.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
@@ -1122,24 +1123,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageMode = root.querySelector('[data-page-mode]');
   const reportActions = root.querySelector('.report-actions');
   const pageScroller = root.querySelector('main.dashboard-prototype');
-  /**
-   * A full-view table is only pinned to its own scroll surface when it is the sole view
-   * sharing its grid. When a chart or other view precedes it (for example the pie chart on
-   * the Cost page), pinning the table would hide the rest of the page behind an overflow:
-   * hidden container with no way to scroll to it. In that case the whole page scrolls
-   * normally instead.
-   * @param {HTMLElement | undefined} page
-   */
-  const syncFullViewMode = (page) => {
-    const fullView = page?.querySelector('.custom-view[data-view-layout="full-view"]');
-    const isSoleView = Boolean(
-      fullView
-      && fullView.parentElement
-      && fullView.parentElement.querySelectorAll(':scope > .custom-view').length === 1
-    );
-    root.classList.toggle('dashboard-full-view', isSoleView);
-    if (!isSoleView) root.classList.remove('dashboard-full-view-scrolled');
-  };
+  /** @param {HTMLElement | undefined} page */
+  const syncFullViewMode = (page) => syncFullViewModeForPage(root, page);
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
     href: link instanceof HTMLAnchorElement ? link.getAttribute('href') ?? '' : '',
@@ -1502,93 +1487,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     activate(route?.pageId ?? pageId, route?.parameters ?? new URLSearchParams(), true);
   });
 
-  // Hiding the app chrome while a full-view table scrolls resizes the scroll container.
-  // Phone layouts keep the chrome stable because mobile momentum scrolling can turn that
-  // reflow into a hide/show feedback loop. Larger layouts use range and hysteresis guards.
-  const FULL_VIEW_COMPACT_MEDIA = '(max-width: 700px)';
-  const FULL_VIEW_SCROLL_MIN_RANGE = 48;
-  const FULL_VIEW_SCROLL_ENTER = 24;
-  const FULL_VIEW_SCROLL_EXIT = 4;
-  const fullViewCompactMedia = typeof defaultView?.matchMedia === 'function'
-    ? defaultView.matchMedia(FULL_VIEW_COMPACT_MEDIA)
-    : null;
-  fullViewCompactMedia?.addEventListener('change', () => {
-    if (fullViewCompactMedia.matches) root.classList.remove('dashboard-full-view-scrolled');
-  });
-  let fullViewScrollFrame = 0;
-  /**
-   * Finds the scroll surface of a full-view table following the event target's view.
-   * @param {EventTarget | null} target
-   * @returns {HTMLElement | null}
-   */
-  const trailingFullViewScrollTarget = (target) => {
-    if (!root.classList.contains('dashboard-full-view') || !(target instanceof Element)) return null;
-    const view = target.closest('.custom-view');
-    const fullView = view?.parentElement?.querySelector(':scope > .custom-view[data-view-layout="full-view"]');
-    if (!(view instanceof HTMLElement) || !(fullView instanceof HTMLElement) || view === fullView) return null;
-    if (!(view.compareDocumentPosition(fullView) & Node.DOCUMENT_POSITION_FOLLOWING)) return null;
-    const scroll = fullView.querySelector('.table-scroll');
-    return scroll instanceof HTMLElement ? scroll : null;
-  };
-  /** @param {HTMLElement} scroll @param {number} deltaY */
-  const scrollTrailingFullView = (scroll, deltaY) => {
-    const previousScrollTop = scroll.scrollTop;
-    scroll.scrollTop += deltaY;
-    return scroll.scrollTop !== previousScrollTop;
-  };
-  root.addEventListener('wheel', (event) => {
-    const scroll = trailingFullViewScrollTarget(event.target);
-    if (!scroll) return;
-    const deltaY = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroll.clientHeight : 1);
-    if (scrollTrailingFullView(scroll, deltaY)) event.preventDefault();
-  }, { capture: true, passive: false });
-  /** @type {{ scroll: HTMLElement, clientY: number } | null} */
-  let trailingFullViewTouch = null;
-  root.addEventListener('touchstart', (event) => {
-    const scroll = trailingFullViewScrollTarget(event.target);
-    const touch = event.touches[0];
-    trailingFullViewTouch = scroll && touch ? { scroll, clientY: touch.clientY } : null;
-  }, { capture: true, passive: true });
-  root.addEventListener('touchmove', (event) => {
-    const touch = event.touches[0];
-    if (!trailingFullViewTouch || !touch) return;
-    const deltaY = trailingFullViewTouch.clientY - touch.clientY;
-    trailingFullViewTouch.clientY = touch.clientY;
-    if (scrollTrailingFullView(trailingFullViewTouch.scroll, deltaY)) event.preventDefault();
-  }, { capture: true, passive: false });
-  const endTrailingFullViewTouch = () => {
-    trailingFullViewTouch = null;
-  };
-  root.addEventListener('touchend', endTrailingFullViewTouch, true);
-  root.addEventListener('touchcancel', endTrailingFullViewTouch, true);
-  root.addEventListener('scroll', (event) => {
-    if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
-    const scroll = event.target.closest('.custom-view[data-view-layout="full-view"] .table-scroll');
-    if (scroll === event.target) {
-      const syncScrolledState = () => {
-        fullViewScrollFrame = 0;
-        if (!scroll.isConnected || !root.classList.contains('dashboard-full-view')) return;
-        if (fullViewCompactMedia?.matches) {
-          root.classList.remove('dashboard-full-view-scrolled');
-          return;
-        }
-        const scrollableRange = scroll.scrollHeight - scroll.clientHeight;
-        if (scrollableRange < FULL_VIEW_SCROLL_MIN_RANGE) {
-          root.classList.remove('dashboard-full-view-scrolled');
-          return;
-        }
-        const wasScrolled = root.classList.contains('dashboard-full-view-scrolled');
-        const threshold = wasScrolled ? FULL_VIEW_SCROLL_EXIT : FULL_VIEW_SCROLL_ENTER;
-        root.classList.toggle('dashboard-full-view-scrolled', scroll.scrollTop > threshold);
-      };
-      if (defaultView?.requestAnimationFrame) {
-        if (fullViewScrollFrame) defaultView.cancelAnimationFrame(fullViewScrollFrame);
-        fullViewScrollFrame = defaultView.requestAnimationFrame(syncScrolledState);
-      } else {
-        queueMicrotask(syncScrolledState);
-      }
-    }
-  }, true);
+  enableFullViewScrollForwarding(root, defaultView);
   /** @param {PopStateEvent} event */
   const onPopState = (event) => {
     if (!root.isConnected) {
