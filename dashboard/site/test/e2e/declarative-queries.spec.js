@@ -13,12 +13,14 @@ const asOf = '2026-09-09T05:00:00Z';
  * @param {string} run
  * @param {string} conclusion
  * @param {string} startedAt
+ * @param {string} event
  */
-const workflowRun = (workflow, run, conclusion, startedAt) => ({
+const workflowRun = (workflow, run, conclusion, startedAt, event = 'schedule') => ({
   organization: 'githubnext',
   repository: workflow.repository,
   workflow: workflow.workflow,
   run,
+  event,
   'run-attempt': 1,
   'run-status': 'completed',
   'run-conclusion': conclusion,
@@ -69,11 +71,11 @@ function queryScenarioSources() {
     },
     runs: {
       rows: [
-        workflowRun(dashboardWorkflow, '1001', 'success', '2026-09-09T01:00:00Z'),
-        workflowRun(dashboardWorkflow, '1002', 'failure', '2026-09-09T02:00:00Z'),
-        workflowRun(dashboardWorkflow, '1003', 'failure', '2026-09-09T03:00:00Z'),
-        workflowRun(doctorWorkflow, '1004', 'success', '2026-09-09T04:00:00Z'),
-        workflowRun(auditWorkflow, '1005', 'success', '2026-09-09T04:30:00Z')
+        workflowRun(dashboardWorkflow, '1001', 'success', '2026-09-09T01:00:00Z', 'workflow_dispatch'),
+        workflowRun(dashboardWorkflow, '1002', 'failure', '2026-09-09T02:00:00Z', 'workflow_dispatch'),
+        workflowRun(dashboardWorkflow, '1003', 'failure', '2026-09-09T03:00:00Z', 'schedule'),
+        workflowRun(doctorWorkflow, '1004', 'success', '2026-09-09T04:00:00Z', 'schedule'),
+        workflowRun(auditWorkflow, '1005', 'success', '2026-09-09T04:30:00Z', 'schedule')
       ],
       metadata
     },
@@ -333,7 +335,7 @@ test('the authored basic table queries return the populated canonical database r
   ]);
   expect(payload['runs-table'].rows.map((row) => row.run)).toEqual(['1005', '1004', '1003', '1002', '1001']);
   expect(payload['package-inventory'].rows).toEqual([
-    expect.objectContaining({ package: 'dashboard', 'package-name': 'CAO Dashboard', workflows: 1, runs: 3 })
+    expect.objectContaining({ package: 'dashboard', 'package-name': 'CAO Dashboard', workflows: 1, runs: 3, dispatches: 2 })
   ]);
 });
 

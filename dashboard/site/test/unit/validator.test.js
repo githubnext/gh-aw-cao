@@ -864,6 +864,7 @@ dashboard:
       'Roles',
       'Modes',
       'Runs',
+      'Dispatches',
       'AIC',
       'Registration'
     ]);

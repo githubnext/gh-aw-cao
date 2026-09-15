@@ -2716,6 +2716,7 @@
           { "field": "declared-package", "as": "package" },
           { "field": "declared-package-name", "as": "package-name" },
           { "field": "declared-workflow-name", "as": "workflow-name" },
+          { "field": "run" },
           { "field": "run-title" },
           { "field": "runtime-repository" },
           { "field": "status" },
@@ -2732,6 +2733,24 @@
         "order-by": [
           { "field": "started-at", "direction": "desc" }
         ]
+      },
+      {
+        "name": "package-dispatch-totals",
+        "intent": "Summarize observed workflow dispatches for each centrally managed package.",
+        "description": "Observed workflow-dispatch run totals grouped by package.",
+        "from": "dispatches",
+        "aggregate": {
+          "by": [
+            "package"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "dispatches",
+              "reducer": "distinct-count"
+            }
+          ]
+        }
       },
       {
         "name": "runtime-episodes",
@@ -3795,6 +3814,22 @@
                 "as": "observed-aic"
               }
             ]
+          },
+          {
+            "source": "package-dispatch-totals",
+            "type": "left",
+            "on": [
+              {
+                "left": "package",
+                "right": "package"
+              }
+            ],
+            "fields": [
+              {
+                "field": "dispatches",
+                "as": "observed-dispatches"
+              }
+            ]
           }
         ],
         "compute": [
@@ -3852,6 +3887,18 @@
             "args": [
               {
                 "field": "observed-runs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "dispatches",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-dispatches"
               },
               {
                 "value": 0
@@ -3949,6 +3996,9 @@
           },
           {
             "field": "runs"
+          },
+          {
+            "field": "dispatches"
           },
           {
             "field": "aic"
@@ -5451,6 +5501,11 @@
                     "field": "runs",
                     "type": "quantitative",
                     "title": "Runs"
+                  },
+                  {
+                    "field": "dispatches",
+                    "type": "quantitative",
+                    "title": "Dispatches"
                   },
                   {
                     "field": "aic",
