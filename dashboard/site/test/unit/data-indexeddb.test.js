@@ -2,11 +2,13 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DATABASE_NAME,
+  deleteCanonicalDatabase,
   openCanonicalDatabase,
   readCollection,
   readRecord,
   replaceCanonicalBatch,
-  upsertCanonicalBatch
+  upsertCanonicalBatch,
+  withCanonicalIngestionLock
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
 
@@ -170,5 +172,55 @@ describe('canonical IndexedDB', () => {
       .rejects.toThrow('Canonical relationship validation failed');
     expect(await readCollection(indexedDB, 'repositories')).toHaveLength(1);
     expect(await readCollection(indexedDB, 'workflows')).toEqual([]);
+  });
+
+  it('deletes the canonical database when no connections remain open', async () => {
+    const database = await openCanonicalDatabase(indexedDB);
+    database.close();
+
+    await expect(deleteCanonicalDatabase(indexedDB)).resolves.toBeUndefined();
+    const databases = await indexedDB.databases();
+    expect(databases.some(({ name }) => name === DATABASE_NAME)).toBe(false);
+  });
+
+  it('resolves the delete once a blocking connection closes within the grace period', async () => {
+    const database = await openCanonicalDatabase(indexedDB);
+    const onBlocked = () => setTimeout(() => database.close(), 10);
+
+    await expect(deleteCanonicalDatabase(indexedDB, { onBlocked })).resolves.toBeUndefined();
+  });
+
+  it('rejects the delete if a blocking connection never closes', async () => {
+    const database = await openCanonicalDatabase(indexedDB);
+
+    await expect(deleteCanonicalDatabase(indexedDB, { blockedTimeoutMs: 20 }))
+      .rejects.toThrow('blocked');
+    database.close();
+  });
+
+  it('does not leak an open connection when acquiring the ingestion lock fails', async () => {
+    const failure = new Error('lock acquisition failed');
+    const originalTransaction = IDBDatabase.prototype.transaction;
+    let attempted = false;
+    IDBDatabase.prototype.transaction = /** @type {typeof IDBDatabase.prototype.transaction} */ (
+      function patchedTransaction(/** @type {string | string[]} */ storeNames, /** @type {IDBTransactionMode} */ mode) {
+        if (!attempted && storeNames === 'transactions') {
+          attempted = true;
+          throw failure;
+        }
+        return originalTransaction.call(this, storeNames, mode);
+      }
+    );
+
+    try {
+      await expect(withCanonicalIngestionLock(indexedDB, async () => 'unreachable'))
+        .rejects.toThrow('lock acquisition failed');
+    } finally {
+      IDBDatabase.prototype.transaction = originalTransaction;
+    }
+
+    // A leaked connection from the failed acquisition attempt would block
+    // this delete; it must resolve promptly if the connection was closed.
+    await expect(deleteCanonicalDatabase(indexedDB, { blockedTimeoutMs: 200 })).resolves.toBeUndefined();
   });
 });
