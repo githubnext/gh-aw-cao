@@ -181,9 +181,9 @@ test.beforeAll(async () => {
       }
       response.writeHead(404, { "content-type": "text/plain" });
       response.end("Not found");
-    } catch (error) {
+    } catch {
       response.writeHead(500, { "content-type": "text/plain" });
-      response.end(error instanceof Error ? error.message : String(error));
+      response.end("Unable to serve stress-test data.");
     }
   });
   server.listen(0, "127.0.0.1");
