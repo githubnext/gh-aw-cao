@@ -422,6 +422,38 @@ describe('declarative dashboard queries', () => {
     expect(result.metadata.availability).toBe('available');
   });
 
+  it('compiles prediction after aggregation and exposes its output field', () => {
+    const result = executeDashboardQuery({
+      name: 'workflow-forecast',
+      from: 'usage',
+      aggregate: {
+        by: ['workflow', 'run'],
+        values: [{ field: 'aic', as: 'aic', reducer: 'sum' }]
+      },
+      predict: [{
+        field: 'aic',
+        on: 'run',
+        method: 'linear',
+        groupby: ['workflow'],
+        as: 'predicted-aic'
+      }],
+      select: [{ field: 'workflow' }, { field: 'run' }, { field: 'aic' }, { field: 'predicted-aic' }]
+    }, { usage });
+
+    expect(result.rows).toEqual([
+      { workflow: 'a.md', run: '1', aic: 4, 'predicted-aic': 4 },
+      { workflow: 'a.md', run: '2', aic: 6, 'predicted-aic': 6 }
+    ]);
+    expect(dashboardQueryOutputFields(
+      {
+        name: 'forecast',
+        from: 'usage',
+        predict: [{ field: 'aic', on: 'run', as: 'predicted-aic' }]
+      },
+      () => ['run', 'aic']
+    )).toEqual(['run', 'aic', 'predicted-aic']);
+  });
+
   it('times each query execution pipeline stage with console markers', () => {
     const start = vi.spyOn(console, 'time').mockImplementation(() => {});
     const end = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});

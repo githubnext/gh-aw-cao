@@ -220,7 +220,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
-| Query definition | `name`, `intent`, `description`, `from`, `time`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, `limit` |
+| Query definition | `name`, `intent`, `description`, `from`, `time`, `joins`, `filter`, `compute`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
 | Query `joins` entry | `source`, `type`, `on`, `fields` |
 | Query join key | `left`, `right` |
 | Query join field | `field`, `as` |
@@ -230,6 +230,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Query computed argument | exactly one of `field`, `value`, or `context`; `context` is `time-end` |
 | Query `aggregate` | `by`, `values` |
 | Query aggregate value | `field`, `as`, `reducer` |
+| Query `predict` entry | `field`, `on`, `method`, `order`, `groupby`, `as` |
 | Query `select` entry | `field`, `as` |
 | Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `description`, `icon`, `class-name`, `definition` |
 | Custom page | `id`, `kind`, `title`, `navigation-label`, `description`, `icon`, `class-name`, `route`, `views`, `sections` |
@@ -442,12 +443,74 @@ Computed fields use only the following typed, deterministic functions with the s
 | `sum`, `product` | 2–8 | finite number or null |
 | `difference`, `quotient` | 2 | finite number or null |
 
-#### 5.5.2 Normative Query Requirements
+#### 5.5.2 Prediction Vocabulary
 
-- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` source; **MAY** declare `description`, `time`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
+`predict` fits deterministic mathematical models to the rows at that point in the query and appends each prediction as a numeric field. Its names and regression behavior mirror the Vega regression transform where their contracts overlap: `field` is the dependent field, `on` identifies one predictor field or a sequence of predictor fields, `method` selects the fit, `groupby` fits an independent model for each group, and `as` names the appended prediction. The default method is `linear`.
+
+| Method | Predictors | Model |
+|---|---:|---|
+| `linear` | 1–8 | Ordinary least-squares linear regression with an intercept |
+| `log` | 1 | `a + b × log(x)` |
+| `exp` | 1 | `a × exp(b × x)` |
+| `pow` | 1 | `a × x^b` |
+| `quad` | 1 | Second-order polynomial regression |
+| `poly` | 1 | Polynomial regression; `order` is 1–10 and defaults to 3 |
+
+Unlike Vega's regression transform, which emits a fitted line as replacement tuples, `predict` preserves each input row and appends the fitted value. This makes observed and predicted values available together to any encoding. A row with a null target is excluded from model fitting but receives a prediction when its predictor fields are usable, allowing declarative forecasts over rows representing future points. Invalid numeric inputs, an underdetermined or singular model, and out-of-domain logarithmic or power inputs produce null rather than `NaN`, infinity, or an error.
+
+The following JSON uses `run` as a numeric sequence, fits one trend per workflow, and displays observed AIC together with the predicted reference values:
+
+```json
+{
+  "dashboard": {
+    "queries": [
+      {
+        "name": "workflow-aic-predictions",
+        "intent": "Compare observed workflow AIC with a linear trend.",
+        "from": "usage",
+        "predict": [
+          {
+            "field": "aic",
+            "on": "run",
+            "method": "linear",
+            "groupby": ["workflow"],
+            "as": "predicted-aic"
+          }
+        ]
+      }
+    ],
+    "pages": [
+      {
+        "id": "forecast",
+        "kind": "custom",
+        "views": [
+          {
+            "id": "observed-and-predicted-aic",
+            "data": { "source": "workflow-aic-predictions" },
+            "mark": "chart",
+            "chart": "dot",
+            "encoding": {
+              "x": { "field": "observed-at", "type": "temporal" },
+              "y": { "field": "aic", "type": "quantitative" },
+              "reference": { "field": "predicted-aic", "type": "quantitative" },
+              "color": { "field": "workflow", "type": "nominal" }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The built-in methods require no registry or external configuration. Future language versions may admit externally registered model identifiers while preserving the same field, grouping, and output contract; implementations must not interpret an unknown method as registered without an explicit future declaration mechanism.
+
+#### 5.5.3 Normative Query Requirements
+
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` source; **MAY** declare `description`, `time`, `joins`, `filter`, `compute`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 source name. A declared query name **MAY** be used wherever a view selects a logical source.
 - **DLS-QUERY-003:** `from` and every `joins[].source` **MUST** name one Section 5.1 source or one query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected.
-- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `joins` in declaration order, then `filter`, `compute` in declaration order, `aggregate`, `select`, `order-by`, and finally `limit`.
+- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `joins` in declaration order, then `filter`, `compute` in declaration order, `aggregate`, `predict` in declaration order, `select`, `order-by`, and finally `limit`.
 - **DLS-QUERY-005:** A join **MUST** declare `source`, a non-empty `on` sequence of `left`/`right` equality key pairs, and a non-empty `fields` sequence of aliased fields imported from the joined source. `type` **MUST** be `inner` or `left` and defaults to `inner`. Version 0.1.0 defines no other join type, no join expressions, and no cross joins. A query **MUST NOT** declare more than four joins.
 - **DLS-QUERY-006:** Join keys **MUST** address logical-source fields, not canonical entity identities. `left` **MUST** name a field available after the preceding clauses and `right` **MUST** name a field declared by the joined source. Key values **MUST** be compared as trimmed text; a null, missing, empty, or structured key value **MUST NOT** match any row.
 - **DLS-QUERY-007:** The joined source **MUST** contain at most one row per join key. A duplicate join key **MUST** fail the query rather than expand rows, so many-to-many expansion cannot occur.
@@ -464,6 +527,9 @@ Computed fields use only the following typed, deterministic functions with the s
 - **DLS-QUERY-018:** Query execution **MUST** be cancelable from outside the execution layer through an abort signal, **MUST** stop after 60000 milliseconds of execution, and **MUST** stop after 5000000 row operations. A stopped execution **MUST NOT** report a partial projection: it **MUST** surface an explicit cancellation distinct from a query fault, and **MUST** identify only the cancellation cause without source payloads or secrets. A presenter **MUST** offer a command that cancels a runaway computation, and **MUST** terminate a data worker that does not acknowledge cancellation.
 - **DLS-QUERY-019:** A validator **MUST** reject a query whose field references are incompatible with the source schema, with `DLS-E011`. A field that only exists after a presenter derives it from an executed projection **MUST NOT** be read by a query. A structured link field **MUST NOT** be a join key, filter field, computed-field argument, grouping field, aggregate measure, or `order-by` field, because **DLS-QUERY-006** and **DLS-QUERY-010** define no scalar value for it; a query **MAY** still project one. A temporal field **MUST NOT** be a numeric computed-field argument or the measure of a `sum`, `mean`, `min`, or `max` reducer.
 - **DLS-QUERY-020:** Query `time`, when present, **MUST** satisfy Section 6 time syntax. A relative query range **MUST** resolve against the active view window's exclusive end and replace only that view's temporal bounds for the query; scope, route, and dimension filters **MUST** remain in force.
+- **DLS-QUERY-021:** `predict` **MUST** be a non-empty sequence. Each entry **MUST** declare one numeric `field`, one `on` predictor field or a sequence of one to eight numeric predictor fields, and a unique `as` output name; **MAY** declare `method`, `groupby`, and `order`; and **MUST NOT** declare another key. `method` **MUST** be one Section 5.5.2 built-in and defaults to `linear`. Only `linear` **MAY** declare more than one predictor. `order` **MAY** appear only with `poly`.
+- **DLS-QUERY-022:** A prediction **MUST** fit independently for each distinct `groupby` tuple, or once for all rows when `groupby` is absent. Fitting **MUST** ignore rows whose target or predictor input is not a finite number. Prediction **MUST** preserve row count and order, MUST NOT mutate an input row, and **MUST** append a finite numeric value or null under the Section 5.5.2 semantics.
+- **DLS-QUERY-023:** Prediction fitting and evaluation **MUST** execute in the data Web Worker, remain subject to the cancellation, duration, and operation budgets in **DLS-QUERY-018**, and require no network, external configuration, or model registry. A future registered model extension **MUST** fail closed when its explicit registry or model is unavailable and **MUST NOT** change built-in method behavior.
 
 ---
 
@@ -607,9 +673,12 @@ Every request contains `data`, a sequence of row mappings, and `operators`, an o
 | `filter` | `predicates` and optional `search` | Retains rows matching every predicate and the optional case-insensitive search. A predicate has `field` and exactly one of `equals`, `in`, or `includes`. `search` has `fields` and `query`. |
 | `summarize` | optional `by` and required `values` | Produces one row per distinct `by` tuple, or one row for the full input when `by` is omitted. Each value has `field`, `as`, and a `reducer`. |
 | `arrange` | ordered `by` entries | Orders rows by each `field`; `direction` is `asc` or `desc`. |
+| `compute` | required `values` | Appends deterministic computed fields in declaration order. |
+| `predict` | required `values` | Fits grouped built-in regression models and appends finite predictions or null without changing row order. |
+| `select` | required `fields` | Projects and optionally renames fields. |
 | `slice` | `limit` and optional `offset` | Retains the requested contiguous range. |
 
-The `summarize` reducers are `count`, `distinct-count`, `distinct-list`, `sum`, `mean`, `min`, and `max`, with the semantics in Section 7.3 and Section 5.5.2. An empty numeric input yields `null` for `mean`, `min`, and `max`, and zero for `sum`. Operators execute from first to last; therefore a conforming compilation places filtering before summarization, arrangement, and slicing.
+The `summarize` reducers are `count`, `distinct-count`, `distinct-list`, `sum`, `mean`, `min`, and `max`, with the semantics in Section 7.3 and Section 5.5.3. An empty numeric input yields `null` for `mean`, `min`, and `max`, and zero for `sum`. Operators execute from first to last; therefore a conforming compilation places filtering before summarization, prediction, arrangement, and slicing.
 
 ```json
 {
@@ -1178,6 +1247,7 @@ dashboard:
 - Added the attention-first `signal-list` Home presentation, four-state Work display mapping, and composed `insights-overview` element with explicit outcome, AIC, detection, and experiment evidence boundaries.
 - Aligned page icons with the presenter's canonical Octicon set and defined the icon-only, tooltip-backed horizon control.
 - Added declarative `dashboard.queries` derived sources in Section 5.5 with required original-specification `intent` metadata, constrained equality joins, an allowlisted computed-field vocabulary, static output schemas, documented resource limits, composed data states, and worker-only execution through **DLS-QUERY-001** to **DLS-QUERY-019**, and revised Section 1.2, **DLS-VIEW-011**, and Appendix C.3 accordingly. `queries` is an optional additive key, so conforming `"0.1.0"` documents without queries remain valid and the language version is unchanged.
+- Added first-class `predict` query transforms with Vega-aligned `linear`, `log`, `exp`, `pow`, `quad`, and `poly` regression methods, grouped and multivariate linear fitting, forecast rows, static output fields, and worker-only execution through **DLS-QUERY-021** to **DLS-QUERY-023**.
 
 ---
 

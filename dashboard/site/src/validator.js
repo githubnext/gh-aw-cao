@@ -22,9 +22,11 @@ import {
   QUERY_KEYS,
   QUERY_MAX_JOINS,
   QUERY_PREDICATE_KEYS,
+  QUERY_PREDICT_KEYS,
   QUERY_REDUCER_VALUES,
   QUERY_NUMERIC_REDUCER_VALUES,
   QUERY_SELECT_KEYS,
+  PREDICTION_METHODS,
   INFERRED_FIELD_NAMES,
   DATASET_AVAILABILITY_VALUES,
   DATASET_COMPLETENESS_VALUES,
@@ -3133,6 +3135,99 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
         }
       }
       fields = fields ? grouped : undefined;
+    }
+  }
+
+  if (query.predict !== undefined) {
+    const predictNode = getValueNodeByKey(queryNode, 'predict');
+    if (!Array.isArray(query.predict) || query.predict.length === 0) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'predict must be a non-empty sequence of prediction definitions.',
+        `${path}.predict`
+      ));
+    } else {
+      for (const [index, prediction] of query.predict.entries()) {
+        const predictionPath = `${path}.predict[${index}]`;
+        if (!isPlainObject(prediction)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'prediction must be a mapping.', predictionPath));
+          continue;
+        }
+        validateObjectKeys(getSequenceItemNode(predictNode, index), QUERY_PREDICT_KEYS, predictionPath, errors);
+        validateStringField(prediction.field, `${predictionPath}.field`, true, errors);
+        validateStringField(prediction.as, `${predictionPath}.as`, true, errors);
+        requireField(prediction.field, `${predictionPath}.field`);
+        requireSchemaType(prediction.field, `${predictionPath}.field`, 'numeric');
+
+        const predictors = typeof prediction.on === 'string'
+          ? [prediction.on]
+          : Array.isArray(prediction.on) ? prediction.on : [];
+        if (predictors.length === 0 || predictors.length > 8) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'prediction on must be one field or a sequence of 1 to 8 predictor fields.',
+            `${predictionPath}.on`
+          ));
+        }
+        for (const [predictorIndex, predictor] of predictors.entries()) {
+          const predictorPath = Array.isArray(prediction.on)
+            ? `${predictionPath}.on[${predictorIndex}]`
+            : `${predictionPath}.on`;
+          validateStringField(predictor, predictorPath, true, errors);
+          requireField(predictor, predictorPath);
+          requireSchemaType(predictor, predictorPath, 'numeric');
+        }
+        if (new Set(predictors).size !== predictors.length) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'prediction on must not contain duplicate predictor fields.',
+            `${predictionPath}.on`
+          ));
+        }
+
+        const method = prediction.method ?? 'linear';
+        if (typeof method !== 'string' || !PREDICTION_METHODS.includes(method)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            `prediction method must be one of ${PREDICTION_METHODS.join(', ')}.`,
+            `${predictionPath}.method`
+          ));
+        } else if (method !== 'linear' && predictors.length !== 1) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `prediction method ${method} requires exactly one predictor field.`,
+            `${predictionPath}.on`
+          ));
+        }
+        if (prediction.order !== undefined) {
+          if (method !== 'poly' || !Number.isSafeInteger(prediction.order)
+              || Number(prediction.order) < 1 || Number(prediction.order) > 10) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              'prediction order is allowed only for poly and must be an integer from 1 to 10.',
+              `${predictionPath}.order`
+            ));
+          }
+        }
+
+        if (prediction.groupby !== undefined) {
+          if (!Array.isArray(prediction.groupby) || prediction.groupby.length === 0) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              'prediction groupby must be a non-empty sequence of grouping fields.',
+              `${predictionPath}.groupby`
+            ));
+          } else {
+            for (const [groupIndex, groupField] of prediction.groupby.entries()) {
+              const groupPath = `${predictionPath}.groupby[${groupIndex}]`;
+              validateStringField(groupField, groupPath, true, errors);
+              requireField(groupField, groupPath);
+              requireSchemaType(groupField, groupPath, 'scalar');
+            }
+          }
+        }
+        declareField(prediction.as, `${predictionPath}.as`);
+      }
     }
   }
 

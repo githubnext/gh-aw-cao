@@ -7,8 +7,8 @@
  * `data-operations.js` so the whole pipeline runs inside the data Web Worker.
  *
  * Clause execution order is fixed and deterministic:
- * `from` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `select` ->
- * `order-by` -> `limit`.
+ * `from` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `predict` ->
+ * `select` -> `order-by` -> `limit`.
  */
 
 import { tidy } from '../../data-operations.js';
@@ -29,6 +29,7 @@ import { tidy } from '../../data-operations.js';
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }> },
  *   compute?: import('../../data-operations.js').ComputedField[],
  *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max' }> },
+ *   predict?: import('../../data-operations.js').PredictedField[],
  *   select?: Array<{ field: string, as?: string }>,
  *   ['order-by']?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   limit?: number
@@ -340,6 +341,24 @@ function queryStructuralDefect(definition) {
     if (!Array.isArray(join?.on) || join.on.length === 0) {
       return `join on "${String(join?.source)}" declares no equality keys`;
     }
+    if (definition.predict !== undefined) {
+      if (!Array.isArray(definition.predict) || definition.predict.length === 0 || definition.predict.length > 8) {
+        return 'predict must contain between 1 and 8 prediction definitions';
+      }
+      for (const prediction of definition.predict) {
+        const predictors = typeof prediction?.on === 'string'
+          ? [prediction.on]
+          : Array.isArray(prediction?.on) ? prediction.on : [];
+        if (typeof prediction?.field !== 'string' || typeof prediction?.as !== 'string'
+            || predictors.length === 0 || predictors.length > 8) {
+          return 'prediction definitions require field, as, and between 1 and 8 predictor fields';
+        }
+        if (prediction.order !== undefined
+            && (!Number.isSafeInteger(prediction.order) || prediction.order < 1 || prediction.order > 10)) {
+          return 'prediction order must be an integer from 1 to 10';
+        }
+      }
+    }
   }
   if (definition.limit !== undefined
       && (!Number.isSafeInteger(definition.limit)
@@ -424,6 +443,7 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
   if (definition.aggregate) {
     fields = [...(definition.aggregate.by ?? []), ...definition.aggregate.values.map((value) => value.as)];
   }
+  for (const predicted of definition.predict ?? []) fields.push(predicted.as);
   if (definition.select) {
     fields = definition.select.map((field) => field.as ?? field.field);
   }
@@ -646,12 +666,24 @@ function runDashboardQuery(definition, sources, budget) {
     ));
   }
   const operators = compileRowOperators(definition);
-  budget.spend(rows.length * Math.max(1, operators.length));
   for (const operator of operators) {
+    budget.spend(rows.length * queryOperatorCost(operator));
     rows = timeQueryStage(definition.name, queryOperatorStage(operator), () => tidy(rows, [operator]));
   }
   enforceLimit(rows.length, 'max-output-rows', definition.name);
   return rows;
+}
+
+/** @param {import('../../data-operations.js').DataOperator} operator */
+function queryOperatorCost(operator) {
+  if (operator.op !== 'predict') return 1;
+  return operator.values.reduce((cost, prediction) => {
+    const predictors = Array.isArray(prediction.on) ? prediction.on.length : 1;
+    const terms = prediction.method === 'quad'
+      ? 3
+      : prediction.method === 'poly' ? (prediction.order ?? 3) + 1 : predictors + 1;
+    return cost + terms * terms;
+  }, 0);
 }
 
 /**
@@ -694,6 +726,7 @@ export function compileRowOperators(definition) {
   if (definition.aggregate) {
     operators.push({ op: 'summarize', by: definition.aggregate.by ?? [], values: definition.aggregate.values });
   }
+  if (definition.predict?.length) operators.push({ op: 'predict', values: definition.predict });
   if (definition.select?.length) operators.push({ op: 'select', fields: definition.select });
   if (definition['order-by']?.length) operators.push({ op: 'arrange', by: definition['order-by'] });
   if (typeof definition.limit === 'number') operators.push({ op: 'slice', limit: definition.limit });
