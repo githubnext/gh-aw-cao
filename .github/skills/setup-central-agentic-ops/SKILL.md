@@ -91,12 +91,11 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 8. Install the operation-free root CAO package in a separate control repository, then install every selected operation package from the same release. Before installing, review each manifest's metadata: `gh aw add` rejects packages marked `private` and warns for packages marked `experimental`. The root package installs shared controls, skills, resources, the deterministic activity index, and the dashboard; each operation package adds only its orchestrator, workers, and operation-specific resources:
 
     ```bash
-    CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-    gh aw add "githubnext/gh-aw-cao@${CAO_RELEASE}"
-    gh aw add "githubnext/gh-aw-cao/<package-slug>@${CAO_RELEASE}"
+    gh aw add githubnext/gh-aw-cao
+    gh aw add githubnext/gh-aw-cao/<package-slug>
     ```
 
-    Repeat the last command for every selected operation, replacing `<package-slug>` with its catalog slug. Keep the root and operation packages on the same immutable published release. Do not pass `main` or another branch, or copy control files separately. In a source-managed control repository, do not install a package over workflows maintained directly in-tree. Its reviewed workflow sources, generated locks, runtime files, and policy form the runtime revision; verify them at the current commit instead.
+    Repeat the last command for every selected operation, replacing `<package-slug>` with its catalog slug. gh-aw resolves the latest published release, retries transient package-install failures, and installs the shared control runtime with the base and operation packages. Do not add release-resolution scripts, pass `main` or another branch, or copy control files separately. In a source-managed control repository, do not install a package over workflows maintained directly in-tree. Its reviewed workflow sources, generated locks, runtime files, and policy form the runtime revision; verify them at the current commit instead.
 
     When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper installed with the package:
 
