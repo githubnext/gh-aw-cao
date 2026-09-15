@@ -4,7 +4,8 @@ import { resolve } from "node:path";
 
 const dashboardUrl = "https://githubnext.github.io/gh-aw-cao/cao/";
 const outputDirectory = resolve("test-results/dashboard-deployed");
-const populatedPages = ["events", "repositories", "workflows"];
+const initialPageId = "packages";
+const populatedPages = ["packages", "repositories", "workflows", "runs", "firewall", "events"];
 
 test("deployed dashboard refreshes and renders populated views", async ({ page }, testInfo) => {
   await mkdir(outputDirectory, { recursive: true });
@@ -34,8 +35,15 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
 
   let diagnostics;
   try {
-    await page.goto(dashboardUrl, { waitUntil: "domcontentloaded" });
+    await page.goto(`${dashboardUrl}${initialPageId}/`, { waitUntil: "domcontentloaded" });
     await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
+    await page.waitForFunction((pageId) =>
+      window.__dashboardTestEvents?.some(({ type, detail }) =>
+        type === "dashboard-render"
+        && detail?.kind === "initial-page"
+        && detail?.status === "configured"
+        && detail?.pageId === pageId
+      ), initialPageId, { timeout: 120_000 });
     await page.waitForFunction(() =>
       window.__dashboardTestEvents?.some(({ type, detail }) =>
         type === "dashboard-data" && detail?.status === "completed"

@@ -14,6 +14,7 @@
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { configureSourceLoader, refreshSources as refreshBoundSources } from "./source-store.js";
+      import { initialDashboardPageId } from "./dashboard-route.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -944,9 +945,10 @@
         let cachedSources = null;
 
         try {
-          const initialPageId = dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
-            ?? dashboardDocument.dashboard.pages[0]?.id
-            ?? "";
+          const initialPageId = initialDashboardPageId(
+            dashboardDocument.dashboard.pages,
+            window.location.hash,
+          );
           const dashboardContext = {
             githubUrlBase: dashboardDocument.dashboard["github-url-base"],
             dashboardRepository: dashboardDocument.dashboard.repository,
