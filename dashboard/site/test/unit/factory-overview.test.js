@@ -43,7 +43,7 @@ function overviewSources(overrides = {}) {
     'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 0, 'failed-runs': 0, 'active-runs': 0, 'active-live': 0, 'active-review': 0 }]),
     'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 0, 'failed-dispatches': 0 }]),
     'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 0 }]),
-    'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
+    'overview-value-summary': source('overview-value-summary', [{ 'value-observations': 0 }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 0 }]),
     'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }]),
     'overview-rhythm': source('overview-rhythm', []),
@@ -65,7 +65,7 @@ it('renders compact database summaries and distinct registered repository covera
       'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 2, 'failed-runs': 2, 'active-runs': 4, 'active-live': 1, 'active-review': 3 }]),
       'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 4, 'failed-dispatches': 2 }]),
       'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
-      'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
+      'overview-value-summary': source('overview-value-summary', [{ 'value-observations': 1 }]),
       'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
       'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }]),
       'overview-rhythm': rhythmSource({ Wed: { current: 2, previous: 1, reached: true } })
@@ -74,18 +74,19 @@ it('renders compact database summaries and distinct registered repository covera
 
   expect(rendered.querySelector('.factory-running')?.textContent).toBe('Work in motion');
   expect(rendered.querySelector('.factory-running-active > span')?.textContent).toBe('Work in motion');
-  expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
+  expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is humming.');
   expect([...rendered.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
     'Repositories registered6',
     'Successful runs22 failed',
     'Dispatches42 failed',
-    'Value gain1Coming soon'
+    'Value observation1'
   ]);
   expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('6 repositories registered with 3 delivered to');
   expect(rendered.querySelector('.factory-station:first-child strong a')?.getAttribute('href')).toBe('#page-repositories');
   expect(rendered.querySelector('.factory-station:first-child strong a')?.textContent).toBe('6');
   expect(rendered.querySelector('.factory-station:first-child small')?.textContent).toBe('');
   expect(rendered.querySelector('.factory-station:nth-child(3) small a')?.getAttribute('href')).toBe('#page-dispatches?package-worker-dispatches.status=failure');
+  expect(rendered.querySelector('.factory-station:nth-child(4) strong a')?.getAttribute('href')).toBe('#page-operational-value');
   expect([...rendered.querySelectorAll('.factory-rhythm-day small')].map((day) => day.textContent)).toEqual([
     'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
   ]);

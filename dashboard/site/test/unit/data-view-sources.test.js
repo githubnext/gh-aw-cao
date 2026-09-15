@@ -211,7 +211,12 @@ describe('canonical view sources', () => {
       expect.objectContaining({
         package: 'dashboard',
         'package-name': 'CAO Dashboard',
-        'workflow-role': 'worker'
+        'workflow-role': 'worker',
+        'workflow-link': {
+          relation: 'workflow',
+          href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/dashboard.md',
+          label: 'Open .github/workflows/dashboard.md'
+        }
       })
     ]);
   });
@@ -360,6 +365,7 @@ describe('canonical view sources', () => {
           results: [{
             id: 'operational-value',
             name: 'Operational Value',
+            source: 'workflow',
             status: 'pass',
             unit: 'count',
             direction: 'higher_is_better',
@@ -381,11 +387,24 @@ describe('canonical view sources', () => {
     expect(projected['grader-observations'].rows).toEqual([
       expect.objectContaining({
         repository: 'gh-aw-cao',
+        workflow: '.github/workflows/value-worker.md',
         run: '84',
         grader: 'operational-value',
+        'grader-name': 'Operational Value',
+        'grader-source': 'workflow',
         status: 'pass',
         included: true,
-        value: 0
+        value: 0,
+        'repository-link': {
+          relation: 'repository',
+          href: 'https://github.com/githubnext/gh-aw-cao',
+          label: 'Open githubnext/gh-aw-cao'
+        },
+        'run-link': {
+          relation: 'run',
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/84',
+          label: 'View run 84'
+        }
       })
     ]);
     expect(projected['operational-values'].rows).toEqual([

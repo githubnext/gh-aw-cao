@@ -27,7 +27,7 @@ const OVERVIEW_SOURCE_NAMES = [
 /**
  * Values shared by more than one bound element. Each one is memoised so a
  * source update recomputes it once instead of once per element.
- * @typedef {{ successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} OverviewMetrics
+ * @typedef {{ successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueObservations: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} OverviewMetrics
  */
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {{ singular: string, plural: string }} PluralText */
@@ -88,7 +88,7 @@ const DEFAULT_STATION_LABELS = {
   repositories: { singular: 'Repository registered', plural: 'Repositories registered' },
   'successful-runs': { singular: 'Successful run', plural: 'Successful runs' },
   dispatches: { singular: 'Dispatch', plural: 'Dispatches' },
-  'value-gains': { singular: 'Value gain', plural: 'Value gains' }
+  'value-observations': { singular: 'Value observation', plural: 'Value observations' }
 };
 
 /**
@@ -178,7 +178,7 @@ function createOverviewMetrics(sources) {
     successfulRuns: memo(() => numberField(runs(), 'successful-runs')),
     failedRuns: memo(() => numberField(runs(), 'failed-runs')),
     activeRuns: memo(() => numberField(runs(), 'active-runs')),
-    valueGains: memo(() => numberField(value(), 'value-gains')),
+    valueObservations: memo(() => numberField(value(), 'value-observations')),
     coverage: memo(() => ({
       total: numberField(delivery(), 'delivered-repositories'),
       registered: numberField(registeredRepositories(), 'registered-repositories'),
@@ -257,7 +257,6 @@ function factoryHeading(sources, metrics) {
   const successfulRuns = metrics.successfulRuns();
   const failedRuns = metrics.failedRuns();
   const activeRuns = metrics.activeRuns();
-  if (metrics.valueGains() > 0) return 'Your factory is delivering value.';
   if (activeRuns > 0) return 'Your factory is humming.';
   if (failedRuns > successfulRuns && failedRuns > 0) return 'Your factory is under strain.';
   if (failedRuns > 0) return 'Your factory needs attention.';
@@ -275,7 +274,7 @@ function renderFactoryFloor(sources, metrics, label) {
   const repositories = renderStation('repo', { href: '#page-repositories' });
   const runs = renderStation('play', { href: '#page-runs?runs-runs-source.run-conclusion=success' });
   const dispatches = renderStation('workflow', { href: '#page-runs' });
-  const valueGains = renderStation('trophy', { final: true });
+  const valueObservations = renderStation('trophy', { final: true, href: '#page-operational-value' });
 
   repositories.bind(() => {
     const coverage = metrics.coverage();
@@ -314,13 +313,13 @@ function renderFactoryFloor(sources, metrics, label) {
     };
   });
 
-  valueGains.bind(() => {
-    const gains = metrics.valueGains();
+  valueObservations.bind(() => {
+    const observations = metrics.valueObservations();
     return {
       pending: sources['overview-value-summary'].pending(),
-      label: label('value-gains', gains),
-      value: gains,
-      detail: 'Coming soon'
+      label: label('value-observations', observations),
+      value: observations,
+      detail: ''
     };
   });
 
@@ -329,7 +328,7 @@ function renderFactoryFloor(sources, metrics, label) {
     const successfulRuns = metrics.successfulRuns();
     const dispatchCount = metrics.dispatches();
     const workers = metrics.workers();
-    const gains = metrics.valueGains();
+    const valueObservationsCount = metrics.valueObservations();
     const usefulOutputs = metrics.usefulOutputs();
     const activeRuns = factoryMotionState.get().operations;
     floor.className = `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`;
@@ -338,7 +337,7 @@ function renderFactoryFloor(sources, metrics, label) {
       : `${formatCount(coverage.registered)} ${label('repositories', coverage.registered).toLowerCase()}${coverage.unavailable ? '; repository delivery evidence unavailable' : ` with ${formatCount(coverage.total)} delivered to`}`;
     floor.setAttribute(
       'aria-label',
-      `${repositoriesDescription}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
+      `${repositoriesDescription}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(valueObservationsCount)} ${label('value-observations', valueObservationsCount).toLowerCase()}, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
     );
   });
 
@@ -348,7 +347,7 @@ function renderFactoryFloor(sources, metrics, label) {
     repositories.element,
     runs.element,
     dispatches.element,
-    valueGains.element
+    valueObservations.element
   ));
   return floor;
 }

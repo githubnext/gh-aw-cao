@@ -1448,7 +1448,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     '',
     '80 failed',
     '0 failed',
-    'Coming soon'
+    ''
   ]);
   await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
   await expect(overviewPage.locator('.factory-status')).toHaveCount(0);

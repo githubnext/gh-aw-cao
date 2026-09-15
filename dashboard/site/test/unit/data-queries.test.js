@@ -112,6 +112,72 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
+  it('counts finite operational-value observations for Overview without assuming a threshold', () => {
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      {
+        'grader-observations': {
+          source: 'grader-observations',
+          rows: [
+            { grader: 'operational-value', value: 0 },
+            { grader: 'operational-value', value: 2.5 },
+            { grader: 'operational-value', value: null },
+            { grader: 'tool-success-rate', value: 0.9, threshold: 0.8 }
+          ],
+          metadata: metadata('grader-observations')
+        }
+      },
+      ['overview-value-summary']
+    );
+
+    expect(result['overview-value-summary'].rows).toEqual([
+      { 'value-observations': 2 }
+    ]);
+  });
+
+  it('selects operational-value observations with workflow identity in newest-first order', () => {
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      {
+        'grader-observations': {
+          source: 'grader-observations',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', grader: 'operational-value', workflow: 'older.md', value: 0, 'observed-at': '2026-09-01T00:00:00Z' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', grader: 'tool-success-rate', workflow: 'other.md', value: 0.9, 'observed-at': '2026-09-03T00:00:00Z' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', grader: 'operational-value', workflow: 'newer.md', value: null, status: 'unavailable', 'observed-at': '2026-09-02T00:00:00Z' }
+          ],
+          metadata: metadata('grader-observations')
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            {
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: 'newer.md',
+              'workflow-name': 'Newer workflow',
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/newer.md', label: 'Open Newer workflow' }
+            },
+            {
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: 'older.md',
+              'workflow-name': 'Older workflow',
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/older.md', label: 'Open Older workflow' }
+            }
+          ],
+          metadata: metadata('workflows')
+        }
+      },
+      ['operational-value-observations']
+    );
+
+    expect(result['operational-value-observations'].rows).toEqual([
+      expect.objectContaining({ workflow: 'newer.md', 'value-workflow-name': 'Newer workflow', value: null }),
+      expect.objectContaining({ workflow: 'older.md', 'value-workflow-name': 'Older workflow', value: 0 })
+    ]);
+  });
+
   it('counts distinct targets from successful worker dispatches only', () => {
     const runRows = [
       { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'github/gh-aw' },

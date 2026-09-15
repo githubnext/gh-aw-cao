@@ -406,13 +406,32 @@
       },
       {
         "name": "overview-value-summary",
-        "intent": "Count grader observations whose value exceeds their declared threshold.",
+        "intent": "Count retained finite primary operational-value observations without assuming a shared scale or threshold.",
         "from": "grader-observations",
-        "compute": [
-          { "as": "above-threshold", "function": "greater-than", "args": [{ "field": "value" }, { "field": "threshold" }] },
-          { "as": "value-gain", "function": "if", "args": [{ "field": "above-threshold" }, { "value": 1 }, { "value": 0 }] }
+        "filter": { "predicates": [{ "field": "grader", "equals": "operational-value" }] },
+        "aggregate": { "values": [{ "field": "value", "as": "value-observations", "reducer": "count" }] }
+      },
+      {
+        "name": "operational-value-observations",
+        "intent": "Show current operational-value grader results with linked workflow and run identity.",
+        "from": "grader-observations",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [
+              { "field": "workflow-name", "as": "value-workflow-name" },
+              { "field": "workflow-link", "as": "workflow-link" }
+            ]
+          }
         ],
-        "aggregate": { "values": [{ "field": "value-gain", "as": "value-gains", "reducer": "sum" }] }
+        "filter": { "predicates": [{ "field": "grader", "equals": "operational-value" }] },
+        "order-by": [{ "field": "observed-at", "direction": "desc" }]
       },
       {
         "name": "overview-registered-repository-summary",
@@ -6958,27 +6977,35 @@
       {
         "id": "operational-value",
         "kind": "custom",
-        "title": "Value & outcomes",
+        "title": "Operational value",
         "navigation-label": "Value",
-        "icon": "beaker",
+        "icon": "trophy",
         "class-name": "value-page",
-        "description": "Outcome, grader, maturity, AI Credit, and experiment-readiness evidence for the configured repositories.",
+        "description": "Primary metrics emitted by operational-value graders for configured workflows.",
         "views": [
           {
             "id": "operational-value-ledger",
+            "title": "Operational value observations",
             "data": {
-              "source": "grader-observations"
+              "source": "operational-value-observations"
             },
             "mark": "table",
             "controls": "interactive",
             "empty-message": "No operational-value grader records were retained.",
             "layout": "full-view",
+            "column-summaries": false,
             "encoding": {
               "columns": [
                 {
-                  "field": "grader",
+                  "field": "value-workflow-name",
                   "type": "nominal",
-                  "title": "Workflow"
+                  "title": "Workflow",
+                  "display": "workflow-link"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
                 },
                 {
                   "field": "status",
@@ -6987,39 +7014,31 @@
                   "title": "Status"
                 },
                 {
-                  "field": "maturity-status",
-                  "type": "nominal",
-                  "display": "label",
-                  "title": "Maturity"
-                },
-                {
                   "field": "value",
                   "type": "quantitative",
-                  "unit": "grade",
                   "title": "Value"
                 },
                 {
-                  "field": "baseline-value",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Baseline"
-                },
-                {
-                  "field": "delta-from-baseline",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Delta"
-                },
-                {
-                  "field": "evaluator-digest",
+                  "field": "unit",
                   "type": "nominal",
-                  "display": "digest",
-                  "title": "Evaluator"
+                  "title": "Unit"
+                },
+                {
+                  "field": "exclusion-reason",
+                  "type": "nominal",
+                  "title": "Detail"
                 },
                 {
                   "field": "run",
                   "type": "nominal",
-                  "title": "Run"
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
                 }
               ]
             },
@@ -7627,9 +7646,9 @@
                   "singular": "Successful dispatch",
                   "plural": "Successful dispatches"
                 },
-                "value-gains": {
-                  "singular": "Value gain",
-                  "plural": "Value gains"
+                "value-observations": {
+                  "singular": "Value observation",
+                  "plural": "Value observations"
                 }
               }
             },

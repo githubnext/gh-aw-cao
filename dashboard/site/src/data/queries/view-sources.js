@@ -198,6 +198,13 @@ function workflowsSource(workflows, repositoriesById, sources) {
     source: 'workflows',
     rows: workflows.map((workflow) => {
       const repository = repositoriesById.get(workflow.repositoryId) ?? {};
+      const repositoryHref = repository.owner && repository.name
+        ? `https://github.com/${encodeURIComponent(String(repository.owner))}/${encodeURIComponent(String(repository.name))}`
+        : '';
+      const workflowPath = String(workflow.path ?? '');
+      const workflowHref = repositoryHref && workflowPath
+        ? `${repositoryHref}/blob/main/${workflowPath.split('/').map(encodeURIComponent).join('/')}`
+        : '';
       return {
         ...(publishedWorkflows.get([
           repository.owner,
@@ -220,7 +227,11 @@ function workflowsSource(workflows, repositoriesById, sources) {
         'gh-aw-version': workflow.ghAwVersion,
         'gh-aw-current-version': workflow.ghAwCurrentVersion,
         'gh-aw-update-state': workflow.ghAwUpdateState,
-        'workflow-link': workflow.workflowLink
+        'workflow-link': workflow.workflowLink ?? (workflowHref ? {
+          relation: 'workflow',
+          href: workflowHref,
+          label: `Open ${workflow.name ?? workflowPath}`
+        } : undefined)
       };
     }),
     metadata: projectionMetadata(sources, 'workflows', 'workflows', true)
@@ -348,18 +359,35 @@ function graderRows(events, sessionsById, runsById) {
     const run = runsById.get(session.runId) ?? {};
     const implementation = recordValue(event.implementation);
     const observation = recordValue(event.observation);
+    const organization = String(run.owner ?? '');
+    const repository = String(run.repository ?? '');
+    const githubRunId = String(run.githubRunId ?? '');
+    const repositoryHref = organization && repository
+      ? `https://github.com/${encodeURIComponent(organization)}/${encodeURIComponent(repository)}`
+      : '';
+    const retainedRunLink = recordValue(run.runLink);
+    const runHref = typeof run.runLink === 'string'
+      ? run.runLink
+      : typeof retainedRunLink.href === 'string' ? retainedRunLink.href : '';
+    const runLink = runHref || (repositoryHref && githubRunId
+      ? `${repositoryHref}/actions/runs/${encodeURIComponent(githubRunId)}`
+      : '');
     return {
       __event: event,
-      organization: run.owner,
-      repository: run.repository,
+      organization,
+      repository,
       workflow: run.workflowPath,
-      run: String(run.githubRunId ?? ''),
+      run: githubRunId,
       'run-attempt': run.attempt,
       grader: event.grader,
+      'grader-name': event.graderName,
+      'grader-source': event.graderSource,
       value: event.value,
       status: event.status ?? 'unavailable',
       included: Number.isFinite(event.value),
       'exclusion-reason': Number.isFinite(event.value) ? undefined : event.error ?? event.message,
+      message: event.message,
+      error: event.error,
       role: event.grader === 'operational-value' ? 'operational-value' : 'grader',
       direction: event.direction,
       unit: event.unit,
@@ -371,8 +399,23 @@ function graderRows(events, sessionsById, runsById) {
       'delta-from-baseline': event.deltaFromBaseline,
       'evaluator-digest': implementation.digest ?? '',
       'observed-at': observation.evidenceAt ?? event.timestamp,
-      'run-link': run.runLink,
-      'evidence-link': run.runLink
+      'repository-link': repositoryHref ? {
+        relation: 'repository',
+        href: repositoryHref,
+        label: `Open ${organization}/${repository}`
+      } : undefined,
+      'run-link': runLink ? {
+        relation: 'run',
+        href: runLink,
+        label: typeof retainedRunLink.label === 'string'
+          ? retainedRunLink.label
+          : `View run ${githubRunId}`
+      } : undefined,
+      'evidence-link': runLink ? {
+        relation: 'evidence',
+        href: runLink,
+        label: `View evidence for run ${githubRunId}`
+      } : undefined
     };
   });
 }

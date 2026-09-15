@@ -1907,12 +1907,6 @@ describe('presenter built-in and custom pages', () => {
       availability: /** @type {'available'} */ ('available')
     };
     /** @param {string} run */
-    const evidenceLink = (run) => ({
-      relation: 'evidence',
-      href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}`,
-      label: `View run ${run}`
-    });
-    /** @param {string} run */
     const runLink = (run) => ({
       relation: 'run',
       href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}`,
@@ -1920,129 +1914,98 @@ describe('presenter built-in and custom pages', () => {
     });
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
-      sources: {
-        'operational-values': {
-          source: 'operational-values',
-          rows: [
-            {
-              organization: 'githubnext',
-              repository: 'gh-aw-cao',
-              workflow: '.github/workflows/daily.md',
-              run: '100',
-              'operational-value': 0.2,
-              'operational-value-definition': 'daily-value',
-              'operational-case': 'triage',
-              'evaluator-digest': 'sha256:old',
-              'requested-evidence-at': '2026-08-27T05:00:00Z',
-              'observed-at': '2026-08-27T05:10:00Z',
-              'maturity-status': 'matured',
-              'delta-from-baseline': 0,
-              'evidence-link': evidenceLink('100')
-            },
-            {
-              organization: 'githubnext',
-              repository: 'gh-aw-cao',
-              workflow: '.github/workflows/daily.md',
-              run: '101',
-              'operational-value': 0.8,
-              'operational-value-definition': 'daily-value',
-              'operational-case': 'triage',
-              'evaluator-digest': 'sha256:current',
-              'requested-evidence-at': '2026-08-29T05:00:00Z',
-              'observed-at': '2026-08-29T05:10:00Z',
-              'maturity-status': 'matured',
-              'delta-from-baseline': 0.1,
-              'evidence-link': evidenceLink('101')
-            },
-            {
-              organization: 'githubnext',
-              repository: 'gh-aw-cao',
-              workflow: '.github/workflows/daily.md',
-              run: '102',
-              'operational-value': 0.6,
-              'operational-value-definition': 'daily-value',
-              'operational-case': 'release',
-              'evaluator-digest': 'sha256:current',
-              'requested-evidence-at': '2026-08-29T05:00:00Z',
-              'observed-at': '2026-08-30T05:10:00Z',
-              'maturity-status': 'matured',
-              'delta-from-baseline': 0.05,
-              'evidence-link': evidenceLink('102')
-            },
-            {
-              organization: 'githubnext',
-              repository: 'gh-aw-cao',
-              workflow: '.github/workflows/review.md',
-              run: '103',
-              'operational-value': 0.4,
-              'operational-value-definition': 'review-value',
-              'operational-case': 'review',
-              'evaluator-digest': 'sha256:review',
-              'requested-evidence-at': '2026-08-31T04:00:00Z',
-              'observed-at': '2026-08-31T04:10:00Z',
-              'maturity-status': 'interim',
-              'delta-from-baseline': null,
-              'evidence-link': evidenceLink('103')
-            }
-          ],
-          metadata
-        },
+      sources: applyDashboardQueries({
         'grader-observations': {
           source: 'grader-observations',
           rows: [
             {
-              grader: 'daily-value',
-              run: '100',
-              status: 'pass',
-              value: 0.2,
-              'maturity-status': 'matured',
-              'baseline-value': 0.2,
-              'delta-from-baseline': 0,
-              'evaluator-digest': 'sha256:old',
-              'run-link': runLink('100')
-            },
-            {
-              grader: 'daily-value',
-              run: '101',
-              status: 'pass',
-              value: 0.8,
-              'maturity-status': 'matured',
-              'baseline-value': 0.7,
-              'delta-from-baseline': 0.1,
-              'evaluator-digest': 'sha256:current',
-              'run-link': runLink('101')
-            },
-            {
-              grader: 'daily-value',
-              run: '102',
-              status: 'pass',
-              value: 0.6,
-              'maturity-status': 'matured',
-              'baseline-value': 0.55,
-              'delta-from-baseline': 0.05,
-              'evaluator-digest': 'sha256:current',
-              'run-link': runLink('102')
-            },
-            {
-              grader: 'review-value',
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/review.md',
+              grader: 'operational-value',
               run: '103',
               status: 'pass',
-              value: 0.4,
-              'maturity-status': 'interim',
-              'baseline-value': null,
-              'delta-from-baseline': null,
-              'evaluator-digest': 'sha256:review',
+              value: 12,
+              unit: 'issues',
+              'observed-at': '2026-08-31T04:10:00Z',
               'run-link': runLink('103')
             },
             {
-              grader: 'missing-value',
-              run: 'Unavailable',
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/daily.md',
+              grader: 'operational-value',
+              run: '102',
+              status: 'pass',
+              value: 0,
+              unit: 'pull requests',
+              'observed-at': '2026-08-30T05:10:00Z',
+              'run-link': runLink('102')
+            },
+            {
+              organization: 'githubnext',
+              repository: 'agentic-ops',
+              workflow: '.github/workflows/triage.md',
+              grader: 'operational-value',
+              run: '101',
+              status: 'error',
+              value: null,
+              unit: 'issues',
+              'exclusion-reason': 'Evaluator exited with status 1',
+              'observed-at': '2026-08-29T05:10:00Z',
+              'run-link': runLink('101')
+            },
+            {
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/daily.md',
+              grader: 'operational-value',
+              run: '100',
               status: 'unavailable',
               value: null,
-              'maturity-status': 'unavailable',
-              'baseline-value': null,
-              'delta-from-baseline': null,
-              'evaluator-digest': ''
+              unit: 'issues',
+              'exclusion-reason': 'No operational-value result was emitted',
+              'observed-at': '2026-08-27T05:10:00Z',
+              'run-link': runLink('100')
+            }
+          ],
+          metadata
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            {
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/review.md',
+              'workflow-name': 'Pull request review',
+              'workflow-link': {
+                relation: 'workflow',
+                href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/review.md',
+                label: 'Open Pull request review'
+              }
+            },
+            {
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/daily.md',
+              'workflow-name': 'Daily operations',
+              'workflow-link': {
+                relation: 'workflow',
+                href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/daily.md',
+                label: 'Open Daily operations'
+              }
+            },
+            {
+              organization: 'githubnext',
+              repository: 'agentic-ops',
+              workflow: '.github/workflows/triage.md',
+              'workflow-name': 'Issue triage',
+              'workflow-link': {
+                relation: 'workflow',
+                href: 'https://github.com/githubnext/agentic-ops/blob/main/.github/workflows/triage.md',
+                label: 'Open Issue triage'
+              }
             }
           ],
           metadata
@@ -2065,30 +2028,32 @@ describe('presenter built-in and custom pages', () => {
           rows: [],
           metadata: { ...metadata, completeness: /** @type {'partial'} */ ('partial') }
         }
-      }
+      }, ['operational-value-observations'])
     });
 
     const page = await activatePage(rendered, 'operational-value');
     const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'operational-value');
-    expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Value & outcomes' });
+    expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Operational value' });
     expect(dashboardPage).not.toHaveProperty('page');
     expect(dashboardPage).not.toHaveProperty('sections');
-    expect(rendered.querySelector('[data-nav-page-id="operational-value"] .octicon-beaker')).not.toBeNull();
+    expect(rendered.querySelector('[data-nav-page-id="operational-value"] .octicon-trophy')).not.toBeNull();
     const tables = page?.querySelectorAll('.custom-table') ?? [];
     expect(tables).toHaveLength(1);
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(5);
+    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(4);
     expect(tables[0]?.querySelector('.status-success')?.textContent).toBe('pass');
     expect(tables[0]?.querySelector('.status-attention')?.textContent).toBe('unavailable');
-    expect(tables[0]?.textContent).toContain('Mature');
-    expect(tables[0]?.textContent).toContain('Interim');
-    expect(tables[0]?.textContent).toContain('sha256:curre');
+    expect(tables[0]?.textContent).toContain('Pull request review');
+    expect(tables[0]?.querySelector('a[href$="/.github/workflows/review.md"]')?.textContent).toBe('Pull request review');
+    expect(tables[0]?.textContent).toContain('agentic-ops');
+    expect(tables[0]?.textContent).toContain('pull requests');
+    expect(tables[0]?.textContent).toContain('Evaluator exited with status 1');
     expect(tables[0]?.querySelector('a[aria-label="View run 103"]')?.getAttribute('href')).toContain('/actions/runs/103');
     const graderRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
     const graderFilter = /** @type {HTMLInputElement} */ (graderRegion?.querySelector('[data-table-filter]'));
-    expect(graderFilter.closest('label')?.textContent).toContain('Filter Operational Value Ledger');
-    graderFilter.value = 'review-value';
+    expect(graderFilter.closest('label')?.textContent).toContain('Filter Operational value observations');
+    graderFilter.value = 'Pull request review';
     graderFilter.dispatchEvent(new Event('input'));
     expect([...graderRegion.querySelectorAll('tbody tr')]
       .filter((row) => row instanceof HTMLTableRowElement && !row.hidden)).toHaveLength(1);
