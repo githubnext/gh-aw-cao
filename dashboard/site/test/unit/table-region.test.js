@@ -281,6 +281,24 @@ describe('renderTableRegion', () => {
     ))).toEqual(['older', 'newer']);
   });
 
+  it('falls back to visible text when the underlying sort value is empty', () => {
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No runs available.',
+      colSpan: 1,
+      headCells: ['Run'],
+      filterLabel: 'Filter runs',
+      bodyRows: [
+        h('tr', null, h('td', { 'data-sort-value': ' ' }, '2')),
+        h('tr', null, h('td', { 'data-sort-value': '' }, '1'))
+      ]
+    });
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-sort="0"]')).click();
+
+    expect([...rendered.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual(['1', '2']);
+  });
+
   it('keeps pagination consistent after sorting', () => {
     const rows = Array.from({ length: 30 }, (_, index) => h(
       'tr',
