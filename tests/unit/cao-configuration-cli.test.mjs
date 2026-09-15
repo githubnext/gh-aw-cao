@@ -93,7 +93,7 @@ test("cao add installs a package and merges its declaration safely", async () =>
     }, null, 2)}\n`);
     process.chdir(root);
     const result = await addCaoPackage(
-      "githubnext/gh-aw-cao/dependabot@v1",
+      "githubnext/gh-aw-cao/dependabot@feature/config",
       ["--force", "--no-security-scanner"],
       {
         policyPath,
@@ -106,7 +106,7 @@ test("cao add installs a package and merges its declaration safely", async () =>
     const policy = JSON.parse(await readFile(policyPath, "utf8"));
     assert.deepEqual(calls, [[
       "gh",
-      ["aw", "add", "githubnext/gh-aw-cao/dependabot@v1", "--force", "--no-security-scanner"],
+      ["aw", "add", "githubnext/gh-aw-cao/dependabot@feature/config", "--force", "--no-security-scanner"],
     ]]);
     assert.equal(policy["control-plane"].scope["allowed-owners"][0], "acme");
     assert.deepEqual(policy["control-plane"].packages.existing, { mode: "review" });

@@ -355,38 +355,8 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /edit only `control-plane\.scope` to add `target-owner` and `target-owner\/target-repository`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);
   assert.match(setupSkill, /if \(\/<\[\^>\]\+>\/\.test\(source\)\) throw new Error\('unresolved policy placeholder'\)/);
-  const policyTemplate = setupSkill.match(/```json\n([\s\S]*?)\n\s*```/)?.[1];
-  assert.ok(policyTemplate, "setup skill must contain a JSON policy template");
-  const initialPolicy = JSON.parse(policyTemplate
-    .replaceAll("<gh-aw-version>", ghAwVersion)
-    .replaceAll("<target-owner>", "acme")
-    .replaceAll("<target-repository>", "service")
-    .replaceAll("<package-slug>", "dependabot")
-    .replaceAll("<worker-slug>", "release-train-updater")
-    .replaceAll("<worker-workflow-slug>", "dependabot-release-train-updater"));
-  assert.deepEqual(initialPolicy, {
-    version: 1,
-    "gh-aw-version": ghAwVersion,
-    "control-plane": {
-      scope: {
-        "allowed-owners": ["acme"],
-        "allowed-repositories": ["acme/service"],
-      },
-      packages: {
-        dependabot: {
-          workers: {
-            "release-train-updater": {
-              workflow: "dependabot-release-train-updater",
-            },
-          },
-        },
-      },
-    },
-  });
-  assert.match(setupSkill, /"allowed-owners": \["<target-owner>"\]/);
-  assert.match(setupSkill, /"allowed-repositories": \["<target-owner>\/<target-repository>"\]/);
-  assert.match(setupSkill, /"<package-slug>": \{\s+"workers": \{/);
-  assert.match(setupSkill, /resolver loads this mapping directly from policy/);
+  assert.doesNotMatch(setupSkill, /```json\n[\s\S]*?"workers"/);
+  assert.match(setupSkill, /package-owned orchestrator and worker identities are merged/);
   assert.match(setupSkill, /gh aw run <orchestrator-workflow>/);
   assert.match(setupSkill, /Public and private control repositories are supported/);
   assert.match(setupSkill, /policy, workflow runs, operational metadata, and review safe outputs are public/);

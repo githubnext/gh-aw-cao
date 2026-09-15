@@ -192,7 +192,8 @@ function validateGlobalPolicy(document, source) {
 }
 
 function packageSlugFromSpec(spec) {
-  const withoutRef = spec.slice(0, spec.lastIndexOf('@') > spec.lastIndexOf('/') ? spec.lastIndexOf('@') : undefined);
+  const refSeparator = spec.lastIndexOf('@');
+  const withoutRef = refSeparator > spec.indexOf('/') ? spec.slice(0, refSeparator) : spec;
   const slug = withoutRef.replace(/\/+$/, '').split('/').pop();
   if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
     throw new Error(`Unable to determine package name from ${spec}`);
