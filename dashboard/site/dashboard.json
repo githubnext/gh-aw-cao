@@ -7012,9 +7012,33 @@
       {
         "id": "engines-models",
         "kind": "custom",
-        "title": "Engines Models",
+        "title": "Models & Agents",
         "icon": "sparkles-fill",
         "views": [
+          {
+            "id": "engines-models-distribution",
+            "title": "Agent and model distribution",
+            "description": "Distribution of observed agent events by agent and model combination.",
+            "data": {
+              "source": "engines-models-usage"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "empty-message": "No agent or model usage metadata is available.",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "summary",
+                "type": "nominal",
+                "title": "Agent / model"
+              },
+              "y": {
+                "field": "events",
+                "type": "quantitative",
+                "title": "Events"
+              }
+            }
+          },
           {
             "id": "engines-models-usage",
             "title": "Engines and models",
@@ -7043,7 +7067,7 @@
             "lazy-list": true
           }
         ],
-        "navigation-label": "Models & agents",
+        "navigation-label": "Models & Agents",
         "description": "Compare observed agent and model combinations from agent events."
       },
       {
@@ -8200,6 +8224,7 @@
         "pages": [
           "workflows",
           "runs",
+          "engines-models",
           "firewall",
           "mcps",
           "events"
@@ -8243,8 +8268,7 @@
           "safe-output-items",
           "safe-outputs",
           "detection",
-          "dispatches",
-          "engines-models"
+          "dispatches"
         ]
       }
     ]
