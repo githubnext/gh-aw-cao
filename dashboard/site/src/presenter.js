@@ -297,7 +297,7 @@ export function renderDashboard(input) {
       if (!page) return null;
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => {
-        if (!options.signal.aborted) {
+        if (options.signal?.aborted !== true) {
           dashboardHorizon.update(resolveDashboardHorizonViewModel(
             pageSources,
             dashboardDefaults,

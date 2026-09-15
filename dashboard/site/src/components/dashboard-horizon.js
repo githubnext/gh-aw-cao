@@ -119,10 +119,13 @@ export function renderDashboardHorizon(options) {
 
   return {
     element: root,
-    /** @param {HorizonViewModel} next */
+    /**
+     * Updates the bound horizon. Once resolved, an empty refresh retains the
+     * global horizon instead of flashing the loading skeleton.
+     * @param {HorizonViewModel} next
+     */
     update(next) {
       value.set((current) => {
-        // Keep the resolved global horizon visible while a page refresh has no rows.
         if (current.available && !next.available) return current;
         return current.available === next.available
           && current.evaluatedAt === next.evaluatedAt
