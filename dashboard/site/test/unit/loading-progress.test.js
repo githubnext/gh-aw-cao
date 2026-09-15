@@ -44,6 +44,7 @@ describe('loading progress', () => {
     startLoadingProgress(document);
 
     setLoadingProgressState(document, { completed: 2, total: 4 });
+    setLoadingProgressState(document, { completed: 0, total: 4 });
     vi.advanceTimersByTime(60_000);
 
     const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));

@@ -16,8 +16,8 @@ function applyShardState(target, state) {
   if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(completed)) return;
   window.clearTimeout(target.timer);
   target.advancing = false;
-  target.progress = INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS)
-    * Math.min(1, Math.max(0, completed / total));
+  target.progress = Math.max(target.progress, INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS)
+    * Math.min(1, Math.max(0, completed / total)));
   target.bar.style.transform = `scaleX(${target.progress})`;
 }
 

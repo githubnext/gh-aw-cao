@@ -482,7 +482,13 @@ function getWorker() {
     if (event.data?.type === 'loading-progress') {
       const state = event.data.state;
       if (Number.isFinite(state?.completed) && Number.isFinite(state?.total) && state.total > 0) {
-        for (const listener of workerLoadingProgressListeners) listener(state);
+        for (const listener of workerLoadingProgressListeners) {
+          try {
+            listener(state);
+          } catch {
+            // Ignore listener failures so a broken consumer cannot interrupt other subscribers.
+          }
+        }
       }
       return;
     }
