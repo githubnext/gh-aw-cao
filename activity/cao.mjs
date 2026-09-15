@@ -45,7 +45,7 @@ const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doc
 
 const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao ingest-jsonl [--database FILE] [--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
@@ -496,6 +496,10 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
     shards.push({ shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
   }
   return { ...totals, updated, committedRecords, shards };
+}
+
+async function ingestJsonlFile(indexedDB, inputPath, options = {}) {
+  return ingestCachedGhAwJsonl(indexedDB, createReadStream(inputPath), options);
 }
 
 /**
@@ -990,8 +994,10 @@ export async function runCli(arguments_, input = process.stdin) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
-    const inputDirectory = option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH;
+    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
+    const inputPath = option(options, 'input', false);
+    const inputDirectory = option(options, 'input-dir', false);
+    if (inputPath && inputDirectory) throw new Error('Options --input and --input-dir cannot be combined');
     const contextPath = option(options, 'context', false);
     const context = contextPath
       ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
@@ -1001,7 +1007,9 @@ export async function runCli(arguments_, input = process.stdin) {
       retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
       context
     };
-    const result = await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory), ingestOptions);
+    const result = inputPath
+      ? await ingestJsonlFile(indexedDB, path.resolve(inputPath), ingestOptions)
+      : await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory || DEFAULT_SHARDS_PATH), ingestOptions);
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'query') {
