@@ -261,6 +261,44 @@ describe('renderTableRegion', () => {
     expect(headers[1]?.getAttribute('aria-sort')).toBe('ascending');
   });
 
+  it('sorts matching relative-time labels by their complete timestamps', () => {
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No runs available.',
+      colSpan: 2,
+      headCells: ['Run', 'Created'],
+      filterLabel: 'Filter runs',
+      bodyRows: [
+        h('tr', null, h('td', null, 'newer'), h('td', { 'data-sort-value': '2026-09-15T17:46:45Z' }, '33 minutes ago')),
+        h('tr', null, h('td', null, 'older'), h('td', { 'data-sort-value': '2026-09-15T17:46:01Z' }, '33 minutes ago'))
+      ]
+    });
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-sort="1"]')).click();
+
+    expect([...rendered.querySelectorAll('tbody tr')].map((row) => (
+      /** @type {HTMLTableRowElement} */ (row).cells[0]?.textContent
+    ))).toEqual(['older', 'newer']);
+  });
+
+  it('falls back to visible text when the underlying sort value is empty', () => {
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No runs available.',
+      colSpan: 1,
+      headCells: ['Run'],
+      filterLabel: 'Filter runs',
+      bodyRows: [
+        h('tr', null, h('td', { 'data-sort-value': ' ' }, '2')),
+        h('tr', null, h('td', { 'data-sort-value': '' }, '1'))
+      ]
+    });
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-sort="0"]')).click();
+
+    expect([...rendered.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual(['1', '2']);
+  });
+
   it('keeps pagination consistent after sorting', () => {
     const rows = Array.from({ length: 30 }, (_, index) => h(
       'tr',

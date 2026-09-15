@@ -243,7 +243,7 @@ function enableTableSort(region, sourceRows) {
       header.setAttribute('aria-sort', direction);
       const rows = sourceRows ?? [...body.rows];
       const result = processRows(
-        rows.map((row, index) => ({ index, value: cellText(row, columnIndex) })),
+        rows.map((row, index) => ({ index, value: cellSortKey(row, columnIndex) })),
         [{ op: 'arrange', by: [{ field: 'value', direction: direction === 'descending' ? 'desc' : 'asc' }] }]
       );
       applyProcessed(result, (processed) => {
@@ -260,10 +260,12 @@ function enableTableSort(region, sourceRows) {
 /**
  * @param {HTMLTableRowElement} row
  * @param {number} columnIndex
- * @returns {string}
+ * @returns {string} The raw sort value when present, otherwise the displayed text.
  */
-function cellText(row, columnIndex) {
-  return row.cells[columnIndex]?.textContent?.trim() ?? '';
+function cellSortKey(row, columnIndex) {
+  const cell = row.cells[columnIndex];
+  const sortValue = cell?.dataset.sortValue?.trim();
+  return sortValue || (cell?.textContent?.trim() ?? '');
 }
 
 /**
