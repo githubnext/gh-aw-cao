@@ -11,6 +11,7 @@ import { SOURCE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
+import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
@@ -24,21 +25,7 @@ const authoritativeDashboardDocument = composeDashboardDocuments(
 
 /** @param {Parameters<typeof renderDashboardView>[0]} input */
 function renderDashboard(input) {
-  const resolvedDocument = {
-    ...input.document,
-    dashboard: {
-      ...input.document.dashboard,
-      pages: input.document.dashboard.pages.map((page) => {
-        if (page.kind !== 'built-in') return page;
-        const template = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ kind?: string, page?: string }} */ candidate) => (
-          candidate.kind === 'built-in' && candidate.page === page.page
-        ));
-        return template
-          ? { ...template, ...page, definition: template.definition }
-          : page;
-      }),
-    },
-  };
+  const resolvedDocument = resolveBuiltInPages(input.document, authoritativeDashboardDocument);
   const sources = { ...input.sources };
   if (Object.keys(input.sources).length > 0) {
     Object.assign(sources, deriveDataHealthSources(sources));

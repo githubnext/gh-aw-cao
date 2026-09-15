@@ -168,15 +168,43 @@ export function dashboardTableSourceNames(document, pageId) {
 }
 
 /**
+ * Resolves `kind: 'built-in'` pages in `document` against the full `definition`
+ * of the matching built-in page template found in `templateDocument` (looked
+ * up by `page.page`). Used by tests and compliance fixtures that need a fully
+ * resolved document without going through the runtime chunk-loading path.
+ * @template {{ dashboard: { pages: DashboardPage[] } & Record<string, unknown> } & Record<string, unknown>} Document
+ * @param {Document} document
+ * @param {{ dashboard: { pages: DashboardPage[] } }} templateDocument
+ * @returns {Document}
+ */
+export function resolveBuiltInPages(document, templateDocument) {
+  return {
+    ...document,
+    dashboard: {
+      ...document.dashboard,
+      pages: document.dashboard.pages.map((page) => {
+        if (page.kind !== 'built-in') return page;
+        const template = templateDocument.dashboard.pages.find((candidate) => (
+          candidate.kind === 'built-in' && candidate.page === page.page
+        ));
+        return template
+          ? { ...template, ...page, definition: template.definition }
+          : page;
+      }),
+    },
+  };
+}
+
+/**
  * @param {DashboardPage} page
- * @param {string} chunk
+ * @param {string} chunkPath
  * @param {{ sourceNames: string[], lazySourceNames: string[], tableSourceNames: string[] }} index
  * @returns {DashboardPage}
  */
-function stubDashboardPage(page, chunk, index) {
+function stubDashboardPage(page, chunkPath, index) {
   const base = {
     ...page,
-    chunk,
+    chunk: chunkPath,
     'source-names': index.sourceNames,
     'lazy-source-names': index.lazySourceNames,
     'table-source-names': index.tableSourceNames,
@@ -246,9 +274,9 @@ export function splitDashboardDocument(source, options = {}) {
     const queries = queryDefinitions.filter((query) => (
       typeof query?.name === 'string' && requiredQueryNames.has(query.name)
     ));
-    const chunk = `${chunkDirectory}/${encodeURIComponent(page.id ?? '')}.json`;
+    const chunkPath = `${chunkDirectory}/${encodeURIComponent(page.id ?? '')}.json`;
     pageChunks.set(page.id ?? '', { page, queries });
-    return stubDashboardPage(page, chunk, { sourceNames, lazySourceNames, tableSourceNames });
+    return stubDashboardPage(page, chunkPath, { sourceNames, lazySourceNames, tableSourceNames });
   });
   const dashboard = { ...document.dashboard, pages: corePages };
   delete dashboard.queries;
