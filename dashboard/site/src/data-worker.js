@@ -369,9 +369,7 @@ export function publishedActivityShards(hashes) {
       return { name, payloadIdentity: `sha256:${hash.toLowerCase()}` };
     })
     .sort((left, right) => left.name.localeCompare(right.name));
-  if (shards.length > MAX_PUBLISHED_ACTIVITY_SHARDS) {
-    throw new TypeError(`Published activity shard count exceeds ${MAX_PUBLISHED_ACTIVITY_SHARDS}.`);
-  }
+  if (shards.length > MAX_PUBLISHED_ACTIVITY_SHARDS) return [];
   return shards;
 }
 
@@ -503,6 +501,7 @@ export function processDataRequest(request, signal) {
               if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
               if (!response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
               const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
+                incremental: true,
                 storage: globalThis.navigator?.storage,
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
                 workflowHints,
@@ -586,6 +585,7 @@ export function processDataRequest(request, signal) {
           if (inventoryResponse.ok) {
             progress.log('Normalizing inventory metadata.');
             const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
+              incremental: publishedShards.length > 0,
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               payloadScope: inventoryUrl.href,

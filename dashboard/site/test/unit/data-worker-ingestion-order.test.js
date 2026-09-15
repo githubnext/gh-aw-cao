@@ -12,7 +12,7 @@ beforeEach(async () => {
 });
 
 describe('canonical dashboard worker ingestion order', () => {
-  it('stores JSONL run records once when bootstrapping with inventory sources', async () => {
+  it('stores bounded JSONL shards incrementally when bootstrapping with inventory sources', async () => {
     /** @type {Map<string, (event: { data: Record<string, unknown> }) => void>} */
     const listeners = new Map();
     /** @type {Record<string, unknown>[]} */
@@ -61,7 +61,12 @@ describe('canonical dashboard worker ingestion order', () => {
         });
       }
       if (url.endsWith('/inventory-sources.json')) return Response.json(inventory);
-      if (url.includes('/gh-aw-logs-shards/')) return new Response(`${JSON.stringify(run)}\n`);
+      if (url.includes('/gh-aw-logs-shards/')) {
+        const shardRun = url.endsWith('/part-02.jsonl')
+          ? { ...run, run: { ...run.run, run_id: 304 } }
+          : run;
+        return new Response(`${JSON.stringify(shardRun)}\n`);
+      }
       throw new Error(`Unexpected monolithic activity request: ${url}`);
     });
 
@@ -92,7 +97,10 @@ describe('canonical dashboard worker ingestion order', () => {
     }
 
     expect(posted.find((message) => message.id === 1)?.error).toBeUndefined();
-    expect(storedRunIds).toEqual(['github:run:303:attempt:1']);
+    expect(storedRunIds).toEqual([
+      'github:run:303:attempt:1',
+      'github:run:304:attempt:1'
+    ]);
     expect(requestedUrls).toEqual([
       'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json',
