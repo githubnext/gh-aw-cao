@@ -71,7 +71,7 @@ describe('canonical dashboard worker ingestion order', () => {
         data: {
           id: 1,
           operation: 'load-canonical-dashboard',
-          sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+          sourceUrl: 'https://dashboard.example/payload-hashes.json',
           sourceNames: [],
           context: { pages: [], queries: [] }
         }

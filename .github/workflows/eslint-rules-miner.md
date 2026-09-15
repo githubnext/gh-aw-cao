@@ -165,12 +165,12 @@ steps:
           >> "$EVIDENCE_DIR/review-comments.jsonl" || true
       done < "$EVIDENCE_DIR/pull-request-numbers.txt"
 
-      ACTIVITY_LOG="${RUNNER_TEMP}/cao-activity/gh-aw-logs.jsonl"
-      if [ -f "$ACTIVITY_LOG" ]; then
+      ACTIVITY_LOG_DIR="${RUNNER_TEMP}/cao-activity/gh-aw-logs-shards"
+      if compgen -G "$ACTIVITY_LOG_DIR/*.jsonl" > /dev/null; then
         jq -c --arg repo "$TARGET_REPO" --arg since "$SINCE_TIMESTAMP" \
           'select((.repository // "") == $repo and (.created_at // "") >= $since)
            | {run_id, workflow: (.workflow_name // .workflow // ""), conclusion, created_at}' \
-          "$ACTIVITY_LOG" > "$EVIDENCE_DIR/agentic-runs.jsonl" 2>/dev/null || : > "$EVIDENCE_DIR/agentic-runs.jsonl"
+          "$ACTIVITY_LOG_DIR"/*.jsonl > "$EVIDENCE_DIR/agentic-runs.jsonl" 2>/dev/null || : > "$EVIDENCE_DIR/agentic-runs.jsonl"
         echo "✅ Used the CAO activity cache for recent agentic run history"
       else
         : > "$EVIDENCE_DIR/agentic-runs.jsonl"

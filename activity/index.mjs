@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 import { performanceJobRecord } from "./failure-evidence.mjs";
-import { parseGhAwLogsJsonl } from "./gh-aw-logs.mjs";
+import { readGhAwLogShards } from "./gh-aw-logs.mjs";
 import { normalizeVersion } from "./version.mjs";
 
 const EMPTY_RUN_HEALTH = {
@@ -186,13 +186,13 @@ export async function main(actions = {}) {
     const repository = process.env.GITHUB_REPOSITORY || "";
     const organization = process.env.REPORT_ORGANIZATION || repository.split("/")[0];
     const inventoryPath = process.env.REPORT_INVENTORY;
-    const logsPath = process.env.REPORT_GH_AW_LOGS;
+    const logsPath = process.env.REPORT_GH_AW_LOGS_SHARDS;
     const logsStatePath = process.env.REPORT_GH_AW_LOGS_STATE;
     const outputPath = path.resolve(process.env.REPORT_DEPLOYED_WORKFLOWS || "_activity/deployed-workflows.json");
     const root = path.resolve(process.env.REPORT_ROOT || ".");
     const windowDays = Number(process.env.REPORT_RUN_WINDOW_DAYS || 30);
     if (!repository || !logsPath || !logsStatePath) {
-      throw new Error("GITHUB_REPOSITORY, REPORT_GH_AW_LOGS, and REPORT_GH_AW_LOGS_STATE are required");
+      throw new Error("GITHUB_REPOSITORY, REPORT_GH_AW_LOGS_SHARDS, and REPORT_GH_AW_LOGS_STATE are required");
     }
     if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 31) {
       throw new Error("REPORT_RUN_WINDOW_DAYS must be an integer from 1 through 31");
@@ -205,7 +205,7 @@ export async function main(actions = {}) {
           throw error;
         })
         : discoverLocalInventory(root),
-      readFile(logsPath, "utf8").then((contents) => ({ runs: parseGhAwLogsJsonl(contents) })),
+      readGhAwLogShards(logsPath).then((runs) => ({ runs })),
       readFile(logsStatePath, "utf8").then(JSON.parse),
     ]);
     if (localInventory.schemaVersion !== 1 || !Array.isArray(localInventory.workflows)) {

@@ -808,7 +808,6 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventor
     assert.deepEqual(await hashesResponse.json(), {
       "gh-aw-logs-shards/logs-1.jsonl": createHash("sha256").update(logsContent).digest("hex"),
     });
-    assert.equal((await fetch(`${preview.url}/gh-aw-logs.jsonl`)).status, 404);
     const inventoryResponse = await fetch(`${preview.url}/inventory-sources.json`);
     assert.deepEqual(await inventoryResponse.json(), {
       repositories: { rows: [{ repository: "control" }] },

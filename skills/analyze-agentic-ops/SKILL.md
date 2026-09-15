@@ -14,7 +14,7 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
 ## Data contract
 
 - Treat downloaded data as local, disposable development evidence, not schema authority.
-- Keep code and conclusions aligned with the dashboard data specifications and the `gh-aw-logs.jsonl` schema.
+- Keep code and conclusions aligned with the dashboard data specifications and the activity shard schema.
 - Preserve the distinction between missing, stale, partial, zero, and complete evidence.
 - Do not infer rollout authority, target-writing authority, operational value, or repository eligibility from activity data.
 - Never print credentials, tokens, authorization headers, raw prompts, transcripts, or other secret values.
@@ -28,14 +28,14 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
    cao download
    ```
 
-   This writes `.cao/gh-aw-logs.jsonl` and `.cao/gh-aw-logs.sqlite` by default.
+   This writes `.cao/payload-hashes.json`, `.cao/gh-aw-logs-shards/`, and `.cao/gh-aw-logs.sqlite` by default.
 3. For another deployment, prefer the explicit source requested by the user:
 
    ```bash
    cao download --url URL
    ```
 
-   `DASHBOARD_DATA_URL=URL cao download` is equivalent. The URL must point at `gh-aw-logs.jsonl`; the CLI derives the sibling `gh-aw-logs.sqlite` URL. Pass `--output DIRECTORY` only when the user requests a non-default destination.
+   `DASHBOARD_DATA_URL=URL cao download` is equivalent. The URL must point at `payload-hashes.json`; the CLI derives sibling shard and `gh-aw-logs.sqlite` URLs. Pass `--output DIRECTORY` only when the user requests a non-default destination.
 4. Check source coverage before treating the snapshot as complete:
 
    ```bash

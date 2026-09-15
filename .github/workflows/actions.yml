@@ -87,7 +87,7 @@ jobs:
       - name: Test latest dashboard data on mobile
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
-          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
           MOBILE_PROFILE: baseline
@@ -95,7 +95,7 @@ jobs:
         if: ${{ !cancelled() && matrix.browser == 'chromium' }}
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
-          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
           MOBILE_PROFILE: low-memory
@@ -104,7 +104,7 @@ jobs:
         if: ${{ !cancelled() && matrix.browser == 'chromium' }}
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
-          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
           MOBILE_PROFILE: slow-network
@@ -115,7 +115,7 @@ jobs:
         if: ${{ !cancelled() && matrix.browser == 'chromium' }}
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
-          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
           MOBILE_PROFILE: low-memory-slow-network

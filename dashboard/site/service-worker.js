@@ -6,7 +6,7 @@ const CONFIG_URL = new URL('./.dashboard-data-update-config', self.registration.
 const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
-const DATA_FILES = new Set(['payload-hashes.json', 'gh-aw-logs.jsonl', 'inventory-sources.json']);
+const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
 
 function isDashboardDataUrl(value) {
   try {
@@ -34,7 +34,7 @@ function isAppAssetUrl(value) {
 
 async function downloadData(urls) {
   const requested = [...new Set(urls)].filter(isDashboardDataUrl);
-  if (!requested.some((url) => new URL(url).pathname.endsWith('/gh-aw-logs.jsonl'))) {
+  if (!requested.some((url) => new URL(url).pathname.endsWith('/payload-hashes.json'))) {
     throw new Error('Dashboard data URL is missing.');
   }
   const cache = await caches.open(DATA_CACHE);
@@ -65,7 +65,6 @@ async function downloadData(urls) {
   }
   const responses = await Promise.all(requested
     .filter((url) => url !== hashesUrl)
-    .filter((url) => !new URL(url).pathname.endsWith('/gh-aw-logs.jsonl'))
     .map(async (url) => {
     const response = await fetch(url, {
       cache: 'no-store',
@@ -110,13 +109,12 @@ async function downloadData(urls) {
       await cache.delete(request);
     }
   }
-  await cache.delete(requested.find((url) => new URL(url).pathname.endsWith('/gh-aw-logs.jsonl')));
   if (hashesUrl && hashesResponse) await cache.put(hashesUrl, hashesResponse.clone());
 }
 
 async function storeDataUrls(urls) {
   const requested = [...new Set(urls)].filter(isDashboardDataUrl);
-  if (!requested.some((url) => new URL(url).pathname.endsWith('/gh-aw-logs.jsonl'))) {
+  if (!requested.some((url) => new URL(url).pathname.endsWith('/payload-hashes.json'))) {
     throw new Error('Dashboard data URL is missing.');
   }
   const cache = await caches.open(CONFIG_CACHE);

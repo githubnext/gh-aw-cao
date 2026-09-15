@@ -392,18 +392,18 @@ export function processDataRequest(request, signal) {
     const context = dashboardContext(request.context);
     return (async () => {
       const progress = startIngestionProgress();
-      const jsonl = sourceUrl.pathname.endsWith('.jsonl');
+      const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       let changed = false;
       try {
-        progress.log(jsonl ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
-        let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href, {
+        progress.log(activity ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
+        let sources = activity ? {} : await loadDashboardSources(fetch, sourceUrl.href, {
           onShardLoaded: ({ name, sizeBytes, cacheStatus }) => {
             const size = sizeBytes === null ? 'size unavailable' : `${sizeBytes.toLocaleString()} bytes`;
             progress.log(`Loaded dashboard source shard ${name} (${size}; cache: ${cacheStatus ?? 'unavailable'}).`);
           }
         });
-        if (jsonl) {
-          const payloadHashesUrl = new URL('./payload-hashes.json', sourceUrl);
+        if (activity) {
+          const payloadHashesUrl = sourceUrl;
           progress.log('Checking the published payload identity.');
           const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
           const payloadHashes = payloadHashesResponse?.ok
@@ -420,7 +420,7 @@ export function processDataRequest(request, signal) {
             progress.log(`Published activity data includes ${shardCount.toLocaleString('en-US')} `
               + `${shardCount === 1 ? 'shard' : 'shards'}.`);
           }
-          const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
+          const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
           progress.log('Loading workflow and repository inventory.');
           const inventoryResponse = await fetch(inventoryUrl);
           if (inventoryResponse.ok) {
@@ -460,7 +460,7 @@ export function processDataRequest(request, signal) {
           let processedBytes = 0;
           let processedRecords = 0;
           for (const [index, shard] of shards.entries()) {
-            const shardUrl = new URL(`./${shard.name}`, sourceUrl);
+            const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
             const current = await isCachedGhAwJsonlCurrent(indexedDB, {
               payloadIdentity: shard.hash,
               payloadScope: shardUrl.href,

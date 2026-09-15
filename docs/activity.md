@@ -51,7 +51,7 @@ expiring detailed jobs, sessions, and events after 30 days.
 The cache holds:
 
 ```text
-$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl
+$RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 $RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
 $RUNNER_TEMP/cao-activity/payload-hashes.json

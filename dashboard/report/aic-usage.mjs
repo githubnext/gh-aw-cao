@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
-import { parseGhAwLogsJsonl } from "../../activity/gh-aw-logs.mjs";
+import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
 import { adaptGhAwTimelineFiles } from "../site/src/data/adapters/gh-aw-logs.js";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";
@@ -621,7 +621,7 @@ export async function collectAicUsage() {
   try {
   const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
   const outputPath = path.resolve(process.env.REPORT_AIC_USAGE || "_inventory/aic-usage.json");
-  const logsPath = process.env.REPORT_GH_AW_LOGS ? path.resolve(process.env.REPORT_GH_AW_LOGS) : "";
+  const logsPath = process.env.REPORT_GH_AW_LOGS_SHARDS ? path.resolve(process.env.REPORT_GH_AW_LOGS_SHARDS) : "";
   const logsStatePath = process.env.REPORT_GH_AW_LOGS_STATE ? path.resolve(process.env.REPORT_GH_AW_LOGS_STATE) : "";
   const configuredCacheRoot = process.env.REPORT_AIC_CACHE ? path.resolve(process.env.REPORT_AIC_CACHE) : "";
   if (!inventoryPath) throw new Error("REPORT_DEPLOYED_WORKFLOWS is required");
@@ -702,8 +702,8 @@ export async function collectAicUsage() {
       }
     }
     try {
-      if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
-      const logs = parseGhAwLogsJsonl(await readFile(logsPath, "utf8"));
+      if (!logsPath) throw new Error("REPORT_GH_AW_LOGS_SHARDS is required");
+      const logs = await readGhAwLogShards(logsPath);
       log.info`Processing ${logs.length} cached gh-aw log records from ${logsPath}`;
       for (const run of logs) {
         const runId = Number(run.database_id ?? run.run_id ?? run.id);

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -184,12 +184,15 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     const script = resolve('../../activity/cao.mjs');
     const input = resolve('test/fixtures/gh-aw-logs/cached-v2.jsonl');
     const context = resolve('test/fixtures/gh-aw-logs/cached-v2-context.json');
+    const shardDirectory = join(filename, '..', 'shards');
+    mkdirSync(shardDirectory);
+    copyFileSync(input, join(shardDirectory, 'cached-v2.jsonl'));
 
     const ingestion = JSON.parse(execFileSync(process.execPath, [
       script,
       'ingest-jsonl',
       '--database', filename,
-      '--input', input,
+      '--input-dir', shardDirectory,
       '--context', context
     ], { encoding: 'utf8' }));
     expect(ingestion).toMatchObject({
@@ -226,7 +229,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     const audit = JSON.parse(execFileSync(process.execPath, [
       script,
       'audit-jsonl',
-      '--input', input
+      '--input-dir', shardDirectory
     ], { encoding: 'utf8' }));
     expect(audit).toMatchObject({
       command: 'audit-jsonl',
@@ -264,17 +267,19 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
         updatedAt: timestamp
       }]
     });
-    const oldInput = join(directory, 'old.jsonl');
-    const currentInput = join(directory, 'current.jsonl');
-    writeFileSync(oldInput, `${input(100, '2020-01-01T00:00:00Z')}\n`);
-    writeFileSync(currentInput, `${input(200, '2026-09-11T00:00:00Z')}\n`);
+    const oldInput = join(directory, 'old-shards');
+    const currentInput = join(directory, 'current-shards');
+    mkdirSync(oldInput);
+    mkdirSync(currentInput);
+    writeFileSync(join(oldInput, 'old.jsonl'), `${input(100, '2020-01-01T00:00:00Z')}\n`);
+    writeFileSync(join(currentInput, 'current.jsonl'), `${input(200, '2026-09-11T00:00:00Z')}\n`);
 
     for (const source of [oldInput, currentInput]) {
       execFileSync(process.execPath, [
         script,
         'ingest-jsonl',
         '--database', filename,
-        '--input', source,
+        '--input-dir', source,
         '--run-retention-days', 'all'
       ], { encoding: 'utf8' });
     }

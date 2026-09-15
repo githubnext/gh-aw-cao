@@ -159,7 +159,7 @@ SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Da
 
 Observations can arrive at different times and enrich an existing entity. Explicit source precedence and observation time resolve conflicting fields; arrival order alone never decides the result.
 
-The `gh-aw-logs.jsonl` cache is the dashboard's published operational input. The worker downloads it from the dashboard origin and processes its schema-v2 envelopes through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic agentic Sessions and Events. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
+The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic agentic Sessions and Events. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
@@ -205,7 +205,7 @@ Alternatively, ingest the schema-v2 JSONL produced by `gh aw logs`:
 ```bash
 cao ingest-jsonl \
   --database /tmp/cao-dashboard.sqlite \
-  --input .cao/gh-aw-logs.jsonl
+  --input-dir .cao/gh-aw-logs-shards
 ```
 
 Pass `--context CONTEXT_JSON` when the JSONL's `github_api_rate_limit`
@@ -220,7 +220,7 @@ CAO Pages site:
 cao download
 ```
 
-This writes `.cao/gh-aw-logs.jsonl` and
+This writes `.cao/payload-hashes.json`, `.cao/gh-aw-logs-shards/`, and
 `.cao/gh-aw-logs.sqlite` by default. Set `DASHBOARD_DATA_URL` or pass `--url URL`
 to use another deployment, and pass `--output DIRECTORY` to select another
 destination. Both files are downloaded unchanged; this command does not run

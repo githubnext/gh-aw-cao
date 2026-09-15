@@ -34,7 +34,7 @@ function options(overrides = {}) {
   return {
     browserWindow: window,
     document,
-    sourceUrl: "https://example.test/dashboard/gh-aw-logs.jsonl",
+    sourceUrl: "https://example.test/dashboard/payload-hashes.json",
     dashboardContext: { pages: [], queries: [] },
     pageSourceNames: () => ["runs"],
     pageLazySourceNames: () => [],

@@ -573,7 +573,7 @@ test('data worker returns declarative MCP activity on initial and navigated requ
       queries: dashboard.dashboard.queries
     };
     const initial = await loadCanonicalDashboardSources(
-      `${location.origin}/gh-aw-logs.jsonl`,
+      `${location.origin}/payload-hashes.json`,
       ['mcp-tool-activity'],
       context
     );
@@ -667,7 +667,7 @@ test('gh-aw logs audit populates the firewall domain query from canonical events
     const { loadCanonicalDashboardSources } = await import(processorUrl);
     const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
     return loadCanonicalDashboardSources(
-      `${location.origin}/gh-aw-logs.jsonl`,
+      `${location.origin}/payload-hashes.json`,
       ['firewall-domain-totals'],
       {
         githubUrlBase: 'https://github.com',
@@ -739,7 +739,7 @@ test('deployed JSONL ingestion includes the published package inventory', async 
     const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
     const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
     return loadCanonicalDashboardSources(
-      `${location.origin}/gh-aw-logs.jsonl`,
+      `${location.origin}/payload-hashes.json`,
       ['packages', 'workflows', 'package-inventory'],
       {
         githubUrlBase: 'https://github.com',

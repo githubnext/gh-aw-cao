@@ -3,8 +3,7 @@
 set -uo pipefail
 
 repository="${GITHUB_REPOSITORY:-}"
-logs_path="${REPORT_GH_AW_LOGS:-_activity/gh-aw-logs.jsonl}"
-shard_directory="${REPORT_GH_AW_LOGS_SHARDS:-$(dirname "$logs_path")/gh-aw-logs-shards}"
+shard_directory="${REPORT_GH_AW_LOGS_SHARDS:-_activity/gh-aw-logs-shards}"
 control_settings_path="${REPORT_CONTROL_SETTINGS:-}"
 output_directory="${REPORT_AIC_CACHE:-_activity/gh-aw-logs}"
 exit_code_path="${REPORT_GH_AW_LOGS_EXIT_CODE:-_activity/gh-aw-logs-exit-code}"
@@ -15,7 +14,7 @@ request_timeout="${REPORT_LOG_TIMEOUT:-10}"
 rate_limit="${REPORT_MAX_GITHUB_API_RATE_LIMIT:--2000}"
 max_storage="${REPORT_MAX_STORAGE:-1200}"
 
-mkdir -p "$output_directory" "$shard_directory" "$(dirname "$logs_path")" "$(dirname "$exit_code_path")"
+mkdir -p "$output_directory" "$shard_directory" "$(dirname "$exit_code_path")"
 
 repositories=()
 add_repository() {
@@ -78,15 +77,5 @@ done
 
 printf '%s\n' "$exit_code" > "$exit_code_path"
 
-# The shard directory is persisted by the caller (mirroring the activity
-# cache managed by cao-activity.yml) so each repository reuses known runs;
-# out-of-range shards are pruned by `--cache-before`.
-# Reconsolidate the current shards into the single-file snapshot contract
-# that downstream consumers (activity/logs.mjs and its cached-run fallback)
-# expect.
-shopt -s nullglob
-shards=("$shard_directory"/*.jsonl)
-shopt -u nullglob
-if [[ ${#shards[@]} -gt 0 ]]; then
-  cat "${shards[@]}" > "$logs_path"
-fi
+# The shard directory is persisted by the caller so each repository reuses
+# known runs; out-of-range shards are pruned by `--cache-before`.

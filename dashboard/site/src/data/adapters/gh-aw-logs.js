@@ -596,7 +596,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
   return accumulator.finish();
 }
 
-function createCachedJsonlPayloadHasher() {
+export function createCachedJsonlPayloadHasher() {
   const hashes = Array.from({ length: 8 }, (_, index) => (0x811c9dc5 ^ (index * 0x9e3779b9)) >>> 0);
   return {
     /** @param {Uint8Array} bytes */
@@ -1090,7 +1090,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           summary,
           status,
           correlationId: fields.correlationId,
-          payloadRef: `gh-aw-logs.jsonl#L${enriched.line}`,
+          payloadRef: `gh-aw-logs-shards#L${enriched.line}`,
           sourceSequence,
           ...fields
         })
@@ -1349,7 +1349,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           correlationId: optionalString(record.url ?? record.temporaryId),
           safeOutputType: optionalString(record.type),
           githubEntityType: safeOutputGithubEntityType(record),
-          payloadRef: `gh-aw-logs.jsonl#L${safeOutput.line}`
+          payloadRef: `gh-aw-logs-shards#L${safeOutput.line}`
         }
       );
     });
@@ -1520,7 +1520,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           summary: `${String(remaining ?? 'unknown')} of ${String(limit ?? 'unknown')} requests remaining`,
           status: remaining !== null && remaining > 0 ? 'available' : 'exhausted',
           correlationId: optionalString(rateLimit.host),
-          payloadRef: `gh-aw-logs.jsonl#L${line}`,
+          payloadRef: `gh-aw-logs-shards#L${line}`,
           sourceSequence: line
         }
       });

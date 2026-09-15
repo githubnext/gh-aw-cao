@@ -146,7 +146,6 @@ describe('canonical dashboard worker retention updates', () => {
     /** @type {string[]} */
     const requestUrls = [];
     const payloadHashes = {
-      'gh-aw-logs.jsonl': 'a'.repeat(64),
       'gh-aw-logs.sqlite': 'b'.repeat(64),
       'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64)
     };
@@ -160,7 +159,7 @@ describe('canonical dashboard worker retention updates', () => {
     dispatch({
       id: 3,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
@@ -169,7 +168,7 @@ describe('canonical dashboard worker retention updates', () => {
     dispatch({
       id: 4,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
@@ -197,7 +196,7 @@ describe('canonical dashboard worker retention updates', () => {
 
     const updatedPayloadHashes = {
       ...payloadHashes,
-      'gh-aw-logs.jsonl': 'd'.repeat(64),
+
       'gh-aw-logs-shards/logs-1.jsonl': 'e'.repeat(64)
     };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
@@ -209,7 +208,7 @@ describe('canonical dashboard worker retention updates', () => {
     dispatch({
       id: 5,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
@@ -219,7 +218,7 @@ describe('canonical dashboard worker retention updates', () => {
     dispatch({
       id: 6,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
@@ -235,7 +234,7 @@ describe('canonical dashboard worker retention updates', () => {
     dispatch({
       id: 7,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true

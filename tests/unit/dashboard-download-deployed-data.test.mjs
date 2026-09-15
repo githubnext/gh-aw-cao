@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { copyFile, mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import os from "node:os";
@@ -38,25 +39,35 @@ test("exposes the dashboard data CLI as cao", async () => {
   }
 });
 
-test("downloads the deployed JSONL and SQLite files without rebuilding", async () => {
+test("downloads the deployed activity shards and SQLite file without rebuilding", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-data-"));
   const output = path.join(root, "activity");
   const logsContent = '{"schema_version":2,"kind":"run","run":{"run_id":303}}\n';
+  const manifest = JSON.stringify({
+    "gh-aw-logs-shards/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
+  });
   const databaseContent = Buffer.from("published sqlite bytes");
   const requests = [];
   const server = createServer((request, response) => {
     requests.push(request.url);
     response.writeHead(200, { "content-type": "application/x-ndjson" });
-    response.end(request.url?.endsWith(".sqlite") ? databaseContent : logsContent);
+    response.end(request.url?.endsWith(".sqlite")
+      ? databaseContent
+      : request.url?.endsWith("payload-hashes.json") ? manifest : logsContent);
   });
 
   test("uses .cao as the default download location", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-default-output-"));
     const logsContent = '{"schema_version":2,"kind":"run","run":{"run_id":404}}\n';
+    const manifest = JSON.stringify({
+      "gh-aw-logs-shards/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
+    });
     const databaseContent = Buffer.from("default sqlite bytes");
     const server = createServer((request, response) => {
       response.writeHead(200, { "content-type": "application/x-ndjson" });
-      response.end(request.url?.endsWith(".sqlite") ? databaseContent : logsContent);
+      response.end(request.url?.endsWith(".sqlite")
+        ? databaseContent
+        : request.url?.endsWith("payload-hashes.json") ? manifest : logsContent);
     });
     await new Promise((resolve, reject) => {
       server.once("error", reject);
@@ -69,9 +80,9 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
       await executeFile(cao, [
         "download",
         "--url",
-        `http://127.0.0.1:${address.port}/cao/gh-aw-logs.jsonl`,
+        `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
       ], { cwd: root });
-      assert.equal(await readFile(path.join(root, ".cao", "gh-aw-logs.jsonl"), "utf8"), logsContent);
+      assert.equal(await readFile(path.join(root, ".cao", "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), logsContent);
       assert.deepEqual(await readFile(path.join(root, ".cao", "gh-aw-logs.sqlite")), databaseContent);
     } finally {
       await new Promise((resolve) => server.close(resolve));
@@ -85,7 +96,8 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
     const caoRoot = path.join(root, ".cao");
     try {
       await mkdir(caoRoot, { recursive: true });
-      await copyFile(fixture, path.join(caoRoot, "gh-aw-logs.jsonl"));
+      await mkdir(path.join(caoRoot, "gh-aw-logs-shards"));
+      await copyFile(fixture, path.join(caoRoot, "gh-aw-logs-shards", "fixture.jsonl"));
       const { stdout: auditStdout } = await executeFile(cao, ["audit-jsonl"], { cwd: root });
       const audit = JSON.parse(auditStdout);
       assert.equal(audit.command, "audit-jsonl");
@@ -141,16 +153,17 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
     const { stdout } = await executeFile(cao, [
       "download",
       "--url",
-      `http://127.0.0.1:${address.port}/cao/gh-aw-logs.jsonl`,
+      `http://127.0.0.1:${address.port}/cao/payload-hashes.json`,
       "--output",
       output,
     ]);
     const result = JSON.parse(stdout);
-    assert.equal(await readFile(path.join(output, "gh-aw-logs.jsonl"), "utf8"), logsContent);
+    assert.equal(await readFile(path.join(output, "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), logsContent);
     assert.deepEqual(await readFile(path.join(output, "gh-aw-logs.sqlite")), databaseContent);
     assert.deepEqual(requests.toSorted(), [
-      "/cao/gh-aw-logs.jsonl",
+      "/cao/gh-aw-logs-shards/fixture.jsonl",
       "/cao/gh-aw-logs.sqlite",
+      "/cao/payload-hashes.json",
     ]);
     assert.match(result.databaseUrl, /\/cao\/gh-aw-logs\.sqlite$/);
   } finally {

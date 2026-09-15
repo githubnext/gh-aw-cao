@@ -178,7 +178,7 @@ test("ESLint Factory workflows keep GitHub evidence acquisition bounded", () => 
     assert.match(call, /-F page=1/, "every miner API call reads exactly one page");
   }
   assert.ok(shellCommands(minerSteps).length >= 4, "the miner pre-fetches its bounded evidence deterministically");
-  assert.match(miner, /cao-activity\/gh-aw-logs\.jsonl/);
+  assert.match(miner, /cao-activity\/gh-aw-logs-shards/);
   assert.match(miner, /at most one candidate per run|Select \*\*at most one\*\* candidate per run/);
 });
 
