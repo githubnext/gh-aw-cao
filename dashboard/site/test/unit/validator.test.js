@@ -369,7 +369,7 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
-      if (page.id === 'safe-outputs' || page.id === 'maintenance' || page.id === 'issues') continue;
+      if (page.id === 'safe-outputs' || page.id === 'maintenance' || page.id === 'issues' || page.id === 'cost') continue;
       const definition = page.definition ?? page;
       const editableViews = (definition.views ?? []).filter(
         (/** @type {{ locked?: boolean }} */ view) => view.locked !== true

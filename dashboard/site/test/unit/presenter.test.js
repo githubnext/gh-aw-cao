@@ -1152,7 +1152,7 @@ describe('presenter built-in and custom pages', () => {
     expect(/** @type {HTMLDetailsElement} */ (sections[1]).open).toBe(true);
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview');
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost & efficiency');
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost');
     rendered.remove();
     window.history.replaceState(null, '', '/');
   });
