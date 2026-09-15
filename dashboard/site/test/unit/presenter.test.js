@@ -1750,14 +1750,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('gpt-5.4');
   });
 
-  it('applies the JSON horizon and lazily loads database counts for its tooltip', async () => {
-    const loadHorizonSources = vi.fn().mockResolvedValue({
-      'database-package-count': { rows: [{ packages: 2 }] },
-      'database-repository-count': { rows: [{ repositories: 3 }] },
-      'database-workflow-count': { rows: [{ workflows: 4 }] },
-      'database-run-count': { rows: [{ runs: 12 }] },
-      'database-event-count': { rows: [{ events: 89 }] }
-    });
+  it('applies the JSON horizon without database counts', () => {
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -1807,8 +1800,7 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      },
-      loadHorizonSources
+      }
     });
 
     const table = rendered.querySelector('.custom-table');
@@ -1822,21 +1814,55 @@ describe('presenter built-in and custom pages', () => {
     );
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
     expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
-    expect(loadHorizonSources).not.toHaveBeenCalled();
-    expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent).toBe('Database counts load on hover');
+    expect(rendered.querySelector('.horizon-tooltip-counts')).toBeNull();
+  });
 
-    rendered.querySelector('.horizon-summary')?.dispatchEvent(new Event('pointerenter'));
-
-    await vi.waitFor(() => {
-      expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent)
-        .toBe('2 packages · 3 repositories · 4 workflows · 12 runs · 89 events');
+  it('reactively replaces the Horizon skeleton when page sources load', async () => {
+    let publishUpdate = () => {};
+    const loadPageSources = vi.fn(async (_pageId, options) => {
+      publishUpdate = () => options.onUpdate({
+        runs: {
+          source: 'runs',
+          rows: [{ run: '1', 'observed-at': '2026-09-01T11:00:00Z' }],
+          metadata: {
+            'source-id': 'runs',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-01T12:00:00Z',
+            'retrieved-at': '2026-09-01T12:00:00Z',
+            'coverage-start': '2026-08-31T12:00:00Z',
+            'coverage-end': '2026-09-01T12:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      });
+      return {};
     });
-    expect(loadHorizonSources).toHaveBeenCalledOnce();
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources
+    });
 
-    expect(loadHorizonSources).toHaveBeenCalledOnce();
+    expect(rendered.querySelector('.dashboard-horizon-skeleton')).not.toBeNull();
+    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
+    publishUpdate();
 
-    rendered.querySelector('.horizon-toggle')?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-    expect(loadHorizonSources).toHaveBeenCalledOnce();
+    const horizon = rendered.querySelector('.dashboard-horizon');
+    expect(horizon?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+    expect(horizon?.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 day');
+    expect(horizon?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z');
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details')).not.toBeNull();
+
+    optionsOnUpdateWithNoSources();
+    expect(horizon?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+
+    function optionsOnUpdateWithNoSources() {
+      const latestOptions = loadPageSources.mock.calls.at(-1)?.[1];
+      expect(latestOptions).toBeDefined();
+      latestOptions.onUpdate({});
+    }
   });
 
   it('renders Security assurance records as one full-view lazy table', async () => {
@@ -2692,7 +2718,7 @@ describe('presenter built-in and custom pages', () => {
             { field: 'runs', type: 'quantitative', title: 'Runs' },
             { field: 'ingestion', type: 'nominal', title: 'Ingestion %' },
             { field: 'failure-summary', type: 'nominal', title: 'Failure rate', filter: false },
-            { field: 'aic', type: 'quantitative', title: 'Local AIC', unit: 'aic' },
+            { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
             { field: 'workflows', type: 'quantitative', title: 'AWs' },
             { field: 'status', type: 'nominal', title: 'Status', display: 'status' }
           ],

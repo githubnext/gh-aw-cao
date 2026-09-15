@@ -5,6 +5,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
+import { withDebugParameter } from './debug.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -38,6 +39,21 @@ const pending = new Map();
 const subscriptions = new Map();
 /** @type {Map<string, ReturnType<typeof publishNotification>>} */
 const workerNotificationHandles = new Map();
+/** @type {Set<(state: { completed: number, total: number }) => void>} */
+const workerLoadingProgressListeners = new Set();
+
+/**
+ * Subscribes to worker-owned loading progress for the active top progress bar.
+ * @param {(state: { completed: number, total: number }) => void} listener
+ * @returns {() => void}
+ */
+export function subscribeWorkerLoadingProgress(listener) {
+  if (typeof listener !== 'function') {
+    throw new TypeError('Worker loading progress subscribers require a listener.');
+  }
+  workerLoadingProgressListeners.add(listener);
+  return () => workerLoadingProgressListeners.delete(listener);
+}
 
 /**
  * Cancels every in-flight data-worker request. The worker is first asked to
@@ -461,9 +477,22 @@ function processRequest(request, fallback, recoverWorkerError = true, signal) {
 function getWorker() {
   if (worker) return worker;
   if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:')) return null;
-  worker = new Worker(new URL('./data-worker.js', import.meta.url), { type: 'module' });
+  worker = new Worker(withDebugParameter(new URL('./data-worker.js', import.meta.url)), { type: 'module' });
   const processor = worker;
   worker.addEventListener('message', (event) => {
+    if (event.data?.type === 'loading-progress') {
+      const state = event.data.state;
+      if (Number.isFinite(state?.completed) && Number.isFinite(state?.total) && state.total > 0) {
+        for (const listener of workerLoadingProgressListeners) {
+          try {
+            listener(state);
+          } catch {
+            // Ignore listener failures so a broken consumer cannot interrupt other subscribers.
+          }
+        }
+      }
+      return;
+    }
     if (event.data?.type === 'notification') {
       try {
         const notification = event.data.notification;

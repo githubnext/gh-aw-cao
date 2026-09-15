@@ -33,6 +33,25 @@ covers only how and where to invoke it.
 `cao` is the same tool in both contexts; only how you locate it and which database it
 queries differ.
 
+## Configure a control repository
+
+Create a minimal review-safe control-plane policy:
+
+```bash
+cao init
+```
+
+The command refuses to replace an existing `.github/workflows/cao.json`. Install an
+operational package and merge its declared orchestrator and workers into that policy with:
+
+```bash
+cao add githubnext/gh-aw-cao/dependabot
+```
+
+`cao add` forwards remaining arguments to `gh aw add`, preserves operator-owned package
+settings, and does not copy live mode or broader rollout into the policy. If the policy is
+missing, `cao add` creates the same minimal policy as `cao init` after the package installs.
+
 ### 1. Local development mode
 
 Use this when a human or agent is exploring activity data from this repository's

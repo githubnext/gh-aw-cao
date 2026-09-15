@@ -84,6 +84,24 @@ describe('data-worker ingestion progress', () => {
     });
   });
 
+  it('publishes shard import state as the manifest and imports progress', () => {
+    const postMessage = vi.fn();
+    const progress = startIngestionProgress({ postMessage });
+
+    progress.reportShardImportProgress(0, 4);
+    progress.reportShardImportProgress(2, 4);
+
+    expect(postMessage).toHaveBeenNthCalledWith(1, {
+      type: 'loading-progress',
+      state: { completed: 0, total: 4 }
+    });
+    expect(postMessage).toHaveBeenNthCalledWith(2, {
+      type: 'loading-progress',
+      state: { completed: 2, total: 4 }
+    });
+    progress.complete();
+  });
+
   it('retains only the latest one hundred distinct progress messages', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();

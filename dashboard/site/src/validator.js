@@ -98,6 +98,7 @@ import {
   VIEW_DISCLOSURE_VALUES,
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
+  VIEW_ELEMENT_ANIMATION_VALUES,
   VIEW_ELEMENT_VALUES,
   PLURAL_LABEL_ELEMENTS,
   PLURAL_TEXT_KEYS,
@@ -107,6 +108,7 @@ import {
   VIEW_LIST_STYLE_VALUES,
   VIEW_MARK_VALUES,
   VIEW_METRIC_KEYS,
+  VIEW_METRIC_ANIMATION_VALUES,
   VIEW_METRIC_STYLE_VALUES,
   VIEW_METRIC_TONE_VALUES,
   VIEW_TITLE_LINK_KEYS,
@@ -2169,6 +2171,23 @@ function validateView(view, viewNode, path, viewIds, errors) {
           validatePluralLabels(view.config.labels, getValueNodeByKey(getValueNodeByKey(viewNode, 'config'), 'labels'), `${path}.config.labels`, errors);
         }
       }
+      if (view.config.animate !== undefined) {
+        if (view.element !== 'outcomes-overview') {
+          errors.push(createError(
+            ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+            'config.animate is supported only for the outcomes-overview element.',
+            `${path}.config.animate`
+          ));
+        }
+        validateStringField(view.config.animate, `${path}.config.animate`, false, errors);
+        if (typeof view.config.animate === 'string' && !VIEW_ELEMENT_ANIMATION_VALUES.includes(view.config.animate)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'config.animate must use one canonical element animation value.',
+            `${path}.config.animate`
+          ));
+        }
+      }
     }
   }
 
@@ -2214,8 +2233,16 @@ function validateView(view, viewNode, path, viewIds, errors) {
         `${path}.chart`
       ));
     }
+    if (view.mark !== 'chart') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'chart is allowed only when mark is "chart".',
+        `${path}.chart`
+      ));
+    }
+  }
 
-    if (view.metric !== undefined) {
+  if (view.metric !== undefined) {
       const metricPath = `${path}.metric`;
       if (!isPlainObject(view.metric)) {
         errors.push(createError(
@@ -2231,6 +2258,21 @@ function validateView(view, viewNode, path, viewIds, errors) {
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
             'metric style must use one canonical metric widget value.',
             `${metricPath}.style`
+          ));
+        }
+        validateStringField(view.metric.animate, `${metricPath}.animate`, false, errors);
+        if (typeof view.metric.animate === 'string' && !VIEW_METRIC_ANIMATION_VALUES.includes(view.metric.animate)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric animate must use one canonical metric animation value.',
+            `${metricPath}.animate`
+          ));
+        }
+        if (view.metric.animate !== undefined && view.metric.style !== 'card') {
+          errors.push(createError(
+            ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+            'metric animate is supported only for card metric widgets.',
+            `${metricPath}.animate`
           ));
         }
         validateStringField(view.metric.icon, `${metricPath}.icon`, true, errors);
@@ -2263,14 +2305,6 @@ function validateView(view, viewNode, path, viewIds, errors) {
           metricPath
         ));
       }
-    }
-    if (view.mark !== 'chart') {
-      errors.push(createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'chart is allowed only when mark is "chart".',
-        `${path}.chart`
-      ));
-    }
   }
 
   if (view.layout !== undefined) {

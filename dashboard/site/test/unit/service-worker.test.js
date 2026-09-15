@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import vm from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
+import { isDebugEnabled as pageIsDebugEnabled } from '../../src/debug.js';
 
 const source = readFileSync(resolve('service-worker.js'), 'utf8');
 
-/** @param {string[]} [cacheKeys] */
-function serviceWorkerHarness(cacheKeys = []) {
+/** @param {string[]} [cacheKeys] @param {{ search?: string }} [options] */
+function serviceWorkerHarness(cacheKeys = [], options = {}) {
   /** @type {Record<string, (event: any) => void>} */
   const listeners = {};
   /** @type {Map<string, Response>} */
@@ -28,10 +29,12 @@ function serviceWorkerHarness(cacheKeys = []) {
     cacheKeys = cacheKeys.filter((candidate) => candidate !== key);
     return true;
   });
+  const debugConsole = { debug: vi.fn() };
   const worker = {
     location: {
-      href: 'https://example.test/dashboard/service-worker.js',
-      origin: 'https://example.test'
+      href: `https://example.test/dashboard/service-worker.js${options.search ?? ''}`,
+      origin: 'https://example.test',
+      search: options.search ?? ''
     },
     registration: { scope: 'https://example.test/dashboard/' },
     navigator: {
@@ -44,7 +47,8 @@ function serviceWorkerHarness(cacheKeys = []) {
       listeners[type] = listener;
     }
   };
-  vm.runInNewContext(source, {
+  /** @type {Record<string, unknown>} */
+  const sandbox = {
     self: worker,
     caches: {
       open: async () => cache,
@@ -60,15 +64,19 @@ function serviceWorkerHarness(cacheKeys = []) {
     Set,
     Error,
     Promise,
-    JSON
-  });
+    JSON,
+    console: debugConsole
+  };
+  vm.runInNewContext(source, sandbox);
   return {
     listeners,
     worker,
     fetch,
     cache,
     entries,
-    deleteCache
+    deleteCache,
+    debugConsole,
+    isDebugEnabled: /** @type {(category: string) => boolean} */ (sandbox.isDebugEnabled)
   };
 }
 
@@ -373,6 +381,53 @@ describe('dashboard service worker', () => {
     });
 
     expect(cleared).toHaveBeenCalledWith(expect.objectContaining({ type: 'BACKGROUND_DATA_CLEARED' }));
+  });
+
+  it('logs data ingestion steps when the registered script URL carries a debug parameter', async () => {
+    const { listeners, fetch, debugConsole } = serviceWorkerHarness([], { search: '?debug=data:ingestion:sw' });
+    const payloadHashes = JSON.stringify({
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64)
+    });
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.json') ? payloadHashes : 'shard data'
+    ));
+    const configured = vi.fn();
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'CONFIGURE_BACKGROUND_DATA',
+        urls: ['https://example.test/dashboard/payload-hashes.json']
+      },
+      ports: [{ postMessage: configured }]
+    });
+
+    await dispatchExtendedEvent(listeners.periodicsync, {
+      tag: 'central-agentic-ops-dashboard-data'
+    });
+
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:ingestion:sw]',
+      'downloading dashboard data',
+      expect.anything()
+    );
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:ingestion:sw]',
+      'dashboard data download complete'
+    );
+  });
+
+  it('matches the page debug logger category semantics for representative patterns', () => {
+    const { isDebugEnabled: workerIsDebugEnabled } = serviceWorkerHarness([], { search: '?debug=data:ingestion:*,-data:ingestion:sw:noisy' });
+    const cases = [
+      'data:ingestion:sw',
+      'data:ingestion:sw:noisy',
+      'data:ingestion',
+      'render',
+      'other'
+    ];
+    for (const category of cases) {
+      expect(workerIsDebugEnabled(category))
+        .toBe(pageIsDebugEnabled(category, '?debug=data:ingestion:*,-data:ingestion:sw:noisy'));
+    }
   });
 
 });

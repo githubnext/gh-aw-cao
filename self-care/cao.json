@@ -1,0 +1,21 @@
+{
+  "package": "self-care",
+  "orchestrator": "self-care",
+  "workers": {
+    "accessibility-checker": "self-care-accessibility-checker",
+    "code-improvement": "self-care-code-improvement",
+    "dashboard-performance": "self-care-dashboard-performance",
+    "dashboard-debug-logging": "self-care-dashboard-debug-logging",
+    "dashboard-data-schema": "self-care-dashboard-data-schema",
+    "data-acquisition-audit": "self-care-data-acquisition-audit",
+    "dashboard-language-refactor": "self-care-dashboard-language-refactor",
+    "dashboard-review": "self-care-dashboard-review",
+    "experimental-views": "self-care-experimental-views",
+    "docs-build-time-investigator": "self-care-docs-build-time-investigator",
+    "glossary": "self-care-glossary",
+    "open-source-failures": "self-care-open-source-failures",
+    "pages-health": "self-care-pages-health",
+    "primer-brand-checker": "self-care-primer-brand-checker",
+    "reactive-ui-expert": "self-care-reactive-ui-expert"
+  }
+}

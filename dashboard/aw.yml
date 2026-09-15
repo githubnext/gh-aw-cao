@@ -119,8 +119,6 @@ resources:
     destination: .github/aw/dashboard/site/src/cli-action-template.js
   - source: site/src/data-health.js
     destination: .github/aw/dashboard/site/src/data-health.js
-  - source: site/src/database-counts.js
-    destination: .github/aw/dashboard/site/src/database-counts.js
   - source: site/src/debug-events.js
     destination: .github/aw/dashboard/site/src/debug-events.js
   - source: site/src/debug.js
@@ -129,6 +127,8 @@ resources:
     destination: .github/aw/dashboard/site/src/diagnostics.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
+  - source: site/src/dom-reconciler.js
+    destination: .github/aw/dashboard/site/src/dom-reconciler.js
   - source: site/src/dom-provenance.js
     destination: .github/aw/dashboard/site/src/dom-provenance.js
   - source: site/src/debounce.js
@@ -173,6 +173,8 @@ resources:
     destination: .github/aw/dashboard/site/src/view-formatters.js
   - source: site/src/components/anomaly-readiness.js
     destination: .github/aw/dashboard/site/src/components/anomaly-readiness.js
+  - source: site/src/components/animated-number.js
+    destination: .github/aw/dashboard/site/src/components/animated-number.js
   - source: site/src/components/attention-rules.js
     destination: .github/aw/dashboard/site/src/components/attention-rules.js
   - source: site/src/components/attention-rules.json
@@ -187,6 +189,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/configuration-view.js
   - source: site/src/components/configuration-actions.js
     destination: .github/aw/dashboard/site/src/components/configuration-actions.js
+  - source: site/src/components/dashboard-horizon.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-horizon.js
   - source: site/src/components/cli-actions.js
     destination: .github/aw/dashboard/site/src/components/cli-actions.js
   - source: site/src/components/chart-elements.js

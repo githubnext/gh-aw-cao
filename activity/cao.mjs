@@ -40,10 +40,14 @@ const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
 const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
 const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
 const DEFAULT_GH_LIMIT = 30;
+const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
+const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 const USAGE = `Usage:
+  cao init
+  cao add PACKAGE [GH_AW_ADD_OPTIONS...]
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
@@ -98,6 +102,180 @@ Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
   LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
 
 `;
+
+function isMapping(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validatePackageDeclaration(document, source) {
+  if (!isMapping(document)) throw new Error(`${source} must contain a JSON object`);
+  const keys = Object.keys(document);
+  const unknown = keys.filter((key) => !['package', 'orchestrator', 'workers'].includes(key));
+  if (unknown.length > 0) throw new Error(`${source} contains unknown key: ${unknown[0]}`);
+  const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  if (typeof document.package !== 'string' || !slug.test(document.package)) {
+    throw new Error(`${source} package must be a kebab-case identifier`);
+  }
+  if (typeof document.orchestrator !== 'string' || !slug.test(document.orchestrator)) {
+    throw new Error(`${source} orchestrator must be a kebab-case workflow identifier`);
+  }
+  if (!isMapping(document.workers) || Object.keys(document.workers).length === 0) {
+    throw new Error(`${source} workers must be a non-empty object`);
+  }
+  const workflows = new Set();
+  for (const [worker, workflow] of Object.entries(document.workers)) {
+    if (!slug.test(worker)) throw new Error(`${source} worker ${worker} must be a kebab-case identifier`);
+    if (typeof workflow !== 'string' || !slug.test(workflow)) {
+      throw new Error(`${source} worker ${worker} must name a kebab-case workflow`);
+    }
+    if (workflows.has(workflow)) throw new Error(`${source} workers must name unique workflows`);
+    workflows.add(workflow);
+  }
+  return document;
+}
+
+function parseGhAwVersion(result) {
+  if (result.error || result.status !== 0) {
+    throw new Error(`Unable to determine gh-aw version: ${(result.stderr || '').trim() || result.error?.message || 'gh aw version failed'}`);
+  }
+  const version = String(result.stdout || '').match(/\bv[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\b/)?.[0];
+  if (!version) throw new Error('Unable to determine gh-aw version from "gh aw version" output');
+  return version;
+}
+
+async function writeJsonAtomically(filePath, document) {
+  const absolutePath = path.resolve(filePath);
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+  const temporaryPath = `${absolutePath}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(document, null, 2)}\n`, { flag: 'wx' });
+    await rename(temporaryPath, absolutePath);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
+}
+
+function minimalPolicy(version) {
+  return {
+    $schema: CAO_SCHEMA_URL,
+    version: 1,
+    'gh-aw-version': version,
+    'control-plane': { packages: {} }
+  };
+}
+
+export async function initializeCaoPolicy({
+  policyPath = DEFAULT_POLICY_PATH,
+  execute = spawnSync
+} = {}) {
+  const absolutePath = path.resolve(policyPath);
+  try {
+    await stat(absolutePath);
+    throw new Error(`${policyPath} already exists`);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+  const version = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+  await writeJsonAtomically(absolutePath, minimalPolicy(version));
+  return { command: 'init', policy: policyPath, 'gh-aw-version': version };
+}
+
+function validateGlobalPolicy(document, source) {
+  if (!isMapping(document) || document.version !== 1) throw new Error(`${source} must declare version 1`);
+  if (document['control-plane'] !== undefined && !isMapping(document['control-plane'])) {
+    throw new Error(`${source} control-plane must be an object`);
+  }
+  if (document['control-plane']?.packages !== undefined && !isMapping(document['control-plane'].packages)) {
+    throw new Error(`${source} control-plane.packages must be an object`);
+  }
+  return document;
+}
+
+function packageSlugFromSpec(spec) {
+  const refSeparator = spec.lastIndexOf('@');
+  const withoutRef = refSeparator > spec.indexOf('/') ? spec.slice(0, refSeparator) : spec;
+  const slug = withoutRef.replace(/\/+$/, '').split('/').pop();
+  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    throw new Error(`Unable to determine package name from ${spec}`);
+  }
+  return slug;
+}
+
+export async function addCaoPackage(packageSpec, ghAwOptions = [], {
+  policyPath = DEFAULT_POLICY_PATH,
+  execute = spawnSync
+} = {}) {
+  if (!packageSpec || packageSpec.startsWith('-')) throw new Error('cao add requires a package');
+  const install = execute('gh', ['aw', 'add', packageSpec, ...ghAwOptions], {
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024
+  });
+  if (install.error || install.status !== 0) {
+    throw new Error(`gh aw add failed: ${(install.stderr || '').trim() || install.error?.message || 'unknown error'}`);
+  }
+
+  const expectedPackage = packageSlugFromSpec(packageSpec);
+  const declarationPath = path.resolve('.github', 'aw', expectedPackage, 'cao.json');
+  let declaration;
+  try {
+    declaration = validatePackageDeclaration(
+      JSON.parse(await readFile(declarationPath, 'utf8')),
+      path.relative(process.cwd(), declarationPath)
+    );
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      throw new Error(`Package ${expectedPackage} did not install .github/aw/${expectedPackage}/cao.json`);
+    }
+    if (error instanceof SyntaxError) throw new Error(`Package ${expectedPackage} installed invalid cao.json: ${error.message}`);
+    throw error;
+  }
+  if (declaration.package !== expectedPackage) {
+    throw new Error(`Installed CAO declaration names package ${declaration.package}, expected ${expectedPackage}`);
+  }
+
+  const absolutePolicyPath = path.resolve(policyPath);
+  let policy;
+  try {
+    policy = validateGlobalPolicy(JSON.parse(await readFile(absolutePolicyPath, 'utf8')), policyPath);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      if (error instanceof SyntaxError) throw new Error(`${policyPath} contains invalid JSON: ${error.message}`);
+      throw error;
+    }
+    const version = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+    policy = minimalPolicy(version);
+  }
+
+  const controlPlane = policy['control-plane'] ?? {};
+  const packages = controlPlane.packages ?? {};
+  const existingPackage = isMapping(packages[declaration.package]) ? packages[declaration.package] : {};
+  const existingWorkers = isMapping(existingPackage.workers) ? existingPackage.workers : {};
+  const workers = Object.fromEntries(Object.entries(declaration.workers).map(([worker, workflow]) => {
+    const existing = isMapping(existingWorkers[worker]) ? existingWorkers[worker] : {};
+    const preserved = {};
+    if (typeof existing.enabled === 'boolean') preserved.enabled = existing.enabled;
+    if (existing['max-mode'] === 'review' || existing['max-mode'] === 'live') preserved['max-mode'] = existing['max-mode'];
+    return [worker, { workflow, ...preserved }];
+  }));
+  policy['control-plane'] = {
+    ...controlPlane,
+    packages: {
+      ...packages,
+      [declaration.package]: {
+        ...existingPackage,
+        workers
+      }
+    }
+  };
+  await writeJsonAtomically(absolutePolicyPath, policy);
+  return {
+    command: 'add',
+    package: declaration.package,
+    orchestrator: declaration.orchestrator,
+    workers: Object.keys(declaration.workers),
+    policy: policyPath
+  };
+}
 
 async function jsonlFiles(root) {
   const files = [];
@@ -914,6 +1092,13 @@ async function runLegacyIngestion(contextPath, logDirectory) {
 export async function runCli(arguments_, input = process.stdin) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
+  if (command === 'init') {
+    if (optionArguments.length > 0) throw new Error(`Unexpected argument: ${optionArguments[0]}`);
+    return initializeCaoPolicy();
+  }
+  if (command === 'add') {
+    return addCaoPackage(optionArguments[0], optionArguments.slice(1));
+  }
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
   }

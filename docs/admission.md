@@ -63,7 +63,7 @@ Setup creates one atomic control-plane revision:
 3. Declare the installed package and its worker-to-workflow mapping in `.github/workflows/cao.json`.
 4. Commit the workflows, generated locks, package records, and policy together, then push before running the operation.
 
-The root CAO package installs one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install it and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
+The Bash installer installs the root CAO package and creates the consumer-owned policy. The package provides one runtime copy under `.github/workflows/shared/`. Controlled workflows receive it through their existing exact-SHA shared checkout; they do not fetch another copy from the CAO repository. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to bootstrap the repository and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to configure its scope.
 
 Root package installation does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 

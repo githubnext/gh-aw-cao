@@ -39,6 +39,41 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates declarative metric number animations', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const metric = {
+      id: 'animated-run-count',
+      title: 'Animated run count',
+      data: { source: 'runs' },
+      mark: 'metric',
+      metric: { style: 'card', icon: 'play', tone: 'neutral', animate: 'number', 'navigation-page': 'overview' },
+      encoding: { value: { field: 'run', aggregate: 'count' } }
+    };
+    document.dashboard.pages.push({
+      id: 'animated-metric',
+      kind: 'custom',
+      title: 'Animated metric',
+      views: [metric]
+    });
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    metric.metric.animate = 'counter';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    metric.metric.animate = 'number';
+    metric.metric.style = 'summary';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
+  it('validates declarative overview counter animations', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
+    overview.views[0].config.animate = 'number';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    overview.views[0].config.animate = 'counter';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
@@ -4915,7 +4950,7 @@ dashboard:
             source: runs
           mark: chart
           chart: pie
-          layout: half
+          layout: horizontal
           encoding:
             x:
               field: run-conclusion

@@ -392,7 +392,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .horizon-toggle { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .horizon-toggle:hover, .horizon-toggle[aria-expanded="true"] { background: var(--neutral-muted); color: var(--fg); }
 .horizon-toggle .octicon { width: 14px; height: 14px; }
-.horizon-tooltip { min-width: 190px; display: grid; gap: 3px; position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); color: var(--fg); font-size: .75rem; font-weight: 600; line-height: 1.35; white-space: nowrap; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 80ms linear, visibility 80ms linear; }
+.horizon-summary .horizon-tooltip { width: auto; min-width: 190px; display: grid; gap: 3px; position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); color: var(--fg); font-size: .75rem; font-weight: 600; line-height: 1.35; white-space: nowrap; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 80ms linear, visibility 80ms linear; }
 .horizon-tooltip > span { color: var(--muted); font-size: .6875rem; font-weight: 400; }
 .horizon-summary:hover .horizon-tooltip, .horizon-summary:focus-within .horizon-tooltip { visibility: visible; opacity: 1; }
 .filter-bar-expanded :is(.horizon-summary:hover, .horizon-summary:focus-within) .horizon-tooltip { visibility: hidden; opacity: 0; }
@@ -516,7 +516,17 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .metric-card-widget-review { --metric-card-color: var(--purple); }
 .metric-card-widget[href]:hover { background: color-mix(in srgb, var(--metric-card-color, var(--accent)) 12%, var(--canvas-subtle)); }
 .metric-card-widget:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@property --metric-number { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@keyframes metric-number-count {
+  from { --metric-number: 0; }
+  to { --metric-number: var(--metric-number-target); }
+}
 .metric-card-widget-value { min-height: 1em; align-self: center; color: var(--muted); font-size: 2.5rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+@supports (property: --metric-number) {
+  .metric-number-animated { --metric-number: 0; position: relative; color: transparent; counter-reset: metric-number var(--metric-number); animation: metric-number-count 700ms ease-out both; }
+  .metric-number-animated::after { content: counter(metric-number); position: absolute; inset: 0; color: var(--metric-card-color, var(--muted)); }
+  .factory-station .metric-number-animated::after { color: var(--fg); }
+}
 .metric-card-widget-active .metric-card-widget-value { color: var(--metric-card-color); }
 .metric-card-widget-label { min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; margin: 0; color: var(--muted); font-size: .8125rem; font-weight: 600; line-height: 1.35; text-transform: uppercase; }
 .metric-card-widget-active .metric-card-widget-label { color: var(--fg); }
@@ -764,7 +774,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
   from { opacity: 0; transform: scaleY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pie-chart-segment, .line-chart-series, .line-chart-point, .dot-chart-point, .scatter-chart-point, .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect { animation: none; }
+  .pie-chart-segment, .line-chart-series, .line-chart-point, .dot-chart-point, .scatter-chart-point, .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect, .metric-number-animated { animation: none; }
+  .metric-number-animated { --metric-number: var(--metric-number-target); }
   .pie-chart-segment, .point-tooltip, .swimlane-run-mark, .dashboard-notification-chevron { transition: none; }
 }
 .view-description { margin: 3px 0 0; color: var(--muted); }
@@ -785,6 +796,11 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .pie-chart-layout .chart-legend-pie i { width: 9px; height: 9px; border-radius: 2px; }
 .pie-chart-layout .chart-legend-pie span { min-width: 0; overflow-wrap: anywhere; }
 .pie-chart-layout .chart-legend-pie strong, .pie-chart-layout .chart-legend-pie small { font-variant-numeric: tabular-nums; text-align: right; }
+.chart-horizontal-card { display: grid; grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr); align-items: start; gap: 24px; padding: 20px 24px; }
+.chart-horizontal-copy > h3, .chart-horizontal-copy > h4 { margin: 0; font-size: 1.25rem; }
+.chart-horizontal-copy > .view-description { margin-top: 3px; }
+.chart-horizontal-copy > .view-source, .chart-horizontal-copy > .view-metadata, .chart-horizontal-copy > .view-context { margin: 0; font-size: .6875rem; }
+.chart-horizontal-layout { min-width: 0; }
 .metric-link a, .custom-table a { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; transition: background-color 120ms ease, color 120ms ease; }
 .metric-link a:hover, .custom-table a:hover { background: var(--neutral-muted); }
 .metric-link .octicon, .custom-table a .octicon { width: 12px; height: 12px; }
@@ -2017,9 +2033,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   to { background-position: -200% 0; }
 }
 @media (min-width: 701px) and (max-width: 900px) {
-  .pie-chart-card { grid-template-columns: 1fr; }
+  .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
-  .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context { grid-column: 1; }
+  .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context,
+  .chart-horizontal-layout { grid-column: 1; }
   .dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
 }
@@ -2144,9 +2161,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .repository-health .section-heading { align-items: flex-start; flex-direction: column; }
   .outcome-view { grid-template-columns: 1fr; }
   .outcome-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
-  .pie-chart-card { grid-template-columns: 1fr; }
+  .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
-  .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context { grid-column: 1; }
+  .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context,
+  .chart-horizontal-layout { grid-column: 1; }
   .control-plane-status > header { min-height: 0; padding: 14px; }
   .control-plane-heading { align-items: flex-start; }
   .control-plane-heading .scope-kicker { display: none; }

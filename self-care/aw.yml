@@ -17,6 +17,8 @@ includes:
   - .github/workflows/self-care-reactive-ui-expert.md
   - .github/workflows/self-care.md
 resources:
+  - source: cao.json
+    destination: .github/aw/self-care/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/self-care.json
   - source: .github/graders/self-care-docs-build-time-investigator-operational-value.sh

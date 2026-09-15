@@ -586,7 +586,14 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
+  await scroll.evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
@@ -597,7 +604,8 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
     element.scrollTop = element.scrollHeight;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
@@ -700,8 +708,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   const swimlaneChartMaxHeight = await swimlane.locator('[data-chart-widget="swimlane"] svg')
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
   expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
-  expect(Math.abs(swimlaneHeadingBox.x - swimlaneSummaryBox.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(swimlaneHeadingBox.x - swimlaneLabelBox.x)).toBeLessThanOrEqual(2);
+  expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
+  expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
@@ -734,7 +742,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
-test('scrolling over the Models & Agents pie chart collapses chrome and reveals the full-view table', async ({ page }) => {
+test('scrolling over a preceding mobile chart advances the full-view table without hiding chrome', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -817,9 +825,9 @@ test('scrolling over the Models & Agents pie chart collapses chrome and reveals 
   await chart.hover();
   await page.mouse.wheel(0, 100);
 
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(chart).toBeHidden();
-  await expect(page.locator('.org-sidebar')).toBeHidden();
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(chart).toBeVisible();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
 
   await scroll.evaluate((element) => {
@@ -840,7 +848,9 @@ test('scrolling over the Models & Agents pie chart collapses chrome and reveals 
       touches: [touch(200)]
     }));
   });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(chart).toBeVisible();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
 });
 
@@ -2506,7 +2516,10 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
-  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
+  const mobileViewportHeight = await page.evaluate(() => innerHeight);
+  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(mobileViewportHeight / 2);
   await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
@@ -2606,7 +2619,7 @@ test('full-view scrolling with a small overscroll range does not jitter the app 
   }
 });
 
-test('full-view mobile header collapses smoothly instead of jumping when scrolled', async ({ page }) => {
+test('full-view mobile chrome stays stable while a repositories table scrolls', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 390, height: 844 });
 
@@ -2675,34 +2688,18 @@ test('full-view mobile header collapses smoothly instead of jumping when scrolle
   const sidebar = page.locator('.org-sidebar');
   await expect(view).toHaveCount(1);
   await expect(sidebar).toBeVisible();
-  const restingMaxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
-  expect(restingMaxHeight).toBeGreaterThan(0);
+  const restingBox = await sidebar.boundingBox();
+  assert(restingBox);
 
-  await scroll.evaluate((element) => {
-    element.scrollTop = 100;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  // The mobile header must stay a laid-out, transitionable element (never display:none)
-  // so its collapse animates smoothly instead of instantly jumping the table beneath it,
-  // which is what produced the reported scroll jitter on iPhone.
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).display)).not.toBe('none');
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).transitionProperty)).toContain('max-height');
-  // Sample the collapse repeatedly while it is in flight to confirm it actually interpolates
-  // frame-by-frame rather than jumping straight to the end state.
-  await expect.poll(async () => {
-    const maxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
-    return maxHeight > 0 && maxHeight < restingMaxHeight;
-  }, { timeout: 180, intervals: [10, 15, 20, 25] }).toBe(true);
-  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).toBe('0px');
-
-  await scroll.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(sidebar).toBeVisible();
-  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).not.toBe('0px');
+  for (const scrollTop of [100, 30, 120, 0]) {
+    await scroll.evaluate((element, top) => {
+      element.scrollTop = top;
+      element.dispatchEvent(new Event('scroll'));
+    }, scrollTop);
+    await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(sidebar).toBeVisible();
+    expect(await sidebar.boundingBox()).toEqual(restingBox);
+  }
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {
@@ -3198,23 +3195,36 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
           }
         }
       };
-
-      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
-        dashboardDocument,
-        pageId,
-        sources,
-        { queryContext: options.queryContext, routeParameters: options.routeParameters }
-      );
-      const viewSources = await loadPageSources('cost', {});
+      let publishSources = () => {};
+      let initialLoad = true;
+      const loadPageSources = (pageId, options) => {
+        const prepared = prepareDashboardViewSources(
+          dashboardDocument,
+          pageId,
+          sources,
+          { queryContext: options.queryContext, routeParameters: options.routeParameters }
+        );
+        if (!initialLoad) return Promise.resolve(prepared);
+        initialLoad = false;
+        return new Promise((resolve) => {
+          publishSources = () => resolve(prepared);
+        });
+      };
+      window.publishHorizonSources = () => publishSources();
       document.querySelector('#root').append(renderDashboard({
         document: dashboardDocument,
-        sources: viewSources,
+        sources: {},
         loadPageSources
       }));
     </script>
   `);
 
   const filterBar = page.getByLabel('Dashboard filters');
+  await expect(page.locator('.dashboard-horizon-skeleton')).toBeVisible();
+  await page.evaluate(() => /** @type {{ publishHorizonSources: () => void }} */ (
+    /** @type {unknown} */ (window)
+  ).publishHorizonSources());
+  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
   await expect(filterBar).toBeVisible();
   await expect(filterBar.locator(':scope > .dashboard-horizon')).toHaveCount(1);
   await expect(page.locator('.report-actions > .dashboard-horizon')).toHaveCount(0);

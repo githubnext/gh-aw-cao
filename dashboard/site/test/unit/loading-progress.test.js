@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { startLoadingProgress } from '../../src/loading-progress.js';
+import { setLoadingProgressState, startLoadingProgress } from '../../src/loading-progress.js';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -37,6 +37,18 @@ describe('loading progress', () => {
     expect(styles).toContain('animation: loading-progress-shimmer 1.2s ease-in-out infinite');
     expect(styles).toContain('@keyframes loading-progress-shimmer');
     expect(styles).toContain('from {\n    transform: translateX(-100%);');
+  });
+
+  it('uses the worker shard state after its total becomes known', () => {
+    vi.useFakeTimers();
+    startLoadingProgress(document);
+
+    setLoadingProgressState(document, { completed: 2, total: 4 });
+    setLoadingProgressState(document, { completed: 0, total: 4 });
+    vi.advanceTimersByTime(60_000);
+
+    const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));
+    expect(bar?.style.transform).toBe('scaleX(0.51)');
   });
 
   it('finishes once and removes the bar after its completion transition', () => {

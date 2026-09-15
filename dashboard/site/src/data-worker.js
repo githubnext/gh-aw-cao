@@ -58,6 +58,15 @@ export function publishWorkerNotification(notification, target = self) {
   target.postMessage({ type: 'notification', notification });
 }
 
+/**
+ * Publishes the worker-owned state for the top loading bar.
+ * @param {{ completed: number, total: number }} state
+ * @param {{ postMessage: (message: unknown) => void }} [target]
+ */
+export function publishWorkerLoadingProgress(state, target = self) {
+  target.postMessage({ type: 'loading-progress', state });
+}
+
 const INGESTION_PROGRESS_DELAY_MS = 3_000;
 const INGESTION_PROGRESS_INTERVAL_MS = 1_000;
 const INGESTION_PROGRESS_HISTORY_LIMIT = 100;
@@ -119,6 +128,10 @@ export function startIngestionProgress(target = self) {
     /** @param {string} nextMessage */
     log(nextMessage) {
       clock.advance(nextMessage);
+    },
+    /** @param {number} completed @param {number} total */
+    reportShardImportProgress(completed, total) {
+      publishWorkerLoadingProgress({ completed, total }, target);
     },
     complete() {
       if (completed) return;
@@ -409,6 +422,7 @@ export function processDataRequest(request, signal) {
             : null;
           const shards = publishedJsonlShards(payloadHashes);
           const shardCount = shards.length;
+          progress.reportShardImportProgress(0, shardCount);
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
             shardCount,
@@ -471,6 +485,7 @@ export function processDataRequest(request, signal) {
                 index: index + 1,
                 shardCount
               });
+              progress.reportShardImportProgress(index + 1, shardCount);
               continue;
             }
             progress.log(`Downloading shard ${index + 1}/${shardCount}.`);
@@ -520,6 +535,7 @@ export function processDataRequest(request, signal) {
               });
               progress.log(`Shard ${index + 1}/${shardCount} committed `
                 + `${ingestion.committedRecords.toLocaleString('en-US')} rec.`);
+              progress.reportShardImportProgress(index + 1, shardCount);
             }
           }
           if (inventoryResponse.ok) {

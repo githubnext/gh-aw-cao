@@ -1,6 +1,6 @@
 ---
 name: setup-central-agentic-ops
-description: "Set up a Central Agentic Ops (CAO) control plane from scratch. Use when a user asks to create, bootstrap, initialize, install, or get started with CAO; asks which installed catalog operations they want and whether they want to author a custom package, creates or reuses a control repository, installs the root CAO package with gh aw add, writes .github/workflows/cao.json, and proves the boundary with one user-selected review target."
+description: "Set up a Central Agentic Ops (CAO) control plane from scratch. Use when a user asks to create, bootstrap, initialize, install, or get started with CAO; asks which catalog operations they want and whether they want to author a custom package, creates or reuses a control repository, runs the CAO Bash installer, and proves the boundary with one user-selected review target."
 argument-hint: "Provide the control repository, desired catalog operations, custom-package interest, and optional first target repository"
 ---
 
@@ -14,7 +14,7 @@ Create a new Central Agentic Ops control plane and prove it safely with one revi
 - When a source-managed control repository is also a catalog, treat it as a supported dogfood repository and apply both catalog and control-repository safety rules. Keep package manifests as package source, `.github/workflows/cao.json` as rollout and live-activation policy, and Actions variables and secrets as credentials. Do not require package records for workflows maintained directly in-tree or authority files in target repositories.
 - Public and private control repositories are supported. Preserve an existing repository's visibility; for a new repository, use the visibility the user chooses.
 - In a public control repository, policy, workflow runs, operational metadata, and review safe outputs are public. State that exposure before creation and never place confidential target information in those outputs.
-- Install the root CAO package with `gh aw add githubnext/gh-aw-cao`. Let gh-aw resolve the latest published release and handle retries; never install CAO from `main`, another branch, or by copying package files.
+- Bootstrap a separate control repository with the root `install.sh`. It installs gh-aw when needed, adds the latest published core CAO package, and initializes the minimal policy. Never replace it with ad hoc package copying.
 - Keep one package-installed copy of `control.md`, `control.mjs`, `policy.mjs`, the policy schema, and the setup CLI together under `.github/workflows/shared/`. These files are available in the shared checkout; never fetch another copy from the CAO repository or materialize duplicate runtime files under `.github/aw/cao/`.
 - The root package installs `.github/aw/default-AGENTS.md` as package-owned source for control-repository ambient context. If the control repository has no root `AGENTS.md`, materialize that source as `AGENTS.md`; never overwrite or merge into existing agent instructions without the user's approval.
 - Keep rollout policy only in `.github/workflows/cao.json`. Do not create `CENTRAL_AGENTIC_OPS_*` variables or another policy channel.
@@ -56,14 +56,14 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 
 ## Procedure
 
-1. Install or verify the `gh-aw` CLI before any other setup work, following the installation instructions in [`install.md`](https://github.com/github/gh-aw/blob/main/install.md) of the `github/gh-aw` repository:
+1. Verify GitHub CLI before any other setup work:
 
    ```bash
-   curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash
-   gh aw version
+   gh --version
+   gh auth status
    ```
 
-   The script installs the `gh-aw` binary as a `gh` extension. If `gh aw version` fails, confirm that `gh` is installed and authenticated and that the extension directory is on `PATH`, then rerun the script. Do not run `gh aw init`: CAO installs its workflows and shared control runtime through `gh aw add`, not repository initialization.
+   The CAO installer installs the `gh-aw` extension after the control repository exists. Do not run `gh aw init`: CAO bootstraps its workflows, shared runtime, and policy through `install.sh`.
 2. Load `docs/getting-started.md`, `docs/configuration.md`, and `docs/authentication.md`. Treat them as authoritative for current CAO policy fields and credential selection. Inspect root `aw.yml` and the manifests and READMEs for the operations it includes so package choices reflect the immutable catalog being installed, not a stale list. The gh-aw workflow-authoring guide applies when creating custom workflows, not when installing this existing package. Before finalizing a configuration or declaring success, read the control repository's `.github/workflows/cao.json` and the current dashboard state to confirm what is actually running, in which mode, and on which repositories. If the policy and the live dashboard disagree, raise the drift to the user on the dashboard and pause before continuing.
 3. Determine the GitHub organization and control repository name. CAO requires an organization-owned control repository because its workflows use organization-billed Copilot inference. Use a separate control repository by default. If the selected repository maintains the workflows it will execute in-tree, confirm that it is organization-owned, record it as a source-managed control repository, and preserve its visibility. If it is also the catalog for those workflows, record the dogfood topology and apply both roles. Explain that policy, workflow runs, operational metadata, dashboards, and review safe outputs inherit the control repository's visibility. If another repository exists, detect and preserve its visibility. If it does not exist, ask whether to create it as `public` or `private`; do not assume either.
 4. Ask these two package questions separately before choosing the first target. Use a multi-select question followed by a yes/no question when an interactive question tool is available:
@@ -76,7 +76,6 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
   - select and validate the authentication profile from `docs/authentication.md` before installation or execution. Configure both Apps or a consented PAT only when the selected target requires additional authentication.
 6. Confirm prerequisites without changing repositories:
    - Run `gh auth status` and ensure the authenticated account can create repositories and workflows in the organization.
-   - Run `gh aw version`. Compare it with `min-version` in the root CAO `aw.yml`; rerun the step 1 installation script to upgrade `github/gh-aw` only when the installed version is older. Do not require the catalog maintainer's current local version when the package supports an older release.
   - Confirm that the organization can authenticate the root package's Copilot-backed workflows:
 
     ```bash
@@ -85,16 +84,17 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
     ```
 
     Proceed only with API evidence of an active entitlement or explicit confirmation from an organization administrator when the billing endpoint is inaccessible or inconclusive. Treat `total_seats: 0` with `seat_management_setting: unconfigured` as unavailable: the workflow token can still receive `copilot-requests: write`, but Copilot model-catalog authorization fails with HTTP 403 before the agent starts. Stop until organization billing is enabled, and do not replace `auto` with an explicit model or configure `COPILOT_GITHUB_TOKEN` to hide that failure.
-  - Run `gh aw doctor --repo <organization>/<control-repository> --dir .` only from an attached checkout of an existing repository. Run `gh aw --help` before creating a repository or clone. If the extension is unavailable, rerun the step 1 installation, then rerun the check.
    - Check whether the proposed control repository already exists. Reuse it only with the user's agreement; record its visibility and never delete, overwrite, empty, or change its visibility implicitly.
-7. Create and clone the control repository with the chosen `--public` or `--private` visibility when it does not exist. Perform every remaining file and Git operation inside that clone. For an explicitly selected source-managed control repository, remain in its source checkout instead: confirm its active remote is the intended control repository and verify `.github/workflows/cao.json`, `.github/workflows/shared/control.mjs`, `.github/workflows/shared/policy.mjs`, and the in-tree workflow sources and locks. Run `gh aw doctor --repo <organization>/<control-repository> --dir .` before configuring credentials or executing CAO.
-8. Install the root CAO package in a separate control repository. Before installing, review the manifest metadata: `gh aw add` rejects packages marked `private` and warns for packages marked `experimental`. `gh aw add` reads root `aw.yml`, installs its orchestrators, workers, shared controls, skills, resources, and the deterministic core activity index, and compiles the workflow lock files without rewriting their authentication profile:
+7. Create and clone the control repository with the chosen `--public` or `--private` visibility when it does not exist. Perform every remaining file and Git operation inside that clone. For an explicitly selected source-managed control repository, remain in its source checkout instead: confirm its active remote is the intended control repository and verify `.github/workflows/cao.json`, `.github/workflows/shared/control.mjs`, `.github/workflows/shared/policy.mjs`, and the in-tree workflow sources and locks.
+8. In a separate control repository, run the CAO Bash installer:
 
     ```bash
-    gh aw add githubnext/gh-aw-cao
+    curl --fail --silent --show-error --location \
+      https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+      bash
     ```
 
-    gh-aw resolves the latest published release, retries transient package-install failures, and installs the complete package, including the shared control runtime. Do not add release-resolution scripts, pass `main` or another branch, or copy control files separately. In a source-managed control repository, do not install a package over workflows maintained directly in-tree. Its reviewed workflow sources, generated locks, runtime files, and policy form the runtime revision; verify them at the current commit instead.
+    The installer verifies or installs gh-aw, adds the latest published root package, and creates a minimal review-safe `.github/workflows/cao.json`. It exits without changing CAO files when the core runtime and policy are already installed. Run `gh aw doctor --repo <organization>/<control-repository> --dir .` after installation. In a source-managed control repository, do not run the installer over workflows maintained directly in-tree; verify its committed runtime and policy instead.
 
     When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper installed with the package:
 
@@ -119,31 +119,13 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 
 9. Confirm `.github/aw/default-AGENTS.md` was installed. If the repository has no root `AGENTS.md`, read the installed template and create `AGENTS.md` with exactly that content using a file-editing tool. If root `AGENTS.md` already exists, preserve it unchanged unless the user explicitly approves a merge; the packaged file remains the reference default and package updates must not overwrite consumer-owned ambient context.
 
-10. Write `.github/workflows/cao.json` with a file-editing tool. The package cannot install this file because it is consumer-owned rollout policy, and `gh aw add` does not create it. If the file already exists, parse and review it first; do not replace or broaden it without the user's approval. For a new control plane, write exactly this template and enable the selected first-proof package:
+10. Install the selected first-proof package through the installed CAO CLI so the package-owned orchestrator and worker identities are merged into the consumer-owned policy:
 
-    ```json
-    {
-     "version": 1,
-     "gh-aw-version": "<gh-aw-version>",
-     "control-plane": {
-       "scope": {
-         "allowed-owners": ["<target-owner>"],
-         "allowed-repositories": ["<target-owner>/<target-repository>"]
-       },
-       "packages": {
-         "<package-slug>": {
-           "workers": {
-             "<worker-slug>": {
-               "workflow": "<worker-workflow-slug>"
-             }
-           }
-         }
-       }
-     }
-    }
+    ```bash
+    node .github/aw/activity/cao.mjs add githubnext/gh-aw-cao/<package-slug>
     ```
 
-    Replace `<gh-aw-version>` with the root manifest's `min-version`, both occurrences of `<target-owner>` with `target-owner`, the one occurrence of `<target-repository>` with `target-repository`, `<package-slug>` with `initial-package`, and repeat the worker entry for every worker in the recorded catalog mapping. Each worker entry must preserve its exact worker and workflow slugs; the resolver loads this mapping directly from policy. Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each through a separate reviewed policy change after the first proof. Do not add broader owners, repositories, packages, optional worker controls, modes, rollout settings, or budgets during initial setup.
+    Parse and review the installer-created policy before editing it; do not replace or broaden it without the user's approval. After package installation, edit only `control-plane.scope` to add `target-owner` and `target-owner/target-repository`. Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each through the installed CAO CLI in a separate reviewed change after the first proof.
 
     Parse the file and reject unresolved placeholders before continuing:
 

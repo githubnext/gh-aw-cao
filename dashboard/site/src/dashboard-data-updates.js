@@ -1,4 +1,7 @@
 import { scopedStorageKey } from './storage-scope.js';
+import { createDebug, withDebugParameter } from './debug.js';
+
+const debugServiceWorker = createDebug('data:ingestion:sw-client');
 
 const ENABLED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.automatic-data-updates');
 const LAST_SUCCESS_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.automatic-data-update-last-success');
@@ -302,6 +305,7 @@ function waitForActivation(worker) {
  */
 export async function ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl) {
   const options = { scope: new URL('./', scriptUrl).pathname, updateViaCache: /** @type {ServiceWorkerUpdateViaCache} */ ('none') };
+  debugServiceWorker('registering service worker', { scriptUrl: scriptUrl.href, scope: options.scope });
   let registration = await serviceWorkers.register(scriptUrl, options);
   if (registration.active) await registration.update();
 
@@ -311,9 +315,13 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
       if (await canaryWorker(candidate)) {
         if (candidate.state !== 'activated') candidate.postMessage({ type: 'ACTIVATE' });
         const activated = await waitForActivation(candidate);
-        if (activated) return { registration, worker: activated };
+        if (activated) {
+          debugServiceWorker('activated candidate worker');
+          return { registration, worker: activated };
+        }
       }
-    } catch {
+    } catch (error) {
+      debugServiceWorker('candidate worker canary failed', { message: error instanceof Error ? error.message : String(error) });
       // Keep the healthy active worker; a later update can replace this candidate.
     }
   }
@@ -321,12 +329,17 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
   const active = registration.active ?? candidate;
   if (active) {
     try {
-      if (await canaryWorker(active)) return { registration, worker: active };
-    } catch {
+      if (await canaryWorker(active)) {
+        debugServiceWorker('active worker canary succeeded');
+        return { registration, worker: active };
+      }
+    } catch (error) {
+      debugServiceWorker('active worker canary failed', { message: error instanceof Error ? error.message : String(error) });
       // Force recovery below when the controlling worker cannot answer.
     }
   }
 
+  debugServiceWorker('forcing service worker recovery');
   await registration.unregister();
   const recoveryUrl = new URL(scriptUrl);
   recoveryUrl.searchParams.set('force-update', String(Date.now()));
@@ -354,7 +367,7 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
 export function startDashboardAppUpdates(dependencies = {}) {
   const serviceWorkers = dependencies.serviceWorkers ?? navigator.serviceWorker;
   if (!serviceWorkers) return () => {};
-  const scriptUrl = dependencies.scriptUrl ?? new URL('../service-worker.js', import.meta.url);
+  const scriptUrl = dependencies.scriptUrl ?? withDebugParameter(new URL('../service-worker.js', import.meta.url));
   const reload = dependencies.reload ?? window.location.reload.bind(window.location);
   const setTimer = dependencies.setTimer ?? window.setTimeout.bind(window);
   const clearTimer = dependencies.clearTimer ?? window.clearTimeout.bind(window);
@@ -430,7 +443,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
     ?? /** @type {Navigator & { getBattery?: () => Promise<BatteryState> }} */ (navigator).getBattery?.bind(navigator);
   const permissions = dependencies.permissions ?? navigator.permissions;
   const online = dependencies.online ?? (() => navigator.onLine);
-  const scriptUrl = dependencies.scriptUrl ?? new URL('../service-worker.js', import.meta.url);
+  const scriptUrl = dependencies.scriptUrl ?? withDebugParameter(new URL('../service-worker.js', import.meta.url));
   const now = dependencies.now ?? Date.now;
   const setTimer = dependencies.setTimer ?? window.setTimeout.bind(window);
   const clearTimer = dependencies.clearTimer ?? window.clearTimeout.bind(window);
@@ -554,6 +567,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       return;
     }
     try {
+      debugServiceWorker('requesting data download', { urls: dataUrls });
       const response = await requestWorker(
         worker,
         { type: 'DOWNLOAD_DATA', urls: dataUrls },
@@ -563,6 +577,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
           || /** @type {{ type?: unknown }} */ (response).type !== 'DOWNLOAD_COMPLETE') {
         throw new Error('Service worker data download failed.');
       }
+      debugServiceWorker('data download complete', response);
       if (!automaticDashboardDataUpdatesEnabled(storage)) {
         await disableDashboardBackgroundUpdates(serviceWorkers, scriptUrl, registration);
         return;
@@ -570,6 +585,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       storage.setItem(LAST_SUCCESS_STORAGE_KEY, String(now()));
       schedule(backgroundConfigured ? UPDATE_INTERVAL_MS : RETRY_INTERVAL_MS, backgroundConfigured);
     } catch (error) {
+      debugServiceWorker('data download failed', { message: error instanceof Error ? error.message : String(error) });
       console.error(`Unable to update dashboard data automatically: ${error instanceof Error ? error.message : String(error)}`);
       schedule(RETRY_INTERVAL_MS);
     }

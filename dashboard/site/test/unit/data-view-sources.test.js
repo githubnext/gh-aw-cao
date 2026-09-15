@@ -399,6 +399,30 @@ describe('canonical view sources', () => {
     ]);
   });
 
+  it('projects sessions with run and repository context even when events are not requested', async () => {
+    await loadCanonicalViewSources(indexedDB, collection('generation-a', sources.events.rows), { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['sessions']);
+
+    expect(projected.events).toBeUndefined();
+    expect(projected.sessions).toMatchObject({
+      source: 'sessions',
+      metadata: { 'source-kind': 'canonical-query', availability: 'available' },
+      rows: [
+        expect.objectContaining({
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md',
+          run: '42',
+          'run-attempt': 2,
+          session: 'session:run-42',
+          'session-kind': 'unified-operational-log',
+          'session-status': 'completed'
+        })
+      ]
+    });
+  });
+
   it('keeps retained events available to event-backed views after a partial collection', async () => {
     await loadCanonicalViewSources(indexedDB, collection('generation-a', sources.events.rows), { ingest: true });
     const partial = collection('generation-b', sources.events.rows.filter((row) => row.event === 'event:agent-turn'));

@@ -8,6 +8,8 @@ includes:
   - .github/workflows/uk-ai-advisory.md
   - .github/workflows/uk-ai-advisory-package-maintainer.md
 resources:
+  - source: cao.json
+    destination: .github/aw/uk-ai-advisory/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/uk-ai-advisory.json
   - source: implementation-status.md
