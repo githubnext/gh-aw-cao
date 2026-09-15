@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const dashboardUrl = "https://githubnext.github.io/gh-aw-cao/cao/";
+const dashboardUrl = process.env.DASHBOARD_DEPLOYED_URL
+  || "https://githubnext.github.io/gh-aw-cao/cao/";
 const outputDirectory = resolve("test-results/dashboard-deployed");
 const initialPageId = "packages";
 const populatedPages = ["packages", "repositories", "workflows", "runs", "firewall", "events"];
