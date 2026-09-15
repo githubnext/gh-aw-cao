@@ -18,6 +18,12 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
   await readFile(new URL("skills/create-ops-package/SKILL.md", root), "utf8");
   await readFile(new URL("skills/analyze-agentic-ops/SKILL.md", root), "utf8");
 
+  const caoCliSkill = await readFile(
+    new URL("skills/cao-cli/SKILL.md", root),
+    "utf8",
+  );
+  assert.match(caoCliSkill, /^---\nname: cao-cli\n/);
+
   const setupSkill = await readFile(
     new URL("skills/setup-central-agentic-ops/SKILL.md", root),
     "utf8",
