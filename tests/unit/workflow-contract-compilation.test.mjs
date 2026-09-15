@@ -243,9 +243,11 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /GH_AW_SAFE_OUTPUTS_CONFIG:/);
     }
 
-    const generatedReviewBundle = workflow("dependabot-release-train-updater.lock.yml", generatedDirectory);
-    assert.match(generatedReviewBundle, /GH_AW_SAFE_OUTPUTS_STAGED/);
-    assert.doesNotMatch(generatedReviewBundle, /GH_AW_SAFE_OUTPUTS_STAGED:.*preview_only/);
+    const generatedDependabotPlan = workflow("dependabot-release-train-updater.lock.yml", generatedDirectory);
+    assert.match(generatedDependabotPlan, /create_issue/);
+    assert.match(generatedDependabotPlan, /update_issue/);
+    assert.match(generatedDependabotPlan, /add_comment/);
+    assert.doesNotMatch(generatedDependabotPlan, /create_pull_request/);
 
     const advisoryMaintainer = workflow("uk-ai-advisory-package-maintainer.lock.yml", generatedDirectory);
     assert.match(advisoryMaintainer, /schedule:/);

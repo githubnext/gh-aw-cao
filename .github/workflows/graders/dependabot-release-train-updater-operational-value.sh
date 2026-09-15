@@ -59,7 +59,8 @@ jq -c '
              and (.outputs[0] | body | text) then 1
          elif (.outputs | length) == 1 and (.outputs[0] | valid_create($target)) then 1
          elif (.outputs | length) == 2
-             and (.outputs[0] | valid_refresh($target; .outputs[1])) then 1
+             and ((.outputs[1]) as $comment
+                  | (.outputs[0] | valid_refresh($target; $comment))) then 1
          else 0 end)}]
   end
 ' <<<"$request"
