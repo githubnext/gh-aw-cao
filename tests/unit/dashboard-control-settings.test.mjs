@@ -42,7 +42,7 @@ test("dashboard control settings report policy refusal without widening scope", 
   assert.deepEqual(settings, {
     allowed_owners: ["acme"],
     allowed_repositories: ["acme/control"],
-    web: { favicon: "./favicon.svg" },
+    web: { experimental: false, favicon: "./favicon.svg" },
     packages: {},
     publishing_enabled: false,
     publishing_control_repositories: ["acme/control"],

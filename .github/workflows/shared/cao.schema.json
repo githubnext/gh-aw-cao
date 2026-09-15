@@ -152,6 +152,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "experimental": { "type": "boolean" },
         "favicon": {
           "type": "string",
           "maxLength": 2048,

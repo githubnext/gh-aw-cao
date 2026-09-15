@@ -60,6 +60,11 @@ test("every production dashboard page starts with an executive summary or prescr
         && summary.controls === "interactive"
         && summary["lazy-list"] === true
         && summary.layout === "full-view";
+      const isFullViewIssueList = page.id === "issues"
+        && views.length === 1
+        && summary.mark === "list"
+        && summary.list?.style === "issues"
+        && summary.layout === "full-view";
       const isAttentionFirstHome = page.id === "home"
         && page["class-name"] === "dashboard-next-home-page"
         && summary.id === "home-attention"
@@ -98,6 +103,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isInsightsOverview
           || isMaintenanceView
           || isFullViewTable
+          || isFullViewIssueList
           || isOverviewDrillDown
           || isDeclarativeOverview
           || isFactoryOverview

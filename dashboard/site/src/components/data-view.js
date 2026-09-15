@@ -171,6 +171,7 @@ function renderListView(context) {
   const columns = /** @type {TableField[]} */ (isPlainObject(view.encoding) && Array.isArray(view.encoding.columns)
     ? view.encoding.columns.filter((column) => isPlainObject(column) && typeof column.field === 'string')
     : []);
+  const listStyle = isPlainObject(view.list) && view.list.style === 'issues' ? 'issues' : 'cards';
   const actions = tableActions(view);
   const preparedRows = prepareTableRows(rows, columns, view.data);
   const icon = isPlainObject(view.list) && typeof view.list.icon === 'string' ? view.list.icon : 'dash';
@@ -190,6 +191,22 @@ function renderListView(context) {
     ),
     toText
   );
+  if (listStyle === 'issues') {
+    return renderIssueListView({
+      pageId,
+      title,
+      view,
+      rows: preparedRows,
+      columns,
+      metadata,
+      contextDetails,
+      headingTag,
+      renderValue,
+      toText,
+      icon,
+      listAction
+    });
+  }
   const cards = preparedRows.map((row, index) => {
     const titleColumn = columns[0];
     const titleField = typeof titleColumn?.as === 'string' ? titleColumn.as : titleColumn?.field;
@@ -240,6 +257,121 @@ function renderListView(context) {
     ],
     headingTag
   );
+}
+
+/**
+ * @param {{
+ *   pageId: string,
+ *   title: string,
+ *   view: Record<string, any>,
+ *   rows: Array<Record<string, unknown>>,
+ *   columns: TableField[],
+ *   metadata: import('../presenter.js').SourceMetadata,
+ *   contextDetails: string[],
+ *   headingTag: 'h3'|'h4',
+ *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
+ *   toText: (value: unknown) => string,
+ *   icon: string,
+ *   listAction: HTMLElement | null
+ * }} options
+ */
+function renderIssueListView(options) {
+  const { pageId, title, view, rows, columns, metadata, contextDetails, headingTag, renderValue, toText, icon, listAction } = options;
+  const titleColumn = columns[0];
+  const titleField = typeof titleColumn?.as === 'string' ? titleColumn.as : titleColumn?.field;
+  const hrefDefinition = isPlainObject(view.encoding) && isPlainObject(view.encoding.href)
+    ? view.encoding.href
+    : null;
+  const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null;
+  const detailColumns = columns.slice(1).filter((column) => column.display !== 'label');
+  const labelColumns = columns.slice(1).filter((column) => column.display === 'label');
+  const cards = rows.map((row, index) => {
+    const titleText = toText(row[titleField ?? '']);
+    const titleLink = hrefField ? resolveCardLink(row, hrefField, titleText) : null;
+    const titleContent = titleLink
+      ? renderExternalLink({ ...titleLink, label: titleText || titleLink.label })
+      : titleText;
+    return h(
+      'li',
+      { className: 'issue-list-card', 'data-custom-row-key': `${pageId}-${title}-${index}` },
+      h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(icon)),
+      h(
+        'div',
+        { className: 'issue-list-card-content' },
+        h('div', { className: 'issue-list-card-title' }, titleContent),
+        h(
+          'dl',
+          { className: 'issue-list-card-meta', 'aria-label': `${titleText || 'Issue'} metadata` },
+          ...detailColumns.map((column) => {
+            const outputField = typeof column.as === 'string' ? column.as : column.field;
+            const value = column.field === RUN_FIELD || column.display === 'run-link'
+              ? renderWorkflowRunLink(row, toText(row[outputField]))
+              : renderValue(column, row[outputField], row);
+            return h(
+              'div',
+              null,
+              h('dt', null, fieldTitle(column)),
+              h('dd', null, value)
+            );
+          })
+        )
+      ),
+      labelColumns.length > 0
+        ? h(
+            'ul',
+            { className: 'issue-list-labels', 'aria-label': `${titleText || 'Issue'} labels` },
+            ...labelColumns.flatMap((column) => {
+              const outputField = typeof column.as === 'string' ? column.as : column.field;
+              const value = row[outputField];
+              const values = Array.isArray(value) ? value : [value];
+              return values
+                .map((label) => toText(label))
+                .filter(Boolean)
+                .map((label) => h('li', null, label));
+            })
+          )
+        : null,
+      ...tableActions(view).flatMap((action) => actionMatches(action, row)
+        ? [renderTableAction(action, row)]
+        : [])
+    );
+  });
+  const emptyMessage = metadata.availability === 'unavailable'
+    ? 'Data is unavailable for this view.'
+    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  return renderPageSection(
+    pageId,
+    title,
+    [
+      ...renderViewSectionChrome(metadata, contextDetails),
+      h(
+        'header',
+        { className: 'document-list-header' },
+        view.description ? h('p', null, view.description) : null,
+        listAction
+      ),
+      cards.length > 0
+        ? h('ul', { className: 'document-list issue-list', 'data-custom-view-mark': 'list' }, cards)
+        : h('p', { className: 'document-list-empty' }, emptyMessage)
+    ],
+    headingTag,
+    view.description
+  );
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {string} field
+ * @param {string} fallbackLabel
+ * @returns {{ href: string, label: string } | null}
+ */
+function resolveCardLink(row, field, fallbackLabel) {
+  const link = findLink(row, field);
+  if (link) return link;
+  const candidate = row[field];
+  return typeof candidate === 'string' && isSafeHttpsUrl(candidate)
+    ? { href: candidate, label: fallbackLabel || candidate }
+    : null;
 }
 
 /** @param {DataViewContext} context */

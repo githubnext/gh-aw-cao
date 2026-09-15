@@ -96,6 +96,7 @@ test("control policy schema accepts config-defined package and worker catalogs",
   assert.match(policy["gh-aw-version"], /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/);
   assert.equal(schema.properties["gh-aw-version"].type, "string");
   assert.equal(schema.$defs.controlPlane.properties.web.$ref, "#/$defs/web");
+  assert.equal(policy["control-plane"].web.experimental, true);
   assert.equal(policy["control-plane"].web.favicon, "./favicon.svg");
   assert.equal(schema.$defs.controlPackages.additionalProperties.$ref, "#/$defs/packagePolicy");
   assert.equal(schema.$defs.targetPackages.additionalProperties.$ref, "#/$defs/targetPackage");
@@ -212,6 +213,7 @@ test("control policy exposes scope and publishing defaults to deterministic add-
     allowed_owners: ["acme"],
     allowed_repositories: ["acme/payments-api", "acme/storefront"],
     web: {
+      experimental: false,
       favicon: "./favicon.svg",
     },
     packages: {
@@ -241,13 +243,21 @@ test("control policy exposes scope and publishing defaults to deterministic add-
 test("control policy validates and exposes web presentation settings", () => {
   const policy = JSON.parse(minimalPolicy);
   policy["control-plane"].web = {
+    experimental: true,
     favicon: "https://example.com/operations.svg",
   };
 
   assert.equal(validate(JSON.stringify(policy)).status, 0);
   assert.deepEqual(controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").web, {
+    experimental: true,
     favicon: "https://example.com/operations.svg",
   });
+
+  policy["control-plane"].web.experimental = "true";
+  const invalidExperimental = validate(JSON.stringify(policy));
+  assert.notEqual(invalidExperimental.status, 0);
+  assert.match(invalidExperimental.stderr, /control-plane\.web\.experimental must be a Boolean/);
+  policy["control-plane"].web.experimental = true;
 
   for (const favicon of [
     "http://example.com/favicon.svg",

@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { parse } from "yaml";
-import { buildDashboardSite } from "../../dashboard/site/scripts/build.mjs";
+import { buildDashboardSite, filterExperimentalDashboardViews } from "../../dashboard/site/scripts/build.mjs";
 
 function localDependencies(source) {
   const dependencies = [];
@@ -19,11 +19,34 @@ async function builtSiteSha(destination) {
   return index.match(/src="\.\/src\/main\.js\?sha=([a-f0-9]{64})"/)?.[1];
 }
 
+test("dashboard site filters experimental views unless explicitly enabled", () => {
+  const document = {
+    "language-version": "0.1.0",
+    dashboard: {
+      pages: [{ id: "stable" }, { id: "preview" }],
+      navigation: [
+        { label: "Main", pages: ["stable"] },
+        { label: "Preview", experimental: true, pages: ["preview"] },
+      ],
+      callouts: [
+        { id: "stable-callout", "navigation-page": "stable" },
+        { id: "preview-callout", "navigation-page": "preview" },
+      ],
+    },
+  };
+
+  const filtered = filterExperimentalDashboardViews(document);
+  assert.deepEqual(filtered.dashboard.pages, [{ id: "stable" }]);
+  assert.deepEqual(filtered.dashboard.navigation, [{ label: "Main", pages: ["stable"] }]);
+  assert.deepEqual(filtered.dashboard.callouts, [{ id: "stable-callout", "navigation-page": "stable" }]);
+  assert.equal(filterExperimentalDashboardViews(document, true), document);
+});
+
 test("docs dashboard installs renderer assets and configured package pages", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-build-"));
   const destination = pathToFileURL(`${root}/cao/`);
   const controlSettings = {
-    web: { favicon: "https://example.com/dashboard.svg" },
+    web: { experimental: true, favicon: "https://example.com/dashboard.svg" },
     packages: { "uk-ai-advisory": {}, dependabot: {} },
   };
 

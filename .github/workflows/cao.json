@@ -21,6 +21,7 @@
       "max-repositories": 6
     },
     "web": {
+      "experimental": true,
       "favicon": "./favicon.svg"
     },
     "packages": {

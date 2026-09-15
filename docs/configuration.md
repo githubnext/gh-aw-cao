@@ -50,6 +50,7 @@ The schema defaults are:
 | `control-plane.inventory.cell-index` | `0` | Less than `cell-count` |
 | `control-plane.inventory.batch-size` | `100000` | `1` through `100000` |
 | `control-plane.inventory.batch-index` | `0` | Non-negative integer |
+| `control-plane.web.experimental` | `false` | `true` or `false` |
 | `control-plane.web.favicon` | `./favicon.svg` | Absolute HTTPS URL or `./` relative path |
 | `control-plane.defaults.mode` | `review` | `review` or `live` |
 | `control-plane.defaults.max-repositories` | `1` | `1` through `1000` |
@@ -59,7 +60,7 @@ The schema defaults are:
 
 Each entry under `control-plane.packages` may override the defaults with `enabled`, `mode`, `max-repositories`, and `rollout-percent`; `monthly-ai-credit-budget` remains accepted as a deprecated compatibility field but has no runtime admission effect. The internal `dashboard` package also accepts `deploy: false` to keep building its reusable artifact while another workflow owns Pages deployment; `deploy` defaults to `true`. Its optional `targets` map assigns a different mode to an exact repository while unmatched repositories retain the package mode. Every package target must remain inside the global allowed owners and, when present, the global repository allowlist. The `workers` map is the package's workflow catalog: every worker entry requires its exact `workflow` slug, may set `enabled: false` to disable that worker, and may set `max-mode` to narrow its mode. Package and worker names are lowercase kebab-case identifiers loaded directly from this policy.
 
-The optional `control-plane.web` section configures deterministic web surfaces without changing rollout authority. Set `favicon` to an absolute HTTPS URL without credentials, query, or fragment, or to a non-traversing `./` relative path available in the generated site. The dashboard package ships `./favicon.svg` as its default.
+The optional `control-plane.web` section configures deterministic web surfaces without changing rollout authority. Dashboard views declared in experimental navigation sections are omitted by default; set `experimental` to `true` to include them. Set `favicon` to an absolute HTTPS URL without credentials, query, or fragment, or to a non-traversing `./` relative path available in the generated site. The dashboard package ships `./favicon.svg` as its default.
 
 For example, this policy keeps Dependabot in review across its scope while promoting one exact target to live:
 

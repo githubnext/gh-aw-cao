@@ -1711,6 +1711,97 @@
         ]
       },
       {
+        "name": "issues",
+        "intent": "List GitHub issue safe-output items from retained events.",
+        "description": "Issue safe-output item events retain target issue links and producing workflow run provenance.",
+        "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              },
+              {
+                "left": "run-attempt",
+                "right": "run-attempt"
+              }
+            ],
+            "fields": [
+              {
+                "field": "run-link",
+                "as": "linked-run"
+              }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            {
+              "field": "event-type",
+              "equals": "safe_output.created"
+            },
+            {
+              "field": "github-entity-type",
+              "equals": "issue"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "event-timestamp",
+            "as": "observed-at"
+          },
+          {
+            "field": "event-summary",
+            "as": "issue-title"
+          },
+          {
+            "field": "correlation-id",
+            "as": "issue-link"
+          },
+          {
+            "field": "safe-output-type"
+          },
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "run"
+          },
+          {
+            "field": "linked-run",
+            "as": "run-link"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "workflow-inventory",
         "intent": "List declared workflows with their package, repository, configuration, and observed execution totals.",
         "description": "Central package and repository-owned workflow inventory with observed execution totals.",
@@ -7520,6 +7611,80 @@
         ]
       },
       {
+        "id": "issues",
+        "kind": "custom",
+        "title": "Issues",
+        "navigation-label": "Issues",
+        "icon": "issue-opened",
+        "description": "GitHub issue safe outputs rendered as a GitHub-style issue list.",
+        "views": [
+          {
+            "id": "issue-list",
+            "title": "Issues",
+            "description": "Open an issue or its producing workflow run from retained safe-output item evidence.",
+            "data": {
+              "source": "issues",
+              "limit": 100,
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "list",
+            "list": {
+              "style": "issues",
+              "icon": "issue-opened"
+            },
+            "empty-message": "No issue safe outputs were retained in the current report.",
+            "layout": "full-view",
+            "encoding": {
+              "href": {
+                "field": "issue-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "issue-title",
+                  "type": "nominal",
+                  "title": "Issue"
+                },
+                {
+                  "field": "safe-output-type",
+                  "type": "nominal",
+                  "title": "Safe output",
+                  "display": "label"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow",
+                  "format": "workflow-relative-path"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Opened"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
         "id": "preview",
         "kind": "custom",
         "title": "Preview",
@@ -8074,6 +8239,7 @@
         "label": "Explore",
         "experimental": true,
         "pages": [
+          "issues",
           "safe-output-items",
           "safe-outputs",
           "detection",
