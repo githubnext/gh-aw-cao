@@ -4822,7 +4822,7 @@
               },
               "mark": "chart",
               "chart": "swimlane",
-              "layout": "full",
+              "layout": "horizontal",
               "encoding": {
                 "x": {
                   "field": "started-at",

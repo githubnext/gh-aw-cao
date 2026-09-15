@@ -514,6 +514,7 @@ describe('data view renderer', () => {
       view: {
         mark: 'chart',
         chart: 'swimlane',
+        layout: 'horizontal',
         encoding: {
           x: { field: 'started-at', type: 'temporal' },
           y: { field: 'run-conclusion', type: 'ordinal' }
@@ -543,6 +544,7 @@ describe('data view renderer', () => {
       }
     });
 
+    expect(rendered?.querySelector('.chart-horizontal-card')).not.toBeNull();
     expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
     expect(load).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(load).toHaveBeenCalledWith('page-2'));

@@ -785,6 +785,11 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .pie-chart-layout .chart-legend-pie i { width: 9px; height: 9px; border-radius: 2px; }
 .pie-chart-layout .chart-legend-pie span { min-width: 0; overflow-wrap: anywhere; }
 .pie-chart-layout .chart-legend-pie strong, .pie-chart-layout .chart-legend-pie small { font-variant-numeric: tabular-nums; text-align: right; }
+.chart-horizontal-card { display: grid; grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr); align-items: start; gap: 24px; padding: 20px 24px; }
+.chart-horizontal-copy > h3, .chart-horizontal-copy > h4 { margin: 0; font-size: 1.25rem; }
+.chart-horizontal-copy > .view-description { margin-top: 3px; }
+.chart-horizontal-copy > .view-source, .chart-horizontal-copy > .view-metadata, .chart-horizontal-copy > .view-context { margin: 0; font-size: .6875rem; }
+.chart-horizontal-layout { min-width: 0; }
 .metric-link a, .custom-table a { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; transition: background-color 120ms ease, color 120ms ease; }
 .metric-link a:hover, .custom-table a:hover { background: var(--neutral-muted); }
 .metric-link .octicon, .custom-table a .octicon { width: 12px; height: 12px; }
@@ -2017,9 +2022,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   to { background-position: -200% 0; }
 }
 @media (min-width: 701px) and (max-width: 900px) {
-  .pie-chart-card { grid-template-columns: 1fr; }
+  .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
-  .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context { grid-column: 1; }
+  .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context,
+  .chart-horizontal-layout { grid-column: 1; }
   .dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
 }
@@ -2144,9 +2150,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .repository-health .section-heading { align-items: flex-start; flex-direction: column; }
   .outcome-view { grid-template-columns: 1fr; }
   .outcome-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
-  .pie-chart-card { grid-template-columns: 1fr; }
+  .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
-  .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context { grid-column: 1; }
+  .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context,
+  .chart-horizontal-layout { grid-column: 1; }
   .control-plane-status > header { min-height: 0; padding: 14px; }
   .control-plane-heading { align-items: flex-start; }
   .control-plane-heading .scope-kicker { display: none; }

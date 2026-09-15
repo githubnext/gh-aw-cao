@@ -752,6 +752,18 @@ function renderChartView(context) {
     section.append(
       h('div', { className: 'pie-chart-card' }, ...Array.from(section.children))
     );
+  } else if (view.layout === 'horizontal') {
+    const children = Array.from(section.children);
+    /** @param {Element} element */
+    const isCopy = (element) => element.matches('h3, h4, .view-description, .view-source, .view-metadata, .view-context, .view-description-tooltip');
+    section.replaceChildren(
+      h(
+        'div',
+        { className: 'chart-horizontal-card' },
+        h('div', { className: 'chart-horizontal-copy' }, ...children.filter(isCopy)),
+        h('div', { className: 'chart-horizontal-layout' }, ...children.filter((element) => !isCopy(element)))
+      )
+    );
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
   if (supportsIncrementalChartContinuation(view) && continuation?.token && !pending) {
