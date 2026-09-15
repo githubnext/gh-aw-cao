@@ -114,11 +114,11 @@ test('ingestion notifications reveal scrollable progress history on click', asyn
     </script>
   `);
 
-  const toggle = page.getByRole('button', { name: 'Show ingestion progress history' });
+  const toggle = page.getByRole('button', { name: /Storing data.*Show ingestion progress history/ });
   const details = page.locator('.dashboard-notification-details');
   await expect(details).toBeHidden();
   await toggle.click();
-  const collapse = page.getByRole('button', { name: 'Hide ingestion progress history' });
+  const collapse = page.getByRole('button', { name: /Storing data.*Hide ingestion progress history/ });
   await expect(collapse).toHaveAttribute('aria-expanded', 'true');
   await expect(details).toBeVisible();
   await expect(details.getByRole('listitem')).toHaveCount(3);

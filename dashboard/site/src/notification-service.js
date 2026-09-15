@@ -123,8 +123,12 @@ function renderNotification(initial, container, onRemove) {
     type: 'button',
     'aria-expanded': 'false',
     'aria-controls': detailId,
-    'aria-label': 'Show ingestion progress history'
+    'aria-label': `${initial.message} Show ingestion progress history`
   }, message, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
+  const liveMessage = h('span', {
+    className: 'dashboard-notification-live',
+    role: initial.tone === 'error' ? 'alert' : 'status'
+  }, initial.message);
   const details = h('ol', {
     className: 'dashboard-notification-details',
     id: detailId,
@@ -136,9 +140,8 @@ function renderNotification(initial, container, onRemove) {
     type: 'button'
   });
   const element = h('div', {
-    className: `dashboard-notification dashboard-notification-${initial.tone} dashboard-notification-enter`,
-    role: initial.tone === 'error' ? 'alert' : 'status'
-  }, content);
+    className: `dashboard-notification dashboard-notification-${initial.tone} dashboard-notification-enter`
+  }, content, liveMessage);
   let current = initial;
   let removed = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -159,6 +162,11 @@ function renderNotification(initial, container, onRemove) {
       details.remove();
       content.prepend(message);
     }
+    const expandedState = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute(
+      'aria-label',
+      `${current.message} ${expandedState ? 'Hide' : 'Show'} ingestion progress history`
+    );
   };
   const setAction = () => {
     action.remove();
@@ -170,9 +178,10 @@ function renderNotification(initial, container, onRemove) {
   toggle.onclick = () => {
     const expanded = toggle.getAttribute('aria-expanded') === 'true';
     toggle.setAttribute('aria-expanded', String(!expanded));
-    toggle.setAttribute('aria-label', expanded
-      ? 'Show ingestion progress history'
-      : 'Hide ingestion progress history');
+    toggle.setAttribute(
+      'aria-label',
+      `${current.message} ${expanded ? 'Show' : 'Hide'} ingestion progress history`
+    );
     details.hidden = expanded;
   };
   const scheduleDismissal = () => {
@@ -200,8 +209,9 @@ function renderNotification(initial, container, onRemove) {
       if (removed) return;
       current = normalizeNotification(next);
       message.textContent = current.message;
+      liveMessage.textContent = current.message;
       element.className = `dashboard-notification dashboard-notification-${current.tone}`;
-      element.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
+      liveMessage.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
       setDetails();
       setAction();
       scheduleDismissal();

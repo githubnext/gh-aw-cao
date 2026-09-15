@@ -13,8 +13,8 @@ describe('dashboard notification service', () => {
     service.publish({ message: 'Dashboard refreshed.', tone: 'success', duration: 1000 });
 
     const notification = document.querySelector('.dashboard-notification');
-    expect(notification?.getAttribute('role')).toBe('status');
-    expect(notification?.textContent).toBe('Dashboard refreshed.');
+    expect(notification?.querySelector('.dashboard-notification-live')?.getAttribute('role')).toBe('status');
+    expect(notification?.querySelector('.dashboard-notification-message')?.textContent).toBe('Dashboard refreshed.');
     expect(notification?.classList.contains('dashboard-notification-success')).toBe(true);
 
     vi.advanceTimersByTime(1180);
@@ -37,7 +37,7 @@ describe('dashboard notification service', () => {
     expect(action).toHaveBeenCalledTimes(1);
 
     handle.update({ message: 'Cancelling…', tone: 'warning', duration: 0 });
-    expect(notification?.textContent).toBe('Cancelling…');
+    expect(notification?.querySelector('.dashboard-notification-message')?.textContent).toBe('Cancelling…');
     expect(notification?.classList.contains('dashboard-notification-warning')).toBe(true);
     expect(notification?.querySelector('button')).toBeNull();
   });
@@ -63,7 +63,7 @@ describe('dashboard notification service', () => {
 
     toggle.click();
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(toggle.getAttribute('aria-label')).toBe('Hide ingestion progress history');
+    expect(toggle.getAttribute('aria-label')).toBe('Storing data... Hide ingestion progress history');
     expect(details.hidden).toBe(false);
 
     handle.update({
@@ -84,7 +84,7 @@ describe('dashboard notification service', () => {
     const service = createNotificationService(document);
     service.publish({ message: 'Refresh failed.', tone: 'error' });
 
-    expect(document.querySelector('.dashboard-notification')?.getAttribute('role')).toBe('alert');
+    expect(document.querySelector('.dashboard-notification-live')?.getAttribute('role')).toBe('alert');
     expect(() => service.publish('   ')).toThrow('Notification message must be a non-empty string.');
   });
 
