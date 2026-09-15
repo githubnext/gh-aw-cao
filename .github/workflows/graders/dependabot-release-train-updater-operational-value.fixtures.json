@@ -1,0 +1,51 @@
+[
+  {
+    "name": "attained",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "create_pull_request", "target_repo": "octo/service", "title": "Update npm dependencies", "body": "Ready for review.\n\n**Action:** The service owner should review and merge after CI passes.\n\n### Validation\nChecks passed."}],
+      "config": {}
+    },
+    "expected": [{"id": "decision-ready-dependency-action", "value": 1}]
+  },
+  {
+    "name": "missed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "create_issue", "target_repo": "octo/other", "title": "Dependency blocked", "body": "Needs attention."}],
+      "config": {}
+    },
+    "expected": [{"id": "decision-ready-dependency-action", "value": 0}]
+  },
+  {
+    "name": "unavailable",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "3", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {}},
+      "outputs": [],
+      "config": {}
+    },
+    "expected": [{"id": "decision-ready-dependency-action", "value": null}]
+  },
+  {
+    "name": "malformed",
+    "request": {"schemaVersion": 2, "run": {}, "event": {}, "outputs": "invalid", "config": {}},
+    "expected": [{"id": "decision-ready-dependency-action", "value": null}]
+  },
+  {
+    "name": "noop",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "4", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "noop", "message": "No actionable dependency update found after reviewing current manifests."}],
+      "config": {}
+    },
+    "expected": [{"id": "decision-ready-dependency-action", "value": 1}]
+  }
+]

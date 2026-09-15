@@ -40,15 +40,12 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "software-development-practices-github-well-architected-operational-value.sh",
     "software-development-practices-nist-ssdf-operational-value.sh",
   ]);
-  for (const name of graders) {
+  for (const name of graders.filter((name) => name !== "dependabot-release-train-updater-operational-value.sh")) {
     const executable = join(gradersDirectory, name);
     const workflowName = name.replace(/-operational-value\.sh$/, ".md");
-    const runPath = name === "dependabot-release-train-updater-operational-value.sh"
-      ? `.github/aw/dependabot/graders/${name}`
-      : `./graders/${name}`;
     assert.match(
       workflow(workflowName),
-      new RegExp(`graders:\\s+operational-value:\\s+run: ${runPath.replaceAll(".", "\\.")}`),
+      new RegExp(`graders:\\s+operational-value:\\s+run: ${`./graders/${name}`.replaceAll(".", "\\.")}`),
       `${name}: workflow must execute the frozen operational-value evaluator`,
     );
     const definition = JSON.parse(execFileSync(executable, ["--definition"], { encoding: "utf8" }));
@@ -77,12 +74,22 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   }
 
   const dependabotWorker = workflow("dependabot-release-train-updater.md");
-  const dependabotEvaluator = readFileSync(join(gradersDirectory, "dependabot-release-train-updater-operational-value.sh"), "utf8");
-  const dependabotDefinition = JSON.parse(execFileSync(
-    join(gradersDirectory, "dependabot-release-train-updater-operational-value.sh"),
-    ["--definition"],
-    { encoding: "utf8" },
+  const dependabotName = "dependabot-release-train-updater-operational-value.sh";
+  const dependabotExecutable = join(gradersDirectory, dependabotName);
+  const dependabotEvaluator = readFileSync(dependabotExecutable, "utf8");
+  const dependabotFixtures = JSON.parse(readFileSync(
+    join(gradersDirectory, "dependabot-release-train-updater-operational-value.fixtures.json"),
+    "utf8",
   ));
+  assert.match(dependabotWorker, new RegExp(`graders:\\s+operational-value:[\\s\\S]*run: \\.\\/graders\\/${dependabotName}`));
+  for (const fixture of dependabotFixtures) {
+    const evaluate = () => JSON.parse(execFileSync(dependabotExecutable, {
+      encoding: "utf8",
+      input: JSON.stringify(fixture.request),
+    }));
+    assert.deepEqual(evaluate(), fixture.expected, fixture.name);
+    assert.deepEqual(evaluate(), fixture.expected, `${fixture.name}: deterministic rerun`);
+  }
   const auditorWorker = workflow("optimization-ai-credit-auditor.md");
   const auditorEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-auditor-operational-value.sh"), "utf8");
   const optimizerWorker = workflow("optimization-ai-credit-optimizer.md");
@@ -92,12 +99,8 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
   assert.match(dependabotWorker, /use a canonical unprefixed subject/i);
   assert.match(dependabotWorker, /Use the same subject for the same unresolved work across reruns/);
-  assert.equal(dependabotDefinition.adoption.commit, "4615c8d8eaf51dab837238dff6fc8248a56194fe");
-  assert.equal(dependabotDefinition.primaryMetric.id, "validated-dependency-resolution");
-  assert.match(dependabotDefinition.evidence.assignment, /freeze the oldest eligible pull request/);
-  assert.match(dependabotEvaluator, /key="dependency-pr:\$\{target_repo\}:\$\{number\}"/);
-  assert.doesNotMatch(dependabotEvaluator, /key="dependency-set:.*runId/);
-  assert.match(dependabotEvaluator, /diagnostics:\{\}/);
+  assert.match(dependabotEvaluator, /decision-ready-dependency-action/);
+  assert.doesNotMatch(dependabotEvaluator, /--definition|--metric|--grade-run|MATURATION_SECONDS|gh api/);
   assert.match(auditorWorker, /window_start: \$windowStart/);
   assert.match(auditorWorker, /window_end: \$windowEnd/);
   assert.match(auditorEvaluator, /workflow_path \/\/ \.workflow_name/);

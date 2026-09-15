@@ -516,7 +516,7 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
 
   try {
     assert.ok(
-      existsSync(join(consumer, ".github", "aw", "dependabot", "graders", "dependabot-release-train-updater-operational-value.sh")),
+      existsSync(join(consumer, ".github", "workflows", "graders", "dependabot-release-train-updater-operational-value.sh")),
       "Dependabot package omitted its operational-value grader",
     );
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
@@ -525,6 +525,7 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
 
     const removedFiles = [
       ".github/workflows/dependabot-release-train-updater.md",
+      ".github/workflows/graders/dependabot-release-train-updater-operational-value.sh",
       ".github/workflows/shared/control.md",
     ];
     for (const relativePath of removedFiles) {
