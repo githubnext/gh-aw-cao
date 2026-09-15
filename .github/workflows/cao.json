@@ -93,6 +93,28 @@
           }
         }
       },
+      "eslint-rules": {
+        "icon": "codescan",
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "inventory": {
+            "workflow": "eslint-rules-inventory"
+          },
+          "miner": {
+            "workflow": "eslint-rules-miner"
+          },
+          "refiner": {
+            "workflow": "eslint-rules-refiner"
+          },
+          "applier": {
+            "workflow": "eslint-rules-applier"
+          },
+          "librarian": {
+            "workflow": "eslint-rules-librarian"
+          }
+        }
+      },
       "optimization": {
         "icon": "meter",
         "workers": {

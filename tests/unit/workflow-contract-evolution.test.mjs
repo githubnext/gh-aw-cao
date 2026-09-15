@@ -177,6 +177,7 @@ test("CAO Evolution failures worker closes target AW failure issues as duplicate
 test("slower package orchestrators run hourly", () => {
   for (const name of [
     "dependabot.md",
+    "eslint-rules.md",
     "eu-cra-compliance.md",
     "optimization.md",
     "software-development-practices.md",

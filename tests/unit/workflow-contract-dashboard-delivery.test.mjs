@@ -506,6 +506,16 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
       { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency", "cao-evolution-catalog-advisor", "cao-evolution-failures-investigator", "cao-evolution-compiler-security"] },
       { id: "dependabot", workers: ["dependabot-release-train-updater"] },
       {
+        id: "eslint-rules",
+        workers: [
+          "eslint-rules-inventory",
+          "eslint-rules-miner",
+          "eslint-rules-refiner",
+          "eslint-rules-applier",
+          "eslint-rules-librarian",
+        ],
+      },
+      {
         id: "eu-cra-compliance",
         workers: [
           "eu-cra-compliance-scope-classifier",

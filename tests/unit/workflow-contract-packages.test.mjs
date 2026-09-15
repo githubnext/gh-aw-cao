@@ -16,6 +16,7 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
     "dependabot/aw.yml",
+    "eslint-rules/aw.yml",
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
     "self-care/aw.yml",
@@ -57,6 +58,7 @@ test("catalog packages declare their current experimental maturity", () => {
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
     "dependabot/aw.yml",
+    "eslint-rules/aw.yml",
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
     "self-care/aw.yml",
@@ -78,7 +80,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 42);
+  assert.equal(operationWorkflows.length, 48);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
@@ -86,7 +88,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 });
 
 test("package manifests exclude repository-only tests", () => {
-  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
+  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
   }
