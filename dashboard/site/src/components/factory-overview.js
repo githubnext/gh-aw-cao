@@ -158,9 +158,10 @@ export function renderFactoryOverview(context) {
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
     renderIntroduction(sources, metrics),
-    renderFactoryFloor(sources, metrics, pluralLabelResolver(context.elementConfig))
+    renderFactoryFloor(sources, metrics, pluralLabelResolver(context.elementConfig), context.elementConfig?.animate === 'number')
   );
 }
+
 
 /**
  * @param {SourceBindings} sources
@@ -269,13 +270,14 @@ function factoryHeading(sources, metrics) {
  * @param {SourceBindings} sources
  * @param {OverviewMetrics} metrics
  * @param {(labelId: string, count: number) => string} label
+ * @param {boolean} animateNumbers
  */
-function renderFactoryFloor(sources, metrics, label) {
+function renderFactoryFloor(sources, metrics, label, animateNumbers) {
   const floor = h('section', { className: 'factory-floor' });
-  const repositories = renderStation('repo', { href: '#page-repositories' });
-  const runs = renderStation('play', { href: '#page-runs?runs-runs-source.run-conclusion=success' });
-  const dispatches = renderStation('workflow', { href: '#page-runs' });
-  const valueGains = renderStation('trophy', { final: true });
+  const repositories = renderStation('repo', { animate: animateNumbers, href: '#page-repositories' });
+  const runs = renderStation('play', { animate: animateNumbers, href: '#page-runs?runs-runs-source.run-conclusion=success' });
+  const dispatches = renderStation('workflow', { animate: animateNumbers, href: '#page-runs' });
+  const valueGains = renderStation('trophy', { animate: animateNumbers, final: true });
 
   repositories.bind(() => {
     const coverage = metrics.coverage();
@@ -357,7 +359,7 @@ function renderFactoryFloor(sources, metrics, label) {
  * Renders one counter that owns its own effect, so it appears with the page and
  * counts up on its own when its query resolves.
  * @param {string} icon
- * @param {{ final?: boolean, href?: string }} [options]
+ * @param {{ animate?: boolean, final?: boolean, href?: string }} [options]
  * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail: string | HTMLElement }) => void }}
  */
 function renderStation(icon, options = {}) {
@@ -372,6 +374,7 @@ function renderStation(icon, options = {}) {
     value,
     detail
   );
+  let previousAnimationTarget = '';
   return {
     element,
     bind(read) {
@@ -385,6 +388,19 @@ function renderStation(icon, options = {}) {
         stationLabel.textContent = station.label;
         const count = station.pending ? '' : station.unavailable ? 'Unavailable' : formatCount(station.value);
         value.replaceChildren(options.href && !station.pending && !station.unavailable ? h('a', { href: options.href }, count) : count);
+        const animationTarget = !station.pending && !station.unavailable && options.animate && Number.isSafeInteger(station.value)
+          ? String(station.value)
+          : '';
+        if (animationTarget && animationTarget !== previousAnimationTarget) {
+          value.classList.remove('metric-number-animated');
+          value.style.setProperty('--metric-number-target', animationTarget);
+          void value.offsetWidth;
+          value.classList.add('metric-number-animated');
+        } else if (!animationTarget) {
+          value.classList.remove('metric-number-animated');
+          value.style.removeProperty('--metric-number-target');
+        }
+        previousAnimationTarget = animationTarget;
         detail.replaceChildren(station.pending ? '' : station.detail);
       });
     }
@@ -509,4 +525,3 @@ function createRhythmDay() {
     h('small', {})
   );
 }
-

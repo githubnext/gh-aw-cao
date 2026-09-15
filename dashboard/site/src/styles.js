@@ -525,6 +525,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 @supports (property: --metric-number) {
   .metric-number-animated { --metric-number: 0; position: relative; color: transparent; counter-reset: metric-number var(--metric-number); animation: metric-number-count 700ms ease-out both; }
   .metric-number-animated::after { content: counter(metric-number); position: absolute; inset: 0; color: var(--metric-card-color, var(--muted)); }
+  .factory-station .metric-number-animated::after { color: var(--fg); }
 }
 .metric-card-widget-active .metric-card-widget-value { color: var(--metric-card-color); }
 .metric-card-widget-label { min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; margin: 0; color: var(--muted); font-size: .8125rem; font-weight: 600; line-height: 1.35; text-transform: uppercase; }

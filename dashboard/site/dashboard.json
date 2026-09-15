@@ -6657,6 +6657,7 @@
             "mark": "element",
             "element": "outcomes-overview",
             "config": {
+              "animate": "number",
               "labels": {
                 "repositories": {
                   "singular": "Repository registered",

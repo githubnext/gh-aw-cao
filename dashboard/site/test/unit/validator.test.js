@@ -55,12 +55,22 @@ describe('dashboard document validation', () => {
       title: 'Animated metric',
       views: [metric]
     });
+
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     metric.metric.animate = 'counter';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
     metric.metric.animate = 'number';
     metric.metric.style = 'summary';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
+  it('validates declarative overview counter animations', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
+    overview.views[0].config.animate = 'number';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    overview.views[0].config.animate = 'counter';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 

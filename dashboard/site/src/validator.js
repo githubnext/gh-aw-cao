@@ -98,6 +98,7 @@ import {
   VIEW_DISCLOSURE_VALUES,
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
+  VIEW_ELEMENT_ANIMATION_VALUES,
   VIEW_ELEMENT_VALUES,
   PLURAL_LABEL_ELEMENTS,
   PLURAL_TEXT_KEYS,
@@ -2168,6 +2169,23 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         } else {
           validatePluralLabels(view.config.labels, getValueNodeByKey(getValueNodeByKey(viewNode, 'config'), 'labels'), `${path}.config.labels`, errors);
+        }
+      }
+      if (view.config.animate !== undefined) {
+        if (view.element !== 'outcomes-overview') {
+          errors.push(createError(
+            ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+            'config.animate is supported only for the outcomes-overview element.',
+            `${path}.config.animate`
+          ));
+        }
+        validateStringField(view.config.animate, `${path}.config.animate`, false, errors);
+        if (typeof view.config.animate === 'string' && !VIEW_ELEMENT_ANIMATION_VALUES.includes(view.config.animate)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'config.animate must use one canonical element animation value.',
+            `${path}.config.animate`
+          ));
         }
       }
     }
