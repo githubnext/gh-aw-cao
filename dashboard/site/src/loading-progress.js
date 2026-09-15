@@ -60,7 +60,7 @@ function installStyles(document) {
  * Starts an indeterminate progress bar and returns its completion control.
  *
  * @param {Document} document
- * @returns {{ complete: () => void }}
+ * @returns {{ setState: (state: { completed: number, total: number }) => void, complete: () => void }}
  */
 export function startLoadingProgress(document) {
   installStyles(document);
@@ -112,6 +112,20 @@ export function startLoadingProgress(document) {
   }
 
   return {
+    /**
+     * Applies worker-owned import progress once its total is available.
+     * @param {{ completed: number, total: number }} workerState
+     */
+    setState(workerState) {
+      const total = Number(workerState?.total);
+      const completed = Number(workerState?.completed);
+      if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(completed)) return;
+      window.clearTimeout(state.timer);
+      state.advancing = false;
+      state.progress = INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS)
+        * Math.min(1, Math.max(0, completed / total));
+      state.bar.style.transform = `scaleX(${state.progress})`;
+    },
     complete() {
       if (completed) return;
       completed = true;
@@ -129,4 +143,22 @@ export function startLoadingProgress(document) {
       }, COMPLETION_DURATION);
     },
   };
+}
+
+/**
+ * Applies data-worker progress to the currently visible top progress bar.
+ * @param {Document} document
+ * @param {{ completed: number, total: number }} state
+ */
+export function setLoadingProgressState(document, state) {
+  const active = activeProgress.get(document);
+  if (!active || !active.bar.isConnected) return;
+  const total = Number(state?.total);
+  const completed = Number(state?.completed);
+  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(completed)) return;
+  window.clearTimeout(active.timer);
+  active.advancing = false;
+  active.progress = INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS)
+    * Math.min(1, Math.max(0, completed / total));
+  active.bar.style.transform = `scaleX(${active.progress})`;
 }
