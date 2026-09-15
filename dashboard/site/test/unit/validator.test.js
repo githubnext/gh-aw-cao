@@ -890,9 +890,9 @@ dashboard:
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
       'workflows',
       'runs',
-      'events',
       'firewall',
-      'mcps'
+      'mcps',
+      'events'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
