@@ -256,7 +256,7 @@ test("control policy validates and exposes web presentation settings", () => {
   policy["control-plane"].web.experimental = "true";
   const invalidExperimental = validate(JSON.stringify(policy));
   assert.notEqual(invalidExperimental.status, 0);
-  assert.match(invalidExperimental.stderr, /control-plane\.web\.experimental must be a boolean/);
+  assert.match(invalidExperimental.stderr, /control-plane\.web\.experimental must be a Boolean/);
   policy["control-plane"].web.experimental = true;
 
   for (const favicon of [

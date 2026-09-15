@@ -46,7 +46,7 @@ test("docs dashboard installs renderer assets and configured package pages", asy
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-build-"));
   const destination = pathToFileURL(`${root}/cao/`);
   const controlSettings = {
-    web: { favicon: "https://example.com/dashboard.svg" },
+    web: { experimental: true, favicon: "https://example.com/dashboard.svg" },
     packages: { "uk-ai-advisory": {}, dependabot: {} },
   };
 
