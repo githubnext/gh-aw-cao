@@ -1,6 +1,8 @@
 import type { MarkdownInstance } from "astro";
 import { parse } from "yaml";
 import controlPolicy from "../../.github/workflows/cao.json";
+import activityManifestSource from "../../.github/cao/activity/aw.yml?raw";
+import dashboardManifestSource from "../../.github/cao/dashboard/aw.yml?raw";
 import rootManifestSource from "../../aw.yml?raw";
 import { selectConfiguredOperations } from "./configured-operations.mjs";
 
@@ -29,11 +31,15 @@ export type CatalogEntry = {
   ReadmeContent?: PackageReadme["Content"];
 };
 
-const manifests = import.meta.glob<string>("../../*/aw.{yml,yaml}", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-});
+const manifests = {
+  ...import.meta.glob<string>("../../*/aw.{yml,yaml}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+  "../../.github/cao/activity/aw.yml": activityManifestSource,
+  "../../.github/cao/dashboard/aw.yml": dashboardManifestSource,
+};
 const readmes = import.meta.glob<PackageReadme>("../../*/README.md", { eager: true });
 const rootManifest = parse(rootManifestSource) as PackageManifest;
 
@@ -72,7 +78,7 @@ function builtinPackageSlugs(root: PackageManifest): Set<string> {
   const includes = workflowList(root.includes, "../../aw.yml");
   return new Set(
     includes
-      .map((entry) => entry.match(/^([^/]+)\/aw\.ya?ml$/)?.[1])
+      .map((entry) => entry.match(/(?:^|\/)([^/]+)\/aw\.ya?ml$/)?.[1])
       .filter((slug): slug is string => Boolean(slug)),
   );
 }
@@ -87,7 +93,10 @@ const packageEntries: CatalogEntry[] = Object.entries(manifests)
     if (!manifestFile) throw new Error(`Could not derive a manifest filename from ${manifestPath}`);
 
     const manifest = parse(source) as PackageManifest;
-    const readmePath = `../../${slug}/README.md`;
+    const internal = manifestPath.startsWith("../../.github/cao/");
+    const readmePath = internal
+      ? `../../.github/cao/${slug}/README.md`
+      : `../../${slug}/README.md`;
     const readme = readmes[readmePath];
 
     return {
@@ -100,7 +109,9 @@ const packageEntries: CatalogEntry[] = Object.entries(manifests)
       experimental: optionalBoolean(manifest.experimental, "experimental", manifestPath),
       includes: workflowList(manifest.includes, manifestPath),
       manifestFile,
-      readmePath: readme ? `${slug}/README.md` : undefined,
+      readmePath: readme
+        ? `${internal ? ".github/cao/" : ""}${slug}/README.md`
+        : undefined,
       ReadmeContent: readme?.Content,
     };
   });
