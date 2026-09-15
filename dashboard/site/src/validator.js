@@ -2180,20 +2180,22 @@ function validateView(view, viewNode, path, viewIds, errors) {
       validateObjectKeys(getValueNodeByKey(viewNode, 'list'), VIEW_LIST_KEYS, listPath, errors);
       validateStringField(view.list.style, `${listPath}.style`, true, errors);
       if (typeof view.list.style === 'string' && !VIEW_LIST_STYLE_VALUES.includes(view.list.style)) {
-        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'list.style must be "cards".', `${listPath}.style`));
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.style must be one of ${VIEW_LIST_STYLE_VALUES.join(', ')}.`, `${listPath}.style`));
       }
       validateStringField(view.list.icon, `${listPath}.icon`, true, errors);
       if (typeof view.list.icon === 'string' && !PAGE_ICON_VALUES.includes(view.list.icon)) {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'list icon must use one canonical Octicon name.', `${listPath}.icon`));
       }
-      validateRequiredIdentifier(view.list.action, `${listPath}.action`, 'list action reference', errors);
-      const declaredAction = typeof view.list.action === 'string'
-        ? declaredCliActions.get(view.list.action)
-        : undefined;
-      if (typeof view.list.action === 'string' && !declaredAction) {
-        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list action must reference a declared dashboard CLI action.', `${listPath}.action`));
-      } else if (declaredAction?.placement !== 'view') {
-        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
+      if (view.list.action !== undefined) {
+        validateRequiredIdentifier(view.list.action, `${listPath}.action`, 'list action reference', errors);
+        const declaredAction = typeof view.list.action === 'string'
+          ? declaredCliActions.get(view.list.action)
+          : undefined;
+        if (typeof view.list.action === 'string' && !declaredAction) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list action must reference a declared dashboard CLI action.', `${listPath}.action`));
+        } else if (declaredAction?.placement !== 'view') {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
+        }
       }
     }
     if (view.mark !== 'list') {
@@ -3687,13 +3689,6 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
     validateTableEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors, 'table');
   } else if (markValue === 'list') {
     validateTableEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors, 'list');
-    if (encoding.href !== undefined) {
-      errors.push(createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'list views must not encode href.',
-        `${viewPath}.encoding.href`
-      ));
-    }
   } else if (markValue === 'chart') {
     validateChartEncoding(encodingNode, encoding, chart, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors);
     validateChartWidget(encoding, chart, viewPath, errors);

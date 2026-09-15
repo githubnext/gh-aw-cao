@@ -28,6 +28,7 @@ const EXACT_EXPLANATIONS = {
   'control-plane.inventory.batch-size': 'Caps repositories processed in one inventory batch.',
   'control-plane.inventory.batch-index': 'Selects the zero-based inventory batch.',
   'control-plane.web': 'Configures presentation without granting operational authority.',
+  'control-plane.web.experimental': 'Shows dashboard views marked as experimental.',
   'control-plane.web.favicon': 'Sets the dashboard favicon to a safe HTTPS URL or non-traversing local path.',
   'control-plane.defaults': 'Supplies inherited package limits when a package does not override them.',
   'control-plane.defaults.mode': 'Sets the inherited execution mode. Review proposes changes; live may write authorized outputs.',

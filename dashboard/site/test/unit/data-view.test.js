@@ -155,6 +155,56 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('update-available');
   });
 
+  it('renders a declarative issue list card bound to JSON fields', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'issues',
+      title: 'Issues',
+      view: {
+        mark: 'list',
+        list: { style: 'issues', icon: 'issue-opened' },
+        encoding: {
+          href: { field: 'issue-link' },
+          columns: [
+            { field: 'issue-title', title: 'Issue' },
+            { field: 'safe-output-type', title: 'Safe output', display: 'label' },
+            { field: 'repository', title: 'Repository' },
+            { field: 'run', title: 'Run', display: 'run-link' },
+            { field: 'observed-at', title: 'Opened', format: 'human-friendly-timestamp' }
+          ]
+        }
+      },
+      sourceName: 'issues',
+      rows: [{
+        'issue-title': 'Investigate failing compiler run',
+        'issue-link': 'https://github.com/githubnext/gh-aw-cao/issues/42',
+        'safe-output-type': 'create_issue',
+        repository: 'gh-aw-cao',
+        run: '303',
+        'run-link': {
+          relation: 'run',
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303',
+          label: 'View run 303'
+        },
+        'observed-at': '2026-09-14T22:00:00Z'
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelectorAll('.issue-list-card')).toHaveLength(1);
+    expect(rendered?.querySelector('.issue-list-card-title a')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/gh-aw-cao/issues/42');
+    expect(rendered?.querySelector('.issue-list-labels')?.textContent).toContain('create_issue');
+    expect(rendered?.textContent).toContain('gh-aw-cao');
+    expect(rendered?.querySelector('.issue-list-card-meta a')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/303');
+  });
+
   it('keeps a list action available when its source is unavailable', () => {
     setDeclaredCliActions([{
       id: 'upgrade-repository',

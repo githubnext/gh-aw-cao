@@ -63,6 +63,85 @@ describe('safe-output items dashboard', () => {
     });
   });
 
+  describe('issues dashboard', () => {
+    it('defines an experimental issue-style card list from safe-output item events', () => {
+      const page = dashboard.dashboard.pages.find(
+        (/** @type {{ id?: string }} */ candidate) => candidate.id === 'issues'
+      );
+      const query = dashboard.dashboard.queries.find(
+        (/** @type {{ name?: string }} */ candidate) => candidate.name === 'issues'
+      );
+
+      expect(dashboard.dashboard.navigation.find(
+        (/** @type {{ label?: string }} */ section) => section.label === 'Explore'
+      )).toMatchObject({ experimental: true, pages: expect.arrayContaining(['issues']) });
+      expect(page).toMatchObject({
+        kind: 'custom',
+        views: [{
+          id: 'issue-list',
+          mark: 'list',
+          list: { style: 'issues', icon: 'issue-opened' },
+          layout: 'full-view',
+          data: { source: 'issues' },
+          encoding: {
+            href: { field: 'issue-link' }
+          }
+        }]
+      });
+      expect(query).toMatchObject({
+        from: 'events',
+        filter: {
+          predicates: expect.arrayContaining([
+            { field: 'event-type', equals: 'safe_output.created' },
+            { field: 'github-entity-type', equals: 'issue' }
+          ])
+        }
+      });
+    });
+
+    it('renders issue safe-output items as GitHub-like issue rows', async () => {
+      const rendered = renderDashboard({
+        document: dashboard,
+        sources: {
+          issues: {
+            source: 'issues',
+            metadata,
+            rows: [{
+              'observed-at': '2026-09-14T22:00:00Z',
+              'issue-title': 'Investigate failing compiler run',
+              'issue-link': 'https://github.com/githubnext/gh-aw-cao/issues/42',
+              'safe-output-type': 'create_issue',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/dashboard.md',
+              run: '303',
+              'run-link': {
+                relation: 'run',
+                href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303',
+                label: 'View run 303'
+              }
+            }]
+          }
+        }
+      });
+      rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/');
+      const link = /** @type {HTMLAnchorElement | null} */ (
+        rendered.querySelector('[data-nav-page-id="issues"]')
+      );
+      link?.click();
+      await vi.waitFor(() => {
+        expect(rendered.querySelector('[data-page-id="issues"]')
+          ?.hasAttribute('data-page-pending')).toBe(false);
+      });
+      const page = rendered.querySelector('[data-page-id="issues"]');
+
+      expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
+      expect(page?.querySelector('.issue-list-card-title a')?.getAttribute('href'))
+        .toBe('https://github.com/githubnext/gh-aw-cao/issues/42');
+      expect(page?.querySelector('.issue-list-labels')?.textContent).toContain('create_issue');
+      expect(page?.textContent).toContain('Investigate failing compiler run');
+    });
+  });
+
   it('renders entity type, action, and run provenance', async () => {
     const page = await renderSafeOutputItemsPage([{
       'observed-at': '2026-09-14T22:00:00Z',

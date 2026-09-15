@@ -228,7 +228,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
-        expect.objectContaining({ message: 'list.style must be "cards".' })
+        expect.objectContaining({ message: 'list.style must be one of cards, issues.' })
       ])
     });
     starterList.list.style = 'cards';
@@ -369,7 +369,7 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
-      if (page.id === 'safe-outputs' || page.id === 'maintenance') continue;
+      if (page.id === 'safe-outputs' || page.id === 'maintenance' || page.id === 'issues') continue;
       const definition = page.definition ?? page;
       const editableViews = (definition.views ?? []).filter(
         (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
