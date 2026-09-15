@@ -339,6 +339,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
     0
   );
   let storedRecords = 0;
+  debug('starting canonical batch replacement', { totalRecords, batchSize });
   const database = await openCanonicalDatabase(indexedDB);
   try {
     for (const storeName of ENTITY_STORES) {
@@ -350,6 +351,11 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
       const existing = await requestResult(removalStore.getAllKeys());
       for (const id of existing) if (!retained.has(String(id))) removalStore.delete(id);
       await transactionDone(removal);
+      debug('completed canonical store eviction', {
+        store: storeName,
+        retainedRecords: retained.size,
+        existingRecords: existing.length
+      });
       const changedRecords = recordsToWrite[storeName];
       for (let offset = 0; offset < changedRecords.length; offset += batchSize) {
         const boundedRecords = changedRecords.slice(offset, offset + batchSize);
@@ -358,6 +364,12 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
         for (const record of boundedRecords) store.put(record);
         await transactionDone(transaction);
         storedRecords += boundedRecords.length;
+        debug('committed canonical write chunk', {
+          store: storeName,
+          chunkRecords: boundedRecords.length,
+          storedRecords,
+          totalRecords
+        });
         options.onProgress?.({ storedRecords, totalRecords });
       }
     }
@@ -366,6 +378,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   } finally {
     database.close();
   }
+  debug('completed canonical batch replacement', { storedRecords, totalRecords });
 }
 
 /**
@@ -385,6 +398,10 @@ export async function recordTransaction(indexedDB, transaction) {
       store.delete(expired.id);
     }
     await transactionDone(write);
+    debug('recorded ingestion transaction', {
+      kind: transaction.kind,
+      committedRecords: transaction.committedRecords ?? null
+    });
   } finally {
     database.close();
   }

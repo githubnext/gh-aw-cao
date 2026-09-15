@@ -8,6 +8,9 @@ import {
 } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
+import { createDebug } from '../../debug.js';
+
+const debug = createDebug('data:ingestion:jsonl');
 
 const OBSERVATION_SOURCE = 'gh-aw-logs';
 const REPOSITORY_COORDINATE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
@@ -636,6 +639,8 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   let lineNumber = 0;
   let bytesProcessed = 0;
   let recordsIngested = 0;
+  let chunksProcessed = 0;
+  debug('started streaming JSONL adaptation', { workflowHints: options.workflowHints?.length ?? 0 });
   /** @param {string} line */
   const accept = (line) => {
     lineNumber += 1;
@@ -656,6 +661,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
     }
   };
   for await (const chunk of chunks) {
+    chunksProcessed += 1;
     const bytes = typeof chunk === 'string' ? encoder.encode(chunk) : chunk;
     bytesProcessed += bytes.byteLength;
     hasher.update(bytes);
@@ -667,15 +673,30 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
       start = newline + 1;
     }
     if (start > 0) pending = pending.slice(start);
+    debug('adapted JSONL chunk', {
+      chunksProcessed,
+      chunkBytes: bytes.byteLength,
+      bytesProcessed,
+      linesProcessed: lineNumber,
+      recordsIngested,
+      pendingCharacters: pending.length
+    });
     options.onProgress?.({ bytesProcessed, linesProcessed: lineNumber, recordsIngested });
   }
   pending += decoder.decode();
   if (pending) accept(pending);
   options.onProgress?.({ bytesProcessed, linesProcessed: lineNumber, recordsIngested });
-  return {
+  const result = {
     ...accumulator.finish(),
     payloadIdentity: hasher.digest()
   };
+  debug('completed streaming JSONL adaptation', {
+    chunksProcessed,
+    bytesProcessed,
+    linesProcessed: lineNumber,
+    recordsIngested
+  });
+  return result;
 }
 
 /**
