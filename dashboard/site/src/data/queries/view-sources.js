@@ -330,6 +330,40 @@ function eventsSource(events, sessionsById, runsById, sources) {
   };
 }
 
+/**
+ * Projects canonical sessions with their run and repository context so
+ * ingestion-rate queries (imported runs per workflow/repository) can group
+ * sessions by organization, repository, workflow, and run.
+ *
+ * @param {Record<string, unknown>[]} sessions
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ * @param {Record<string, unknown>} sources
+ */
+function sessionsSource(sessions, runsById, sources) {
+  const rows = sessions.map((session) => {
+    const run = runsById.get(session.runId) ?? {};
+    return definedFields({
+      organization: run.owner,
+      repository: run.repository,
+      workflow: run.workflowPath,
+      run: run.githubRunId === undefined ? undefined : String(run.githubRunId),
+      'run-attempt': run.attempt,
+      session: session.id,
+      'job-id': session.jobId,
+      'session-kind': session.kind,
+      'session-status': session.status,
+      'started-at': session.startedAt,
+      'ended-at': session.completedAt,
+      'observed-at': session.startedAt
+    });
+  });
+  return {
+    source: 'sessions',
+    rows,
+    metadata: projectionMetadata(sources, 'sessions', 'sessions', rows.length > 0)
+  };
+}
+
 /** @param {unknown} value */
 function recordValue(value) {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -603,16 +637,17 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const queries = createCanonicalQueries(indexedDB);
   const needsFirewall = requested.has('firewall-observations');
   const needsGraders = requested.has('grader-observations') || requested.has('operational-values');
+  const needsSessions = requested.has('sessions') || needsFirewall || needsGraders;
   const needsEvents = requested.has('events') || needsFirewall || needsGraders;
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') || requested.has('runs') ? queries.workflows.list() : [],
-    requested.has('runs') || requested.has('job-performance') || needsEvents
+    requested.has('runs') || requested.has('job-performance') || needsSessions || needsEvents
       ? queries.runs.list() : [],
     requested.has('job-performance') ? queries.jobs.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
-    needsEvents ? queries.sessions.list() : [],
+    needsSessions || needsEvents ? queries.sessions.list() : [],
     needsEvents ? queries.events.list() : [],
     requested.has('transactions') ? queries.transactions.list() : []
   ]);
@@ -635,6 +670,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
+  if (requested.has('sessions')) projected.sessions = sessionsSource(sessions, runsById, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
   if (requested.has('grader-observations')) {
     projected['grader-observations'] = graderObservationsSource(
