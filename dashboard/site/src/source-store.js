@@ -76,7 +76,6 @@ export function configureSourceLoader(loader) {
 export function requestSource(name) {
   if (!loadSource || requested.has(name)) return;
   requested.add(name);
-  debug('requested', { source: name });
   void loadRequestedSource(name);
 }
 

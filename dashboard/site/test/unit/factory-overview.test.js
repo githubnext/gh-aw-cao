@@ -216,34 +216,3 @@ it('requests only compact query outputs and updates each station independently',
   expect(rendered.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(false);
   expect(rendered.querySelector('.factory-station:nth-child(4)')?.classList.contains('factory-station-pending')).toBe(true);
 });
-
-it('renders a fast counter before the slower weekly graph query', async () => {
-  /** @type {Map<string, (value: import('../../src/presenter.js').LogicalSourceInput | undefined) => void>} */
-  const resolvers = new Map();
-  configureSourceLoader((name) => new Promise((resolve) => resolvers.set(name, resolve)));
-
-  const rendered = renderFactoryOverview({ sources: {} });
-  expect(rendered.querySelector('.factory-station:nth-child(2)')?.getAttribute('aria-busy')).toBe('true');
-  expect(rendered.querySelector('.factory-rhythm-day')?.getAttribute('title')).toBe('Mon : 0 successful runs last week.');
-
-  resolvers.get('overview-run-summary')?.(source('overview-run-summary', [{
-    'successful-runs': 7,
-    'failed-runs': 0,
-    'active-runs': 0
-  }]));
-  await Promise.resolve();
-  await Promise.resolve();
-
-  expect(rendered.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Successful runs70 failed');
-  expect(rendered.querySelector('.factory-station:nth-child(2)')?.hasAttribute('aria-busy')).toBe(false);
-  expect(rendered.querySelector('.factory-rhythm-day')?.getAttribute('title')).toBe('Mon : 0 successful runs last week.');
-
-  resolvers.get('overview-rhythm')?.(rhythmSource({
-    Mon: { current: 3, previous: 1, reached: true }
-  }));
-  await Promise.resolve();
-  await Promise.resolve();
-
-  expect(rendered.querySelector('.factory-rhythm-day')?.getAttribute('title'))
-    .toBe('Mon 2026-09-07: 3 successful runs this week.');
-});

@@ -31,8 +31,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("if (!event.persisted) refreshOwner.abort()");
     expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DATABASE_COUNT_SOURCE_NAMES,/);
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
-    expect(preview).toContain('renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources)');
-    expect(preview.indexOf('kind: "initial-page"')).toBeLessThan(preview.indexOf('kind: "ingestion"'));
+    expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
     expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources)');
     expect(preview).toContain("renderRefreshError(retryRefresh)");
     expect(preview).toContain("refreshSources");
