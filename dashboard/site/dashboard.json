@@ -977,26 +977,6 @@
         }
       },
       {
-        "name": "workflow-imported-run-totals",
-        "intent": "Summarize distinct runs with an imported session by declared workflow.",
-        "description": "Observed imported run totals for each declared workflow.",
-        "from": "sessions",
-        "aggregate": {
-          "by": [
-            "organization",
-            "repository",
-            "workflow"
-          ],
-          "values": [
-            {
-              "field": "run",
-              "as": "imported-runs",
-              "reducer": "distinct-count"
-            }
-          ]
-        }
-      },
-      {
         "name": "session-runs",
         "intent": "Identify each workflow run that has one or more imported sessions.",
         "description": "Distinct workflow runs represented by imported sessions.",
@@ -1012,6 +992,26 @@
             {
               "field": "session",
               "as": "sessions",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "workflow-imported-run-totals",
+        "intent": "Summarize distinct runs with an imported session by declared workflow.",
+        "description": "Observed imported run totals for each declared workflow.",
+        "from": "session-runs",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "imported-runs",
               "reducer": "count"
             }
           ]
@@ -3033,11 +3033,23 @@
             ]
           },
           {
+            "as": "imported-session-count",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "imported-sessions"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
             "as": "imported",
             "function": "greater-than",
             "args": [
               {
-                "field": "imported-sessions"
+                "field": "imported-session-count"
               },
               {
                 "value": 0
