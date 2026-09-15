@@ -25,6 +25,7 @@ export const DATABASE_SCHEMA_VERSION = 1;
 export const TRANSACTION_KINDS = [
   "adoption-request",
   "lint-inventory",
+  "repository-priority",
   "rule-candidate",
   "rule-normalization",
   "rule-outcome",
@@ -112,7 +113,9 @@ function parseTransaction(raw, sourceFile, sourceLine) {
   const targetRepo = requireString(record, "target_repo", where);
   if (!REPOSITORY_PATTERN.test(targetRepo)) fail(`${where}: "target_repo" must be owner/repository`);
   const ruleKey = optionalString(record, "rule_key", where);
-  if (kind !== "lint-inventory" && !ruleKey) fail(`${where}: "rule_key" is required for kind ${kind}`);
+  if (!["lint-inventory", "repository-priority"].includes(kind) && !ruleKey) {
+    fail(`${where}: "rule_key" is required for kind ${kind}`);
+  }
   if (ruleKey && !IDENTIFIER_PATTERN.test(ruleKey)) fail(`${where}: "rule_key" is not collision-safe`);
   const payload = record.payload;
   if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
@@ -199,6 +202,15 @@ function summariseInventory(transactions) {
   return [...inventory.values()].sort((left, right) => left.targetRepo.localeCompare(right.targetRepo));
 }
 
+function summarisePriorities(transactions) {
+  const priorities = new Map();
+  for (const transaction of transactions) {
+    if (transaction.kind !== "repository-priority") continue;
+    priorities.set(transaction.targetRepo, transaction);
+  }
+  return [...priorities.values()].sort((left, right) => left.targetRepo.localeCompare(right.targetRepo));
+}
+
 const DDL = [
   "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT",
   `CREATE TABLE transactions (
@@ -227,6 +239,12 @@ const DDL = [
     target_count INTEGER NOT NULL
   ) STRICT`,
   `CREATE TABLE lint_inventory (
+    target_repo TEXT PRIMARY KEY,
+    recorded_at TEXT NOT NULL,
+    txn_id TEXT NOT NULL,
+    payload TEXT NOT NULL
+  ) STRICT`,
+  `CREATE TABLE repository_priority (
     target_repo TEXT PRIMARY KEY,
     recorded_at TEXT NOT NULL,
     txn_id TEXT NOT NULL,
@@ -286,17 +304,25 @@ function writeDatabase(databasePath, transactions) {
     for (const entry of inventory) {
       insertInventory.run(entry.targetRepo, entry.recordedAt, entry.txnId, entry.payload);
     }
+    const priorities = summarisePriorities(transactions);
+    const insertPriority = database.prepare(
+      "INSERT INTO repository_priority (target_repo, recorded_at, txn_id, payload) VALUES (?, ?, ?, ?)",
+    );
+    for (const entry of priorities) {
+      insertPriority.run(entry.targetRepo, entry.recordedAt, entry.txnId, entry.payload);
+    }
     const insertMeta = database.prepare("INSERT INTO meta (key, value) VALUES (?, ?)");
     for (const [key, value] of [
       ["database_schema_version", String(DATABASE_SCHEMA_VERSION)],
       ["inventory_count", String(inventory.length)],
+      ["repository_priority_count", String(priorities.length)],
       ["rule_count", String(rules.length)],
       ["transaction_count", String(transactions.length)],
       ["transaction_schema", TRANSACTION_SCHEMA],
     ]) {
       insertMeta.run(key, value);
     }
-    return { rules: rules.length, inventory: inventory.length };
+    return { rules: rules.length, inventory: inventory.length, priorities: priorities.length };
   } finally {
     database.close();
   }

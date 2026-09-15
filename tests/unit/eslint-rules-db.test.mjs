@@ -41,6 +41,16 @@ function memoryFixture(logs) {
 }
 
 const sampleLogs = {
+  "orchestrator__octo__app__2025-01-01.jsonl": [
+    transaction({
+      txn_id: "txn-priority",
+      recorded_at: "2024-12-31T23:00:00Z",
+      worker: "orchestrator",
+      kind: "repository-priority",
+      rule_key: undefined,
+      payload: { rank: 1, decision: "selected" },
+    }),
+  ],
   "miner__octo__app__2025-01-02.jsonl": [
     transaction({ txn_id: "txn-0002", recorded_at: "2025-01-02T09:00:00Z" }),
     transaction({ txn_id: "txn-0001", recorded_at: "2025-01-02T08:00:00Z" }),
@@ -72,7 +82,7 @@ test("rules database orders transactions deterministically across logs", () => {
     const transactions = collectTransactions(memory);
     assert.deepEqual(
       transactions.map((entry) => entry.txnId),
-      ["txn-0000", "txn-0001", "txn-0002", "txn-0003"],
+      ["txn-priority", "txn-0000", "txn-0001", "txn-0002", "txn-0003"],
     );
     assert.equal(transactions[0].ruleKey, "");
   } finally {
@@ -87,7 +97,7 @@ test("rules database rebuild is byte-identical for identical logs", () => {
   try {
     const summary = rebuildDatabase({ memoryDirectory: memory, databasePath: first });
     rebuildDatabase({ memoryDirectory: memory, databasePath: second });
-    assert.deepEqual(summary, { transactions: 4, rules: 1, inventory: 1 });
+    assert.deepEqual(summary, { transactions: 5, rules: 1, inventory: 1, priorities: 1 });
     assert.deepEqual(readFileSync(first), readFileSync(second));
   } finally {
     rmSync(memory, { recursive: true, force: true });
@@ -106,7 +116,8 @@ test("rules database exposes validated schema, rules, and inventory", () => {
       );
       assert.equal(meta.database_schema_version, "1");
       assert.equal(meta.transaction_schema, "cao.eslint-rules.transaction");
-      assert.equal(meta.transaction_count, "4");
+      assert.equal(meta.transaction_count, "5");
+      assert.equal(meta.repository_priority_count, "1");
       const rule = database.prepare("SELECT * FROM rules").get();
       assert.equal(rule.rule_key, "ts-no-floating-promise-in-handler");
       assert.equal(rule.candidate_count, 2);
@@ -115,10 +126,13 @@ test("rules database exposes validated schema, rules, and inventory", () => {
       const inventory = database.prepare("SELECT * FROM lint_inventory").get();
       assert.equal(inventory.target_repo, "octo/app");
       assert.equal(inventory.payload, '{"eslint":"flat","package_manager":"npm"}');
+      const priority = database.prepare("SELECT * FROM repository_priority").get();
+      assert.equal(priority.target_repo, "octo/app");
+      assert.equal(priority.payload, '{"decision":"selected","rank":1}');
       const sequence = database.prepare("SELECT seq, txn_id FROM transactions ORDER BY seq").all();
       assert.deepEqual(
         sequence.map((row) => row.seq),
-        [1, 2, 3, 4],
+        [1, 2, 3, 4, 5],
       );
     } finally {
       database.close();
@@ -187,12 +201,12 @@ test("rules database command line builds and verifies without dependencies", () 
   const databasePath = path.join(memory, "cli.sqlite");
   try {
     const verified = JSON.parse(execFileSync("node", [scriptSource, "verify", "--memory", memory], { encoding: "utf8" }));
-    assert.deepEqual(verified, { command: "verify", transactions: 4 });
+    assert.deepEqual(verified, { command: "verify", transactions: 5 });
     const built = JSON.parse(
       execFileSync("node", [scriptSource, "build", "--memory", memory, "--database", databasePath], { encoding: "utf8" }),
     );
     assert.equal(built.command, "build");
-    assert.equal(built.transactions, 4);
+    assert.equal(built.transactions, 5);
     assert.match(readFileSync(scriptSource, "utf8"), /^import \{ DatabaseSync \} from "node:sqlite";$/m);
     assert.equal(/from "(?!node:)/.test(readFileSync(scriptSource, "utf8")), false);
   } finally {

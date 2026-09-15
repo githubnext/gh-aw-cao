@@ -60,7 +60,13 @@ test("ESLint Factory orchestrator owns discovery and dispatches only its declare
   assert.match(source, /control-precompute\.json/);
   assert.match(source, /GET \/repos\/\{owner\}\/\{repo\}\/languages/);
   assert.match(source, /never paginate it and never use a repository or code search to find more candidates/);
-  assert.doesNotMatch(source, /repo-memory/);
+  assert.match(source, new RegExp(memoryBranch));
+  assert.match(source, /kind `repository-priority`/);
+  assert.match(source, /transactions\/orchestrator__<owner>__<repository>__<YYYY-MM-DD>\.jsonl/);
+  assert.match(
+    source,
+    /node \.github\/aw\/eslint-rules\/rules-db\.mjs build --memory "\$GH_AW_MEMORY_DIR" --database \/tmp\/gh-aw\/eslint-rules\/rules\.sqlite/,
+  );
 });
 
 test("ESLint Factory workers are single-target and cannot discover or dispatch", () => {
