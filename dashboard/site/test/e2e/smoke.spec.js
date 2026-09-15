@@ -2464,6 +2464,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
 
   const scroll = view.locator('.table-scroll');
+  await expect(scroll).toHaveCSS('overscroll-behavior-x', 'none');
   const more = view.locator('[data-table-more]');
   const sidebarBox = await page.locator('.org-sidebar').boundingBox();
   const initialScrollBox = await scroll.boundingBox();

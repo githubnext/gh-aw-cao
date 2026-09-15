@@ -1875,6 +1875,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .overview-content > .layout-section > .layout-section-header { margin: 0 0 12px; padding-top: 20px; border-top: 1px solid var(--border); }
 .table-region { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; margin: 12px 0 20px; background: var(--canvas); }
 .table-scroll { max-height: 60vh; overflow: auto; overscroll-behavior: contain; }
+.table-region[data-lazy-list] .table-scroll { overscroll-behavior-x: none; }
 .table-region-static .table-scroll, .table-region-expanded .table-scroll { max-height: none; overflow: visible; overscroll-behavior: auto; }
 .table-scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .table-scroll thead th { position: sticky; top: 0; z-index: 1; }
