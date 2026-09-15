@@ -145,14 +145,25 @@ function renderMetricView(context) {
       ? view.metric['navigation-page']
       : null;
     const tag = navigationPage ? 'a' : 'div';
+    const animateNumber = view.metric.animate === 'number' && isWholeNumber(displayedValue);
     return h(tag, {
       className: `metric-card-widget metric-card-widget-${tone}${active ? ' metric-card-widget-active' : ''}`,
       ...(navigationPage ? { href: `#page-${encodeURIComponent(navigationPage)}` } : {})
     },
-    h('strong', { className: 'metric-card-widget-value', 'data-metric-value': fieldName ?? 'unknown' }, displayedValue),
+    h('strong', {
+      className: `metric-card-widget-value${animateNumber ? ' metric-number-animated' : ''}`,
+      'data-metric-value': fieldName ?? 'unknown',
+      ...(animateNumber ? { style: `--metric-number-target: ${displayedValue}` } : {})
+    }, animateNumber ? h('span', { className: 'sr-only' }, displayedValue) : displayedValue),
     h(headingTag, { className: 'metric-card-widget-label' }, title),
     h('span', { className: 'metric-card-widget-icon', 'aria-hidden': 'true' }, octicon(icon)),
     ...renderViewSectionChrome(metadata, contextDetails));
+  }
+
+  /** @param {string} value */
+  function isWholeNumber(value) {
+    const number = Number(value);
+    return Number.isSafeInteger(number) && String(number) === value;
   }
 
   const content = [

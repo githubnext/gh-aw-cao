@@ -82,6 +82,33 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.octicon-x-circle')).not.toBeNull();
   });
 
+  it('renders a CSS counter for an opted-in whole-number metric card', () => {
+    const rendered = renderDataView('metric', {
+      pageId: 'overview',
+      title: 'Runs',
+      view: {
+        mark: 'metric',
+        metric: { style: 'card', icon: 'play', tone: 'neutral', animate: 'number' },
+        encoding: { value: { field: 'count' } }
+      },
+      sourceName: 'runs',
+      rows: [{ count: 12 }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h4',
+      units: {},
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const value = rendered?.querySelector('[data-metric-value="count"]');
+    expect(value?.classList.contains('metric-number-animated')).toBe(true);
+    expect(value?.getAttribute('style')).toContain('--metric-number-target: 12');
+    expect(value?.textContent).toBe('12');
+  });
+
   it('renders a declarative card list with view and conditional row actions', () => {
     setDeclaredCliActions([
       {

@@ -95,9 +95,10 @@ export const VIEW_ELEMENT_VALUES = [
   'outcomes-overview'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
-export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page'];
+export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];
+export const VIEW_METRIC_ANIMATION_VALUES = ['number'];
 export const VIEW_LIST_KEYS = ['style', 'icon', 'action'];
 export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues'];
 export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third'];

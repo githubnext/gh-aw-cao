@@ -516,7 +516,14 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .metric-card-widget-review { --metric-card-color: var(--purple); }
 .metric-card-widget[href]:hover { background: color-mix(in srgb, var(--metric-card-color, var(--accent)) 12%, var(--canvas-subtle)); }
 .metric-card-widget:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@property --metric-number { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@keyframes metric-number-count {
+  from { --metric-number: 0; }
+  to { --metric-number: var(--metric-number-target); }
+}
 .metric-card-widget-value { min-height: 1em; align-self: center; color: var(--muted); font-size: 2.5rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.metric-number-animated { --metric-number: 0; counter-reset: metric-number var(--metric-number); animation: metric-number-count 700ms ease-out both; }
+.metric-number-animated::after { content: counter(metric-number); }
 .metric-card-widget-active .metric-card-widget-value { color: var(--metric-card-color); }
 .metric-card-widget-label { min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; margin: 0; color: var(--muted); font-size: .8125rem; font-weight: 600; line-height: 1.35; text-transform: uppercase; }
 .metric-card-widget-active .metric-card-widget-label { color: var(--fg); }
@@ -764,7 +771,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
   from { opacity: 0; transform: scaleY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pie-chart-segment, .line-chart-series, .line-chart-point, .dot-chart-point, .scatter-chart-point, .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect { animation: none; }
+  .pie-chart-segment, .line-chart-series, .line-chart-point, .dot-chart-point, .scatter-chart-point, .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect, .metric-number-animated { animation: none; }
   .pie-chart-segment, .point-tooltip, .swimlane-run-mark, .dashboard-notification-chevron { transition: none; }
 }
 .view-description { margin: 3px 0 0; color: var(--muted); }

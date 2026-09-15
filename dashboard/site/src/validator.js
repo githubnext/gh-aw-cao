@@ -107,6 +107,7 @@ import {
   VIEW_LIST_STYLE_VALUES,
   VIEW_MARK_VALUES,
   VIEW_METRIC_KEYS,
+  VIEW_METRIC_ANIMATION_VALUES,
   VIEW_METRIC_STYLE_VALUES,
   VIEW_METRIC_TONE_VALUES,
   VIEW_TITLE_LINK_KEYS,
@@ -2231,6 +2232,21 @@ function validateView(view, viewNode, path, viewIds, errors) {
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
             'metric style must use one canonical metric widget value.',
             `${metricPath}.style`
+          ));
+        }
+        validateStringField(view.metric.animate, `${metricPath}.animate`, true, errors);
+        if (typeof view.metric.animate === 'string' && !VIEW_METRIC_ANIMATION_VALUES.includes(view.metric.animate)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric animate must use one canonical metric animation value.',
+            `${metricPath}.animate`
+          ));
+        }
+        if (view.metric.animate !== undefined && view.metric.style !== 'card') {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'metric animate is supported only for card metric widgets.',
+            `${metricPath}.animate`
           ));
         }
         validateStringField(view.metric.icon, `${metricPath}.icon`, true, errors);
