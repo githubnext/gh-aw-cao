@@ -756,14 +756,19 @@ function renderChartView(context) {
     const children = Array.from(section.children);
     /** @param {Element} element */
     const isCopy = (element) => element.matches('h3, h4, .view-description, .view-source, .view-metadata, .view-context, .view-description-tooltip');
-    section.replaceChildren(
-      h(
-        'div',
-        { className: 'chart-horizontal-card' },
-        h('div', { className: 'chart-horizontal-copy' }, ...children.filter(isCopy)),
-        h('div', { className: 'chart-horizontal-layout' }, ...children.filter((element) => !isCopy(element)))
-      )
-    );
+    const firstVisualization = children.findIndex((element) => !isCopy(element));
+    const copy = children.slice(0, firstVisualization);
+    const visualization = children.slice(firstVisualization);
+    if (firstVisualization > 0 && copy.every(isCopy) && visualization.every((element) => !isCopy(element))) {
+      section.replaceChildren(
+        h(
+          'div',
+          { className: 'chart-horizontal-card' },
+          h('div', { className: 'chart-horizontal-copy' }, ...copy),
+          h('div', { className: 'chart-horizontal-layout' }, ...visualization)
+        )
+      );
+    }
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
   if (supportsIncrementalChartContinuation(view) && continuation?.token && !pending) {
