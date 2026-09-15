@@ -92,7 +92,7 @@ tools:
     file-glob: ["transactions/*.jsonl", "rules/*.json"]
     allowed-extensions: [".json", ".jsonl"]
     format-json: true
-    max-file-size: 102400
+    max-file-size: 1048576
     max-file-count: 400
     max-patch-size: 51200
 
@@ -134,7 +134,7 @@ For each precomputed candidate, and for no other repository, confirm eligibility
 
 Rank eligible candidates by the strength of the evidence that a central rule would help: recent merged bug-fix activity, recent human review corrections, and missing or weak lint enforcement recorded by `eslint-rules-inventory` in package memory. Keep the number of GitHub calls proportional to the candidate count, and report incomplete rather than exceeding the precomputed effective maximum.
 
-Persist the resulting prioritized list in shared memory. For each eligible candidate, append one `repository-priority` transaction to `transactions/orchestrator__<owner>__<repository>__<YYYY-MM-DD>.jsonl`; replace `/` with `__`, lower-case the filename, and never rewrite, reorder, or delete an existing line. Each line has the shared transaction fields: schema `cao.eslint-rules.transaction`, schema version `1`, a collision-safe `txn_id`, UTC `recorded_at`, worker `orchestrator`, kind `repository-priority`, an empty `rule_key`, candidate `target_repo`, central repository, correlation ID, run URL, and a compact payload containing rank, material JavaScript/TypeScript language evidence, lint-support state, priority signals, and the dispatch decision. Do not persist source text, comments, diffs, or raw API responses. Rebuild the database after appending and stop with `report_incomplete` if it rejects the update.
+Persist the resulting prioritized list in shared memory. For each eligible candidate, append one `repository-priority` transaction to the stable per-writer log `transactions/orchestrator__<owner>__<repository>.jsonl`; replace `/` with `__`, lower-case the filename, and never rewrite, reorder, or delete an existing line. Stable logs prevent the file count from growing on every scheduled run, and singleton orchestrator concurrency ensures this file has one writer. Each line has the shared transaction fields: schema `cao.eslint-rules.transaction`, schema version `1`, a collision-safe `txn_id`, UTC `recorded_at`, worker `orchestrator`, kind `repository-priority`, an empty `rule_key`, candidate `target_repo`, central repository, correlation ID, run URL, and a compact payload containing rank, material JavaScript/TypeScript language evidence, lint-support state, priority signals, and the dispatch decision. Do not persist source text, comments, diffs, or raw API responses. Rebuild the database after appending and stop with `report_incomplete` if it rejects the update.
 
 ## Workers
 

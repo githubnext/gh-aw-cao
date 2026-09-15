@@ -33,7 +33,7 @@ Every worker workflow is independently dispatchable, handles exactly one target 
 
 All six workflows share one repo-memory branch, `memory/eslint-rules`.
 
-- `transactions/<worker>__<owner>__<repository>__<YYYY-MM-DD>.jsonl` are append-only transaction logs and the authoritative record. File names are flat, lower-case, and collision-safe. Lines are never rewritten or deleted.
+- `transactions/<worker>__<owner>__<repository>.jsonl` are stable, per-writer append-only transaction logs and the authoritative record. File names are flat, lower-case, and collision-safe. Lines are never rewritten or deleted, while the stable names keep scheduled runs from consuming a new repo-memory file each day.
 - `repository-priority` transactions retain the orchestrator's latest bounded ranking and dispatch decision for each enrolled repository.
 - `rules/<rule-key>.json` is a flat directory holding the current normalized state of each rule.
 - Only compact evidence references and outcomes are persisted — permalinks, numbers, paths, counts, and classifications. Review comment text, agent transcripts, diffs, logs, and source dumps are never stored.

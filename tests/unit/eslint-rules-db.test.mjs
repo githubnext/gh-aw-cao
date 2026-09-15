@@ -182,6 +182,29 @@ test("rules database rejects duplicate transaction identifiers", () => {
   }
 });
 
+test("rules database accepts long valid log names and normalizes repository identity", () => {
+  const owner = "o".repeat(39);
+  const repository = "r".repeat(100);
+  const target = `${owner}/${repository}`;
+  const memory = memoryFixture({
+    [`inventory__${owner}__${repository}.jsonl`]: [
+      transaction({
+        txn_id: "txn-long-repository",
+        worker: "inventory",
+        kind: "lint-inventory",
+        rule_key: undefined,
+        target_repo: target.toUpperCase(),
+      }),
+    ],
+  });
+  try {
+    const [entry] = collectTransactions(memory);
+    assert.equal(entry.targetRepo, target);
+  } finally {
+    rmSync(memory, { recursive: true, force: true });
+  }
+});
+
 test("rules database keeps the previous database when logs become malformed", () => {
   const memory = memoryFixture(sampleLogs);
   const databasePath = path.join(memory, "rules.sqlite");

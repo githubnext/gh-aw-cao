@@ -32,6 +32,7 @@ export const TRANSACTION_KINDS = [
 ];
 
 const IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9._-]{0,80}$/;
+const LOG_BASENAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,239}$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const WORKER_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -63,7 +64,7 @@ export function readTransactionLogs(memoryDirectory) {
     .map((entry) => entry.name)
     .sort();
   return files.map((name) => {
-    if (!IDENTIFIER_PATTERN.test(name.slice(0, -".jsonl".length))) {
+    if (!LOG_BASENAME_PATTERN.test(name.slice(0, -".jsonl".length))) {
       fail(`transactions/${name}: log file name is not collision-safe`);
     }
     return { name, text: readFileSync(path.join(logDirectory, name), "utf8") };
@@ -110,8 +111,9 @@ function parseTransaction(raw, sourceFile, sourceLine) {
   if (!WORKER_PATTERN.test(worker)) fail(`${where}: "worker" is not a slug`);
   const kind = requireString(record, "kind", where);
   if (!TRANSACTION_KINDS.includes(kind)) fail(`${where}: unknown kind ${JSON.stringify(kind)}`);
-  const targetRepo = requireString(record, "target_repo", where);
-  if (!REPOSITORY_PATTERN.test(targetRepo)) fail(`${where}: "target_repo" must be owner/repository`);
+  const targetRepoValue = requireString(record, "target_repo", where);
+  if (!REPOSITORY_PATTERN.test(targetRepoValue)) fail(`${where}: "target_repo" must be owner/repository`);
+  const targetRepo = targetRepoValue.toLowerCase();
   const ruleKey = optionalString(record, "rule_key", where);
   if (!["lint-inventory", "repository-priority"].includes(kind) && !ruleKey) {
     fail(`${where}: "rule_key" is required for kind ${kind}`);
