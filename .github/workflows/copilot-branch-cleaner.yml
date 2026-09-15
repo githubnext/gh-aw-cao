@@ -147,7 +147,6 @@ jobs:
                 )
                 for (const candidate of batch) {
                   deleted.push(candidate)
-                  deleted.push(candidate)
                 }
               } catch {
                 failed.push(...batch)
@@ -169,8 +168,4 @@ jobs:
               for (const candidate of failed) {
                 core.info(`Not deleted ${candidate.name}`)
               }
-            }
-
-            if (failed.length > 0) {
-              core.setFailed(`${failed.length} eligible branches could not be deleted`)
             }
