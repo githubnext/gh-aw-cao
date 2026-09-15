@@ -1122,11 +1122,23 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageMode = root.querySelector('[data-page-mode]');
   const reportActions = root.querySelector('.report-actions');
   const pageScroller = root.querySelector('main.dashboard-prototype');
-  /** @param {HTMLElement | undefined} page */
+  /**
+   * A full-view table is only pinned to its own scroll surface when it is the sole view
+   * sharing its grid. When a chart or other view precedes it (for example the pie chart on
+   * the Cost page), pinning the table would hide the rest of the page behind an overflow:
+   * hidden container with no way to scroll to it. In that case the whole page scrolls
+   * normally instead.
+   * @param {HTMLElement | undefined} page
+   */
   const syncFullViewMode = (page) => {
     const fullView = page?.querySelector('.custom-view[data-view-layout="full-view"]');
-    root.classList.toggle('dashboard-full-view', Boolean(fullView));
-    if (!fullView) root.classList.remove('dashboard-full-view-scrolled');
+    const isSoleView = Boolean(
+      fullView
+      && fullView.parentElement
+      && fullView.parentElement.querySelectorAll(':scope > .custom-view').length === 1
+    );
+    root.classList.toggle('dashboard-full-view', isSoleView);
+    if (!isSoleView) root.classList.remove('dashboard-full-view-scrolled');
   };
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
