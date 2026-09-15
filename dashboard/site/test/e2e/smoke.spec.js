@@ -674,6 +674,116 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
+test('scrolling over the Models & Agents pie chart collapses chrome and reveals the full-view table', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const dashboardDocument = {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'models-scroll',
+          title: 'Models & Agents',
+          pages: [{
+            id: 'engines-models',
+            kind: 'custom',
+            title: 'Models & Agents',
+            views: [{
+              id: 'engines-models-distribution',
+              title: 'Agent and model distribution',
+              data: { source: 'engines-models-chart' },
+              mark: 'chart',
+              chart: 'pie',
+              layout: 'full',
+              encoding: {
+                x: { field: 'summary', type: 'nominal', title: 'Agent / model' },
+                y: { field: 'events', type: 'quantitative', title: 'Events' }
+              }
+            }, {
+              id: 'engines-models-usage',
+              title: 'Engines and models',
+              data: { source: 'engines-models-usage' },
+              mark: 'table',
+              controls: 'interactive',
+              layout: 'full-view',
+              encoding: {
+                columns: [
+                  { field: 'summary', type: 'nominal', title: 'Agent / model' },
+                  { field: 'events', type: 'quantitative', title: 'Events' }
+                ]
+              },
+              'lazy-list': true
+            }]
+          }],
+          navigation: [{ label: 'Data', pages: ['engines-models'] }]
+        }
+      };
+      const metadata = {
+        'source-id': 'models-scroll-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-15T12:00:00Z',
+        'retrieved-at': '2026-09-15T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const chartRows = Array.from({ length: 6 }, (_, index) => ({
+        summary: 'copilot / model-' + (index + 1),
+        events: 6 - index
+      }));
+      const tableRows = Array.from({ length: 60 }, (_, index) => ({
+        summary: 'copilot / model-' + (index + 1),
+        events: 60 - index
+      }));
+      const sources = {
+        'engines-models-chart': { source: 'engines-models-chart', rows: chartRows, metadata },
+        'engines-models-usage': { source: 'engines-models-usage', rows: tableRows, metadata }
+      };
+      document.querySelector('#root').append(renderDashboard({
+        document: dashboardDocument,
+        sources
+      }));
+    </script>
+  `);
+
+  const dashboardRoot = page.locator('.dashboard-root');
+  const chart = page.locator('[data-view-id="engines-models-distribution"]');
+  const scroll = page.locator('[data-view-id="engines-models-usage"] .table-scroll');
+  await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollHeight > element.clientHeight + 48)).toBe(true);
+
+  await chart.hover();
+  await page.mouse.wheel(0, 100);
+
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(chart).toBeHidden();
+  await expect(page.locator('.org-sidebar')).toBeHidden();
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
+
+  await scroll.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(chart).toBeVisible();
+  await chart.evaluate((element) => {
+    const touch = (/** @type {number} */ clientY) => new Touch({ identifier: 1, target: element, clientX: 100, clientY });
+    element.dispatchEvent(new TouchEvent('touchstart', {
+      bubbles: true,
+      cancelable: true,
+      touches: [touch(300)]
+    }));
+    element.dispatchEvent(new TouchEvent('touchmove', {
+      bubbles: true,
+      cancelable: true,
+      touches: [touch(200)]
+    }));
+  });
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
+});
+
 test('Runs renders the worker-projected table for an active time window', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
