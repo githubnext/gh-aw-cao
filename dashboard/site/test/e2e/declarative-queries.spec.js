@@ -13,12 +13,14 @@ const asOf = '2026-09-09T05:00:00Z';
  * @param {string} run
  * @param {string} conclusion
  * @param {string} startedAt
+ * @param {string} event
  */
-const workflowRun = (workflow, run, conclusion, startedAt) => ({
+const workflowRun = (workflow, run, conclusion, startedAt, event) => ({
   organization: 'githubnext',
   repository: workflow.repository,
   workflow: workflow.workflow,
   run,
+  event,
   'run-attempt': 1,
   'run-status': 'completed',
   'run-conclusion': conclusion,
@@ -69,11 +71,11 @@ function queryScenarioSources() {
     },
     runs: {
       rows: [
-        workflowRun(dashboardWorkflow, '1001', 'success', '2026-09-09T01:00:00Z'),
-        workflowRun(dashboardWorkflow, '1002', 'failure', '2026-09-09T02:00:00Z'),
-        workflowRun(dashboardWorkflow, '1003', 'failure', '2026-09-09T03:00:00Z'),
-        workflowRun(doctorWorkflow, '1004', 'success', '2026-09-09T04:00:00Z'),
-        workflowRun(auditWorkflow, '1005', 'success', '2026-09-09T04:30:00Z')
+        workflowRun(dashboardWorkflow, '1001', 'success', '2026-09-09T01:00:00Z', 'workflow_dispatch'),
+        workflowRun(dashboardWorkflow, '1002', 'failure', '2026-09-09T02:00:00Z', 'workflow_dispatch'),
+        workflowRun(dashboardWorkflow, '1003', 'failure', '2026-09-09T03:00:00Z', 'schedule'),
+        workflowRun(doctorWorkflow, '1004', 'success', '2026-09-09T04:00:00Z', 'schedule'),
+        workflowRun(auditWorkflow, '1005', 'success', '2026-09-09T04:30:00Z', 'schedule')
       ],
       metadata
     },
