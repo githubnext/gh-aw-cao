@@ -11,6 +11,8 @@ includes:
   - .github/workflows/eslint-rules-refiner.md
   - .github/workflows/eslint-rules.md
 resources:
+  - source: cao.json
+    destination: .github/aw/eslint-rules/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/eslint-rules.json
   - source: rules-db.mjs

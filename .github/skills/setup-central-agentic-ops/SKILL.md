@@ -119,31 +119,14 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 
 9. Confirm `.github/aw/default-AGENTS.md` was installed. If the repository has no root `AGENTS.md`, read the installed template and create `AGENTS.md` with exactly that content using a file-editing tool. If root `AGENTS.md` already exists, preserve it unchanged unless the user explicitly approves a merge; the packaged file remains the reference default and package updates must not overwrite consumer-owned ambient context.
 
-10. Write `.github/workflows/cao.json` with a file-editing tool. The package cannot install this file because it is consumer-owned rollout policy, and `gh aw add` does not create it. If the file already exists, parse and review it first; do not replace or broaden it without the user's approval. For a new control plane, write exactly this template and enable the selected first-proof package:
+10. Initialize `.github/workflows/cao.json`, then install the selected first-proof package through the CAO CLI so the package-owned orchestrator and worker identities are merged into the consumer-owned policy:
 
-    ```json
-    {
-     "version": 1,
-     "gh-aw-version": "<gh-aw-version>",
-     "control-plane": {
-       "scope": {
-         "allowed-owners": ["<target-owner>"],
-         "allowed-repositories": ["<target-owner>/<target-repository>"]
-       },
-       "packages": {
-         "<package-slug>": {
-           "workers": {
-             "<worker-slug>": {
-               "workflow": "<worker-workflow-slug>"
-             }
-           }
-         }
-       }
-     }
-    }
+    ```bash
+    cao init
+    cao add "githubnext/gh-aw-cao/<package-slug>@<release>"
     ```
 
-    Replace `<gh-aw-version>` with the root manifest's `min-version`, both occurrences of `<target-owner>` with `target-owner`, the one occurrence of `<target-repository>` with `target-repository`, `<package-slug>` with `initial-package`, and repeat the worker entry for every worker in the recorded catalog mapping. Each worker entry must preserve its exact worker and workflow slugs; the resolver loads this mapping directly from policy. Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each through a separate reviewed policy change after the first proof. Do not add broader owners, repositories, packages, optional worker controls, modes, rollout settings, or budgets during initial setup.
+    If the `cao` executable is unavailable in the control-repository checkout, invoke the installed entry point as `node .github/aw/activity/cao.mjs`. If the policy already exists, parse and review it first and skip `cao init`; do not replace or broaden it without the user's approval. After installation, edit only `control-plane.scope` to add `target-owner` and `target-owner/target-repository`. Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each with `cao add` through a separate reviewed change after the first proof.
 
     Parse the file and reject unresolved placeholders before continuing:
 

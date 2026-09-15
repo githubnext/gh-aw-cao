@@ -128,6 +128,45 @@ test("focused package manifests do not cross-own package files", () => {
   assert.deepEqual(duplicateOwners, [], "package manifests must not declare the same destination from multiple packages");
 });
 
+test("operational packages install declarations matching their workflow identities", () => {
+  const packageNames = [
+    "cao-evolution",
+    "dependabot",
+    "eslint-rules",
+    "eu-cra-compliance",
+    "optimization",
+    "repo-assist",
+    "self-care",
+    "software-development-practices",
+    "uk-ai-advisory",
+  ];
+
+  for (const packageName of packageNames) {
+    const declaration = JSON.parse(readFileSync(join(root, packageName, "cao.json"), "utf8"));
+    const manifest = parse(readFileSync(join(root, packageName, "aw.yml"), "utf8"));
+    assert.equal(declaration.package, packageName);
+    assert.deepEqual(
+      manifest.resources.find(({ source }) => source === "cao.json"),
+      {
+        source: "cao.json",
+        destination: `.github/aw/${packageName}/cao.json`,
+      },
+      packageName,
+    );
+
+    const orchestrator = workflow(`${declaration.orchestrator}.md`);
+    assert.match(orchestrator, new RegExp(`package: ${packageName}\\n\\s+role: orchestrator`), packageName);
+    for (const [worker, workflowName] of Object.entries(declaration.workers)) {
+      const source = workflow(`${workflowName}.md`);
+      assert.match(
+        source,
+        new RegExp(`package: ${packageName}\\n\\s+role: worker\\n\\s+worker: ${worker}`),
+        `${packageName}/${worker}`,
+      );
+    }
+  }
+});
+
 test("root package keeps GitHub App setup opt-in", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
 

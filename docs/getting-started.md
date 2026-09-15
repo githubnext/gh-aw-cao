@@ -79,7 +79,7 @@ gh aw --help
 
 ### Step 3 - Add Central Agentic Ops
 
-From the control repository, resolve the latest published CAO release and install that complete package with the gh-aw CLI:
+From the control repository, resolve the latest published CAO release and install the root runtime package:
 
 ```bash
 CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
@@ -88,23 +88,27 @@ gh aw add "githubnext/gh-aw-cao@${CAO_RELEASE}"
 
 Use an older published release tag only when you intentionally need that version. Do not install from `main` or copy control files separately; `gh aw add` installs the workflows, shared control files, runtime modules, and package ownership records together.
 
-The package installs:
+The root package installs:
 
-1. the catalog's operational orchestrators and workers, including **Dependabot**;
-2. shared authentication, routing, and fail-closed controls;
-3. shared control and its single package-installed CAO runtime under `.github/workflows/shared`;
-4. generated `.lock.yml` workflows that GitHub Actions executes.
+1. shared authentication, routing, and fail-closed controls;
+2. the activity and dashboard infrastructure;
+3. the `cao` CLI runtime under `.github/aw/activity/`.
 
-The installed workflows use the runtime installed into the same shared directory. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
+Initialize the consumer-owned policy, then install Dependabot through CAO so its package declaration is merged automatically:
 
-The installed operation is runnable after its package and worker workflow identities are declared in the control policy. Declared workers are enabled unless their policy sets `enabled: false`; undeclared or disabled identities are skipped by admission before agent execution.
+```bash
+cao init
+cao add "githubnext/gh-aw-cao/dependabot@${CAO_RELEASE}"
+```
+
+`cao init` creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `cao add` invokes `gh aw add`, reads the installed package's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope.
 
 > [!WARNING]
 > Do not edit generated `.lock.yml` files directly. Update their Markdown sources and regenerate them with `gh aw compile`.
 
 ### Step 4 - Set the first-run boundary
 
-Create `.github/workflows/cao.json` with the target owner and package. The omitted package settings default to `review`, one repository, and 100 percent rollout:
+Add the target owner to the generated `.github/workflows/cao.json`. The package and worker declaration is already present; omitted package settings default to `review`, one repository, and 100 percent rollout:
 
 ```json title=".github/workflows/cao.json"
 {
