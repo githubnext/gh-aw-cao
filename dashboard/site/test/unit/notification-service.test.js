@@ -42,6 +42,44 @@ describe('dashboard notification service', () => {
     expect(notification?.querySelector('button')).toBeNull();
   });
 
+  it('expands, updates, and collapses a bounded progress history', () => {
+    const service = createNotificationService(document);
+    const handle = service.publish({
+      message: 'Storing data...',
+      duration: 0,
+      details: Array.from({ length: 105 }, (_, index) => `Step ${index + 1}`)
+    });
+    const toggle = /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-toggle')
+    );
+    const details = /** @type {HTMLOListElement} */ (
+      document.querySelector('.dashboard-notification-details')
+    );
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(details.hidden).toBe(true);
+    expect(details.children).toHaveLength(100);
+    expect(details.firstElementChild?.textContent).toBe('Step 6');
+
+    toggle.click();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-label')).toBe('Hide ingestion progress history');
+    expect(details.hidden).toBe(false);
+
+    handle.update({
+      message: 'Refreshing queries...',
+      duration: 0,
+      details: ['Parsing complete.', 'Refreshing queries.']
+    });
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(details.hidden).toBe(false);
+    expect(details.textContent).toContain('Refreshing queries.');
+
+    toggle.click();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(details.hidden).toBe(true);
+  });
+
   it('uses an assertive role for errors and rejects empty messages', () => {
     const service = createNotificationService(document);
     service.publish({ message: 'Refresh failed.', tone: 'error' });

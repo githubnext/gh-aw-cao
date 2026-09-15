@@ -102,6 +102,30 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
+test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {
+  await page.setContent(`
+    <script type="module">
+      import { publishNotification } from 'http://dashboard.test/src/notification-service.js';
+      publishNotification({
+        message: 'Storing data...',
+        duration: 0,
+        details: ['Loading metadata.', 'Parsed 200 records.', 'Storing data...']
+      });
+    </script>
+  `);
+
+  const toggle = page.getByRole('button', { name: 'Show ingestion progress history' });
+  const details = page.locator('.dashboard-notification-details');
+  await expect(details).toBeHidden();
+  await toggle.click();
+  const collapse = page.getByRole('button', { name: 'Hide ingestion progress history' });
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+  await expect(details).toBeVisible();
+  await expect(details.getByRole('listitem')).toHaveCount(3);
+  await collapse.click();
+  await expect(details).toBeHidden();
+});
+
 test('Settings disables hourly dashboard downloads when unsupported', async ({ page }) => {
   await page.setContent(`
     <div id="root"></div>

@@ -49,7 +49,7 @@ let subscriptionFlushRunning = false;
 
 /**
  * Publishes a user-facing notification from the data worker.
- * @param {{ id?: string, message?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, dismiss?: boolean }} notification
+ * @param {{ id?: string, message?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], dismiss?: boolean }} notification
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 export function publishWorkerNotification(notification, target = self) {
@@ -58,6 +58,7 @@ export function publishWorkerNotification(notification, target = self) {
 
 const INGESTION_PROGRESS_DELAY_MS = 3_000;
 const INGESTION_PROGRESS_INTERVAL_MS = 1_000;
+const INGESTION_PROGRESS_HISTORY_LIMIT = 100;
 let nextIngestionProgressId = 0;
 
 /**
@@ -67,9 +68,18 @@ let nextIngestionProgressId = 0;
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
   let message = 'Preparing source data...';
+  let history = [message];
   let completed = false;
+  /** @param {string} nextMessage */
+  const append = (nextMessage) => {
+    message = nextMessage;
+    if (history.at(-1) === nextMessage) return;
+    history = [...history, nextMessage].slice(-INGESTION_PROGRESS_HISTORY_LIMIT);
+  };
   const report = () => {
-    if (!completed) publishWorkerNotification({ id, message, tone: 'info', duration: 0 }, target);
+    if (!completed) {
+      publishWorkerNotification({ id, message, details: history, tone: 'info', duration: 0 }, target);
+    }
   };
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let interval;
@@ -81,7 +91,7 @@ export function startIngestionProgress(target = self) {
   return {
     /** @param {number} recordsRead */
     update(recordsRead) {
-      message = `Reading source data... ${recordsRead} ${recordsRead === 1 ? 'record' : 'records'} read.`;
+      append(`Reading source data... ${recordsRead} ${recordsRead === 1 ? 'record' : 'records'} read.`);
     },
     /**
      * Reports the storage phase, which dominates large ingestions and would
@@ -89,7 +99,11 @@ export function startIngestionProgress(target = self) {
      * @param {{ storedRecords: number, totalRecords: number }} progress
      */
     store({ storedRecords, totalRecords }) {
-      message = `Storing data... ${storedRecords} of ${totalRecords} records stored.`;
+      append(`Storing data... ${storedRecords} of ${totalRecords} records stored.`);
+    },
+    /** @param {string} nextMessage */
+    log(nextMessage) {
+      append(nextMessage);
     },
     complete() {
       if (completed) return;
@@ -349,9 +363,11 @@ export function processDataRequest(request, signal) {
       const jsonl = sourceUrl.pathname.endsWith('.jsonl');
       let changed = false;
       try {
+        progress.log(jsonl ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
         let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
         if (jsonl) {
           const payloadHashesUrl = new URL('./payload-hashes.json', sourceUrl);
+          progress.log('Checking the published payload identity.');
           const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
           const publishedIdentity = payloadHashesResponse?.ok
             ? publishedPayloadIdentity(
@@ -360,11 +376,15 @@ export function processDataRequest(request, signal) {
               )
             : null;
           const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
+          progress.log('Loading workflow and repository inventory.');
           const inventoryResponse = await fetch(inventoryUrl);
           if (inventoryResponse.ok) {
             sources = await inventoryResponse.json();
+            progress.log('Inventory metadata loaded.');
           } else if (inventoryResponse.status !== 404) {
             throw new Error(`Unable to load dashboard inventory sources: ${inventoryResponse.status}`);
+          } else {
+            progress.log('No separate inventory metadata was published.');
           }
           const workflowSource = sources.workflows && typeof sources.workflows === 'object'
             ? /** @type {{ rows?: unknown }} */ (sources.workflows)
@@ -385,6 +405,7 @@ export function processDataRequest(request, signal) {
                 }]
               : [];
           });
+          progress.log(`Prepared ${workflowHints.length} workflow ${workflowHints.length === 1 ? 'hint' : 'hints'} for normalization.`);
           const collectionContext = request.context && typeof request.context === 'object'
             ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
             : undefined;
@@ -406,8 +427,12 @@ export function processDataRequest(request, signal) {
               })
             : false;
           if (currentPublishedPayload) {
+            progress.log('Published activity data is already current; reusing stored records.');
             changed = false;
           } else {
+            progress.log(currentEtag
+              ? 'Checking for updated activity data.'
+              : 'Downloading activity data.');
             const response = await fetch(
               sourceUrl.href,
               publishedIdentity
@@ -417,10 +442,12 @@ export function processDataRequest(request, signal) {
                   : undefined
             );
             if (response.status === 304) {
+              progress.log('Activity data is unchanged; reusing stored records.');
               changed = false;
             } else {
               if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
               if (!response.body) throw new Error('Unable to stream gh-aw JSONL response body');
+              progress.log('Activity data received; parsing records.');
               const etag = response.headers.get('etag');
               const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
                 storage: globalThis.navigator?.storage,
@@ -434,9 +461,13 @@ export function processDataRequest(request, signal) {
                 context: collectionContext
               });
               changed ||= ingestion.updated;
+              progress.log('skipped' in ingestion && ingestion.skipped
+                ? 'Parsed activity data matched the stored version.'
+                : `Activity ingestion committed ${ingestion.committedRecords} canonical records.`);
             }
           }
           if (inventoryResponse.ok) {
+            progress.log('Normalizing inventory metadata.');
             const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
@@ -444,8 +475,12 @@ export function processDataRequest(request, signal) {
               onWriteProgress: (written) => progress.store(written)
             });
             changed ||= inventoryIngestion.updated;
+            progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
+              ? 'Inventory metadata is already current.'
+              : `Inventory ingestion committed ${inventoryIngestion.committedRecords} canonical records.`);
           }
         } else {
+          progress.log('Normalizing dashboard source data.');
           const ingestion = await ingestDashboardSources(indexedDB, sources, {
             storage: globalThis.navigator?.storage,
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
@@ -453,7 +488,11 @@ export function processDataRequest(request, signal) {
             onWriteProgress: (written) => progress.store(written)
           });
           changed ||= ingestion.updated;
+          progress.log('skipped' in ingestion && ingestion.skipped
+            ? 'Dashboard source data is already current.'
+            : `Dashboard ingestion committed ${ingestion.committedRecords} canonical records.`);
         }
+        progress.log('Refreshing active dashboard queries.');
         liveDashboard = {
           logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
           revision: (liveDashboard?.revision ?? 0) + 1
