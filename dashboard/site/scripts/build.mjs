@@ -60,16 +60,16 @@ export async function buildDashboardSite({
     await mkdir(routeDirectory, { recursive: true });
     await writeFile(join(routeDirectory, "index.html"), redirectDocument(page.id));
   }
+}
 
-  export function embedDashboardVersion(html, commitSha) {
-    if (commitSha === undefined) return html;
-    if (typeof commitSha !== "string" || !/^[0-9a-f]{40}$/.test(commitSha)) {
-      throw new Error("dashboard commit SHA must be a 40-character lowercase hexadecimal string");
-    }
-    const declaration = '<meta name="dashboard-version" content="development">';
-    if (!html.includes(declaration)) throw new Error("dashboard version declaration is missing");
-    return html.replace(declaration, `<meta name="dashboard-version" content="${commitSha}">`);
+export function embedDashboardVersion(html, commitSha) {
+  if (commitSha === undefined) return html;
+  if (typeof commitSha !== "string" || !/^[0-9a-f]{40}$/.test(commitSha)) {
+    throw new Error("dashboard commit SHA must be a 40-character lowercase hexadecimal string");
   }
+  const declaration = '<meta name="dashboard-version" content="development">';
+  if (!html.includes(declaration)) throw new Error("dashboard version declaration is missing");
+  return html.replace(declaration, `<meta name="dashboard-version" content="${commitSha}">`);
 }
 
 export function filterExperimentalDashboardViews(document, enabled = false) {
