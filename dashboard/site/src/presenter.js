@@ -1615,34 +1615,36 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     return scroll instanceof HTMLElement ? scroll : null;
   };
   /** @param {HTMLElement} scroll @param {number} deltaY */
-  const scrollLeadingView = (scroll, deltaY) => {
+  const scrollTrailingFullView = (scroll, deltaY) => {
     const previousScrollTop = scroll.scrollTop;
     scroll.scrollTop += deltaY;
     return scroll.scrollTop !== previousScrollTop;
   };
   root.addEventListener('wheel', (event) => {
     const scroll = trailingFullViewScrollTarget(event.target);
-    if (scroll && scrollLeadingView(scroll, event.deltaY)) event.preventDefault();
+    if (!scroll) return;
+    const deltaY = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroll.clientHeight : 1);
+    if (scrollTrailingFullView(scroll, deltaY)) event.preventDefault();
   }, { capture: true, passive: false });
   /** @type {{ scroll: HTMLElement, clientY: number } | null} */
-  let leadingViewTouch = null;
+  let trailingFullViewTouch = null;
   root.addEventListener('touchstart', (event) => {
     const scroll = trailingFullViewScrollTarget(event.target);
     const touch = event.touches[0];
-    leadingViewTouch = scroll && touch ? { scroll, clientY: touch.clientY } : null;
+    trailingFullViewTouch = scroll && touch ? { scroll, clientY: touch.clientY } : null;
   }, { capture: true, passive: true });
   root.addEventListener('touchmove', (event) => {
     const touch = event.touches[0];
-    if (!leadingViewTouch || !touch) return;
-    const deltaY = leadingViewTouch.clientY - touch.clientY;
-    leadingViewTouch.clientY = touch.clientY;
-    if (scrollLeadingView(leadingViewTouch.scroll, deltaY)) event.preventDefault();
+    if (!trailingFullViewTouch || !touch) return;
+    const deltaY = trailingFullViewTouch.clientY - touch.clientY;
+    trailingFullViewTouch.clientY = touch.clientY;
+    if (scrollTrailingFullView(trailingFullViewTouch.scroll, deltaY)) event.preventDefault();
   }, { capture: true, passive: false });
-  const endLeadingViewTouch = () => {
-    leadingViewTouch = null;
+  const endTrailingFullViewTouch = () => {
+    trailingFullViewTouch = null;
   };
-  root.addEventListener('touchend', endLeadingViewTouch, true);
-  root.addEventListener('touchcancel', endLeadingViewTouch, true);
+  root.addEventListener('touchend', endTrailingFullViewTouch, true);
+  root.addEventListener('touchcancel', endTrailingFullViewTouch, true);
   root.addEventListener('scroll', (event) => {
     if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
     const scroll = event.target.closest('.custom-view[data-view-layout="full-view"] .table-scroll');
