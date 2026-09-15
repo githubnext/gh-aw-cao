@@ -15,6 +15,7 @@ import { retryTransientPackageInstall } from "../helpers/package-install-retry.m
 
 const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
   || "githubnext/gh-aw-cao@main";
+const packageUpdateSource = "https://github.com/githubnext/gh-aw-cao";
 const controlRuntimeFiles = [
   ".github/workflows/shared/control.mjs",
   ".github/workflows/shared/policy.mjs",
@@ -31,7 +32,7 @@ const caoEvolutionPackageSource = focusedPackageSource("cao-evolution");
 const craPackageSource = focusedPackageSource("eu-cra-compliance");
 const dashboardPackageSource = focusedPackageSource("dashboard");
 const dependabotUpdateSource = focusedPackageSource("dependabot");
-const dependabotPackageUpdateSource = dependabotUpdateSource;
+const dependabotPackageUpdateSource = `${packageUpdateSource}/dependabot`;
 const selfCarePackageSource = focusedPackageSource("self-care");
 const softwareDevelopmentPracticesPackageSource = focusedPackageSource("software-development-practices");
 const activityExpectedFiles = [
