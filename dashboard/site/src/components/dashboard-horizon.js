@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { effect, state } from '../reactive.js';
 import { octicon } from '../octicons.js';
-import { renderLabeledSpan } from './ui-primitives.js';
+import { renderLabeledSpan, renderTooltip } from './ui-primitives.js';
 
 /**
  * @typedef {{
@@ -47,17 +47,14 @@ export function renderDashboardHorizon(options) {
   const startTime = /** @type {HTMLTimeElement} */ (h('time'));
   const endTime = /** @type {HTMLTimeElement} */ (h('time'));
   const durationValue = h('span');
-  const content = h(
-    'div',
-    { className: 'horizon-summary' },
-    toggle,
-    h(
-      'span',
-      { id: 'dashboard-horizon-tooltip', className: 'horizon-tooltip', role: 'tooltip' },
-      durationLabel,
-      h('span', null, label)
-    )
-  );
+  const content = renderTooltip({
+    id: 'dashboard-horizon-tooltip',
+    label: 'Horizon unavailable',
+    trigger: toggle,
+    content: [durationLabel, h('span', null, label)],
+    className: 'horizon-summary',
+    contentClassName: 'horizon-tooltip'
+  });
   const details = h(
     'div',
     { className: 'horizon-details', role: 'group', 'aria-label': 'Horizon details' },
