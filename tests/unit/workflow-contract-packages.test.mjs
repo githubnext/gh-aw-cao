@@ -263,8 +263,8 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /^---\nname: setup-central-agentic-ops\n/);
   assert.match(setupSkill, /safe_output_mode=review/);
   assert.match(setupSkill, /Ask these two package questions separately/);
-  assert.match(setupSkill, /What do you want CAO to do with the catalog operations installed by the root package/);
-  assert.match(setupSkill, /immutable root package installs its core catalog workflows as one unit/);
+  assert.match(setupSkill, /Which operation packages do you want to add to CAO/);
+  assert.match(setupSkill, /root package installs the CAO foundation without operational workflows and each selected operation is added separately/);
   assert.match(setupSkill, /Do you also want to create an operation package of your own/);
   assert.match(setupSkill, /plan an explicit handoff to `.github\/skills\/create-ops-package\/SKILL\.md` after step 14/);
   assert.match(setupSkill, /Never silently default the package to Dependabot/);
