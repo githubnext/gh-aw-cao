@@ -2164,6 +2164,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .outcome-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
   .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
+  .pie-chart-layout .pie-chart-widget { cursor: pointer; }
+  .pie-chart-layout[data-chart-table-hidden] .chart-legend-pie { display: none; }
   .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context,
   .chart-horizontal-layout { grid-column: 1; }
   .control-plane-status > header { min-height: 0; padding: 14px; }

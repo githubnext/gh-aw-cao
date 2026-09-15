@@ -238,11 +238,14 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
  * @returns {HTMLElement}
  */
 export function renderPieLegend(entries, total, links = new Map(), unit = null) {
+  const rankedEntries = entries
+    .map((entry, index) => ({ entry, index }))
+    .sort((left, right) => right.entry[1] - left.entry[1] || left.index - right.index);
   return renderLegendList(
     'chart-legend chart-legend-pie',
-    entries,
-    ([label], index) => chartSeriesClassName(label, index),
-    ([label, value]) => {
+    rankedEntries,
+    ({ entry: [label], index }) => chartSeriesClassName(label, index),
+    ({ entry: [label, value] }) => {
       const link = links.get(label) ?? null;
       return [
         h('span', null, renderSafeLink(label, link)),
@@ -252,6 +255,19 @@ export function renderPieLegend(entries, total, links = new Map(), unit = null) 
     },
     { 'data-chart-legend': 'visual' }
   );
+}
+
+/**
+ * @param {HTMLElement} chart
+ * @param {HTMLElement} table
+ * @returns {HTMLElement}
+ */
+export function renderPieChartLayout(chart, table) {
+  const layout = h('div', { className: 'pie-chart-layout' }, chart, table);
+  chart.addEventListener('click', () => {
+    layout.toggleAttribute('data-chart-table-hidden');
+  });
+  return layout;
 }
 
 /**
