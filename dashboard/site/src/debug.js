@@ -51,6 +51,23 @@ export function fullDebugUrl(href = globalThis.location?.href ?? '') {
 }
 
 /**
+ * Copies the active `debug` query parameter (if any) from `search` onto
+ * `url`. Dedicated worker and service worker execution contexts expose their
+ * own `location.search` derived from the script URL they were started with,
+ * which does not otherwise inherit the page's `?debug=` parameter. Forwarding
+ * it onto the worker/service-worker script URL lets `createDebug` calls made
+ * inside those contexts see the same debug configuration as the page.
+ * @param {URL} url
+ * @param {string} [search]
+ * @returns {URL}
+ */
+export function withDebugParameter(url, search = globalThis.location?.search ?? '') {
+  const value = new URLSearchParams(search).get(DEBUG_PARAMETER);
+  if (value) url.searchParams.set(DEBUG_PARAMETER, value);
+  return url;
+}
+
+/**
  * Creates a category-scoped dashboard debug logger. Logging is disabled unless
  * the current URL has a matching `debug` query parameter.
  * @param {string} category

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDebug, fullDebugUrl, isDebugEnabled } from '../../src/debug.js';
+import { createDebug, fullDebugUrl, isDebugEnabled, withDebugParameter } from '../../src/debug.js';
 
 describe('dashboard debug logging', () => {
   it('builds a full-debug reload URL without losing the current route', () => {
@@ -19,6 +19,16 @@ describe('dashboard debug logging', () => {
     expect(isDebugEnabled('worker', '?debug=1')).toBe(true);
     expect(isDebugEnabled('worker', '?debug=true')).toBe(true);
     expect(isDebugEnabled('other', '?debug=data,render')).toBe(false);
+  });
+
+  it('forwards the debug parameter onto a worker or service worker script URL', () => {
+    const url = withDebugParameter(new URL('https://example.test/data-worker.js'), '?debug=data:*&mode=live');
+    expect(url.href).toBe('https://example.test/data-worker.js?debug=data%3A*');
+  });
+
+  it('leaves a worker script URL untouched when debug is not set', () => {
+    const url = withDebugParameter(new URL('https://example.test/data-worker.js'), '?mode=live');
+    expect(url.href).toBe('https://example.test/data-worker.js');
   });
 
   it('checks the query once when created and prefixes matching output', () => {

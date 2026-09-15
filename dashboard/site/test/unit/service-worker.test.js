@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 const source = readFileSync(resolve('service-worker.js'), 'utf8');
 
-/** @param {string[]} [cacheKeys] */
-function serviceWorkerHarness(cacheKeys = []) {
+/** @param {string[]} [cacheKeys] @param {{ search?: string }} [options] */
+function serviceWorkerHarness(cacheKeys = [], options = {}) {
   /** @type {Record<string, (event: any) => void>} */
   const listeners = {};
   /** @type {Map<string, Response>} */
@@ -28,10 +28,12 @@ function serviceWorkerHarness(cacheKeys = []) {
     cacheKeys = cacheKeys.filter((candidate) => candidate !== key);
     return true;
   });
+  const debugConsole = { debug: vi.fn() };
   const worker = {
     location: {
-      href: 'https://example.test/dashboard/service-worker.js',
-      origin: 'https://example.test'
+      href: `https://example.test/dashboard/service-worker.js${options.search ?? ''}`,
+      origin: 'https://example.test',
+      search: options.search ?? ''
     },
     registration: { scope: 'https://example.test/dashboard/' },
     navigator: {
@@ -60,7 +62,8 @@ function serviceWorkerHarness(cacheKeys = []) {
     Set,
     Error,
     Promise,
-    JSON
+    JSON,
+    console: debugConsole
   });
   return {
     listeners,
@@ -68,7 +71,8 @@ function serviceWorkerHarness(cacheKeys = []) {
     fetch,
     cache,
     entries,
-    deleteCache
+    deleteCache,
+    debugConsole
   };
 }
 
@@ -373,6 +377,38 @@ describe('dashboard service worker', () => {
     });
 
     expect(cleared).toHaveBeenCalledWith(expect.objectContaining({ type: 'BACKGROUND_DATA_CLEARED' }));
+  });
+
+  it('logs data ingestion steps when the registered script URL carries a debug parameter', async () => {
+    const { listeners, fetch, debugConsole } = serviceWorkerHarness([], { search: '?debug=data:ingestion:sw' });
+    const payloadHashes = JSON.stringify({
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64)
+    });
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.json') ? payloadHashes : 'shard data'
+    ));
+    const configured = vi.fn();
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'CONFIGURE_BACKGROUND_DATA',
+        urls: ['https://example.test/dashboard/payload-hashes.json']
+      },
+      ports: [{ postMessage: configured }]
+    });
+
+    await dispatchExtendedEvent(listeners.periodicsync, {
+      tag: 'central-agentic-ops-dashboard-data'
+    });
+
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:ingestion:sw]',
+      'downloading dashboard data',
+      expect.anything()
+    );
+    expect(debugConsole.debug).toHaveBeenCalledWith(
+      '[cao:data:ingestion:sw]',
+      'dashboard data download complete'
+    );
   });
 
 });
