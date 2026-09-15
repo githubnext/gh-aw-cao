@@ -92,7 +92,7 @@ The root package installs:
 Install Dependabot through CAO so its package declaration is merged automatically:
 
 ```bash
-cao add githubnext/gh-aw-cao/dependabot
+node .github/aw/activity/cao.mjs add githubnext/gh-aw-cao/dependabot
 ```
 
 `cao init` creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `cao add` invokes `gh aw add`, reads the installed package's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope.

@@ -241,8 +241,8 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(quickstart, /githubnext\/gh-aw-cao@main|commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
   assert.match(installer, /^#!\/usr\/bin\/env bash/);
-  assert.match(installer, /if \[\[ -f "\$policy_path" && -f "\$cao_cli" && -f "\$control_runtime" \]\]; then\s+exit 0/);
   assert.match(installer, /install-gh-aw\.sh/);
+  assert.match(installer, /install-gh-aw\.sh[\s\S]*if \[\[ -f "\$policy_path" && -f "\$cao_cli" && -f "\$control_runtime" \]\]; then\s+exit 0/);
   assert.match(installer, /gh aw add githubnext\/gh-aw-cao/);
   assert.match(installer, /node "\$cao_cli" init/);
   assert.match(updateSection, /gh aw update https:\/\/github\.com\/githubnext\/gh-aw-cao --major --cool-down 0 --create-pull-request/);

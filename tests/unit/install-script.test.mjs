@@ -56,6 +56,10 @@ printf '%s\\n' '#!/usr/bin/env bash' 'touch "$FAKE_GH_AW_INSTALLED"'
 
     await executeFile("bash", [installScript], { cwd: root, env });
     assert.equal(await readFile(log, "utf8"), "curl\nadd\ninit\n");
+
+    await rm(ghAwInstalled);
+    await executeFile("bash", [installScript], { cwd: root, env });
+    assert.equal(await readFile(log, "utf8"), "curl\nadd\ninit\ncurl\n");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
