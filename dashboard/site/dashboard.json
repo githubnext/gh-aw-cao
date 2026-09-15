@@ -8200,9 +8200,9 @@
         "pages": [
           "workflows",
           "runs",
-          "events",
           "firewall",
-          "mcps"
+          "mcps",
+          "events"
         ]
       },
       {
