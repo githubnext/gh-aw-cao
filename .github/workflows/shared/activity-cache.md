@@ -68,17 +68,19 @@ gh-like query surface for common questions about runs, safe-output-created
 issues, and safe-output-created pull requests:
 
 ```bash
+db="$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite"
+
 node "$cao_script" gh runs \
-  --database "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" \
+  --database "$db" \
   --repo OWNER/REPOSITORY --workflow WORKFLOW --status failure \
   --since YYYY-MM-DD --until YYYY-MM-DD
 
 node "$cao_script" gh issues \
-  --database "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" \
+  --database "$db" \
   --repo OWNER/REPOSITORY --since YYYY-MM-DD
 
 node "$cao_script" gh prs \
-  --database "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" \
+  --database "$db" \
   --repo OWNER/REPOSITORY --workflow WORKFLOW --limit 10
 ```
 
