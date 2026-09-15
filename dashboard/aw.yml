@@ -59,6 +59,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data-worker.js
   - source: site/src/main.js
     destination: .github/aw/dashboard/site/src/main.js
+  - source: site/src/dashboard-route.js
+    destination: .github/aw/dashboard/site/src/dashboard-route.js
   - source: site/src/dashboard-data-updates.js
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/adapters/dashboard-sources.js
