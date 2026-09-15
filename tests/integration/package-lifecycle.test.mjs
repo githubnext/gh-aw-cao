@@ -27,10 +27,10 @@ function focusedPackageSource(slug, source = packageSource) {
   return `${source.slice(0, separator)}/${slug}${source.slice(separator)}`;
 }
 const ukAiAdvisoryPackageSource = focusedPackageSource("uk-ai-advisory");
-const activityPackageSource = focusedPackageSource("activity");
+const activityPackageSource = focusedPackageSource(".github/cao/activity");
 const caoEvolutionPackageSource = focusedPackageSource("cao-evolution");
 const craPackageSource = focusedPackageSource("eu-cra-compliance");
-const dashboardPackageSource = focusedPackageSource("dashboard");
+const dashboardPackageSource = focusedPackageSource(".github/cao/dashboard");
 const dependabotUpdateSource = focusedPackageSource("dependabot");
 const dependabotPackageUpdateSource = `${packageUpdateSource}/dependabot`;
 const selfCarePackageSource = focusedPackageSource("self-care");
