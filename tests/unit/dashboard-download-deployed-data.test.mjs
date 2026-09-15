@@ -40,7 +40,7 @@ test("exposes the dashboard data CLI as cao", async () => {
     assert.match(stdout, /Download the deployed snapshot before querying/);
     assert.match(stdout, /execution repo for runs, target repo for issues and prs/);
     assert.match(stdout, /-s, --status\s+Runs only/);
-    assert.match(stdout, /cao ingest-jsonl --input FILE/);
+    assert.match(stdout, /cao ingest-jsonl --input-dir SHARD_DIRECTORY/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -48,7 +48,8 @@ test("exposes the dashboard data CLI as cao", async () => {
 
 test("queries canonical data with the gh-like surface", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-gh-cli-"));
-  const input = path.join(root, "gh-aw-logs.jsonl");
+  const inputDirectory = path.join(root, "gh-aw-logs-shards");
+  const input = path.join(inputDirectory, "gh-aw-logs.jsonl");
   const database = path.join(root, "gh-aw-logs.sqlite");
   const records = [
     {
@@ -118,8 +119,9 @@ test("queries canonical data with the gh-like surface", async () => {
   ];
 
   try {
+    await mkdir(inputDirectory, { recursive: true });
     await writeFile(input, `${records.map((record) => JSON.stringify(record)).join("\n")}\n`);
-    await executeFile(cao, ["ingest-jsonl", "--input", input, "--database", database]);
+    await executeFile(cao, ["ingest-jsonl", "--input-dir", inputDirectory, "--database", database]);
 
     const { stdout: runsOutput } = await executeFile(cao, [
       "gh", "runs",

@@ -78,7 +78,7 @@ gh query options:
 
 Data preparation:
   cao download writes the deployed JSONL and query-ready SQLite snapshot to ${DEFAULT_OUTPUT_DIRECTORY}/.
-  To query other gh-aw JSONL, first run cao ingest-jsonl --input FILE [--database FILE].
+  To query other gh-aw JSONL shards, first run cao ingest-jsonl --input-dir SHARD_DIRECTORY [--database FILE].
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
