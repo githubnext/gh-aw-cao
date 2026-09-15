@@ -35,6 +35,7 @@
     "test:e2e:dashboard-views": "playwright test --config=playwright.dashboard-views.config.mjs",
     "test:e2e:dashboard-deployed": "playwright test --config=playwright.dashboard-deployed.config.mjs",
     "test:e2e:dashboard-ingestion": "playwright test --config=playwright.dashboard-ingestion.config.mjs",
+    "test:stress:dashboard": "playwright test --config=playwright.dashboard-massive-scale.config.mjs",
     "test:e2e:copilot-loop": "playwright test --config=playwright.copilot-loop.config.mjs",
     "test:e2e:local-server": "playwright test --config=playwright.local-server.config.mjs"
   },
