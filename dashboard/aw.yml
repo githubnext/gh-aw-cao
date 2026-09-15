@@ -107,6 +107,8 @@ resources:
     destination: .github/aw/dashboard/site/src/copilot-prompt.js
   - source: site/src/compliance.js
     destination: .github/aw/dashboard/site/src/compliance.js
+  - source: site/src/console-log-capture.js
+    destination: .github/aw/dashboard/site/src/console-log-capture.js
   - source: site/src/cancel-command.js
     destination: .github/aw/dashboard/site/src/cancel-command.js
   - source: site/src/cli-action-template.js
