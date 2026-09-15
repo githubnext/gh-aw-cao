@@ -169,6 +169,6 @@ jobs:
                 core.info(`Not deleted ${candidate.name}`)
               }
               core.warning(
-                `${failed.length} eligible branches were not deleted because they changed or could not be deleted`,
+                `${failed.length} eligible branch${failed.length === 1 ? " was" : "es were"} not deleted because the ref changed or could not be deleted`,
               )
             }
