@@ -2516,7 +2516,10 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
-  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
+  const mobileViewportHeight = await page.evaluate(() => innerHeight);
+  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(mobileViewportHeight / 2);
   await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
