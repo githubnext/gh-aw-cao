@@ -1237,6 +1237,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-database-counts strong { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; }
 .configuration-database-counts small { overflow: hidden; color: var(--muted); font-size: .6875rem; text-overflow: ellipsis; }
 .configuration-local-data-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; }
+.configuration-debug-copy { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .configuration-transactions-button, .reset-dashboard-trigger { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid; border-radius: 6px; background: var(--canvas); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
 .configuration-transactions-button { border-color: var(--border); color: var(--fg); text-decoration: none; }
 .configuration-transactions-button:hover { background: var(--neutral-muted); }

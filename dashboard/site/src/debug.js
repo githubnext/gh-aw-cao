@@ -43,6 +43,13 @@ export function isDebugEnabled(category, search = globalThis.location?.search ??
   return included.some((pattern) => pattern.test(category));
 }
 
+/** @param {string} [href] */
+export function fullDebugUrl(href = globalThis.location?.href ?? '') {
+  const url = new URL(href);
+  url.searchParams.set(DEBUG_PARAMETER, '1');
+  return url.href;
+}
+
 /**
  * Creates a category-scoped dashboard debug logger. Logging is disabled unless
  * the current URL has a matching `debug` query parameter.

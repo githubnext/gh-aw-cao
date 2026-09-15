@@ -14,6 +14,9 @@
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { configureSourceLoader, refreshSources as refreshBoundSources } from "./source-store.js";
+      import { startConsoleLogCapture } from "./console-log-capture.js";
+
+      startConsoleLogCapture();
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
