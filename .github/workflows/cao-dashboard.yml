@@ -232,6 +232,9 @@ jobs:
                 throw new Error(`Invalid activity shard path: ${fileName}`)
               }
               const source = path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName)
+              if (!fs.existsSync(source)) {
+                throw new Error(`Published activity shard is missing: ${fileName}`)
+              }
               const destination = path.join(process.env.REPORT_OUTPUT, fileName)
               fs.mkdirSync(path.dirname(destination), { recursive: true })
               fs.copyFileSync(source, destination)

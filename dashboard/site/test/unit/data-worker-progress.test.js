@@ -19,6 +19,15 @@ describe('data-worker ingestion progress', () => {
     expect(() => publishedActivityShards({
       'gh-aw-logs-shards/../activity.jsonl': 'a'.repeat(64)
     })).toThrow('Published activity shard metadata is invalid');
+    expect(() => publishedActivityShards({
+      'gh-aw-logs-shards/activity.jsonl': 'not-a-hash'
+    })).toThrow('Published activity shard metadata is invalid');
+    expect(() => publishedActivityShards(Object.fromEntries(
+      Array.from({ length: 501 }, (_, index) => [
+        `gh-aw-logs-shards/part-${index}.jsonl`,
+        'a'.repeat(64)
+      ])
+    ))).toThrow('Published activity shard count exceeds 500');
   });
 
   it('reports preparation before the first JSONL record is read', () => {

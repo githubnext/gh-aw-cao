@@ -99,5 +99,28 @@ describe('canonical dashboard worker ingestion order', () => {
       'https://dashboard.example/gh-aw-logs-shards/part-01.jsonl',
       'https://dashboard.example/gh-aw-logs-shards/part-02.jsonl'
     ]);
+
+    listeners.get('message')?.({
+      data: {
+        id: 2,
+        operation: 'load-canonical-dashboard',
+        sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+        sourceNames: [],
+        context: { pages: [], queries: [] },
+        reportActivation: true
+      }
+    });
+    for (let attempt = 0; attempt < 200 && !posted.some((message) => message.id === 2); attempt += 1) {
+      await new Promise((resolve) => { setTimeout(resolve, 5); });
+    }
+    expect(posted.find((message) => message.id === 2)?.data).toMatchObject({ changed: false });
+    expect(requestedUrls).toEqual([
+      'https://dashboard.example/payload-hashes.json',
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/gh-aw-logs-shards/part-01.jsonl',
+      'https://dashboard.example/gh-aw-logs-shards/part-02.jsonl',
+      'https://dashboard.example/payload-hashes.json',
+      'https://dashboard.example/inventory-sources.json'
+    ]);
   });
 });
