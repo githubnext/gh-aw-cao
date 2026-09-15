@@ -582,7 +582,7 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
-  const headings = await view.getByRole('columnheader').allTextContents();
+  const headings = await view.locator('thead tr').first().getByRole('columnheader').allTextContents();
   expect(headings.at(-1)?.trim()).toBe('Created');
   expect(headings).not.toEqual(expect.arrayContaining([
     'Committed records',

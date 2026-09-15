@@ -597,7 +597,7 @@ describe('presenter built-in and custom pages', () => {
       expect(page?.textContent).toContain('ingest-jsonl');
       expect(page?.textContent).toContain('https://dashboard.example/.../logs-1.jsonl');
       expect(page?.querySelector('tbody a')?.getAttribute('href')).toBe('https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl');
-      const headings = [...page?.querySelectorAll('thead th') ?? []].map((heading) => heading.textContent?.trim());
+      const headings = [...page?.querySelectorAll('thead tr:first-child th') ?? []].map((heading) => heading.textContent?.trim());
       expect(headings.at(-1)).toBe('Created');
       expect(headings).not.toEqual(expect.arrayContaining([
         'Committed records',
