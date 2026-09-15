@@ -69,7 +69,7 @@ let nextIngestionProgressId = 0;
  */
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
-  const clock = createElapsedStepTracker('Preparing source data...', {
+  const clock = createElapsedStepTracker('Preparing data...', {
     historyLimit: INGESTION_PROGRESS_HISTORY_LIMIT
   });
   let completed = false;
@@ -98,11 +98,10 @@ export function startIngestionProgress(target = self) {
      */
     update({ bytesProcessed, recordsIngested, totalBytes }) {
       const byteProgress = typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0
-        ? `${formatDataSize(bytesProcessed)} of ${formatDataSize(totalBytes)}`
+        ? `${formatDataSize(bytesProcessed)}/${formatDataSize(totalBytes)}`
         : formatDataSize(bytesProcessed);
       clock.update(
-        `Parsing activity data... ${recordsIngested.toLocaleString('en-US')} `
-          + `${recordsIngested === 1 ? 'record' : 'records'}, ${byteProgress} read.`,
+        `Parsing ${recordsIngested.toLocaleString('en-US')} rec, ${byteProgress}.`,
         'parsing'
       );
     },
@@ -113,8 +112,7 @@ export function startIngestionProgress(target = self) {
      */
     store({ storedRecords, totalRecords }) {
       clock.update(
-        `Storing data... ${storedRecords.toLocaleString('en-US')} of `
-          + `${totalRecords.toLocaleString('en-US')} records stored.`,
+        `Storing ${storedRecords.toLocaleString('en-US')}/${totalRecords.toLocaleString('en-US')} rec.`,
         'storing'
       );
     },
@@ -475,7 +473,7 @@ export function processDataRequest(request, signal) {
               });
               continue;
             }
-            progress.log(`Downloading activity shard ${index + 1} of ${shardCount}.`);
+            progress.log(`Downloading shard ${index + 1}/${shardCount}.`);
             debugIngestion('fetching activity shard', {
               shard: shard.name,
               index: index + 1,
@@ -492,9 +490,9 @@ export function processDataRequest(request, signal) {
                 : undefined;
               const compressed = response.headers.has('content-encoding');
               progress.log(payloadBytes === undefined
-                ? `Activity shard ${index + 1} received; parsing records.`
-                : `Activity shard ${index + 1} received (${formatDataSize(payloadBytes)}`
-                  + `${compressed ? ' compressed' : ''}); parsing records.`);
+                ? `Shard ${index + 1} received; parsing.`
+                : `Shard ${index + 1} received (${formatDataSize(payloadBytes)}`
+                  + `${compressed ? ' compressed' : ''}); parsing.`);
               const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
                 storage: globalThis.navigator?.storage,
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
@@ -520,8 +518,8 @@ export function processDataRequest(request, signal) {
                 committedRecords: ingestion.committedRecords,
                 sourceRecords
               });
-              progress.log(`Activity shard ${index + 1} of ${shardCount} committed `
-                + `${ingestion.committedRecords} canonical records.`);
+              progress.log(`Shard ${index + 1}/${shardCount} committed `
+                + `${ingestion.committedRecords.toLocaleString('en-US')} rec.`);
             }
           }
           if (inventoryResponse.ok) {
