@@ -139,6 +139,10 @@ test('Settings disables hourly dashboard downloads when unsupported', async ({ p
   await expect(checkbox).toBeDisabled();
   await expect(page.locator('#configuration-automatic-dashboard-data-updates-status'))
     .toContainText('Periodic Background Sync is not supported');
+  await expect(page.getByRole('heading', { name: 'Debugging' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Relaunch with debugging' }))
+    .toHaveAttribute('href', 'http://dashboard.test/?debug=1');
+  await expect(page.getByRole('button', { name: 'Copy console logs' })).toBeVisible();
 });
 
 test('production Settings view loads without an unsupported-view warning', async ({ page }) => {

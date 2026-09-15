@@ -14,7 +14,7 @@ describe('console log capture', () => {
     const now = () => new Date('2026-09-15T12:00:00.000Z');
     const capture = createConsoleLogCapture(output, now);
     const originalWarn = output.warn;
-    const circular = { message: 'details' };
+    const circular = /** @type {Record<string, unknown>} */ ({ message: 'details' });
     circular.self = circular;
 
     capture.start();
