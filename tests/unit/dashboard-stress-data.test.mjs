@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -34,6 +34,8 @@ test("stress shards are deterministic and parametric", async () => {
         await readFile(join(second, file.name), "utf8"),
       );
     }
+    await generateDashboardStressData({ ...options, outputDirectory: first, shards: 1 });
+    assert.equal((await readdir(first)).filter((name) => name.endsWith(".jsonl")).length, 1);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -101,24 +103,23 @@ test("stress shards preserve observed operational shapes without copying identit
           shards: 2,
           workflows: 2,
         });
-        assert.deepEqual(manifest.sampleProfile, {
-          sourceRuns: 2,
-          retainedTemplates: 2,
-          conclusions: { success: 1, failure: 1 },
-          engines: { "observed-engine": 1, "other-engine": 1 },
-          models: { "observed-model-a": 1, "observed-model-b": 1 },
-          fieldPresence: { jobs: 1, tokenUsage: 1, workingSet: 1, audit: 2 },
-          durationSeconds: { minimum: 120, maximum: 300, mean: 210 },
+        assert.deepEqual(manifest.sampleProfile.conclusions, { failure: 1, success: 1 });
+        assert.deepEqual(manifest.sampleProfile.fieldPresence, {
+          jobs: 1,
+          tokenUsage: 1,
+          workingSet: 1,
+          audit: 2,
         });
+        assert.deepEqual(manifest.sampleProfile.durationSeconds, { minimum: 120, maximum: 300, mean: 210 });
+        assert.deepEqual(Object.values(manifest.sampleProfile.engines).sort(), [1, 1]);
+        assert.deepEqual(Object.values(manifest.sampleProfile.models).sort(), [1, 1]);
+        assert.ok(Object.keys(manifest.sampleProfile.engines).every((name) => /^engine-\d{2}$/.test(name)));
+        assert.ok(Object.keys(manifest.sampleProfile.models).every((name) => /^model-\d{2}$/.test(name)));
         const generated = (await Promise.all(manifest.files.map(async ({ name }) =>
           (await readFile(join(outputDirectory, name), "utf8")).trim().split("\n").map(JSON.parse)
         ))).flat();
-        assert.deepEqual(generated.map(({ run }) => run.model), [
-          "observed-model-a",
-          "observed-model-b",
-          "observed-model-a",
-          "observed-model-b",
-        ]);
+        assert.equal(new Set(generated.map(({ run }) => run.model)).size, 2);
+        assert.ok(generated.every(({ run }) => /^model-\d{2}$/.test(run.model)));
         assert.deepEqual(generated.map(({ run }) => run.job_details[0].name), [
           "agent",
           "job",
@@ -128,6 +129,8 @@ test("stress shards preserve observed operational shapes without copying identit
         assert.equal(JSON.stringify(generated).includes("real-owner"), false);
         assert.equal(JSON.stringify(generated).includes("real recommendation"), false);
         assert.equal(JSON.stringify(generated).includes("real-tool"), false);
+        assert.equal(JSON.stringify(generated).includes("observed-model"), false);
+        assert.equal(JSON.stringify(generated).includes("observed-engine"), false);
       } finally {
         await rm(root, { recursive: true, force: true });
       }

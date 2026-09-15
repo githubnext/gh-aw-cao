@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { once } from "node:events";
 import { createInterface } from "node:readline";
@@ -11,6 +11,17 @@ const DEFAULT_SAMPLE = resolve("dashboard/site/test/fixtures/gh-aw-logs/cached-v
 // logs adapter: started, agent session, completed, usage, and working set.
 const BASE_DERIVED_EVENTS = 5;
 const MAX_TEMPLATES = 256;
+const RUN_CONCLUSIONS = new Set([
+  "action_required",
+  "cancelled",
+  "failure",
+  "neutral",
+  "skipped",
+  "stale",
+  "startup_failure",
+  "success",
+  "timed_out",
+]);
 
 function positiveInteger(value, name) {
   const parsed = Number(value);
@@ -20,13 +31,20 @@ function positiveInteger(value, name) {
   return parsed;
 }
 
-function increment(counts, value) {
-  const key = value === undefined || value === null || value === "" ? "unknown" : String(value);
+function categoricalAlias(kind, value) {
+  if (value === undefined || value === null || value === "") return "unknown";
+  const bucket = Number.parseInt(createHash("sha256").update(String(value)).digest("hex").slice(0, 2), 16) % 32;
+  return `${kind}-${String(bucket).padStart(2, "0")}`;
+}
+
+function increment(counts, key) {
   counts[key] = (counts[key] ?? 0) + 1;
 }
 
 function sortedCounts(counts) {
-  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) =>
+    left < right ? -1 : left > right ? 1 : 0
+  ));
 }
 
 function observedModel(run) {
@@ -35,6 +53,10 @@ function observedModel(run) {
 
 function observedEngine(run) {
   return run.engine ?? run.engine_id ?? run.aw_info?.engine_name ?? run.aw_info?.engine_id;
+}
+
+function observedConclusion(run) {
+  return RUN_CONCLUSIONS.has(run.conclusion) ? run.conclusion : "unknown";
 }
 
 function templateScore(envelope) {
@@ -47,6 +69,35 @@ function syntheticJobName(name) {
     if (normalized.includes(role)) return role;
   }
   return "job";
+}
+
+function inspectedTemplate(envelope) {
+  const run = envelope.run;
+  const startedAt = Date.parse(run.started_at ?? run.created_at);
+  const completedAt = Date.parse(run.updated_at);
+  const durationMs = Number.isFinite(startedAt) && Number.isFinite(completedAt) && completedAt >= startedAt
+    ? completedAt - startedAt
+    : null;
+  const sourceUsage = run.token_usage_summary ?? run.token_usage ?? {};
+  const sourceWorkingSet = run.working_set ?? {};
+  const sourceJob = run.job_details?.[0] ?? run.jobs?.[0] ?? {};
+  return {
+    conclusion: observedConclusion(run),
+    engine: categoricalAlias("engine", observedEngine(run)),
+    model: categoricalAlias("model", observedModel(run)),
+    durationMs,
+    jobName: syntheticJobName(sourceJob.name),
+    tokenUsage: {
+      totalAic: Number(sourceUsage.total_aic ?? run.aic ?? 1),
+      inputTokens: Number(sourceUsage.input_tokens ?? 2_000),
+      outputTokens: Number(sourceUsage.output_tokens ?? 200),
+    },
+    workingSet: {
+      files: Number(sourceWorkingSet.files ?? 4),
+      bytes: Number(sourceWorkingSet.bytes ?? 32_768),
+    },
+    auditGroups: observedAuditGroups(run),
+  };
 }
 
 async function sampleFiles(samplePath) {
@@ -92,9 +143,9 @@ async function inspectSamples(samplePath) {
       if (envelope.schema_version !== 2 || envelope.kind !== "run" || !envelope.run) continue;
       const run = envelope.run;
       profile.sourceRuns += 1;
-      increment(profile.conclusions, run.conclusion);
-      increment(profile.engines, observedEngine(run));
-      increment(profile.models, observedModel(run));
+      increment(profile.conclusions, observedConclusion(run));
+      increment(profile.engines, categoricalAlias("engine", observedEngine(run)));
+      increment(profile.models, categoricalAlias("model", observedModel(run)));
       if ((run.job_details?.length ?? run.jobs?.length ?? 0) > 0) profile.fieldPresence.jobs += 1;
       if (run.token_usage_summary ?? run.token_usage ?? run.aic) profile.fieldPresence.tokenUsage += 1;
       if (run.working_set) profile.fieldPresence.workingSet += 1;
@@ -108,7 +159,7 @@ async function inspectSamples(samplePath) {
         profile.durationSeconds.minimum = Math.min(profile.durationSeconds.minimum ?? duration, duration);
         profile.durationSeconds.maximum = Math.max(profile.durationSeconds.maximum ?? duration, duration);
       }
-      const candidate = { score: templateScore(envelope), envelope };
+      const candidate = { score: templateScore(envelope), template: inspectedTemplate(envelope) };
       templates.push(candidate);
       templates.sort((left, right) => left.score.localeCompare(right.score));
       if (templates.length > MAX_TEMPLATES) templates.pop();
@@ -124,7 +175,7 @@ async function inspectSamples(samplePath) {
   profile.durationSeconds.mean = durationCount === 0
     ? null
     : Number((durationTotal / durationCount).toFixed(2));
-  return { templates: templates.map(({ envelope }) => envelope), profile };
+  return { templates: templates.map(({ template }) => template), profile };
 }
 
 function observedAuditGroups(run) {
@@ -152,7 +203,7 @@ function auditEvents(count, runId, timestamp, template) {
     mcp_failures: [],
     skill_activations: [],
   };
-  const names = observedAuditGroups(template.run);
+  const names = [...template.auditGroups];
   if (names.length === 0) names.push("key_findings", "recommendations", "noops", "skill_activations");
   for (let index = 0; index < count; index += 1) {
     const group = names[index % names.length];
@@ -179,31 +230,21 @@ function auditEvents(count, runId, timestamp, template) {
 }
 
 function syntheticRun(template, index, options) {
-  const source = template.run;
   const runId = 1_000_000 + index;
   const repositoryIndex = index % options.repositories;
   const workflowIndex = index % options.workflows;
   const completedAt = new Date(options.startedAt - index * 30_000).toISOString();
-  const observedDuration = Date.parse(source.updated_at) - Date.parse(source.started_at ?? source.created_at);
-  const durationMs = Number.isFinite(observedDuration) && observedDuration >= 0
-    ? observedDuration
+  const durationMs = template.durationMs !== null
+    ? template.durationMs
     : (20 + index % 180) * 1000;
   const startedAt = new Date(Date.parse(completedAt) - durationMs).toISOString();
   const repository = `synthetic-org/repository-${String(repositoryIndex).padStart(5, "0")}`;
   const workflowName = `Synthetic Agentic Workflow ${String(workflowIndex).padStart(2, "0")}`;
-  const observedConclusion = typeof source.conclusion === "string" && source.conclusion.trim()
-    ? source.conclusion
-    : "unknown";
-  const conclusion = observedConclusion === "failure" && options.derivedEventsPerRun === BASE_DERIVED_EVENTS
-    ? "success"
-    : observedConclusion;
+  const conclusion = template.conclusion;
   const automaticEvents = BASE_DERIVED_EVENTS + (conclusion === "failure" ? 1 : 0);
-  const sourceJob = source.job_details?.[0] ?? source.jobs?.[0] ?? {};
-  const sourceUsage = source.token_usage_summary ?? source.token_usage ?? {};
-  const sourceWorkingSet = source.working_set ?? {};
   return {
-    schema_version: template.schema_version,
-    kind: template.kind,
+    schema_version: 2,
+    kind: "run",
     run: {
       run_id: runId,
       run_attempt: 1,
@@ -220,21 +261,21 @@ function syntheticRun(template, index, options) {
       started_at: startedAt,
       updated_at: completedAt,
       url: `https://github.com/${repository}/actions/runs/${runId}`,
-      engine: source.engine ?? source.aw_info?.engine_name ?? "copilot",
-      engine_id: source.engine_id ?? source.aw_info?.engine_id ?? "copilot",
-      model: observedModel(source) ?? "auto",
+      engine: template.engine,
+      engine_id: template.engine,
+      model: template.model,
       token_usage_summary: {
-        total_aic: Number(sourceUsage.total_aic ?? source.aic ?? 1),
-        input_tokens: Number(sourceUsage.input_tokens ?? 2_000),
-        output_tokens: Number(sourceUsage.output_tokens ?? 200),
+        total_aic: template.tokenUsage.totalAic,
+        input_tokens: template.tokenUsage.inputTokens,
+        output_tokens: template.tokenUsage.outputTokens,
       },
       working_set: {
-        files: Number(sourceWorkingSet.files ?? 4),
-        bytes: Number(sourceWorkingSet.bytes ?? 32_768),
+        files: template.workingSet.files,
+        bytes: template.workingSet.bytes,
       },
       job_details: [{
         id: 2_000_000 + index,
-        name: syntheticJobName(sourceJob.name),
+        name: template.jobName,
         status: "completed",
         conclusion,
         started_at: startedAt,
@@ -281,7 +322,13 @@ export async function generateDashboardStressData({
   if (!Number.isFinite(options.startedAt)) throw new TypeError("startedAt must be a valid timestamp.");
 
   const inspected = await inspectSamples(samplePath);
+  if (options.derivedEventsPerRun === BASE_DERIVED_EVENTS && inspected.profile.conclusions.failure) {
+    throw new TypeError("derivedEventsPerRun must be at least 6 when sampled data contains failed runs.");
+  }
   await mkdir(outputDirectory, { recursive: true });
+  for (const name of await readdir(outputDirectory)) {
+    if (/^gh-aw-logs-\d+\.jsonl$/.test(name)) await rm(join(outputDirectory, name));
+  }
   const shardSize = Math.ceil(options.runs / options.shards);
   const files = [];
   for (let shardIndex = 0; shardIndex < options.shards; shardIndex += 1) {
