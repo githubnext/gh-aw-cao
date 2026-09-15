@@ -7,7 +7,7 @@ import { octicon } from '../octicons.js';
 import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js';
 import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
-import { listChartSeries, pieChartEntries, renderChartLegend, renderPieLegend, renderChartWidget } from './chart-elements.js';
+import { listChartSeries, pieChartEntries, renderChartLegend, renderPieChartLayout, renderPieLegend, renderChartWidget } from './chart-elements.js';
 import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderOutcomeLink, renderWorkflowRunLink } from './link-content.js';
 import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
@@ -727,7 +727,7 @@ function renderChartView(context) {
       chartContent: [
         ...(chartLegend && chartType !== 'scatter' ? [chartLegend] : []),
         ...(pieSummary
-          ? [h('div', { className: 'pie-chart-layout' }, chartWidget, renderPieLegend(
+          ? [renderPieChartLayout(chartWidget, renderPieLegend(
               pieSummary.entries,
               pieSummary.total,
               chartCategoryLinks(renderedPoints),

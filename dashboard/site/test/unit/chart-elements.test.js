@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { SWIMLANE_LAYOUT, chartSeriesClassName, groupChartSeries, listChartSeries, pieChartEntries, renderChartLegend, renderChartWidget, renderPieLegend } from '../../src/components/chart-elements.js';
+import { SWIMLANE_LAYOUT, chartSeriesClassName, groupChartSeries, listChartSeries, pieChartEntries, renderChartLegend, renderChartWidget, renderPieChartLayout, renderPieLegend } from '../../src/components/chart-elements.js';
 
 describe('chart element helpers', () => {
   it('DLS-SAFE-009 groups chart series deterministically and lists reusable class names', () => {
@@ -120,16 +120,36 @@ describe('chart element helpers', () => {
       Array.from({ length: 12 }, (_, index) => [`category-${index}`, index + 1]),
       78
     );
-    expect(expanded.querySelector('li:last-child i')?.className).toBe('chart-series-12');
+    expect(expanded.querySelector('li:first-child i')?.className).toBe('chart-series-12');
 
     const semantic = renderPieLegend([
       ['failure', 1],
       ['success', 2],
       ['waiting for approval', 3]
     ], 6);
-    expect(semantic.querySelector('li:nth-child(1) i')?.classList.contains('chart-series-semantic-failure')).toBe(true);
+    expect([...semantic.querySelectorAll('li span')].map((item) => item.textContent))
+      .toEqual(['waiting for approval', 'success', 'failure']);
+    expect(semantic.querySelector('li:nth-child(1) i')?.classList.contains('chart-series-semantic-waiting')).toBe(true);
     expect(semantic.querySelector('li:nth-child(2) i')?.classList.contains('chart-series-semantic-success')).toBe(true);
-    expect(semantic.querySelector('li:nth-child(3) i')?.classList.contains('chart-series-semantic-waiting')).toBe(true);
+    expect(semantic.querySelector('li:nth-child(3) i')?.classList.contains('chart-series-semantic-failure')).toBe(true);
+  });
+
+  it('toggles the pie table when the chart is tapped', () => {
+    const chart = renderChartWidget('pie', [], [], {
+      entries: [['first', 2], ['largest', 5]],
+      total: 7
+    });
+    const layout = renderPieChartLayout(chart, renderPieLegend([['first', 2], ['largest', 5]], 7));
+    const toggle = layout.querySelector('button');
+
+    expect(toggle?.getAttribute('aria-controls')).toBe(layout.querySelector('.chart-legend-pie')?.id);
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    toggle?.click();
+    expect(layout.hasAttribute('data-chart-table-hidden')).toBe(true);
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle?.getAttribute('aria-label')).toBe('Show chart table');
+    toggle?.click();
+    expect(layout.hasAttribute('data-chart-table-hidden')).toBe(false);
   });
 
   it('distinguishes missing chart data from an insufficient sample', () => {

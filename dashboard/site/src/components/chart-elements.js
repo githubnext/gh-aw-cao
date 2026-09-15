@@ -72,6 +72,7 @@ export const SWIMLANE_LAYOUT = Object.freeze({
 });
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
+let pieChartTableId = 0;
 const SEMANTIC_SERIES_TERMS = {
   failure: new Set(['0', 'denied', 'error', 'errored', 'fail', 'failed', 'failing', 'failure', 'false', 'invalid', 'no', 'rejected', 'stale', 'timeout', 'unhealthy', 'unsuccessful']),
   success: new Set(['approved', 'complete', 'completed', 'healthy', 'pass', 'passed', 'passing', 'resolved', 'succeed', 'succeeded', 'success', 'successful']),
@@ -231,6 +232,7 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
 }
 
 /**
+ * Ranks rows by value descending while retaining their input-order color.
  * @param {Array<[string, number]>} entries
  * @param {number} total
  * @param {Map<string, { href: string, label: string }>} [links]
@@ -238,11 +240,14 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
  * @returns {HTMLElement}
  */
 export function renderPieLegend(entries, total, links = new Map(), unit = null) {
+  const rankedEntries = entries
+    .map((entry, index) => ({ entry, index }))
+    .sort((left, right) => right.entry[1] - left.entry[1] || left.index - right.index);
   return renderLegendList(
     'chart-legend chart-legend-pie',
-    entries,
-    ([label], index) => chartSeriesClassName(label, index),
-    ([label, value]) => {
+    rankedEntries,
+    ({ entry: [label], index }) => chartSeriesClassName(label, index),
+    ({ entry: [label, value] }) => {
       const link = links.get(label) ?? null;
       return [
         h('span', null, renderSafeLink(label, link)),
@@ -252,6 +257,31 @@ export function renderPieLegend(entries, total, links = new Map(), unit = null) 
     },
     { 'data-chart-legend': 'visual' }
   );
+}
+
+/**
+ * @param {HTMLElement} chart
+ * @param {HTMLElement} table
+ * @returns {HTMLElement}
+ */
+export function renderPieChartLayout(chart, table) {
+  const tableId = `pie-chart-table-${++pieChartTableId}`;
+  table.id = tableId;
+  const toggle = h('button', {
+    type: 'button',
+    className: 'pie-chart-table-toggle',
+    'aria-controls': tableId,
+    'aria-expanded': 'true',
+    'aria-label': 'Hide chart table'
+  });
+  const layout = h('div', { className: 'pie-chart-layout' }, chart, toggle, table);
+  toggle.addEventListener('click', () => {
+    layout.toggleAttribute('data-chart-table-hidden');
+    const expanded = !layout.hasAttribute('data-chart-table-hidden');
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.setAttribute('aria-label', `${expanded ? 'Hide' : 'Show'} chart table`);
+  });
+  return layout;
 }
 
 /**

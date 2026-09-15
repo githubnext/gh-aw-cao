@@ -2819,6 +2819,15 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
     mark.focus();
     return mark === mark.parentElement?.lastElementChild;
   })).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const tableToggle = layout.getByRole('button', { name: 'Hide chart table' });
+  await expect(legend).toBeVisible();
+  await expect(tableToggle).toBeVisible();
+  await tableToggle.click();
+  await expect(legend).toBeHidden();
+  await layout.getByRole('button', { name: 'Show chart table' }).click();
+  await expect(legend).toBeVisible();
 });
 
 test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode filters, AIC utilization, and run trends in browser', async ({ page }) => {

@@ -790,6 +790,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .pie-chart-layout .chart-widget { min-width: 0; min-height: 160px; margin: 0; }
 #page-preview .pie-chart-layout .chart-widget { border: 0; background: transparent; }
 .pie-chart-layout .chart-widget svg { width: 100%; max-width: 160px; height: auto; max-height: none; }
+.pie-chart-table-toggle { display: none; }
 .pie-chart-layout .chart-legend-pie { min-width: 0; width: 100%; display: block; margin: 0; }
 .pie-chart-layout .chart-legend-pie li { min-height: 30px; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 54px; gap: 9px; border-bottom: 1px solid var(--border-muted); }
 .pie-chart-layout .chart-legend-pie li:last-child { border-bottom: 0; }
@@ -2164,6 +2165,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .outcome-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
   .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
+  .pie-chart-layout .chart-widget, .pie-chart-table-toggle { grid-column: 1; grid-row: 1; }
+  .pie-chart-table-toggle { width: 100%; height: 100%; display: block; z-index: 1; padding: 0; border: 0; background: transparent; cursor: pointer; }
+  .pie-chart-table-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+  .pie-chart-layout[data-chart-table-hidden] .chart-legend-pie { display: none; }
   .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context,
   .chart-horizontal-layout { grid-column: 1; }
   .control-plane-status > header { min-height: 0; padding: 14px; }
