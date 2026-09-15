@@ -3,7 +3,6 @@ import {
   refreshCanonicalDashboardSources,
   subscribeCanonicalDashboardView,
 } from "../data-processor.js";
-import { DATABASE_COUNT_SOURCE_NAMES } from "../database-counts.js";
 import { bindSourceContinuations, continuationRequests } from "./continuation.js";
 import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "../debug-events.js";
 import { startAutomaticDashboardDataUpdates } from "../dashboard-data-updates.js";
@@ -13,7 +12,6 @@ import { configureSourceLoader, refreshSources as refreshBoundSources } from "..
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string } }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
 /** @typedef {(pageId: string, options: PageLoadOptions) => Promise<DashboardSources>} PageSourceLoader */
-/** @typedef {() => Promise<DashboardSources>} HorizonSourceLoader */
 
 /**
  * Gives a cached render two animation frames to commit before network activity starts.
@@ -46,7 +44,7 @@ export function waitForDashboardUi(browserWindow) {
  *   pageSourceNames: (pageId: string) => string[],
  *   pageLazySourceNames: (pageId: string) => string[],
  *   runWithLoadingProgress: <T>(task: () => Promise<T>) => Promise<T>,
- *   render: (sources: DashboardSources, state: 'ready' | 'cached' | 'stale', loadPageSources: PageSourceLoader, loadHorizonSources: HorizonSourceLoader, retryRefresh?: () => void) => void,
+ *   render: (sources: DashboardSources, state: 'ready' | 'cached' | 'stale', loadPageSources: PageSourceLoader, retryRefresh?: () => void) => void,
  *   settleUi?: () => Promise<void>,
  * }} options
  * @returns {Promise<() => void>}
@@ -131,9 +129,6 @@ export async function startDashboardData(options) {
     }));
   };
   configureSourceLoader(async (name) => (await loadCanonicalDashboardPage([name], dashboardContext))[name]);
-  const loadHorizonSources = () => runWithLoadingProgress(
-    () => loadCanonicalDashboardPage(DATABASE_COUNT_SOURCE_NAMES, dashboardContext),
-  );
   const startAutomaticUpdates = () => {
     stopAutomaticDataUpdates = startAutomaticDashboardDataUpdates([
       new URL("./payload-hashes.json", sourceUrl).href,
@@ -143,7 +138,7 @@ export async function startDashboardData(options) {
   };
 
   await loadCanonicalDashboardPage([], dashboardContext);
-  render({}, "cached", loadPageSources, loadHorizonSources);
+  render({}, "cached", loadPageSources);
   let refreshFailed = false;
   let refreshPending = false;
   /** @param {unknown} error */
@@ -158,7 +153,7 @@ export async function startDashboardData(options) {
       status: "failed",
       message,
     });
-    render({}, "stale", loadPageSources, loadHorizonSources, refreshSources);
+    render({}, "stale", loadPageSources, refreshSources);
   };
   const refreshSources = (showRefreshing = true) => {
     if (refreshPending || cleanup.signal.aborted) return;
@@ -169,7 +164,7 @@ export async function startDashboardData(options) {
       status: "started",
     });
     if (showRefreshing) {
-      render({}, "cached", loadPageSources, loadHorizonSources);
+      render({}, "cached", loadPageSources);
     }
     void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
       sourceUrl,
@@ -184,7 +179,7 @@ export async function startDashboardData(options) {
           changed,
         });
         refreshBoundSources();
-        render({}, "ready", loadPageSources, loadHorizonSources);
+        render({}, "ready", loadPageSources);
       },
       showStaleSources,
     );

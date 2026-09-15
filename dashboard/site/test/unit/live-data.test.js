@@ -33,10 +33,9 @@ describe("live Dashboard Language sources", () => {
     expect(startup).toContain("pageSourceNames(pageId)");
     expect(startup).toContain("pageLazySourceNames(pageId)");
     expect(startup).toContain("refreshCanonicalDashboardSources(\n      sourceUrl,\n      []");
-    expect(startup).toMatch(/loadCanonicalDashboardPage\(DATABASE_COUNT_SOURCE_NAMES,/);
     expect(startup).not.toContain("loadInitialSources");
-    expect(startup).toContain('render({}, "cached", loadPageSources, loadHorizonSources)');
-    expect(startup).toContain('render({}, "stale", loadPageSources, loadHorizonSources, refreshSources)');
+    expect(startup).toContain('render({}, "cached", loadPageSources)');
+    expect(startup).toContain('render({}, "stale", loadPageSources, refreshSources)');
     expect(startup).not.toContain("initialPageLoaded");
     expect(startup.indexOf('render({}, "cached"')).toBeLessThan(startup.indexOf("await settleUi()"));
     expect(startup.indexOf("await settleUi()")).toBeLessThan(startup.indexOf("startAutomaticUpdates();", startup.indexOf("await settleUi()")));
@@ -53,7 +52,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('has("fixtures")');
     expect(preview).toContain("Unable to load live dashboard data:");
     expect(preview).toContain('window.addEventListener("dashboard-preview-update"');
-    expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader)');
+    expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader)');
     expect(preview).toContain('event: "preview.rendered"');
     expect(preview).toContain('get("local-preview")');
     expect(preview).toMatch(/previewMode\s*\?\s*await fetch\("\.\/viewer\.json"\)/);

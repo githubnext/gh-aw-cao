@@ -101,8 +101,6 @@
       let renderedSourcesPrepared = false;
       /** @type {((pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
       let renderedPageSourceLoader;
-      /** @type {(() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
-      let renderedHorizonSourceLoader;
       const previewMode = new URLSearchParams(window.location.search).get("local-preview");
       const localViewer = previewMode
         ? await fetch("./viewer.json")
@@ -197,15 +195,13 @@
        * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
        * @param {boolean} [prepared]
       * @param {(pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
-       * @param {() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadHorizonSources]
        * @param {() => void} [retryRefresh]
        */
-      const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources, retryRefresh) => {
+      const renderSources = (sources, state = "ready", prepared = false, loadPageSources, retryRefresh) => {
         const canExecuteCliActions = previewMode === "canvas";
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
-        renderedHorizonSourceLoader = loadHorizonSources;
         setDeclaredCliActions(dashboardDocument.dashboard["cli-actions"] ?? [], {
           canExecute: canExecuteCliActions,
           templateValues: dashboardDocument.dashboard.repository
@@ -220,7 +216,6 @@
           prepared,
           loading: state === "loading",
           loadPageSources,
-          loadHorizonSources,
           tableRowLimit,
         });
         if (state === "loading") {
@@ -262,7 +257,7 @@
             languageVersion: schema["language-version"],
             dashboard: schema.dashboard,
           };
-          updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader));
+          updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader));
           if (traceId && dashboardSocket?.readyState === WebSocket.OPEN) {
             dashboardSocket.send(JSON.stringify({
               type: "browser.trace",
@@ -281,7 +276,7 @@
           let recoveryErrorLog = "";
           dashboardDocument = previousDashboardDocument;
           try {
-            renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader);
+            renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader);
             recovered = true;
           } catch (recoveryError) {
             recoveryErrorLog = recoveryError instanceof Error && recoveryError.stack
@@ -948,8 +943,8 @@
             pageSourceNames: (pageId) => dashboardPageSourceNames(dashboardDocument, pageId),
             pageLazySourceNames: (pageId) => dashboardPageLazySourceNames(dashboardDocument, pageId),
             runWithLoadingProgress,
-            render: (sources, state, loadPageSources, loadHorizonSources, retryRefresh) => {
-              renderSources(sources, state, true, loadPageSources, loadHorizonSources, retryRefresh);
+            render: (sources, state, loadPageSources, retryRefresh) => {
+              renderSources(sources, state, true, loadPageSources, retryRefresh);
             },
           });
         } catch (error) {

@@ -23,7 +23,6 @@ import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
-import { createDatabaseCountLoader, formatDatabaseCounts } from './database-counts.js';
 import { scopedStorageKey } from './storage-scope.js';
 
 /**
@@ -75,7 +74,7 @@ import { scopedStorageKey } from './storage-scope.js';
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -225,7 +224,7 @@ export function dashboardTableSourceNames(document) {
  * @returns {HTMLElement}
  */
 export function renderDashboard(input) {
-  const { document, sources: rawSources, viewer = null, loadHorizonSources } = input;
+  const { document, sources: rawSources, viewer = null } = input;
   const pages = document.dashboard.pages;
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
@@ -248,8 +247,6 @@ export function renderDashboard(input) {
   const dashboardHorizon = renderDashboardHorizon({
     dashboard: document.dashboard,
     initialValue: resolveDashboardHorizonViewModel(rawSources, dashboardDefaults, horizonRange, evaluatedAt),
-    loadDatabaseCounts: createDatabaseCountLoader(loadHorizonSources),
-    formatDatabaseCounts,
     formatDate: formatReportDate
   });
 

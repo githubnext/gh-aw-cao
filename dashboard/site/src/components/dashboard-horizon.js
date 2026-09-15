@@ -17,8 +17,6 @@ import { renderLabeledSpan } from './ui-primitives.js';
  * @param {{
  *   dashboard: import('../presenter.js').PresentableDashboard,
  *   initialValue: HorizonViewModel,
- *   loadDatabaseCounts: () => Promise<import('../database-counts.js').DatabaseCounts>,
- *   formatDatabaseCounts: (counts: import('../database-counts.js').DatabaseCounts) => string,
  *   formatDate: (value: string) => string
  * }} options
  * @returns {{
@@ -30,7 +28,6 @@ import { renderLabeledSpan } from './ui-primitives.js';
 export function renderDashboardHorizon(options) {
   const lifetime = new AbortController();
   const value = state(options.initialValue);
-  const counts = state('Database counts load on hover');
   const horizon = options.dashboard.horizon;
   const label = horizon?.label || 'Horizon';
   const skeleton = h('span', { 'aria-hidden': 'true' });
@@ -47,33 +44,18 @@ export function renderDashboardHorizon(options) {
     octicon('clock'),
     accessibleLabel
   );
-  const databaseCounts = h('span', { className: 'horizon-tooltip-counts' });
   const startTime = /** @type {HTMLTimeElement} */ (h('time'));
   const endTime = /** @type {HTMLTimeElement} */ (h('time'));
   const durationValue = h('span');
-  /** @type {Promise<void> | undefined} */
-  let countsPromise;
-  const loadCounts = () => {
-    if (countsPromise) return;
-    counts.set('Loading database counts…');
-    countsPromise = options.loadDatabaseCounts()
-      .then((databaseCountsValue) => {
-        counts.set(options.formatDatabaseCounts(databaseCountsValue));
-      })
-      .catch(() => {
-        counts.set('Database counts unavailable');
-      });
-  };
   const content = h(
     'div',
-    { className: 'horizon-summary', onpointerenter: loadCounts, onfocusin: loadCounts },
+    { className: 'horizon-summary' },
     toggle,
     h(
       'span',
       { id: 'dashboard-horizon-tooltip', className: 'horizon-tooltip', role: 'tooltip' },
       durationLabel,
-      h('span', null, label),
-      databaseCounts
+      h('span', null, label)
     )
   );
   const details = h(
@@ -116,10 +98,6 @@ export function renderDashboardHorizon(options) {
     startTime.textContent = `${options.formatDate(current.start)} UTC`;
     endTime.dateTime = current.end;
     endTime.textContent = `${options.formatDate(current.end)} UTC`;
-  }, { signal: lifetime.signal });
-
-  effect(() => {
-    databaseCounts.textContent = counts.get();
   }, { signal: lifetime.signal });
 
   return {
