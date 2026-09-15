@@ -44,9 +44,13 @@ export async function buildDashboardSite({
 
   const dashboardPath = join(destinationPath, "dashboard.json");
   await bundleDashboardFiles(dashboardPath, packageDashboards);
+  const dashboard = filterExperimentalDashboardViews(
+    JSON.parse(await readFile(dashboardPath, "utf8")),
+    controlSettings.web?.experimental === true,
+  );
+  await writeFile(dashboardPath, `${JSON.stringify(dashboard, null, 2)}\n`);
   await bundleSiteJavascript(destinationPath);
   await cacheBustSiteImports(destinationPath);
-  const dashboard = JSON.parse(await readFile(dashboardPath, "utf8"));
 
   for (const page of dashboard.dashboard?.pages ?? []) {
     if (typeof page?.id !== "string" || !page.id || requiresHashQueryParameter(page)) continue;
@@ -54,6 +58,27 @@ export async function buildDashboardSite({
     await mkdir(routeDirectory, { recursive: true });
     await writeFile(join(routeDirectory, "index.html"), redirectDocument(page.id));
   }
+}
+
+export function filterExperimentalDashboardViews(document, enabled = false) {
+  if (enabled || !Array.isArray(document.dashboard?.navigation)) return document;
+  const experimentalPageIds = new Set(
+    document.dashboard.navigation
+      .filter((section) => section?.experimental === true)
+      .flatMap((section) => Array.isArray(section.pages) ? section.pages : []),
+  );
+  if (experimentalPageIds.size === 0) return document;
+  return {
+    ...document,
+    dashboard: {
+      ...document.dashboard,
+      pages: document.dashboard.pages.filter((page) => !experimentalPageIds.has(page.id)),
+      navigation: document.dashboard.navigation.filter((section) => section?.experimental !== true),
+      ...(Array.isArray(document.dashboard.callouts) ? {
+        callouts: document.dashboard.callouts.filter((callout) => !experimentalPageIds.has(callout?.["navigation-page"])),
+      } : {}),
+    },
+  };
 }
 
 async function findPackageDashboards(repositoryPath, controlSettings) {

@@ -5,7 +5,7 @@ const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "targ
 const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "packages", "publishing"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
-const WEB_KEYS = ["favicon"];
+const WEB_KEYS = ["experimental", "favicon"];
 const DEFAULT_KEYS = ["mode", "max-repositories", "rollout-percent", "monthly-ai-credit-budget"];
 const OCTICONS = [
   "mark-github", "code", "repo", "server", "issue", "pull-request", "play", "eye",
@@ -196,6 +196,7 @@ function validateWeb(web) {
   const path = "control-plane.web";
   assertMapping(web, path);
   assertKeys(web, WEB_KEYS, path);
+  if ("experimental" in web) assertBoolean(web.experimental, `${path}.experimental`);
   if ("favicon" in web) assertFavicon(web.favicon, `${path}.favicon`);
 }
 
@@ -471,6 +472,7 @@ export function controlSettings(document, controlRepository) {
     allowed_owners: scope["allowed-owners"] ?? [controlRepository.split("/", 1)[0]],
     allowed_repositories: scope["allowed-repositories"] ?? [],
     web: {
+      experimental: web.experimental ?? false,
       favicon: web.favicon ?? "./favicon.svg",
     },
     packages,
