@@ -11,7 +11,7 @@ const siteRoot = new URL("../", import.meta.url);
 export async function buildDashboardSite({
   destination,
   controlSettings,
-  repositoryRoot = new URL("../../../", import.meta.url),
+  repositoryRoot = new URL("../../../../../", import.meta.url),
 }) {
   if (!destination) throw new Error("dashboard destination is required");
   if (!controlSettings || typeof controlSettings !== "object" || Array.isArray(controlSettings)) {

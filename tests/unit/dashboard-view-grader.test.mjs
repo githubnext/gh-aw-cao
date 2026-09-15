@@ -8,7 +8,7 @@ import test from "node:test";
 import {
   gradeDashboardDocument,
   gradeDashboardView,
-} from "../../dashboard/grader/view-grader.mjs";
+} from "../../.github/cao/dashboard/grader/view-grader.mjs";
 
 const executeFile = promisify(execFile);
 

@@ -5,7 +5,7 @@ import { validateDashboardDocument, validateLogicalSources } from "../src/valida
 
 const corpusDirectory = resolve(
   process.cwd(),
-  process.argv[2] || "../../.github/skills/generate-dashboard-ir/corpus",
+  process.argv[2] || "../../../../.github/skills/generate-dashboard-ir/corpus",
 );
 const examplesDirectory = resolve(corpusDirectory, "examples");
 const index = JSON.parse(await readFile(resolve(corpusDirectory, "index.json"), "utf8"));

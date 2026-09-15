@@ -17,7 +17,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
   it('uses the GitHub Agentic Workflows favicon', () => {
     const preview = readFileSync(resolve('index.html'), 'utf8');
     const favicon = readFileSync(resolve('favicon.svg'), 'utf8');
-    const agenticWorkflowsFavicon = readFileSync(resolve('../../public/favicon.svg'), 'utf8');
+    const agenticWorkflowsFavicon = readFileSync(resolve('../../../../public/favicon.svg'), 'utf8');
 
     expect(preview).toContain('<link rel="icon" href="./favicon.svg">');
     expect(favicon).toBe(agenticWorkflowsFavicon);

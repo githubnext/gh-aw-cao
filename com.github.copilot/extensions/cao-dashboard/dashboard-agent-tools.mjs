@@ -15,6 +15,8 @@ export async function executeDashboardQueryRequest({
   const queryEnginePath = await findFirstExistingPath([
     join(
       workingDirectory,
+      ".github",
+      "cao",
       "dashboard",
       "site",
       "src",
@@ -35,7 +37,7 @@ export async function executeDashboardQueryRequest({
     ),
     resolve(
       extensionDirectory,
-      "../../../dashboard/site/src/data/queries/declarative.js",
+      "../../../.github/cao/dashboard/site/src/data/queries/declarative.js",
     ),
   ]);
   const queryEngine = await import(pathToFileURL(queryEnginePath).href);

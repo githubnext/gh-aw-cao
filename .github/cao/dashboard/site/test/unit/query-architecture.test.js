@@ -7,7 +7,7 @@ const read = (path) => readFileSync(resolve(path), 'utf8');
 
 describe('dashboard query architecture', () => {
   it('gives agents an explicit database-authoritative query and effect contract', () => {
-    const guidance = read('../../AGENTS.md');
+    const guidance = read('../../../../AGENTS.md');
 
     expect(guidance).toContain('Eliminate every JavaScript-based dashboard query.');
     expect(guidance).toContain('executed by the query engine in the data Web Worker against the canonical database');

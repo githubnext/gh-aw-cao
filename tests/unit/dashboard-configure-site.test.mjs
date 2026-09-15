@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configureSite } from "../../dashboard/report/configure-site.mjs";
+import { configureSite } from "../../.github/cao/dashboard/report/configure-site.mjs";
 
 const html = '<head><link rel="icon" href="./favicon.svg"></head>';
 

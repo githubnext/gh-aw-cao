@@ -99,7 +99,7 @@ const craExpectedFiles = [
 const dashboardExpectedFiles = [
   ".github/workflows/cao-dashboard.yml",
   ...[...readFileSync(
-    new URL("../../dashboard/aw.yml", import.meta.url),
+    new URL("../../.github/cao/dashboard/aw.yml", import.meta.url),
     "utf8",
   ).matchAll(/^\s+destination: (.+)$/gm)].map((match) => match[1]),
 ];

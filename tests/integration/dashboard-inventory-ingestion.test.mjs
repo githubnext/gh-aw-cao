@@ -4,12 +4,12 @@ import "fake-indexeddb/auto";
 import {
   buildInventoryDashboardSources,
   discoverRepositories,
-} from "../../activity/inventory-sources.mjs";
-import { ingestDashboardSources } from "../../dashboard/site/src/data/ingest/coordinator.js";
+} from "../../.github/cao/activity/inventory-sources.mjs";
+import { ingestDashboardSources } from "../../.github/cao/dashboard/site/src/data/ingest/coordinator.js";
 import {
   deleteCanonicalDatabase,
   readCanonicalBatch,
-} from "../../dashboard/site/src/data/storage/indexeddb.js";
+} from "../../.github/cao/dashboard/site/src/data/storage/indexeddb.js";
 
 test("discovered repositories flow from control scope into canonical storage", async () => {
   await deleteCanonicalDatabase(indexedDB);

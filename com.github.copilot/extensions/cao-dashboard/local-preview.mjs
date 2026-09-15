@@ -30,9 +30,9 @@ export async function startLocalDashboardPreview({
 async function findLocalServer(workingDirectory) {
   const extensionDirectory = dirname(fileURLToPath(import.meta.url));
   const candidates = [
-    join(workingDirectory, "dashboard", "local-server.mjs"),
+    join(workingDirectory, ".github", "cao", "dashboard", "local-server.mjs"),
     join(workingDirectory, ".github", "aw", "dashboard", "local-server.mjs"),
-    resolve(extensionDirectory, "../../../dashboard/local-server.mjs"),
+    resolve(extensionDirectory, "../../../.github/cao/dashboard/local-server.mjs"),
   ];
 
   for (const candidate of new Set(candidates)) {

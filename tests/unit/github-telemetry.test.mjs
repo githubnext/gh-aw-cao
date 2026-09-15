@@ -9,7 +9,7 @@ import {
   normalizeGithubTelemetryStackTrace,
   prepareGithubTelemetryHistory,
   recordGithubTelemetry,
-} from "../../activity/github-telemetry.mjs";
+} from "../../.github/cao/activity/github-telemetry.mjs";
 
 test("GitHub telemetry records rate-limit and bounded cache metadata without token values", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-gh-"));

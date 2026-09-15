@@ -49,8 +49,8 @@ test("dashboard authoring corpus workflow generates only validated training exam
     /^skills:\n\s+- \.github\/skills\/dashboard-authoring\n\s+- \.github\/skills\/generate-dashboard-ir$/m,
   );
   assert.match(source, /Use the installed `generate-dashboard-ir` skill/);
-  assert.match(source, /npm ci --prefix dashboard\/site --ignore-scripts/);
-  assert.match(source, /npm --prefix dashboard\/site run validate:corpus/);
+  assert.match(source, /npm ci --prefix \.github\/cao\/dashboard\/site --ignore-scripts/);
+  assert.match(source, /npm --prefix \.github\/cao\/dashboard\/site run validate:corpus/);
   assert.match(source, /Scope every view to the synthetic workflow with a `workflow` filter/);
   assert.match(source, /Use an attainment-only baseline with null value and cutoff/);
   assert.match(source, /create-pull-request:[\s\S]*?allowed-files:\n\s+- "\.github\/skills\/generate-dashboard-ir\/corpus\/index\.json"\n\s+- "\.github\/skills\/generate-dashboard-ir\/corpus\/examples\/\*\.json"\n\s+- "\.github\/skills\/generate-dashboard-ir\/corpus\/examples\/\*\.dashboard\.yml"/);
@@ -59,14 +59,14 @@ test("dashboard authoring corpus workflow generates only validated training exam
   assert.match(dashboardIrSkill, /specification as the semantic authority/);
   assert.match(dashboardIrSkill, /validator entry point as the syntax and structural validation authority/);
   assert.match(dashboardIrSkill, /Do not introduce a new intermediate language/);
-  assert.match(dashboardIrSkill, /Read the specification and `dashboard\/site\/dashboard\.json`/);
+  assert.match(dashboardIrSkill, /Read the specification and `\.github\/cao\/dashboard\/site\/dashboard\.json`/);
   assert.match(dashboardIrSkill, /Reuse an established built-in view pattern/);
   assert.match(dashboardIrSkill, /Return only the validated complete Dashboard Language YAML document/);
   assert.match(dashboardAuthoringSkill, /Pass the intent and operational-value contract to `generate-dashboard-ir`/);
   assert.match(dashboardAuthoringSkill, /Store an operation package's production Dashboard Language document at `<package>\/dashboard\.json`/);
   assert.match(dashboardAuthoringSkill, /destination is `\.github\/aw\/dashboards\/<package>\.json`/);
   assert.match(dashboardAuthoringSkill, /bundles installed `\.github\/aw\/dashboards\/\*\.json` documents into the single deployed `dashboard\.json`/);
-  assert.match(dashboardAuthoringSkill, /Do not add package pages directly to `dashboard\/site\/dashboard\.json`/);
+  assert.match(dashboardAuthoringSkill, /Do not add package pages directly to `\.github\/cao\/dashboard\/site\/dashboard\.json`/);
   assert.doesNotMatch(dashboardAuthoringSkill, /Select only the Dashboard Language sources and fields/);
   assert.doesNotMatch(dashboardAuthoringSkill, /corpus\/index\.json/);
   assert.match(dashboardIrSkill, /## Corpus procedure/);
@@ -81,9 +81,9 @@ test("dashboard CI runs the package quality gates", () => {
   const lighthousePerformance = jobs.get("lighthouse-performance");
   const lighthouseComment = jobs.get("lighthouse-comment");
 
-  assert.match(source, /dashboard\/site\/\*\*/);
-  assert.match(source, /working-directory: dashboard\/site/);
-  assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
+  assert.match(source, /\.github\/cao\/dashboard\/site\/\*\*/);
+  assert.match(source, /working-directory: \.github\/cao\/dashboard\/site/);
+  assert.match(source, /cache-dependency-path: \.github\/cao\/dashboard\/site\/package-lock\.json/);
   assert.deepEqual(
     [...jobs.keys()],
     ["lint-unit", "playwright-integration", "ingestion-scale", "lighthouse-performance", "lighthouse-comment"]
@@ -102,7 +102,7 @@ test("dashboard CI runs the package quality gates", () => {
   assert.doesNotMatch(lintUnit.block, /playwright|test:e2e/i);
   assert.match(playwrightIntegration.block, /uses: actions\/cache@/);
   assert.match(playwrightIntegration.block, /path: ~\/\.cache\/ms-playwright/);
-  assert.match(playwrightIntegration.block, /hashFiles\('dashboard\/site\/package-lock\.json'\)/);
+  assert.match(playwrightIntegration.block, /hashFiles\('\.github\/cao\/dashboard\/site\/package-lock\.json'\)/);
   assert.match(playwrightIntegration.block, /npx playwright install --with-deps chromium/);
   assert.match(playwrightIntegration.block, /run: npm run test:e2e/);
   assert.doesNotMatch(playwrightIntegration.block, /run: npm (?:run (?:typecheck|lint)|test)$/m);
@@ -111,7 +111,7 @@ test("dashboard CI runs the package quality gates", () => {
   assert.doesNotMatch(lighthousePerformance.block, /pull-requests: write/);
   assert.match(lighthousePerformance.block, /uses: actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/);
   assert.match(lighthousePerformance.block, /name: dashboard-lighthouse-performance/);
-  assert.match(lighthousePerformance.block, /path: dashboard\/site\/test-results\/lighthouse\//);
+  assert.match(lighthousePerformance.block, /path: \.github\/cao\/dashboard\/site\/test-results\/lighthouse\//);
   assert.match(lighthousePerformance.block, /if: always\(\)/);
   assert.match(
     lighthouseComment.block,
@@ -146,25 +146,25 @@ test("dashboard CI runs the package quality gates", () => {
 
 test("Dashboard package builds artifacts and deploys Pages in one workflow", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
-  const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
-  const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
+  const activityManifest = readFileSync(join(root, ".github", "cao", "activity", "aw.yml"), "utf8");
+  const dashboardManifest = readFileSync(join(root, ".github", "cao", "dashboard", "aw.yml"), "utf8");
   const rootPackage = parse(rootManifest);
   const dashboardPackage = parse(dashboardManifest);
   const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
   const activityIndexJob = activityWorkflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const activityCacheJob = activityWorkflow.match(/\n  cache:\n([\s\S]*)/)?.[1];
-  const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
+  const siteBuildScript = readFileSync(join(root, ".github", "cao", "dashboard", "site", "scripts", "build.mjs"), "utf8");
   const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8");
   const dashboardBuildJob = dashboardWorkflow.match(/\n  build:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const dashboardCacheJob = dashboardWorkflow.match(/\n  cache:\n([\s\S]*?)\n  deploy:\n/)?.[1];
   const dashboardDeployJob = dashboardWorkflow.match(/\n  deploy:\n([\s\S]*)/)?.[1];
-  const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
-  const deployedWorkflows = readFileSync(join(root, "activity", "index.mjs"), "utf8");
-  const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
-  const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
-  const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
-  const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
+  const aicUsage = readFileSync(join(root, ".github", "cao", "dashboard", "report", "aic-usage.mjs"), "utf8");
+  const deployedWorkflows = readFileSync(join(root, ".github", "cao", "activity", "index.mjs"), "utf8");
+  const activityCollector = readFileSync(join(root, ".github", "cao", "activity", "collect-logs.sh"), "utf8");
+  const activityLogs = readFileSync(join(root, ".github", "cao", "activity", "logs.mjs"), "utf8");
+  const activityRunner = readFileSync(join(root, ".github", "cao", "activity", "run-activity.mjs"), "utf8");
+  const operationalValues = readFileSync(join(root, ".github", "cao", "dashboard", "report", "operational-values.mjs"), "utf8");
   const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-value-history.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
@@ -174,7 +174,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
 
   assert.ok(rootPackage.includes.includes(".github/cao/dashboard/aw.yml"));
   assert.match(dashboardManifest, /name: CAO Dashboard/);
-  assert.match(rootManifest, /^\s+- dashboard\/aw\.yml$/m);
+  assert.match(rootManifest, /^\s+- \.github\/cao\/dashboard\/aw\.yml$/m);
   assert.match(dashboardManifest, /^\s+- \.github\/workflows\/cao-dashboard\.yml$/m);
   assert.doesNotMatch(dashboardManifest, /cao-dashboard-build|dispatch-workflow/);
   assert.doesNotMatch(dashboardManifest, /destination: \.github\/cao\//);
@@ -238,7 +238,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardDeployJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?Configure Pages[\s\S]*?Upload Pages artifact[\s\S]*?Deploy Pages/);
   assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
-  assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
+  assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?\.github\/cao\/dashboard\/\*\*/);
   assert.doesNotMatch(dashboardWorkflow, /workflow_run:/);
   assert.doesNotMatch(dashboardWorkflow, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
@@ -311,7 +311,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
     assert.match(dashboardManifest, new RegExp(`source: site/src/${assetName.replace(".", "\\.")}\\n\\s+destination: \\.github/aw/dashboard/site/src/${assetName.replace(".", "\\.")}`));
   }
   for (const assetName of reportAssets) {
-    const assetPath = join(root, "dashboard", "report", assetName);
+    const assetPath = join(root, ".github", "cao", "dashboard", "report", assetName);
     assert.ok(existsSync(assetPath), `missing report script ${assetName}`);
     assert.match(dashboardManifest, new RegExp(`destination: \\.github/aw/dashboard/report/${assetName.replace(".", "\\.")}`));
     if (activityEntrypoints.has(assetName)) {
@@ -326,9 +326,9 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
 
 test("Activity package owns the shared collected-data cache contract", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
-  const activityManifest = parse(readFileSync(join(root, "activity", "aw.yml"), "utf8"));
+  const activityManifest = parse(readFileSync(join(root, ".github", "cao", "activity", "aw.yml"), "utf8"));
   const workflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
-  const readme = readFileSync(join(root, "activity", "README.md"), "utf8");
+  const readme = readFileSync(join(root, ".github", "cao", "activity", "README.md"), "utf8");
   const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.equal(activityManifest.name, "CAO Activity");
@@ -371,7 +371,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
   assert.doesNotMatch(workflow, /github-script|ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
-  assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);
+  assert.match(workflow, /Collect dashboard inventory[\s\S]*?\.github\/cao\/activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);
   assert.match(workflow, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
@@ -391,7 +391,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-pages.yml")), false);
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-build.yml")), false);
 
-  assert.doesNotMatch(workflow, /dashboard-build|needs: .github/cao/dashboard/);
+  assert.doesNotMatch(workflow, /dashboard-build|needs: dashboard/);
   assert.match(workflow, /name: Restore node_modules[\s\S]*?id: node-modules-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ runner\.os \}\}-node-24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/);
   assert.match(workflow, /name: Install dependencies\n\s+if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'\n\s+run: npm ci/);
   assert.match(workflow, /name: Save node_modules[\s\S]*?if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ steps\.node-modules-cache\.outputs\.cache-primary-key \}\}/);
@@ -425,7 +425,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "actions.yml"), "utf8");
   const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
-  assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
+  assert.match(workflow, /pull_request:[\s\S]*?\.github\/cao\/dashboard\/\*\*/);
   assert.match(workflow, /concurrency:\n\s+group: mobile-dashboard-integration-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: true/);
   assert.match(workflow, /deployed-data:[\s\S]*?if: github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'/);
   assert.match(workflow, /mobile:[\s\S]*?if: github\.event_name != 'push'/);
@@ -489,7 +489,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "central-agentic-ops-inventory-"));
   const outputPath = join(temporaryRoot, "control-plane.json");
   try {
-    execFileSync(process.execPath, [join(root, "activity", "inventory.mjs")], {
+    execFileSync(process.execPath, [join(root, ".github", "cao", "activity", "inventory.mjs")], {
       env: { ...process.env, REPORT_ROOT: root, REPORT_INVENTORY: outputPath },
     });
     const inventory = JSON.parse(readFileSync(outputPath, "utf8"));

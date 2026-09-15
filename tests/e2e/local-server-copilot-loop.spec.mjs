@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardServer } from "../../.github/cao/dashboard/local-server.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 

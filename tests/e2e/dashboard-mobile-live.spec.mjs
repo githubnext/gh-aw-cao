@@ -3,7 +3,7 @@ import { createWriteStream } from "node:fs";
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardServer } from "../../.github/cao/dashboard/local-server.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
 import {
   summarizeAccessibilityTree,

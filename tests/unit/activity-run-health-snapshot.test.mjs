@@ -4,7 +4,7 @@ import {
   previousIndexCanRetainRuns,
   previousIndexIsReusable,
   previousRunRecords,
-} from "../../activity/run-health-snapshot.mjs";
+} from "../../.github/cao/activity/run-health-snapshot.mjs";
 
 const context = {
   organization: "githubnext",

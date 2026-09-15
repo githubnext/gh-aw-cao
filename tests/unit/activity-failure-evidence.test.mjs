@@ -5,7 +5,7 @@ import {
   isFailedConclusion,
   performanceJobRecord,
   runFailureEvidence,
-} from "../../activity/failure-evidence.mjs";
+} from "../../.github/cao/activity/failure-evidence.mjs";
 
 test("run failure evidence normalizes API capacity and retains the failed job and step", () => {
   const evidence = runFailureEvidence([{

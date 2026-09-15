@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { runActivity } from "../../activity/run-activity.mjs";
+import { runActivity } from "../../.github/cao/activity/run-activity.mjs";
 
 async function fixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), "activity-run-"));
