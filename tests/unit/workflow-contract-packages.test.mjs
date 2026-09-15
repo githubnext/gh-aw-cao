@@ -245,11 +245,12 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.match(installer, /install-gh-aw\.sh[\s\S]*if \[\[ -f "\$policy_path" && -f "\$cao_cli" && -f "\$control_runtime" \]\]; then\s+exit 0/);
   assert.match(installer, /gh aw add githubnext\/gh-aw-cao/);
   assert.match(installer, /node "\$cao_cli" init/);
-  assert.match(updateSection, /gh aw update https:\/\/github\.com\/githubnext\/gh-aw-cao --major --cool-down 0 --create-pull-request/);
-  assert.match(updateSection, /resolves published GitHub releases[\s\S]*?latest compatible release/);
+  assert.match(updateSection, /node \.github\/aw\/activity\/cao\.mjs update --major --cool-down 0/);
+  assert.match(updateSection, /upgrades `gh-aw` to the minimum version declared by `\.github\/workflows\/cao\.json`/);
+  assert.match(updateSection, /resolves published GitHub releases[\s\S]*?updates each installed CAO package to its latest compatible release/);
   assert.match(updateSection, /Do not point updates at `main`, fetch control files separately, or copy them with a script/);
   assert.match(updateSection, /predate the package-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
-  assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add/);
+  assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add|--create-pull-request/);
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
   assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
   assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);

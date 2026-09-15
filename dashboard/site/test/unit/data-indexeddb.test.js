@@ -24,6 +24,29 @@ function batch() {
   ]);
 }
 
+/** @param {IDBTransaction} transaction */
+function transactionDone(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve(undefined);
+    transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+  });
+}
+
+/**
+ * @param {{ id: string, kind: string, createdAt: string, owner?: string, expiresAt?: unknown }} record
+ */
+async function writeTransactionRecord(record) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const transaction = database.transaction('transactions', 'readwrite');
+    transaction.objectStore('transactions').put(record);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
 beforeEach(async () => {
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
@@ -222,5 +245,46 @@ describe('canonical IndexedDB', () => {
     // A leaked connection from the failed acquisition attempt would block
     // this delete; it must resolve promptly if the connection was closed.
     await expect(deleteCanonicalDatabase(indexedDB, { blockedTimeoutMs: 200 })).resolves.toBeUndefined();
+  });
+
+  it('replaces malformed ingestion lock records instead of waiting forever', async () => {
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'safari-stale-tab',
+      expiresAt: 'not-a-number'
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'recovered'))
+      .resolves.toBe('recovered');
+  });
+
+  it('replaces impossible future ingestion lock leases instead of waiting forever', async () => {
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'safari-stale-tab',
+      expiresAt: Date.now() + (60 * 60 * 1000)
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'recovered'))
+      .resolves.toBe('recovered');
+  });
+
+  it('times out instead of waiting forever for an active ingestion lock', async () => {
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'active-tab',
+      expiresAt: Date.now() + 30_000
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'unreachable', {
+      acquireTimeoutMs: 20,
+      retryDelayMs: 1
+    })).rejects.toMatchObject({ name: 'CanonicalIngestionLockTimeoutError' });
   });
 });

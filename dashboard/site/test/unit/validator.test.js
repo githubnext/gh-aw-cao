@@ -779,9 +779,19 @@ describe('dashboard document validation', () => {
 
     expect(query).toMatchObject({
       from: 'runs',
+      compute: expect.arrayContaining([
+        {
+          as: 'repository-coordinate',
+          function: 'concat',
+          args: [{ field: 'organization' }, { value: '/' }, { field: 'repository' }]
+        }
+      ]),
       select: expect.arrayContaining([
         { field: 'run' },
         { field: 'run-conclusion' },
+        { field: 'repository-coordinate' },
+        { field: 'repository-link' },
+        { field: 'workflow-link' },
         { field: 'started-at' },
         { field: 'run-link' }
       ]),
@@ -910,6 +920,13 @@ dashboard:
     }
     expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs-table');
+    expect(runsView.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).not.toContain('organization');
+    expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'run')?.display).toBe('run-link');
+    expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'repository-coordinate')).toMatchObject({
+      title: 'Repository',
+      display: 'repository-link'
+    });
+    expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'workflow')?.display).toBe('workflow-link');
     expect(transactionsView).toMatchObject({
       data: { source: 'transactions-table' },
       mark: 'table',
@@ -2712,12 +2729,7 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "organization" for source "runs".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "repository" for source "runs".'
+            message: 'built-in page "runs" definition must expose field "repository-coordinate" for source "runs".'
           }),
           expect.objectContaining({
             code: 'DLS-E003',
@@ -3046,8 +3058,7 @@ dashboard:
                 - field: run
                 - field: run-status
                 - field: run-conclusion
-                - field: organization
-                - field: repository
+                - field: repository-coordinate
                 - field: workflow
                 - field: rollout-mode
                 - field: engine

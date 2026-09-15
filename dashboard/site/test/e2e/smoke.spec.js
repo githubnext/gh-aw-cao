@@ -637,6 +637,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'run-conclusion': 'failure',
               organization: 'githubnext',
               repository: 'gh-aw-cao',
+              'repository-coordinate': 'githubnext/gh-aw-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -644,6 +645,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T12:00:00Z',
+              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao', label: 'Open githubnext/gh-aw-cao' },
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
               'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' }
             },
             {
@@ -652,6 +655,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'run-conclusion': 'success',
               organization: 'githubnext',
               repository: 'gh-aw-cao',
+              'repository-coordinate': 'githubnext/gh-aw-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -659,6 +663,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T11:00:00Z',
+              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao', label: 'Open githubnext/gh-aw-cao' },
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
               'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1', label: 'Run 1' }
             }
           ]

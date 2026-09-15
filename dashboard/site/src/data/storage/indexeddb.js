@@ -79,6 +79,8 @@ const DEFAULT_WRITE_BATCH_SIZE = 1000;
 const MAX_TRANSACTION_RECORDS = 1000;
 const INGESTION_LOCK_ID = 'lock:canonical-ingestion';
 const INGESTION_LOCK_LEASE_MS = 5 * 60 * 1000;
+const INGESTION_LOCK_ACQUIRE_TIMEOUT_MS = INGESTION_LOCK_LEASE_MS + 30_000;
+const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 
 /**
  * @template T
@@ -99,6 +101,21 @@ function transactionDone(transaction) {
     transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
     transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
   });
+}
+
+/**
+ * @param {unknown} existing
+ * @param {number} now
+ */
+function ingestionLockLease(existing, now) {
+  if (!existing || typeof existing !== 'object') return { active: false, expiresAt: null };
+  const expiresAt = Number(/** @type {{ expiresAt?: unknown }} */ (existing).expiresAt);
+  return {
+    active: Number.isFinite(expiresAt)
+      && expiresAt > now
+      && expiresAt <= now + INGESTION_LOCK_LEASE_MS,
+    expiresAt: Number.isFinite(expiresAt) ? expiresAt : null
+  };
 }
 
 /**
@@ -425,11 +442,20 @@ export async function readTransaction(indexedDB, id) {
  * @template T
  * @param {IDBFactory} indexedDB
  * @param {() => Promise<T>} task
+ * @param {{ acquireTimeoutMs?: number, retryDelayMs?: number }} [options]
  */
-export async function withCanonicalIngestionLock(indexedDB, task) {
+export async function withCanonicalIngestionLock(indexedDB, task, options = {}) {
   const owner = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}:${Math.random()}`;
   const startedAt = Date.now();
+  const acquireTimeoutMs = options.acquireTimeoutMs ?? INGESTION_LOCK_ACQUIRE_TIMEOUT_MS;
+  const retryDelayMs = options.retryDelayMs ?? INGESTION_LOCK_RETRY_DELAY_MS;
   for (;;) {
+    const waitedMs = Date.now() - startedAt;
+    if (waitedMs > acquireTimeoutMs) {
+      const error = new Error('Timed out waiting for canonical ingestion lock');
+      error.name = 'CanonicalIngestionLockTimeoutError';
+      throw error;
+    }
     const database = await openCanonicalDatabase(indexedDB);
     let acquired;
     try {
@@ -438,8 +464,16 @@ export async function withCanonicalIngestionLock(indexedDB, task) {
       const store = transaction.objectStore(TRANSACTION_STORE);
       const existing = await requestResult(store.get(INGESTION_LOCK_ID));
       const now = Date.now();
-      acquired = !existing || Number(existing.expiresAt) <= now;
+      const lease = ingestionLockLease(existing, now);
+      acquired = !lease.active;
       if (acquired) {
+        if (existing) {
+          debug('replacing stale canonical ingestion lock', {
+            heldBy: existing?.owner ?? null,
+            expiresAt: lease.expiresAt,
+            waitedMs: now - startedAt
+          });
+        }
         store.put({
           id: INGESTION_LOCK_ID,
           kind: 'canonical-ingestion-lock',
@@ -462,7 +496,7 @@ export async function withCanonicalIngestionLock(indexedDB, task) {
       database.close();
     }
     if (acquired) break;
-    await new Promise((resolve) => { setTimeout(resolve, 25); });
+    await new Promise((resolve) => { setTimeout(resolve, retryDelayMs); });
   }
   debug('acquired canonical ingestion lock', { owner, waitedMs: Date.now() - startedAt });
 
