@@ -14,6 +14,7 @@ import {
 const maximumDomNodes = 6_000;
 let preview;
 let sourcePayload;
+let expectedActivityShardPaths;
 
 function metricValues(metrics) {
   return Object.fromEntries(metrics.map(({ name, value }) => [name, value]));
@@ -195,6 +196,7 @@ test.beforeAll(async () => {
           && /^[a-f0-9]{64}$/i.test(hash))
         .sort(([left], [right]) => left.localeCompare(right));
       if (shards.length === 0) throw new Error("Deployed dashboard manifest contains no valid activity shards.");
+      expectedActivityShardPaths = shards.map(([name]) => `/${name}`);
       await mkdir(destination, { recursive: true });
       const inventoryPath = join(destination, "inventory-sources.json");
       await pipeline(inventoryResponse.body, createWriteStream(inventoryPath));
@@ -227,7 +229,7 @@ test.afterAll(async () => {
 test("latest dashboard data loads within the mobile DOM budget", async ({ page }, testInfo) => {
   const pageErrors = [];
   let crashed = false;
-  const shardResponses = [];
+  const shardResponses = new Map();
   let inventoryResponse;
   const memoryMb = optionalNumber("MOBILE_MEMORY_MB");
   const network = {
@@ -263,7 +265,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   page.on("response", (response) => {
     const pathname = new URL(response.url()).pathname;
     if (pathname.includes("/gh-aw-logs-shards/") && pathname.endsWith(".jsonl")) {
-      shardResponses.push(response);
+      shardResponses.set(pathname.slice(pathname.indexOf("/gh-aw-logs-shards/")), response);
     }
     if (pathname.endsWith("/inventory-sources.json")) inventoryResponse = response;
   });
@@ -279,8 +281,14 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   // can attribute node counts to their owning JSON view.
   await expect(dashboard).toHaveAttribute("data-json-path", "$.dashboard", { timeout: 30_000 });
 
-  expect(shardResponses, "The dashboard must request canonical activity shards").not.toHaveLength(0);
-  expect(shardResponses.every((response) => response.ok()), "Dashboard activity shard requests must succeed").toBe(true);
+  expect(
+    [...shardResponses.keys()].sort(),
+    "The dashboard must request every canonical activity shard",
+  ).toEqual(expectedActivityShardPaths);
+  expect(
+    [...shardResponses.values()].every((response) => response.ok()),
+    "Dashboard activity shard requests must succeed",
+  ).toBe(true);
   expect(inventoryResponse, "The dashboard must request inventory sources").toBeDefined();
   expect(inventoryResponse?.ok(), `Dashboard inventory returned ${inventoryResponse?.status()}`).toBe(true);
   expect(crashed, "The mobile browser page crashed while rendering the dashboard").toBe(false);
