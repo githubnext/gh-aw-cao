@@ -36,6 +36,10 @@ test("exposes the dashboard data CLI as cao", async () => {
     assert.match(stdout, /cao gh runs /);
     assert.match(stdout, /cao gh issues /);
     assert.match(stdout, /cao gh prs /);
+    assert.match(stdout, /Download the deployed snapshot before querying/);
+    assert.match(stdout, /execution repo for runs, target repo for issues and prs/);
+    assert.match(stdout, /-s, --status\s+Runs only/);
+    assert.match(stdout, /cao ingest-jsonl --input FILE/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -121,6 +125,7 @@ test("queries canonical data with the gh-like surface", async () => {
       "--database", database,
       "-R", "githubnext/gh-aw-cao",
       "-w", "cao-activity",
+      "-s", "success",
       "--since", "2026-09-10",
       "--until", "2026-09-10",
       "-L", "1",
@@ -128,6 +133,13 @@ test("queries canonical data with the gh-like surface", async () => {
     const runs = JSON.parse(runsOutput);
     assert.equal(runs.length, 1);
     assert.equal(runs[0].githubRunId, "404");
+
+    const { stdout: failedRunsOutput } = await executeFile(cao, [
+      "gh", "runs",
+      "--database", database,
+      "--status", "failure",
+    ]);
+    assert.deepEqual(JSON.parse(failedRunsOutput), []);
 
     const { stdout: issuesOutput } = await executeFile(cao, [
       "gh", "issues",

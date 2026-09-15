@@ -239,13 +239,14 @@ Use the gh-like query surface when an agent needs familiar GitHub CLI-shaped
 commands for runs and safe-output-created issues or pull requests:
 
 ```bash
-cao gh runs --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
+cao gh runs --repo OWNER/REPOSITORY --workflow WORKFLOW --status failure --since 2026-09-01 --until 2026-09-15
 cao gh issues --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
 cao gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
 ```
 
-`-R`, `-w`, and `-L` are aliases for `--repo`, `--workflow`, and `--limit`.
-The default limit is 30. Date-only `--until` values include the entire date.
+`-R`, `-w`, `-s`, and `-L` are aliases for `--repo`, `--workflow`, `--status`,
+and `--limit`. For runs, `--status` matches either the workflow status or
+conclusion. The default limit is 30. Date-only `--until` values include the entire date.
 Issue and pull request results come from canonical `safe_output.created` events;
 their repository filter refers to the output target repository.
 

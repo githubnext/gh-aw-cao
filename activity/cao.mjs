@@ -52,9 +52,33 @@ const USAGE = `Usage:
   cao download [--url URL] [--output DIRECTORY]
   cao hash-payloads [--input GH_AW_LOGS_JSONL] [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
-  cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
+  cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh prs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
+
+Query local CAO data as JSON. Download the deployed snapshot before querying:
+  cao download
+  cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
+  cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
+  cao gh prs -R githubnext/gh-aw-cao -w cao-activity -L 10
+
+Resources:
+  runs    Workflow runs executed in --repo
+  issues  Issues created through safe outputs in the target --repo
+  prs     Pull requests created through safe outputs in the target --repo
+
+gh query options:
+  -R, --repo       Exact OWNER/REPO; execution repo for runs, target repo for issues and prs
+  -w, --workflow   Producing workflow name, path, file name, or ID
+  -s, --status     Runs only: workflow status or conclusion, such as completed or failure
+  -L, --limit      Maximum results, newest first (default ${DEFAULT_GH_LIMIT})
+  --since          Include results at or after ISO 8601 time (example: 2026-09-01T12:00:00Z)
+  --until          Include results at or before ISO 8601 time; a date includes the full day
+  --database       Local SQLite snapshot (default ${DEFAULT_DATABASE_PATH})
+
+Data preparation:
+  cao download writes the deployed JSONL and query-ready SQLite snapshot to ${DEFAULT_OUTPUT_DIRECTORY}/.
+  To query other gh-aw JSONL, first run cao ingest-jsonl --input FILE [--database FILE].
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
@@ -73,12 +97,7 @@ Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
   ARTIFACT  ${DEFAULT_ACTIVITY_STATS_ARTIFACT}
   LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
 
-gh query aliases:
-  -R, --repo       Filter by OWNER/REPO
-  -w, --workflow   Filter by workflow name or file
-  -L, --limit      Maximum results (default ${DEFAULT_GH_LIMIT})
-  --since          Include records at or after an ISO 8601 time
-  --until          Include records at or before an ISO 8601 time`;
+`;
 
 async function jsonlFiles(root) {
   const files = [];
@@ -101,7 +120,7 @@ async function jsonlFiles(root) {
 }
 
 function parseOptions(arguments_) {
-  const aliases = { '-R': 'repo', '-w': 'workflow', '-L': 'limit' };
+  const aliases = { '-R': 'repo', '-w': 'workflow', '-s': 'status', '-L': 'limit' };
   /** @type {Record<string, string | string[]>} */
   const options = {};
   for (let index = 0; index < arguments_.length; index += 1) {
@@ -704,6 +723,7 @@ export async function queryGhData(indexedDB, resource, options) {
 
   let records;
   if (resource === 'runs') {
+    const statusFilter = option(options, 'status', false)?.toLowerCase();
     records = runs.filter((run) => {
       const repository = sourceRepository(run);
       const workflow = sourceWorkflow(run);
@@ -711,6 +731,8 @@ export async function queryGhData(indexedDB, resource, options) {
       const timestamp = recordTimestamp(run, ['startedAt', 'createdAt', 'updatedAt', 'observedAt']);
       return (!repositoryFilter || fullName === repositoryFilter)
         && matchesWorkflow(workflow, workflowFilter)
+        && (!statusFilter || [run.status, run.conclusion]
+          .some((value) => String(value ?? '').toLowerCase() === statusFilter))
         && inTimeRange(timestamp, range);
     });
   } else {
@@ -893,7 +915,10 @@ export async function runCli(arguments_, input = process.stdin) {
   const indexedDB = await createDatabase(databasePath);
 
   if (command === 'gh') {
-    rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'since', 'until', 'limit']);
+    rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'status', 'since', 'until', 'limit']);
+    if (ghResource !== 'runs' && options.status) {
+      throw new Error('--status is only supported for cao gh runs');
+    }
     return queryGhData(indexedDB, ghResource, options);
   }
 
