@@ -192,6 +192,17 @@ function renderNotification(initial, container, onRemove) {
     details.hidden = expanded;
     if (!expanded) details.scrollTop = details.scrollHeight;
   };
+  details.addEventListener('wheel', (event) => {
+    const maxScrollTop = details.scrollHeight - details.clientHeight;
+    if (maxScrollTop <= 0 || event.deltaY === 0) return;
+    const scale = event.deltaMode === 1
+      ? 16
+      : event.deltaMode === 2
+        ? details.clientHeight
+        : 1;
+    details.scrollTop = Math.max(0, Math.min(maxScrollTop, details.scrollTop + event.deltaY * scale));
+    event.preventDefault();
+  }, { passive: false });
   const scheduleDismissal = () => {
     if (dismissTimer) clearTimeout(dismissTimer);
     dismissTimer = current.duration > 0 ? setTimeout(dismiss, current.duration) : undefined;

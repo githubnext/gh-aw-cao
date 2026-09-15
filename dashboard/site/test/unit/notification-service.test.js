@@ -117,6 +117,36 @@ describe('dashboard notification service', () => {
     expect(details.scrollTop).toBe(20);
   });
 
+  it('captures wheel scrolling in expanded progress history', () => {
+    const service = createNotificationService(document);
+    service.publish({
+      message: 'Storing data...',
+      duration: 0,
+      details: ['Loading metadata.', 'Storing data...', 'Refreshing queries.']
+    });
+    const details = /** @type {HTMLUListElement} */ (
+      document.querySelector('.dashboard-notification-details')
+    );
+    Object.defineProperties(details, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 300 }
+    });
+    details.scrollTop = 0;
+
+    const scrollDown = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 60 });
+    details.dispatchEvent(scrollDown);
+
+    expect(details.scrollTop).toBe(60);
+    expect(scrollDown.defaultPrevented).toBe(true);
+
+    details.scrollTop = 200;
+    const scrollPastEnd = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 60 });
+    details.dispatchEvent(scrollPastEnd);
+
+    expect(details.scrollTop).toBe(200);
+    expect(scrollPastEnd.defaultPrevented).toBe(true);
+  });
+
   it('uses an assertive role for errors and rejects empty messages', () => {
     const service = createNotificationService(document);
     service.publish({ message: 'Refresh failed.', tone: 'error' });
