@@ -728,6 +728,7 @@ test('data worker computes repository and package pages with request-scoped dash
       modes: 'review',
       registration: 'true',
       runs: 1,
+      dispatches: 0,
       aic: 17
     }],
     metadata: { 'source-kind': 'derived', 'query-name': 'package-inventory' }
@@ -756,7 +757,8 @@ test('deployed JSONL ingestion includes the published package inventory', async 
       package: 'dashboard',
       'package-name': 'CAO Dashboard',
       workflows: 1,
-      runs: 1
+      runs: 1,
+      dispatches: 0
     }]
   });
 });

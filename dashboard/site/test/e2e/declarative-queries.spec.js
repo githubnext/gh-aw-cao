@@ -333,7 +333,7 @@ test('the authored basic table queries return the populated canonical database r
   ]);
   expect(payload['runs-table'].rows.map((row) => row.run)).toEqual(['1005', '1004', '1003', '1002', '1001']);
   expect(payload['package-inventory'].rows).toEqual([
-    expect.objectContaining({ package: 'dashboard', 'package-name': 'CAO Dashboard', workflows: 1, runs: 3 })
+    expect.objectContaining({ package: 'dashboard', 'package-name': 'CAO Dashboard', workflows: 1, runs: 3, dispatches: 2 })
   ]);
 });
 

@@ -856,8 +856,8 @@ describe('declarative dashboard queries', () => {
     const runs = {
       source: 'runs',
       rows: [
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-conclusion': 'failure', 'aic-total': 4 },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-conclusion': 'success', 'aic-total': 6 }
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'failure', 'aic-total': 4 },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', event: 'schedule', 'run-conclusion': 'success', 'aic-total': 6 }
       ],
       metadata: metadata('runs')
     };
@@ -900,6 +900,7 @@ describe('declarative dashboard queries', () => {
       modes: 'review',
       registration: 'false, true',
       runs: 2,
+      dispatches: 1,
       aic: 10
     }]);
   });
