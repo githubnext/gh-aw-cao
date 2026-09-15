@@ -297,6 +297,109 @@ describe('reactive core', () => {
     handle.stop();
   });
 
+  it('reverses a large keyed list with bounded DOM moves', () => {
+    const reversed = state(false);
+    const count = 100;
+    const host = h('div');
+    const handle = render(host, () => {
+      const indexes = Array.from({ length: count }, (_, index) => index);
+      if (reversed.get()) indexes.reverse();
+      return indexes.map((index) => h('span', { 'data-key': index }, String(index)));
+    });
+    const original = [...host.children];
+    const insertBefore = vi.spyOn(host, 'insertBefore');
+
+    reversed.set(true);
+
+    expect([...host.children]).toEqual([...original].reverse());
+    expect(insertBefore.mock.calls.length).toBeLessThan(count + 1);
+    handle.stop();
+  });
+
+  it('preserves identity through alternating keyed and unkeyed reordering', () => {
+    const reordered = state(false);
+    const host = h('div');
+    const handle = render(host, () => reordered.get()
+      ? [
+          h('button', { 'data-key': 'action' }, 'Action updated'),
+          h('em', null, 'Emphasis updated'),
+          h('div', { 'data-key': 'panel' }, 'Panel updated'),
+          h('span', null, 'Status updated')
+        ]
+      : [
+          h('span', null, 'Status'),
+          h('div', { 'data-key': 'panel' }, 'Panel'),
+          h('em', null, 'Emphasis'),
+          h('button', { 'data-key': 'action' }, 'Action')
+        ]);
+    const original = [...host.children];
+
+    reordered.set(true);
+
+    expect([...host.children]).toEqual([original[3], original[2], original[1], original[0]]);
+    expect([...host.children].map((node) => node.textContent)).toEqual([
+      'Action updated',
+      'Emphasis updated',
+      'Panel updated',
+      'Status updated'
+    ]);
+    handle.stop();
+  });
+
+  it('consumes duplicate keys in order and removes surplus nodes', () => {
+    const count = state(3);
+    const host = h('div');
+    const handle = render(host, () => Array.from(
+      { length: count.get() },
+      (_, index) => h('span', { 'data-key': 'duplicate' }, `item-${index}`)
+    ));
+    const original = [...host.children];
+
+    count.set(2);
+
+    expect([...host.children]).toEqual(original.slice(0, 2));
+    expect(original[2].isConnected).toBe(false);
+
+    count.set(4);
+
+    expect([...host.children].slice(0, 2)).toEqual(original.slice(0, 2));
+    expect(host.children).toHaveLength(4);
+    handle.stop();
+  });
+
+  it('replaces incompatible keyed nodes without reusing their identity', () => {
+    const useButton = state(false);
+    const host = h('div');
+    const handle = render(host, () => useButton.get()
+      ? h('button', { 'data-key': 'control' }, 'Button')
+      : h('a', { 'data-key': 'control', href: '#target' }, 'Link'));
+    const link = host.firstElementChild;
+
+    useButton.set(true);
+
+    expect(host.firstElementChild).not.toBe(link);
+    expect(host.firstElementChild?.localName).toBe('button');
+    expect(link?.isConnected).toBe(false);
+    handle.stop();
+  });
+
+  it('reorders text and comments while preserving character-data nodes', () => {
+    const reordered = state(false);
+    const host = h('div');
+    const handle = render(host, () => reordered.get()
+      ? [document.createComment('comment-updated'), 'text-updated']
+      : ['text', document.createComment('comment')]);
+    const text = host.childNodes[0];
+    const comment = host.childNodes[1];
+
+    reordered.set(true);
+
+    expect([...host.childNodes]).toEqual([comment, text]);
+    expect(comment.nodeValue).toBe('comment-updated');
+    expect(text.nodeValue).toBe('text-updated');
+    handle.stop();
+  });
+
   it('updates explicit form properties without resetting uncontrolled fields', () => {
     const controlled = state('first');
     const tick = state(0);
