@@ -39,7 +39,10 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     names(["optimization/.github/graders/optimization-ai-credit-auditor-operational-value.sh"]),
     [],
   );
-  assert.deepEqual(names(["dependabot/.github/graders/dependabot-release-train-updater-operational-value.sh"]), []);
+  assert.deepEqual(
+    names(["dependabot/.github/graders/dependabot-release-train-updater-operational-value.sh"]),
+    ["Dependabot"],
+  );
   assert.deepEqual(
     names(["eu-cra-compliance/.github/graders/eu-cra-compliance-scope-classifier-operational-value.sh"]),
     [],
