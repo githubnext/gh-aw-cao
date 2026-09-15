@@ -110,6 +110,26 @@ test("self-care pages health worker creates a fix PR instead of a report issue",
   assert.match(source, /Fix only the selected quick wins/);
 });
 
+test("Dependabot worker maintains one agent-ready issue and never writes pull requests", () => {
+  const source = workflow("dependabot-release-train-updater.md");
+  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
+  assert.ok(frontmatter, "Dependabot worker must have frontmatter");
+  const outputs = parse(frontmatter)["safe-outputs"];
+
+  assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "create-issue", "update-issue"]);
+  assert.equal(outputs["create-issue"].max, 1);
+  assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
+  assert.equal(outputs["update-issue"].body, true);
+  assert.equal(outputs["update-issue"].max, 1);
+  assert.equal(outputs["add-comment"]["pull-requests"], false);
+  assert.equal(outputs["add-comment"].max, 1);
+  assert.match(source, /Dependency update plan for <owner>\/<repository>/);
+  assert.match(source, /Dependabot update plan refreshed\./);
+  assert.match(source, /<summary><b>Agent prompt<\/b><\/summary>/);
+  assert.match(source, /complete every unchecked item/);
+  assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
+});
+
 test("workers with title prefixes provide unprefixed safe-output titles", () => {
   for (const name of readdirSync(workflowsDirectory).filter((entry) => entry.endsWith(".md"))) {
     const source = workflow(name);

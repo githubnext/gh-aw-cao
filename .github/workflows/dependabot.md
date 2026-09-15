@@ -99,7 +99,7 @@ source: githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
 
 # Dependabot
 
-Package orchestrator for organization-wide dependency release-train maintenance. Use the shared control plane to select target repositories and dispatch `dependabot-release-train-updater`; keep dispatch repository-scoped and let the updater own manifest-aware bundle construction inside each selected repository.
+Package orchestrator for organization-wide Dependabot plan maintenance. Use the shared control plane to select target repositories and dispatch `dependabot-release-train-updater`; keep dispatch repository-scoped and let the updater maintain one agent-ready issue covering all current Dependabot updates for each selected repository.
 
 ## Inputs and scope
 
@@ -138,9 +138,9 @@ Use age, exploitability evidence, dependency directness, runtime use, deployment
 
 ## Updater
 
-- `dependabot-release-train-updater`: reads manifests, lockfiles, dependency PRs, alerts, CI evidence, package usage, tests, and observability configuration; builds hard-edge and soft-edge relationships between manifests instead of grouping solely by dependency name.
-- The updater should form the smallest independently testable atomic bundles, include the minimum manifest closure required to reach a fixed and resolvable state, and keep unrelated major upgrades separate.
-- Within each selected repository, favor security and repair lanes first, then configuration fixes, then routine patch/minor maintenance; produce one primary safe output: dependency update PR, PR/issue comment, follow-up issue, or no-op.
+- `dependabot-release-train-updater`: reads manifests, lockfiles, Dependabot PRs and alerts, CI evidence, package usage, tests, and observability configuration; builds one complete repository plan while preserving independently testable update groups.
+- The updater maintains one stable, agent-ready issue per repository, refreshes its full description on later runs, and comments after every refresh.
+- The updater never creates or changes a pull request. Its issue tells a human how to assign the complete checklist to a coding agent; when Dependabot identifies no current work, it emits a no-op.
 
 ## Completion
 
