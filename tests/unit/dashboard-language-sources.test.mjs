@@ -654,7 +654,11 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
         runHealth: { runRecords: [] },
       }],
     },
-    usage: { available: true, complete: true, runs: [] },
+    usage: {
+      available: true,
+      complete: true,
+      runs: [{ repository: "githubnext/gh-aw-cao", runId: 99, agentId: " ", modelId: "" }],
+    },
     operationalValues: { records: [] },
     report: {
       generatedAt: "2026-09-05T12:00:00Z",

@@ -326,6 +326,8 @@ describe('gh-aw logs adapter', () => {
         attempt: 1,
         workflowName: 'Dashboard',
         displayTitle: 'Build dashboard',
+        agent_id: ' ',
+        model_id: '',
         status: 'completed',
         conclusion: 'success',
         createdAt: '2026-09-09T03:59:00Z',

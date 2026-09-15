@@ -185,7 +185,8 @@ describe('current dashboard source adapter', () => {
       runs: {
         rows: [{
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-          run: '303', 'run-attempt': 1, 'started-at': '2026-09-09T04:00:00Z'
+          run: '303', 'run-attempt': 1, 'started-at': '2026-09-09T04:00:00Z',
+          'agent-id': ' ', 'model-id': ''
         }],
         metadata
       },
