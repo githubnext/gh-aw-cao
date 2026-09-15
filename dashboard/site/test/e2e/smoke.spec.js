@@ -2606,7 +2606,7 @@ test('full-view scrolling with a small overscroll range does not jitter the app 
   }
 });
 
-test('full-view mobile header collapses smoothly instead of jumping when scrolled', async ({ page }) => {
+test('full-view mobile chrome stays stable while a repositories table scrolls', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 390, height: 844 });
 
@@ -2675,34 +2675,18 @@ test('full-view mobile header collapses smoothly instead of jumping when scrolle
   const sidebar = page.locator('.org-sidebar');
   await expect(view).toHaveCount(1);
   await expect(sidebar).toBeVisible();
-  const restingMaxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
-  expect(restingMaxHeight).toBeGreaterThan(0);
+  const restingBox = await sidebar.boundingBox();
+  assert(restingBox);
 
-  await scroll.evaluate((element) => {
-    element.scrollTop = 100;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  // The mobile header must stay a laid-out, transitionable element (never display:none)
-  // so its collapse animates smoothly instead of instantly jumping the table beneath it,
-  // which is what produced the reported scroll jitter on iPhone.
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).display)).not.toBe('none');
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).transitionProperty)).toContain('max-height');
-  // Sample the collapse repeatedly while it is in flight to confirm it actually interpolates
-  // frame-by-frame rather than jumping straight to the end state.
-  await expect.poll(async () => {
-    const maxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
-    return maxHeight > 0 && maxHeight < restingMaxHeight;
-  }, { timeout: 180, intervals: [10, 15, 20, 25] }).toBe(true);
-  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).toBe('0px');
-
-  await scroll.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(sidebar).toBeVisible();
-  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).not.toBe('0px');
+  for (const scrollTop of [100, 30, 120, 0]) {
+    await scroll.evaluate((element, top) => {
+      element.scrollTop = top;
+      element.dispatchEvent(new Event('scroll'));
+    }, scrollTop);
+    await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(sidebar).toBeVisible();
+    expect(await sidebar.boundingBox()).toEqual(restingBox);
+  }
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {
