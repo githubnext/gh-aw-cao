@@ -76,6 +76,59 @@ it('injects route and runtime predicates before a declared aggregate executes', 
   expect(results[payload.aliases[0]].rows).toEqual([{ count: 1 }]);
 });
 
+it('applies the selected horizon before derived repository totals aggregate runs', () => {
+  const page = {
+    views: [{ id: 'repositories', data: { source: 'repository-activity' } }]
+  };
+  const definitions = [
+    {
+      name: 'repository-run-totals',
+      from: 'runs',
+      aggregate: {
+        by: ['repository'],
+        values: [{ field: 'run', as: 'runs', reducer: 'distinct-count' }]
+      }
+    },
+    {
+      name: 'repository-activity',
+      from: 'repositories',
+      joins: [{
+        source: 'repository-run-totals',
+        type: 'left',
+        on: [{ left: 'repository', right: 'repository' }],
+        fields: [{ field: 'runs', as: 'runs' }]
+      }]
+    }
+  ];
+  const payload = compileDashboardViewPayloadQueries(page, 'repositories', {
+    queries: definitions,
+    queryContext: {
+      timeWindow: { start: '2026-09-01T00:00:00Z', end: '2026-10-01T00:00:00Z' }
+    }
+  });
+  const results = executeDashboardQueries(payload.queries, {
+    repositories: {
+      source: 'repositories',
+      rows: [{ repository: 'alpha' }, { repository: 'beta' }],
+      metadata
+    },
+    runs: {
+      source: 'runs',
+      rows: [
+        { run: '1', repository: 'alpha', 'started-at': '2026-09-10T00:00:00Z' },
+        { run: '2', repository: 'alpha', 'started-at': '2026-08-10T00:00:00Z' },
+        { run: '3', repository: 'beta', 'started-at': '2026-08-10T00:00:00Z' }
+      ],
+      metadata
+    }
+  }, payload.aliases);
+
+  expect(results[payload.aliases[0]].rows).toEqual([
+    { repository: 'alpha', runs: 1 },
+    { repository: 'beta', runs: null }
+  ]);
+});
+
 it('uses a declared history window and resolves time-end for calendar rhythm queries', () => {
   const page = {
     views: [{ id: 'rhythm', data: { source: 'overview-rhythm', time: {

@@ -76,7 +76,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
         ...compileRoutePredicates(routeField, routeValue)
       ];
       const compiled = compileAliasedQuery(sourceName, alias, predicates, options.queryContext?.search, options.queryContext?.orderBy, options.evaluatedAt, options.queries);
-      queries.push(compiled.query);
+      queries.push(...compiled.dependencies, compiled.query);
       if (compiled.replacesSource) replacedSources.add(sourceName);
     });
   });
@@ -106,6 +106,17 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
     && (!Array.isArray(declared.joins) || declared.joins.every((join) => (
       isPlainObject(join) && typeof join.source === 'string' && !declaredNames.has(join.source)
     )));
+  if (isPlainObject(declared) && !standalone) {
+    return compileScopedQueryGraph(
+      sourceName,
+      alias,
+      predicates,
+      search,
+      orderBy,
+      evaluatedAt,
+      declaredQueries
+    );
+  }
   const sourceQuery = standalone
     ? /** @type {Record<string, unknown>} */ (declared)
     : undefined;
@@ -133,6 +144,7 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
   };
   return {
     replacesSource: Boolean(sourceQuery),
+    dependencies: [],
     query: executableSourceQuery
       ? {
         ...executableSourceQuery,
@@ -147,6 +159,80 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
         ...(runtimeOrder ? { 'order-by': runtimeOrder } : {})
       }
   };
+}
+
+/**
+ * Clones a derived query graph so request-scoped time bounds reach source rows
+ * before dependent aggregates execute.
+ * @param {string} sourceName
+ * @param {string} alias
+ * @param {Array<Record<string, unknown>>} predicates
+ * @param {GlobalQueryContext['search']} search
+ * @param {GlobalQueryContext['orderBy']} orderBy
+ * @param {string | undefined} evaluatedAt
+ * @param {Array<Record<string, unknown>>} definitions
+ */
+function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy, evaluatedAt, definitions) {
+  const byName = new Map(definitions
+    .filter((definition) => typeof definition.name === 'string')
+    .map((definition) => [definition.name, definition]));
+  const structuralSources = new Set(['packages', 'repositories', 'workflows']);
+  const scopedName = (name) => name === sourceName ? alias : `${alias}:dependency:${slug(name)}`;
+  const temporalPredicates = predicates.filter((predicate) => predicate.field === '@time');
+  const dependencies = [];
+  const compiled = new Set();
+
+  const compile = (name) => {
+    if (compiled.has(name)) return;
+    const definition = byName.get(name);
+    if (!definition) return;
+    const dependencyNames = [definition.from, ...(Array.isArray(definition.joins)
+      ? definition.joins.map((join) => isPlainObject(join) ? join.source : undefined)
+      : [])].filter((dependency) => typeof dependency === 'string' && byName.has(dependency));
+    for (const dependency of dependencyNames) compile(dependency);
+
+    const root = name === sourceName;
+    const declaredFilter = isPlainObject(definition.filter) ? definition.filter : null;
+    const declaredPredicates = declaredFilter && Array.isArray(declaredFilter.predicates)
+      ? declaredFilter.predicates.filter(isPlainObject)
+      : [];
+    const requestPredicates = [
+      ...(root ? predicates.filter((predicate) => predicate.field !== '@time') : []),
+      ...(!byName.has(definition.from) && !structuralSources.has(definition.from)
+        ? temporalPredicates
+        : [])
+    ];
+    const combinedPredicates = applyQueryTime(
+      [...declaredPredicates, ...requestPredicates],
+      definition.time,
+      evaluatedAt
+    );
+    const runtimeSearch = root && search && search.query.trim() && search.fields.length > 0
+      ? { fields: search.fields, query: search.query.trim() }
+      : undefined;
+    const filter = {
+      ...(combinedPredicates.length > 0 ? { predicates: combinedPredicates } : {}),
+      ...(runtimeSearch ? { search: runtimeSearch } : {})
+    };
+    const query = resolveQueryContext({
+      ...definition,
+      name: scopedName(name),
+      from: byName.has(definition.from) ? scopedName(definition.from) : definition.from,
+      ...(Array.isArray(definition.joins) ? {
+        joins: definition.joins.map((join) => isPlainObject(join) && byName.has(join.source)
+          ? { ...join, source: scopedName(join.source) }
+          : join)
+      } : {}),
+      ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined }),
+      ...(root && Array.isArray(orderBy) && orderBy.length > 0 ? { 'order-by': orderBy } : {})
+    }, queryTimeEnd(combinedPredicates) ?? evaluatedAt);
+    compiled.add(name);
+    if (root) return query;
+    dependencies.push(query);
+  };
+
+  const query = compile(sourceName);
+  return { replacesSource: true, dependencies, query };
 }
 
 /** @param {Array<Record<string, unknown>>} predicates @param {unknown} time @param {string | undefined} evaluatedAt */
