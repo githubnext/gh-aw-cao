@@ -14,8 +14,8 @@ import { queryCanonicalViewSources } from './data/queries/view-sources.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { createElapsedStepTracker } from './elapsed-step-tracker.js';
 import { loadDashboardSources } from './source-loader.js';
-import { formatClockDuration } from './view-formatters.js';
 
 /** @param {ReadableStream<Uint8Array>} body */
 async function* responseChunks(body) {
@@ -68,37 +68,17 @@ let nextIngestionProgressId = 0;
  */
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
-  let message = 'Preparing source data...';
-  let phase = 'preparing';
-  let phaseStartedAt = Date.now();
-  /** @type {string[]} */
-  let history = [];
-  let nextStep = 0;
+  const clock = createElapsedStepTracker('Preparing source data...', {
+    historyLimit: INGESTION_PROGRESS_HISTORY_LIMIT
+  });
   let completed = false;
-  /** @param {string} nextMessage @param {string} nextPhase */
-  const updatePhase = (nextMessage, nextPhase) => {
-    if (phase !== nextPhase) {
-      history = [...history, `${message} +${formatClockDuration(Date.now() - phaseStartedAt)}`]
-        .slice(-INGESTION_PROGRESS_HISTORY_LIMIT);
-      phase = nextPhase;
-      phaseStartedAt = Date.now();
-    }
-    message = nextMessage;
-  };
-  const displayedMessage = () => `${message} +${formatClockDuration(Date.now() - phaseStartedAt)}`;
-  const displayedHistory = () => [...history, displayedMessage()]
-    .slice(-INGESTION_PROGRESS_HISTORY_LIMIT);
-  /** @param {string} nextMessage */
-  const append = (nextMessage) => {
-    if (message === nextMessage) return;
-    updatePhase(nextMessage, `step-${++nextStep}`);
-  };
   const report = () => {
     if (!completed) {
+      const snapshot = clock.snapshot();
       publishWorkerNotification({
         id,
-        message: displayedMessage(),
-        details: displayedHistory(),
+        message: snapshot.message,
+        details: snapshot.history,
         tone: 'info',
         duration: 0
       }, target);
@@ -119,7 +99,7 @@ export function startIngestionProgress(target = self) {
       const byteProgress = typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0
         ? `${formatDataSize(bytesProcessed)} of ${formatDataSize(totalBytes)}`
         : formatDataSize(bytesProcessed);
-      updatePhase(
+      clock.update(
         `Parsing activity data... ${recordsIngested.toLocaleString('en-US')} `
           + `${recordsIngested === 1 ? 'record' : 'records'}, ${byteProgress} read.`,
         'parsing'
@@ -131,7 +111,7 @@ export function startIngestionProgress(target = self) {
      * @param {{ storedRecords: number, totalRecords: number }} progress
      */
     store({ storedRecords, totalRecords }) {
-      updatePhase(
+      clock.update(
         `Storing data... ${storedRecords.toLocaleString('en-US')} of `
           + `${totalRecords.toLocaleString('en-US')} records stored.`,
         'storing'
@@ -139,7 +119,7 @@ export function startIngestionProgress(target = self) {
     },
     /** @param {string} nextMessage */
     log(nextMessage) {
-      append(nextMessage);
+      clock.advance(nextMessage);
     },
     complete() {
       if (completed) return;
