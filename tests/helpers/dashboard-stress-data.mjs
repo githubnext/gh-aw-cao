@@ -25,6 +25,10 @@ function increment(counts, value) {
   counts[key] = (counts[key] ?? 0) + 1;
 }
 
+function sortedCounts(counts) {
+  return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)));
+}
+
 function observedModel(run) {
   return run.model ?? run.resolved_model ?? run.model_id ?? run.aw_info?.model;
 }
@@ -114,6 +118,9 @@ async function inspectSamples(samplePath) {
     throw new Error(`${samplePath} does not contain a schema-v2 run record.`);
   }
   profile.retainedTemplates = templates.length;
+  profile.conclusions = sortedCounts(profile.conclusions);
+  profile.engines = sortedCounts(profile.engines);
+  profile.models = sortedCounts(profile.models);
   profile.durationSeconds.mean = durationCount === 0
     ? null
     : Number((durationTotal / durationCount).toFixed(2));

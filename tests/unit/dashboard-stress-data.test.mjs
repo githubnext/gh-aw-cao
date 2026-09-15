@@ -135,8 +135,8 @@ test("stress shards preserve observed operational shapes without copying identit
 
 test("stress sampling is deterministic across reordered real-data shards", async () => {
       const root = await mkdtemp(join(tmpdir(), "cao-dashboard-stress-sampling-"));
-      const firstSample = join(root, "first.jsonl");
-      const secondSample = join(root, "second.jsonl");
+      const firstSample = join(root, "first", "sample.jsonl");
+      const secondSample = join(root, "second", "sample.jsonl");
       const records = Array.from({ length: 300 }, (_, index) => ({
         schema_version: 2,
         kind: "run",
@@ -152,6 +152,8 @@ test("stress sampling is deterministic across reordered real-data shards", async
           model: `model-${index % 4}`,
         },
       }));
+      await mkdir(join(root, "first"));
+      await mkdir(join(root, "second"));
       await writeFile(firstSample, `${records.map(JSON.stringify).join("\n")}\n`);
       await writeFile(secondSample, `${records.toReversed().map(JSON.stringify).join("\n")}\n`);
       try {
@@ -178,6 +180,10 @@ test("stress sampling is deterministic across reordered real-data shards", async
         assert.deepEqual(
           first.files.map(({ sha256 }) => sha256),
           second.files.map(({ sha256 }) => sha256),
+        );
+        assert.equal(
+          await readFile(join(root, "first-output", "manifest.json"), "utf8"),
+          await readFile(join(root, "second-output", "manifest.json"), "utf8"),
         );
         const generated = (await readFile(join(root, "first-output", first.files[0].name), "utf8"))
           .trim().split("\n").map(JSON.parse);
