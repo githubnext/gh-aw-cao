@@ -350,8 +350,9 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
   assert.match(setupSkill, /Do not add release-resolution scripts/);
-  assert.match(setupSkill, /package cannot install this file because it is consumer-owned rollout policy/);
-  assert.match(setupSkill, /Replace `<gh-aw-version>`[\s\S]*?both occurrences of `<target-owner>`[\s\S]*?one occurrence of `<target-repository>`/);
+  assert.match(setupSkill, /cao init[\s\S]*cao add "githubnext\/gh-aw-cao\/<package-slug>@<release>"/);
+  assert.match(setupSkill, /consumer-owned policy/);
+  assert.match(setupSkill, /edit only `control-plane\.scope` to add `target-owner` and `target-owner\/target-repository`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);
   assert.match(setupSkill, /if \(\/<\[\^>\]\+>\/\.test\(source\)\) throw new Error\('unresolved policy placeholder'\)/);
   const policyTemplate = setupSkill.match(/```json\n([\s\S]*?)\n\s*```/)?.[1];
