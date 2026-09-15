@@ -580,7 +580,8 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
     element.scrollTop = element.scrollHeight;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
@@ -717,7 +718,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
-test('scrolling over the Models & Agents pie chart collapses chrome and reveals the full-view table', async ({ page }) => {
+test('scrolling over a preceding mobile chart advances the full-view table without hiding chrome', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -800,9 +801,9 @@ test('scrolling over the Models & Agents pie chart collapses chrome and reveals 
   await chart.hover();
   await page.mouse.wheel(0, 100);
 
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(chart).toBeHidden();
-  await expect(page.locator('.org-sidebar')).toBeHidden();
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(chart).toBeVisible();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
 
   await scroll.evaluate((element) => {
@@ -823,7 +824,9 @@ test('scrolling over the Models & Agents pie chart collapses chrome and reveals 
       touches: [touch(200)]
     }));
   });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(chart).toBeVisible();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
 });
 
