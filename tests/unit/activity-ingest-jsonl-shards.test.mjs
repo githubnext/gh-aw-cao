@@ -17,16 +17,17 @@ async function fixture() {
   return { root, shardDirectory, databasePath: path.join(root, 'gh-aw-logs.sqlite') };
 }
 
-async function ingest(shardDirectory, databasePath) {
-  const { stdout } = await execFileAsync(process.execPath, [
+async function ingest(shardDirectory, databasePath, options = {}) {
+  const { stdout, stderr } = await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
     'ingest-jsonl',
     '--database',
     databasePath,
     '--input-dir',
     shardDirectory,
-  ]);
-  return JSON.parse(stdout);
+  ], { env: { ...process.env, ...options.env } });
+  const output = JSON.parse(stdout);
+  return options.includeStderr ? { output, stderr } : output;
 }
 
 async function queryTransactions(databasePath) {
@@ -88,4 +89,34 @@ test('ingest-jsonl --input-dir skips already-ingested shards on repeat runs with
     'gh-aw-jsonl:gh-aw-logs-1000000000-aaaa.jsonl',
     'gh-aw-jsonl:gh-aw-logs-2000000000-bbbb.jsonl',
   ]);
+});
+
+test('ingest-jsonl --input-dir logs shard decisions without record payloads', async () => {
+  const { shardDirectory, databasePath } = await fixture();
+  const sourceShard = path.resolve('dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
+  const secondShardContent = (await readFile(sourceShard, 'utf8'))
+    .replace('"schema_version":2,', '"schema_version":2,"debug_test_secret":"record-payload-secret",')
+    .replace('303', '404');
+  await writeFile(path.join(shardDirectory, 'gh-aw-logs-2000000000-bbbb.jsonl'), secondShardContent);
+
+  const first = await ingest(shardDirectory, databasePath, {
+    includeStderr: true,
+    env: { NODE_DEBUG: 'cao:ingest' },
+  });
+  assert.equal(first.output.result.shards.length, 2);
+  assert.match(first.stderr, /scanning shard directory .*2 shard\(s\) found/);
+  assert.match(first.stderr, /ingesting shard gh-aw-logs-1000000000-aaaa\.jsonl/);
+  assert.match(first.stderr, /ingested shard gh-aw-logs-1000000000-aaaa\.jsonl: committedRecords=\d+/);
+  assert.match(first.stderr, /ingesting shard gh-aw-logs-2000000000-bbbb\.jsonl/);
+  assert.match(first.stderr, /ingested shard gh-aw-logs-2000000000-bbbb\.jsonl: committedRecords=\d+/);
+  assert.doesNotMatch(first.stderr, /record-payload-secret|workflow_runs|token_usage_summary|githubnext\/gh-aw-cao/);
+
+  const second = await ingest(shardDirectory, databasePath, {
+    includeStderr: true,
+    env: { NODE_DEBUG: 'cao:ingest' },
+  });
+  assert.equal(second.output.result.updated, false);
+  assert.match(second.stderr, /skipping shard gh-aw-logs-1000000000-aaaa\.jsonl: content hash already recorded in transactions table/);
+  assert.match(second.stderr, /skipping shard gh-aw-logs-2000000000-bbbb\.jsonl: content hash already recorded in transactions table/);
+  assert.doesNotMatch(second.stderr, /record-payload-secret|workflow_runs|token_usage_summary|githubnext\/gh-aw-cao/);
 });
