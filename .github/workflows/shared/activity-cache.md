@@ -39,8 +39,13 @@ agent-side reuse. Consumers must treat cache misses and incomplete coverage as
 fallback conditions and must never save or publish this shared cache.
 -->
 
+<cached-gh-data>
+
 Query the restored snapshot with the `cao` CLI instead of parsing
-`gh-aw-logs-shards/*.jsonl` shards by hand. First check whether the
+`gh-aw-logs-shards/*.jsonl` shards by hand, and instead of querying GitHub
+directly. Prefer this cached data over GitHub API or `gh` CLI calls whenever
+it can answer the question, since repeated direct GitHub queries burn API
+rate limits that the shared cache already avoids. First check whether the
 restore populated `$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite`; a
 missing or empty file is a cache miss and must be treated as a fallback
 condition, not an error. Resolve the CLI entry point before running any
@@ -97,3 +102,5 @@ its counts. Always validate cache scope, freshness, window, and completeness
 against the requested evidence before treating query results as authoritative,
 and fetch only missing evidence through read-only GitHub or `agentic-workflows`
 tools rather than widening this shared cache's role.
+
+</cached-gh-data>
