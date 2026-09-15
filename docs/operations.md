@@ -158,8 +158,8 @@ The root Central Agentic Ops package installs the deterministic activity index a
 
 ```bash
 CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-gh aw add "githubnext/gh-aw-cao/activity@${CAO_RELEASE}"
-gh aw add "githubnext/gh-aw-cao/dashboard@${CAO_RELEASE}"
+gh aw add "githubnext/gh-aw-cao/.github/cao/activity@${CAO_RELEASE}"
+gh aw add "githubnext/gh-aw-cao/.github/cao/dashboard@${CAO_RELEASE}"
 ```
 
 Both installation paths add an independently dispatchable dashboard builder, a manual standalone Pages publisher, and their deterministic report modules. There is no additional dashboard enable variable, and installation does not deploy or enable Pages.
@@ -180,15 +180,15 @@ The package installs the following components in the control-plane repository:
 
 - `.github/workflows/cao-dashboard.yml`, the dashboard builder, artifact publisher, and optional standalone Pages publisher;
 - `.github/workflows/cao-activity.yml`, the scheduled and manually dispatchable data collector and cache publisher;
-- `.github/aw/activity/logs.mjs`, the single bounded `gh aw logs` acquisition entrypoint;
-- `.github/aw/activity/index.mjs`, the local-only deployed-workflow and run-health indexer;
-- `.github/aw/dashboard/report/aic-usage.mjs`, the bounded AI Credit usage collector;
-- `.github/aw/activity/inventory.mjs`, the dependency-free control-plane inventory extractor;
-- `.github/aw/dashboard/report/operational-values.mjs`, the fleet collector that invokes gh-aw history replay and falls back to recent run artifacts per workflow;
-- `.github/aw/dashboard/report/operational-value-history.mjs`, the report-contract normalizer and append-only observation identity merger;
-- `.github/aw/dashboard/report/records.mjs`, the durable issue, pull request, comment, and review-artifact normalizer with logs-derived run attribution;
-- `.github/aw/dashboard/report/dashboard-language-sources.mjs`, the trusted adapter from collected records to Dashboard Language `sources.json`;
-- `.github/aw/dashboard/site`, the packaged Dashboard Language configuration, validator, presenter, and browser runtime.
+- `.github/cao/activity/logs.mjs`, the single bounded `gh aw logs` acquisition entrypoint;
+- `.github/cao/activity/index.mjs`, the local-only deployed-workflow and run-health indexer;
+- `.github/cao/dashboard/report/aic-usage.mjs`, the bounded AI Credit usage collector;
+- `.github/cao/activity/inventory.mjs`, the dependency-free control-plane inventory extractor;
+- `.github/cao/dashboard/report/operational-values.mjs`, the fleet collector that invokes gh-aw history replay and falls back to recent run artifacts per workflow;
+- `.github/cao/dashboard/report/operational-value-history.mjs`, the report-contract normalizer and append-only observation identity merger;
+- `.github/cao/dashboard/report/records.mjs`, the durable issue, pull request, comment, and review-artifact normalizer with logs-derived run attribution;
+- `.github/cao/dashboard/report/dashboard-language-sources.mjs`, the trusted adapter from collected records to Dashboard Language `sources.json`;
+- `.github/cao/dashboard/site`, the packaged Dashboard Language configuration, validator, presenter, and browser runtime.
 
 For a standalone Pages site:
 

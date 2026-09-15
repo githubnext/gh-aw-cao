@@ -7,9 +7,9 @@ import { promisify } from 'node:util';
 const execFileAsync = promisify(execFile);
 
 test('Node CLI ingests a gh-aw artifact directory through IndexedDB queries', async () => {
-  const fixture = path.resolve('dashboard/site/test/fixtures/gh-aw-logs');
+  const fixture = path.resolve('.github/cao/dashboard/site/test/fixtures/gh-aw-logs');
   const { stdout } = await execFileAsync(process.execPath, [
-    path.resolve('activity/cao.mjs'),
+    path.resolve('.github/cao/activity/cao.mjs'),
     path.join(fixture, 'context.json'),
     path.join(fixture, 'run-303'),
   ]);

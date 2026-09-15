@@ -17,9 +17,9 @@ The dashboard package publishes an access-controlled static view of Central Agen
 - `.github/workflows/cao-activity.yml`: shared data collector and cache publisher installed by the core activity package.
 - `.github/workflows/shared/policy.mjs`: dependency-free checked-in policy parser and resolver.
 - `.github/workflows/shared/control.mjs`: deterministic policy command adapter used by the build workflow.
-- `.github/aw/dashboard/report`: deterministic collection modules executed by the activity action plus Dashboard Language source adaptation.
-- `.github/aw/dashboard/site`: the packaged Dashboard Language validator, presenter, configuration, and browser runtime.
-- `.github/aw/dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.
+- `.github/cao/dashboard/report`: deterministic collection modules executed by the activity action plus Dashboard Language source adaptation.
+- `.github/cao/dashboard/site`: the packaged Dashboard Language validator, presenter, configuration, and browser runtime.
+- `.github/cao/dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.
 
 The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot plus a deterministic `inventory-sources.json` sidecar from the reviewed control policy and local workflow inventory. The dashboard publisher restores these files from the same cache. The browser ingests the activity JSONL and then the sidecar so configured packages, including packages without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
 
@@ -32,8 +32,8 @@ If authoritative control policy resolution fails, the build remains fail-closed 
 The root Central Agentic Ops package installs the dashboard by default. For a focused installation, install the core activity package and dashboard from the same reviewed release tag or full commit SHA:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/activity@<catalog-release>
-gh aw add githubnext/gh-aw-cao/dashboard@<catalog-release>
+gh aw add githubnext/gh-aw-cao/.github/cao/activity@<catalog-release>
+gh aw add githubnext/gh-aw-cao/.github/cao/dashboard@<catalog-release>
 ```
 
 Both installation paths add the deterministic dashboard automation without an additional enable variable. The standalone publisher remains manual-only and cannot enable Pages for the repository.
@@ -41,7 +41,7 @@ Both installation paths add the deterministic dashboard automation without an ad
 To refresh or restore package-owned files, reinstall a reviewed release with force:
 
 ```bash
-gh aw add githubnext/gh-aw-cao/dashboard@<catalog-release> --force
+gh aw add githubnext/gh-aw-cao/.github/cao/dashboard@<catalog-release> --force
 ```
 
 The package contains only deterministic action workflows and resources, so `gh aw update` has no source-tracked agentic workflow through which to discover it.
@@ -58,7 +58,7 @@ The server requires GitHub CLI authentication with Actions read access. It downl
 
 Open only the unguessable URL printed by the server. The server uses only Node.js built-ins plus GitHub CLI, binds to the loopback interface by default, rejects unexpected request hosts, and serves the packaged site without a build step. Use `--port` or `--host` to override its address.
 
-The preview composes `.github/aw/dashboard/site/dashboard.json` with every installed `.github/aw/dashboards/*.json` package dashboard. It watches those files and sends the new composed `dashboard.json` over a capability-protected WebSocket after a valid update. The browser re-renders that document without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
+The preview composes `.github/cao/dashboard/site/dashboard.json` with every installed `.github/cao/dashboards/*.json` package dashboard. It watches those files and sends the new composed `dashboard.json` over a capability-protected WebSocket after a valid update. The browser re-renders that document without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
 
 ### Canvas CLI actions
 

@@ -11,7 +11,7 @@ export async function startLocalDashboardPreview({
   const localServer = await import(pathToFileURL(localServerPath).href);
   if (typeof localServer.startDashboardServer !== "function") {
     throw new Error(
-      "dashboard/local-server.mjs does not export startDashboardServer.",
+      ".github/cao/dashboard/local-server.mjs does not export startDashboardServer.",
     );
   }
 
@@ -30,9 +30,8 @@ export async function startLocalDashboardPreview({
 async function findLocalServer(workingDirectory) {
   const extensionDirectory = dirname(fileURLToPath(import.meta.url));
   const candidates = [
-    join(workingDirectory, "dashboard", "local-server.mjs"),
-    join(workingDirectory, ".github", "aw", "dashboard", "local-server.mjs"),
-    resolve(extensionDirectory, "../../../dashboard/local-server.mjs"),
+    join(workingDirectory, ".github", "cao", "dashboard", "local-server.mjs"),
+    resolve(extensionDirectory, "../../../.github/cao/dashboard/local-server.mjs"),
   ];
 
   for (const candidate of new Set(candidates)) {
@@ -44,6 +43,6 @@ async function findLocalServer(workingDirectory) {
     }
   }
   throw new Error(
-    "Could not find dashboard/local-server.mjs in the workspace or installed plugin.",
+    "Could not find .github/cao/dashboard/local-server.mjs in the workspace or installed plugin.",
   );
 }

@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import { activityWorkflowStats } from '../../activity/cao.mjs';
 
-const FIXTURE_JSONL = path.resolve('dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
+const FIXTURE_JSONL = path.resolve('.github/cao/dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
 
 function fakeGh(runs) {
   return function execute(command, arguments_) {

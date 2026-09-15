@@ -13,7 +13,7 @@ includes:
   - .github/workflows/cao-evolution.md
 resources:
   - source: dashboard.json
-    destination: .github/aw/dashboards/cao-evolution.json
+    destination: .github/cao/dashboards/cao-evolution.json
   - source: .github/graders/cao-evolution-failures-investigator-operational-value.sh
     destination: .github/aw/cao-evolution/graders/cao-evolution-failures-investigator-operational-value.sh
   - source: .github/graders/cao-evolution-compiler-security-operational-value.sh

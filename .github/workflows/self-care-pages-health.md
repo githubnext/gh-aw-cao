@@ -114,11 +114,11 @@ safe-outputs:
     protected-files: fallback-to-issue
     max-patch-files: 20
     allowed-files:
-      - "dashboard/site/index.html"
-      - "dashboard/site/src/*.js"
-      - "dashboard/site/src/**/*.js"
-      - "dashboard/site/test/unit/**/*.js"
-      - "dashboard/site/test/e2e/**/*.js"
+      - ".github/cao/dashboard/site/index.html"
+      - ".github/cao/dashboard/site/src/*.js"
+      - ".github/cao/dashboard/site/src/**/*.js"
+      - ".github/cao/dashboard/site/test/unit/**/*.js"
+      - ".github/cao/dashboard/site/test/e2e/**/*.js"
   upload-artifact:
     max-uploads: 1
     retention-days: 14
@@ -130,16 +130,16 @@ safe-outputs:
 pre-agent-steps:
   - name: Install dashboard dependencies
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: timeout 10m npm ci --prefix dashboard/site --ignore-scripts
+    run: timeout 10m npm ci --prefix .github/cao/dashboard/site --ignore-scripts
   - name: Cache Chromium
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
     with:
       path: ~/.cache/ms-playwright
-      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium
+      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('.github/cao/dashboard/site/package-lock.json') }}-chromium
   - name: Install Chromium
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: timeout 10m npm exec --prefix dashboard/site -- playwright install --with-deps chromium
+    run: timeout 10m npm exec --prefix .github/cao/dashboard/site -- playwright install --with-deps chromium
   - name: Collect deployed Pages health evidence
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
@@ -147,7 +147,7 @@ pre-agent-steps:
       PAGES_HEALTH_OUTPUT_DIR: ${{ github.workspace }}/self-care-pages-health-evidence
     run: |
       set +e
-      node dashboard/site/test/performance/pages-health.mjs
+      node .github/cao/dashboard/site/test/performance/pages-health.mjs
       printf '%s\n' "$?" > "$PAGES_HEALTH_OUTPUT_DIR/collector-exit-code"
       exit 0
 ---

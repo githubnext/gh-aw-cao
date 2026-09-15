@@ -87,10 +87,10 @@ safe-outputs:
     max: 1
     if-no-changes: ignore
     allowed-files:
-      - "dashboard/site/index.html"
-      - "dashboard/site/src/*.js"
-      - "dashboard/site/src/**/*.js"
-      - "dashboard/site/test/**/*.js"
+      - ".github/cao/dashboard/site/index.html"
+      - ".github/cao/dashboard/site/src/*.js"
+      - ".github/cao/dashboard/site/src/**/*.js"
+      - ".github/cao/dashboard/site/test/**/*.js"
 mcp-servers:
   primer-brand:
     command: npx
@@ -112,16 +112,16 @@ runtimes:
 pre-agent-steps:
   - name: Install dashboard dependencies
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: npm ci --prefix dashboard/site --ignore-scripts
+    run: npm ci --prefix .github/cao/dashboard/site --ignore-scripts
   - name: Cache Chromium
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
     with:
       path: ~/.cache/ms-playwright
-      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium
+      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('.github/cao/dashboard/site/package-lock.json') }}-chromium
   - name: Install Chromium
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: npm exec --prefix dashboard/site -- playwright install --with-deps chromium
+    run: npm exec --prefix .github/cao/dashboard/site -- playwright install --with-deps chromium
 ---
 
 # SelfCare Primer Brand Checker
@@ -132,12 +132,12 @@ You are a **front-end designer** responsible for keeping the Central Agentic Ops
 
 ## Context
 
-This repository contains a static dashboard renderer under `dashboard/site/`.
+This repository contains a static dashboard renderer under `.github/cao/dashboard/site/`.
 
-- `dashboard/site/index.html` — page shell and initial markup
-- `dashboard/site/src/styles.js` — dashboard theme tokens and component styles
-- `dashboard/site/src/presenter.js` and `dashboard/site/src/components/` — generated UI markup
-- `dashboard/site/test/` — unit and browser coverage
+- `.github/cao/dashboard/site/index.html` — page shell and initial markup
+- `.github/cao/dashboard/site/src/styles.js` — dashboard theme tokens and component styles
+- `.github/cao/dashboard/site/src/presenter.js` and `.github/cao/dashboard/site/src/components/` — generated UI markup
+- `.github/cao/dashboard/site/test/` — unit and browser coverage
 
 Use the complete dashboard validation suite listed in Step 3 after making changes.
 
@@ -150,7 +150,7 @@ Use the complete dashboard validation suite listed in Step 3 after making change
 
 ### Step 2: Audit the dashboard
 
-Review `dashboard/site/index.html`, `dashboard/site/src/styles.js`, and the markup produced by `dashboard/site/src/presenter.js` and `dashboard/site/src/components/` for deviations from the retrieved guidance, focusing on:
+Review `.github/cao/dashboard/site/index.html`, `.github/cao/dashboard/site/src/styles.js`, and the markup produced by `.github/cao/dashboard/site/src/presenter.js` and `.github/cao/dashboard/site/src/components/` for deviations from the retrieved guidance, focusing on:
 
 - **Color**: hard-coded values that should use Primer variables or brand tokens; off-brand gradients or accents; light/dark mode parity.
 - **Typography**: font families, weights, sizes, and line heights that diverge from the brand type scale.
@@ -166,11 +166,11 @@ Prioritize the highest-impact, lowest-risk deviations. A focused change set is b
 2. Run all dashboard validation commands:
 
    ```bash
-   npm --prefix dashboard/site run typecheck
-   npm --prefix dashboard/site run lint
-   npm --prefix dashboard/site test
-   npm --prefix dashboard/site run test:e2e
-   npm --prefix dashboard/site run build
+   npm --prefix .github/cao/dashboard/site run typecheck
+   npm --prefix .github/cao/dashboard/site run lint
+   npm --prefix .github/cao/dashboard/site test
+   npm --prefix .github/cao/dashboard/site run test:e2e
+   npm --prefix .github/cao/dashboard/site run build
    ```
 
 3. If a fix breaks validation and cannot be resolved cleanly, revert that fix and describe it in the pull request body as a follow-up.
@@ -197,7 +197,7 @@ Always finish by calling exactly one safe-output tool. If the audit finds no mea
 - Do NOT restructure the dashboard, rename files, create files, or change application logic. This workflow is presentational only.
 - Do NOT remove existing functionality, tests, or accessibility affordances such as ARIA attributes and keyboard handling.
 - Do NOT add or update dependencies.
-- Do NOT change `dashboard/aw.yml`, report producers, documentation, agentic workflows, or files outside the configured safe-output allowlist.
+- Do NOT change `.github/cao/dashboard/aw.yml`, report producers, documentation, agentic workflows, or files outside the configured safe-output allowlist.
 - Do NOT open a pull request when any validation command fails.
 - Keep the change set small enough for a human to review in one sitting.
 

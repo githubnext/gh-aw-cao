@@ -10,7 +10,7 @@ includes:
   - .github/workflows/software-development-practices-nist-ssdf.md
 resources:
   - source: dashboard.json
-    destination: .github/aw/dashboards/software-development-practices.json
+    destination: .github/cao/dashboards/software-development-practices.json
   - source: software-development-guidance-operational-value-runtime.bash
     destination: .github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash
   - source: .github/graders/software-development-practices-github-well-architected-operational-value.sh

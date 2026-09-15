@@ -10,14 +10,14 @@ Migrate one view at a time to a request-scoped canonical query while preserving 
 
 ## Procedure
 
-1. Locate the view in `dashboard/site/dashboard.json`. Record its page id, view id, `data.source`, filters, ordering, route fields, and every field consumed by its encoding or UI element.
-2. Trace that source only far enough to identify its current producer and the canonical entities needed to replace it. Prefer indexed reads from `dashboard/site/src/data/queries/index.js`; add an index-backed query there when the required access pattern is missing.
-3. Add the smallest projection in `dashboard/site/src/data/queries/view-sources.js` that converts canonical records into the existing renderer payload. Preserve field names and metadata semantics at the renderer boundary.
+1. Locate the view in `.github/cao/dashboard/site/dashboard.json`. Record its page id, view id, `data.source`, filters, ordering, route fields, and every field consumed by its encoding or UI element.
+2. Trace that source only far enough to identify its current producer and the canonical entities needed to replace it. Prefer indexed reads from `.github/cao/dashboard/site/src/data/queries/index.js`; add an index-backed query there when the required access pattern is missing.
+3. Add the smallest projection in `.github/cao/dashboard/site/src/data/queries/view-sources.js` that converts canonical records into the existing renderer payload. Preserve field names and metadata semantics at the renderer boundary.
 4. Make the projection request-scoped. A view request must execute only its required canonical reads and return only requested source payloads. Do not materialize every collection or send unrelated metadata shells.
-5. Route the request through `dashboard/site/src/data-processor.js` and `dashboard/site/src/data-worker.js`. Keep canonical records and IndexedDB access inside the worker; send serializable query inputs in and source-shaped payloads out.
+5. Route the request through `.github/cao/dashboard/site/src/data-processor.js` and `.github/cao/dashboard/site/src/data-worker.js`. Keep canonical records and IndexedDB access inside the worker; send serializable query inputs in and source-shaped payloads out.
 6. Preserve legacy derivations as compatibility fallbacks for views not yet migrated. Do not rewrite unrelated views, generated data, or published source producers in the same migration.
-7. Add a focused unit test under `dashboard/site/test/unit/` for query selection and payload shape. Add or extend a Playwright test under `dashboard/site/test/e2e/` to exercise the real module worker, IndexedDB generation, and initial plus navigated page requests.
-8. Run the focused unit test, focused Playwright spec, `npm run typecheck`, and `npm run lint` from `dashboard/site/`. Report any broader validation not run.
+7. Add a focused unit test under `.github/cao/dashboard/site/test/unit/` for query selection and payload shape. Add or extend a Playwright test under `.github/cao/dashboard/site/test/e2e/` to exercise the real module worker, IndexedDB generation, and initial plus navigated page requests.
+8. Run the focused unit test, focused Playwright spec, `npm run typecheck`, and `npm run lint` from `.github/cao/dashboard/site/`. Report any broader validation not run.
 
 ## Completion Contract
 

@@ -1672,7 +1672,7 @@ The completed implementation SHALL use the stable data namespace.
 Example:
 
 ```text
-dashboard/
+.github/cao/dashboard/
   data/
     model/
       ids.mjs

@@ -27,28 +27,28 @@ function focusedPackageSource(slug, source = packageSource) {
   return `${source.slice(0, separator)}/${slug}${source.slice(separator)}`;
 }
 const ukAiAdvisoryPackageSource = focusedPackageSource("uk-ai-advisory");
-const activityPackageSource = focusedPackageSource("activity");
+const activityPackageSource = focusedPackageSource(".github/cao/activity");
 const caoEvolutionPackageSource = focusedPackageSource("cao-evolution");
 const craPackageSource = focusedPackageSource("eu-cra-compliance");
-const dashboardPackageSource = focusedPackageSource("dashboard");
+const dashboardPackageSource = focusedPackageSource(".github/cao/dashboard");
 const dependabotUpdateSource = focusedPackageSource("dependabot");
 const dependabotPackageUpdateSource = `${packageUpdateSource}/dependabot`;
 const selfCarePackageSource = focusedPackageSource("self-care");
 const softwareDevelopmentPracticesPackageSource = focusedPackageSource("software-development-practices");
 const activityExpectedFiles = [
-  ".github/aw/activity/actions-context.mjs",
-  ".github/aw/activity/actions-log.mjs",
-  ".github/aw/activity/cao.mjs",
-  ".github/aw/activity/control-settings.mjs",
-  ".github/aw/activity/gh-aw-logs.mjs",
-  ".github/aw/activity/inventory.mjs",
-  ".github/aw/activity/inventory-sources.mjs",
+  ".github/cao/activity/actions-context.mjs",
+  ".github/cao/activity/actions-log.mjs",
+  ".github/cao/activity/cao.mjs",
+  ".github/cao/activity/control-settings.mjs",
+  ".github/cao/activity/gh-aw-logs.mjs",
+  ".github/cao/activity/inventory.mjs",
+  ".github/cao/activity/inventory-sources.mjs",
   ".github/workflows/cao-activity.yml",
 ];
 const caoEvolutionExpectedFiles = [
   ".github/aw/cao-evolution/graders/cao-evolution-failures-investigator-operational-value.sh",
   ".github/aw/cao-evolution/graders/cao-evolution-compiler-security-operational-value.sh",
-  ".github/aw/dashboards/cao-evolution.json",
+  ".github/cao/dashboards/cao-evolution.json",
   ".github/workflows/graders/cao-evolution-failures-investigator-operational-value.sh",
   ".github/workflows/graders/cao-evolution-compiler-security-operational-value.sh",
   ".github/workflows/cao-evolution-failures-investigator.md",
@@ -62,14 +62,14 @@ const caoEvolutionExpectedFiles = [
 ];
 const ukAiAdvisoryExpectedFiles = [
   ".github/aw/uk-ai-advisory/implementation-status.md",
-  ".github/aw/dashboards/uk-ai-advisory.json",
+  ".github/cao/dashboards/uk-ai-advisory.json",
   ".github/workflows/uk-ai-advisory-package-maintainer.md",
   ".github/workflows/uk-ai-advisory-operational-resilience.md",
   ".github/workflows/uk-ai-advisory.md",
   ".github/workflows/shared/control.md",
 ];
 const craExpectedFiles = [
-  ".github/aw/dashboards/eu-cra-compliance.json",
+  ".github/cao/dashboards/eu-cra-compliance.json",
   ".github/aw/eu-cra-compliance/implementation-status.md",
   ".github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
@@ -99,12 +99,12 @@ const craExpectedFiles = [
 const dashboardExpectedFiles = [
   ".github/workflows/cao-dashboard.yml",
   ...[...readFileSync(
-    new URL("../../dashboard/aw.yml", import.meta.url),
+    new URL("../../.github/cao/dashboard/aw.yml", import.meta.url),
     "utf8",
   ).matchAll(/^\s+destination: (.+)$/gm)].map((match) => match[1]),
 ];
 const selfCareExpectedFiles = [
-  ".github/aw/dashboards/self-care.json",
+  ".github/cao/dashboards/self-care.json",
   ".github/aw/self-care/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/self-care-accessibility-checker.md",
@@ -127,7 +127,7 @@ const selfCareExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const softwareDevelopmentPracticesExpectedFiles = [
-  ".github/aw/dashboards/software-development-practices.json",
+  ".github/cao/dashboards/software-development-practices.json",
   ".github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash",
   ".github/aw/software-development-practices/graders/software-development-practices-github-well-architected-operational-value.sh",
   ".github/aw/software-development-practices/graders/software-development-practices-nist-ssdf-operational-value.sh",
@@ -290,7 +290,7 @@ test("gh aw add installs the focused EU CRA package contract", { timeout: 180_00
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
-        ".github/aw/dashboards/eu-cra-compliance.json",
+        ".github/cao/dashboards/eu-cra-compliance.json",
         ".github/aw/eu-cra-compliance/implementation-status.md",
         ".github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
         ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
@@ -345,7 +345,7 @@ test("gh aw add installs the focused UK AI Advisory package contract", { timeout
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
         ".github/aw/uk-ai-advisory/implementation-status.md",
-        ".github/aw/dashboards/uk-ai-advisory.json",
+        ".github/cao/dashboards/uk-ai-advisory.json",
         ".github/workflows/uk-ai-advisory-package-maintainer.md",
         ".github/workflows/uk-ai-advisory.md",
       ].toSorted(),
@@ -403,7 +403,7 @@ test("gh aw add installs the focused Software Development Practices package cont
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       [
-        ".github/aw/dashboards/software-development-practices.json",
+        ".github/cao/dashboards/software-development-practices.json",
         ".github/aw/software-development-practices/graders/software-development-practices-github-well-architected-operational-value.sh",
         ".github/aw/software-development-practices/graders/software-development-practices-nist-ssdf-operational-value.sh",
         ".github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash",
@@ -459,7 +459,7 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
     assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
 
-    const dashboardSite = join(consumer, ".github", "aw", "dashboard", "site");
+    const dashboardSite = join(consumer, ".github", "cao", "dashboard", "site");
     const dashboardOutput = join(consumer, "dashboard-output");
     const controlSettings = join(consumer, "control-settings.json");
     run("gh", ["aw", "add", activityPackageSource, "--force", "--no-security-scanner"], consumer);
@@ -483,9 +483,9 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
     writeFileSync(deployPath, `${deployWorkflow}\n# local integration-test change\n`);
 
     const removedFiles = [
-      ".github/aw/dashboard/report/records.mjs",
-      ".github/aw/dashboard/site/index.html",
-      ".github/aw/dashboard/site/scripts/build.mjs",
+      ".github/cao/dashboard/report/records.mjs",
+      ".github/cao/dashboard/site/index.html",
+      ".github/cao/dashboard/site/scripts/build.mjs",
     ];
     for (const relativePath of removedFiles) {
       rmSync(join(consumer, relativePath));

@@ -11,10 +11,10 @@ import { escapedGhAwVersion, ghAwVersion, root, script, workflow, workflowsDirec
 test("packages and repository workflows pin the supported gh-aw version", () => {
   const manifests = [
     "aw.yml",
-    "activity/aw.yml",
+    ".github/cao/activity/aw.yml",
     "uk-ai-advisory/aw.yml",
     "cao-evolution/aw.yml",
-    "dashboard/aw.yml",
+    ".github/cao/dashboard/aw.yml",
     "dependabot/aw.yml",
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
@@ -52,10 +52,10 @@ test("catalog packages declare their current experimental maturity", () => {
   ]);
   const manifests = [
     "aw.yml",
-    "activity/aw.yml",
+    ".github/cao/activity/aw.yml",
     "uk-ai-advisory/aw.yml",
     "cao-evolution/aw.yml",
-    "dashboard/aw.yml",
+    ".github/cao/dashboard/aw.yml",
     "dependabot/aw.yml",
     "eu-cra-compliance/aw.yml",
     "optimization/aw.yml",
@@ -82,25 +82,33 @@ test("operational workflows use the transitive CAO package bundle", () => {
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
-  assert.match(readFileSync(join(root, "activity", "aw.yml"), "utf8"), /source: gh-aw-logs\.mjs/);
+  assert.match(readFileSync(join(root, ".github", "cao", "activity", "aw.yml"), "utf8"), /source: gh-aw-logs\.mjs/);
 });
 
 test("package manifests exclude repository-only tests", () => {
-  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
+  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join(".github", "cao", "dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
   }
 });
 
 test("focused package manifests do not cross-own package files", () => {
-  const manifestPaths = readdirSync(root)
+  const manifestPaths = [
+    ...readdirSync(root)
     .map((name) => join(name, "aw.yml"))
     .filter((relativePath) => relativePath !== "aw.yml" && existsSync(join(root, relativePath)))
-    .sort();
+    .sort(),
+    join(".github", "cao", "activity", "aw.yml"),
+    join(".github", "cao", "dashboard", "aw.yml"),
+  ];
   const destinations = new Map();
 
   for (const relativePath of manifestPaths) {
-    const packageName = relativePath.split("/")[0];
+    const packageName = relativePath === join(".github", "cao", "activity", "aw.yml")
+      ? "activity"
+      : relativePath === join(".github", "cao", "dashboard", "aw.yml")
+        ? "dashboard"
+        : relativePath.split("/")[0];
     const manifest = parse(readFileSync(join(root, relativePath), "utf8"));
     const files = [
       ...(manifest.includes ?? []).filter((entry) => entry !== "../aw.yml").map((entry) => typeof entry === "string" ? {
@@ -212,8 +220,8 @@ test("root package composes its operational packages through manifests", () => {
 
   assert.deepEqual(rootManifest.includes, [
     ".github/workflows/aw.json",
-    "activity/aw.yml",
-    "dashboard/aw.yml",
+    ".github/cao/activity/aw.yml",
+    ".github/cao/dashboard/aw.yml",
   ]);
   const project = JSON.parse(readFileSync(join(root, ".github", "workflows", "aw.json"), "utf8"));
   assert.deepEqual(project.auto_upgrade.options, ["--pre-releases"]);
@@ -269,7 +277,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /plan an explicit handoff to `.github\/skills\/create-ops-package\/SKILL\.md` after step 14/);
   assert.match(setupSkill, /Never silently default the package to Dependabot/);
   assert.match(setupSkill, /read the control repository's `.github\/workflows\/cao\.json` and the current dashboard state/);
-  assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the dashboard/);
+  assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the .github/cao/dashboard/);
   assert.match(createPackageSkill, /When invoked from `.github\/skills\/setup-central-agentic-ops\/SKILL\.md`/);
   assert.match(createPackageSkill, /accept the recorded desired outcome and target-repository description/);
   assert.match(createPackageSkill, /compare the intended package state with the current `.github\/workflows\/cao\.json` and the dashboard's live control-plane view/);

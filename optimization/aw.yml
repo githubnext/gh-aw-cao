@@ -11,7 +11,7 @@ includes:
   - .github/workflows/optimization.md
 resources:
   - source: dashboard.json
-    destination: .github/aw/dashboards/optimization.json
+    destination: .github/cao/dashboards/optimization.json
   - source: .github/graders/optimization-agents-md-curator-operational-value.sh
     destination: .github/aw/optimization/graders/optimization-agents-md-curator-operational-value.sh
   - source: .github/graders/optimization-ai-credit-auditor-operational-value.sh

@@ -76,8 +76,8 @@ test("docs dashboard installs renderer assets and configured package pages", asy
       new RegExp(`const VERSION = '${mainHash}';`),
     );
 
-    const manifest = parse(await readFile(new URL("../../dashboard/aw.yml", import.meta.url), "utf8"));
-    const installedSitePrefix = ".github/aw/dashboard/site/";
+    const manifest = parse(await readFile(new URL("../../.github/cao/dashboard/aw.yml", import.meta.url), "utf8"));
+    const installedSitePrefix = ".github/cao/dashboard/site/";
     const buildResources = new Set(["package.json", "package-lock.json", "scripts/build.mjs"]);
     for (const resource of manifest.resources.filter(({ destination: resourcePath }) => (
       resourcePath.startsWith(installedSitePrefix)
@@ -126,7 +126,7 @@ test("dashboard cache hashes are stable and change with assembled site content",
 });
 
 test("dashboard package includes every transitive site module and asset", async () => {
-  const dashboardRoot = new URL("../../dashboard/", import.meta.url);
+  const dashboardRoot = new URL("../../.github/cao/dashboard/", import.meta.url);
   const manifest = parse(await readFile(new URL("aw.yml", dashboardRoot), "utf8"));
   const packaged = new Set(manifest.resources.map(({ source }) => source));
   const pending = [...packaged].filter((source) => source.startsWith("site/") && source.endsWith(".js"));

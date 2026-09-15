@@ -15,7 +15,7 @@ The Control Plane dashboard did not previously expose an understandable, actiona
 
 This pull request adds a Configuration view to the dashboard that renders the raw `cao.json` policy document, explains configured entries and inherited behavior, surfaces resolver validation errors and diagnostic conditions, and generates bounded, copyable prompts for common remediation actions (e.g., changing a package from `review` to `live`, enabling workers) while preserving existing scope and rollout constraints in that prompt guidance.
 
-Changes span dashboard report/data generation (`dashboard/report/control-settings.mjs`, `dashboard/report/dashboard-language-sources.mjs`, `dashboard/site/dashboard.json`), dashboard UI (`dashboard/site/src/components/configuration-view.js`, `ui-elements.js`, `specification.js`, `styles.js`, `index.html`), and associated unit tests.
+Changes span dashboard report/data generation (`.github/cao/dashboard/report/control-settings.mjs`, `.github/cao/dashboard/report/dashboard-language-sources.mjs`, `.github/cao/dashboard/site/dashboard.json`), dashboard UI (`.github/cao/dashboard/site/src/components/configuration-view.js`, `ui-elements.js`, `specification.js`, `styles.js`, `index.html`), and associated unit tests.
 
 Not inferable from current pull request evidence: specific stakeholder requests, prior incidents motivating this feature, performance considerations, or any explicit rejection of alternative designs.
 

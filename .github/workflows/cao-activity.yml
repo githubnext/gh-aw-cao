@@ -71,11 +71,8 @@ jobs:
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
         run: |
           mkdir -p "$RUNNER_TEMP/cao-activity"
-          if [[ -f activity/control-settings.mjs ]]; then
-            activity_root=activity
-          elif [[ -f .github/aw/activity/control-settings.mjs ]]; then
-            activity_root=.github/aw/activity
-          else
+          activity_root=.github/cao/activity
+          if [[ ! -f "$activity_root/control-settings.mjs" ]]; then
             echo "Activity control settings resolver is unavailable" >&2
             exit 1
           fi
@@ -137,11 +134,8 @@ jobs:
             echo "Owner-wide repository discovery requires the read-only GitHub App" >&2
             exit 1
           fi
-          if [[ -f activity/inventory-sources.mjs ]]; then
-            activity_root=activity
-          elif [[ -f .github/aw/activity/inventory-sources.mjs ]]; then
-            activity_root=.github/aw/activity
-          else
+          activity_root=.github/cao/activity
+          if [[ ! -f "$activity_root/inventory-sources.mjs" ]]; then
             echo "Activity inventory collector is unavailable" >&2
             exit 1
           fi
@@ -206,11 +200,8 @@ jobs:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
         run: |
-          if [[ -f activity/cao.mjs ]]; then
-            ingestion_script=activity/cao.mjs
-          elif [[ -f .github/aw/activity/cao.mjs ]]; then
-            ingestion_script=.github/aw/activity/cao.mjs
-          else
+          ingestion_script=.github/cao/activity/cao.mjs
+          if [[ ! -f "$ingestion_script" ]]; then
             echo "Activity SQLite ingestion pipeline is unavailable" >&2
             exit 1
           fi
@@ -231,11 +222,8 @@ jobs:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
         run: |
-          if [[ -f activity/cao.mjs ]]; then
-            ingestion_script=activity/cao.mjs
-          elif [[ -f .github/aw/activity/cao.mjs ]]; then
-            ingestion_script=.github/aw/activity/cao.mjs
-          else
+          ingestion_script=.github/cao/activity/cao.mjs
+          if [[ ! -f "$ingestion_script" ]]; then
             echo "Activity SQLite ingestion pipeline is unavailable" >&2
             exit 1
           fi

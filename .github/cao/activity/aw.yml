@@ -6,16 +6,16 @@ includes:
   - .github/workflows/cao-activity.yml
 resources:
   - source: cao.mjs
-    destination: .github/aw/activity/cao.mjs
+    destination: .github/cao/activity/cao.mjs
   - source: actions-context.mjs
-    destination: .github/aw/activity/actions-context.mjs
+    destination: .github/cao/activity/actions-context.mjs
   - source: actions-log.mjs
-    destination: .github/aw/activity/actions-log.mjs
+    destination: .github/cao/activity/actions-log.mjs
   - source: control-settings.mjs
-    destination: .github/aw/activity/control-settings.mjs
+    destination: .github/cao/activity/control-settings.mjs
   - source: gh-aw-logs.mjs
-    destination: .github/aw/activity/gh-aw-logs.mjs
+    destination: .github/cao/activity/gh-aw-logs.mjs
   - source: inventory.mjs
-    destination: .github/aw/activity/inventory.mjs
+    destination: .github/cao/activity/inventory.mjs
   - source: inventory-sources.mjs
-    destination: .github/aw/activity/inventory-sources.mjs
+    destination: .github/cao/activity/inventory-sources.mjs

@@ -46,7 +46,7 @@ test("Copilot prompt saves a dashboard change, renders it, and correlates browse
   let preview;
   try {
     preview = await startDashboardServer({
-      siteRoot: path.join(repositoryRoot, "dashboard/site"),
+      siteRoot: path.join(repositoryRoot, ".github/cao/dashboard/site"),
       catalogRoot: packageRoot,
       installedDashboardsDirectory: path.join(fixtureRoot, "installed"),
       downloadData: async (destination) => {

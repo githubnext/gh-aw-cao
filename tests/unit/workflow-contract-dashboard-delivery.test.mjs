@@ -146,25 +146,25 @@ test("dashboard CI runs the package quality gates", () => {
 
 test("Dashboard package builds artifacts and deploys Pages in one workflow", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
-  const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
-  const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
+  const activityManifest = readFileSync(join(root, ".github", "cao", "activity", "aw.yml"), "utf8");
+  const dashboardManifest = readFileSync(join(root, ".github", "cao", "dashboard", "aw.yml"), "utf8");
   const rootPackage = parse(rootManifest);
   const dashboardPackage = parse(dashboardManifest);
   const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
   const activityIndexJob = activityWorkflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const activityCacheJob = activityWorkflow.match(/\n  cache:\n([\s\S]*)/)?.[1];
-  const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
+  const siteBuildScript = readFileSync(join(root, ".github", "cao", "dashboard", "site", "scripts", "build.mjs"), "utf8");
   const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8");
   const dashboardBuildJob = dashboardWorkflow.match(/\n  build:\n([\s\S]*?)\n  cache:\n/)?.[1];
   const dashboardCacheJob = dashboardWorkflow.match(/\n  cache:\n([\s\S]*?)\n  deploy:\n/)?.[1];
   const dashboardDeployJob = dashboardWorkflow.match(/\n  deploy:\n([\s\S]*)/)?.[1];
-  const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
-  const deployedWorkflows = readFileSync(join(root, "activity", "index.mjs"), "utf8");
-  const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
-  const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
-  const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
-  const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
+  const aicUsage = readFileSync(join(root, ".github", "cao", "dashboard", "report", "aic-usage.mjs"), "utf8");
+  const deployedWorkflows = readFileSync(join(root, ".github", "cao", "activity", "index.mjs"), "utf8");
+  const activityCollector = readFileSync(join(root, ".github", "cao", "activity", "collect-logs.sh"), "utf8");
+  const activityLogs = readFileSync(join(root, ".github", "cao", "activity", "logs.mjs"), "utf8");
+  const activityRunner = readFileSync(join(root, ".github", "cao", "activity", "run-activity.mjs"), "utf8");
+  const operationalValues = readFileSync(join(root, ".github", "cao", "dashboard", "report", "operational-values.mjs"), "utf8");
   const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-value-history.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
@@ -172,7 +172,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
     ? { source: entry, destination: entry, kind: "action-workflow" }
     : { ...entry, source: `${sourcePrefix}${entry.source}` };
 
-  assert.ok(rootPackage.includes.includes("dashboard/aw.yml"));
+  assert.ok(rootPackage.includes.includes(".github/cao/dashboard/aw.yml"));
   assert.match(dashboardManifest, /name: CAO Dashboard/);
   assert.match(rootManifest, /^\s+- dashboard\/aw\.yml$/m);
   assert.match(dashboardManifest, /^\s+- \.github\/workflows\/cao-dashboard\.yml$/m);
@@ -308,12 +308,12 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardManifest, /source: site\/src\/presenter\.js\n\s+destination: \.github\/aw\/dashboard\/site\/src\/presenter\.js/);
   assert.match(dashboardManifest, /source: site\/src\/loading-progress\.js\n\s+destination: \.github\/aw\/dashboard\/site\/src\/loading-progress\.js/);
   for (const assetName of ["data-operations.js", "data-processor.js", "data-worker.js"]) {
-    assert.match(dashboardManifest, new RegExp(`source: site/src/${assetName.replace(".", "\\.")}\\n\\s+destination: \\.github/aw/dashboard/site/src/${assetName.replace(".", "\\.")}`));
+    assert.match(dashboardManifest, new RegExp(`source: site/src/${assetName.replace(".", "\\.")}\\n\\s+destination: \\.github/cao/dashboard/site/src/${assetName.replace(".", "\\.")}`));
   }
   for (const assetName of reportAssets) {
-    const assetPath = join(root, "dashboard", "report", assetName);
+    const assetPath = join(root, ".github", "cao", "dashboard", "report", assetName);
     assert.ok(existsSync(assetPath), `missing report script ${assetName}`);
-    assert.match(dashboardManifest, new RegExp(`destination: \\.github/aw/dashboard/report/${assetName.replace(".", "\\.")}`));
+    assert.match(dashboardManifest, new RegExp(`destination: \\.github/cao/dashboard/report/${assetName.replace(".", "\\.")}`));
     if (activityEntrypoints.has(assetName)) {
       assert.match(activityRunner, new RegExp(`dashboardReportRoot[\\s\\S]*?${assetName.replace(".", "\\.")}`));
     }
@@ -326,9 +326,9 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
 
 test("Activity package owns the shared collected-data cache contract", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
-  const activityManifest = parse(readFileSync(join(root, "activity", "aw.yml"), "utf8"));
+  const activityManifest = parse(readFileSync(join(root, ".github", "cao", "activity", "aw.yml"), "utf8"));
   const workflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
-  const readme = readFileSync(join(root, "activity", "README.md"), "utf8");
+  const readme = readFileSync(join(root, ".github", "cao", "activity", "README.md"), "utf8");
   const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.equal(activityManifest.name, "CAO Activity");
@@ -336,15 +336,15 @@ test("Activity package owns the shared collected-data cache contract", () => {
     ".github/workflows/cao-activity.yml",
   ]);
   assert.deepEqual(activityManifest.resources, [
-    { source: "cao.mjs", destination: ".github/aw/activity/cao.mjs" },
-    { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
-    { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
-    { source: "control-settings.mjs", destination: ".github/aw/activity/control-settings.mjs" },
-    { source: "gh-aw-logs.mjs", destination: ".github/aw/activity/gh-aw-logs.mjs" },
-    { source: "inventory.mjs", destination: ".github/aw/activity/inventory.mjs" },
-    { source: "inventory-sources.mjs", destination: ".github/aw/activity/inventory-sources.mjs" },
+    { source: "cao.mjs", destination: ".github/cao/activity/cao.mjs" },
+    { source: "actions-context.mjs", destination: ".github/cao/activity/actions-context.mjs" },
+    { source: "actions-log.mjs", destination: ".github/cao/activity/actions-log.mjs" },
+    { source: "control-settings.mjs", destination: ".github/cao/activity/control-settings.mjs" },
+    { source: "gh-aw-logs.mjs", destination: ".github/cao/activity/gh-aw-logs.mjs" },
+    { source: "inventory.mjs", destination: ".github/cao/activity/inventory.mjs" },
+    { source: "inventory-sources.mjs", destination: ".github/cao/activity/inventory-sources.mjs" },
   ]);
-  assert.ok(rootManifest.includes.includes("activity/aw.yml"));
+  assert.ok(rootManifest.includes.includes(".github/cao/activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
@@ -391,7 +391,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-pages.yml")), false);
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-build.yml")), false);
 
-  assert.doesNotMatch(workflow, /dashboard-build|needs: dashboard/);
+  assert.doesNotMatch(workflow, /dashboard-build|needs: .github/cao/dashboard/);
   assert.match(workflow, /name: Restore node_modules[\s\S]*?id: node-modules-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ runner\.os \}\}-node-24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/);
   assert.match(workflow, /name: Install dependencies\n\s+if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'\n\s+run: npm ci/);
   assert.match(workflow, /name: Save node_modules[\s\S]*?if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ steps\.node-modules-cache\.outputs\.cache-primary-key \}\}/);

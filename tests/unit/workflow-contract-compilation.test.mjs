@@ -34,7 +34,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     for (const packageDirectory of ["activity", "cao-evolution", "dashboard", "dependabot", "optimization"]) {
       cpSync(join(root, packageDirectory), join(temporaryRoot, packageDirectory), { recursive: true });
     }
-    for (const manifest of ["aw.yml", "activity/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
+    for (const manifest of ["aw.yml", ".github/cao/activity/aw.yml", "cao-evolution/aw.yml", ".github/cao/dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
       const manifestPath = join(temporaryRoot, manifest);
       writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll(ghAwVersion, "v0.89.4"));
     }

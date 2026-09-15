@@ -6,7 +6,7 @@ Draft
 
 ## Context
 
-The dashboard's local server (`dashboard/local-server.mjs`) previously produced a single
+The dashboard's local server (`.github/cao/dashboard/local-server.mjs`) previously produced a single
 monolithic `sources.json` payload for the dashboard site, served in full to the browser.
 This included a `logs-payload` field on each row of the "runs" source, which is unused by
 the browser UI. Parsing one large JSON blob in the browser causes large parse spikes, and
@@ -33,11 +33,11 @@ per-source content (`splitSourceContent` map) that is served to the browser. Req
 
 This is paired with client-side changes to consume the new manifest-plus-per-source
 loading model instead of a single bulk fetch:
-- `dashboard/site/src/source-loader.js` — loads sources incrementally via the manifest.
-- `dashboard/site/src/overview-data.js` — consumes incrementally loaded source data.
-- `dashboard/site/src/components/notifications-inbox.js` — renders overview notifications
+- `.github/cao/dashboard/site/src/source-loader.js` — loads sources incrementally via the manifest.
+- `.github/cao/dashboard/site/src/overview-data.js` — consumes incrementally loaded source data.
+- `.github/cao/dashboard/site/src/components/notifications-inbox.js` — renders overview notifications
   in viewport-sized batches rather than all at once.
-- `dashboard/site/index.html` and `dashboard/site/src/styles.js` — supporting UI changes.
+- `.github/cao/dashboard/site/index.html` and `.github/cao/dashboard/site/src/styles.js` — supporting UI changes.
 
 New regression tests are added for large-data and constrained-memory scenarios:
 `live-data.test.js`, `notifications-inbox.test.js`, `overview-data.test.js`,
@@ -65,7 +65,7 @@ mentioned or rejected in the available evidence.
 **Negative:**
 - The dashboard site now depends on a two-step fetch protocol (manifest, then per-source
   files) instead of a single request, adding a coordination point in
-  `dashboard/local-server.mjs` and `source-loader.js` that must stay in sync (manifest
+  `.github/cao/dashboard/local-server.mjs` and `source-loader.js` that must stay in sync (manifest
   `version` and source names must match between server and client).
 - Stripping `logs-payload` from the "runs" source in the browser payload means any future
   browser-side feature requiring raw run logs would need a separate mechanism, since this

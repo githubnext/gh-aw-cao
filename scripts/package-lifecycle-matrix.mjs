@@ -21,7 +21,7 @@ const suites = [
   },
   {
     name: "activity",
-    manifest: "activity/aw.yml",
+    manifest: ".github/cao/activity/aw.yml",
     testPattern: "focused activity package contract",
     prefixes: [".github/workflows/activity."],
   },
@@ -80,7 +80,7 @@ const suites = [
   },
   {
     name: "dashboard",
-    manifest: "dashboard/aw.yml",
+    manifest: ".github/cao/dashboard/aw.yml",
     testPattern: "dashboard package contract|--force restores dashboard",
     prefixes: [".github/workflows/dashboard-"],
   },

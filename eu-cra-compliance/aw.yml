@@ -15,7 +15,7 @@ includes:
   - .github/workflows/eu-cra-compliance-conformity-release-evidence.md
 resources:
   - source: dashboard.json
-    destination: .github/aw/dashboards/eu-cra-compliance.json
+    destination: .github/cao/dashboards/eu-cra-compliance.json
   - source: implementation-status.md
     destination: .github/aw/eu-cra-compliance/implementation-status.md
   - source: eu-cra-report-operational-value-runtime.bash
