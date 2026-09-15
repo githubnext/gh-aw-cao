@@ -2879,7 +2879,8 @@ dashboard:
                 - field: engine
                 - field: requested-model
                 - field: resolved-model
-                - field: repository-coordinate
+                - field: organization
+                - field: repository
                 - field: workflow
                 - field: rollout-mode
                 - field: observed-at
@@ -3057,8 +3058,7 @@ dashboard:
                 - field: run
                 - field: run-status
                 - field: run-conclusion
-                - field: organization
-                - field: repository
+                - field: repository-coordinate
                 - field: workflow
                 - field: rollout-mode
                 - field: engine
