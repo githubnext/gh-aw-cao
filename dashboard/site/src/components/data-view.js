@@ -269,7 +269,7 @@ function renderListView(context) {
  *   metadata: import('../presenter.js').SourceMetadata,
  *   contextDetails: string[],
  *   headingTag: 'h3'|'h4',
- *   renderValue: (display: unknown, value: unknown, column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }) => string | HTMLElement,
+ *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
  *   icon: string,
  *   listAction: HTMLElement | null
