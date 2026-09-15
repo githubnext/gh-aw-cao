@@ -24,6 +24,21 @@ const authoritativeDashboardDocument = composeDashboardDocuments(
 
 /** @param {Parameters<typeof renderDashboardView>[0]} input */
 function renderDashboard(input) {
+  const resolvedDocument = {
+    ...input.document,
+    dashboard: {
+      ...input.document.dashboard,
+      pages: input.document.dashboard.pages.map((page) => {
+        if (page.kind !== 'built-in') return page;
+        const template = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ kind?: string, page?: string }} */ candidate) => (
+          candidate.kind === 'built-in' && candidate.page === page.page
+        ));
+        return template
+          ? { ...template, ...page, definition: template.definition }
+          : page;
+      }),
+    },
+  };
   const sources = { ...input.sources };
   if (Object.keys(input.sources).length > 0) {
     Object.assign(sources, deriveDataHealthSources(sources));
@@ -85,7 +100,7 @@ function renderDashboard(input) {
         id: page.id
       }
     : page;
-  for (const page of input.document.dashboard.pages) {
+  for (const page of resolvedDocument.dashboard.pages) {
     const payload = pagePayload(page);
     const compiled = compileDashboardViewPayloadQueries(payload, page.id, {
       queries: executableQueries,
@@ -100,7 +115,7 @@ function renderDashboard(input) {
       sourceNames: compiled.aliases
     }));
   }
-  return renderDashboardView({ ...input, sources });
+  return renderDashboardView({ ...input, document: resolvedDocument, sources });
 }
 
 /** @param {HTMLElement} rendered @param {string} pageId */
