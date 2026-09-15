@@ -41,6 +41,7 @@ export function waitForDashboardUi(browserWindow) {
  *     pages: import('../presenter.js').PresentationDocument['dashboard']['pages'],
  *     queries: unknown[],
  *   },
+ *   preparePage?: (pageId: string) => Promise<void>,
  *   pageSourceNames: (pageId: string) => string[],
  *   pageLazySourceNames: (pageId: string) => string[],
  *   runWithLoadingProgress: <T>(task: () => Promise<T>) => Promise<T>,
@@ -55,6 +56,7 @@ export async function startDashboardData(options) {
     document,
     sourceUrl,
     dashboardContext,
+    preparePage,
     pageSourceNames,
     pageLazySourceNames,
     runWithLoadingProgress,
@@ -88,7 +90,8 @@ export async function startDashboardData(options) {
     ),
   );
   /** @type {PageSourceLoader} */
-  const loadPageSources = (pageId, pageOptions) => {
+  const loadPageSources = async (pageId, pageOptions) => {
+    await preparePage?.(pageId);
     const sourceNames = pageSourceNames(pageId);
     const lazySources = pageLazySourceNames(pageId);
     const pagination = continuationRequests(lazySources);

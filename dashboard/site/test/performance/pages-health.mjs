@@ -9,6 +9,7 @@ import {
   profiles,
   routeUrl
 } from './pages-health-config.js';
+import { fetchResolvedDashboard } from '../resolved-dashboard.js';
 
 const siteRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const lighthouseCli = join(siteRoot, 'node_modules', 'lighthouse', 'cli', 'index.js');
@@ -154,9 +155,7 @@ async function auditPage(siteUrl, pageId, profile, directory, chromePath) {
 }
 
 async function loadDashboard(siteUrl) {
-  const response = await fetch(new URL('dashboard.json', siteUrl));
-  if (!response.ok) throw new Error(`dashboard.json returned HTTP ${response.status}`);
-  return response.json();
+  return fetchResolvedDashboard(siteUrl);
 }
 
 async function main() {

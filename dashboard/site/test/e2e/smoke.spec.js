@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
+const authoritativeDashboard = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
 
 test.beforeEach(async ({ page, context }) => {
   await context.route('http://dashboard.test/**', async (route) => {
@@ -34,6 +35,22 @@ test.beforeEach(async ({ page, context }) => {
 
 function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
+}
+
+/**
+ * @param {string} pageId
+ * @param {Record<string, unknown>} [overrides]
+ */
+function builtInPage(pageId, overrides = {}) {
+  const template = authoritativeDashboard.dashboard.pages.find((/** @type {{ kind?: string, page?: string }} */ page) => (
+    page.kind === 'built-in' && page.page === pageId
+  ));
+  assert(template, `Missing built-in page template for ${pageId}`);
+  return {
+    ...template,
+    ...overrides,
+    definition: template.definition,
+  };
 }
 
 test('back navigation follows every dashboard browser history entry', async ({ page }) => {
@@ -569,7 +586,14 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
+  await scroll.evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
@@ -580,7 +604,8 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
     element.scrollTop = element.scrollHeight;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
@@ -612,6 +637,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'run-conclusion': 'failure',
               organization: 'githubnext',
               repository: 'gh-aw-cao',
+              'repository-coordinate': 'githubnext/gh-aw-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -619,6 +645,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T12:00:00Z',
+              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao', label: 'Open githubnext/gh-aw-cao' },
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
               'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' }
             },
             {
@@ -627,6 +655,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'run-conclusion': 'success',
               organization: 'githubnext',
               repository: 'gh-aw-cao',
+              'repository-coordinate': 'githubnext/gh-aw-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -634,6 +663,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T11:00:00Z',
+              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao', label: 'Open githubnext/gh-aw-cao' },
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
               'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1', label: 'Run 1' }
             }
           ]
@@ -683,8 +714,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   const swimlaneChartMaxHeight = await swimlane.locator('[data-chart-widget="swimlane"] svg')
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
   expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
-  expect(Math.abs(swimlaneHeadingBox.x - swimlaneSummaryBox.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(swimlaneHeadingBox.x - swimlaneLabelBox.x)).toBeLessThanOrEqual(2);
+  expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
+  expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
@@ -717,7 +748,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
-test('scrolling over the Models & Agents pie chart collapses chrome and reveals the full-view table', async ({ page }) => {
+test('scrolling over a preceding mobile chart advances the full-view table without hiding chrome', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -800,9 +831,9 @@ test('scrolling over the Models & Agents pie chart collapses chrome and reveals 
   await chart.hover();
   await page.mouse.wheel(0, 100);
 
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(chart).toBeHidden();
-  await expect(page.locator('.org-sidebar')).toBeHidden();
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(chart).toBeVisible();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
 
   await scroll.evaluate((element) => {
@@ -823,7 +854,9 @@ test('scrolling over the Models & Agents pie chart collapses chrome and reveals 
       touches: [touch(200)]
     }));
   });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(chart).toBeVisible();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
 });
 
@@ -2044,24 +2077,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
           id: 'built-in-overview-render',
           title: 'Built In Overview Render',
           pages: [
-            {
-              id: 'overview',
-              kind: 'built-in',
-              page: 'overview',
-              title: 'Overview',
-              definition: {
-                'data-state': {
-                  availability: true
-                },
-                views: [
-                  { id: 'workflows-source', data: { source: 'workflows' } },
-                  { id: 'runs-source', data: { source: 'runs' } },
-                  { id: 'usage-source', data: { source: 'usage' } },
-                  { id: 'findings-source', data: { source: 'findings' } },
-                  { id: 'operational-values-source', data: { source: 'operational-values' } }
-                ]
-              }
-            },
+            ${JSON.stringify(builtInPage('overview', { id: 'overview', title: 'Overview' }))},
             {
               id: 'runtime',
               kind: 'custom',
@@ -2506,7 +2522,10 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
-  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
+  const mobileViewportHeight = await page.evaluate(() => innerHeight);
+  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(mobileViewportHeight / 2);
   await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
@@ -2606,7 +2625,7 @@ test('full-view scrolling with a small overscroll range does not jitter the app 
   }
 });
 
-test('full-view mobile header collapses smoothly instead of jumping when scrolled', async ({ page }) => {
+test('full-view mobile chrome stays stable while a repositories table scrolls', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 390, height: 844 });
 
@@ -2675,34 +2694,18 @@ test('full-view mobile header collapses smoothly instead of jumping when scrolle
   const sidebar = page.locator('.org-sidebar');
   await expect(view).toHaveCount(1);
   await expect(sidebar).toBeVisible();
-  const restingMaxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
-  expect(restingMaxHeight).toBeGreaterThan(0);
+  const restingBox = await sidebar.boundingBox();
+  assert(restingBox);
 
-  await scroll.evaluate((element) => {
-    element.scrollTop = 100;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  // The mobile header must stay a laid-out, transitionable element (never display:none)
-  // so its collapse animates smoothly instead of instantly jumping the table beneath it,
-  // which is what produced the reported scroll jitter on iPhone.
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).display)).not.toBe('none');
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).transitionProperty)).toContain('max-height');
-  // Sample the collapse repeatedly while it is in flight to confirm it actually interpolates
-  // frame-by-frame rather than jumping straight to the end state.
-  await expect.poll(async () => {
-    const maxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
-    return maxHeight > 0 && maxHeight < restingMaxHeight;
-  }, { timeout: 180, intervals: [10, 15, 20, 25] }).toBe(true);
-  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).toBe('0px');
-
-  await scroll.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(sidebar).toBeVisible();
-  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).not.toBe('0px');
+  for (const scrollTop of [100, 30, 120, 0]) {
+    await scroll.evaluate((element, top) => {
+      element.scrollTop = top;
+      element.dispatchEvent(new Event('scroll'));
+    }, scrollTop);
+    await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(sidebar).toBeVisible();
+    expect(await sidebar.boundingBox()).toEqual(restingBox);
+  }
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {
@@ -2849,42 +2852,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
           title: 'Central Agentic Ops',
           queries: ${JSON.stringify(queryDefinitions)},
           pages: [
-            {
+            ${JSON.stringify(builtInPage('packages', {
               id: 'packages',
-              kind: 'built-in',
-              page: 'packages',
               title: 'Packages',
               description: 'Activity from centrally managed packages.',
-              definition: {
-                'data-state': { availability: true },
-                views: [
-                  { id: 'package-workflows', data: { source: 'workflows' } },
-                  { id: 'package-runs', data: { source: 'runs' } },
-                  { id: 'package-usage', data: { source: 'usage' } },
-                  {
-                    id: 'packages-utilization',
-                    title: 'Package AIC utilization',
-                    data: { sources: ['workflows', 'usage'] },
-                    mark: 'element',
-                    element: 'package-utilization'
-                  },
-                  {
-                    id: 'packages-run-trend',
-                    title: 'All runs over time',
-                    data: { sources: ['workflows', 'runs', 'outcomes'] },
-                    mark: 'element',
-                    element: 'package-run-trend'
-                  },
-                  {
-                    id: 'packages-summary',
-                    title: 'All output by package',
-                    data: { sources: ['workflows', 'usage', 'findings', 'outcomes', 'runs'] },
-                    mark: 'element',
-                    element: 'package-summary-table'
-                  }
-                ]
-              }
-            },
+            }))},
             {
               id: 'operational-value',
               kind: 'custom',
@@ -3323,21 +3295,7 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
           id: 'built-in-evals-render',
           title: 'Built In Evals Render',
           pages: [
-            {
-              id: 'evals',
-              kind: 'built-in',
-              page: 'evals',
-              title: 'Evals',
-              definition: {
-                'data-state': {
-                  availability: true
-                },
-                views: [
-                  { id: 'evals-source', data: { source: 'evals' } },
-                  { id: 'eval-observations-source', data: { source: 'eval-observations' } }
-                ]
-              }
-            }
+            ${JSON.stringify(builtInPage('evals', { id: 'evals', title: 'Evals' }))}
           ]
         }
       };
@@ -3411,20 +3369,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
           title: 'Security Dashboard',
           repository: 'githubnext/gh-aw-cao',
           pages: [
-            {
-              id: 'findings',
-              kind: 'built-in',
-              page: 'findings',
-              title: 'Findings',
-              definition: {
-                'data-state': {
-                  availability: true
-                },
-                views: [
-                  { id: 'findings-source', data: { source: 'findings' } }
-                ]
-              }
-            }
+            ${JSON.stringify(builtInPage('findings', { id: 'findings', title: 'Findings' }))}
           ]
         }
       };

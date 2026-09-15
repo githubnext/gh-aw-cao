@@ -1,0 +1,10 @@
+{
+  "package": "optimization",
+  "orchestrator": "optimization",
+  "workers": {
+    "ai-credit-auditor": "optimization-ai-credit-auditor",
+    "ai-credit-optimizer": "optimization-ai-credit-optimizer",
+    "agents-md-curator": "optimization-agents-md-curator",
+    "skills-curator": "optimization-skills-curator"
+  }
+}

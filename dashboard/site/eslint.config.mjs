@@ -3,7 +3,7 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['node_modules/**', 'coverage/**', 'dist/**']
+    ignores: ['node_modules/**', 'coverage/**', 'dist/**', '.lazy-page-chunks-*/**']
   },
   js.configs.recommended,
   {

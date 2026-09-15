@@ -82,6 +82,33 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.octicon-x-circle')).not.toBeNull();
   });
 
+  it('renders a CSS counter for an opted-in whole-number metric card', () => {
+    const rendered = renderDataView('metric', {
+      pageId: 'overview',
+      title: 'Runs',
+      view: {
+        mark: 'metric',
+        metric: { style: 'card', icon: 'play', tone: 'neutral', animate: 'number' },
+        encoding: { value: { field: 'count' } }
+      },
+      sourceName: 'runs',
+      rows: [{ count: 12 }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h4',
+      units: {},
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const value = rendered?.querySelector('[data-metric-value="count"]');
+    expect(value?.classList.contains('metric-number-animated')).toBe(true);
+    expect(value?.getAttribute('style')).toContain('--metric-number-target: 12');
+    expect(value?.textContent).toBe('12');
+  });
+
   it('renders a declarative card list with view and conditional row actions', () => {
     setDeclaredCliActions([
       {
@@ -514,6 +541,7 @@ describe('data view renderer', () => {
       view: {
         mark: 'chart',
         chart: 'swimlane',
+        layout: 'horizontal',
         encoding: {
           x: { field: 'started-at', type: 'temporal' },
           y: { field: 'run-conclusion', type: 'ordinal' }
@@ -543,6 +571,7 @@ describe('data view renderer', () => {
       }
     });
 
+    expect(rendered?.querySelector('.chart-horizontal-card')).not.toBeNull();
     expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
     expect(load).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(load).toHaveBeenCalledWith('page-2'));
@@ -1142,6 +1171,68 @@ describe('data view renderer', () => {
     expect(links).toHaveLength(2);
     expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
     expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/cid.yml');
+  });
+
+  it('renders Runs table identifiers, merged repositories, and workflows through declared link displays', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'runs',
+      title: 'Runs',
+      view: {
+        mark: 'table',
+        'column-summaries': false,
+        encoding: {
+          href: { field: 'run-link' },
+          columns: [
+            { field: 'run', type: 'nominal', display: 'run-link' },
+            { field: 'repository-coordinate', type: 'nominal', title: 'Repository', display: 'repository-link' },
+            { field: 'workflow', type: 'nominal', display: 'workflow-link' }
+          ]
+        }
+      },
+      sourceName: 'runs-table',
+      rows: [{
+        run: '35019200904',
+        'repository-coordinate': 'githubnext/gh-aw-cao',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/self-care.md',
+        'repository-link': {
+          relation: 'repository',
+          href: 'https://github.com/githubnext/gh-aw-cao',
+          label: 'Open githubnext/gh-aw-cao'
+        },
+        'workflow-link': {
+          relation: 'workflow',
+          href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/self-care.md',
+          label: 'Open .github/workflows/self-care.md'
+        },
+        'run-link': {
+          relation: 'run',
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/35019200904',
+          label: 'Run 35019200904'
+        }
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect([...(rendered?.querySelectorAll('thead th') ?? [])].map((header) => header.textContent)).toEqual([
+      'Run',
+      'Repository',
+      'Workflow'
+    ]);
+    const links = rendered?.querySelectorAll('tbody a');
+    expect(links).toHaveLength(3);
+    expect(links?.[0]?.textContent).toBe('35019200904');
+    expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/35019200904');
+    expect(links?.[1]?.textContent).toBe('githubnext/gh-aw-cao');
+    expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
+    expect(links?.[2]?.textContent).toBe('.github/workflows/self-care.md');
+    expect(links?.[2]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/self-care.md');
   });
 
   it.each([

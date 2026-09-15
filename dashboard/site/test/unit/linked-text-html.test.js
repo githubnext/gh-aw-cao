@@ -1,17 +1,27 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import authoritativeDashboard from '../../dashboard.json' with { type: 'json' };
 import { renderDashboard } from '../../src/presenter.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
 
 describe('linked text refactor behavior preservation', () => {
   it('preserves derived links in declarative workflow inventory tables', () => {
+    const workflowsTemplate = authoritativeDashboard.dashboard.pages.find((page) => (
+      page.kind === 'built-in' && page.page === 'workflows'
+    ));
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
         id: 'workflow-topology-links-dashboard',
         title: 'Workflow Topology Links',
         pages: [
-          { id: 'workflows', kind: /** @type {'built-in'} */ ('built-in'), page: 'workflows', title: 'Workflows' },
+          {
+            ...workflowsTemplate,
+            id: 'workflows',
+            kind: /** @type {'built-in'} */ ('built-in'),
+            page: 'workflows',
+            title: 'Workflows',
+          },
           {
             id: 'repository-detail',
             kind: /** @type {'custom'} */ ('custom'),

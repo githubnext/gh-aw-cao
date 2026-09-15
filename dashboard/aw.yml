@@ -61,6 +61,8 @@ resources:
     destination: .github/aw/dashboard/site/src/main.js
   - source: site/src/dashboard-app.js
     destination: .github/aw/dashboard/site/src/dashboard-app.js
+  - source: site/src/dashboard-chunks.js
+    destination: .github/aw/dashboard/site/src/dashboard-chunks.js
   - source: site/src/dashboard-data-updates.js
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/adapters/dashboard-sources.js
@@ -127,6 +129,8 @@ resources:
     destination: .github/aw/dashboard/site/src/diagnostics.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
+  - source: site/src/dom-reconciler.js
+    destination: .github/aw/dashboard/site/src/dom-reconciler.js
   - source: site/src/dom-provenance.js
     destination: .github/aw/dashboard/site/src/dom-provenance.js
   - source: site/src/debounce.js
@@ -171,6 +175,8 @@ resources:
     destination: .github/aw/dashboard/site/src/view-formatters.js
   - source: site/src/components/anomaly-readiness.js
     destination: .github/aw/dashboard/site/src/components/anomaly-readiness.js
+  - source: site/src/components/animated-number.js
+    destination: .github/aw/dashboard/site/src/components/animated-number.js
   - source: site/src/components/attention-rules.js
     destination: .github/aw/dashboard/site/src/components/attention-rules.js
   - source: site/src/components/attention-rules.json

@@ -56,6 +56,41 @@ describe('dashboard document validation', () => {
     expect(summary.compute).toBeUndefined();
   });
 
+  it('validates declarative metric number animations', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const metric = {
+      id: 'animated-run-count',
+      title: 'Animated run count',
+      data: { source: 'runs' },
+      mark: 'metric',
+      metric: { style: 'card', icon: 'play', tone: 'neutral', animate: 'number', 'navigation-page': 'overview' },
+      encoding: { value: { field: 'run', aggregate: 'count' } }
+    };
+    document.dashboard.pages.push({
+      id: 'animated-metric',
+      kind: 'custom',
+      title: 'Animated metric',
+      views: [metric]
+    });
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    metric.metric.animate = 'counter';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    metric.metric.animate = 'number';
+    metric.metric.style = 'summary';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
+  it('validates declarative overview counter animations', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
+    overview.views[0].config.animate = 'number';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    overview.views[0].config.animate = 'counter';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
@@ -761,9 +796,19 @@ describe('dashboard document validation', () => {
 
     expect(query).toMatchObject({
       from: 'runs',
+      compute: expect.arrayContaining([
+        {
+          as: 'repository-coordinate',
+          function: 'concat',
+          args: [{ field: 'organization' }, { value: '/' }, { field: 'repository' }]
+        }
+      ]),
       select: expect.arrayContaining([
         { field: 'run' },
         { field: 'run-conclusion' },
+        { field: 'repository-coordinate' },
+        { field: 'repository-link' },
+        { field: 'workflow-link' },
         { field: 'started-at' },
         { field: 'run-link' }
       ]),
@@ -892,6 +937,13 @@ dashboard:
     }
     expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs-table');
+    expect(runsView.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).not.toContain('organization');
+    expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'run')?.display).toBe('run-link');
+    expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'repository-coordinate')).toMatchObject({
+      title: 'Repository',
+      display: 'repository-link'
+    });
+    expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'workflow')?.display).toBe('workflow-link');
     expect(transactionsView).toMatchObject({
       data: { source: 'transactions-table' },
       mark: 'table',
@@ -2694,12 +2746,7 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "organization" for source "runs".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "repository" for source "runs".'
+            message: 'built-in page "runs" definition must expose field "repository-coordinate" for source "runs".'
           }),
           expect.objectContaining({
             code: 'DLS-E003',
@@ -3028,8 +3075,7 @@ dashboard:
                 - field: run
                 - field: run-status
                 - field: run-conclusion
-                - field: organization
-                - field: repository
+                - field: repository-coordinate
                 - field: workflow
                 - field: rollout-mode
                 - field: engine
@@ -4932,7 +4978,7 @@ dashboard:
             source: runs
           mark: chart
           chart: pie
-          layout: half
+          layout: horizontal
           encoding:
             x:
               field: run-conclusion

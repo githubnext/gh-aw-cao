@@ -348,6 +348,291 @@ SHALL begin with Repository inventory, aggregate Workflow and Run facts by
 `organization` and `repository`, and left-join those results so an enrolled
 Repository remains visible when it has no retained runtime observations.
 
+## 5.5 Token-optimization evidence contract
+
+The `optimization-token-optimizer` operation has one bounded task: evaluate one
+assigned, evidence-complete token-efficiency opportunity for one target
+Repository and Workflow, then measure whether an accepted intervention lowers
+AI Credit (AIC) per comparable accepted outcome without reducing reliability or
+outcome quality.
+
+Activation requires a complete assignment, an authorized target Repository, an
+authoritative Workflow identity, a frozen evidence window, an assignment Run,
+and an experiment identity. The required effect is one replayable opportunity
+observation and, when maintainers accept a recommendation, one intervention
+whose experiment can mature into a comparison. A complete analysis with no
+defensible opportunity is a no-op, not a zero-value intervention. Success is a
+matured comparison with positive verified attainment. Uncertainty remains
+explicit when evidence is incomplete, incomparable, unmatured, or unavailable.
+
+### 5.5.1 Authoritative sources and grain
+
+Token-optimization evidence SHALL enter through the Activity publication and
+the existing source-adapter boundary. An optimizer or dashboard MUST NOT
+independently redownload the same run corpus when the Activity generation is
+complete for its scope and window.
+
+The current source authority for gh-aw runtime fields is
+[`logs-jsonl.schema.json`](https://github.com/github/gh-aw/blob/main/schemas/logs-jsonl.schema.json).
+Its schema revision SHALL be retained in provenance. The adapter SHALL apply the
+following source contract:
+
+| Evidence | Authoritative input and grain | Required handling |
+| --- | --- | --- |
+| Invocation AIC and raw token classes | API-proxy token-usage record collected through enriched gh-aw artifacts; one API invocation | Emit one invocation-grain usage observation. Never repeat its AIC across token-class rows. |
+| Run/model usage aggregate | `run.token_usage_summary`, including `by_model`; one Run or Run-and-model aggregate | Preserve aggregate grain. It MUST NOT fabricate invocation rows. Prefer complete invocation evidence for invocation queries, otherwise expose aggregate-only completeness. Never add aggregate and invocation AIC together. |
+| Turns and requests | `run.turns` and `run.token_usage_summary.total_requests`; one Run | Keep turns and model requests distinct. Absence is unknown, not zero. |
+| Cache evidence | Invocation token-usage fields or `token_usage_summary` cache fields at their declared grain | Preserve cache-read and cache-write tokens separately. `cache_efficiency` is a source observation, not a replacement for either token class. |
+| Tool activity | `run.mcp_tool_usage.tool_calls[]`, with the documented audit fallback; one tool call | Preserve server, tool, status, timestamp, sizes, and correlation identity. A configured tool inventory is separate static evidence and MUST NOT be inferred from observed calls. |
+| Run reliability | Canonical Run status and conclusion from `workflow_runs` and enriched `run` envelopes; one Run attempt | Failure rate uses distinct completed attempts only. Missing conclusions do not enter either numerator or denominator. |
+| Experiment assignment | `run.experiments.assignments`; one experiment assignment per Run | Preserve experiment name and variant exactly. Cumulative counts are diagnostics and MUST NOT create assignments. |
+| Accepted outcome | Safe-output lifecycle plus authoritative GitHub disposition or the accepted-evidence rule of the frozen evaluator; one durable outcome | Creating a safe output does not establish acceptance. Accepted identity and disposition MUST be distinct from the producing Run. |
+| Outcome quality | Frozen grader or eval observation with evaluator digest; one outcome or stable opportunity | Compare only observations produced by the same definition and evaluator digest. Missing quality evidence is unknown. |
+| Operational value | Schema-version-4 operational-value result; one stable opportunity at one evidence cutoff | Preserve value, maturity, evidence cutoff, accepted provenance, diagnostics, and evaluator digest. |
+| Workflow declaration | Workflow inventory at the exact reviewed source revision | Supply configured tools, model, trigger, budget, and package classification. Static declarations MUST NOT prove runtime use. |
+
+Source provenance for every observation SHALL include collection scope, source
+kind, source identifier, source schema revision, observed time, generation,
+completeness, and freshness. A later source observation MAY enrich the same
+canonical fact but MUST NOT erase a known value with an absent field.
+
+### 5.5.2 Identities and relationships
+
+The canonical opportunity identity SHALL encode the six fields frozen by the
+operational-value contract:
+
+```text
+token-opportunity:
+  <percent-encoded targetRepo>:
+  <percent-encoded workflowPath>:
+  <evidenceWindowStart>:
+  <evidenceWindowEnd>:
+  <assignmentRunId>:
+  <percent-encoded experimentId>
+```
+
+Percent encoding SHALL use uppercase RFC 3986 hexadecimal escapes over UTF-8.
+Timestamps SHALL use normalized RFC 3339 UTC seconds. `targetRepo` SHALL be the
+normalized `OWNER/REPOSITORY` coordinate until an immutable GitHub Repository ID
+is published; `workflowPath` SHALL be the normalized path in that Repository.
+Display names MUST NOT participate in identity. A control repository is
+provenance, not target identity, so observations collected by multiple control
+repositories converge only when all six identity fields match.
+
+An intervention identity SHALL be
+`token-intervention:<opportunity-id>:<percent-encoded intervention-id>`, where
+`intervention-id` is the immutable safe-output identity or reviewed experiment
+change identity. A comparison identity SHALL be
+`token-comparison:<intervention-id>:<evaluator-digest>:<evidence-cutoff>`.
+Experiment variants SHALL relate to the same intervention through the frozen
+experiment identity and SHALL retain `control` or `optimized` as roles separate
+from their producer-defined variant names.
+
+The mandatory relationships are:
+
+```text
+Opportunity.targetRepositoryId -> Repository.id
+Opportunity.targetWorkflowId   -> Workflow.id
+Opportunity.assignmentRunId    -> Run.id
+Opportunity.experimentId       -> Experiment.id
+Intervention.opportunityId      -> Opportunity.id
+Intervention.safeOutputId       -> Outcome.id, when published
+Comparison.interventionId       -> Intervention.id
+Comparison.operationalValueId   -> OperationalValue.observationId
+Comparison.controlVariant       -> ExperimentAssignment.variant
+Comparison.optimizedVariant     -> ExperimentAssignment.variant
+```
+
+Repeated collection of the same source observation SHALL be deduplicated before
+normalization. Multiple source observations for one canonical opportunity SHALL
+retain distinct provenance observation IDs while enriching one opportunity.
+Two records with different frozen windows, assignment Runs, or experiments are
+different opportunities even when they recommend the same change.
+
+### 5.5.3 Measures, comparability, and evidence states
+
+AIC is the primary cost measure. The canonical raw-token measures remain
+`input-tokens`, `output-tokens`, `cache-read-tokens`, `cache-write-tokens`, and
+`reasoning-tokens`. Provider conventions may overlap, so these fields MUST NOT
+be summed into a synthesized total. Turns, requests, tool calls, duration, and
+cache efficiency remain separate diagnostics.
+
+For one experiment variant:
+
+```text
+AIC per accepted outcome =
+  sum of distinct attributable invocation AIC
+  / count of distinct accepted outcome identities
+```
+
+When complete invocation evidence is unavailable, a producer MAY use distinct
+Run-level `total_aic` values and SHALL mark the cost grain `run-aggregate`.
+Invocation and aggregate AIC MUST NOT be mixed in one numerator. A zero or
+missing accepted-outcome count, a non-positive baseline denominator, or
+unattributable AIC makes the comparison unavailable rather than zero.
+
+Control and optimized variants are comparable only when all of the following
+hold:
+
+1. both variants belong to the frozen experiment and target Workflow;
+2. the workload comparison key and acceptance rule were declared before result
+   evaluation and are identical for both variants;
+3. both variants meet the frozen minimum comparable sample size;
+4. each variant has at least one distinct accepted outcome;
+5. AIC and completed-Run conclusion evidence is complete for every included Run;
+6. outcome-quality evidence uses the same definition and evaluator digest; and
+7. the later of fourteen days after assignment or the minimum-sample threshold
+   has been reached without passing the evidence cutoff.
+
+Reliability SHALL be the completed-Run failure rate for each variant and SHALL
+remain separate from cost. Outcome quality SHALL retain the frozen grader or
+eval value and SHALL remain separate from both reliability and cost. Workload
+comparison keys MUST NOT contain prompt text, response text, tool arguments, or
+raw repository content.
+
+`evidence-state` SHALL use exactly:
+
+| State | Meaning |
+| --- | --- |
+| `complete` | Required evidence is authoritative, comparable, and mature. |
+| `incomplete` | A required observation within an otherwise accessible source is absent or partial. |
+| `incomparable` | Both evidence sets exist but violate one or more frozen comparability rules. |
+| `unmatured` | Valid evidence has not reached time or sample maturation. |
+| `unavailable` | A required source, identity, or attribution cannot be accessed or established. |
+
+Only `complete` evidence MAY produce realized savings. Every other state SHALL
+produce null attainment and a non-sensitive missing reason. Complete comparable
+evidence scores zero when AIC per accepted outcome does not decrease,
+completed-Run failure rate increases, or outcome quality decreases. Otherwise:
+
+```text
+realized savings AIC =
+  max(
+    baseline AIC per accepted outcome - optimized AIC per accepted outcome,
+    0
+  )
+  * optimized accepted-outcome count
+
+verified gain =
+  clamp(
+    (baseline AIC per accepted outcome - optimized AIC per accepted outcome)
+      / baseline AIC per accepted outcome,
+    0,
+    1
+  )
+```
+
+`realized-savings-aic` therefore measures the non-negative counterfactual AIC
+avoided for the optimized variant's accepted output volume. It is null unless
+evidence is complete and reliability and outcome quality are preserved. A
+regressed or non-improving complete comparison records zero realized savings
+and zero verified gain.
+
+### 5.5.4 Opportunity and intervention vocabulary
+
+`opportunity-kind` SHALL use this initial closed vocabulary:
+
+| Value | Evidence boundary |
+| --- | --- |
+| `avoidable-agent-invocation` | A deterministic gate can safely avoid an agent invocation or turn. |
+| `deterministic-data-gathering` | Observed reasoning-loop work can move to deterministic preprocessing. |
+| `unused-tool-schema` | Declared tool schema is unused across the complete observation window. |
+| `unbounded-context-growth` | Measured context grows beyond a declared bounded-read or working-set expectation. |
+| `poor-cache-utilization` | Comparable stable context has materially low observed cache reuse. |
+| `blocked-tool-retry-loop` | Correlated denied or failed operations cause repeated attempts without progress. |
+| `model-or-subagent-mismatch` | Observed task shape and quality evidence support a cheaper bounded execution tier. |
+| `avoidable-trigger-frequency` | Equivalent scheduled or event work can be safely batched or skipped. |
+| `duplicated-work-across-repositories` | Privacy-safe resource fingerprints establish equivalent repeated work across Workflow executions. |
+
+An opportunity kind is an evidence-backed classification, not a conclusion
+derived from high cost alone. The producer SHALL preserve the evidence rule and
+confidence used for classification.
+
+`intervention-state` SHALL use exactly `proposed`, `accepted`, `running`,
+`verified`, `regressed`, `inconclusive`, or `rejected`. `proposed-savings-aic`
+is an estimate attached to a proposal. `realized-savings-aic` and
+`verified-gain` require a complete matured comparison. Queries and views MUST
+NOT combine, coalesce, or label proposed savings as realized value.
+
+### 5.5.5 Canonical projection, SQL, and IndexedDB parity
+
+Token-optimization observations SHALL use compact canonical Events in the
+optimizer Run's Session rather than new source-shaped object stores:
+
+```text
+optimization.opportunity.observed
+optimization.intervention.updated
+optimization.comparison.observed
+```
+
+The Event payload SHALL contain only the stable IDs, enums, numeric measures,
+evidence state, missing reason, timestamps, and relationship IDs defined above.
+Repository, Workflow, Run, Outcome, experiment assignment, usage, and
+operational-value facts remain in their existing canonical domains. Dashboard
+logical sources SHALL be materialized from these canonical facts in the data
+Web Worker; views and components MUST NOT reconstruct relationships.
+
+The IndexedDB Event representation SHALL use camel-case fields:
+`opportunityId`, `opportunityKind`, `interventionId`, `interventionState`,
+`comparisonId`, `experimentId`, `evidenceState`, `costGrain`,
+`proposedSavingsAic`, `realizedSavingsAic`, `verifiedGain`,
+`baselineAicPerAcceptedOutcome`, `optimizedAicPerAcceptedOutcome`,
+`baselineFailureRate`, `optimizedFailureRate`, `outcomeQualityPreserved`, and
+the relationship IDs applicable to that Event.
+
+The `gh-aw-cao.dashboard-sql-export` representation SHALL emit the same Events
+with equivalent snake-case columns. Each SQL-export row SHALL retain
+`entity_kind=event`, `source_id`, `observed_at`, `session_source_id`, and the
+applicable `optimization_*` columns. SQL and IndexedDB adapters SHALL normalize
+to byte-identical canonical IDs and equivalent units, nullability, enums,
+relationships, and query results. SQL tables, SQL text, and database credentials
+MUST NOT be shipped to the browser.
+
+Browser IndexedDB remains disposable. Migration of any identity, enum, or
+measure semantics in this section SHALL increment the canonical schema and
+rebuild token-optimization projections from authoritative inputs. A failed
+rebuild SHALL retain the last complete active generation. A historical SQLite
+archive MAY use longer retention but MUST apply the same adapter and
+normalization rules.
+
+The browser SHALL retain active interventions until they reach a terminal state
+and SHALL retain the resulting compact comparison for at least the existing
+30-day operational window. To remain bounded, a non-terminal intervention with
+no authoritative observation for 90 days SHALL become `inconclusive` with
+`evidence-state=incomplete`; the browser MAY then prune it under normal
+relationship-safe retention. Historical backfills belong in a separate SQLite
+archive, not browser IndexedDB.
+
+Dashboard Language SHALL expose `token-efficiency-opportunities`,
+`token-efficiency-interventions`, and `token-efficiency-comparisons`. All
+selection, filtering, joins, workload grouping, aggregation, calculation,
+ranking, ordering, and pagination SHALL execute as declarative queries in the
+data Web Worker with an explicit abort-scoped subscription. JavaScript-derived
+sources and main-thread compatibility calculations are prohibited.
+
+### 5.5.6 Failure handling and data minimization
+
+Normalization SHALL fail closed for an invalid source schema, malformed frozen
+identity, unresolved mandatory relationship, duplicate canonical comparison,
+unknown enum value, mixed AIC grain, or non-finite measure. An individual
+opportunity with incomplete, incomparable, unmatured, or unavailable evidence
+MAY remain queryable in that explicit state; it MUST NOT produce realized
+savings or a healthy result.
+
+Prompts, model responses, tool arguments, raw logs, credentials, safe-output
+bodies, and artifact bodies MUST NOT enter token-optimization logical sources.
+Cross-Run duplication MAY use a producer-generated resource fingerprint only
+when it is:
+
+* an HMAC over a normalized resource class and identifier;
+* keyed before publication with a secret that is never published;
+* stable only within the declared control-plane collection scope; and
+* unable to reveal a path, URL, query, prompt, argument, or repository content.
+
+Cross-repository duplication MUST remain unknown when a common scoped
+fingerprint is unavailable. Hashing low-entropy identifiers without a secret is
+not an acceptable privacy boundary.
+
 ---
 
 # 6. Canonical Domain Model
@@ -919,6 +1204,10 @@ Each row SHALL contain `entity_kind`, `source_id`, and `observed_at`. The remain
 
 The relational interchange SHALL consist of one manifest row and denormalized entity rows. A producer MAY expose these as tables or views. Database-specific extraction queries and credentials remain upstream concerns and MUST NOT be shipped to the browser.
 
+Token-optimization Event rows SHALL additionally follow Section 5.5.5. SQL
+producers SHALL NOT flatten invocation and Run-aggregate AIC into one repeated
+measure or substitute display names for canonical relationship IDs.
+
 ## 14.4 Cached gh-aw JSONL
 
 The normative mapping for cached schema-v2 activity shard input is
@@ -976,6 +1265,11 @@ When the schema exposes suitable data, the activity-package source adapter SHOUL
 The `gh aw logs` schema is a discovery surface for source adapters, not a canonical dashboard contract. Views MUST NOT read its fields directly, and similarity of field names alone is insufficient evidence for a mapping.
 
 If the schema defines a suitable field but the collected log does not contain it, the activity-package source adapter MUST preserve the data point as unknown and record why it is missing, including whether the cause is an unsupported schema variant, an older producer, an unavailable artifact, an uncollected optional field, or invalid source data. If no semantically valid field exists, the data point MUST remain explicitly unknown rather than being guessed or coerced.
+
+Token-optimization evidence SHALL use the more specific completeness and
+comparability rules in Section 5.5. An aggregate `token_usage_summary` does not
+prove invocation coverage, a safe-output creation does not prove acceptance,
+and an experiment name without assignments does not prove comparable variants.
 
 ---
 
@@ -1719,6 +2013,10 @@ dropped when a mandatory parent no longer survives, and structural parents that
 neither the current collection nor any retained descendant references SHALL be
 collected.
 
+Token-optimization retention SHALL also satisfy Section 5.5.5 so an active
+intervention is not pruned before maturation and compact terminal evidence
+remains bounded.
+
 ---
 
 # 42. Search
@@ -1759,6 +2057,11 @@ events.forSessionByType(sessionId, type);
 ```
 
 Dashboard code SHOULD NOT directly scatter IndexedDB transaction logic through views.
+
+Token-optimization pages SHALL query only the three logical sources defined in
+Section 5.5.5 and their declarative derivatives. They MUST NOT scan Event
+payloads, join source rows, calculate comparability, or rank opportunities in a
+presenter or component.
 
 ---
 
@@ -2086,6 +2389,28 @@ Ingesting identical observations twice does not duplicate logical data.
 
 Unknown non-critical events do not invalidate the complete source dataset.
 
+### T-MODEL-009 — Token opportunity identity
+
+Equivalent frozen assignments from repeated collections and different control
+repositories converge to one opportunity. A changed window, assignment Run, or
+experiment produces a distinct opportunity.
+
+### T-MODEL-010 — Token evidence comparability
+
+Complete matched variants produce a bounded verified gain. Incomplete,
+incomparable, unmatured, and unavailable fixtures produce null attainment.
+Reliability or outcome-quality regression produces zero.
+
+### T-MODEL-011 — Token measure grain
+
+Invocation and Run-aggregate fixtures never double count AIC. Raw token classes
+remain separately named and are never synthesized into a total.
+
+### T-MODEL-012 — Token observation idempotence
+
+Repeated source observations preserve distinct provenance while producing one
+canonical opportunity, intervention, and comparison identity.
+
 ---
 
 # 48. Required Persistence Tests
@@ -2171,6 +2496,18 @@ Terminate immediately after activation.
 Expected:
 
 New active-generation pointer remains internally valid.
+
+### T-FAIL-008 — Malformed token-optimization evidence
+
+Provide invalid identity fields, an unknown opportunity or intervention enum,
+mixed AIC grains, an unresolved mandatory relationship, or a duplicate
+comparison identity.
+
+Expected:
+
+The invalid comparison produces no realized savings. Generation activation
+fails for structural corruption; evidence-level incompleteness remains visible
+with its explicit non-complete state.
 
 ---
 
@@ -2368,6 +2705,8 @@ The canonical model SHOULD retain the fields required for dashboard behavior.
 Large or highly sensitive raw payloads SHOULD remain out of the hot canonical store unless operationally required.
 
 Do not duplicate source payloads merely because storage is available.
+
+Token-optimization projections SHALL additionally enforce Section 5.5.6.
 
 ---
 
@@ -2773,6 +3112,8 @@ The implementation SHALL be guided by the following rules:
 * Added Web Worker ingestion guidance.
 * Added storage quota and eviction recovery.
 * Added large-payload indirection.
+* Defined token-optimization source authority, canonical identities,
+  comparability, SQL/IndexedDB parity, retention, and fail-closed behavior.
 * Added retention tiers.
 * Added Node and real-browser test requirements.
 * Added large-data and failure test suites.

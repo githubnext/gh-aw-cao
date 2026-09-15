@@ -2,13 +2,22 @@
  * Compliance fixtures and machine-readable conformance helpers for the dashboard validator and presenter.
  */
 
+import authoritativeDashboard from '../dashboard.json' with { type: 'json' };
 import { validateDashboardDocument, validateLogicalSources } from './validator.js';
 import { renderDashboard } from './presenter.js';
+import { resolveBuiltInPages as resolveBuiltInPagesAgainstTemplate } from './dashboard-chunks.js';
 
 export const IMPLEMENTATION_VERSION = '0.1.0-prototype';
 
 /** @typedef {'pass'|'fail'} ComplianceStatus */
 /** @typedef {{ testId: string, requirementId: string, implementationVersion: string, status: ComplianceStatus, failureEvidence: string | null }} ComplianceResult */
+
+/**
+ * @param {import('./presenter.js').PresentationDocument} document
+ */
+function resolveBuiltInPages(document) {
+  return resolveBuiltInPagesAgainstTemplate(document, authoritativeDashboard);
+}
 
 export const appendixAFixture = `language-version: "0.1.0"
 dashboard:
@@ -440,7 +449,7 @@ function runSemanticComplianceChecks() {
   ));
 
   const presenterElement = validDocument.ok
-    ? renderDashboard({ document: validDocument.value, sources: semanticSources })
+    ? renderDashboard({ document: resolveBuiltInPages(validDocument.value), sources: semanticSources })
     : null;
   const presenterText = presenterElement?.textContent || '';
   const hasNonCausationStatement = presenterText.includes('without implying causation');

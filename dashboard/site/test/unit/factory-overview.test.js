@@ -98,6 +98,19 @@ it('renders compact database summaries and distinct registered repository covera
   expect(rendered.querySelectorAll('.factory-rhythm-baseline:not([hidden])')).toHaveLength(4);
 });
 
+it('animates overview counters only when selected by its JSON element configuration', () => {
+  const rendered = renderFactoryOverview({
+    elementConfig: { animate: 'number' },
+    sources: overviewSources({
+      'overview-run-summary': source('overview-run-summary', [{ 'successful-runs': 2, 'failed-runs': 0, 'active-runs': 0, 'active-live': 0, 'active-review': 0 }])
+    })
+  });
+
+  const counter = rendered.querySelector('.factory-station:nth-child(2) strong .metric-number-animated');
+  expect(counter?.classList.contains('metric-number-animated')).toBe(true);
+  expect(counter instanceof HTMLElement && counter.style.getPropertyValue('--metric-number-target')).toBe('2');
+});
+
 it.each([
   ['humming with active runs', { 'active-runs': 1 }, 'Your factory is humming.'],
   ['under strain', { 'failed-runs': 2, 'successful-runs': 1 }, 'Your factory is under strain.'],

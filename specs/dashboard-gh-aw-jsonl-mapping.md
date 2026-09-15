@@ -145,6 +145,37 @@ variants contain the field. Enriched values SHALL own agentic analysis fields.
 Absent, explicit `null`, zero, `false`, and empty collections SHALL remain
 distinct.
 
+## 2.1 Token-optimization supporting evidence
+
+The schema-v2 `run` envelope supplies supporting token-optimization evidence at
+the grain declared by the source schema:
+
+| JSONL source | Canonical projection |
+| --- | --- |
+| `turns` | Run-level turn diagnostic |
+| `token_usage_summary.total_aic` | Run-aggregate AIC |
+| `token_usage_summary.total_input_tokens` | Run-aggregate input tokens |
+| `token_usage_summary.total_output_tokens` | Run-aggregate output tokens |
+| `token_usage_summary.total_cache_read_tokens` | Run-aggregate cache-read tokens |
+| `token_usage_summary.total_cache_write_tokens` | Run-aggregate cache-write tokens |
+| `token_usage_summary.by_model` | Run-and-model aggregate usage |
+| `token_usage_summary.cache_efficiency` | Run-level cache diagnostic |
+| `experiments.assignments` | One experiment assignment per map entry for the Run |
+| `mcp_tool_usage.tool_calls[]` | Correlated canonical tool Events |
+| canonical Run conclusion | Completed-Run reliability evidence |
+
+The summary and `by_model` objects SHALL retain aggregate cost grain and MUST
+NOT fabricate API-invocation identities. When invocation-grain API-proxy usage
+is also collected, adapters SHALL prefer it for invocation queries and MUST NOT
+add the corresponding summary AIC a second time.
+
+Token-efficiency opportunities, interventions, and comparisons MUST NOT be
+inferred solely from high cost, aggregate token usage, or a safe-output creation
+Event. They require the explicit producer observations, frozen assignment, and
+evidence rules in `specs/dashboard-data.md` Section 5.5. Safe-output creation is
+not accepted-outcome evidence without an authoritative disposition or frozen
+evaluator rule.
+
 ## 3 Job mapping
 
 Each `job_details[]` item SHALL emit one Job belonging to the canonical Run.

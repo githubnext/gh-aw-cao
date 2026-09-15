@@ -979,12 +979,18 @@
         "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
         "description": "Observed workflow runs ordered from newest to oldest.",
         "from": "runs",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+          }
+        ],
         "select": [
           { "field": "run" },
           { "field": "run-status" },
           { "field": "run-conclusion" },
-          { "field": "organization" },
-          { "field": "repository" },
+          { "field": "repository-coordinate" },
           { "field": "workflow" },
           { "field": "rollout-mode" },
           { "field": "engine" },
@@ -993,6 +999,8 @@
           { "field": "requested-model" },
           { "field": "resolved-model" },
           { "field": "started-at" },
+          { "field": "repository-link" },
+          { "field": "workflow-link" },
           { "field": "run-link" }
         ],
         "order-by": [{ "field": "started-at", "direction": "desc" }]
@@ -4810,7 +4818,7 @@
               },
               "mark": "chart",
               "chart": "swimlane",
-              "layout": "full",
+              "layout": "horizontal",
               "encoding": {
                 "x": {
                   "field": "started-at",
@@ -4854,7 +4862,8 @@
                 "columns": [
                   {
                     "field": "run",
-                    "type": "nominal"
+                    "type": "nominal",
+                    "display": "run-link"
                   },
                   {
                     "field": "run-status",
@@ -4867,16 +4876,15 @@
                     "display": "status"
                   },
                   {
-                    "field": "organization",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal"
+                    "field": "repository-coordinate",
+                    "type": "nominal",
+                    "title": "Repository",
+                    "display": "repository-link"
                   },
                   {
                     "field": "workflow",
-                    "type": "nominal"
+                    "type": "nominal",
+                    "display": "workflow-link"
                   },
                   {
                     "field": "rollout-mode",
@@ -6645,6 +6653,7 @@
             "mark": "element",
             "element": "outcomes-overview",
             "config": {
+              "animate": "number",
               "labels": {
                 "repositories": {
                   "singular": "Repository registered",

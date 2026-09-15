@@ -11,6 +11,7 @@ import { SOURCE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
+import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
@@ -24,6 +25,7 @@ const authoritativeDashboardDocument = composeDashboardDocuments(
 
 /** @param {Parameters<typeof renderDashboardView>[0]} input */
 function renderDashboard(input) {
+  const resolvedDocument = resolveBuiltInPages(input.document, authoritativeDashboardDocument);
   const sources = { ...input.sources };
   if (Object.keys(input.sources).length > 0) {
     Object.assign(sources, deriveDataHealthSources(sources));
@@ -85,7 +87,7 @@ function renderDashboard(input) {
         id: page.id
       }
     : page;
-  for (const page of input.document.dashboard.pages) {
+  for (const page of resolvedDocument.dashboard.pages) {
     const payload = pagePayload(page);
     const compiled = compileDashboardViewPayloadQueries(payload, page.id, {
       queries: executableQueries,
@@ -100,7 +102,7 @@ function renderDashboard(input) {
       sourceNames: compiled.aliases
     }));
   }
-  return renderDashboardView({ ...input, sources });
+  return renderDashboardView({ ...input, document: resolvedDocument, sources });
 }
 
 /** @param {HTMLElement} rendered @param {string} pageId */

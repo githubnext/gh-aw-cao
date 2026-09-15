@@ -90,8 +90,8 @@ describe("dashboard data startup", () => {
 
     expect(calls).toEqual([
       "render:cached",
-      "cache",
       "settle",
+      "cache",
       "automatic",
       "refresh",
     ]);

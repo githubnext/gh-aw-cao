@@ -2,7 +2,6 @@
  * Presenter for JSON-driven dashboard pages using GitHub Primer styling and elements.
  */
 
-import builtInDashboard from '../dashboard.json' with { type: 'json' };
 import { h } from './dom.js';
 import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
@@ -12,7 +11,7 @@ import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
+import { elementHandlesEmptyRows, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -24,6 +23,12 @@ import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js'
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
 import { scopedStorageKey } from './storage-scope.js';
+import {
+  dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
+  dashboardPagePayload,
+  dashboardPageSourceNames as collectDashboardPageSourceNames,
+  dashboardTableSourceNames as collectDashboardTableSourceNames,
+} from './dashboard-chunks.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -42,11 +47,11 @@ import { scopedStorageKey } from './storage-scope.js';
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -123,50 +128,12 @@ export function updateWithViewTransition(document, update, direction) {
   });
 }
 
-/** @type {Record<string, PresentableCustomPage>} */
-const BUILT_IN_PAGE_PAYLOADS = /** @type {Record<string, PresentableCustomPage>} */ (Object.fromEntries(
-  builtInDashboard.dashboard.pages
-    .filter((page) => page.kind === 'built-in')
-    .map((page) => [
-      page.page,
-      {
-        id: page.id,
-        kind: 'custom',
-        title: page.title,
-        description: 'description' in page ? page.description : undefined,
-        'class-name': 'class-name' in page ? page['class-name'] : undefined,
-        views: page.definition?.views ?? [],
-        sections: page.definition && 'sections' in page.definition ? page.definition.sections : undefined
-      }
-    ])
-));
-
 /**
  * @param {PresentableBuiltInPage} page
  * @returns {PresentableCustomPage}
  */
 function getBuiltInPagePayload(page) {
-  const payload = BUILT_IN_PAGE_PAYLOADS[page.page];
-  return {
-    ...payload,
-    id: page.id,
-    kind: 'custom',
-    title: page.title ?? payload?.title,
-    description: page.description ?? payload?.description,
-    'class-name': page['class-name'] ?? payload?.['class-name'],
-    views: payload?.views ?? [],
-    sections: payload?.sections
-  };
-}
-
-/**
- * @param {unknown} view
- * @returns {boolean}
- */
-function isAsyncElementView(view) {
-  return isPlainObject(view)
-    && typeof view.element === 'string'
-    && elementLoadsSourcesAsync(view.element);
+  return /** @type {PresentableCustomPage} */ (dashboardPagePayload(page));
 }
 
 /**
@@ -175,23 +142,7 @@ function isAsyncElementView(view) {
  * @returns {string[]}
  */
 export function dashboardPageSourceNames(document, pageId) {
-  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
-  if (!page) return [];
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-  const names = new Set();
-  for (const view of payload.views ?? []) {
-    if (isAsyncElementView(view)) continue;
-    for (const sourceName of getViewSources(view)) names.add(sourceName);
-  }
-
-  for (const section of payload.sections ?? []) {
-    if (typeof section['count-source'] === 'string') names.add(section['count-source']);
-    for (const sourceName of section['count-sources'] ?? []) names.add(sourceName);
-  }
-  for (const callout of document.dashboard.callouts ?? []) {
-    if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source);
-  }
-  return [...names];
+  return collectDashboardPageSourceNames(document, pageId);
 }
 
 /**
@@ -201,22 +152,12 @@ export function dashboardPageSourceNames(document, pageId) {
  * @param {string} pageId
  */
 export function dashboardPageLazySourceNames(document, pageId) {
-  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
-  if (!page) return [];
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-  return [...new Set((payload.views ?? []).flatMap((view) =>
-    isPlainObject(view) && view['lazy-list'] === true ? getViewSources(view) : []
-  ))];
+  return collectDashboardPageLazySourceNames(document, pageId);
 }
 
 /** @param {PresentationDocument} document */
 export function dashboardTableSourceNames(document) {
-  return [...new Set(document.dashboard.pages.flatMap((page) => {
-    const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-    return (payload.views ?? []).flatMap((view) =>
-      isPlainObject(view) && view.mark === 'table' ? getViewSources(view) : []
-    );
-  }))];
+  return collectDashboardTableSourceNames(document);
 }
 
 /**
@@ -290,10 +231,12 @@ export function renderDashboard(input) {
     document.dashboard.title,
     (pageId, options) => {
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
-      const page = pages[pageIndex];
-      if (!page) return null;
+      const resolvedPage = () => pages[pageIndex] ?? pages.find((candidate) => candidate.id === pageId);
+      if (!resolvedPage()) return null;
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => {
+        const page = resolvedPage();
+        if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
         if (options.signal?.aborted !== true) {
           dashboardHorizon.update(resolveDashboardHorizonViewModel(
             pageSources,
@@ -313,6 +256,8 @@ export function renderDashboard(input) {
       const renderedPage = render(sources);
       /** @param {HTMLElement} rendered */
       const annotate = (rendered) => {
+        const page = resolvedPage();
+        if (!page) return rendered;
         void annotateLazyPageDomWhenDebugging(root, rendered, page, pageIndex).catch((error) => {
           root.dataset.domProvenanceError = String(error?.message ?? error);
         });
@@ -1545,14 +1490,19 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     activate(route?.pageId ?? pageId, route?.parameters ?? new URLSearchParams(), true);
   });
 
-  // Hiding the app chrome (sidebar/top nav) while a full-view table scrolls resizes the
-  // scroll container, which can shrink its scrollable range enough to clamp scrollTop back
-  // toward 0. That reflow re-fires the scroll handler and toggles the chrome back on, which
-  // then re-triggers the same reflow: a hide/show feedback loop ("menu jitter"). A minimum
-  // scrollable-range guard plus enter/exit hysteresis around scrollTop breaks that loop.
+  // Hiding the app chrome while a full-view table scrolls resizes the scroll container.
+  // Phone layouts keep the chrome stable because mobile momentum scrolling can turn that
+  // reflow into a hide/show feedback loop. Larger layouts use range and hysteresis guards.
+  const FULL_VIEW_COMPACT_MEDIA = '(max-width: 700px)';
   const FULL_VIEW_SCROLL_MIN_RANGE = 48;
   const FULL_VIEW_SCROLL_ENTER = 24;
   const FULL_VIEW_SCROLL_EXIT = 4;
+  const fullViewCompactMedia = typeof defaultView?.matchMedia === 'function'
+    ? defaultView.matchMedia(FULL_VIEW_COMPACT_MEDIA)
+    : null;
+  fullViewCompactMedia?.addEventListener('change', () => {
+    if (fullViewCompactMedia.matches) root.classList.remove('dashboard-full-view-scrolled');
+  });
   let fullViewScrollFrame = 0;
   /**
    * Finds the scroll surface of a full-view table following the event target's view.
@@ -1606,6 +1556,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       const syncScrolledState = () => {
         fullViewScrollFrame = 0;
         if (!scroll.isConnected || !root.classList.contains('dashboard-full-view')) return;
+        if (fullViewCompactMedia?.matches) {
+          root.classList.remove('dashboard-full-view-scrolled');
+          return;
+        }
         const scrollableRange = scroll.scrollHeight - scroll.clientHeight;
         if (scrollableRange < FULL_VIEW_SCROLL_MIN_RANGE) {
           root.classList.remove('dashboard-full-view-scrolled');

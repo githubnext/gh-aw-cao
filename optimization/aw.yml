@@ -10,6 +10,8 @@ includes:
   - .github/workflows/optimization-skills-curator.md
   - .github/workflows/optimization.md
 resources:
+  - source: cao.json
+    destination: .github/aw/optimization/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/optimization.json
   - source: .github/graders/optimization-agents-md-curator-operational-value.sh

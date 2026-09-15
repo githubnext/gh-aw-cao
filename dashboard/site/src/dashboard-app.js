@@ -1,4 +1,4 @@
-      import { dashboardPageLazySourceNames, dashboardPageSourceNames, dashboardTableSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
+      import { dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { setLoadingProgressState, startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
       import { processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
@@ -12,6 +12,17 @@
       import { attachCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
       import { applyTableQuerySafetyLimits, browserTableCapacityDecision, logTableCapacityDecision } from "./data/table-capacity.js";
       import { startConsoleLogCapture } from "./console-log-capture.js";
+      import {
+        dashboardPageChunkPath,
+        dashboardPageIsLoaded,
+        dashboardTableSourceNames as collectDashboardTableSourceNames,
+        mergeDashboardPage,
+        normalizeDashboardPageChunk,
+        splitDashboardDocument,
+      } from "./dashboard-chunks.js";
+
+      /** @typedef {{ name?: string } & Record<string, unknown>} DashboardQueryDefinition */
+      /** @typedef {{ 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }} DashboardSchema */
 
       startConsoleLogCapture();
 
@@ -87,19 +98,142 @@
           cancelCommand.complete();
           throw error;
         });
+      /**
+       * @param {DashboardSchema} schema
+       */
+      const normalizeDashboardSchema = (schema) => splitDashboardDocument({
+        languageVersion: schema["language-version"],
+        dashboard: schema.dashboard,
+      });
+      /** @type {Map<string, ReturnType<typeof normalizeDashboardPageChunk>>} */
+      let dashboardPageChunks = new Map();
+      /** @type {Map<string, Promise<ReturnType<typeof normalizeDashboardPageChunk>>>} */
+      let dashboardPageChunkLoads = new Map();
+      let dashboardSchemaRevision = 0;
+      const loadedDashboardPages = new Set();
+      const loadedDashboardTableSources = new Set();
       /** @type {import('./presenter.js').PresentationDocument} */
-      let dashboardDocument = {
-        languageVersion: dashboardSchema["language-version"],
-        dashboard: dashboardSchema.dashboard,
-      };
-      const tableSourceNames = dashboardTableSourceNames(dashboardDocument);
+      let dashboardDocument;
       const tableCapacityDecision = browserTableCapacityDecision(window);
       const tableRowLimit = tableCapacityDecision.rowLimit;
       logTableCapacityDecision(tableCapacityDecision);
-      const dashboardQueries = applyTableQuerySafetyLimits(
-        dashboardSchema.dashboard.queries ?? [],
-        tableSourceNames,
-      );
+      /** @type {DashboardQueryDefinition[]} */
+      const dashboardQueries = [];
+      /** @type {{ githubUrlBase?: string, dashboardRepository: string | null, pages: import('./presenter.js').PresentationDocument['dashboard']['pages'], queries: DashboardQueryDefinition[] }} */
+      const dashboardContext = {
+        githubUrlBase: undefined,
+        dashboardRepository: null,
+        pages: /** @type {import('./presenter.js').PresentationDocument['dashboard']['pages']} */ ([]),
+        queries: dashboardQueries,
+      };
+      const syncDashboardContext = () => {
+        dashboardContext.githubUrlBase = dashboardDocument.dashboard["github-url-base"];
+        dashboardContext.dashboardRepository = dashboardDocument.dashboard.repository ?? null;
+        dashboardContext.pages = dashboardDocument.dashboard.pages;
+        dashboardContext.queries = dashboardQueries;
+      };
+      /**
+       * @param {DashboardQueryDefinition[]} queries
+       * @param {string[]} tableSourceNames
+       */
+      const mergeDashboardQueries = (queries, tableSourceNames) => {
+        for (const sourceName of tableSourceNames) loadedDashboardTableSources.add(sourceName);
+        const limitedQueries = /** @type {DashboardQueryDefinition[]} */ (
+          applyTableQuerySafetyLimits(queries, [...loadedDashboardTableSources])
+        );
+        for (const query of limitedQueries) {
+          if (typeof query?.name !== "string") continue;
+          const existingIndex = dashboardQueries.findIndex((candidate) => candidate?.name === query.name);
+          if (existingIndex >= 0) dashboardQueries.splice(existingIndex, 1, query);
+          else dashboardQueries.push(query);
+        }
+        syncDashboardContext();
+      };
+      /**
+       * @param {string} pageId
+       * @param {ReturnType<typeof normalizeDashboardPageChunk>} chunk
+       */
+      const mergeDashboardPageChunk = (pageId, chunk) => {
+        const pageIndex = dashboardDocument.dashboard.pages.findIndex((candidate) => candidate.id === pageId);
+        if (pageIndex < 0) throw new Error(`Dashboard page "${pageId}" is not declared.`);
+        const stub = dashboardDocument.dashboard.pages[pageIndex];
+        const mergedPage = /** @type {import('./presenter.js').PresentableBuiltInPage | import('./presenter.js').PresentableCustomPage} */ (
+          mergeDashboardPage(stub, chunk.page)
+        );
+        dashboardDocument.dashboard.pages.splice(pageIndex, 1, mergedPage);
+        mergeDashboardQueries(chunk.queries, collectDashboardTableSourceNames(dashboardDocument, pageId));
+        loadedDashboardPages.add(pageId);
+        return mergedPage;
+      };
+      /**
+       * @param {DashboardSchema} schema
+       */
+      const resetDashboardState = (schema) => {
+        dashboardSchemaRevision += 1;
+        const normalized = normalizeDashboardSchema(schema);
+        dashboardDocument = {
+          languageVersion: normalized.core["language-version"],
+          dashboard: /** @type {import('./presenter.js').PresentableDashboard} */ (normalized.core.dashboard),
+        };
+        dashboardQueries.splice(0, dashboardQueries.length);
+        dashboardPageChunks = new Map(
+          [...normalized.pageChunks.entries()].map(([pageId, chunk]) => [pageId, normalizeDashboardPageChunk(chunk)])
+        );
+        dashboardPageChunkLoads.clear();
+        loadedDashboardPages.clear();
+        loadedDashboardTableSources.clear();
+        syncDashboardContext();
+      };
+      /**
+       * @param {string} pageId
+       * @returns {Promise<void>}
+       */
+      const ensureDashboardPageLoaded = async (pageId) => {
+        const page = dashboardDocument.dashboard.pages.find((candidate) => candidate.id === pageId);
+        if (!page) return;
+        if (dashboardPageIsLoaded(page)) {
+          if (!loadedDashboardPages.has(pageId)) {
+            mergeDashboardQueries([], collectDashboardTableSourceNames(dashboardDocument, pageId));
+            loadedDashboardPages.add(pageId);
+          }
+          return;
+        }
+        const preloadedChunk = dashboardPageChunks.get(pageId);
+        if (preloadedChunk) {
+          dashboardPageChunks.delete(pageId);
+          mergeDashboardPageChunk(pageId, preloadedChunk);
+          return;
+        }
+        const chunkPath = dashboardPageChunkPath(page);
+        if (!chunkPath) return;
+        let pendingChunk = dashboardPageChunkLoads.get(pageId);
+        if (!pendingChunk) {
+          const revision = dashboardSchemaRevision;
+          pendingChunk = fetch(`./${chunkPath}`, { cache: previewMode ? "no-store" : "default" })
+            .then((response) => {
+              if (!response.ok) throw new Error(`Unable to load dashboard page "${pageId}": ${response.status}`);
+              return response.json();
+            })
+            .then((chunk) => normalizeDashboardPageChunk(chunk))
+            .then((chunk) => {
+              if (revision !== dashboardSchemaRevision) {
+                throw new DOMException("Dashboard definition changed while loading the page.", "AbortError");
+              }
+              return chunk;
+            })
+            .finally(() => {
+              dashboardPageChunkLoads.delete(pageId);
+            });
+          dashboardPageChunkLoads.set(pageId, pendingChunk);
+        }
+        mergeDashboardPageChunk(pageId, await pendingChunk);
+      };
+      const ensureAllDashboardPagesLoaded = async () => {
+        for (const page of dashboardDocument.dashboard.pages) {
+          if (typeof page?.id === "string" && page.id) await ensureDashboardPageLoaded(page.id);
+        }
+      };
+      resetDashboardState(dashboardSchema);
       const root = document.querySelector("#root");
       if (!(root instanceof HTMLElement)) throw new Error("Dashboard root element is missing.");
       /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */
@@ -258,11 +392,12 @@
         const previewEvent = /** @type {CustomEvent<{ dashboard: { 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }, traceId?: string }>} */ (event);
         const { dashboard: schema, traceId } = previewEvent.detail;
         const previousDashboardDocument = dashboardDocument;
+        const previousDashboardQueries = [...dashboardQueries];
+        const previousDashboardPageChunks = dashboardPageChunks;
+        const previousLoadedDashboardPages = new Set(loadedDashboardPages);
+        const previousLoadedDashboardTableSources = new Set(loadedDashboardTableSources);
         try {
-          dashboardDocument = {
-            languageVersion: schema["language-version"],
-            dashboard: schema.dashboard,
-          };
+          resetDashboardState(schema);
           updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader));
           if (traceId && dashboardSocket?.readyState === WebSocket.OPEN) {
             dashboardSocket.send(JSON.stringify({
@@ -281,6 +416,13 @@
           let recovered = false;
           let recoveryErrorLog = "";
           dashboardDocument = previousDashboardDocument;
+          dashboardPageChunks = previousDashboardPageChunks;
+          dashboardQueries.splice(0, dashboardQueries.length, ...previousDashboardQueries);
+          loadedDashboardPages.clear();
+          for (const pageId of previousLoadedDashboardPages) loadedDashboardPages.add(pageId);
+          loadedDashboardTableSources.clear();
+          for (const sourceName of previousLoadedDashboardTableSources) loadedDashboardTableSources.add(sourceName);
+          syncDashboardContext();
           try {
             renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader);
             recovered = true;
@@ -924,6 +1066,7 @@
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
+        await ensureAllDashboardPagesLoaded();
         const fixtureProjection = await withCanonicalViewSources(fixtureSources, true);
         renderSources({
           ...fixtureProjection,
@@ -934,18 +1077,13 @@
       } else {
         renderSources({}, "loading");
         const sourceUrl = new URL("./payload-hashes.json", window.location.href).href;
-        const dashboardContext = {
-          githubUrlBase: dashboardDocument.dashboard["github-url-base"],
-          dashboardRepository: dashboardDocument.dashboard.repository,
-          pages: dashboardDocument.dashboard.pages,
-          queries: dashboardQueries,
-        };
         try {
           await startDashboardData({
             browserWindow: window,
             document,
             sourceUrl,
             dashboardContext,
+            preparePage: ensureDashboardPageLoaded,
             pageSourceNames: (pageId) => dashboardPageSourceNames(dashboardDocument, pageId),
             pageLazySourceNames: (pageId) => dashboardPageLazySourceNames(dashboardDocument, pageId),
             runWithLoadingProgress,

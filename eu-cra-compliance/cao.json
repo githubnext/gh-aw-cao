@@ -1,0 +1,12 @@
+{
+  "package": "eu-cra-compliance",
+  "orchestrator": "eu-cra-compliance",
+  "workers": {
+    "scope-classifier": "eu-cra-compliance-scope-classifier",
+    "security-requirements-auditor": "eu-cra-compliance-security-requirements-auditor",
+    "supply-chain-sbom-auditor": "eu-cra-compliance-supply-chain-sbom-auditor",
+    "vulnerability-handling-auditor": "eu-cra-compliance-vulnerability-handling-auditor",
+    "article-14-reporting-readiness": "eu-cra-compliance-article-14-reporting-readiness",
+    "conformity-release-evidence": "eu-cra-compliance-conformity-release-evidence"
+  }
+}

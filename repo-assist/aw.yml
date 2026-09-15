@@ -10,6 +10,8 @@ includes:
   - .github/workflows/repo-assist-pr-upkeep.md
   - .github/workflows/repo-assist.md
 resources:
+  - source: cao.json
+    destination: .github/aw/repo-assist/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/repo-assist.json
   - source: .github/graders/repo-assist-issue-fix-operational-value.sh

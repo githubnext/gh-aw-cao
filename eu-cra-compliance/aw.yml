@@ -14,6 +14,8 @@ includes:
   - .github/workflows/eu-cra-compliance-article-14-reporting-readiness.md
   - .github/workflows/eu-cra-compliance-conformity-release-evidence.md
 resources:
+  - source: cao.json
+    destination: .github/aw/eu-cra-compliance/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/eu-cra-compliance.json
   - source: implementation-status.md

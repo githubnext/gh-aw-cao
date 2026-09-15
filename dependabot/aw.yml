@@ -7,5 +7,7 @@ includes:
   - .github/workflows/dependabot.md
   - .github/workflows/dependabot-release-train-updater.md
 resources:
+  - source: cao.json
+    destination: .github/aw/dependabot/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/dependabot.json

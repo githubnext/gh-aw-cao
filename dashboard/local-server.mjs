@@ -36,6 +36,7 @@ import {
 import { fileURLToPath } from "node:url";
 import { createGzip, gzipSync } from "node:zlib";
 import { bundleDashboardFiles } from "./report/bundle-dashboards.mjs";
+import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/dashboard-chunks.js";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
@@ -1525,6 +1526,8 @@ export async function startDashboardServer({
   const socketPath = `${routePrefix}${socketEndpoint}`;
   const watchers = new Map();
   let dashboardContent = "";
+  /** @type {Map<string, string>} */
+  let dashboardPageChunkContent = new Map();
   let signature = "";
   let refreshTimer;
   let refreshPromise = Promise.resolve();
@@ -1885,7 +1888,17 @@ export async function startDashboardServer({
     await bundleDashboardFiles(bundledDashboardPath, packagePaths);
     const dashboardDocument = JSON.parse(await readFile(bundledDashboardPath, "utf8"));
     if (repository) dashboardDocument.dashboard.repository = repository;
-    dashboardContent = redactJsonSecrets(JSON.stringify(dashboardDocument));
+    const splitDashboard = splitDashboardDocument({
+      languageVersion: dashboardDocument["language-version"],
+      dashboard: dashboardDocument.dashboard,
+    });
+    dashboardContent = redactJsonSecrets(JSON.stringify(splitDashboard.core));
+    dashboardPageChunkContent = new Map(
+      [...splitDashboard.pageChunks.entries()].map(([pageId, chunk]) => [
+        `/${buildDashboardPageChunkPath(pageId)}`,
+        redactJsonSecrets(JSON.stringify(chunk)),
+      ]),
+    );
     signature = nextSignature;
     output("Dashboard preview rebuilt.", {
       bundledDashboardPath,
@@ -2149,6 +2162,10 @@ export async function startDashboardServer({
       }
       if (pathname === "/viewer.json") {
         sendContent(request, response, contentTypes.get(".json"), viewerContent);
+        return;
+      }
+      if (dashboardPageChunkContent.has(pathname)) {
+        sendContent(request, response, contentTypes.get(".json"), dashboardPageChunkContent.get(pathname));
         return;
       }
       if (pathname === "/sources/manifest.json") {
