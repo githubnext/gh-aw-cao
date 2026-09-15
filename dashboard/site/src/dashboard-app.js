@@ -949,8 +949,6 @@
             sourceUrl,
             dashboardContext,
             initialPageId,
-            initialSources: dashboardPageSourceNames(dashboardDocument, initialPageId),
-            initialLazySources: dashboardPageLazySourceNames(dashboardDocument, initialPageId),
             pageSourceNames: (pageId) => dashboardPageSourceNames(dashboardDocument, pageId),
             pageLazySourceNames: (pageId) => dashboardPageLazySourceNames(dashboardDocument, pageId),
             runWithLoadingProgress,

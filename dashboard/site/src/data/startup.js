@@ -11,7 +11,6 @@ import { startAutomaticDashboardDataUpdates } from "../dashboard-data-updates.js
 import { configureSourceLoader, refreshSources as refreshBoundSources } from "../source-store.js";
 
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
-/** @typedef {Record<string, { limit: number, continuationToken?: string }>} DashboardPagination */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string } }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
 /** @typedef {(pageId: string, options: PageLoadOptions) => Promise<DashboardSources>} PageSourceLoader */
@@ -46,8 +45,6 @@ export function waitForDashboardUi(browserWindow) {
  *     queries: unknown[],
  *   },
  *   initialPageId: string,
- *   initialSources: string[],
- *   initialLazySources: string[],
  *   pageSourceNames: (pageId: string) => string[],
  *   pageLazySourceNames: (pageId: string) => string[],
  *   runWithLoadingProgress: <T>(task: () => Promise<T>) => Promise<T>,
@@ -63,8 +60,6 @@ export async function startDashboardData(options) {
     sourceUrl,
     dashboardContext,
     initialPageId,
-    initialSources,
-    initialLazySources,
     pageSourceNames,
     pageLazySourceNames,
     runWithLoadingProgress,
@@ -72,6 +67,11 @@ export async function startDashboardData(options) {
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
   const cleanup = new AbortController();
+  /** @type {(value: boolean) => void} */
+  let resolveInitialPage;
+  const initialPageLoaded = new Promise((resolve) => {
+    resolveInitialPage = resolve;
+  });
   let stopAutomaticDataUpdates = () => {};
   browserWindow.addEventListener("pagehide", (event) => {
     if (!event.persisted) {
@@ -115,6 +115,7 @@ export async function startDashboardData(options) {
           if (!receivedInitialSnapshot) {
             receivedInitialSnapshot = true;
             pageOptions.signal.removeEventListener("abort", abort);
+            if (pageId === initialPageId) resolveInitialPage(true);
             resolve(boundSources);
             return;
           }
@@ -129,6 +130,7 @@ export async function startDashboardData(options) {
           onError: (error) => {
             if (!receivedInitialSnapshot) {
               pageOptions.signal.removeEventListener("abort", abort);
+              if (pageId === initialPageId) resolveInitialPage(false);
               reject(error);
             } else {
               console.error(`Unable to update dashboard page ${pageId}: ${error.message}`);
@@ -142,26 +144,6 @@ export async function startDashboardData(options) {
   const loadHorizonSources = () => runWithLoadingProgress(
     () => loadCanonicalDashboardPage(DATABASE_COUNT_SOURCE_NAMES, dashboardContext),
   );
-  /**
-   * @param {(sourceNames: string[], pagination: DashboardPagination) => Promise<DashboardSources>} load
-   */
-  const loadInitialSources = async (load) => bindContinuations(
-    initialPageId,
-    await load(initialSources, continuationRequests(initialLazySources)),
-    initialLazySources,
-  );
-
-  let cachedSources = null;
-  try {
-    cachedSources = await loadInitialSources(
-      (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination, {
-        pageId: initialPageId,
-      }),
-    );
-  } catch {
-    // An empty or incompatible database is rebuilt from the published sources below.
-  }
-
   const startAutomaticUpdates = () => {
     stopAutomaticDataUpdates = startAutomaticDashboardDataUpdates([
       new URL("./payload-hashes.json", sourceUrl).href,
@@ -170,18 +152,17 @@ export async function startDashboardData(options) {
     ]);
   };
 
-  if (!cachedSources) {
+  await loadCanonicalDashboardPage([], dashboardContext);
+  render({}, "cached", loadPageSources, loadHorizonSources);
+  const cacheAvailable = await initialPageLoaded;
+  if (!cacheAvailable) {
     startAutomaticUpdates();
-    const sources = await loadInitialSources(
-      (requested, pagination) => loadCanonicalDashboardSources(
-        sourceUrl,
-        requested,
-        dashboardContext,
-        pagination,
-        { pageId: initialPageId },
-      ),
+    await loadCanonicalDashboardSources(
+      sourceUrl,
+      [],
+      dashboardContext,
     );
-    render(sources, "ready", loadPageSources, loadHorizonSources);
+    render({}, "ready", loadPageSources, loadHorizonSources);
     emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
       kind: "initial-load",
       status: "completed",
@@ -192,8 +173,6 @@ export async function startDashboardData(options) {
     };
   }
 
-  const displayedSources = cachedSources;
-  const refreshPagination = continuationRequests(initialLazySources);
   let refreshFailed = false;
   let refreshPending = false;
   /** @param {unknown} error */
@@ -208,7 +187,7 @@ export async function startDashboardData(options) {
       status: "failed",
       message,
     });
-    render(displayedSources, "stale", loadPageSources, loadHorizonSources, refreshSources);
+    render({}, "stale", loadPageSources, loadHorizonSources, refreshSources);
   };
   const refreshSources = (showRefreshing = true) => {
     if (refreshPending || cleanup.signal.aborted) return;
@@ -219,16 +198,14 @@ export async function startDashboardData(options) {
       status: "started",
     });
     if (showRefreshing) {
-      render(displayedSources, "cached", loadPageSources, loadHorizonSources);
+      render({}, "cached", loadPageSources, loadHorizonSources);
     }
     void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
       sourceUrl,
-      initialSources,
+      [],
       dashboardContext,
-      refreshPagination,
-      { pageId: initialPageId },
     )).then(
-      ({ sources, changed }) => {
+      ({ changed }) => {
         refreshPending = false;
         emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
           kind: "refresh",
@@ -236,18 +213,12 @@ export async function startDashboardData(options) {
           changed,
         });
         refreshBoundSources();
-        render(
-          bindContinuations(initialPageId, sources, initialLazySources),
-          "ready",
-          loadPageSources,
-          loadHorizonSources,
-        );
+        render({}, "ready", loadPageSources, loadHorizonSources);
       },
       showStaleSources,
     );
   };
 
-  render(displayedSources, "cached", loadPageSources, loadHorizonSources);
   await settleUi();
   if (!cleanup.signal.aborted) {
     startAutomaticUpdates();
