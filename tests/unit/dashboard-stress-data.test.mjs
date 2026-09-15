@@ -27,8 +27,19 @@ test("stress shards are deterministic and parametric", async () => {
       sessions: 8,
       events: 56,
     });
+    assert.equal(firstManifest.files.length, 3);
+    for (const file of firstManifest.files) {
+      assert.equal(
+        await readFile(join(first, file.name), "utf8"),
+        await readFile(join(second, file.name), "utf8"),
+      );
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
-    test("stress shards preserve observed operational shapes without copying identities", async () => {
+test("stress shards preserve observed operational shapes without copying identities", async () => {
       const root = await mkdtemp(join(tmpdir(), "cao-dashboard-stress-profile-"));
       const sampleDirectory = join(root, "samples");
       const outputDirectory = join(root, "output");
@@ -109,10 +120,10 @@ test("stress shards are deterministic and parametric", async () => {
           "observed-model-b",
         ]);
         assert.deepEqual(generated.map(({ run }) => run.job_details[0].name), [
-          "observed-agent-job",
           "agent",
-          "observed-agent-job",
+          "job",
           "agent",
+          "job",
         ]);
         assert.equal(JSON.stringify(generated).includes("real-owner"), false);
         assert.equal(JSON.stringify(generated).includes("real recommendation"), false);
@@ -120,15 +131,58 @@ test("stress shards are deterministic and parametric", async () => {
       } finally {
         await rm(root, { recursive: true, force: true });
       }
-    });
-    assert.equal(firstManifest.files.length, 3);
-    for (const file of firstManifest.files) {
-      assert.equal(
-        await readFile(join(first, file.name), "utf8"),
-        await readFile(join(second, file.name), "utf8"),
-      );
-    }
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
+});
+
+test("stress sampling is deterministic across reordered real-data shards", async () => {
+      const root = await mkdtemp(join(tmpdir(), "cao-dashboard-stress-sampling-"));
+      const firstSample = join(root, "first.jsonl");
+      const secondSample = join(root, "second.jsonl");
+      const records = Array.from({ length: 300 }, (_, index) => ({
+        schema_version: 2,
+        kind: "run",
+        run: {
+          run_id: index,
+          organization: "observed",
+          repository: `observed/repository-${index}`,
+          workflow_name: "Observed",
+          workflow_path: ".github/workflows/observed.md",
+          conclusion: index % 3 === 0 ? "cancelled" : "success",
+          started_at: "2026-09-01T00:00:00Z",
+          updated_at: "2026-09-01T00:01:00Z",
+          model: `model-${index % 4}`,
+        },
+      }));
+      await writeFile(firstSample, `${records.map(JSON.stringify).join("\n")}\n`);
+      await writeFile(secondSample, `${records.toReversed().map(JSON.stringify).join("\n")}\n`);
+      try {
+        const options = {
+          repositories: 4,
+          runs: 8,
+          derivedEventsPerRun: 6,
+          shards: 2,
+          workflows: 2,
+        };
+        const first = await generateDashboardStressData({
+          ...options,
+          outputDirectory: join(root, "first-output"),
+          samplePath: firstSample,
+        });
+        const second = await generateDashboardStressData({
+          ...options,
+          outputDirectory: join(root, "second-output"),
+          samplePath: secondSample,
+        });
+        assert.deepEqual(first.sampleProfile, second.sampleProfile);
+        assert.equal(first.sampleProfile.sourceRuns, 300);
+        assert.equal(first.sampleProfile.retainedTemplates, 256);
+        assert.deepEqual(
+          first.files.map(({ sha256 }) => sha256),
+          second.files.map(({ sha256 }) => sha256),
+        );
+        const generated = (await readFile(join(root, "first-output", first.files[0].name), "utf8"))
+          .trim().split("\n").map(JSON.parse);
+        assert.ok(generated.some(({ run }) => run.conclusion === "cancelled"));
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
 });

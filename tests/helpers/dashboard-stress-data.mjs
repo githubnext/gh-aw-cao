@@ -33,6 +33,18 @@ function observedEngine(run) {
   return run.engine ?? run.engine_id ?? run.aw_info?.engine_name ?? run.aw_info?.engine_id;
 }
 
+function templateScore(envelope) {
+  return createHash("sha256").update(JSON.stringify(envelope)).digest("hex");
+}
+
+function syntheticJobName(name) {
+  const normalized = String(name ?? "").toLowerCase();
+  for (const role of ["orchestrator", "worker", "agent", "setup"]) {
+    if (normalized.includes(role)) return role;
+  }
+  return "job";
+}
+
 async function sampleFiles(samplePath) {
   const metadata = await stat(samplePath);
   if (metadata.isFile()) return [samplePath];
@@ -92,7 +104,10 @@ async function inspectSamples(samplePath) {
         profile.durationSeconds.minimum = Math.min(profile.durationSeconds.minimum ?? duration, duration);
         profile.durationSeconds.maximum = Math.max(profile.durationSeconds.maximum ?? duration, duration);
       }
-      if (templates.length < MAX_TEMPLATES) templates.push(envelope);
+      const candidate = { score: templateScore(envelope), envelope };
+      templates.push(candidate);
+      templates.sort((left, right) => left.score.localeCompare(right.score));
+      if (templates.length > MAX_TEMPLATES) templates.pop();
     }
   }
   if (profile.sourceRuns === 0) {
@@ -102,7 +117,7 @@ async function inspectSamples(samplePath) {
   profile.durationSeconds.mean = durationCount === 0
     ? null
     : Number((durationTotal / durationCount).toFixed(2));
-  return { templates, profile };
+  return { templates: templates.map(({ envelope }) => envelope), profile };
 }
 
 function observedAuditGroups(run) {
@@ -169,8 +184,12 @@ function syntheticRun(template, index, options) {
   const startedAt = new Date(Date.parse(completedAt) - durationMs).toISOString();
   const repository = `synthetic-org/repository-${String(repositoryIndex).padStart(5, "0")}`;
   const workflowName = `Synthetic Agentic Workflow ${String(workflowIndex).padStart(2, "0")}`;
-  const observedConclusion = source.conclusion === "failure" ? "failure" : "success";
-  const conclusion = options.derivedEventsPerRun > BASE_DERIVED_EVENTS ? observedConclusion : "success";
+  const observedConclusion = typeof source.conclusion === "string" && source.conclusion.trim()
+    ? source.conclusion
+    : "unknown";
+  const conclusion = observedConclusion === "failure" && options.derivedEventsPerRun === BASE_DERIVED_EVENTS
+    ? "success"
+    : observedConclusion;
   const automaticEvents = BASE_DERIVED_EVENTS + (conclusion === "failure" ? 1 : 0);
   const sourceJob = source.job_details?.[0] ?? source.jobs?.[0] ?? {};
   const sourceUsage = source.token_usage_summary ?? source.token_usage ?? {};
@@ -198,20 +217,17 @@ function syntheticRun(template, index, options) {
       engine_id: source.engine_id ?? source.aw_info?.engine_id ?? "copilot",
       model: observedModel(source) ?? "auto",
       token_usage_summary: {
-        ...sourceUsage,
         total_aic: Number(sourceUsage.total_aic ?? source.aic ?? 1),
         input_tokens: Number(sourceUsage.input_tokens ?? 2_000),
         output_tokens: Number(sourceUsage.output_tokens ?? 200),
       },
       working_set: {
-        ...sourceWorkingSet,
         files: Number(sourceWorkingSet.files ?? 4),
         bytes: Number(sourceWorkingSet.bytes ?? 32_768),
       },
       job_details: [{
-        ...sourceJob,
         id: 2_000_000 + index,
-        name: sourceJob.name ?? "agent",
+        name: syntheticJobName(sourceJob.name),
         status: "completed",
         conclusion,
         started_at: startedAt,
