@@ -77,25 +77,32 @@ If the extension is already installed, verify that it is available:
 gh aw --help
 ```
 
-### Step 3 - Add Central Agentic Ops
+### Step 3 - Add Central Agentic Ops and Dependabot
 
-From the control repository, resolve the latest published CAO release and install that complete package with the gh-aw CLI:
+From the control repository, resolve the latest published CAO release. Install the base control plane first, then add the Dependabot operation from the same release:
 
 ```bash
 CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
 gh aw add "githubnext/gh-aw-cao@${CAO_RELEASE}"
+gh aw add "githubnext/gh-aw-cao/dependabot@${CAO_RELEASE}"
 ```
 
 Use an older published release tag only when you intentionally need that version. Do not install from `main` or copy control files separately; `gh aw add` installs the workflows, shared control files, runtime modules, and package ownership records together.
 
-The package installs:
+The root package is an operation-free CAO foundation. It installs:
 
-1. the catalog's operational orchestrators and workers, including **Dependabot**;
-2. shared authentication, routing, and fail-closed controls;
-3. shared control and its single package-installed CAO runtime under `.github/workflows/shared`;
+1. shared authentication, routing, and fail-closed controls;
+2. shared control and its single package-installed CAO runtime under `.github/workflows/shared`;
+3. the activity index and deterministic dashboard;
 4. generated `.lock.yml` workflows that GitHub Actions executes.
 
-The installed workflows use the runtime installed into the same shared directory. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
+The second command adds the Dependabot orchestrator and worker. Other operations are installed independently. For example, add AW Optimization with:
+
+```bash
+gh aw add "githubnext/gh-aw-cao/optimization@${CAO_RELEASE}"
+```
+
+Each operation package includes the same CAO foundation, so it can also be installed directly into a new control repository. Keep all installed packages on the same reviewed release. The installed workflows use the runtime in the shared directory. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
 
 The installed operation is runnable after its package and worker workflow identities are declared in the control policy. Declared workers are enabled unless their policy sets `enabled: false`; undeclared or disabled identities are skipped by admission before agent execution.
 

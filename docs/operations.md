@@ -154,7 +154,7 @@ This path supports issue outputs only. It does not transfer issues, publish pull
 
 ### Install the dashboard package
 
-The root Central Agentic Ops package installs the deterministic activity index and dashboard by default. To install the dashboard without the operational workflows, install both focused deterministic packages from the same published release tag:
+The operation-free root Central Agentic Ops package installs the deterministic activity index and dashboard by default. To install those deterministic packages individually, add both from the same published release tag:
 
 ```bash
 CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
