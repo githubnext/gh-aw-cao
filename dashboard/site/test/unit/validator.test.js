@@ -5279,6 +5279,46 @@ describe('declarative query validation', () => {
     expect(validateDashboardDocument(queryDocument([aicQuery, validQuery])).ok).toBe(true);
   });
 
+  it('accepts built-in grouped prediction methods and their output fields', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'usage',
+      predict: [{
+        field: 'aic',
+        on: 'run',
+        method: 'linear',
+        groupby: ['workflow'],
+        as: 'predicted-aic'
+      }],
+      select: [{ field: 'workflow' }, { field: 'predicted-aic' }]
+    }]));
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects invalid prediction methods, fields, orders, and output collisions', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'usage',
+      predict: [
+        { field: 'missing', on: [], method: 'neural', as: 'aic' },
+        { field: 'aic', on: ['run', 'run'], method: 'quad', order: 12, groupby: ['missing'], as: 'forecast' }
+      ]
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.queries[0].predict[0].field' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].predict[0].on' }),
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].predict[0].method' }),
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].predict[0].as' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].predict[1].on' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].predict[1].order' }),
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.queries[0].predict[1].groupby[0]' })
+      ]));
+    }
+  });
+
   it('requires a non-empty original intent for every query', () => {
     for (const intent of [undefined, '', 42]) {
       const result = validateDashboardDocument(queryDocument([{ ...aicQuery, intent }]));

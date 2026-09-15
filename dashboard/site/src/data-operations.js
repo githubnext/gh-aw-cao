@@ -17,8 +17,11 @@ import { formatPercent } from './view-formatters.js';
  * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
  * @typedef {{ as: string, function: keyof typeof COMPUTE_FUNCTION_ARITY, args: ComputeArgument[] }} ComputedField
  * @typedef {{ op: 'compute', values: ComputedField[] }} ComputeOperator
+ * @typedef {'linear'|'log'|'exp'|'pow'|'quad'|'poly'} PredictionMethod
+ * @typedef {{ field: string, on: string|string[], method?: PredictionMethod, order?: number, groupby?: string[], as: string }} PredictedField
+ * @typedef {{ op: 'predict', values: PredictedField[] }} PredictOperator
  * @typedef {{ op: 'select', fields: Array<{ field: string, as?: string }> }} SelectOperator
- * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|SelectOperator} DataOperator
+ * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|SelectOperator} DataOperator
  */
 
 /**
@@ -56,6 +59,9 @@ export const TEXT_COMPUTE_FUNCTIONS = [
 /** Computed-field functions whose result is always a finite number or null. */
 export const NUMERIC_COMPUTE_FUNCTIONS = ['number', 'sum', 'difference', 'product', 'quotient'];
 
+/** Vega regression method names supported without an external model registry. */
+export const PREDICTION_METHODS = ['linear', 'log', 'exp', 'pow', 'quad', 'poly'];
+
 /**
  * Applies a sequence of declarative operators without mutating the input rows.
  * @param {Row[]} rows
@@ -72,12 +78,164 @@ function applyOperator(rows, operator) {
   if (operator.op === 'summarize') return summarize(rows, operator);
   if (operator.op === 'arrange') return arrange(rows, operator);
   if (operator.op === 'compute') return compute(rows, operator);
+  if (operator.op === 'predict') return predict(rows, operator);
   if (operator.op === 'select') return select(rows, operator);
   if (operator.op === 'slice') {
     const offset = Number.isInteger(operator.offset) ? Math.max(0, Number(operator.offset)) : 0;
     return rows.slice(offset, offset + Math.max(0, operator.limit));
   }
   throw new TypeError(`Unsupported data operator: ${String(/** @type {{ op?: unknown }} */ (operator).op)}`);
+}
+
+/**
+ * Fits each declared model per group and appends its prediction to every row.
+ * Rows with unusable predictor values, or groups that cannot be fitted, receive
+ * null. Target-null rows are excluded from fitting but may still be forecast.
+ * @param {Row[]} rows @param {PredictOperator} operator
+ */
+function predict(rows, operator) {
+  let predicted = rows.map((row) => ({ ...row }));
+  for (const value of operator.values) {
+    const predictors = Array.isArray(value.on) ? value.on : [value.on];
+    const groupby = value.groupby ?? [];
+    /** @type {Map<string, Row[]>} */
+    const groups = new Map();
+    for (const row of predicted) {
+      const key = predictionGroupKey(row, groupby);
+      const group = groups.get(key) ?? [];
+      group.push(row);
+      groups.set(key, group);
+    }
+    for (const group of groups.values()) {
+      const model = fitPrediction(group, value, predictors);
+      for (const row of group) {
+        const inputs = predictors.map((field) => numericValue(row[field]));
+        const result = inputs.some((input) => input === null) || model === null
+          ? null
+          : model(/** @type {number[]} */ (inputs));
+        row[value.as] = Number.isFinite(result) ? result : null;
+      }
+    }
+  }
+  return predicted;
+}
+
+/** @param {Row} row @param {string[]} fields */
+function predictionGroupKey(row, fields) {
+  return JSON.stringify(fields.map((field) => {
+    const value = row[field];
+    return [typeof value, value ?? null];
+  }));
+}
+
+/**
+ * @param {Row[]} rows
+ * @param {PredictedField} definition
+ * @param {string[]} predictors
+ * @returns {((values: number[]) => number) | null}
+ */
+function fitPrediction(rows, definition, predictors) {
+  const observations = rows.flatMap((row) => {
+    const target = numericValue(row[definition.field]);
+    const values = predictors.map((field) => numericValue(row[field]));
+    return target === null || values.some((value) => value === null)
+      ? []
+      : [{ target, values: /** @type {number[]} */ (values) }];
+  });
+  const method = definition.method ?? 'linear';
+  if (method === 'linear') {
+    return fitLinearModel(observations, (values) => [1, ...values], (coefficients, values) => (
+      coefficients[0] + values.reduce((sum, value, index) => sum + value * coefficients[index + 1], 0)
+    ));
+  }
+  if (predictors.length !== 1) return null;
+  if (method === 'quad' || method === 'poly') {
+    const order = method === 'quad' ? 2 : (definition.order ?? 3);
+    const center = observations.reduce((sum, { values: [value] }) => sum + value, 0) / observations.length;
+    const scale = Math.max(...observations.map(({ values: [value] }) => Math.abs(value - center)), 1);
+    /** @param {number} value */
+    const normalize = (value) => (value - center) / scale;
+    return fitLinearModel(
+      observations,
+      ([value]) => Array.from({ length: order + 1 }, (_, index) => normalize(value) ** index),
+      (coefficients, [value]) => coefficients.reduce(
+        (sum, coefficient, index) => sum + coefficient * normalize(value) ** index,
+        0
+      )
+    );
+  }
+  if (method === 'log') {
+    return fitLinearModel(
+      observations.filter(({ values: [value] }) => value > 0),
+      ([value]) => [1, Math.log(value)],
+      ([intercept, slope], [value]) => value > 0 ? intercept + slope * Math.log(value) : Number.NaN
+    );
+  }
+  if (method === 'exp') {
+    return fitLinearModel(
+      observations
+        .filter(({ target }) => target > 0)
+        .map(({ target, values }) => ({ target: Math.log(target), values, weight: target })),
+      ([value]) => [1, value],
+      ([intercept, slope], [value]) => Math.exp(intercept + slope * value)
+    );
+  }
+  if (method === 'pow') {
+    return fitLinearModel(
+      observations
+        .filter(({ target, values: [value] }) => target > 0 && value > 0)
+        .map(({ target, values: [value] }) => ({ target: Math.log(target), values: [Math.log(value)] })),
+      ([value]) => [1, value],
+      ([intercept, slope], [value]) => value > 0 ? Math.exp(intercept) * value ** slope : Number.NaN
+    );
+  }
+  return null;
+}
+
+/**
+ * Solves an ordinary least-squares model through modified Gram-Schmidt QR.
+ * @param {Array<{ target: number, values: number[], weight?: number }>} observations
+ * @param {(values: number[]) => number[]} design
+ * @param {(coefficients: number[], values: number[]) => number} evaluate
+ * @returns {((values: number[]) => number) | null}
+ */
+function fitLinearModel(observations, design, evaluate) {
+  if (observations.length === 0) return null;
+  const matrix = observations.map(({ values, weight = 1 }) => {
+    const scale = Math.sqrt(weight);
+    return design(values).map((value) => value * scale);
+  });
+  const columns = matrix[0]?.length ?? 0;
+  if (columns === 0 || observations.length < columns || matrix.some((row) => row.length !== columns)) return null;
+  const q = Array.from({ length: columns }, () => Array(observations.length).fill(0));
+  const r = Array.from({ length: columns }, () => Array(columns).fill(0));
+  for (let column = 0; column < columns; column += 1) {
+    const vector = matrix.map((row) => row[column]);
+    for (let previous = 0; previous < column; previous += 1) {
+      r[previous][column] = dot(q[previous], vector);
+      for (let row = 0; row < vector.length; row += 1) {
+        vector[row] -= r[previous][column] * q[previous][row];
+      }
+    }
+    r[column][column] = Math.sqrt(dot(vector, vector));
+    if (!Number.isFinite(r[column][column]) || r[column][column] <= Number.EPSILON) return null;
+    q[column] = vector.map((value) => value / r[column][column]);
+  }
+  const targets = observations.map(({ target, weight = 1 }) => target * Math.sqrt(weight));
+  const projected = q.map((column) => dot(column, targets));
+  const coefficients = Array(columns).fill(0);
+  for (let row = columns - 1; row >= 0; row -= 1) {
+    const known = coefficients.slice(row + 1)
+      .reduce((sum, coefficient, index) => sum + r[row][row + index + 1] * coefficient, 0);
+    coefficients[row] = (projected[row] - known) / r[row][row];
+  }
+  if (coefficients.some((coefficient) => !Number.isFinite(coefficient))) return null;
+  return (values) => evaluate(coefficients, values);
+}
+
+/** @param {number[]} left @param {number[]} right */
+function dot(left, right) {
+  return left.reduce((sum, value, index) => sum + value * right[index], 0);
 }
 
 /**

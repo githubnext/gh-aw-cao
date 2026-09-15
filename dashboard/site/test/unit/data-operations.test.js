@@ -85,6 +85,84 @@ describe('dashboard data operations', () => {
     })).toEqual([{ repository: 'charlie', status: 'open', score: 6 }]);
   });
 
+  it('appends grouped linear predictions and forecasts rows without targets', () => {
+    const observations = [
+      { series: 'a', x: 1, y: 3 },
+      { series: 'a', x: 2, y: 5 },
+      { series: 'a', x: 3, y: null },
+      { series: 'b', x: 1, y: 12 },
+      { series: 'b', x: 2, y: 14 }
+    ];
+    const result = tidy(observations, [{
+      op: 'predict',
+      values: [{ field: 'y', on: 'x', method: 'linear', groupby: ['series'], as: 'predicted-y' }]
+    }]);
+
+    result.forEach((row, index) => {
+      expect(row['predicted-y']).toBeCloseTo([3, 5, 7, 12, 14][index], 10);
+    });
+    expect(observations.every((row) => !('predicted-y' in row))).toBe(true);
+  });
+
+  it('supports Vega regression method names with finite, null-safe output', () => {
+    const cases = [
+      { method: 'log', rows: [1, 2, 4].map((x) => ({ x, y: 3 + 2 * Math.log(x) })), x: 8, expected: 3 + 2 * Math.log(8) },
+      { method: 'exp', rows: [0, 1, 2].map((x) => ({ x, y: 2 * Math.exp(0.5 * x) })), x: 3, expected: 2 * Math.exp(1.5) },
+      { method: 'pow', rows: [1, 2, 3].map((x) => ({ x, y: 3 * x ** 2 })), x: 4, expected: 48 },
+      { method: 'quad', rows: [0, 1, 2].map((x) => ({ x, y: x ** 2 + 2 * x + 1 })), x: 3, expected: 16 },
+      { method: 'poly', order: 3, rows: [0, 1, 2, 3].map((x) => ({ x, y: x ** 3 - x + 2 })), x: 4, expected: 62 }
+    ];
+
+    for (const testCase of cases) {
+      const rows = [...testCase.rows, { x: testCase.x, y: null }];
+      const result = tidy(rows, [{
+        op: 'predict',
+        values: [{
+          field: 'y',
+          on: 'x',
+          method: /** @type {import('../../src/data-operations.js').PredictionMethod} */ (testCase.method),
+          ...(testCase.order ? { order: testCase.order } : {}),
+          as: 'prediction'
+        }]
+      }]);
+      expect(result.at(-1)?.prediction).toBeCloseTo(testCase.expected, 8);
+    }
+
+    expect(tidy([{ x: 1, y: 2 }], [{
+      op: 'predict',
+      values: [{ field: 'y', on: 'x', method: 'linear', as: 'prediction' }]
+    }])[0].prediction).toBeNull();
+  });
+
+  it('supports multivariate linear prediction', () => {
+    const rows = [
+      { x: 0, z: 0, y: 1 },
+      { x: 1, z: 0, y: 3 },
+      { x: 0, z: 1, y: 4 },
+      { x: 2, z: 3, y: null }
+    ];
+    const result = tidy(rows, [{
+      op: 'predict',
+      values: [{ field: 'y', on: ['x', 'z'], as: 'prediction' }]
+    }]);
+    expect(result.at(-1)?.prediction).toBeCloseTo(14, 10);
+  });
+
+  it('centers polynomial predictors to preserve large-magnitude forecasts', () => {
+    const base = 1_700_000_000;
+    const rows = [0, 1, 2, 3].map((offset) => ({
+      x: base + offset,
+      y: offset ** 3 - offset + 2
+    }));
+    rows.push({ x: base + 4, y: /** @type {any} */ (null) });
+
+    const result = tidy(rows, [{
+      op: 'predict',
+      values: [{ field: 'y', on: 'x', method: 'poly', order: 3, as: 'prediction' }]
+    }]);
+    expect(result.at(-1)?.prediction).toBeCloseTo(62, 8);
+  });
+
   it('rejects malformed worker requests', () => {
     expect(() => processDataRequest({ data: rows, operators: null })).toThrow(
       'Data worker requests require data and operators arrays.'

@@ -209,6 +209,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/dispatch-type-classification.json
   - source: site/src/components/filter-bar.js
     destination: .github/aw/dashboard/site/src/components/filter-bar.js
+  - source: site/src/components/full-view-scroll.js
+    destination: .github/aw/dashboard/site/src/components/full-view-scroll.js
   - source: site/src/components/histogram.js
     destination: .github/aw/dashboard/site/src/components/histogram.js
   - source: site/src/components/link-content.js
