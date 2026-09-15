@@ -71,7 +71,7 @@ on:
   # actions: read
   # contents: read
   schedule:
-    - cron: "19 */1 * * *"  # Friendly format: hourly (scattered)
+    - cron: "7 */1 * * *"  # Friendly format: hourly (scattered)
   workflow_dispatch:
     inputs:
       aw_context:

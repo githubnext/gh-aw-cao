@@ -536,6 +536,15 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
         ],
       },
       {
+        id: "repo-assist",
+        workers: [
+          "repo-assist-issue-triage",
+          "repo-assist-issue-fix",
+          "repo-assist-maintenance",
+          "repo-assist-pr-upkeep",
+        ],
+      },
+      {
         id: "self-care",
         workers: [
           "self-care-accessibility-checker",

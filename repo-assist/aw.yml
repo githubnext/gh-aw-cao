@@ -1,0 +1,22 @@
+name: Repo Assist
+description: Review-first issue triage, issue fixes, repository maintenance, and owned pull request upkeep.
+min-version: v0.89.15
+experimental: true
+includes:
+  - ../aw.yml
+  - .github/workflows/repo-assist-issue-fix.md
+  - .github/workflows/repo-assist-issue-triage.md
+  - .github/workflows/repo-assist-maintenance.md
+  - .github/workflows/repo-assist-pr-upkeep.md
+  - .github/workflows/repo-assist.md
+resources:
+  - source: dashboard.json
+    destination: .github/aw/dashboards/repo-assist.json
+  - source: .github/graders/repo-assist-issue-fix-operational-value.sh
+    destination: .github/aw/repo-assist/graders/repo-assist-issue-fix-operational-value.sh
+  - source: .github/graders/repo-assist-issue-triage-operational-value.sh
+    destination: .github/aw/repo-assist/graders/repo-assist-issue-triage-operational-value.sh
+  - source: .github/graders/repo-assist-maintenance-operational-value.sh
+    destination: .github/aw/repo-assist/graders/repo-assist-maintenance-operational-value.sh
+  - source: .github/graders/repo-assist-pr-upkeep-operational-value.sh
+    destination: .github/aw/repo-assist/graders/repo-assist-pr-upkeep-operational-value.sh

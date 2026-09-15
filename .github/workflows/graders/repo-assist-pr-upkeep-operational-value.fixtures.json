@@ -1,0 +1,45 @@
+[
+  {
+    "name": "attained",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "Repo Assist / PR Upkeep"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "review"}},
+      "outputs": [{"type": "create_issue", "repo": "octo/control", "title": "octo/service PR 27 upkeep review", "body": "PR 27 has a patch-caused test blocker and a bounded correction.\n\n**Action:** Apply the patch and confirm the failed check passes.\n\nValidation: the focused test passes locally.\n<!-- repo-assist:pr-upkeep target=octo/service pr=27 -->"}],
+      "config": {}
+    },
+    "expected": [{"id": "target-bound-pr-repair-request", "value": 1}]
+  },
+  {
+    "name": "missed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "Repo Assist / PR Upkeep"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "live"}},
+      "outputs": [{"type": "push_to_pull_request_branch", "repo": "octo/other", "pull_request_number": 27, "message": "[repo-assist:pr-upkeep] Repair PR #27 blocker"}],
+      "config": {}
+    },
+    "expected": [{"id": "target-bound-pr-repair-request", "value": 0}]
+  },
+  {
+    "name": "unavailable",
+    "request": {"schemaVersion": 1, "run": {"id": "3"}, "event": {"inputs": {}}, "outputs": [], "config": {}},
+    "expected": [{"id": "target-bound-pr-repair-request", "value": null}]
+  },
+  {
+    "name": "malformed",
+    "request": {"schemaVersion": 2, "run": {}, "event": {}, "outputs": "invalid", "config": {}},
+    "expected": [{"id": "target-bound-pr-repair-request", "value": null}]
+  },
+  {
+    "name": "noop",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "4"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_mode": "review"}},
+      "outputs": [{"type": "noop", "message": "No owned Repo Assist pull request has an actionable blocker."}],
+      "config": {}
+    },
+    "expected": [{"id": "target-bound-pr-repair-request", "value": null}]
+  }
+]

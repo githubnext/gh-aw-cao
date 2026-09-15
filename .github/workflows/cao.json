@@ -143,6 +143,25 @@
           }
         }
       },
+      "repo-assist": {
+        "icon": "gear",
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "issue-triage": {
+            "workflow": "repo-assist-issue-triage"
+          },
+          "issue-fix": {
+            "workflow": "repo-assist-issue-fix"
+          },
+          "maintenance": {
+            "workflow": "repo-assist-maintenance"
+          },
+          "pr-upkeep": {
+            "workflow": "repo-assist-pr-upkeep"
+          }
+        }
+      },
       "self-care": {
         "mode": "review",
         "max-repositories": 1,

@@ -1,0 +1,51 @@
+[
+  {
+    "name": "attained",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "Repo Assist / Issue Fix"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "review"}},
+      "outputs": [{"type": "create_issue", "repo": "octo/control", "title": "octo/service issue 42 fix review", "body": "A bounded patch addresses the defect.\n\n**Action:** Review the patch and accept it after the focused checks pass.\n\nRoot cause: stale state.\nValidation: focused tests pass.\n<!-- repo-assist:issue-fix target=octo/service issue=42 -->"}],
+      "config": {}
+    },
+    "expected": [{"id": "decision-ready-issue-fix-request", "value": 1}]
+  },
+  {
+    "name": "missed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "Repo Assist / Issue Fix"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "live"}},
+      "outputs": [{"type": "create_pull_request", "repo": "octo/other", "title": "Fix issue 42", "body": "**Action:** Review.\nRoot cause: stale state.\nValidation: tests pass.\nCloses #42\n<!-- repo-assist:issue-fix target=octo/service issue=42 -->", "branch": "repo-assist/fix-42"}],
+      "config": {}
+    },
+    "expected": [{"id": "decision-ready-issue-fix-request", "value": 0}]
+  },
+  {
+    "name": "unavailable",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "3", "repository": "githubnext/gh-aw-cao", "workflow": "Repo Assist / Issue Fix"},
+      "event": {"inputs": {}},
+      "outputs": [],
+      "config": {}
+    },
+    "expected": [{"id": "decision-ready-issue-fix-request", "value": null}]
+  },
+  {
+    "name": "malformed",
+    "request": {"schemaVersion": 2, "run": {}, "event": {}, "outputs": "invalid", "config": {}},
+    "expected": [{"id": "decision-ready-issue-fix-request", "value": null}]
+  },
+  {
+    "name": "noop",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "4", "repository": "githubnext/gh-aw-cao", "workflow": "Repo Assist / Issue Fix"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "review"}},
+      "outputs": [{"type": "noop", "message": "No issue met the evidence and safety threshold."}],
+      "config": {}
+    },
+    "expected": [{"id": "decision-ready-issue-fix-request", "value": null}]
+  }
+]
