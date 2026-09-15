@@ -48,13 +48,21 @@ describe('canonical dashboard worker ingestion order', () => {
         metadata: { 'as-of': '2026-09-09T05:00:00Z' }
       }
     };
+    /** @type {string[]} */
+    const requestedUrls = [];
     globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {
       const url = String(input);
+      requestedUrls.push(url);
       if (url.endsWith('/payload-hashes.json')) {
-        return Response.json({ 'gh-aw-logs.jsonl': 'a'.repeat(64) });
+        return Response.json({
+          'gh-aw-logs.jsonl': 'a'.repeat(64),
+          'gh-aw-logs-shards/part-01.jsonl': 'b'.repeat(64),
+          'gh-aw-logs-shards/part-02.jsonl': 'c'.repeat(64)
+        });
       }
       if (url.endsWith('/inventory-sources.json')) return Response.json(inventory);
-      return new Response(`${JSON.stringify(run)}\n`);
+      if (url.includes('/gh-aw-logs-shards/')) return new Response(`${JSON.stringify(run)}\n`);
+      throw new Error(`Unexpected monolithic activity request: ${url}`);
     });
 
     /** @type {string[]} */
@@ -85,5 +93,11 @@ describe('canonical dashboard worker ingestion order', () => {
 
     expect(posted.find((message) => message.id === 1)?.error).toBeUndefined();
     expect(storedRunIds).toEqual(['github:run:303:attempt:1']);
+    expect(requestedUrls).toEqual([
+      'https://dashboard.example/payload-hashes.json',
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/gh-aw-logs-shards/part-01.jsonl',
+      'https://dashboard.example/gh-aw-logs-shards/part-02.jsonl'
+    ]);
   });
 });

@@ -353,6 +353,28 @@ function publishedPayloadIdentity(hashes, fileName) {
     : null;
 }
 
+const MAX_PUBLISHED_ACTIVITY_SHARDS = 500;
+
+/** @param {unknown} hashes */
+export function publishedActivityShards(hashes) {
+  if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
+  const shards = Object.entries(/** @type {Record<string, unknown>} */ (hashes))
+    .filter(([name]) => name.startsWith('gh-aw-logs-shards/'))
+    .map(([name, hash]) => {
+      if (!/^gh-aw-logs-shards\/[a-zA-Z0-9._-]+\.jsonl$/.test(name)
+          || typeof hash !== 'string'
+          || !/^[a-f0-9]{64}$/i.test(hash)) {
+        throw new TypeError(`Published activity shard metadata is invalid: ${name}`);
+      }
+      return { name, payloadIdentity: `sha256:${hash.toLowerCase()}` };
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+  if (shards.length > MAX_PUBLISHED_ACTIVITY_SHARDS) {
+    throw new TypeError(`Published activity shard count exceeds ${MAX_PUBLISHED_ACTIVITY_SHARDS}.`);
+  }
+  return shards;
+}
+
 /**
  * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
@@ -461,18 +483,55 @@ export function processDataRequest(request, signal) {
             && typeof current.payloadEtag === 'string'
             ? current.payloadEtag
             : null;
-          const currentPublishedPayload = publishedIdentity
-            ? await isCachedGhAwJsonlCurrent(indexedDB, {
-                payloadIdentity: publishedIdentity,
-                payloadScope: sourceUrl.href,
+          const publishedShards = publishedActivityShards(payloadHashes);
+          if (publishedShards.length > 0) {
+            progress.log(`Loading ${publishedShards.length.toLocaleString('en-US')} bounded activity `
+              + `${publishedShards.length === 1 ? 'shard' : 'shards'}.`);
+            for (const [index, shard] of publishedShards.entries()) {
+              const shardUrl = new URL(shard.name, sourceUrl);
+              const currentShard = await isCachedGhAwJsonlCurrent(indexedDB, {
+                payloadIdentity: shard.payloadIdentity,
+                payloadScope: shardUrl.href,
                 context: collectionContext,
                 workflowHints
-              })
-            : false;
-          if (currentPublishedPayload) {
-            progress.log('Published activity data is already current; reusing stored records.');
-            changed = false;
+              });
+              if (currentShard) {
+                progress.log(`Activity shard ${index + 1} of ${publishedShards.length} is already current.`);
+                continue;
+              }
+              const response = await fetch(shardUrl, { cache: 'no-store' });
+              if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
+              if (!response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
+              const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
+                storage: globalThis.navigator?.storage,
+                retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+                workflowHints,
+                onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
+                  bytesProcessed,
+                  recordsIngested
+                }),
+                onWriteProgress: (written) => progress.store(written),
+                payloadIdentity: shard.payloadIdentity,
+                payloadScope: shardUrl.href,
+                context: collectionContext
+              });
+              changed ||= ingestion.updated;
+              progress.log(`Activity shard ${index + 1} of ${publishedShards.length} committed `
+                + `${ingestion.committedRecords} canonical records.`);
+            }
           } else {
+            const currentPublishedPayload = publishedIdentity
+              ? await isCachedGhAwJsonlCurrent(indexedDB, {
+                  payloadIdentity: publishedIdentity,
+                  payloadScope: sourceUrl.href,
+                  context: collectionContext,
+                  workflowHints
+                })
+              : false;
+            if (currentPublishedPayload) {
+              progress.log('Published activity data is already current; reusing stored records.');
+              changed = false;
+            } else {
             progress.log(currentEtag
               ? 'Checking for updated activity data.'
               : 'Downloading activity data.');
@@ -521,6 +580,7 @@ export function processDataRequest(request, signal) {
               progress.log('skipped' in ingestion && ingestion.skipped
                 ? 'Parsed activity data matched the stored version.'
                 : `Activity ingestion committed ${ingestion.committedRecords} canonical records.`);
+            }
             }
           }
           if (inventoryResponse.ok) {

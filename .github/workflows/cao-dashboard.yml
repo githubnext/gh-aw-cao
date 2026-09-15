@@ -220,7 +220,24 @@ jobs:
               )
               core.info(`Copied ${fileName} (${fs.statSync(destination).size} bytes)`)
             }
-            core.info(`Dashboard artifact assembly completed (${collectedFiles.length} collected data files)`)
+            const payloadHashes = JSON.parse(fs.readFileSync(
+              path.join(process.env.RUNNER_TEMP, 'cao-activity', 'payload-hashes.json'),
+              'utf8',
+            ))
+            const shardFiles = Object.keys(payloadHashes)
+              .filter((fileName) => fileName.startsWith('gh-aw-logs-shards/'))
+              .sort()
+            for (const fileName of shardFiles) {
+              if (!/^gh-aw-logs-shards\/[a-zA-Z0-9._-]+\.jsonl$/.test(fileName)) {
+                throw new Error(`Invalid activity shard path: ${fileName}`)
+              }
+              const source = path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName)
+              const destination = path.join(process.env.REPORT_OUTPUT, fileName)
+              fs.mkdirSync(path.dirname(destination), { recursive: true })
+              fs.copyFileSync(source, destination)
+            }
+            core.info(`Copied ${shardFiles.length} bounded activity shards`)
+            core.info(`Dashboard artifact assembly completed (${collectedFiles.length + shardFiles.length} collected data files)`)
 
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

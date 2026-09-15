@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { startIngestionProgress } from '../../src/data-worker.js';
+import { publishedActivityShards, startIngestionProgress } from '../../src/data-worker.js';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -7,6 +7,20 @@ afterEach(() => {
 });
 
 describe('data-worker ingestion progress', () => {
+  it('accepts only bounded same-directory activity shard metadata', () => {
+    expect(publishedActivityShards({
+      'gh-aw-logs-shards/part-02.jsonl': 'B'.repeat(64),
+      'gh-aw-logs.jsonl': 'c'.repeat(64),
+      'gh-aw-logs-shards/part-01.jsonl': 'a'.repeat(64)
+    })).toEqual([
+      { name: 'gh-aw-logs-shards/part-01.jsonl', payloadIdentity: `sha256:${'a'.repeat(64)}` },
+      { name: 'gh-aw-logs-shards/part-02.jsonl', payloadIdentity: `sha256:${'b'.repeat(64)}` }
+    ]);
+    expect(() => publishedActivityShards({
+      'gh-aw-logs-shards/../activity.jsonl': 'a'.repeat(64)
+    })).toThrow('Published activity shard metadata is invalid');
+  });
+
   it('reports preparation before the first JSONL record is read', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();

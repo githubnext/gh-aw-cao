@@ -218,10 +218,12 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /DASHBOARD_COMMIT_SHA: \$\{\{ github\.workflow_sha \}\}[\s\S]*?process\.env\.DASHBOARD_COMMIT_SHA/);
   assert.match(dashboardWorkflow, /core\.info\('Resolved dashboard source layout: installed'\)[\s\S]*?core\.info\('Resolved dashboard source layout: source'\)/);
   assert.match(dashboardWorkflow, /core\.info\(`Standalone Pages deployment: \$\{deploy \? 'enabled' : 'disabled'\}`\)/);
-  assert.match(dashboardWorkflow, /core\.info\('Dashboard build dependencies installed'\)[\s\S]*?core\.info\(`Restored activity data validation completed \(\$\{activityFiles\.length\} files\)`\)[\s\S]*?core\.info\('Activity database health assessment completed'\)[\s\S]*?core\.info\('Dashboard site build completed'\)[\s\S]*?core\.info\(`Dashboard artifact assembly completed \(\$\{collectedFiles\.length\} collected data files\)`\)/);
+  assert.match(dashboardWorkflow, /core\.info\('Dashboard build dependencies installed'\)[\s\S]*?core\.info\(`Restored activity data validation completed \(\$\{activityFiles\.length\} files\)`\)[\s\S]*?core\.info\('Activity database health assessment completed'\)[\s\S]*?core\.info\('Dashboard site build completed'\)[\s\S]*?core\.info\(`Dashboard artifact assembly completed \(\$\{collectedFiles\.length \+ shardFiles\.length\} collected data files\)`\)/);
   assert.doesNotMatch(dashboardWorkflow, /core\.(?:info|error)\(`[^`]*\$\{activityFile\}/);
   assert.match(siteBuildScript, /from "esbuild"/);
   assert.match(dashboardWorkflow, /const collectedFiles = \[[\s\S]*?'inventory-sources\.json'[\s\S]*?'gh-aw-logs\.jsonl'[\s\S]*?'gh-aw-logs\.sqlite'[\s\S]*?'payload-hashes\.json'[\s\S]*?for \(const fileName of collectedFiles\)[\s\S]*?fs\.copyFileSync/);
+  assert.match(dashboardWorkflow, /const shardFiles = Object\.keys\(payloadHashes\)[\s\S]*?fileName\.startsWith\('gh-aw-logs-shards\/'\)/);
+  assert.match(dashboardWorkflow, /for \(const fileName of shardFiles\)[\s\S]*?Invalid activity shard path[\s\S]*?fs\.copyFileSync/);
   assert.doesNotMatch(dashboardWorkflow, /REPORT_DASHBOARD_SOURCES|\/sources\.json/);
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);
