@@ -276,7 +276,9 @@ describe('renderTableRegion', () => {
 
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-sort="1"]')).click();
 
-    expect([...rendered.querySelectorAll('tbody tr')].map((row) => row.cells[0]?.textContent)).toEqual(['older', 'newer']);
+    expect([...rendered.querySelectorAll('tbody tr')].map((row) => (
+      /** @type {HTMLTableRowElement} */ (row).cells[0]?.textContent
+    ))).toEqual(['older', 'newer']);
   });
 
   it('keeps pagination consistent after sorting', () => {
