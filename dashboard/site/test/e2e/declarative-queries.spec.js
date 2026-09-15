@@ -15,7 +15,7 @@ const asOf = '2026-09-09T05:00:00Z';
  * @param {string} startedAt
  * @param {string} event
  */
-const workflowRun = (workflow, run, conclusion, startedAt, event) => ({
+const workflowRun = (workflow, run, conclusion, startedAt, event = 'schedule') => ({
   organization: 'githubnext',
   repository: workflow.repository,
   workflow: workflow.workflow,
