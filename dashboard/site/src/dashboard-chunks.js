@@ -1,4 +1,5 @@
 import { resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { elementLoadsSourcesAsync } from './components/ui-elements.js';
 
 /**
  * @typedef {{ id?: string, kind?: string, title?: string, description?: string, icon?: string, ['navigation-label']?: string, ['class-name']?: string, route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views?: unknown[], sections?: unknown[], definition?: { views?: unknown[], sections?: unknown[] }, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[] } & Record<string, unknown>} DashboardPage
@@ -85,7 +86,7 @@ function dashboardPage(document, pageId) {
 function isAsyncElementView(view) {
   return isPlainObject(view)
     && typeof view.element === 'string'
-    && ['source-view', 'route-view'].includes(view.element);
+    && elementLoadsSourcesAsync(view.element);
 }
 
 /**
@@ -248,6 +249,19 @@ export function normalizeDashboardPageChunk(chunk) {
 }
 
 /**
+ * Builds the relative chunk path a page's JSON is written to / fetched from,
+ * given its id and the (optional) chunk directory name. Shared by
+ * `splitDashboardDocument`, `scripts/build.mjs`, and `local-server.mjs` so
+ * the naming scheme only needs to change in one place.
+ * @param {string} pageId
+ * @param {string} [chunkDirectory]
+ * @returns {string}
+ */
+export function buildDashboardPageChunkPath(pageId, chunkDirectory = 'dashboard-pages') {
+  return `${chunkDirectory}/${encodeURIComponent(pageId)}.json`;
+}
+
+/**
  * @param {{ 'language-version'?: string, dashboard?: { pages?: DashboardPage[], queries?: DashboardQuery[], callouts?: Array<Record<string, unknown>> } & Record<string, unknown> } | DashboardDocument} source
  * @param {{ chunkDirectory?: string }} [options]
  */
@@ -279,7 +293,7 @@ export function splitDashboardDocument(source, options = {}) {
     const queries = queryDefinitions.filter((query) => (
       typeof query?.name === 'string' && requiredQueryNames.has(query.name)
     ));
-    const chunkPath = `${chunkDirectory}/${encodeURIComponent(page.id ?? '')}.json`;
+    const chunkPath = buildDashboardPageChunkPath(page.id ?? '', chunkDirectory);
     pageChunks.set(page.id ?? '', { page, queries });
     return stubDashboardPage(page, chunkPath, { sourceNames, lazySourceNames, tableSourceNames });
   });

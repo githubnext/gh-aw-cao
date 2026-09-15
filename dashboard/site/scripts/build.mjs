@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
-import { splitDashboardDocument } from "../src/dashboard-chunks.js";
+import { buildDashboardPageChunkPath, splitDashboardDocument } from "../src/dashboard-chunks.js";
 
 const siteRoot = new URL("../", import.meta.url);
 
@@ -69,7 +69,7 @@ export async function buildDashboardSite({
 
   async function writeDashboardPageChunks(destinationPath, pageChunks) {
     for (const [pageId, chunk] of pageChunks) {
-      const relativeChunkPath = `dashboard-pages/${encodeURIComponent(pageId)}.json`;
+      const relativeChunkPath = buildDashboardPageChunkPath(pageId);
       const absoluteChunkPath = join(destinationPath, relativeChunkPath);
       await mkdir(join(destinationPath, "dashboard-pages"), { recursive: true });
       await writeFile(absoluteChunkPath, `${JSON.stringify(chunk, null, 2)}\n`);

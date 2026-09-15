@@ -36,7 +36,7 @@ import {
 import { fileURLToPath } from "node:url";
 import { createGzip, gzipSync } from "node:zlib";
 import { bundleDashboardFiles } from "./report/bundle-dashboards.mjs";
-import { splitDashboardDocument } from "./site/src/dashboard-chunks.js";
+import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/dashboard-chunks.js";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
@@ -1895,7 +1895,7 @@ export async function startDashboardServer({
     dashboardContent = redactJsonSecrets(JSON.stringify(splitDashboard.core));
     dashboardPageChunkContent = new Map(
       [...splitDashboard.pageChunks.entries()].map(([pageId, chunk]) => [
-        `/dashboard-pages/${encodeURIComponent(pageId)}.json`,
+        `/${buildDashboardPageChunkPath(pageId)}`,
         redactJsonSecrets(JSON.stringify(chunk)),
       ]),
     );
