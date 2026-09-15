@@ -431,6 +431,9 @@ function renderTableView(context) {
       const outputField = typeof column.as === 'string' ? column.as : column.field;
       const cellAttributes = {
         'data-field': outputField,
+        ...(['string', 'number', 'boolean'].includes(typeof row[outputField])
+          ? { 'data-sort-value': String(row[outputField]) }
+          : {}),
         ...(outputField === 'status-detail'
           ? { className: 'table-status-detail', 'data-status': toText(row.status).toLowerCase() }
           : {})

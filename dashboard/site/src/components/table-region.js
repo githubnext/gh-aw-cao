@@ -263,7 +263,8 @@ function enableTableSort(region, sourceRows) {
  * @returns {string}
  */
 function cellText(row, columnIndex) {
-  return row.cells[columnIndex]?.textContent?.trim() ?? '';
+  const cell = row.cells[columnIndex];
+  return cell?.dataset.sortValue ?? cell?.textContent?.trim() ?? '';
 }
 
 /**
