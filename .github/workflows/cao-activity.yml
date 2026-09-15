@@ -158,7 +158,7 @@ jobs:
           REPORT_LOG_TIMEOUT: "15"
           REPORT_MAX_GITHUB_API_RATE_LIMIT: "-4000"
           REPORT_MAX_STORAGE: "1200"
-          REPORT_RUN_LIMIT: "1000"
+          REPORT_RUN_LIMIT: "10000"
           REPORT_RUN_WINDOW_DAYS: "30"
         run: |
           if [[ -f activity/collect-logs.sh ]]; then
