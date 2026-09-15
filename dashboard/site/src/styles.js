@@ -2165,7 +2165,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .outcome-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
   .pie-chart-card, .chart-horizontal-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
-  .pie-chart-layout .pie-chart-widget, .pie-chart-table-toggle { grid-column: 1; grid-row: 1; }
+  .pie-chart-layout .chart-widget, .pie-chart-table-toggle { grid-column: 1; grid-row: 1; }
   .pie-chart-table-toggle { width: 100%; height: 100%; display: block; z-index: 1; padding: 0; border: 0; background: transparent; cursor: pointer; }
   .pie-chart-table-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
   .pie-chart-layout[data-chart-table-hidden] .chart-legend-pie { display: none; }

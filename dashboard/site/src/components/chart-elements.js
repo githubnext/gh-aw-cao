@@ -232,12 +232,12 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
 }
 
 /**
+ * Ranks rows by value descending while retaining their input-order color.
  * @param {Array<[string, number]>} entries
  * @param {number} total
  * @param {Map<string, { href: string, label: string }>} [links]
  * @param {{ name: string, symbol: string, significant: number } | null} [unit]
  * @returns {HTMLElement}
- * Rows are ranked by value descending while retaining their input-order color.
  */
 export function renderPieLegend(entries, total, links = new Map(), unit = null) {
   const rankedEntries = entries
