@@ -21,6 +21,11 @@ import { renderLabeledSpan } from './ui-primitives.js';
  *   formatDatabaseCounts: (counts: import('../database-counts.js').DatabaseCounts) => string,
  *   formatDate: (value: string) => string
  * }} options
+ * @returns {{
+ *   element: HTMLElement,
+ *   update: (next: HorizonViewModel) => void,
+ *   dispose: () => void
+ * }}
  */
 export function renderDashboardHorizon(options) {
   const lifetime = new AbortController();
@@ -31,6 +36,17 @@ export function renderDashboardHorizon(options) {
   const skeleton = h('span', { 'aria-hidden': 'true' });
   const durationLabel = h('strong');
   const accessibleLabel = h('span', { className: 'sr-only action-label' });
+  const toggle = h(
+    'button',
+    {
+      type: 'button',
+      className: 'horizon-toggle',
+      'aria-expanded': 'false',
+      'aria-describedby': 'dashboard-horizon-tooltip'
+    },
+    octicon('clock'),
+    accessibleLabel
+  );
   const databaseCounts = h('span', { className: 'horizon-tooltip-counts' });
   const startTime = /** @type {HTMLTimeElement} */ (h('time'));
   const endTime = /** @type {HTMLTimeElement} */ (h('time'));
@@ -51,17 +67,7 @@ export function renderDashboardHorizon(options) {
   const content = h(
     'div',
     { className: 'horizon-summary', onpointerenter: loadCounts, onfocusin: loadCounts },
-    h(
-      'button',
-      {
-        type: 'button',
-        className: 'horizon-toggle',
-        'aria-expanded': 'false',
-        'aria-describedby': 'dashboard-horizon-tooltip'
-      },
-      octicon('clock'),
-      accessibleLabel
-    ),
+    toggle,
     h(
       'span',
       { id: 'dashboard-horizon-tooltip', className: 'horizon-tooltip', role: 'tooltip' },
@@ -102,8 +108,7 @@ export function renderDashboardHorizon(options) {
     root.dataset.dashboardEvaluatedAt = current.evaluatedAt;
     if (root.firstElementChild !== content) root.replaceChildren(content, details);
     const fullLabel = `${label} ${current.duration}`;
-    const toggle = content.querySelector('.horizon-toggle');
-    toggle?.setAttribute('aria-label', `${fullLabel}. Show time and mode filters`);
+    toggle.setAttribute('aria-label', `${fullLabel}. Show time and mode filters`);
     accessibleLabel.textContent = fullLabel;
     durationLabel.textContent = current.duration;
     durationValue.textContent = current.duration;
