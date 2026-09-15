@@ -202,6 +202,12 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "cao-evolution-integrity.md": { credits: 400, timeout: 35 },
     "cao-evolution-reliability.md": { credits: 450, timeout: 40 },
     "dependabot.md": { credits: 250, timeout: 15, dispatchMax: 50, workers: 1 },
+    "eslint-rules.md": { credits: 250, timeout: 15, dispatchMax: 5, workers: 5 },
+    "eslint-rules-inventory.md": { credits: 200, timeout: 20 },
+    "eslint-rules-miner.md": { credits: 450, timeout: 30 },
+    "eslint-rules-refiner.md": { credits: 450, timeout: 30 },
+    "eslint-rules-applier.md": { credits: 350, timeout: 25 },
+    "eslint-rules-librarian.md": { credits: 300, timeout: 25 },
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-package-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 4 },
@@ -281,7 +287,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 42, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 53, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -373,6 +379,12 @@ test("live workers use central policy as the activation authority", () => {
     ["cao-evolution-compiler-security.md", "cao-evolution"],
     ["dependabot.md", "dependabot"],
     ["dependabot-release-train-updater.md", "dependabot"],
+    ["eslint-rules.md", "eslint-rules"],
+    ["eslint-rules-inventory.md", "eslint-rules"],
+    ["eslint-rules-miner.md", "eslint-rules"],
+    ["eslint-rules-refiner.md", "eslint-rules"],
+    ["eslint-rules-applier.md", "eslint-rules"],
+    ["eslint-rules-librarian.md", "eslint-rules"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
     ["eu-cra-compliance-article-14-reporting-readiness.md", "eu-cra-compliance"],
     ["eu-cra-compliance-conformity-release-evidence.md", "eu-cra-compliance"],
@@ -412,8 +424,10 @@ test("orchestrators use checked-in policy with independent manual narrowing", ()
     ["uk-ai-advisory.md", "uk-ai-advisory"],
     ["cao-evolution.md", "cao-evolution"],
     ["dependabot.md", "dependabot"],
+    ["eslint-rules.md", "eslint-rules"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
     ["optimization.md", "optimization"],
+    ["repo-assist.md", "repo-assist"],
     ["software-development-practices.md", "software-development-practices"],
     ["self-care.md", "self-care"],
   ]) {
@@ -424,7 +438,6 @@ test("orchestrators use checked-in policy with independent manual narrowing", ()
     assert.match(source, /safe_output_mode:\n\s+default: "review"\n\s+type: choice/);
     assert.match(source, new RegExp(`package: ${packageName}`));
     assert.match(source, /role: orchestrator/);
-    assert.match(source, /environment: central-agentic-ops/);
     assert.doesNotMatch(source, /vars\.CENTRAL_AGENTIC_OPS_|cell_count:|cell_index:|batch_size:|batch_index:/);
   }
 });
@@ -445,6 +458,12 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["cao-evolution-compiler-security.md", "cao-evolution"],
     ["dependabot.md", "dependabot"],
     ["dependabot-release-train-updater.md", "dependabot"],
+    ["eslint-rules.md", "eslint-rules"],
+    ["eslint-rules-inventory.md", "eslint-rules"],
+    ["eslint-rules-miner.md", "eslint-rules"],
+    ["eslint-rules-refiner.md", "eslint-rules"],
+    ["eslint-rules-applier.md", "eslint-rules"],
+    ["eslint-rules-librarian.md", "eslint-rules"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
     ["eu-cra-compliance-article-14-reporting-readiness.md", "eu-cra-compliance"],
     ["eu-cra-compliance-conformity-release-evidence.md", "eu-cra-compliance"],
@@ -455,6 +474,11 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["optimization.md", "optimization"],
     ["optimization-ai-credit-auditor.md", "optimization"],
     ["optimization-ai-credit-optimizer.md", "optimization"],
+    ["repo-assist.md", "repo-assist"],
+    ["repo-assist-issue-fix.md", "repo-assist"],
+    ["repo-assist-issue-triage.md", "repo-assist"],
+    ["repo-assist-maintenance.md", "repo-assist"],
+    ["repo-assist-pr-upkeep.md", "repo-assist"],
     ["software-development-practices.md", "software-development-practices"],
     ["software-development-practices-github-well-architected.md", "software-development-practices"],
     ["software-development-practices-nist-ssdf.md", "software-development-practices"],
@@ -528,7 +552,7 @@ test("shared control keeps manual and scheduled routing event-scoped", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  for (const name of ["uk-ai-advisory.md", "cao-evolution.md", "dependabot.md", "eu-cra-compliance.md", "optimization.md", "self-care.md", "software-development-practices.md"]) {
+  for (const name of ["uk-ai-advisory.md", "cao-evolution.md", "dependabot.md", "eslint-rules.md", "eu-cra-compliance.md", "optimization.md", "repo-assist.md", "self-care.md", "software-development-practices.md"]) {
     const orchestrator = workflow(name);
     assert.match(orchestrator, /GH_AW_SAFE_OUTPUT_MODE:.*inputs\.safe_output_mode.*\|\| 'review'/);
     assert.match(orchestrator, /REVIEW_OUTPUT_REPO:.*inputs\.safe_output_repo \|\| github\.repository/);

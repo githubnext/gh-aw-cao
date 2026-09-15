@@ -17,8 +17,8 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Preparing source data...',
-        details: ['Preparing source data...'],
+        message: 'Preparing data... +3s',
+        details: ['Preparing data... +3s'],
         duration: 0
       })
     });
@@ -49,7 +49,7 @@ describe('data-worker ingestion progress', () => {
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
 
-    progress.update(1_000);
+    progress.update({ bytesProcessed: 750_000, recordsIngested: 1_000, totalBytes: 1_500_000 });
     progress.log('Normalizing parsed records.');
     progress.store({ storedRecords: 250, totalRecords: 1_000 });
     vi.advanceTimersByTime(3_000);
@@ -57,12 +57,12 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Storing data... 250 of 1000 records stored.',
+        message: 'Storing 250/1,000 rec. +3s',
         details: [
-          'Preparing source data...',
-          'Reading source data... 1000 records read.',
-          'Normalizing parsed records.',
-          'Storing data... 250 of 1000 records stored.'
+          'Preparing data... +0s',
+          'Parsing 1,000 rec, 750 KB/1.5 MB. +0s',
+          'Normalizing parsed records. +0s',
+          'Storing 250/1,000 rec. +3s'
         ],
         duration: 0
       })
@@ -73,7 +73,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Storing data... 1000 of 1000 records stored.'
+        message: 'Storing 1,000/1,000 rec. +4s'
       })
     });
 
@@ -95,8 +95,8 @@ describe('data-worker ingestion progress', () => {
 
     const notification = postMessage.mock.lastCall?.[0]?.notification;
     expect(notification.details).toHaveLength(100);
-    expect(notification.details[0]).toBe('Step 6');
-    expect(notification.details.at(-1)).toBe('Step 105');
+    expect(notification.details[0]).toBe('Step 6 +0s');
+    expect(notification.details.at(-1)).toBe('Step 105 +3s');
     progress.complete();
   });
 
@@ -105,7 +105,7 @@ describe('data-worker ingestion progress', () => {
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
 
-    progress.update(42);
+    progress.update({ bytesProcessed: 1_024, recordsIngested: 42, totalBytes: 2_048 });
     vi.advanceTimersByTime(2_999);
     expect(postMessage).not.toHaveBeenCalled();
 
@@ -115,17 +115,17 @@ describe('data-worker ingestion progress', () => {
       type: 'notification',
       notification: expect.objectContaining({
         id: expect.stringMatching(/^ingestion-progress-/),
-        message: 'Reading source data... 42 records read.',
+        message: 'Parsing 42 rec, 1.0 KB/2.0 KB. +3s',
         duration: 0
       })
     });
 
-    progress.update(84);
+    progress.update({ bytesProcessed: 2_048, recordsIngested: 84, totalBytes: 2_048 });
     vi.advanceTimersByTime(1_000);
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Reading source data... 84 records read.'
+        message: 'Parsing 84 rec, 2.0 KB/2.0 KB. +4s'
       })
     });
 

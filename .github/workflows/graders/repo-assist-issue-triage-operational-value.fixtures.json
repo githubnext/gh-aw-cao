@@ -1,0 +1,45 @@
+[
+  {
+    "name": "attained",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "Repo Assist / Issue Triage"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "review"}},
+      "outputs": [{"type": "create_issue", "repo": "octo/control", "title": "octo/service issue 42 triage guidance", "body": "Issue 42 has a reproducible configuration mismatch.\n\n**Action:** The maintainer should confirm the expected default before implementation.\n\nEvidence: the documented default differs from the parser behavior."}],
+      "config": {}
+    },
+    "expected": [{"id": "bounded-issue-triage-request", "value": 1}]
+  },
+  {
+    "name": "missed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "Repo Assist / Issue Triage"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_repo": "octo/control", "safe_output_mode": "live"}},
+      "outputs": [{"type": "add_labels", "repo": "octo/other", "item_number": 42, "labels": ["bug"]}],
+      "config": {}
+    },
+    "expected": [{"id": "bounded-issue-triage-request", "value": 0}]
+  },
+  {
+    "name": "unavailable",
+    "request": {"schemaVersion": 1, "run": {"id": "3"}, "event": {"inputs": {}}, "outputs": [], "config": {}},
+    "expected": [{"id": "bounded-issue-triage-request", "value": null}]
+  },
+  {
+    "name": "malformed",
+    "request": {"schemaVersion": 2, "run": {}, "event": {}, "outputs": "invalid", "config": {}},
+    "expected": [{"id": "bounded-issue-triage-request", "value": null}]
+  },
+  {
+    "name": "noop",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "4"},
+      "event": {"inputs": {"target_repo": "octo/service", "safe_output_mode": "review"}},
+      "outputs": [{"type": "noop", "message": "No issue has new evidence requiring triage."}],
+      "config": {}
+    },
+    "expected": [{"id": "bounded-issue-triage-request", "value": null}]
+  }
+]

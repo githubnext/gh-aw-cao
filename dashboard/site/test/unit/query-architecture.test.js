@@ -17,7 +17,7 @@ describe('dashboard query architecture', () => {
 
   it('executes dashboard queries and subscriptions through the canonical data worker', () => {
     const worker = read('src/data-worker.js');
-    const main = read('src/main.js');
+    const startup = read('src/data/startup.js');
     const presenter = read('src/presenter.js');
     const factoryOverview = read('src/components/factory-overview.js');
     const workProject = read('src/components/work-project-view.js');
@@ -27,11 +27,10 @@ describe('dashboard query architecture', () => {
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
     expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources|deriveDataHealthCalloutSources/);
     expect(worker).toContain("operation === 'subscribe-canonical-dashboard'");
-    expect(main).toContain('subscribeCanonicalDashboardView(');
-    expect(main).toContain('signal: options.signal');
-    expect(main).toContain('bindContinuations(pageId, sources, lazySources, options)');
-    expect(main).toMatch(/loadCanonicalDashboardPage\(requested, dashboardContext, pagination, \{[\s\S]{0,220}pageId,[\s\S]{0,220}routeParameters: options\.routeParameters,[\s\S]{0,220}queryContext: options\.queryContext/);
-    expect(main).not.toMatch(/const loadPageSources = async[\s\S]{0,600}loadCanonicalDashboardPage/);
+    expect(startup).toContain('subscribeCanonicalDashboardView(');
+    expect(startup).toContain('signal: pageOptions.signal');
+    expect(startup).toContain('bindContinuations(pageId, sources, lazySources, pageOptions)');
+    expect(startup).toMatch(/loadCanonicalDashboardPage\(requested, dashboardContext, pagination, \{[\s\S]{0,220}pageId,[\s\S]{0,220}routeParameters: pageOptions\.routeParameters,[\s\S]{0,220}queryContext: pageOptions\.queryContext/);
     expect(presenter).not.toMatch(/filterDashboardSources|filterRowsForView|deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
     expect(factoryOverview).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
     expect(workProject).not.toMatch(/normalizeState|actorForLifecycle|compareWorkItems|orchestratedPackageNames/);

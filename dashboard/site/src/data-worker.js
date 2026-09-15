@@ -3,18 +3,20 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import {
-  cachedJsonlAdaptationContext,
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
-  isCachedGhAwJsonlCurrent,
-  readCurrentIngestion
+  isCachedGhAwJsonlCurrent
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { createElapsedStepTracker } from './elapsed-step-tracker.js';
 import { loadDashboardSources } from './source-loader.js';
+import { createDebug } from './debug.js';
+
+const debugIngestion = createDebug('data:ingestion');
 
 /** @param {ReadableStream<Uint8Array>} body */
 async function* responseChunks(body) {
@@ -67,18 +69,20 @@ let nextIngestionProgressId = 0;
  */
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
-  let message = 'Preparing source data...';
-  let history = [message];
+  const clock = createElapsedStepTracker('Preparing data...', {
+    historyLimit: INGESTION_PROGRESS_HISTORY_LIMIT
+  });
   let completed = false;
-  /** @param {string} nextMessage */
-  const append = (nextMessage) => {
-    message = nextMessage;
-    if (history.at(-1) === nextMessage) return;
-    history = [...history, nextMessage].slice(-INGESTION_PROGRESS_HISTORY_LIMIT);
-  };
   const report = () => {
     if (!completed) {
-      publishWorkerNotification({ id, message, details: history, tone: 'info', duration: 0 }, target);
+      const snapshot = clock.snapshot();
+      publishWorkerNotification({
+        id,
+        message: snapshot.message,
+        details: snapshot.history,
+        tone: 'info',
+        duration: 0
+      }, target);
     }
   };
   /** @type {ReturnType<typeof setInterval> | undefined} */
@@ -89,9 +93,17 @@ export function startIngestionProgress(target = self) {
     interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
   }, INGESTION_PROGRESS_DELAY_MS);
   return {
-    /** @param {number} recordsRead */
-    update(recordsRead) {
-      append(`Reading source data... ${recordsRead} ${recordsRead === 1 ? 'record' : 'records'} read.`);
+    /**
+     * @param {{ bytesProcessed: number, recordsIngested: number, totalBytes?: number }} progress
+     */
+    update({ bytesProcessed, recordsIngested, totalBytes }) {
+      const byteProgress = typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0
+        ? `${formatDataSize(bytesProcessed)}/${formatDataSize(totalBytes)}`
+        : formatDataSize(bytesProcessed);
+      clock.update(
+        `Parsing ${recordsIngested.toLocaleString('en-US')} rec, ${byteProgress}.`,
+        'parsing'
+      );
     },
     /**
      * Reports the storage phase, which dominates large ingestions and would
@@ -99,11 +111,14 @@ export function startIngestionProgress(target = self) {
      * @param {{ storedRecords: number, totalRecords: number }} progress
      */
     store({ storedRecords, totalRecords }) {
-      append(`Storing data... ${storedRecords} of ${totalRecords} records stored.`);
+      clock.update(
+        `Storing ${storedRecords.toLocaleString('en-US')}/${totalRecords.toLocaleString('en-US')} rec.`,
+        'storing'
+      );
     },
     /** @param {string} nextMessage */
     log(nextMessage) {
-      append(nextMessage);
+      clock.advance(nextMessage);
     },
     complete() {
       if (completed) return;
@@ -113,6 +128,20 @@ export function startIngestionProgress(target = self) {
       publishWorkerNotification({ id, dismiss: true }, target);
     }
   };
+}
+
+/** @param {number} bytes */
+function formatDataSize(bytes) {
+  const value = Math.max(0, Number(bytes) || 0);
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let scaled = value;
+  let unit = units[0];
+  for (let index = 1; index < units.length && scaled >= 1_000; index += 1) {
+    scaled /= 1_000;
+    unit = units[index];
+  }
+  const digits = scaled >= 10 || unit === 'B' ? 0 : 1;
+  return `${scaled.toFixed(digits)} ${unit}`;
 }
 
 async function loadActiveDashboard() {
@@ -313,14 +342,15 @@ function dashboardContext(value) {
   };
 }
 
-/** @param {unknown} hashes @param {string} fileName */
-function publishedPayloadIdentity(hashes, fileName) {
-  const hash = hashes && typeof hashes === 'object' && !Array.isArray(hashes)
-    ? /** @type {Record<string, unknown>} */ (hashes)[fileName]
-    : null;
-  return typeof hash === 'string' && /^[a-f0-9]{64}$/i.test(hash)
-    ? `sha256:${hash.toLowerCase()}`
-    : null;
+/** @param {unknown} hashes */
+export function publishedJsonlShards(hashes) {
+  if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
+  return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
+    .filter(([name, hash]) => /^gh-aw-logs-shards\/[a-zA-Z0-9._-]+\.jsonl$/.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash))
+    .map(([name, hash]) => ({ name, hash: /** @type {string} */ (hash).toLowerCase() }))
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 /**
@@ -360,27 +390,35 @@ export function processDataRequest(request, signal) {
     const context = dashboardContext(request.context);
     return (async () => {
       const progress = startIngestionProgress();
-      const jsonl = sourceUrl.pathname.endsWith('.jsonl');
+      const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       let changed = false;
       try {
-        progress.log(jsonl ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
-        let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href, {
+        progress.log(activity ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
+        let sources = activity ? {} : await loadDashboardSources(fetch, sourceUrl.href, {
           onShardLoaded: ({ name, sizeBytes, cacheStatus }) => {
             const size = sizeBytes === null ? 'size unavailable' : `${sizeBytes.toLocaleString()} bytes`;
             progress.log(`Loaded dashboard source shard ${name} (${size}; cache: ${cacheStatus ?? 'unavailable'}).`);
           }
         });
-        if (jsonl) {
-          const payloadHashesUrl = new URL('./payload-hashes.json', sourceUrl);
+        if (activity) {
+          const payloadHashesUrl = sourceUrl;
           progress.log('Checking the published payload identity.');
           const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
-          const publishedIdentity = payloadHashesResponse?.ok
-            ? publishedPayloadIdentity(
-                await payloadHashesResponse.json().catch(() => null),
-                sourceUrl.pathname.split('/').at(-1) ?? ''
-              )
+          const payloadHashes = payloadHashesResponse?.ok
+            ? await payloadHashesResponse.json().catch(() => null)
             : null;
-          const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
+          const shards = publishedJsonlShards(payloadHashes);
+          const shardCount = shards.length;
+          debugIngestion('loaded activity manifest', {
+            source: sourceUrl.pathname,
+            shardCount,
+            manifestAvailable: payloadHashesResponse?.ok === true
+          });
+          if (shardCount > 0) {
+            progress.log(`Published activity data includes ${shardCount.toLocaleString('en-US')} `
+              + `${shardCount === 1 ? 'shard' : 'shards'}.`);
+          }
+          const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
           progress.log('Loading workflow and repository inventory.');
           const inventoryResponse = await fetch(inventoryUrl);
           if (inventoryResponse.ok) {
@@ -414,61 +452,74 @@ export function processDataRequest(request, signal) {
           const collectionContext = request.context && typeof request.context === 'object'
             ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
             : undefined;
-          const adaptationContext = cachedJsonlAdaptationContext({
-            context: collectionContext,
-            workflowHints
-          });
-          const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', sourceUrl.href);
-          const currentEtag = current?.adaptationContext === adaptationContext
-            && typeof current.payloadEtag === 'string'
-            ? current.payloadEtag
-            : null;
-          const currentPublishedPayload = publishedIdentity
-            ? await isCachedGhAwJsonlCurrent(indexedDB, {
-                payloadIdentity: publishedIdentity,
-                payloadScope: sourceUrl.href,
-                context: collectionContext,
-                workflowHints
-              })
-            : false;
-          if (currentPublishedPayload) {
-            progress.log('Published activity data is already current; reusing stored records.');
-            changed = false;
-          } else {
-            progress.log(currentEtag
-              ? 'Checking for updated activity data.'
-              : 'Downloading activity data.');
-            const response = await fetch(
-              sourceUrl.href,
-              publishedIdentity
-                ? { cache: 'no-store' }
-                : currentEtag
-                  ? { headers: { 'If-None-Match': currentEtag } }
-                  : undefined
-            );
-            if (response.status === 304) {
-              progress.log('Activity data is unchanged; reusing stored records.');
-              changed = false;
-            } else {
-              if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
-              if (!response.body) throw new Error('Unable to stream gh-aw JSONL response body');
-              progress.log('Activity data received; parsing records.');
-              const etag = response.headers.get('etag');
+          if (shards.length === 0) {
+            throw new Error('Activity shard manifest is missing or contains no valid JSONL shards.');
+          }
+          let processedBytes = 0;
+          let processedRecords = 0;
+          for (const [index, shard] of shards.entries()) {
+            const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
+            const current = await isCachedGhAwJsonlCurrent(indexedDB, {
+              payloadIdentity: shard.hash,
+              payloadScope: shardUrl.href,
+              context: collectionContext,
+              workflowHints
+            });
+            if (current) {
+              debugIngestion('skipping current activity shard', {
+                shard: shard.name,
+                index: index + 1,
+                shardCount
+              });
+              continue;
+            }
+            progress.log(`Downloading shard ${index + 1}/${shardCount}.`);
+            debugIngestion('fetching activity shard', {
+              shard: shard.name,
+              index: index + 1,
+              shardCount
+            });
+            const response = await fetch(shardUrl);
+            if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
+            if (!response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
+            {
+              const contentLengthHeader = response.headers.get('content-length');
+              const contentLength = contentLengthHeader === null ? Number.NaN : Number(contentLengthHeader);
+              const payloadBytes = Number.isFinite(contentLength) && contentLength >= 0
+                ? contentLength
+                : undefined;
+              const compressed = response.headers.has('content-encoding');
+              progress.log(payloadBytes === undefined
+                ? `Shard ${index + 1} received; parsing.`
+                : `Shard ${index + 1} received (${formatDataSize(payloadBytes)}`
+                  + `${compressed ? ' compressed' : ''}); parsing.`);
               const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
                 storage: globalThis.navigator?.storage,
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
                 workflowHints,
-                onProgress: ({ recordsIngested }) => progress.update(recordsIngested),
+                onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
+                  bytesProcessed: processedBytes + bytesProcessed,
+                  recordsIngested: processedRecords + recordsIngested,
+                  totalBytes: undefined
+                }),
                 onWriteProgress: (written) => progress.store(written),
-                payloadIdentity: publishedIdentity ?? (etag ? `${sourceUrl.href}:${etag}` : undefined),
-                payloadEtag: etag ?? undefined,
-                payloadScope: sourceUrl.href,
+                payloadIdentity: shard.hash,
+                payloadScope: shardUrl.href,
                 context: collectionContext
               });
+              processedBytes += payloadBytes ?? 0;
+              const sourceRecords = 'records' in ingestion ? ingestion.records : 0;
+              processedRecords += sourceRecords;
               changed ||= ingestion.updated;
-              progress.log('skipped' in ingestion && ingestion.skipped
-                ? 'Parsed activity data matched the stored version.'
-                : `Activity ingestion committed ${ingestion.committedRecords} canonical records.`);
+              debugIngestion('committed activity shard', {
+                shard: shard.name,
+                index: index + 1,
+                shardCount,
+                committedRecords: ingestion.committedRecords,
+                sourceRecords
+              });
+              progress.log(`Shard ${index + 1}/${shardCount} committed `
+                + `${ingestion.committedRecords.toLocaleString('en-US')} rec.`);
             }
           }
           if (inventoryResponse.ok) {

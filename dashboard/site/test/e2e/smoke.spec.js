@@ -104,12 +104,16 @@ test('notifications move in at the lower right and center on mobile', async ({ p
 
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {
   await page.setContent(`
+    <main style="height: 2000px"></main>
     <script type="module">
       import { publishNotification } from 'http://dashboard.test/src/notification-service.js';
-      publishNotification({
+      const ingestionNotification = publishNotification({
         message: 'Storing data...',
         duration: 0,
-        details: ['Loading metadata.', 'Parsed 200 records.', 'Storing data...']
+        details: Array.from({ length: 40 }, (_, index) => 'Activity event ' + (index + 1))
+      });
+      window.addEventListener('update-ingestion-notification', (event) => {
+        ingestionNotification.update(event.detail);
       });
     </script>
   `);
@@ -121,8 +125,47 @@ test('ingestion notifications reveal scrollable progress history on click', asyn
   const collapse = page.getByRole('button', { name: /Storing data.*Hide ingestion progress history/ });
   await expect(collapse).toHaveAttribute('aria-expanded', 'true');
   await expect(details).toBeVisible();
-  await expect(details.getByRole('listitem')).toHaveCount(3);
-  await collapse.click();
+  await expect(details.getByRole('listitem')).toHaveCount(40);
+  expect(await details.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  await expect(details).toHaveCSS('list-style-type', 'none');
+  await page.evaluate(() => window.scrollTo(0, 100));
+  await details.hover();
+  await page.mouse.wheel(0, 100);
+  await expect.poll(() => details.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(100);
+  await details.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await details.hover();
+  await page.mouse.wheel(0, 100);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(100);
+  const previousScrollTop = await details.evaluate((element) => element.scrollTop);
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('update-ingestion-notification', {
+      detail: {
+        message: 'Refreshing queries...',
+        duration: 0,
+        details: Array.from({ length: 41 }, (_, index) => 'Activity event ' + (index + 1))
+      }
+    }));
+  });
+  await expect(details.getByRole('listitem')).toHaveCount(41);
+  await expect.poll(() => details.evaluate((element) => element.scrollTop)).toBeGreaterThan(previousScrollTop);
+
+  await details.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('update-ingestion-notification', {
+      detail: {
+        message: 'Still refreshing...',
+        duration: 0,
+        details: Array.from({ length: 42 }, (_, index) => 'Activity event ' + (index + 1))
+      }
+    }));
+  });
+  await expect(details).toHaveJSProperty('scrollTop', 0);
+  await page.locator('.dashboard-notification-toggle').click();
   await expect(details).toBeHidden();
 });
 
@@ -672,6 +715,116 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+});
+
+test('scrolling over the Models & Agents pie chart collapses chrome and reveals the full-view table', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const dashboardDocument = {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'models-scroll',
+          title: 'Models & Agents',
+          pages: [{
+            id: 'engines-models',
+            kind: 'custom',
+            title: 'Models & Agents',
+            views: [{
+              id: 'engines-models-distribution',
+              title: 'Agent and model distribution',
+              data: { source: 'engines-models-chart' },
+              mark: 'chart',
+              chart: 'pie',
+              layout: 'full',
+              encoding: {
+                x: { field: 'summary', type: 'nominal', title: 'Agent / model' },
+                y: { field: 'events', type: 'quantitative', title: 'Events' }
+              }
+            }, {
+              id: 'engines-models-usage',
+              title: 'Engines and models',
+              data: { source: 'engines-models-usage' },
+              mark: 'table',
+              controls: 'interactive',
+              layout: 'full-view',
+              encoding: {
+                columns: [
+                  { field: 'summary', type: 'nominal', title: 'Agent / model' },
+                  { field: 'events', type: 'quantitative', title: 'Events' }
+                ]
+              },
+              'lazy-list': true
+            }]
+          }],
+          navigation: [{ label: 'Data', pages: ['engines-models'] }]
+        }
+      };
+      const metadata = {
+        'source-id': 'models-scroll-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-15T12:00:00Z',
+        'retrieved-at': '2026-09-15T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const chartRows = Array.from({ length: 6 }, (_, index) => ({
+        summary: 'copilot / model-' + (index + 1),
+        events: 6 - index
+      }));
+      const tableRows = Array.from({ length: 60 }, (_, index) => ({
+        summary: 'copilot / model-' + (index + 1),
+        events: 60 - index
+      }));
+      const sources = {
+        'engines-models-chart': { source: 'engines-models-chart', rows: chartRows, metadata },
+        'engines-models-usage': { source: 'engines-models-usage', rows: tableRows, metadata }
+      };
+      document.querySelector('#root').append(renderDashboard({
+        document: dashboardDocument,
+        sources
+      }));
+    </script>
+  `);
+
+  const dashboardRoot = page.locator('.dashboard-root');
+  const chart = page.locator('[data-view-id="engines-models-distribution"]');
+  const scroll = page.locator('[data-view-id="engines-models-usage"] .table-scroll');
+  await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollHeight > element.clientHeight + 48)).toBe(true);
+
+  await chart.hover();
+  await page.mouse.wheel(0, 100);
+
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(chart).toBeHidden();
+  await expect(page.locator('.org-sidebar')).toBeHidden();
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
+
+  await scroll.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(chart).toBeVisible();
+  await chart.evaluate((element) => {
+    const touch = (/** @type {number} */ clientY) => new Touch({ identifier: 1, target: element, clientX: 100, clientY });
+    element.dispatchEvent(new TouchEvent('touchstart', {
+      bubbles: true,
+      cancelable: true,
+      touches: [touch(300)]
+    }));
+    element.dispatchEvent(new TouchEvent('touchmove', {
+      bubbles: true,
+      cancelable: true,
+      touches: [touch(200)]
+    }));
+  });
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
 });
 
 test('Runs renders the worker-projected table for an active time window', async ({ page }) => {

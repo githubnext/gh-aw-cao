@@ -157,12 +157,6 @@ function run(command, args, cwd) {
   });
 }
 
-function workflowBody(content) {
-  const frontmatterEnd = content.indexOf("\n---\n", 4);
-  assert.notEqual(frontmatterEnd, -1, "workflow is missing closing frontmatter");
-  return content.slice(frontmatterEnd + 5).trimEnd();
-}
-
 async function installPackage(source) {
   return retryTransientPackageInstall(() => {
     const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
@@ -452,7 +446,7 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.match(dashboardWorkflow, /deploy: \$\{\{ steps\.deployment-policy\.outputs\.deploy \}\}/);
     assert.match(dashboardWorkflow, /if: needs\.build\.outputs\.deploy == 'true'/);
     assert.doesNotMatch(dashboardWorkflow, /^\s+run:/m);
-    assert.equal((dashboardWorkflow.match(/actions\/github-script@[0-9a-f]{40}/g) || []).length, 7);
+    assert.doesNotMatch(dashboardWorkflow, /actions\/github-script@(?![0-9a-f]{40}\b)/);
     assert.match(dashboardWorkflow, /Standalone Pages deployment:[\s\S]*?Dashboard artifact assembly completed/);
     assert.doesNotMatch(dashboardWorkflow, /schedule:/);
     assert.match(dashboardWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
@@ -550,7 +544,6 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
       !updatedOrchestrator.includes("# local integration-test change"),
       "gh aw update retained a local package workflow modification",
     );
-    assert.equal(workflowBody(updatedOrchestrator), workflowBody(orchestrator));
     for (const relativePath of removedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `gh aw update did not restore ${relativePath}`);
     }

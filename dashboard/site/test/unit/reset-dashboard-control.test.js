@@ -71,6 +71,24 @@ describe('dashboard local-data reset', () => {
     expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBeNull();
   });
 
+  it('shows blocking-tab feedback and a friendly message when reset stays blocked', async () => {
+    const reload = vi.fn();
+    const database = await openCanonicalDatabase(indexedDB);
+    const control = renderResetDashboardControl({ storage: localStorage, indexedDB, reload });
+    document.body.append(control);
+
+    /** @type {HTMLButtonElement} */ (control.querySelector('.reset-dashboard-trigger')).click();
+    const dialog = /** @type {HTMLDialogElement} */ (control.querySelector('dialog'));
+    /** @type {HTMLButtonElement} */ (dialog.querySelector('.reset-dashboard-confirm')).click();
+
+    await vi.waitFor(() => expect(dialog.textContent).toContain('other open dashboard tabs'));
+    await vi.waitFor(() => expect(dialog.textContent).toContain('another open dashboard tab is still using local data'), {
+      timeout: 5000
+    });
+    expect(reload).not.toHaveBeenCalled();
+    database.close();
+  });
+
   it('clears localStorage even when app database deletion fails', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
     const deletionError = new Error('deletion failed');

@@ -31,10 +31,10 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     cpSync(join(root, "AGENTS.md"), join(temporaryRoot, "AGENTS.md"));
     cpSync(join(root, "aw.yml"), join(temporaryRoot, "aw.yml"));
     cpSync(join(root, "README.md"), join(temporaryRoot, "README.md"));
-    for (const packageDirectory of ["activity", "cao-evolution", "dashboard", "dependabot", "optimization"]) {
+    for (const packageDirectory of ["activity", "cao-evolution", "dashboard", "dependabot", "optimization", "repo-assist"]) {
       cpSync(join(root, packageDirectory), join(temporaryRoot, packageDirectory), { recursive: true });
     }
-    for (const manifest of ["aw.yml", "activity/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
+    for (const manifest of ["aw.yml", "activity/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml", "repo-assist/aw.yml"]) {
       const manifestPath = join(temporaryRoot, manifest);
       writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll(ghAwVersion, "v0.89.4"));
     }
@@ -66,6 +66,12 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "cao-evolution.lock.yml",
       "dependabot-release-train-updater.lock.yml",
       "dependabot.lock.yml",
+      "eslint-rules-applier.lock.yml",
+      "eslint-rules-inventory.lock.yml",
+      "eslint-rules-librarian.lock.yml",
+      "eslint-rules-miner.lock.yml",
+      "eslint-rules-refiner.lock.yml",
+      "eslint-rules.lock.yml",
       "eu-cra-compliance-article-14-reporting-readiness.lock.yml",
       "eu-cra-compliance-conformity-release-evidence.lock.yml",
       "eu-cra-compliance-scope-classifier.lock.yml",
@@ -76,6 +82,11 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "optimization-ai-credit-auditor.lock.yml",
       "optimization-ai-credit-optimizer.lock.yml",
       "optimization.lock.yml",
+      "repo-assist-issue-fix.lock.yml",
+      "repo-assist-issue-triage.lock.yml",
+      "repo-assist-maintenance.lock.yml",
+      "repo-assist-pr-upkeep.lock.yml",
+      "repo-assist.lock.yml",
       "self-care-accessibility-checker.lock.yml",
       "self-care-code-improvement.lock.yml",
       "self-care-dashboard-data-schema.lock.yml",
@@ -161,8 +172,10 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["uk-ai-advisory.lock.yml", "uk-ai-advisory"],
       ["cao-evolution.lock.yml", "cao-evolution"],
       ["dependabot.lock.yml", "dependabot"],
+      ["eslint-rules.lock.yml", "eslint-rules"],
       ["eu-cra-compliance.lock.yml", "eu-cra-compliance"],
       ["optimization.lock.yml", "optimization"],
+      ["repo-assist.lock.yml", "repo-assist"],
       ["self-care.lock.yml", "self-care"],
       ["software-development-practices.lock.yml", "software-development-practices"],
     ]);
@@ -195,6 +208,11 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["cao-evolution-integrity.lock.yml", ["cao-evolution", "integrity"]],
       ["cao-evolution-reliability.lock.yml", ["cao-evolution", "reliability"]],
       ["dependabot-release-train-updater.lock.yml", ["dependabot", "release-train-updater"]],
+      ["eslint-rules-applier.lock.yml", ["eslint-rules", "applier"]],
+      ["eslint-rules-inventory.lock.yml", ["eslint-rules", "inventory"]],
+      ["eslint-rules-librarian.lock.yml", ["eslint-rules", "librarian"]],
+      ["eslint-rules-miner.lock.yml", ["eslint-rules", "miner"]],
+      ["eslint-rules-refiner.lock.yml", ["eslint-rules", "refiner"]],
       ["eu-cra-compliance-article-14-reporting-readiness.lock.yml", ["eu-cra-compliance", "article-14-reporting-readiness"]],
       ["eu-cra-compliance-conformity-release-evidence.lock.yml", ["eu-cra-compliance", "conformity-release-evidence"]],
       ["eu-cra-compliance-scope-classifier.lock.yml", ["eu-cra-compliance", "scope-classifier"]],
@@ -203,6 +221,10 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["eu-cra-compliance-vulnerability-handling-auditor.lock.yml", ["eu-cra-compliance", "vulnerability-handling-auditor"]],
       ["optimization-ai-credit-auditor.lock.yml", ["optimization", "ai-credit-auditor"]],
       ["optimization-ai-credit-optimizer.lock.yml", ["optimization", "ai-credit-optimizer"]],
+      ["repo-assist-issue-fix.lock.yml", ["repo-assist", "issue-fix"]],
+      ["repo-assist-issue-triage.lock.yml", ["repo-assist", "issue-triage"]],
+      ["repo-assist-maintenance.lock.yml", ["repo-assist", "maintenance"]],
+      ["repo-assist-pr-upkeep.lock.yml", ["repo-assist", "pr-upkeep"]],
       ["self-care-accessibility-checker.lock.yml", ["self-care", "accessibility-checker"]],
       ["self-care-code-improvement.lock.yml", ["self-care", "code-improvement"]],
       ["self-care-dashboard-data-schema.lock.yml", ["self-care", "dashboard-data-schema"]],
@@ -231,9 +253,11 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /GH_AW_SAFE_OUTPUTS_CONFIG:/);
     }
 
-    const generatedReviewBundle = workflow("dependabot-release-train-updater.lock.yml", generatedDirectory);
-    assert.match(generatedReviewBundle, /GH_AW_SAFE_OUTPUTS_STAGED/);
-    assert.doesNotMatch(generatedReviewBundle, /GH_AW_SAFE_OUTPUTS_STAGED:.*preview_only/);
+    const generatedDependabotPlan = workflow("dependabot-release-train-updater.lock.yml", generatedDirectory);
+    assert.match(generatedDependabotPlan, /create_issue/);
+    assert.match(generatedDependabotPlan, /update_issue/);
+    assert.match(generatedDependabotPlan, /add_comment/);
+    assert.doesNotMatch(generatedDependabotPlan, /create_pull_request/);
 
     const advisoryMaintainer = workflow("uk-ai-advisory-package-maintainer.lock.yml", generatedDirectory);
     assert.match(advisoryMaintainer, /schedule:/);

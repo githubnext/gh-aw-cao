@@ -5,10 +5,38 @@
       "schemaVersion": 1,
       "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
       "event": {"inputs": {"target_repo": "octo/service"}},
-      "outputs": [{"type": "create_pull_request", "target_repo": "octo/service", "title": "Update npm dependencies", "body": "Ready for review.\n\n**Action:** The service owner should review and merge after CI passes.\n\n### Validation\nChecks passed."}],
+      "outputs": [{"type": "create_issue", "target_repo": "octo/service", "title": "Dependency update plan for octo/service", "body": "Two updates are ready.\n\n**Action:** Assign this issue to Copilot.\n\n### Update checklist\n- [ ] Update lodash.\n\n<details><summary><b>Agent prompt</b></summary>\n\nComplete every unchecked item.\n\n</details>"}],
       "config": {}
     },
-    "expected": [{"id": "decision-ready-dependency-action", "value": 1}]
+    "expected": [{"id": "agent-ready-dependency-plan", "value": 1}]
+  },
+  {
+    "name": "refreshed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "5", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [
+        {"type": "update_issue", "target_repo": "octo/service", "issue_number": 42, "body": "One update is ready.\n\n**Action:** Assign this issue to Copilot.\n\n### Update checklist\n- [ ] Update lodash.\n\n<details><summary><b>Agent prompt</b></summary>\n\nComplete every unchecked item.\n\n</details>"},
+        {"type": "add_comment", "target_repo": "octo/service", "issue_number": 42, "body": "Dependabot update plan refreshed. One update remains."}
+      ],
+      "config": {}
+    },
+    "expected": [{"id": "agent-ready-dependency-plan", "value": 1}]
+  },
+  {
+    "name": "resolved",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "6", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [
+        {"type": "update_issue", "target_repo": "octo/service", "issue_number": 42, "body": "<!-- dependabot-update-plan:repository=octo/service -->\nNo current updates remain.\n\n**Action:** None."},
+        {"type": "add_comment", "target_repo": "octo/service", "issue_number": 42, "body": "Dependabot update plan refreshed. No updates remain."}
+      ],
+      "config": {}
+    },
+    "expected": [{"id": "agent-ready-dependency-plan", "value": 1}]
   },
   {
     "name": "missed",
@@ -16,10 +44,21 @@
       "schemaVersion": 1,
       "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
       "event": {"inputs": {"target_repo": "octo/service"}},
-      "outputs": [{"type": "create_issue", "target_repo": "octo/other", "title": "Dependency blocked", "body": "Needs attention."}],
+      "outputs": [{"type": "create_pull_request", "target_repo": "octo/service", "title": "Update npm dependencies", "body": "Created a pull request instead of a plan issue."}],
       "config": {}
     },
-    "expected": [{"id": "decision-ready-dependency-action", "value": 0}]
+    "expected": [{"id": "agent-ready-dependency-plan", "value": 0}]
+  },
+  {
+    "name": "noncanonical-title",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "7", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "create_issue", "target_repo": "octo/service", "title": "Unrelated dependency issue", "body": "One update is ready.\n\n**Action:** Assign this issue to Copilot.\n\n### Update checklist\n- [ ] Update lodash.\n\n<details><summary><b>Agent prompt</b></summary>\n\nComplete every unchecked item.\n\n</details>"}],
+      "config": {}
+    },
+    "expected": [{"id": "agent-ready-dependency-plan", "value": 0}]
   },
   {
     "name": "unavailable",
@@ -30,12 +69,12 @@
       "outputs": [],
       "config": {}
     },
-    "expected": [{"id": "decision-ready-dependency-action", "value": null}]
+    "expected": [{"id": "agent-ready-dependency-plan", "value": null}]
   },
   {
     "name": "malformed",
     "request": {"schemaVersion": 2, "run": {}, "event": {}, "outputs": "invalid", "config": {}},
-    "expected": [{"id": "decision-ready-dependency-action", "value": null}]
+    "expected": [{"id": "agent-ready-dependency-plan", "value": null}]
   },
   {
     "name": "noop",
@@ -46,6 +85,6 @@
       "outputs": [{"type": "noop", "message": "No actionable dependency update found after reviewing current manifests."}],
       "config": {}
     },
-    "expected": [{"id": "decision-ready-dependency-action", "value": 1}]
+    "expected": [{"id": "agent-ready-dependency-plan", "value": 1}]
   }
 ]

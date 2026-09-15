@@ -25,9 +25,7 @@ directory itself is part of the shared activity cache, so `gh aw logs`
 recognizes previously discovered runs across job runs without re-seeding a
 snapshot; new runs are written to a freshly named shard rather than merged
 into an existing one in place, and shards containing only out-of-range dated
-records are pruned automatically. All carried-forward shards are consolidated
-back into `gh-aw-logs.jsonl` so the external cache/publish contract below is
-unchanged. The ingestion step then passes the whole shard directory to
+records are pruned automatically. The ingestion step passes the shard directory to
 `cao ingest-jsonl --input-dir`, which ingests every shard one by one and skips
 any shard whose content hash is already recorded in the transactions table, so
 only genuinely new or changed shards are reprocessed instead of the whole
@@ -48,8 +46,7 @@ Activity has two source classes:
 | `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, package configuration, declared control workflows, and maintenance evidence | Package, Repository, and declared Workflow observations |
 | `gh-aw-logs-shards/*.jsonl` | Observed GitHub Actions execution and agentic audit evidence | Repository, Workflow, Run, Job, Session, and Event observations |
 
-`gh-aw-logs.jsonl` is the concatenated publication form of the retained shards,
-not a third source of truth. The SQLite database and browser IndexedDB are
+The SQLite database and browser IndexedDB are
 independently reconstructable projections of these external inputs.
 
 Runtime records join through canonical execution identities. A Repository uses
@@ -71,7 +68,6 @@ reconstruct those relationships.
 The cache contains:
 
 ```text
-$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 $RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
 $RUNNER_TEMP/cao-activity/payload-hashes.json

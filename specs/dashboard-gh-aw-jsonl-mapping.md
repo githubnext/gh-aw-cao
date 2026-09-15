@@ -5,7 +5,7 @@ description: Normative mapping of cached schema-v2 gh-aw JSONL into canonical da
 
 # Cached gh-aw JSONL mapping
 
-The schema-v2 `gh-aw-logs.jsonl` source SHALL be mapped into the existing
+Each schema-v2 activity shard SHALL be mapped into the existing
 canonical stores without adding source-shaped stores, indexes, or
 relationships. The normative ingestion expression is
 `dashboard/site/src/data/ingest/expressions/gh-aw-logs-v2.json`.
@@ -32,7 +32,7 @@ give each repository an independent `--cached-logs` wildcard prefix. Every
 retained shard is part of the same schema-v2 runtime observation source.
 
 Canonical ingestion SHALL process shards individually and use their content
-hashes to skip unchanged inputs. `gh-aw-logs.jsonl` SHALL contain the
+hashes to skip unchanged inputs. Each activity shard SHALL contain the
 concatenated retained shards for publication and browser ingestion; it MUST NOT
 be interpreted as a separate observation source in addition to those shards.
 

@@ -486,7 +486,7 @@ describe('canonical source ingestion and queries', () => {
         yield content.subarray(offset, offset + 7);
       }
     };
-    /** @type {{ linesProcessed: number, recordsIngested: number }[]} */
+    /** @type {{ bytesProcessed: number, linesProcessed: number, recordsIngested: number }[]} */
     const progress = [];
 
     await expect(ingestCachedGhAwJsonl(indexedDB, chunks(), {
@@ -496,7 +496,11 @@ describe('canonical source ingestion and queries', () => {
       records: 1,
       agenticRuns: 1
     });
-    expect(progress.at(-1)).toEqual({ linesProcessed: 2, recordsIngested: 1 });
+    expect(progress.at(-1)).toEqual({
+      bytesProcessed: content.byteLength,
+      linesProcessed: 2,
+      recordsIngested: 1
+    });
     await expect(ingestCachedGhAwJsonl(
       indexedDB,
       new TextDecoder().decode(content)

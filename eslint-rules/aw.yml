@@ -1,0 +1,17 @@
+name: ESLint Factory
+description: Evidence-backed central ESLint rule library for enrolled JavaScript and TypeScript repositories, mined from real defects and adopted only by maintainer review.
+min-version: v0.89.15
+experimental: true
+includes:
+  - ../aw.yml
+  - .github/workflows/eslint-rules-applier.md
+  - .github/workflows/eslint-rules-inventory.md
+  - .github/workflows/eslint-rules-librarian.md
+  - .github/workflows/eslint-rules-miner.md
+  - .github/workflows/eslint-rules-refiner.md
+  - .github/workflows/eslint-rules.md
+resources:
+  - source: dashboard.json
+    destination: .github/aw/dashboards/eslint-rules.json
+  - source: rules-db.mjs
+    destination: .github/aw/eslint-rules/rules-db.mjs

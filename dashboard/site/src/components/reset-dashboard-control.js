@@ -2,20 +2,32 @@ import { h } from '../dom.js';
 import { deleteCanonicalDatabase } from '../data/storage/indexeddb.js';
 import { octicon } from '../octicons.js';
 import { clearScopedStorage } from '../storage-scope.js';
+import { createDebug } from '../debug.js';
 import { createModalDialog, renderCloseButton } from './ui-primitives.js';
 
-/** @param {IDBFactory} indexedDB */
-async function deleteAppDatabases(indexedDB) {
-  await deleteCanonicalDatabase(indexedDB);
+const debug = createDebug('data:reset');
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {{ onBlocked?: () => void }} [options]
+ */
+async function deleteAppDatabases(indexedDB, options = {}) {
+  await deleteCanonicalDatabase(indexedDB, options);
 }
 
 /**
  * @param {Storage} storage
  * @param {IDBFactory} indexedDB
+ * @param {{ onBlocked?: () => void }} [options]
  */
-export async function resetLocalDashboardData(storage, indexedDB) {
+export async function resetLocalDashboardData(storage, indexedDB, options = {}) {
+  debug('resetting local dashboard data');
   try {
-    await deleteAppDatabases(indexedDB);
+    await deleteAppDatabases(indexedDB, options);
+    debug('reset local dashboard data succeeded');
+  } catch (error) {
+    debug('reset local dashboard data failed', error);
+    throw error;
   } finally {
     clearScopedStorage(storage);
   }
@@ -65,10 +77,16 @@ export function renderResetDashboardControl(options = {}) {
       cancel.disabled = true;
       status.textContent = 'Resetting…';
       try {
-        await resetLocalDashboardData(storage, indexedDB);
+        await resetLocalDashboardData(storage, indexedDB, {
+          onBlocked: () => {
+            status.textContent = 'Waiting for other open dashboard tabs to close…';
+          }
+        });
         reload();
-      } catch {
-        status.textContent = 'Could not reset local dashboard data.';
+      } catch (error) {
+        status.textContent = error instanceof Error && error.name === 'IndexedDBDeleteBlockedError'
+          ? 'Reset timed out because another open dashboard tab is still using local data. Close other tabs and try again.'
+          : 'Could not reset local dashboard data.';
         confirm.disabled = false;
         cancel.disabled = false;
       }

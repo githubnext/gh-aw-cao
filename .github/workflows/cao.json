@@ -93,6 +93,28 @@
           }
         }
       },
+      "eslint-rules": {
+        "icon": "codescan",
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "inventory": {
+            "workflow": "eslint-rules-inventory"
+          },
+          "miner": {
+            "workflow": "eslint-rules-miner"
+          },
+          "refiner": {
+            "workflow": "eslint-rules-refiner"
+          },
+          "applier": {
+            "workflow": "eslint-rules-applier"
+          },
+          "librarian": {
+            "workflow": "eslint-rules-librarian"
+          }
+        }
+      },
       "optimization": {
         "icon": "meter",
         "workers": {
@@ -118,6 +140,25 @@
           },
           "nist-ssdf": {
             "workflow": "software-development-practices-nist-ssdf"
+          }
+        }
+      },
+      "repo-assist": {
+        "icon": "gear",
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "issue-triage": {
+            "workflow": "repo-assist-issue-triage"
+          },
+          "issue-fix": {
+            "workflow": "repo-assist-issue-fix"
+          },
+          "maintenance": {
+            "workflow": "repo-assist-maintenance"
+          },
+          "pr-upkeep": {
+            "workflow": "repo-assist-pr-upkeep"
           }
         }
       },

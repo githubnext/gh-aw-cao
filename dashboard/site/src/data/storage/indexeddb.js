@@ -1,5 +1,8 @@
 import { relationshipErrors } from '../model/schema.js';
 import { scopedStorageKey } from '../../storage-scope.js';
+import { createDebug } from '../../debug.js';
+
+const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
 export const DATABASE_VERSION = 10;
@@ -117,16 +120,50 @@ function createSchema(database) {
   }
 }
 
+const DELETE_BLOCKED_TIMEOUT_MS = 3_000;
+
 /**
  * @param {IDBFactory} indexedDB
+ * @param {{ blockedTimeoutMs?: number, onBlocked?: () => void }} [options]
  * @returns {Promise<void>}
  */
-export function deleteCanonicalDatabase(indexedDB) {
-  const request = indexedDB.deleteDatabase(canonicalDatabaseName());
+export function deleteCanonicalDatabase(indexedDB, options = {}) {
+  const name = canonicalDatabaseName();
+  const blockedTimeoutMs = options.blockedTimeoutMs ?? DELETE_BLOCKED_TIMEOUT_MS;
+  debug('deleting database', name);
+  const request = indexedDB.deleteDatabase(name);
   return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error ?? new Error('Unable to delete canonical dashboard data'));
-    request.onblocked = () => reject(new Error('Deleting canonical dashboard data was blocked'));
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let blockedTimeout;
+    const settle = (/** @type {() => void} */ action) => {
+      if (blockedTimeout !== undefined) clearTimeout(blockedTimeout);
+      action();
+    };
+    request.onsuccess = () => settle(() => {
+      debug('deleted database', name);
+      resolve();
+    });
+    request.onerror = () => settle(() => {
+      const error = request.error ?? new Error('Unable to delete canonical dashboard data');
+      debug('failed to delete database', name, error);
+      reject(error);
+    });
+    request.onblocked = () => {
+      // Another open connection (a stale tab, worker, or leaked handle) is
+      // still holding the database open. The delete request stays pending
+      // and resolves once that connection closes, so give it a bounded grace
+      // period instead of hanging indefinitely or failing immediately.
+      debug('delete database blocked by an open connection', name);
+      options.onBlocked?.();
+      if (blockedTimeout === undefined) {
+        blockedTimeout = setTimeout(() => {
+          debug('delete database still blocked after timeout', name);
+          const error = new Error('Deleting canonical dashboard data was blocked by another open tab or connection');
+          error.name = 'IndexedDBDeleteBlockedError';
+          reject(error);
+        }, blockedTimeoutMs);
+      }
+    };
   });
 }
 
@@ -135,20 +172,29 @@ export function deleteCanonicalDatabase(indexedDB) {
  * @returns {Promise<IDBDatabase>}
  */
 export function openCanonicalDatabase(indexedDB) {
-  const request = indexedDB.open(canonicalDatabaseName(), DATABASE_VERSION);
+  const name = canonicalDatabaseName();
+  const request = indexedDB.open(name, DATABASE_VERSION);
   return new Promise((resolve, reject) => {
     request.onupgradeneeded = (event) => {
       const database = request.result;
       if (event.oldVersion < DATABASE_VERSION) {
         // Canonical data is a derived cache. Rebuild incompatible identities and
         // schemas from authoritative dashboard inputs instead of migrating them.
+        debug('upgrading database schema', name, { from: event.oldVersion, to: DATABASE_VERSION });
         for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
         createSchema(database);
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('Unable to open canonical dashboard data'));
-    request.onblocked = () => reject(new Error('Opening canonical dashboard data was blocked'));
+    request.onerror = () => {
+      const error = request.error ?? new Error('Unable to open canonical dashboard data');
+      debug('failed to open database', name, error);
+      reject(error);
+    };
+    request.onblocked = () => {
+      debug('open database blocked by an older connection', name);
+      reject(new Error('Opening canonical dashboard data was blocked'));
+    };
   });
 }
 
@@ -293,6 +339,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
     0
   );
   let storedRecords = 0;
+  debug('starting canonical batch replacement', { totalRecords, batchSize });
   const database = await openCanonicalDatabase(indexedDB);
   try {
     for (const storeName of ENTITY_STORES) {
@@ -304,6 +351,11 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
       const existing = await requestResult(removalStore.getAllKeys());
       for (const id of existing) if (!retained.has(String(id))) removalStore.delete(id);
       await transactionDone(removal);
+      debug('completed canonical store eviction', {
+        store: storeName,
+        retainedRecords: retained.size,
+        existingRecords: existing.length
+      });
       const changedRecords = recordsToWrite[storeName];
       for (let offset = 0; offset < changedRecords.length; offset += batchSize) {
         const boundedRecords = changedRecords.slice(offset, offset + batchSize);
@@ -312,6 +364,12 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
         for (const record of boundedRecords) store.put(record);
         await transactionDone(transaction);
         storedRecords += boundedRecords.length;
+        debug('committed canonical write chunk', {
+          store: storeName,
+          chunkRecords: boundedRecords.length,
+          storedRecords,
+          totalRecords
+        });
         options.onProgress?.({ storedRecords, totalRecords });
       }
     }
@@ -320,6 +378,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   } finally {
     database.close();
   }
+  debug('completed canonical batch replacement', { storedRecords, totalRecords });
 }
 
 /**
@@ -339,6 +398,10 @@ export async function recordTransaction(indexedDB, transaction) {
       store.delete(expired.id);
     }
     await transactionDone(write);
+    debug('recorded ingestion transaction', {
+      kind: transaction.kind,
+      committedRecords: transaction.committedRecords ?? null
+    });
   } finally {
     database.close();
   }
@@ -367,23 +430,30 @@ export async function withCanonicalIngestionLock(indexedDB, task) {
   const owner = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}:${Math.random()}`;
   for (;;) {
     const database = await openCanonicalDatabase(indexedDB);
-    const transaction = database.transaction(TRANSACTION_STORE, 'readwrite');
-    const done = transactionDone(transaction);
-    const store = transaction.objectStore(TRANSACTION_STORE);
-    const existing = await requestResult(store.get(INGESTION_LOCK_ID));
-    const now = Date.now();
-    const acquired = !existing || Number(existing.expiresAt) <= now;
-    if (acquired) {
-      store.put({
-        id: INGESTION_LOCK_ID,
-        kind: 'canonical-ingestion-lock',
-        createdAt: new Date(now).toISOString(),
-        owner,
-        expiresAt: now + INGESTION_LOCK_LEASE_MS
-      });
+    let acquired;
+    try {
+      const transaction = database.transaction(TRANSACTION_STORE, 'readwrite');
+      const done = transactionDone(transaction);
+      const store = transaction.objectStore(TRANSACTION_STORE);
+      const existing = await requestResult(store.get(INGESTION_LOCK_ID));
+      const now = Date.now();
+      acquired = !existing || Number(existing.expiresAt) <= now;
+      if (acquired) {
+        store.put({
+          id: INGESTION_LOCK_ID,
+          kind: 'canonical-ingestion-lock',
+          createdAt: new Date(now).toISOString(),
+          owner,
+          expiresAt: now + INGESTION_LOCK_LEASE_MS
+        });
+      }
+      await done;
+    } finally {
+      // Always close the connection, even if the lock check fails, so a
+      // failed acquisition attempt never leaves an open handle that blocks
+      // subsequent opens, writes, or a local-data reset.
+      database.close();
     }
-    await done;
-    database.close();
     if (acquired) break;
     await new Promise((resolve) => { setTimeout(resolve, 25); });
   }

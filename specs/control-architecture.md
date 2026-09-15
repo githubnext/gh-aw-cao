@@ -339,7 +339,7 @@ A compliance suite MUST record the implementation revision and claimed level, us
 | T-GHA-001 | Inspect generated workflow topology and authentication | Native gh-aw jobs and token path remain authoritative | 2 |
 | T-GHA-002 | Request an undeclared safe output | Primitive unavailable regardless of CAO mode | 2 |
 | T-GHA-003 | Resolve review mode for a live-capable workflow | No target mutation | 2 |
-| T-SEC-001 | Compile an operational workflow without the protected environment | Rejected before deployment | 2 |
+| T-SEC-001 | Compile an operational workflow without a deployment environment | Accepted; generated jobs have no deployment environment and credentials remain secret references | 2 |
 
 ### 8.3 Compliance Checklist
 
@@ -350,12 +350,12 @@ A compliance suite MUST record the implementation revision and claimed level, us
 | Central execution topology | T-EXE-001 | 2 | Required |
 | Deterministic resolution | T-RES-001 through T-RES-007 | 2 | Required |
 | gh-aw execution ownership | T-GHA-001 through T-GHA-003 | 2 | Required |
-| Protected execution boundary | T-SEC-001 | 2 | Required |
+| Credential and source boundary | T-SEC-001 | 2 | Required |
 | Live control authority | T-RES-001 through T-RES-007 | 3 | Required |
 
 ## 9. Security and Privacy Considerations
 
-Policy and workflow source MUST be protected on the control repository's default branch. The control repository MUST provide a protected GitHub Actions environment named `central-agentic-ops` whose deployment branch policy admits only that branch. Every operational source workflow MUST declare `environment: central-agentic-ops`, and operational secrets MUST be environment secrets rather than unrestricted repository secrets. gh-aw MUST propagate that environment boundary to generated jobs.
+Policy and workflow source MUST be protected on the control repository's default branch. Operational credentials MUST use GitHub Actions secrets and variables scoped to the control repository or its organization and MUST follow least-privilege repository access. Normal operational workflows MUST NOT require a GitHub Actions deployment environment; gh-aw-generated jobs MUST retain secret references without creating an implicit deployment boundary.
 
 Implementations MUST use least-privilege credentials, MUST NOT expose secrets in effective records or logs, and MUST NOT execute fetched policy as code. JSON MUST be parsed with a structured parser; `eval` or equivalent interpretation is prohibited.
 

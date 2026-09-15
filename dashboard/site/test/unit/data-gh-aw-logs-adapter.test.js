@@ -297,7 +297,7 @@ describe('gh-aw logs adapter', () => {
         githubEntityType: 'pull_request',
         correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
         sessionId: batch.sessions.find((session) => session.runId === 'github:run:303:attempt:1')?.id,
-        payloadRef: 'gh-aw-logs.jsonl#L4'
+        payloadRef: 'gh-aw-logs-shards#L4'
       }),
       expect.objectContaining({
         source: 'firewall',

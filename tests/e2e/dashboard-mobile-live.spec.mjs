@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
@@ -14,6 +14,7 @@ import {
 const maximumDomNodes = 6_000;
 let preview;
 let sourcePayload;
+let expectedActivityShardPaths;
 
 function metricValues(metrics) {
   return Object.fromEntries(metrics.map(({ name, value }) => [name, value]));
@@ -178,28 +179,42 @@ test.beforeAll(async () => {
   preview = await startDashboardServer({
     downloadData: async (destination) => {
       const inventoryUrl = new URL("inventory-sources.json", dataUrl);
-      const [logsResponse, inventoryResponse] = await Promise.all([
-        fetch(dataUrl),
+      const payloadHashesUrl = new URL("payload-hashes.json", dataUrl);
+      const [payloadHashesResponse, inventoryResponse] = await Promise.all([
+        fetch(payloadHashesUrl),
         fetch(inventoryUrl),
       ]);
-      if (!logsResponse.ok) throw new Error(`Unable to download deployed dashboard data: HTTP ${logsResponse.status}.`);
+      if (!payloadHashesResponse.ok) {
+        throw new Error(`Unable to download deployed dashboard manifest: HTTP ${payloadHashesResponse.status}.`);
+      }
       if (!inventoryResponse.ok) throw new Error(`Unable to download deployed dashboard inventory: HTTP ${inventoryResponse.status}.`);
-      if (!logsResponse.body) throw new Error("Deployed dashboard data response has no body.");
       if (!inventoryResponse.body) throw new Error("Deployed dashboard inventory response has no body.");
+      const payloadHashes = await payloadHashesResponse.json();
+      const shards = Object.entries(payloadHashes)
+        .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
+          && typeof hash === "string"
+          && /^[a-f0-9]{64}$/i.test(hash))
+        .sort(([left], [right]) => left.localeCompare(right));
+      if (shards.length === 0) throw new Error("Deployed dashboard manifest contains no valid activity shards.");
+      expectedActivityShardPaths = shards.map(([name]) => `/${name}`);
       await mkdir(destination, { recursive: true });
-      const activityPath = join(destination, "gh-aw-logs.jsonl");
       const inventoryPath = join(destination, "inventory-sources.json");
-      const downloads = await Promise.allSettled([
-        pipeline(logsResponse.body, createWriteStream(activityPath)),
-        pipeline(inventoryResponse.body, createWriteStream(inventoryPath)),
-      ]);
-      const failure = downloads.find((download) => download.status === "rejected");
-      if (failure) throw failure.reason;
-      const [activity, inventory] = await Promise.all([stat(activityPath), stat(inventoryPath)]);
+      await pipeline(inventoryResponse.body, createWriteStream(inventoryPath));
+      let activityBytes = 0;
+      for (const [name] of shards) {
+        const response = await fetch(new URL(name, dataUrl));
+        if (!response.ok) throw new Error(`Unable to download deployed dashboard shard ${name}: HTTP ${response.status}.`);
+        if (!response.body) throw new Error(`Deployed dashboard shard ${name} has no body.`);
+        const shardPath = join(destination, name);
+        await mkdir(dirname(shardPath), { recursive: true });
+        await pipeline(response.body, createWriteStream(shardPath));
+        activityBytes += (await stat(shardPath)).size;
+      }
+      const inventory = await stat(inventoryPath);
       sourcePayload = {
-        activityBytes: activity.size,
+        activityBytes,
         inventoryBytes: inventory.size,
-        totalBytes: activity.size + inventory.size,
+        totalBytes: activityBytes + inventory.size,
       };
     },
     host: "127.0.0.1",
@@ -214,7 +229,7 @@ test.afterAll(async () => {
 test("latest dashboard data loads within the mobile DOM budget", async ({ page }, testInfo) => {
   const pageErrors = [];
   let crashed = false;
-  let logsResponse;
+  const shardResponses = new Map();
   let inventoryResponse;
   const memoryMb = optionalNumber("MOBILE_MEMORY_MB");
   const network = {
@@ -249,7 +264,9 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   });
   page.on("response", (response) => {
     const pathname = new URL(response.url()).pathname;
-    if (pathname.endsWith("/gh-aw-logs.jsonl")) logsResponse = response;
+    if (pathname.includes("/gh-aw-logs-shards/") && pathname.endsWith(".jsonl")) {
+      shardResponses.set(pathname.slice(pathname.indexOf("/gh-aw-logs-shards/")), response);
+    }
     if (pathname.endsWith("/inventory-sources.json")) inventoryResponse = response;
   });
 
@@ -264,8 +281,14 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   // can attribute node counts to their owning JSON view.
   await expect(dashboard).toHaveAttribute("data-json-path", "$.dashboard", { timeout: 30_000 });
 
-  expect(logsResponse, "The dashboard must request canonical activity data").toBeDefined();
-  expect(logsResponse?.ok(), `Dashboard activity data returned ${logsResponse?.status()}`).toBe(true);
+  expect(
+    [...shardResponses.keys()].sort(),
+    "The dashboard must request every canonical activity shard",
+  ).toEqual(expectedActivityShardPaths);
+  expect(
+    [...shardResponses.values()].every((response) => response.ok()),
+    "Dashboard activity shard requests must succeed",
+  ).toBe(true);
   expect(inventoryResponse, "The dashboard must request inventory sources").toBeDefined();
   expect(inventoryResponse?.ok(), `Dashboard inventory returned ${inventoryResponse?.status()}`).toBe(true);
   expect(crashed, "The mobile browser page crashed while rendering the dashboard").toBe(false);
@@ -359,7 +382,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     const navigation = performance.getEntriesByType("navigation")[0];
     const memory = performance.memory;
     const resources = performance.getEntriesByType("resource")
-      .filter(({ name }) => /\/(?:gh-aw-logs\.jsonl|inventory-sources\.json|dashboard\.json)$/.test(new URL(name).pathname))
+      .filter(({ name }) => /\/(?:gh-aw-logs-shards\/[^/]+\.jsonl|inventory-sources\.json|dashboard\.json)$/.test(new URL(name).pathname))
       .map(({ name, duration, transferSize, encodedBodySize, decodedBodySize }) => ({
         name: new URL(name).pathname.split("/").at(-1),
         durationMs: Number(duration.toFixed(2)),

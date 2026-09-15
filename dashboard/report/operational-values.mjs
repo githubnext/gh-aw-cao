@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
-import { parseGhAwLogsJsonl } from "../../activity/gh-aw-logs.mjs";
+import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
 import {
   mergeOperationalValueRecords,
   operationalValueRunIdentity,
@@ -72,14 +72,14 @@ export async function collectOperationalValues() {
   log.group`Collect operational-value observations`;
   try {
     const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
-    const logsPath = process.env.REPORT_GH_AW_LOGS;
+    const logsPath = process.env.REPORT_GH_AW_LOGS_SHARDS;
     const outputPath = path.resolve(process.env.REPORT_OPERATIONAL_VALUES || "_inventory/operational-values.json");
     // Collection is incremental by default: fall back to the output path
     // itself as the cache so a missing REPORT_VALUE_CACHE cannot cause a
     // previously written snapshot to be silently discarded.
     const cachePath = process.env.REPORT_VALUE_CACHE ? path.resolve(process.env.REPORT_VALUE_CACHE) : outputPath;
     if (!inventoryPath) throw new Error("REPORT_DEPLOYED_WORKFLOWS is required");
-    if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
+    if (!logsPath) throw new Error("REPORT_GH_AW_LOGS_SHARDS is required");
 
     const generatedAt = new Date().toISOString();
     const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
@@ -88,7 +88,7 @@ export async function collectOperationalValues() {
     // completeness for prior observations, so degrade to an empty snapshot.
     let logs = { runs: [] };
     try {
-      logs.runs = parseGhAwLogsJsonl(await readFile(logsPath, "utf8"));
+      logs.runs = await readGhAwLogShards(logsPath);
     } catch (error) {
       log.warning`Treating gh-aw logs JSONL at ${logsPath} as empty: ${error.message}`;
     }

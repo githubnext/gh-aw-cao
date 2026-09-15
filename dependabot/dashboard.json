@@ -3,7 +3,7 @@
   "dashboard": {
     "id": "dependabot-dashboard",
     "title": "Dependabot",
-    "description": "Track manifest-aware dependency update runs, proposed release trains, and validated merged resolutions.",
+    "description": "Track Dependabot plan runs, agent-ready repository issues, and validated plan outcomes.",
     "repository": "githubnext/gh-aw-cao",
     "queries": [
       {
@@ -30,7 +30,7 @@
       },
       {
         "name": "dependabot-release-train-outcomes",
-        "intent": "List retained Dependabot release-train proposals so reviewers can inspect their disposition and repository evidence.",
+        "intent": "List retained Dependabot plan issues so maintainers can inspect their disposition and repository evidence.",
         "from": "outcomes",
         "filter": {
           "predicates": [
@@ -49,7 +49,7 @@
       },
       {
         "name": "dependabot-resolution-attainment",
-        "intent": "Show validated dependency-resolution observations for assigned release-train pull requests without treating missing or immature evidence as zero.",
+        "intent": "Show validated observations for agent-ready Dependabot plan issues without treating missing or immature evidence as zero.",
         "from": "operational-values",
         "filter": {
           "predicates": [
@@ -72,7 +72,7 @@
         "id": "dependabot-dashboard",
         "kind": "custom",
         "title": "Dependabot",
-        "description": "Track manifest-aware dependency update runs, proposed release trains, and validated merged resolutions.",
+        "description": "Track Dependabot plan runs, agent-ready repository issues, and validated plan outcomes.",
         "icon": "dependabot",
         "views": [
           {
@@ -108,8 +108,8 @@
           },
           {
             "id": "dependabot-outcomes",
-            "title": "Dependency release trains",
-            "description": "Repository-linked proposals remain human-reviewed and are never treated as successful until accepted evidence matures.",
+            "title": "Dependency update plans",
+            "description": "Each repository keeps one human-reviewed issue with a complete checklist for an assigned coding agent.",
             "disclosure": "essential",
             "data": {
               "source": "dependabot-release-train-outcomes",
@@ -124,7 +124,7 @@
             "controls": "interactive",
             "lazy-list": true,
             "layout": "full-view",
-            "empty-message": "No dependency release-train outputs were retained.",
+            "empty-message": "No Dependabot plan issues were retained.",
             "encoding": {
               "href": {
                 "field": "external-link",
@@ -138,7 +138,7 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Release train",
+                  "title": "Update plan",
                   "display": "outcome-link"
                 },
                 {
@@ -156,7 +156,7 @@
               ],
               "actions": [
                 {
-                  "intent": "Review this dependency release train, verify its retained evidence, and recommend the safest next action.",
+                  "intent": "Review this Dependabot update plan, verify its checklist and evidence, and recommend the safest next action.",
                   "presentation": "copy-prompt",
                   "icon": "search",
                   "label": "Review",
@@ -175,7 +175,7 @@
           {
             "id": "dependabot-attainment",
             "disclosure-label": "Validated resolution evidence",
-            "description": "Each opportunity is an assigned dependency pull request; validated merge evidence matures after 14 days.",
+            "description": "Each opportunity is an agent-ready Dependabot plan issue; validated outcome evidence matures after 14 days.",
             "disclosure": "supplemental",
             "data": {
               "source": "dependabot-resolution-attainment",

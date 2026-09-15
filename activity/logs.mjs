@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 
-import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
-import { parseGhAwLogsJsonl, serializeGhAwLogsJsonl } from "./gh-aw-logs.mjs";
+import { readGhAwLogShards } from "./gh-aw-logs.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_RUN_LIMIT = 10;
 
-async function existingSnapshot(file) {
+async function existingSnapshot(directory) {
   try {
-    await stat(file);
-    return { runs: parseGhAwLogsJsonl(await readFile(file, "utf8")) };
+    return { runs: await readGhAwLogShards(directory) };
   } catch (error) {
     if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
     return { runs: [] };
@@ -29,7 +28,7 @@ async function writeOutcome(outcome) {
 export async function collectActivityLogs() {
   const repository = process.env.GITHUB_REPOSITORY || "";
   const root = path.resolve(process.env.REPORT_ROOT || ".");
-  const logsPath = path.resolve(process.env.REPORT_GH_AW_LOGS || "_activity/gh-aw-logs.jsonl");
+  const shardDirectory = path.resolve(process.env.REPORT_GH_AW_LOGS_SHARDS || "_activity/gh-aw-logs-shards");
   const statePath = path.resolve(process.env.REPORT_GH_AW_LOGS_STATE || "_activity/gh-aw-logs-state.json");
   const exitCodePath = path.resolve(process.env.REPORT_GH_AW_LOGS_EXIT_CODE || "_activity/gh-aw-logs-exit-code");
   const windowDays = Number(process.env.REPORT_RUN_WINDOW_DAYS || DEFAULT_WINDOW_DAYS);
@@ -42,11 +41,11 @@ export async function collectActivityLogs() {
     throw new Error("REPORT_RUN_LIMIT must be an integer from 1 through 200");
   }
 
-  await mkdir(path.dirname(logsPath), { recursive: true });
+  await mkdir(shardDirectory, { recursive: true });
   await mkdir(path.dirname(statePath), { recursive: true });
 
   const observedAt = new Date().toISOString();
-  const cachedSnapshot = await existingSnapshot(logsPath);
+  const cachedSnapshot = await existingSnapshot(shardDirectory);
   const cachedRuns = Array.isArray(cachedSnapshot.runs) ? cachedSnapshot.runs : [];
   const previousState = await readFile(statePath, "utf8").then(JSON.parse).catch(() => ({}));
   let targets = [];
@@ -61,8 +60,7 @@ export async function collectActivityLogs() {
     if (!Number.isInteger(exitCode) || exitCode !== 0) {
       throw new Error(`gh aw logs exited with ${Number.isInteger(exitCode) ? exitCode : "an unknown status"}`);
     }
-    const snapshot = { runs: parseGhAwLogsJsonl(await readFile(logsPath, "utf8")) };
-    await writeFile(logsPath, serializeGhAwLogsJsonl(snapshot.runs));
+    const snapshot = { runs: await readGhAwLogShards(shardDirectory) };
     await writeFile(statePath, `${JSON.stringify({
       schemaVersion: 1,
       observedAt,
@@ -82,7 +80,6 @@ export async function collectActivityLogs() {
     log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} from the resolved repository set`;
     return "success";
   } catch (error) {
-    await writeFile(logsPath, serializeGhAwLogsJsonl(cachedRuns));
     await writeFile(statePath, `${JSON.stringify({
       schemaVersion: 1,
       observedAt,

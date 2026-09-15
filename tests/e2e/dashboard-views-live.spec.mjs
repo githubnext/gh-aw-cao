@@ -8,6 +8,7 @@ const outputDirectory = resolve(
   process.env.DASHBOARD_VIEWS_OUTPUT_DIR || "test-results/dashboard-views",
 );
 const maximumDomNodes = 6_000;
+const maximumFailedViews = 5;
 
 function selectedPages(dashboard) {
   const selected = process.env.DASHBOARD_PAGE_IDS;
@@ -142,6 +143,9 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       } finally {
         summary.results.push(result);
         await page.close();
+      }
+      if (summary.results.filter((entry) => entry.status !== "passed").length >= maximumFailedViews) {
+        break;
       }
     }
   } catch (error) {

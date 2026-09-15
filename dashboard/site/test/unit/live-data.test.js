@@ -7,10 +7,13 @@ import { describe, expect, it } from "vitest";
 describe("live Dashboard Language sources", () => {
   it("loads generated sources progressively and requires an explicit fixture opt-in", () => {
     const shell = readFileSync(resolve("index.html"), "utf8");
-    const preview = readFileSync(resolve("src/main.js"), "utf8");
+    const main = readFileSync(resolve("src/main.js"), "utf8");
+    const preview = readFileSync(resolve("src/dashboard-app.js"), "utf8");
+    const startup = readFileSync(resolve("src/data/startup.js"), "utf8");
 
     expect(shell).toContain('<script type="module" src="./src/main.js"></script>');
-    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
+    expect(main.trim()).toBe('import "./dashboard-app.js";');
+    expect(preview).toContain('fetch("./dashboard.json", { cache: "no-store" })');
     expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain('loading: state === "loading"');
@@ -19,24 +22,27 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("runWithLoadingProgress");
     expect(preview).toContain("loadingProgress.complete()");
-    expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
-    expect(preview).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
-    expect(preview).toContain("subscribeCanonicalDashboardView(");
-    expect(preview).toContain("signal: options.signal");
-    expect(preview).toContain("options.onUpdate(boundSources)");
+    expect(startup).toContain("refreshCanonicalDashboardSources");
+    expect(startup).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
+    expect(startup).toContain("subscribeCanonicalDashboardView(");
+    expect(startup).toContain("signal: pageOptions.signal");
+    expect(startup).toContain("pageOptions.onUpdate(boundSources)");
     expect(preview).toContain("dashboardPageLazySourceNames, dashboardPageSourceNames");
-    expect(preview).not.toContain("drainSourceContinuation");
-    expect(preview).not.toContain("drainChartSources");
-    expect(preview).toContain("bindContinuations(initialPageId, sources, initialLazySources)");
-    expect(preview).toContain("if (!event.persisted) refreshOwner.abort()");
-    expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DATABASE_COUNT_SOURCE_NAMES,/);
-    expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
-    expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
-    expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources)');
+    expect(startup).not.toContain("drainSourceContinuation");
+    expect(startup).not.toContain("drainChartSources");
+    expect(startup).toContain("pageSourceNames(pageId)");
+    expect(startup).toContain("pageLazySourceNames(pageId)");
+    expect(startup).toContain("refreshCanonicalDashboardSources(\n      sourceUrl,\n      []");
+    expect(startup).toMatch(/loadCanonicalDashboardPage\(DATABASE_COUNT_SOURCE_NAMES,/);
+    expect(startup).not.toContain("loadInitialSources");
+    expect(startup).toContain('render({}, "cached", loadPageSources, loadHorizonSources)');
+    expect(startup).toContain('render({}, "stale", loadPageSources, loadHorizonSources, refreshSources)');
+    expect(startup).not.toContain("initialPageLoaded");
+    expect(startup.indexOf('render({}, "cached"')).toBeLessThan(startup.indexOf("await settleUi()"));
+    expect(startup.indexOf("await settleUi()")).toBeLessThan(startup.indexOf("startAutomaticUpdates();", startup.indexOf("await settleUi()")));
     expect(preview).toContain("renderRefreshError(retryRefresh)");
-    expect(preview).toContain("refreshSources");
-    expect(preview).not.toContain("if (changed) return;");
-    expect(preview).toContain("bindContinuations(initialPageId, sources, initialLazySources)");
+    expect(startup).toContain("refreshSources");
+    expect(startup).not.toContain("if (changed) return;");
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
     expect(preview).not.toContain('./source-cache.js');
@@ -63,6 +69,9 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('dashboard.append(panel)');
     expect(preview).not.toContain('dashboard.querySelector(".org-sidebar")?.append(copilotPrompt)');
     expect(preview).not.toContain("Retain the illustrative fixture data");
+    expect(preview).not.toContain("loadCanonicalDashboardSources");
+    expect(preview).not.toContain("refreshCanonicalDashboardSources");
+    expect(startup).not.toContain("renderDashboard");
   });
 
   it("maps the operations report inputs into canonical logical sources", () => {

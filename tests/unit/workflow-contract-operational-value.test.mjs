@@ -36,11 +36,22 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "optimization-agents-md-curator-operational-value.sh",
     "optimization-ai-credit-auditor-operational-value.sh",
     "optimization-ai-credit-optimizer-operational-value.sh",
+    "repo-assist-issue-fix-operational-value.sh",
+    "repo-assist-issue-triage-operational-value.sh",
+    "repo-assist-maintenance-operational-value.sh",
+    "repo-assist-pr-upkeep-operational-value.sh",
     "self-care-docs-build-time-investigator-operational-value.sh",
     "software-development-practices-github-well-architected-operational-value.sh",
     "software-development-practices-nist-ssdf-operational-value.sh",
   ]);
-  for (const name of graders.filter((name) => name !== "dependabot-release-train-updater-operational-value.sh")) {
+  const oneShotGraders = new Set([
+    "dependabot-release-train-updater-operational-value.sh",
+    "repo-assist-issue-fix-operational-value.sh",
+    "repo-assist-issue-triage-operational-value.sh",
+    "repo-assist-maintenance-operational-value.sh",
+    "repo-assist-pr-upkeep-operational-value.sh",
+  ]);
+  for (const name of graders.filter((name) => !oneShotGraders.has(name))) {
     const executable = join(gradersDirectory, name);
     const workflowName = name.replace(/-operational-value\.sh$/, ".md");
     assert.match(
@@ -73,6 +84,33 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     assert.equal(score("malformed"), null, `${name}: malformed`);
   }
 
+  for (const name of oneShotGraders) {
+    const executable = join(gradersDirectory, name);
+    const workflowName = name.replace(/-operational-value\.sh$/, ".md");
+    const fixtures = JSON.parse(readFileSync(executable.replace(/\.sh$/, ".fixtures.json"), "utf8"));
+    assert.match(
+      workflow(workflowName),
+      new RegExp(`graders:\\s+operational-value:[\\s\\S]*run: ${`./graders/${name}`.replaceAll(".", "\\.")}`),
+      `${name}: workflow must execute the frozen operational-value evaluator`,
+    );
+    for (const fixture of fixtures) {
+      const evaluate = () => JSON.parse(execFileSync(executable, {
+        encoding: "utf8",
+        input: JSON.stringify(fixture.request),
+      }));
+      assert.deepEqual(evaluate(), fixture.expected, `${name}: ${fixture.name}`);
+      assert.deepEqual(evaluate(), fixture.expected, `${name}: ${fixture.name} deterministic rerun`);
+    }
+  }
+
+  for (const name of [...oneShotGraders].filter((name) => name.startsWith("repo-assist-"))) {
+    assert.equal(
+      readFileSync(join(root, "repo-assist", ".github", "graders", name), "utf8"),
+      readFileSync(join(gradersDirectory, name), "utf8"),
+      `${name}: packaged evaluator must match the compiled source`,
+    );
+  }
+
   const dependabotWorker = workflow("dependabot-release-train-updater.md");
   const dependabotName = "dependabot-release-train-updater-operational-value.sh";
   const dependabotExecutable = join(gradersDirectory, dependabotName);
@@ -97,9 +135,9 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
   assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
-  assert.match(dependabotWorker, /use a canonical unprefixed subject/i);
-  assert.match(dependabotWorker, /Use the same subject for the same unresolved work across reruns/);
-  assert.match(dependabotEvaluator, /decision-ready-dependency-action/);
+  assert.match(dependabotWorker, /canonical unprefixed subject/i);
+  assert.match(dependabotWorker, /Use that exact subject on every run/);
+  assert.match(dependabotEvaluator, /agent-ready-dependency-plan/);
   assert.doesNotMatch(dependabotEvaluator, /--definition|--metric|--grade-run|MATURATION_SECONDS|gh api/);
   assert.match(auditorWorker, /window_start: \$windowStart/);
   assert.match(auditorWorker, /window_end: \$windowEnd/);

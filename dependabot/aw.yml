@@ -1,5 +1,5 @@
 name: Dependabot
-description: Immutable workflow for manifest-aware, risk-ranked dependency release-train updates.
+description: Immutable workflow for repository-scoped, agent-ready Dependabot update plans.
 min-version: v0.89.15
 experimental: true
 includes:

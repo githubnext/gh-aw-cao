@@ -8,20 +8,26 @@ import {
   readCollection,
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
 
-const deployedLogsUrl = process.env.GH_AW_LOGS_URL
-  || "https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl";
+const deployedManifestUrl = process.env.DASHBOARD_DATA_URL
+  || "https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json";
 
-async function deployedLogs() {
-  const response = await fetch(deployedLogsUrl, { signal: AbortSignal.timeout(60_000) });
-  assert.equal(response.ok, true, `failed to download ${deployedLogsUrl}: ${response.status}`);
-  assert.ok(response.body, `failed to stream ${deployedLogsUrl}`);
-  return response.body;
+async function ingestDeployedShards() {
+  const response = await fetch(deployedManifestUrl, { signal: AbortSignal.timeout(60_000) });
+  assert.equal(response.ok, true, `failed to download ${deployedManifestUrl}: ${response.status}`);
+  const manifest = await response.json();
+  for (const name of Object.keys(manifest).filter((name) => name.startsWith("gh-aw-logs-shards/")).sort()) {
+    const shardUrl = new URL(name, deployedManifestUrl);
+    const shard = await fetch(shardUrl, { signal: AbortSignal.timeout(60_000) });
+    assert.equal(shard.ok, true, `failed to download ${shardUrl}: ${shard.status}`);
+    assert.ok(shard.body, `failed to stream ${shardUrl}`);
+    await ingestCachedGhAwJsonl(indexedDB, shard.body, { payloadScope: name });
+  }
 }
 
 test("deployed dashboard cache populates canonical workflows, runs, and events", async () => {
   await deleteCanonicalDatabase(indexedDB);
   try {
-    await ingestCachedGhAwJsonl(indexedDB, await deployedLogs());
+    await ingestDeployedShards();
     const [repositories, workflows, runs, jobs, sessions, events] = await Promise.all([
       readCollection(indexedDB, "repositories"),
       readCollection(indexedDB, "workflows"),
@@ -49,7 +55,7 @@ test("deployed dashboard cache populates canonical workflows, runs, and events",
 test("deployed dashboard cache ingests its firewall analysis", async () => {
   await deleteCanonicalDatabase(indexedDB);
   try {
-    await ingestCachedGhAwJsonl(indexedDB, await deployedLogs());
+    await ingestDeployedShards();
     const ingestedFirewallEvents = (await readCollection(indexedDB, "events")).filter(
       (event) => event.source === "firewall" && /^net_/.test(String(event.type)),
     );

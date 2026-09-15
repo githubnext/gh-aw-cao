@@ -9,7 +9,7 @@ import test from "node:test";
 
 test("cao ingests one million cached JSONL rows within a 32 MB JavaScript heap", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "cao-jsonl-load-"));
-  const input = path.join(directory, "gh-aw-logs.jsonl");
+  const input = path.join(directory, "activity-shard.jsonl");
   const database = path.join(directory, "gh-aw-logs.sqlite");
   const output = createWriteStream(input);
   const row = `${JSON.stringify({
@@ -40,8 +40,8 @@ test("cao ingests one million cached JSONL rows within a 32 MB JavaScript heap",
       "ingest-jsonl",
       "--database",
       database,
-      "--input",
-      input,
+      "--input-dir",
+      directory,
       "--run-retention-days",
       "all",
     ], {
@@ -68,6 +68,7 @@ test("cao ingests one million cached JSONL rows within a 32 MB JavaScript heap",
       events: 3,
       rateLimits: 0,
       mappedRateLimits: 0,
+      shards: [{ shard: "activity-shard.jsonl", skipped: false, committedRecords: 3 }],
     });
   } finally {
     await rm(directory, { recursive: true, force: true });

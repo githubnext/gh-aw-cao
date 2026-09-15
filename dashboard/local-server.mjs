@@ -322,7 +322,7 @@ async function findCanonicalDashboardData(root) {
   const visit = async (directory) => {
     const entries = await readdir(directory, { withFileTypes: true });
     const names = new Set(entries.map((entry) => entry.name));
-    if (names.has("gh-aw-logs.jsonl") && names.has("inventory-sources.json")) {
+    if (names.has("inventory-sources.json") && names.has("gh-aw-logs-shards")) {
       matches.push(directory);
     }
     await Promise.all(entries
@@ -1477,7 +1477,7 @@ export async function startDashboardServer({
   let sourcesContent;
   let sourceManifestContent;
   let viewerContent;
-  let ghAwLogsPath;
+  const ghAwLogShards = new Map();
   let payloadHashesContent;
   let inventorySourcesContent;
   const splitSourceContent = new Map();
@@ -1485,12 +1485,18 @@ export async function startDashboardServer({
     await downloadData(dashboardDataDirectory, repository, ghExecutable);
     const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
     if (canonicalDataDirectory) {
-      ghAwLogsPath = join(temporaryDirectory, "gh-aw-logs.jsonl");
-      const ghAwLogsHash = await redactJsonlSecretsFile(
-        join(canonicalDataDirectory, "gh-aw-logs.jsonl"),
-        ghAwLogsPath,
-      );
-      payloadHashesContent = JSON.stringify({ "gh-aw-logs.jsonl": ghAwLogsHash });
+      const payloadHashes = {};
+      const shardDirectory = join(canonicalDataDirectory, "gh-aw-logs-shards");
+      for (const entry of await readdir(shardDirectory, { withFileTypes: true }).catch(() => [])) {
+        if (!entry.isFile() || !/^[A-Za-z0-9._-]+\.jsonl$/.test(entry.name)) continue;
+        const outputPath = join(temporaryDirectory, "gh-aw-logs-shards", entry.name);
+        await mkdir(dirname(outputPath), { recursive: true });
+        const hash = await redactJsonlSecretsFile(join(shardDirectory, entry.name), outputPath);
+        const publishedName = `gh-aw-logs-shards/${entry.name}`;
+        ghAwLogShards.set(`/${publishedName}`, outputPath);
+        payloadHashes[publishedName] = hash;
+      }
+      payloadHashesContent = JSON.stringify(payloadHashes);
       inventorySourcesContent = redactJsonSecrets(
         await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
       );
@@ -2116,12 +2122,13 @@ export async function startDashboardServer({
         sendContent(request, response, contentTypes.get(".json"), sourcesContent);
         return;
       }
-      if (pathname === "/gh-aw-logs.jsonl") {
-        if (ghAwLogsPath === undefined) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        await sendFileContent(request, response, contentTypes.get(".jsonl"), ghAwLogsPath);
+      if (ghAwLogShards.has(pathname)) {
+        await sendFileContent(
+          request,
+          response,
+          contentTypes.get(".jsonl"),
+          ghAwLogShards.get(pathname),
+        );
         return;
       }
       if (pathname === "/payload-hashes.json") {
