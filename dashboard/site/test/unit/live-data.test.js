@@ -32,14 +32,13 @@ describe("live Dashboard Language sources", () => {
     expect(startup).not.toContain("drainChartSources");
     expect(startup).toContain("pageSourceNames(pageId)");
     expect(startup).toContain("pageLazySourceNames(pageId)");
-    expect(startup).toContain("loadCanonicalDashboardSources(\n      sourceUrl,\n      []");
     expect(startup).toContain("refreshCanonicalDashboardSources(\n      sourceUrl,\n      []");
     expect(startup).toMatch(/loadCanonicalDashboardPage\(DATABASE_COUNT_SOURCE_NAMES,/);
     expect(startup).not.toContain("loadInitialSources");
     expect(startup).toContain('render({}, "cached", loadPageSources, loadHorizonSources)');
     expect(startup).toContain('render({}, "stale", loadPageSources, loadHorizonSources, refreshSources)');
-    expect(startup.indexOf('render({}, "cached"')).toBeLessThan(startup.indexOf("await initialPageLoaded"));
-    expect(startup.indexOf("await initialPageLoaded")).toBeLessThan(startup.indexOf("await settleUi()"));
+    expect(startup).not.toContain("initialPageLoaded");
+    expect(startup.indexOf('render({}, "cached"')).toBeLessThan(startup.indexOf("await settleUi()"));
     expect(startup.indexOf("await settleUi()")).toBeLessThan(startup.indexOf("startAutomaticUpdates();", startup.indexOf("await settleUi()")));
     expect(preview).toContain("renderRefreshError(retryRefresh)");
     expect(startup).toContain("refreshSources");

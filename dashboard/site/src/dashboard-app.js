@@ -933,9 +933,6 @@
       } else {
         renderSources({}, "loading");
         const sourceUrl = new URL("./gh-aw-logs.jsonl", window.location.href).href;
-        const initialPageId = dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
-          ?? dashboardDocument.dashboard.pages[0]?.id
-          ?? "";
         const dashboardContext = {
           githubUrlBase: dashboardDocument.dashboard["github-url-base"],
           dashboardRepository: dashboardDocument.dashboard.repository,
@@ -948,7 +945,6 @@
             document,
             sourceUrl,
             dashboardContext,
-            initialPageId,
             pageSourceNames: (pageId) => dashboardPageSourceNames(dashboardDocument, pageId),
             pageLazySourceNames: (pageId) => dashboardPageLazySourceNames(dashboardDocument, pageId),
             runWithLoadingProgress,

@@ -36,7 +36,6 @@ function options(overrides = {}) {
     document,
     sourceUrl: "https://example.test/dashboard/gh-aw-logs.jsonl",
     dashboardContext: { pages: [], queries: [] },
-    initialPageId: "overview",
     pageSourceNames: () => ["runs"],
     pageLazySourceNames: () => [],
     runWithLoadingProgress,
@@ -98,25 +97,16 @@ describe("dashboard data startup", () => {
     ]);
   });
 
-  it("tries the cache before downloading when no compatible cache exists", async () => {
-    dataProcessor.loadCanonicalDashboardPage.mockImplementation(async (sourceNames = ["runs"]) => {
-      if (sourceNames.length === 0) return {};
-      calls.push("cache");
-      throw new Error("empty cache");
-    });
-    dataProcessor.loadCanonicalDashboardSources.mockImplementation(async () => {
-      calls.push("download");
-      return cachedSources;
-    });
+  it("starts ingestion after settling when an empty cache emits no page snapshot", async () => {
+    dataProcessor.subscribeCanonicalDashboardView.mockImplementation(() => () => {});
 
     await startDashboardData(options());
 
     expect(calls).toEqual([
       "render:cached",
-      "cache",
+      "settle",
       "automatic",
-      "download",
-      "render:ready",
+      "refresh",
     ]);
   });
 });

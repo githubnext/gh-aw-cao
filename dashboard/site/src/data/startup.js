@@ -1,6 +1,5 @@
 import {
   loadCanonicalDashboardPage,
-  loadCanonicalDashboardSources,
   refreshCanonicalDashboardSources,
   subscribeCanonicalDashboardView,
 } from "../data-processor.js";
@@ -44,7 +43,6 @@ export function waitForDashboardUi(browserWindow) {
  *     pages: import('../presenter.js').PresentationDocument['dashboard']['pages'],
  *     queries: unknown[],
  *   },
- *   initialPageId: string,
  *   pageSourceNames: (pageId: string) => string[],
  *   pageLazySourceNames: (pageId: string) => string[],
  *   runWithLoadingProgress: <T>(task: () => Promise<T>) => Promise<T>,
@@ -59,7 +57,6 @@ export async function startDashboardData(options) {
     document,
     sourceUrl,
     dashboardContext,
-    initialPageId,
     pageSourceNames,
     pageLazySourceNames,
     runWithLoadingProgress,
@@ -67,11 +64,6 @@ export async function startDashboardData(options) {
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
   const cleanup = new AbortController();
-  /** @type {(value: boolean) => void} */
-  let resolveInitialPage;
-  const initialPageLoaded = new Promise((resolve) => {
-    resolveInitialPage = resolve;
-  });
   let stopAutomaticDataUpdates = () => {};
   browserWindow.addEventListener("pagehide", (event) => {
     if (!event.persisted) {
@@ -115,7 +107,6 @@ export async function startDashboardData(options) {
           if (!receivedInitialSnapshot) {
             receivedInitialSnapshot = true;
             pageOptions.signal.removeEventListener("abort", abort);
-            if (pageId === initialPageId) resolveInitialPage(true);
             resolve(boundSources);
             return;
           }
@@ -130,7 +121,6 @@ export async function startDashboardData(options) {
           onError: (error) => {
             if (!receivedInitialSnapshot) {
               pageOptions.signal.removeEventListener("abort", abort);
-              if (pageId === initialPageId) resolveInitialPage(false);
               reject(error);
             } else {
               console.error(`Unable to update dashboard page ${pageId}: ${error.message}`);
@@ -154,25 +144,6 @@ export async function startDashboardData(options) {
 
   await loadCanonicalDashboardPage([], dashboardContext);
   render({}, "cached", loadPageSources, loadHorizonSources);
-  const cacheAvailable = await initialPageLoaded;
-  if (!cacheAvailable) {
-    startAutomaticUpdates();
-    await loadCanonicalDashboardSources(
-      sourceUrl,
-      [],
-      dashboardContext,
-    );
-    render({}, "ready", loadPageSources, loadHorizonSources);
-    emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
-      kind: "initial-load",
-      status: "completed",
-    });
-    return () => {
-      cleanup.abort();
-      stopAutomaticDataUpdates();
-    };
-  }
-
   let refreshFailed = false;
   let refreshPending = false;
   /** @param {unknown} error */
