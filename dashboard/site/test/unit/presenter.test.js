@@ -2689,7 +2689,7 @@ describe('presenter built-in and custom pages', () => {
             { field: 'repository', type: 'nominal', title: 'Repository' },
             { field: 'runs', type: 'quantitative', title: 'Runs' },
             { field: 'failure-summary', type: 'nominal', title: 'Failure rate', filter: false },
-            { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
+            { field: 'aic', type: 'quantitative', title: 'Local AIC', unit: 'aic' },
             { field: 'workflows', type: 'quantitative', title: 'AWs' },
             { field: 'status', type: 'nominal', title: 'Status', display: 'status' }
           ],
