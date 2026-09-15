@@ -505,13 +505,17 @@ export function processDataRequest(request, signal) {
             } else {
               if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
               if (!response.body) throw new Error('Unable to stream gh-aw JSONL response body');
-              const contentLength = Number(response.headers.get('content-length'));
-              const totalBytes = Number.isFinite(contentLength) && contentLength >= 0
+              const contentLengthHeader = response.headers.get('content-length');
+              const contentLength = contentLengthHeader === null ? Number.NaN : Number(contentLengthHeader);
+              const payloadBytes = Number.isFinite(contentLength) && contentLength >= 0
                 ? contentLength
                 : undefined;
-              progress.log(totalBytes === undefined
+              const compressed = response.headers.has('content-encoding');
+              const totalBytes = compressed ? undefined : payloadBytes;
+              progress.log(payloadBytes === undefined
                 ? 'Activity data received; parsing records.'
-                : `Activity data received; parsing ${formatDataSize(totalBytes)}.`);
+                : `Activity data received (${formatDataSize(payloadBytes)}${compressed ? ' compressed' : ''}); `
+                  + 'parsing records.');
               const etag = response.headers.get('etag');
               const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
                 storage: globalThis.navigator?.storage,
