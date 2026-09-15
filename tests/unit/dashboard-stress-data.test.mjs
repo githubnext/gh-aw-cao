@@ -139,8 +139,20 @@ test("stress shards preserve observed operational shapes without copying identit
             repositories: 1,
             runs: 1,
             derivedEventsPerRun: 101,
+            shards: 1,
+            workflows: 1,
           }),
           /derivedEventsPerRun must be at most 100/,
+        );
+        await assert.rejects(
+          generateDashboardStressData({
+            outputDirectory: join(root, "too-many-workflows"),
+            samplePath: sampleDirectory,
+            repositories: 1,
+            runs: 1,
+            workflows: 2,
+          }),
+          /workflows cannot exceed runs/,
         );
       } finally {
         await rm(root, { recursive: true, force: true });

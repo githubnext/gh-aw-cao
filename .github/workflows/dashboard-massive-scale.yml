@@ -21,6 +21,10 @@ on:
         description: Synthetic shard count
         default: "20"
         type: string
+      workflows:
+        description: Synthetic workflow count
+        default: "24"
+        type: string
 
 permissions:
   contents: read
@@ -39,6 +43,7 @@ jobs:
       DASHBOARD_STRESS_RUNS: ${{ inputs.runs || '20000' }}
       DASHBOARD_STRESS_DERIVED_EVENTS: ${{ inputs.derived_events || '6' }}
       DASHBOARD_STRESS_SHARDS: ${{ inputs.shards || '20' }}
+      DASHBOARD_STRESS_WORKFLOWS: ${{ inputs.workflows || '24' }}
       DASHBOARD_STRESS_BROWSER_MEMORY_MB: "256"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -12,6 +12,8 @@ const DEFAULT_SAMPLE = resolve("dashboard/site/test/fixtures/gh-aw-logs/cached-v
 const BASE_DERIVED_EVENTS = 5;
 const MAX_DERIVED_EVENTS = 100;
 const MAX_TEMPLATES = 256;
+const MAX_RUNS = 1_000_000;
+const MAX_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const RUN_CONCLUSIONS = new Set([
   "action_required",
   "cancelled",
@@ -30,6 +32,11 @@ function positiveInteger(value, name) {
     throw new TypeError(`${name} must be a positive integer.`);
   }
   return parsed;
+}
+
+function boundedNumber(value, fallback, maximum) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= maximum ? parsed : fallback;
 }
 
 function categoricalAlias(kind, value) {
@@ -76,7 +83,10 @@ function inspectedTemplate(envelope) {
   const run = envelope.run;
   const startedAt = Date.parse(run.started_at ?? run.created_at);
   const completedAt = Date.parse(run.updated_at);
-  const durationMs = Number.isFinite(startedAt) && Number.isFinite(completedAt) && completedAt >= startedAt
+  const durationMs = Number.isFinite(startedAt)
+    && Number.isFinite(completedAt)
+    && completedAt >= startedAt
+    && completedAt - startedAt <= MAX_DURATION_MS
     ? completedAt - startedAt
     : null;
   const sourceUsage = run.token_usage_summary ?? run.token_usage ?? {};
@@ -89,13 +99,13 @@ function inspectedTemplate(envelope) {
     durationMs,
     jobName: syntheticJobName(sourceJob.name),
     tokenUsage: {
-      totalAic: Number(sourceUsage.total_aic ?? run.aic ?? 1),
-      inputTokens: Number(sourceUsage.input_tokens ?? 2_000),
-      outputTokens: Number(sourceUsage.output_tokens ?? 200),
+      totalAic: boundedNumber(sourceUsage.total_aic ?? run.aic, 1, 1_000_000),
+      inputTokens: boundedNumber(sourceUsage.input_tokens, 2_000, 100_000_000),
+      outputTokens: boundedNumber(sourceUsage.output_tokens, 200, 100_000_000),
     },
     workingSet: {
-      files: Number(sourceWorkingSet.files ?? 4),
-      bytes: Number(sourceWorkingSet.bytes ?? 32_768),
+      files: boundedNumber(sourceWorkingSet.files, 4, 1_000_000),
+      bytes: boundedNumber(sourceWorkingSet.bytes, 32_768, 1_000_000_000_000),
     },
     auditGroups: observedAuditGroups(run),
   };
@@ -316,6 +326,15 @@ export async function generateDashboardStressData({
   };
   if (options.repositories > options.runs) {
     throw new TypeError("repositories cannot exceed runs.");
+  }
+  if (options.workflows > options.runs) {
+    throw new TypeError("workflows cannot exceed runs.");
+  }
+  if (options.shards > options.runs) {
+    throw new TypeError("shards cannot exceed runs.");
+  }
+  if (options.runs > MAX_RUNS) {
+    throw new TypeError(`runs must be at most ${MAX_RUNS}.`);
   }
   if (options.derivedEventsPerRun < BASE_DERIVED_EVENTS) {
     throw new TypeError(`derivedEventsPerRun must be at least ${BASE_DERIVED_EVENTS}.`);

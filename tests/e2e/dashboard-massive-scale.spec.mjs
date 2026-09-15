@@ -13,6 +13,7 @@ const repositories = numberSetting("DASHBOARD_STRESS_REPOSITORIES", 10_000);
 const runs = numberSetting("DASHBOARD_STRESS_RUNS", 20_000);
 const derivedEvents = numberSetting("DASHBOARD_STRESS_DERIVED_EVENTS", 6);
 const shards = numberSetting("DASHBOARD_STRESS_SHARDS", 20);
+const workflows = numberSetting("DASHBOARD_STRESS_WORKFLOWS", 24);
 const sampleIntervalMs = numberSetting("DASHBOARD_STRESS_SAMPLE_INTERVAL_MS", 250);
 const maximumPageHeapMb = numberSetting("DASHBOARD_STRESS_MAX_BROWSER_HEAP_MB", 220);
 const maximumRetainedPageHeapMb = numberSetting("DASHBOARD_STRESS_MAX_RETAINED_HEAP_MB", 128);
@@ -147,6 +148,7 @@ test.beforeAll(async () => {
     "--runs", String(runs),
     "--derived-events", String(derivedEvents),
     "--shards", String(shards),
+    "--workflows", String(workflows),
   ]);
   manifest = JSON.parse(generationMemory.stdout);
   ingestionMemory = await runMeasuredCommand(process.execPath, [
@@ -261,7 +263,7 @@ test("massive shards populate canonical storage within restricted memory", async
   const peakWorkingSetBytes = Math.max(0, ...browserSamples.map(({ workingSetBytes }) => workingSetBytes ?? 0));
   const retainedPageHeapBytes = browserSamples.at(-1)?.jsHeapUsedBytes ?? 0;
   const metrics = {
-    parameters: { repositories, runs, derivedEvents, shards },
+    parameters: { repositories, runs, derivedEvents, shards, workflows },
     manifest,
     database: {
       bytes: (await stat(databasePath)).size,
