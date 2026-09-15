@@ -8,11 +8,15 @@ import { generatedJobs, root, workflow } from "./workflow-contract.helpers.mjs";
 
 test("Copilot branch cleaner limits weekly discovery and starts in dry-run mode", () => {
   const source = workflow("copilot-branch-cleaner.yml");
+  const cleanerStart = source.indexOf("const dryRun");
+  assert.ok(cleanerStart >= 0);
+  const cleaner = source.slice(cleanerStart);
 
   assert.match(source, /cron: "23 3 \* \* 1"/);
   assert.match(source, /COPILOT_BRANCH_CLEANER_DRY_RUN != 'false'/);
   assert.match(source, /refPrefix = 'refs\/heads\/'/);
   assert.match(source, /branchNamePrefix = 'copilot\/'/);
+  assert.match(source, /deleteDelayMs = 1000/);
   assert.match(source, /\$branchNamePrefix: String!/);
   assert.match(source, /query: \$branchNamePrefix/);
   assert.match(source, /refPrefix,\n\s+branchNamePrefix,\n\s+cursor/);
@@ -22,9 +26,13 @@ test("Copilot branch cleaner limits weekly discovery and starts in dry-run mode"
   assert.match(source, /ref\.open\.totalCount === 0 && ref\.terminal\.totalCount > 0/);
   assert.match(source, /mutation DeleteCopilotBranches/);
   assert.match(source, /updateRefs\(input: \$input\)/);
-  assert.match(source, /beforeOid: oid/);
+  assert.match(source, /beforeOid: candidate\.oid/);
   assert.match(source, /afterOid: zeroOid/);
-  assert.match(source, /catch \{[\s\S]*?failed\.push\(\.\.\.batch\)/);
+  assert.match(source, /for \(const \[index, candidate\] of candidates\.entries\(\)\)/);
+  assert.match(source, /catch \{[\s\S]*?failed\.push\(candidate\)/);
+  assert.match(source, /await new Promise\(resolve => setTimeout\(resolve, deleteDelayMs\)\)/);
+  assert.match(cleaner, /\$\{failed\.length\} eligible branch\$\{failed\.length === 1 \? " was" : "es were"\} not deleted/);
+  assert.doesNotMatch(cleaner, /core\.setFailed/);
   assert.match(source, /core\.info\('Branches eligible for deletion \(dry run\)'\)/);
   assert.match(source, /core\.info\('Deleted branches'\)/);
   assert.match(source, /core\.info\('Branches not deleted'\)/);

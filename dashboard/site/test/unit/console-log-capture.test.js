@@ -11,8 +11,7 @@ describe('console log capture', () => {
       warn: vi.fn(),
       error: vi.fn()
     };
-    const now = () => new Date('2026-09-15T12:00:00.000Z');
-    const capture = createConsoleLogCapture(output, now);
+    const capture = createConsoleLogCapture(output);
     const originalWarn = output.warn;
     const circular = /** @type {Record<string, unknown>} */ ({ message: 'details' });
     circular.self = circular;
@@ -22,7 +21,7 @@ describe('console log capture', () => {
 
     expect(originalWarn).toHaveBeenCalledWith('Refresh failed', circular);
     expect(capture.text()).toContain(
-      '[2026-09-15T12:00:00.000Z] WARN Refresh failed {"message":"details","self":"[Circular]"}'
+      'WARN Refresh failed {"message":"details","self":"[Circular]"}'
     );
   });
 
