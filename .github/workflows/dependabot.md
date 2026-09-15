@@ -140,7 +140,7 @@ Use age, exploitability evidence, dependency directness, runtime use, deployment
 
 - `dependabot-release-train-updater`: reads manifests, lockfiles, Dependabot PRs and alerts, CI evidence, package usage, tests, and observability configuration; builds one complete repository plan while preserving independently testable update groups.
 - The updater maintains one stable, agent-ready issue per repository, refreshes its full description on later runs, and comments after every refresh.
-- The updater never creates or changes a pull request. Its issue tells a human how to assign the complete checklist to a coding agent; when Dependabot identifies no current work, it emits a no-op.
+- The updater never creates or changes a pull request. Its issue tells a human how to assign the complete checklist to a coding agent; it refreshes the durable issue to a completed description when work reaches zero and emits a no-op only when no plan exists.
 
 ## Completion
 

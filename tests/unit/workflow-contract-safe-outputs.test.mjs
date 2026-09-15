@@ -83,7 +83,11 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
     const issue = safeOutputs["create-issue"];
     if (issue) {
       assert.equal(issue["deduplicate-by-title"], true, name);
-      assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
+      if (name === "dependabot-release-train-updater.md") {
+        assert.equal(issue.expires, undefined, `${name} keeps one durable issue across refreshes`);
+      } else {
+        assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
+      }
       assert.ok(Number.isInteger(issue.max) && issue.max > 0, `${name} must bound create-issue max`);
       assert.ok(typeof issue["title-prefix"] === "string" && issue["title-prefix"].length > 0, `${name} must prefix issue titles`);
     }
@@ -119,6 +123,7 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "create-issue", "update-issue"]);
   assert.equal(outputs["create-issue"].max, 1);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
+  assert.equal(outputs["create-issue"].expires, undefined);
   assert.equal(outputs["update-issue"].body, true);
   assert.equal(outputs["update-issue"].max, 1);
   assert.equal(outputs["add-comment"]["pull-requests"], false);

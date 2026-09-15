@@ -30,14 +30,14 @@ jq -c '
     and (body | test("<summary><b>Agent prompt</b></summary>"));
   def valid_create($target):
     type_name == "create-issue"
-    and (title | text)
+    and (title == "Dependency update plan for \($target)")
     and plan_body
     and target_matches($target);
   def valid_refresh($target; $comment):
     (issue_ref) as $issue
     |
     type_name == "update-issue"
-    and plan_body
+    and (plan_body or (body | test("\\*\\*Action:\\*\\* None\\.")))
     and target_matches($target)
     and ($comment | type_name == "add-comment")
     and ($comment | target_matches($target))

@@ -25,12 +25,37 @@
     "expected": [{"id": "agent-ready-dependency-plan", "value": 1}]
   },
   {
+    "name": "resolved",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "6", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [
+        {"type": "update_issue", "target_repo": "octo/service", "issue_number": 42, "body": "<!-- dependabot-update-plan:repository=octo/service -->\nNo current updates remain.\n\n**Action:** None."},
+        {"type": "add_comment", "target_repo": "octo/service", "issue_number": 42, "body": "Dependabot update plan refreshed. No updates remain."}
+      ],
+      "config": {}
+    },
+    "expected": [{"id": "agent-ready-dependency-plan", "value": 1}]
+  },
+  {
     "name": "missed",
     "request": {
       "schemaVersion": 1,
       "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
       "event": {"inputs": {"target_repo": "octo/service"}},
       "outputs": [{"type": "create_pull_request", "target_repo": "octo/service", "title": "Update npm dependencies", "body": "Created a pull request instead of a plan issue."}],
+      "config": {}
+    },
+    "expected": [{"id": "agent-ready-dependency-plan", "value": 0}]
+  },
+  {
+    "name": "noncanonical-title",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "7", "repository": "githubnext/gh-aw-cao", "workflow": "Dependabot / Release Trains"},
+      "event": {"inputs": {"target_repo": "octo/service"}},
+      "outputs": [{"type": "create_issue", "target_repo": "octo/service", "title": "Unrelated dependency issue", "body": "One update is ready.\n\n**Action:** Assign this issue to Copilot.\n\n### Update checklist\n- [ ] Update lodash.\n\n<details><summary><b>Agent prompt</b></summary>\n\nComplete every unchecked item.\n\n</details>"}],
       "config": {}
     },
     "expected": [{"id": "agent-ready-dependency-plan", "value": 0}]

@@ -12,7 +12,7 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 - Prioritizes repositories with dependency alerts, stale or conflicted update pull requests, lockfile drift, and actionable Dependabot configuration failures.
 - Understands relationships among manifests, lockfiles, workspaces, solutions, source code, tests, and CI instead of grouping updates only by package name.
 - Maintains one repository-scoped issue containing every update currently identified by Dependabot.
-- Refreshes the existing issue description and posts a confirmation comment on later runs.
+- Refreshes the durable existing issue, posts a confirmation comment on later runs, and replaces obsolete tasks with a completed description when no work remains.
 - Uses progressive disclosure, a visible human call to action, and a complete prompt for an assigned coding agent.
 - Never creates or changes a pull request.
 
@@ -105,7 +105,7 @@ Repositories without a recognized dependency ecosystem, readable manifests, or e
 - The orchestrator workflow selects repositories but does not mutate them directly.
 - A worker workflow receives one target and cannot discover more repositories, dispatch another workflow, or promote its mode.
 - The worker workflow cannot create or mutate pull requests or repository files.
-- The worker can create one deduplicated plan issue, refresh one existing plan issue with one confirmation comment, or emit `noop`.
+- The worker can create one deduplicated plan issue, refresh the existing issue with one confirmation comment, replace resolved work with a completed description, or emit `noop`.
 - Credentials remain in the private control repository and are never included in dispatch inputs.
 
 ## Pause or Stop
