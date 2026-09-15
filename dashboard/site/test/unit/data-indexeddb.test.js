@@ -272,4 +272,19 @@ describe('canonical IndexedDB', () => {
     await expect(withCanonicalIngestionLock(indexedDB, async () => 'recovered'))
       .resolves.toBe('recovered');
   });
+
+  it('times out instead of waiting forever for an active ingestion lock', async () => {
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'active-tab',
+      expiresAt: Date.now() + 30_000
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'unreachable', {
+      acquireTimeoutMs: 20,
+      retryDelayMs: 1
+    })).rejects.toMatchObject({ name: 'CanonicalIngestionLockTimeoutError' });
+  });
 });

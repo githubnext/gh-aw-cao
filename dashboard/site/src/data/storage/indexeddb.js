@@ -79,6 +79,8 @@ const DEFAULT_WRITE_BATCH_SIZE = 1000;
 const MAX_TRANSACTION_RECORDS = 1000;
 const INGESTION_LOCK_ID = 'lock:canonical-ingestion';
 const INGESTION_LOCK_LEASE_MS = 5 * 60 * 1000;
+const INGESTION_LOCK_ACQUIRE_TIMEOUT_MS = INGESTION_LOCK_LEASE_MS + 30_000;
+const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 
 /**
  * @template T
@@ -440,11 +442,20 @@ export async function readTransaction(indexedDB, id) {
  * @template T
  * @param {IDBFactory} indexedDB
  * @param {() => Promise<T>} task
+ * @param {{ acquireTimeoutMs?: number, retryDelayMs?: number }} [options]
  */
-export async function withCanonicalIngestionLock(indexedDB, task) {
+export async function withCanonicalIngestionLock(indexedDB, task, options = {}) {
   const owner = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}:${Math.random()}`;
   const startedAt = Date.now();
+  const acquireTimeoutMs = options.acquireTimeoutMs ?? INGESTION_LOCK_ACQUIRE_TIMEOUT_MS;
+  const retryDelayMs = options.retryDelayMs ?? INGESTION_LOCK_RETRY_DELAY_MS;
   for (;;) {
+    const waitedMs = Date.now() - startedAt;
+    if (waitedMs > acquireTimeoutMs) {
+      const error = new Error('Timed out waiting for canonical ingestion lock');
+      error.name = 'CanonicalIngestionLockTimeoutError';
+      throw error;
+    }
     const database = await openCanonicalDatabase(indexedDB);
     let acquired;
     try {
@@ -485,7 +496,7 @@ export async function withCanonicalIngestionLock(indexedDB, task) {
       database.close();
     }
     if (acquired) break;
-    await new Promise((resolve) => { setTimeout(resolve, 25); });
+    await new Promise((resolve) => { setTimeout(resolve, retryDelayMs); });
   }
   debug('acquired canonical ingestion lock', { owner, waitedMs: Date.now() - startedAt });
 
