@@ -759,8 +759,8 @@ function renderChartView(context) {
     /** @param {Element} element */
     const isCopy = (element) => element.matches('h3, h4, .view-description, .view-source, .view-metadata, .view-context, .view-description-tooltip');
     const firstVisualization = children.findIndex((element) => !isCopy(element));
-    const copy = children.slice(0, firstVisualization);
-    const visualization = children.slice(firstVisualization);
+    const copy = firstVisualization === -1 ? children : children.slice(0, firstVisualization);
+    const visualization = firstVisualization === -1 ? [] : children.slice(firstVisualization);
     if (firstVisualization > 0 && copy.every(isCopy) && visualization.every((element) => !isCopy(element))) {
       section.replaceChildren(
         h(
