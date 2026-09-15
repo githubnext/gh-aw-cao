@@ -45,7 +45,7 @@ const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doc
 
 const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao ingest-jsonl [--database FILE] [--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao ingest-jsonl [--database FILE] [--input FILE | --input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
@@ -447,15 +447,19 @@ export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirector
  * already current are skipped without ever being parsed, so re-runs only
  * pay the parsing/normalization cost for shards that are new or changed.
  */
-async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}) {
+async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}, inputFile) {
   let shardNames = [];
-  try {
-    shardNames = (await readdir(shardDirectory))
-      .filter((name) => name.endsWith('.jsonl'))
-      .sort();
-  } catch (error) {
-    if (error && error.code === 'ENOENT') shardNames = [];
-    else throw error;
+  if (inputFile) {
+    shardNames = [inputFile];
+  } else {
+    try {
+      shardNames = (await readdir(shardDirectory))
+        .filter((name) => name.endsWith('.jsonl'))
+        .sort();
+    } catch (error) {
+      if (error && error.code === 'ENOENT') shardNames = [];
+      else throw error;
+    }
   }
   const shards = [];
   const totals = {};
@@ -990,8 +994,15 @@ export async function runCli(arguments_, input = process.stdin) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
-    const inputDirectory = option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH;
+    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
+    const inputPath = option(options, 'input', false);
+    if (inputPath && option(options, 'input-dir', false)) {
+      throw new Error('--input cannot be combined with --input-dir');
+    }
+    const resolvedInputPath = inputPath ? path.resolve(inputPath) : undefined;
+    const inputDirectory = resolvedInputPath
+      ? path.dirname(resolvedInputPath)
+      : path.resolve(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
     const contextPath = option(options, 'context', false);
     const context = contextPath
       ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
@@ -1001,7 +1012,12 @@ export async function runCli(arguments_, input = process.stdin) {
       retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
       context
     };
-    const result = await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory), ingestOptions);
+    const result = await ingestJsonlShardDirectory(
+      indexedDB,
+      inputDirectory,
+      ingestOptions,
+      resolvedInputPath ? path.basename(resolvedInputPath) : undefined
+    );
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'query') {
