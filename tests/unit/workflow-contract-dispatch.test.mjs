@@ -175,7 +175,6 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     assert.match(source, new RegExp(`package: ${packageName}`));
     assert.match(source, /role: worker/);
     assert.match(source, new RegExp(`worker: ${workerName}`));
-    assert.match(source, /environment: central-agentic-ops/);
     for (const input of [
       "target_repo",
       "safe_output_repo",

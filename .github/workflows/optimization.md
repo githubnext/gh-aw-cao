@@ -54,8 +54,6 @@ env:
   SAFE_OUTPUT_REPO: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || '' }}
   TARGET_REPO: ${{ inputs.target_repo || '' }}
 
-environment: central-agentic-ops
-
 if: needs.pre_activation.outputs.cao_authorized == 'true'
 
 imports:

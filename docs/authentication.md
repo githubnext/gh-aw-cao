@@ -35,7 +35,7 @@ The supported control-plane credentials are:
 | --- | --- | --- |
 | 1 | Read-only GitHub App | Repository variable `GH_AW_GITHUB_READ_APP_ID` and repository secret `GH_AW_GITHUB_READ_APP_PRIVATE_KEY` |
 | 1 | Write-capable GitHub App | Repository variable `GH_AW_GITHUB_WRITE_APP_ID` and repository secret `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY` |
-| 2 | Fine-grained PAT | Protected `central-agentic-ops` environment secret `GH_AW_GITHUB_TOKEN` |
+| 2 | Fine-grained PAT | Repository secret `GH_AW_GITHUB_TOKEN` |
 | 3 | Workflow token | Repository-provided `GITHUB_TOKEN` for operations it can authorize |
 
 This is runtime availability precedence, not permission to choose a PAT silently. `ignore-if-missing: true` makes each App optional: when an applicable App token is unavailable, shared control falls through to `GH_AW_GITHUB_TOKEN`, then `GITHUB_TOKEN`. The runtime cannot determine why a PAT secret exists or record informed consent. Setup must choose and validate the authentication profile before a run; if App authentication is intended, verify both App ID variables and private key secrets rather than relying on fallback behavior.
@@ -129,7 +129,7 @@ The workflow token is scoped to the repository containing the workflow. Public c
 
 ## Credential Boundary
 
-- Each App client ID lives in its control-repository Actions variable, each private key lives in its corresponding Actions secret, and PAT credentials live in the protected `central-agentic-ops` environment secret.
+- Each App client ID lives in its control-repository Actions variable, and each private key or PAT lives in its corresponding Actions secret.
 - worker workflows receive repository names and routing policy, never credentials.
 - Each Orchestrator and worker workflow run resolves its own token through imported shared control.
 - Tokens must not appear in prompts, logs, safe outputs, Repo Memory, review bundles, or correlation metadata.
@@ -159,7 +159,7 @@ A package-only installation should narrow these permissions to that package's wo
 Example PAT fallback configuration:
 
 ```bash
-gh secret set GH_AW_GITHUB_TOKEN --env central-agentic-ops --repo "acme/central-agentic-ops"
+gh secret set GH_AW_GITHUB_TOKEN --repo "acme/central-agentic-ops"
 ```
 
 The GitHub CLI prompts for the token without echoing it. Do not include the token directly in the command.
