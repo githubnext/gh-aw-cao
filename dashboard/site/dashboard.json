@@ -957,26 +957,6 @@
         ]
       },
       {
-        "name": "workflow-run-totals",
-        "intent": "Summarize observed run counts by declared workflow.",
-        "description": "Observed run totals for each declared workflow.",
-        "from": "runs",
-        "aggregate": {
-          "by": [
-            "organization",
-            "repository",
-            "workflow"
-          ],
-          "values": [
-            {
-              "field": "run",
-              "as": "runs",
-              "reducer": "distinct-count"
-            }
-          ]
-        }
-      },
-      {
         "name": "session-runs",
         "intent": "Identify each workflow run that has one or more imported sessions.",
         "description": "Distinct workflow runs represented by imported sessions.",
@@ -998,10 +978,49 @@
         }
       },
       {
-        "name": "workflow-imported-run-totals",
-        "intent": "Summarize distinct runs with an imported session by declared workflow.",
-        "description": "Observed imported run totals for each declared workflow.",
-        "from": "session-runs",
+        "name": "run-import-status",
+        "intent": "Identify observed runs that have one or more imported sessions.",
+        "description": "Observed runs enriched with imported-session status.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "session-runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" }
+            ],
+            "fields": [
+              { "field": "sessions", "as": "imported-sessions" }
+            ]
+          }
+        ],
+        "compute": [
+          {
+            "as": "imported-session-count",
+            "function": "coalesce",
+            "args": [
+              { "field": "imported-sessions" },
+              { "value": 0 }
+            ]
+          },
+          {
+            "as": "imported",
+            "function": "greater-than",
+            "args": [
+              { "field": "imported-session-count" },
+              { "value": 0 }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "workflow-run-totals",
+        "intent": "Summarize observed run counts and imported runs by declared workflow.",
+        "description": "Observed run and imported-run totals for each declared workflow.",
+        "from": "run-import-status",
         "aggregate": {
           "by": [
             "organization",
@@ -1011,8 +1030,13 @@
           "values": [
             {
               "field": "run",
+              "as": "runs",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "imported",
               "as": "imported-runs",
-              "reducer": "count"
+              "reducer": "sum"
             }
           ]
         }
@@ -1869,6 +1893,10 @@
               {
                 "field": "runs",
                 "as": "observed-runs"
+              },
+              {
+                "field": "imported-runs",
+                "as": "observed-imported-runs"
               }
             ]
           },
@@ -1893,30 +1921,6 @@
               {
                 "field": "aic",
                 "as": "observed-aic"
-              }
-            ]
-          },
-          {
-            "source": "workflow-imported-run-totals",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              }
-            ],
-            "fields": [
-              {
-                "field": "imported-runs",
-                "as": "observed-imported-runs"
               }
             ]
           }
@@ -2970,37 +2974,7 @@
         "name": "repository-run-totals",
         "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
         "description": "Distinct run and conclusion totals for each repository.",
-        "from": "runs",
-        "joins": [
-          {
-            "source": "session-runs",
-            "type": "left",
-            "on": [
-              {
-                "left": "organization",
-                "right": "organization"
-              },
-              {
-                "left": "repository",
-                "right": "repository"
-              },
-              {
-                "left": "workflow",
-                "right": "workflow"
-              },
-              {
-                "left": "run",
-                "right": "run"
-              }
-            ],
-            "fields": [
-              {
-                "field": "sessions",
-                "as": "imported-sessions"
-              }
-            ]
-          }
-        ],
+        "from": "run-import-status",
         "compute": [
           {
             "as": "failed",
@@ -3029,30 +3003,6 @@
               },
               {
                 "value": "action-required"
-              }
-            ]
-          },
-          {
-            "as": "imported-session-count",
-            "function": "coalesce",
-            "args": [
-              {
-                "field": "imported-sessions"
-              },
-              {
-                "value": 0
-              }
-            ]
-          },
-          {
-            "as": "imported",
-            "function": "greater-than",
-            "args": [
-              {
-                "field": "imported-session-count"
-              },
-              {
-                "value": 0
               }
             ]
           }
