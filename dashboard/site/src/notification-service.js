@@ -155,7 +155,7 @@ function renderNotification(initial, container, onRemove) {
     current.details.forEach((detail, index) => {
       const item = details.children[index] ?? h('li', {});
       item.textContent = detail;
-      if (!item.isConnected) details.append(item);
+      if (item.parentElement !== details) details.append(item);
     });
     while (details.children.length > current.details.length) details.lastElementChild?.remove();
     details.scrollTop = followsLatest ? details.scrollHeight : scrollTop;

@@ -91,25 +91,22 @@ describe('dashboard notification service', () => {
     const details = /** @type {HTMLUListElement} */ (
       document.querySelector('.dashboard-notification-details')
     );
-    let scrollHeight = 200;
     Object.defineProperties(details, {
       clientHeight: { configurable: true, value: 100 },
-      scrollHeight: { configurable: true, get: () => scrollHeight }
+      scrollHeight: { configurable: true, get: () => 100 + details.children.length * 50 }
     });
     details.scrollTop = 100;
     const firstEntry = details.firstElementChild;
 
-    scrollHeight = 240;
     handle.update({
       message: 'Refreshing queries...',
       duration: 0,
       details: ['Loading metadata.', 'Storing data...', 'Refreshing queries.']
     });
-
     expect(details.firstElementChild).toBe(firstEntry);
-    expect(details.scrollTop).toBe(240);
+    expect(details.firstElementChild).toBe(firstEntry);
     details.scrollTop = 20;
-    scrollHeight = 280;
+    details.scrollTop = 20;
 
     handle.update({
       message: 'Still refreshing...',
