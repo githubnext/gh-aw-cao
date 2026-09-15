@@ -1522,7 +1522,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    * @returns {HTMLElement | null}
    */
   const trailingFullViewScrollTarget = (target) => {
-    if (!(target instanceof Element)) return null;
+    if (!root.classList.contains('dashboard-full-view') || !(target instanceof Element)) return null;
     const view = target.closest('.custom-view');
     const fullView = view?.parentElement?.querySelector(':scope > .custom-view[data-view-layout="full-view"]');
     if (!(view instanceof HTMLElement) || !(fullView instanceof HTMLElement) || view === fullView) return null;
