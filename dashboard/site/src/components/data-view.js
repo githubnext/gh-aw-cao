@@ -304,11 +304,14 @@ function renderIssueListView(options) {
           { className: 'issue-list-card-meta', 'aria-label': `${titleText || 'Issue'} metadata` },
           ...detailColumns.map((column) => {
             const outputField = typeof column.as === 'string' ? column.as : column.field;
+            const value = column.field === RUN_FIELD || column.display === 'run-link'
+              ? renderWorkflowRunLink(row, toText(row[outputField]))
+              : renderValue(column, row[outputField], row);
             return h(
               'div',
               null,
               h('dt', null, fieldTitle(column)),
-              h('dd', null, renderValue(column, row[outputField], row))
+              h('dd', null, value)
             );
           })
         )
