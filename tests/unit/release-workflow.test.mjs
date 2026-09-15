@@ -3,15 +3,21 @@ import test from "node:test";
 
 import { generatedJobs, stepBlock, workflow } from "./workflow-contract.helpers.mjs";
 
-test("draft release exists before the agent job starts", () => {
+test("tag and draft release exist before the agent job starts", () => {
   const source = workflow("release.md");
   const prepareRelease = stepBlock(source, "Generate draft release notes without assets");
   const jobs = generatedJobs(workflow("release.lock.yml"));
 
+  assert.match(prepareRelease, /github\.rest\.git\.createRef/);
+  assert.match(prepareRelease, /ref: `refs\/tags\/\$\{releaseTag\}`/);
+  assert.match(prepareRelease, /sha: context\.sha/);
   assert.match(prepareRelease, /github\.rest\.repos\.createRelease/);
   assert.match(prepareRelease, /draft: true/);
   assert.match(prepareRelease, /core\.setOutput\('release_tag', release\.tag_name\)/);
-  assert.doesNotMatch(prepareRelease, /github\.rest\.git\.createRef/);
+  assert.ok(
+    prepareRelease.indexOf("github.rest.git.createRef") < prepareRelease.indexOf("github.rest.repos.createRelease"),
+    "git tag must be created before the draft release",
+  );
   assert.ok(jobs.get("agent")?.needs.includes("prepare-release"));
 });
 

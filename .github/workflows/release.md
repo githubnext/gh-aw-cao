@@ -189,6 +189,12 @@ jobs:
           script: |
             const releaseTag = process.env.RELEASE_TAG;
             core.info(`Creating draft release ${releaseTag}.`);
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${releaseTag}`,
+              sha: context.sha,
+            });
             const { data: release } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
