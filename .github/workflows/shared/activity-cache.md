@@ -71,11 +71,11 @@ issues, and safe-output-created pull requests:
 node "$cao_script" gh runs \
   --database "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" \
   --repo OWNER/REPOSITORY --workflow WORKFLOW --status failure \
-  --since 2026-09-01 --until 2026-09-15
+  --since YYYY-MM-DD --until YYYY-MM-DD
 
 node "$cao_script" gh issues \
   --database "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" \
-  --repo OWNER/REPOSITORY --since 2026-09-01
+  --repo OWNER/REPOSITORY --since YYYY-MM-DD
 
 node "$cao_script" gh prs \
   --database "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" \
