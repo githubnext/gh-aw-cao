@@ -1552,6 +1552,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const FULL_VIEW_SCROLL_MIN_RANGE = 48;
   const FULL_VIEW_SCROLL_ENTER = 24;
   const FULL_VIEW_SCROLL_EXIT = 4;
+  const fullViewCompactMedia = typeof defaultView?.matchMedia === 'function'
+    ? defaultView.matchMedia(FULL_VIEW_COMPACT_MEDIA)
+    : null;
+  fullViewCompactMedia?.addEventListener('change', () => {
+    if (fullViewCompactMedia.matches) root.classList.remove('dashboard-full-view-scrolled');
+  });
   let fullViewScrollFrame = 0;
   /**
    * Finds the scroll surface of a full-view table following the event target's view.
@@ -1605,7 +1611,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       const syncScrolledState = () => {
         fullViewScrollFrame = 0;
         if (!scroll.isConnected || !root.classList.contains('dashboard-full-view')) return;
-        if (defaultView?.matchMedia(FULL_VIEW_COMPACT_MEDIA).matches) {
+        if (fullViewCompactMedia?.matches) {
           root.classList.remove('dashboard-full-view-scrolled');
           return;
         }

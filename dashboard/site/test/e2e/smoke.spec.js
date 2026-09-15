@@ -569,7 +569,14 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
+  await scroll.evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
