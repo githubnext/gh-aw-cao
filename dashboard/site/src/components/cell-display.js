@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { renderActiveStateBadge, renderGraderStatusBadge, renderModeBadge, renderStatusBadge } from './badge.js';
-import { renderWorkflowRunUrl } from './link-content.js';
+import { renderShortenedUrl, renderWorkflowRunUrl } from './link-content.js';
 import { formatHumanFriendlyTimestamp, formatNumber, formatString, stringOrFallback } from '../view-formatters.js';
 import { formatUtcDateTime, renderDigest, renderMissingValue } from './ui-primitives.js';
 
@@ -38,6 +38,7 @@ export function renderCellDisplay(display, value, toText, unit = null, type, for
   }
   if (unit && typeof value === 'number' && Number.isFinite(value)) return formatNumber(value, unit);
   if (format === 'workflow-run-url') return renderWorkflowRunUrl(value) ?? toText(value);
+  if (format === 'shortened-url') return renderShortenedUrl(value) ?? toText(value);
   if (format !== undefined) return formatString(value, format);
   return toText(value);
 }

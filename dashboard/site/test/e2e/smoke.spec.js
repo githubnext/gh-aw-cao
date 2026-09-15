@@ -538,20 +538,15 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const rows = Array.from({ length: 100 }, (_, index) => ({
-        transaction: \`ingest-jsonl:current:\${index}\`,
         kind: index % 2 === 0 ? 'ingest-jsonl' : 'ingest-dashboard-sources',
         'created-at': new Date(Date.UTC(2026, 8, 12, 12, index)).toISOString(),
-        'payload-scope': 'gh-aw-jsonl',
-        records: 100 + index,
-        'committed-records': 90 + index,
-        'raw-payload-records': 110 + index,
+        'payload-scope': \`https://dashboard.example/gh-aw-logs-shards/logs-\${index}.jsonl\`,
         'raw-runs': 20 + index,
         'agentic-run-records': 10 + index,
         'agentic-runs': 8 + index,
         'duplicate-raw-run-observations': index,
         'duplicate-agentic-run-observations': index,
-        'unenriched-runs': index,
-        'payload-hash': \`payload-hash-\${index}\`
+        'unenriched-runs': index
       }));
       const metadata = {
         'source-id': 'transactions-fixture',
@@ -587,6 +582,18 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
+  const headings = await view.getByRole('columnheader').allTextContents();
+  expect(headings.at(-1)?.trim()).toBe('Created');
+  expect(headings).not.toEqual(expect.arrayContaining([
+    'Committed records',
+    'Records',
+    'Raw payload records',
+    'Transaction',
+    'Payload hash',
+    'Payload ETag'
+  ]));
+  const scope = view.getByRole('link', { name: 'https://dashboard.example/.../logs-0.jsonl' }).first();
+  await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-0.jsonl');
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
   await scroll.evaluate((element) => {

@@ -572,12 +572,9 @@ describe('presenter built-in and custom pages', () => {
         'transactions-table': {
           source: 'transactions-table',
           rows: [{
-            transaction: 'ingest-jsonl:current:test',
             kind: 'ingest-jsonl',
             'created-at': '2026-09-02T12:00:00Z',
-            'payload-scope': 'gh-aw-jsonl',
-            records: 12,
-            'committed-records': 10,
+            'payload-scope': 'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
             'raw-runs': 8,
             'agentic-runs': 6
           }],
@@ -598,8 +595,18 @@ describe('presenter built-in and custom pages', () => {
       expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
       expect(page?.querySelector('input[type="search"]')).not.toBeNull();
       expect(page?.textContent).toContain('ingest-jsonl');
-      expect(page?.textContent).toContain('gh-aw-jsonl');
-      expect(page?.querySelector('thead')?.textContent).toContain('Committed records');
+      expect(page?.textContent).toContain('https://dashboard.example/.../logs-1.jsonl');
+      expect(page?.querySelector('tbody a')?.getAttribute('href')).toBe('https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl');
+      const headings = [...page?.querySelectorAll('thead th') ?? []].map((heading) => heading.textContent?.trim());
+      expect(headings.at(-1)).toBe('Created');
+      expect(headings).not.toEqual(expect.arrayContaining([
+        'Committed records',
+        'Records',
+        'Raw payload records',
+        'Transaction',
+        'Payload hash',
+        'Payload ETag'
+      ]));
     } finally {
       rendered.remove();
       window.history.replaceState(null, '', '/');

@@ -4462,6 +4462,9 @@ dashboard:
               - field: repository
                 type: nominal
                 format: workflow-run-url
+              - field: repository
+                type: nominal
+                format: shortened-url
               - field: observed-at
                 type: temporal
                 format: human-friendly-timestamp

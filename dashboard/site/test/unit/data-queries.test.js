@@ -277,18 +277,14 @@ describe('declarative dashboard queries', () => {
 
     expect(result['transactions-table'].rows).toEqual([
       {
-        transaction: 'ingest-jsonl:current:newer',
         kind: 'ingest-jsonl',
         'created-at': '2026-09-02T00:00:00Z',
-        'payload-scope': 'gh-aw-jsonl',
-        'committed-records': 12
+        'payload-scope': 'gh-aw-jsonl'
       },
       {
-        transaction: 'ingest-jsonl:current:older',
         kind: 'ingest-jsonl',
         'created-at': '2026-09-01T00:00:00Z',
-        'payload-scope': 'gh-aw-jsonl',
-        'committed-records': 10
+        'payload-scope': 'gh-aw-jsonl'
       }
     ]);
   });

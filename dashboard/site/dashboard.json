@@ -194,15 +194,9 @@
         "intent": "List retained ingestion transactions from newest to oldest.",
         "from": "transactions",
         "select": [
-          { "field": "id", "as": "transaction" },
           { "field": "kind" },
           { "field": "createdAt", "as": "created-at" },
           { "field": "payloadScope", "as": "payload-scope" },
-          { "field": "payloadHash", "as": "payload-hash" },
-          { "field": "payloadEtag", "as": "payload-etag" },
-          { "field": "records" },
-          { "field": "committedRecords", "as": "committed-records" },
-          { "field": "rawPayloadRecords", "as": "raw-payload-records" },
           { "field": "rawRuns", "as": "raw-runs" },
           { "field": "agenticRunRecords", "as": "agentic-run-records" },
           { "field": "agenticRuns", "as": "agentic-runs" },
@@ -5817,12 +5811,6 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "created-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Created"
-                },
-                {
                   "field": "kind",
                   "type": "nominal",
                   "title": "Kind"
@@ -5830,22 +5818,8 @@
                 {
                   "field": "payload-scope",
                   "type": "nominal",
+                  "format": "shortened-url",
                   "title": "Scope"
-                },
-                {
-                  "field": "committed-records",
-                  "type": "quantitative",
-                  "title": "Committed records"
-                },
-                {
-                  "field": "records",
-                  "type": "quantitative",
-                  "title": "Records"
-                },
-                {
-                  "field": "raw-payload-records",
-                  "type": "quantitative",
-                  "title": "Raw payload records"
                 },
                 {
                   "field": "raw-runs",
@@ -5883,19 +5857,10 @@
                   "title": "Error"
                 },
                 {
-                  "field": "transaction",
-                  "type": "nominal",
-                  "title": "Transaction"
-                },
-                {
-                  "field": "payload-hash",
-                  "type": "nominal",
-                  "title": "Payload hash"
-                },
-                {
-                  "field": "payload-etag",
-                  "type": "nominal",
-                  "title": "Payload ETag"
+                  "field": "created-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Created"
                 }
               ]
             }

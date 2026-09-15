@@ -4221,10 +4221,10 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
         `${path}.format`
       ));
     }
-    if (format === 'workflow-run-url' && !path.includes('.columns[')) {
+    if (['workflow-run-url', 'shortened-url'].includes(format ?? '') && !path.includes('.columns[')) {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'workflow-run-url format may be used only on table columns.',
+        `${format} format may be used only on table columns.`,
         `${path}.format`
       ));
     }
