@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { collectDashboardRecords } from "../../dashboard/report/records.mjs";
+import { collectDashboardRecords } from "../../.github/cao/dashboard/report/records.mjs";
 
 const inventory = {
   schemaVersion: 1,

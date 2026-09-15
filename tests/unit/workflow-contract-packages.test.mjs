@@ -152,7 +152,7 @@ test("root package provides default control-repository agent context", () => {
   assert.match(agents, /Never edit them directly; change their Markdown sources and run `gh aw compile`/);
   assert.match(agents, /Treat dashboard IndexedDB as disposable, per-browser derived state/);
   assert.match(agents, /Operational workflows and package workers have no browser session and must not query it as a service or authority/);
-  assert.match(agents, /inspect IndexedDB through the canonical storage and query APIs under `dashboard\/site\/src\/data\/` or through Playwright/);
+  assert.match(agents, /inspect IndexedDB through the canonical storage and query APIs under `.github\/cao\/dashboard\/site\/src\/data\/` or through Playwright/);
   assert.match(agents, /authoritative input, adapter, normalization, canonical query, and view-payload stages/);
   assert.match(setupSkill, /no root `AGENTS\.md`[\s\S]*create `AGENTS\.md` with exactly that content/);
   assert.match(setupSkill, /preserve it unchanged unless the user explicitly approves a merge/);
@@ -277,7 +277,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /plan an explicit handoff to `.github\/skills\/create-ops-package\/SKILL\.md` after step 14/);
   assert.match(setupSkill, /Never silently default the package to Dependabot/);
   assert.match(setupSkill, /read the control repository's `.github\/workflows\/cao\.json` and the current dashboard state/);
-  assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the .github/cao/dashboard/);
+  assert.match(setupSkill, /If the policy and the live dashboard disagree, raise the drift to the user on the dashboard/);
   assert.match(createPackageSkill, /When invoked from `.github\/skills\/setup-central-agentic-ops\/SKILL\.md`/);
   assert.match(createPackageSkill, /accept the recorded desired outcome and target-repository description/);
   assert.match(createPackageSkill, /compare the intended package state with the current `.github\/workflows\/cao\.json` and the dashboard's live control-plane view/);

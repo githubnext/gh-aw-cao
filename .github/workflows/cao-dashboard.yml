@@ -9,7 +9,6 @@ on:
       - .github/workflows/cao.json
       - .github/workflows/cao-dashboard.yml
       - "*/dashboard.json"
-      - .github/cao/dashboard/**
 
 permissions:
   contents: read

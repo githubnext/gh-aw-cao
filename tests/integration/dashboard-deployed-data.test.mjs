@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import "fake-indexeddb/auto";
-import { ingestCachedGhAwJsonl } from "../../dashboard/site/src/data/ingest/coordinator.js";
+import { ingestCachedGhAwJsonl } from "../../.github/cao/dashboard/site/src/data/ingest/coordinator.js";
 import {
   DATABASE_NAME,
   deleteCanonicalDatabase,
   readCollection,
-} from "../../dashboard/site/src/data/storage/indexeddb.js";
+} from "../../.github/cao/dashboard/site/src/data/storage/indexeddb.js";
 
 const deployedLogsUrl = process.env.GH_AW_LOGS_URL
   || "https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl";

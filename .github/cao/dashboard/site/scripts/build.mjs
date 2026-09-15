@@ -11,7 +11,7 @@ const siteRoot = new URL("../", import.meta.url);
 export async function buildDashboardSite({
   destination,
   controlSettings,
-  repositoryRoot = new URL("../../../", import.meta.url),
+  repositoryRoot = new URL("../../../../../", import.meta.url),
 }) {
   if (!destination) throw new Error("dashboard destination is required");
   if (!controlSettings || typeof controlSettings !== "object" || Array.isArray(controlSettings)) {
@@ -57,7 +57,7 @@ export async function buildDashboardSite({
 }
 
 async function findPackageDashboards(repositoryPath, controlSettings) {
-  const installedDashboardsPath = join(repositoryPath, "dashboards");
+  const installedDashboardsPath = join(repositoryPath, ".github", "cao", "dashboards");
   try {
     return (await readdir(installedDashboardsPath, { withFileTypes: true }))
       .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))

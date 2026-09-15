@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { activityWorkflowStats } from '../../activity/cao.mjs';
+import { activityWorkflowStats } from '../../.github/cao/activity/cao.mjs';
 
 const FIXTURE_JSONL = path.resolve('.github/cao/dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl');
 

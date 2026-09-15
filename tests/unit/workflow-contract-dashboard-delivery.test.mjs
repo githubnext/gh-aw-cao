@@ -49,8 +49,8 @@ test("dashboard authoring corpus workflow generates only validated training exam
     /^skills:\n\s+- \.github\/skills\/dashboard-authoring\n\s+- \.github\/skills\/generate-dashboard-ir$/m,
   );
   assert.match(source, /Use the installed `generate-dashboard-ir` skill/);
-  assert.match(source, /npm ci --prefix dashboard\/site --ignore-scripts/);
-  assert.match(source, /npm --prefix dashboard\/site run validate:corpus/);
+  assert.match(source, /npm ci --prefix .github\/cao\/dashboard\/site --ignore-scripts/);
+  assert.match(source, /npm --prefix .github\/cao\/dashboard\/site run validate:corpus/);
   assert.match(source, /Scope every view to the synthetic workflow with a `workflow` filter/);
   assert.match(source, /Use an attainment-only baseline with null value and cutoff/);
   assert.match(source, /create-pull-request:[\s\S]*?allowed-files:\n\s+- "\.github\/skills\/generate-dashboard-ir\/corpus\/index\.json"\n\s+- "\.github\/skills\/generate-dashboard-ir\/corpus\/examples\/\*\.json"\n\s+- "\.github\/skills\/generate-dashboard-ir\/corpus\/examples\/\*\.dashboard\.yml"/);
@@ -59,14 +59,14 @@ test("dashboard authoring corpus workflow generates only validated training exam
   assert.match(dashboardIrSkill, /specification as the semantic authority/);
   assert.match(dashboardIrSkill, /validator entry point as the syntax and structural validation authority/);
   assert.match(dashboardIrSkill, /Do not introduce a new intermediate language/);
-  assert.match(dashboardIrSkill, /Read the specification and `dashboard\/site\/dashboard\.json`/);
+  assert.match(dashboardIrSkill, /Read the specification and `.github\/cao\/dashboard\/site\/dashboard\.json`/);
   assert.match(dashboardIrSkill, /Reuse an established built-in view pattern/);
   assert.match(dashboardIrSkill, /Return only the validated complete Dashboard Language YAML document/);
   assert.match(dashboardAuthoringSkill, /Pass the intent and operational-value contract to `generate-dashboard-ir`/);
   assert.match(dashboardAuthoringSkill, /Store an operation package's production Dashboard Language document at `<package>\/dashboard\.json`/);
-  assert.match(dashboardAuthoringSkill, /destination is `\.github\/aw\/dashboards\/<package>\.json`/);
-  assert.match(dashboardAuthoringSkill, /bundles installed `\.github\/aw\/dashboards\/\*\.json` documents into the single deployed `dashboard\.json`/);
-  assert.match(dashboardAuthoringSkill, /Do not add package pages directly to `dashboard\/site\/dashboard\.json`/);
+  assert.match(dashboardAuthoringSkill, /destination is `\.github\/cao\/dashboards\/<package>\.json`/);
+  assert.match(dashboardAuthoringSkill, /bundles installed `\.github\/cao\/dashboards\/\*\.json` documents into the single deployed `dashboard\.json`/);
+  assert.match(dashboardAuthoringSkill, /Do not add package pages directly to `.github\/cao\/dashboard\/site\/dashboard\.json`/);
   assert.doesNotMatch(dashboardAuthoringSkill, /Select only the Dashboard Language sources and fields/);
   assert.doesNotMatch(dashboardAuthoringSkill, /corpus\/index\.json/);
   assert.match(dashboardIrSkill, /## Corpus procedure/);
@@ -81,9 +81,9 @@ test("dashboard CI runs the package quality gates", () => {
   const lighthousePerformance = jobs.get("lighthouse-performance");
   const lighthouseComment = jobs.get("lighthouse-comment");
 
-  assert.match(source, /dashboard\/site\/\*\*/);
-  assert.match(source, /working-directory: dashboard\/site/);
-  assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
+  assert.match(source, /.github\/cao\/dashboard\/site\/\*\*/);
+  assert.match(source, /working-directory: .github\/cao\/dashboard\/site/);
+  assert.match(source, /cache-dependency-path: .github\/cao\/dashboard\/site\/package-lock\.json/);
   assert.deepEqual(
     [...jobs.keys()],
     ["lint-unit", "playwright-integration", "ingestion-scale", "lighthouse-performance", "lighthouse-comment"]
@@ -102,7 +102,7 @@ test("dashboard CI runs the package quality gates", () => {
   assert.doesNotMatch(lintUnit.block, /playwright|test:e2e/i);
   assert.match(playwrightIntegration.block, /uses: actions\/cache@/);
   assert.match(playwrightIntegration.block, /path: ~\/\.cache\/ms-playwright/);
-  assert.match(playwrightIntegration.block, /hashFiles\('dashboard\/site\/package-lock\.json'\)/);
+  assert.match(playwrightIntegration.block, /hashFiles\('.github\/cao\/dashboard\/site\/package-lock\.json'\)/);
   assert.match(playwrightIntegration.block, /npx playwright install --with-deps chromium/);
   assert.match(playwrightIntegration.block, /run: npm run test:e2e/);
   assert.doesNotMatch(playwrightIntegration.block, /run: npm (?:run (?:typecheck|lint)|test)$/m);
@@ -111,7 +111,7 @@ test("dashboard CI runs the package quality gates", () => {
   assert.doesNotMatch(lighthousePerformance.block, /pull-requests: write/);
   assert.match(lighthousePerformance.block, /uses: actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/);
   assert.match(lighthousePerformance.block, /name: dashboard-lighthouse-performance/);
-  assert.match(lighthousePerformance.block, /path: dashboard\/site\/test-results\/lighthouse\//);
+  assert.match(lighthousePerformance.block, /path: .github\/cao\/dashboard\/site\/test-results\/lighthouse\//);
   assert.match(lighthousePerformance.block, /if: always\(\)/);
   assert.match(
     lighthouseComment.block,
@@ -174,11 +174,10 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
 
   assert.ok(rootPackage.includes.includes(".github/cao/dashboard/aw.yml"));
   assert.match(dashboardManifest, /name: CAO Dashboard/);
-  assert.match(rootManifest, /^\s+- dashboard\/aw\.yml$/m);
+  assert.match(rootManifest, /^\s+- \.github\/cao\/dashboard\/aw\.yml$/m);
   assert.match(dashboardManifest, /^\s+- \.github\/workflows\/cao-dashboard\.yml$/m);
   assert.doesNotMatch(dashboardManifest, /cao-dashboard-build|dispatch-workflow/);
-  assert.doesNotMatch(dashboardManifest, /destination: \.github\/cao\//);
-  assert.match(dashboardManifest, /source: local-server\.mjs\n\s+destination: \.github\/aw\/dashboard\/local-server\.mjs/);
+  assert.match(dashboardManifest, /source: local-server\.mjs\n\s+destination: \.github\/cao\/dashboard\/local-server\.mjs/);
   assert.match(canonicalPolicyResolver, /export function parsePolicy/);
   assert.match(deployedWorkflows, /REPORT_RUN_WINDOW_DAYS/);
   assert.match(activityWorkflow, /REPORT_RUN_WINDOW_DAYS: "30"/);
@@ -215,7 +214,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.equal((dashboardWorkflow.match(/actions\/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3/g) || []).length, 7);
   assert.match(dashboardWorkflow, /Install dashboard build dependencies[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'ci'[\s\S]*?'--prefix'[\s\S]*?process\.env\.DASHBOARD_SITE_ROOT[\s\S]*?'--ignore-scripts'/);
   assert.match(dashboardWorkflow, /Assemble Dashboard Language site[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'--prefix'[\s\S]*?process\.env\.DASHBOARD_SITE_ROOT[\s\S]*?'run'[\s\S]*?'build'[\s\S]*?process\.env\.REPORT_OUTPUT[\s\S]*?controlSettings/);
-  assert.match(dashboardWorkflow, /core\.info\('Resolved dashboard source layout: installed'\)[\s\S]*?core\.info\('Resolved dashboard source layout: source'\)/);
+  assert.match(dashboardWorkflow, /core\.info\('Resolved dashboard source layout: unified'\)/);
   assert.match(dashboardWorkflow, /core\.info\(`Standalone Pages deployment: \$\{deploy \? 'enabled' : 'disabled'\}`\)/);
   assert.match(dashboardWorkflow, /core\.info\('Dashboard build dependencies installed'\)[\s\S]*?core\.info\(`Restored activity data validation completed \(\$\{activityFiles\.length\} files\)`\)[\s\S]*?core\.info\('Activity database health assessment completed'\)[\s\S]*?core\.info\('Dashboard site build completed'\)[\s\S]*?core\.info\(`Dashboard artifact assembly completed \(\$\{collectedFiles\.length\} collected data files\)`\)/);
   assert.doesNotMatch(dashboardWorkflow, /core\.(?:info|error)\(`[^`]*\$\{activityFile\}/);
@@ -238,10 +237,10 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardDeployJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?Configure Pages[\s\S]*?Upload Pages artifact[\s\S]*?Deploy Pages/);
   assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
-  assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
+  assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/cao\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
   assert.doesNotMatch(dashboardWorkflow, /workflow_run:/);
   assert.doesNotMatch(dashboardWorkflow, /github\.event\.workflow_run\.conclusion == 'success'/);
-  assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
+  assert.match(dashboardWorkflow, /\.github\/cao\/dashboards\/\*\*/);
   assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
   assert.match(dashboardWorkflow, /github\.event_name == 'push' && github\.ref_name == github\.event\.repository\.default_branch/);
   assert.match(dashboardWorkflow, /enablement: false/);
@@ -276,11 +275,11 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(activityWorkflow, /Hash activity payloads[\s\S]*?hash-payloads[\s\S]*?--input "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/);
   assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/g) || []).length, 3);
   assert.doesNotMatch(activityCacheJob, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
-  assert.match(activityManifest, /source: cao\.mjs[\s\S]*?destination: \.github\/aw\/activity\/cao\.mjs/);
-  assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/package\.json/);
-  assert.match(dashboardManifest, /source: site\/src\/main\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/main\.js/);
-  assert.match(dashboardManifest, /source: site\/src\/components\/refresh-error\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/components\/refresh-error\.js/);
-  assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
+  assert.match(activityManifest, /source: cao\.mjs[\s\S]*?destination: \.github\/cao\/activity\/cao\.mjs/);
+  assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/cao\/dashboard\/site\/src\/data\/package\.json/);
+  assert.match(dashboardManifest, /source: site\/src\/main\.js[\s\S]*?destination: \.github\/cao\/dashboard\/site\/src\/main\.js/);
+  assert.match(dashboardManifest, /source: site\/src\/components\/refresh-error\.js[\s\S]*?destination: \.github\/cao\/dashboard\/site\/src\/components\/refresh-error\.js/);
+  assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/cao\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
   assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_CACHE/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
@@ -302,11 +301,11 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(operationalValues, /REPORT_GH_AW_LOGS is required/);
   assert.match(operationalValues, /run\?\.graders\?\.results/);
   assert.doesNotMatch(operationalValues, /runGhAw|gh run|gh aw logs|graders", "operational-value", "report"/);
-  assert.match(dashboardManifest, /source: site\/index\.html\n\s+destination: \.github\/aw\/dashboard\/site\/index\.html/);
-  assert.match(dashboardManifest, /source: site\/favicon\.svg\n\s+destination: \.github\/aw\/dashboard\/site\/favicon\.svg/);
-  assert.match(dashboardManifest, /source: site\/dashboard\.json\n\s+destination: \.github\/aw\/dashboard\/site\/dashboard\.json/);
-  assert.match(dashboardManifest, /source: site\/src\/presenter\.js\n\s+destination: \.github\/aw\/dashboard\/site\/src\/presenter\.js/);
-  assert.match(dashboardManifest, /source: site\/src\/loading-progress\.js\n\s+destination: \.github\/aw\/dashboard\/site\/src\/loading-progress\.js/);
+  assert.match(dashboardManifest, /source: site\/index\.html\n\s+destination: \.github\/cao\/dashboard\/site\/index\.html/);
+  assert.match(dashboardManifest, /source: site\/favicon\.svg\n\s+destination: \.github\/cao\/dashboard\/site\/favicon\.svg/);
+  assert.match(dashboardManifest, /source: site\/dashboard\.json\n\s+destination: \.github\/cao\/dashboard\/site\/dashboard\.json/);
+  assert.match(dashboardManifest, /source: site\/src\/presenter\.js\n\s+destination: \.github\/cao\/dashboard\/site\/src\/presenter\.js/);
+  assert.match(dashboardManifest, /source: site\/src\/loading-progress\.js\n\s+destination: \.github\/cao\/dashboard\/site\/src\/loading-progress\.js/);
   for (const assetName of ["data-operations.js", "data-processor.js", "data-worker.js"]) {
     assert.match(dashboardManifest, new RegExp(`source: site/src/${assetName.replace(".", "\\.")}\\n\\s+destination: \\.github/cao/dashboard/site/src/${assetName.replace(".", "\\.")}`));
   }
@@ -371,7 +370,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
   assert.doesNotMatch(workflow, /github-script|ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
-  assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);
+  assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity_root=\.github\/cao\/activity[\s\S]*?node "\$activity_root\/inventory-sources\.mjs"/);
   assert.match(workflow, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
@@ -391,7 +390,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-pages.yml")), false);
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-build.yml")), false);
 
-  assert.doesNotMatch(workflow, /dashboard-build|needs: .github/cao/dashboard/);
+  assert.doesNotMatch(workflow, /dashboard-build|needs: \.github\/cao\/dashboard/);
   assert.match(workflow, /name: Restore node_modules[\s\S]*?id: node-modules-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ runner\.os \}\}-node-24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/);
   assert.match(workflow, /name: Install dependencies\n\s+if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'\n\s+run: npm ci/);
   assert.match(workflow, /name: Save node_modules[\s\S]*?if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ steps\.node-modules-cache\.outputs\.cache-primary-key \}\}/);
@@ -411,8 +410,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.match(dashboardWorkflow, /workflow_dispatch:/);
   assert.match(dashboardWorkflow, /const collectedFiles = \[[\s\S]*?'gh-aw-logs\.jsonl'[\s\S]*?fs\.copyFileSync/);
   assert.match(dashboardWorkflow, /name: central-agentic-ops-dashboard/);
-  assert.match(dashboardWorkflow, /core\.exportVariable\('DASHBOARD_LAYOUT', 'source'\)/);
-  assert.match(dashboardWorkflow, /core\.exportVariable\('DASHBOARD_LAYOUT', 'installed'\)/);
+  assert.match(dashboardWorkflow, /core\.exportVariable\('DASHBOARD_LAYOUT', 'unified'\)/);
   assert.match(dashboardWorkflow, /push:|deploy-pages|upload-pages-artifact/);
   assert.match(astroConfig, /base: "\/gh-aw-cao"/);
   assert.match(astroConfig, /rewriteDocsLinks, \{ base: "\/gh-aw-cao" \}/);
@@ -489,7 +487,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "central-agentic-ops-inventory-"));
   const outputPath = join(temporaryRoot, "control-plane.json");
   try {
-    execFileSync(process.execPath, [join(root, "activity", "inventory.mjs")], {
+    execFileSync(process.execPath, [join(root, ".github", "cao", "activity", "inventory.mjs")], {
       env: { ...process.env, REPORT_ROOT: root, REPORT_INVENTORY: outputPath },
     });
     const inventory = JSON.parse(readFileSync(outputPath, "utf8"));

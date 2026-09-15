@@ -4,8 +4,8 @@ import {
   buildDashboardLanguageSources,
   detectionObservationRows,
   transactionLogRows,
-} from "../../dashboard/report/dashboard-language-sources.mjs";
-import { buildInventoryDashboardSources } from "../../activity/inventory-sources.mjs";
+} from "../../.github/cao/dashboard/report/dashboard-language-sources.mjs";
+import { buildInventoryDashboardSources } from "../../.github/cao/activity/inventory-sources.mjs";
 
 function detectionRun(runId, verdict, overrides = {}) {
   return {

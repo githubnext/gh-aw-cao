@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { parse } from "yaml";
-import { buildDashboardSite } from "../../dashboard/site/scripts/build.mjs";
+import { buildDashboardSite } from "../../.github/cao/dashboard/site/scripts/build.mjs";
 
 function localDependencies(source) {
   const dependencies = [];

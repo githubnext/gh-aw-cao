@@ -10,7 +10,7 @@ export const packageDashboardNames = [
   'optimization'
 ];
 
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 
 export const packageDashboardSources = packageDashboardNames.map((packageName) => (
   readFileSync(resolve(repositoryRoot, packageName, 'dashboard.json'), 'utf8')

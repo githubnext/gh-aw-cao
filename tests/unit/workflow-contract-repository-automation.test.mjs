@@ -67,8 +67,8 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   const contracts = jobs.get("test")?.block ?? "";
   const packageLifecycle = jobs.get("package-lifecycle")?.block ?? "";
 
-  assert.match(source, /pull_request:\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
-  assert.match(source, /push:\n    branches: \[main\]\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
+  assert.match(source, /pull_request:\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - .github\/cao\/dashboard\/site\/\*\*/);
+  assert.match(source, /push:\n    branches: \[main\]\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - .github\/cao\/dashboard\/site\/\*\*/);
   assert.match(contracts, /npm run check/);
   assert.doesNotMatch(contracts, /GH_TOKEN|CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE|test:package-lifecycle/);
   assert.match(packageLifecycle, /gh api rate_limit --jq '\.resources\.core\.remaining'/);

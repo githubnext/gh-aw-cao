@@ -454,8 +454,8 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.equal((dashboardWorkflow.match(/actions\/github-script@[0-9a-f]{40}/g) || []).length, 7);
     assert.match(dashboardWorkflow, /Standalone Pages deployment:[\s\S]*?Dashboard artifact assembly completed/);
     assert.doesNotMatch(dashboardWorkflow, /schedule:/);
-    assert.match(dashboardWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
-    assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
+    assert.match(dashboardWorkflow, /push:[\s\S]*?\.github\/cao\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
+    assert.match(dashboardWorkflow, /\.github\/cao\/dashboards\/\*\*/);
     assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
     assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
 

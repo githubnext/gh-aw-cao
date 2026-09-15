@@ -69,12 +69,12 @@ test("SelfCare Primer brand checker audits the dashboard against retrieved guida
   assert.match(source, /skip-if-match: 'is:pr is:open in:title "Primer branding"'/);
   assert.match(source, /@primer\/brand-mcp@0\.74\.0/);
   assert.match(source, /cli-proxy: true/);
-  assert.match(source, /dashboard\/site\/src\/styles\.js/);
-  assert.match(source, /dashboard\/site\/src\/\*\*\/\*\.js/);
+  assert.match(source, /.github\/cao\/dashboard\/site\/src\/styles\.js/);
+  assert.match(source, /.github\/cao\/dashboard\/site\/src\/\*\*\/\*\.js/);
   assert.match(source, /uses: actions\/cache@/);
   assert.match(source, /path: ~\/\.cache\/ms-playwright/);
-  assert.match(source, /npm exec --prefix dashboard\/site -- playwright install --with-deps chromium/);
-  assert.match(source, /npm --prefix dashboard\/site run test:e2e/);
+  assert.match(source, /npm exec --prefix .github\/cao\/dashboard\/site -- playwright install --with-deps chromium/);
+  assert.match(source, /npm --prefix .github\/cao\/dashboard\/site run test:e2e/);
   assert.match(source, /create-pull-request:\n\s+target-repo:.*\n\s+title-prefix: "Primer branding: "\n\s+draft: true/);
   assert.match(source, /Always finish by calling exactly one safe-output tool/);
   assert.match(source, /no improvement is needed for any other reason, call `noop` once with a concise plain-text reason/);
@@ -93,7 +93,7 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /\.github\/skills\/migrate-dashboard-view/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /\.github\/skills\/reactive-ui\/SKILL\.md/);
-  assert.match(source, /dashboard\/site\/src\/reactive\.js/);
+  assert.match(source, /.github\/cao\/dashboard\/site\/src\/reactive\.js/);
   assert.match(source, /stable keyed rendering/);
   assert.match(source, /state`, `derived`, `effect`, `batch`, `onCleanup`/);
   assert.match(source, /migrate one JavaScript-produced view source to a request-scoped Dashboard Language query/);
@@ -101,7 +101,7 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /Define the query in `dashboard\.queries`/);
   assert.match(source, /data-processor\.js` and `data-worker\.js/);
   assert.match(source, /Run the focused impacted JavaScript tests/);
-  assert.match(source, /npm --prefix dashboard\/site run lint/);
+  assert.match(source, /npm --prefix .github\/cao\/dashboard\/site run lint/);
   assert.match(source, /npm run docs:build/);
   assert.match(source, /Call `noop` exactly once when no actionable non-duplicate candidate exists/);
   assert.match(source, /draft: true/);
@@ -116,11 +116,11 @@ test("SelfCare dashboard debug logging worker preserves the logging privacy boun
   assert.match(source, /^name: "SelfCare \/ Dashboard Debug Logging"$/m);
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-debug-logging/);
   assert.match(source, /safe_output_mode` is `live`/);
-  assert.match(source, /Use `createDebug` from `dashboard\/site\/src\/debug\.js`/);
+  assert.match(source, /Use `createDebug` from `.github\/cao\/dashboard\/site\/src\/debug\.js`/);
   assert.match(source, /Never log secrets, tokens, credentials, prompts, raw records, payload bodies/);
   assert.match(source, /disabled unless the `debug` query argument selects the category/);
-  assert.match(source, /dashboard\/site\/src\/\*\*\/\*\.js/);
-  assert.match(source, /npm --prefix dashboard\/site run typecheck/);
+  assert.match(source, /.github\/cao\/dashboard\/site\/src\/\*\*\/\*\.js/);
+  assert.match(source, /npm --prefix .github\/cao\/dashboard\/site run typecheck/);
   assert.match(source, /Call `noop` exactly once/);
   assert.match(source, /draft: true/);
   assert.match(compiled, /self-care-dashboard-debug-logging/);
@@ -192,8 +192,8 @@ test("SelfCare dashboard performance worker selects one highest-ROI small win", 
   assert.match(source, /labels: \[self-care, self-care:dashboard-performance\]/);
   assert.match(source, /title-prefix: "\[self-care:dashboard-performance\] "/);
   assert.match(source, /draft: true/);
-  assert.match(source, /dashboard\/site\/index\.html/);
-  assert.doesNotMatch(source, /allowed-files:[\s\S]*dashboard\/site\/test\/performance/);
+  assert.match(source, /.github\/cao\/dashboard\/site\/index\.html/);
+  assert.doesNotMatch(source, /allowed-files:[\s\S]*.github\/cao\/dashboard\/site\/test\/performance/);
   for (const persona of ["CFO", "CTO", "CSO"]) {
     assert.match(source, new RegExp(persona));
   }
@@ -269,10 +269,10 @@ test("SelfCare code improvement preserves its focused dashboard component missio
   assert.match(source, /package: self-care/);
   assert.match(source, /worker: code-improvement/);
   assert.match(source, /safe_output_mode` is `live`/);
-  assert.match(source, /allowed-files:\n\s+- "dashboard\/site\/src\/\*\.js"\n\s+- "dashboard\/site\/src\/\*\*\/\*\.js"\n\s+- "dashboard\/site\/test\/\*\*\/\*\.js"/);
+  assert.match(source, /allowed-files:\n\s+- ".github\/cao\/dashboard\/site\/src\/\*\.js"\n\s+- ".github\/cao\/dashboard\/site\/src\/\*\*\/\*\.js"\n\s+- ".github\/cao\/dashboard\/site\/test\/\*\*\/\*\.js"/);
   assert.match(source, /uses: actions\/cache@/);
   assert.match(source, /path: ~\/\.cache\/ms-playwright/);
-  assert.match(source, /npm exec --prefix dashboard\/site -- playwright install --with-deps chromium/);
+  assert.match(source, /npm exec --prefix .github\/cao\/dashboard\/site -- playwright install --with-deps chromium/);
   assert.equal(source.split(liveGuard).length - 1, 4);
 });
 
@@ -284,15 +284,15 @@ test("SelfCare view reuse worker generalizes one Dashboard Language view", () =>
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-language-refactor/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /branches on a built-in page identity, route, view ID, or one-off element name/);
-  assert.match(source, /dashboard\/site\/dashboard\.json/);
+  assert.match(source, /.github\/cao\/dashboard\/site\/dashboard\.json/);
   assert.match(source, /docs\/dashboard-language-specification\.md/);
-  assert.match(source, /dashboard\/site\/src\/specification\.js/);
+  assert.match(source, /.github\/cao\/dashboard\/site\/src\/specification\.js/);
   assert.match(source, /at least one additional existing or test-fixture composition/);
-  assert.match(source, /Update both `dashboard\/aw\.yml` and root `aw\.yml` only when a new runtime file must be packaged/);
-  assert.match(source, /npm --prefix dashboard\/site run validate:corpus/);
+  assert.match(source, /Update both `\.github\/cao\/dashboard\/aw\.yml` and root `aw\.yml` only when a new runtime file must be packaged/);
+  assert.match(source, /npm --prefix .github\/cao\/dashboard\/site run validate:corpus/);
   assert.match(source, /uses: actions\/cache@/);
   assert.match(source, /path: ~\/\.cache\/ms-playwright/);
-  assert.match(source, /npm exec --prefix dashboard\/site -- playwright install --with-deps chromium/);
+  assert.match(source, /npm exec --prefix .github\/cao\/dashboard\/site -- playwright install --with-deps chromium/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-language-refactor\]/);
   assert.match(source, /title-prefix: "\[self-care:dashboard-language-refactor\] "/);
   assert.equal(source.split(liveGuard).length - 1, 4);

@@ -1,6 +1,6 @@
-import { deriveDataHealthSources } from "../../dashboard/site/src/data-health.js";
+import { deriveDataHealthSources } from "../../.github/cao/dashboard/site/src/data-health.js";
 import { readFileSync } from "node:fs";
-import { processDataRequest } from "../../dashboard/site/src/data-worker.js";
+import { processDataRequest } from "../../.github/cao/dashboard/site/src/data-worker.js";
 
 const dashboard = JSON.parse(readFileSync(
   new URL("../../.github/cao/dashboard/site/dashboard.json", import.meta.url),

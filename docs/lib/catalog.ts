@@ -29,12 +29,22 @@ export type CatalogEntry = {
   ReadmeContent?: PackageReadme["Content"];
 };
 
-const manifests = import.meta.glob<string>("../../*/aw.{yml,yaml}", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-});
-const readmes = import.meta.glob<PackageReadme>("../../*/README.md", { eager: true });
+const manifests = {
+  ...import.meta.glob<string>("../../*/aw.{yml,yaml}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+  ...import.meta.glob<string>("../../.github/cao/*/aw.{yml,yaml}", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+};
+const readmes = {
+  ...import.meta.glob<PackageReadme>("../../*/README.md", { eager: true }),
+  ...import.meta.glob<PackageReadme>("../../.github/cao/*/README.md", { eager: true }),
+};
 const rootManifest = parse(rootManifestSource) as PackageManifest;
 
 function requiredString(value: unknown, field: string, manifestPath: string): string {
@@ -72,7 +82,7 @@ function builtinPackageSlugs(root: PackageManifest): Set<string> {
   const includes = workflowList(root.includes, "../../aw.yml");
   return new Set(
     includes
-      .map((entry) => entry.match(/^([^/]+)\/aw\.ya?ml$/)?.[1])
+      .map((entry) => entry.match(/^(?:\.github\/cao\/)?([^/]+)\/aw\.ya?ml$/)?.[1])
       .filter((slug): slug is string => Boolean(slug)),
   );
 }
@@ -87,7 +97,7 @@ const packageEntries: CatalogEntry[] = Object.entries(manifests)
     if (!manifestFile) throw new Error(`Could not derive a manifest filename from ${manifestPath}`);
 
     const manifest = parse(source) as PackageManifest;
-    const readmePath = `../../${slug}/README.md`;
+    const readmePath = manifestPath.replace(/aw\.ya?ml$/, "README.md");
     const readme = readmes[readmePath];
 
     return {
@@ -100,7 +110,7 @@ const packageEntries: CatalogEntry[] = Object.entries(manifests)
       experimental: optionalBoolean(manifest.experimental, "experimental", manifestPath),
       includes: workflowList(manifest.includes, manifestPath),
       manifestFile,
-      readmePath: readme ? `${slug}/README.md` : undefined,
+      readmePath: readme ? readmePath.replace(/^\.\.\/\.\.\//, "") : undefined,
       ReadmeContent: readme?.Content,
     };
   });

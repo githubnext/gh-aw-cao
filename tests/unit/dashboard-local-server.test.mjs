@@ -10,7 +10,7 @@ import {
   isWithinCopilotFileRoots,
   shellPermissionRejection,
   startDashboardServer,
-} from "../../dashboard/local-server.mjs";
+} from "../../.github/cao/dashboard/local-server.mjs";
 
 const dashboard = (pageId, cliActions) => JSON.stringify({
   "language-version": "0.1.0",
@@ -231,7 +231,7 @@ test("local dashboard server composes package dashboards and reloads after updat
       await mkdir(path.join(root, ".github", "skills"), { recursive: true });
       await mkdir(path.join(root, ".agents", "skills"), { recursive: true });
       try {
-        const { repositorySkillDirectories } = await import("../../dashboard/local-server.mjs");
+        const { repositorySkillDirectories } = await import("../../.github/cao/dashboard/local-server.mjs");
         assert.deepEqual(await repositorySkillDirectories(root), [
           path.join(root, ".github", "skills"),
           path.join(root, ".agents", "skills"),

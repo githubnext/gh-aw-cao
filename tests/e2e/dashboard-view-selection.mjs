@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
+import { composeDashboardDocuments } from "../../.github/cao/dashboard/report/compose-dashboard-documents.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const primaryDashboardPath = ".github/cao/dashboard/site/dashboard.json";

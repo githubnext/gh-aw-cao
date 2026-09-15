@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { readRunSecurityTelemetry } from "../../dashboard/report/aic-usage.mjs";
+import { readRunSecurityTelemetry } from "../../.github/cao/dashboard/report/aic-usage.mjs";
 
 test("dashboard telemetry extracts bounded security aggregates without retaining denial details", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-security-"));

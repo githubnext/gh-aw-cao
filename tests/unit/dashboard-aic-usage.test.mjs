@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import test from "node:test";
-import { readRunTimeline } from "../../dashboard/report/aic-usage.mjs";
+import { readRunTimeline } from "../../.github/cao/dashboard/report/aic-usage.mjs";
 
 const execFileAsync = promisify(execFile);
 

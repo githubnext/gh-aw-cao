@@ -90,7 +90,7 @@ MUST determine availability, completeness, freshness, and scope for their own
 use and MUST NOT infer those properties from row counts.
 
 The concrete cache file and identity rule are defined by
-[`.github/cao/activity/README.md`](../activity/README.md). Changing the file or identity
+[`.github/cao/activity/README.md`](../.github/cao/activity/README.md). Changing the file or identity
 rule is a contract change and MUST be reviewed with affected consumers. Any
 internal wildcard shard directory used to carry forward cache entries across
 runs is an implementation detail of that cache file; it MUST NOT be treated as
