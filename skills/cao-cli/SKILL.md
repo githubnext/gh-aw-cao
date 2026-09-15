@@ -51,6 +51,15 @@ cao add githubnext/gh-aw-cao/dependabot
 `cao add` forwards remaining arguments to `gh aw add`, preserves operator-owned package
 settings, and does not copy live mode or broader rollout into the policy. If the policy is
 missing, `cao add` creates the same minimal policy as `cao init` after the package installs.
+Upgrade `gh-aw` to the policy minimum, update every installed package, and refresh CAO
+worker declarations with:
+
+```bash
+cao update
+```
+
+`cao update` forwards remaining arguments to `gh aw update`, preserves operator-owned
+package settings, and does not enable live mode or broaden repository scope.
 
 ### 1. Local development mode
 

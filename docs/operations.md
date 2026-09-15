@@ -305,10 +305,10 @@ Update package-owned workflows and runtime resources through a reviewable update
 From the control repository:
 
 ```bash
-gh aw update https://github.com/githubnext/gh-aw-cao --major --cool-down 0 --create-pull-request
+node .github/aw/activity/cao.mjs update --major --cool-down 0
 ```
 
-The command resolves published GitHub releases, updates the installed CAO package to the latest compatible release, and opens a pull request containing its package-owned workflows, generated locks, shared runtime modules, and ownership records. Do not point updates at `main`, fetch control files separately, or copy them with a script. Review the proposal as one atomic runtime revision. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
+The command installs or upgrades `gh-aw` to the minimum version declared by `.github/workflows/cao.json`, resolves published GitHub releases, updates each installed CAO package to its latest compatible release, and refreshes CAO package worker declarations in policy without widening operator-owned rollout settings. Commit the resulting package-owned workflows, generated locks, shared runtime modules, ownership records, and policy declaration refresh as one atomic runtime revision. Do not point updates at `main`, fetch control files separately, or copy them with a script. Parse `.github/workflows/cao.json`, reject unresolved placeholders, and run one bounded review target before restoring scheduled or live operation. Never edit generated `.lock.yml` files or `.github/aw/packages/*.json` ownership records by hand.
 
 Existing installations whose package records predate the package-owned `.github/workflows/shared/` runtime must update before running CAO so `control.mjs` and `policy.mjs` are materialized beside `control.md`. Admission intentionally fails closed when those installed files are missing.
 
