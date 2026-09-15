@@ -465,7 +465,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders agent and model summaries as one full-view lazy table', async () => {
+  it('renders agent and model distribution before the full-view lazy table', async () => {
     const metadata = {
       'source-id': 'usage-fixture',
       'source-kind': 'fixture',
@@ -502,7 +502,9 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'engines-models');
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelector('[data-chart-widget]')).toBeNull();
+    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="engines-models-distribution"] + [data-view-id="engines-models-usage"]')).not.toBeNull();
+    expect(page?.querySelector('h1')?.textContent).toContain('Models & Agents');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('gpt-5.6-sol');
     expect(page?.textContent).toContain('claude-sonnet-5');
@@ -1103,6 +1105,7 @@ describe('presenter built-in and custom pages', () => {
       'Repositories',
       'Packages',
       'Settings',
+      'Models & Agents',
       'Workflows',
       'Runs',
       'Firewall',
@@ -1129,7 +1132,6 @@ describe('presenter built-in and custom pages', () => {
       'Safe Outputs',
       'Detection',
       'Dispatches',
-      'Models & agents',
       'UK AI advisory',
       'CAO Evolution',
       'Dependabot',
@@ -1466,6 +1468,7 @@ describe('presenter built-in and custom pages', () => {
       'Repositories',
       'Packages',
       'Settings',
+      'Models & Agents',
       'Workflows',
       'Runs',
       'Firewall',
@@ -1492,7 +1495,6 @@ describe('presenter built-in and custom pages', () => {
       'Safe Outputs',
       'Detection',
       'Dispatches',
-      'Models & agents',
       'UK AI advisory',
       'CAO Evolution',
       'Dependabot',
