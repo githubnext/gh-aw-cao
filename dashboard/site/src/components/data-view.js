@@ -18,6 +18,7 @@ import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 import { renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
 import { effect, onCleanup, state } from '../reactive.js';
+import { createDebug } from '../debug.js';
 
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
 const ENTITY_LINK_FIELDS = {
@@ -32,6 +33,7 @@ const RUN_LINK_FIELD = 'run-link';
 const MAX_INCREMENTAL_SWIMLANE_RENDERS = 10;
 const REPOSITORY_LINK_DISPLAY = 'repository-link';
 const WORKFLOW_LINK_DISPLAY = 'workflow-link';
+const debugChart = createDebug('render:chart');
 const GITHUB_ENTITY_DISPLAY_FIELDS = {
   [REPOSITORY_LINK_DISPLAY]: 'repository',
   [WORKFLOW_LINK_DISPLAY]: 'workflow'
@@ -768,6 +770,11 @@ function renderChartView(context) {
           h('div', { className: 'chart-horizontal-layout' }, ...visualization)
         )
       );
+    } else {
+      debugChart('Horizontal layout requires title and visualization regions in source order.', {
+        title,
+        childCount: children.length
+      });
     }
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
