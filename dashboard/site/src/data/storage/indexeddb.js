@@ -102,6 +102,21 @@ function transactionDone(transaction) {
 }
 
 /**
+ * @param {unknown} existing
+ * @param {number} now
+ */
+function ingestionLockLease(existing, now) {
+  if (!existing || typeof existing !== 'object') return { active: false, expiresAt: null };
+  const expiresAt = Number(/** @type {{ expiresAt?: unknown }} */ (existing).expiresAt);
+  return {
+    active: Number.isFinite(expiresAt)
+      && expiresAt > now
+      && expiresAt <= now + INGESTION_LOCK_LEASE_MS,
+    expiresAt: Number.isFinite(expiresAt) ? expiresAt : null
+  };
+}
+
+/**
  * @param {IDBObjectStore} store
  * @param {string} name
  * @param {string | string[]} keyPath
@@ -438,8 +453,16 @@ export async function withCanonicalIngestionLock(indexedDB, task) {
       const store = transaction.objectStore(TRANSACTION_STORE);
       const existing = await requestResult(store.get(INGESTION_LOCK_ID));
       const now = Date.now();
-      acquired = !existing || Number(existing.expiresAt) <= now;
+      const lease = ingestionLockLease(existing, now);
+      acquired = !lease.active;
       if (acquired) {
+        if (existing) {
+          debug('replacing stale canonical ingestion lock', {
+            heldBy: existing?.owner ?? null,
+            expiresAt: lease.expiresAt,
+            waitedMs: now - startedAt
+          });
+        }
         store.put({
           id: INGESTION_LOCK_ID,
           kind: 'canonical-ingestion-lock',
