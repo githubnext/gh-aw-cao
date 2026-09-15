@@ -214,6 +214,11 @@ test("SelfCare experimental views worker exhaustively checks editable views acro
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: experimental-views/);
   assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-experimental-views" in:body'/);
   assert.match(source, /browsers: \[chromium, webkit\]/);
+  assert.match(source, /Require `\.github\/workflows\/cao\.json` to set `control-plane\.web\.experimental` to the Boolean `true`/);
+  assert.match(source, /every source experimental navigation section and page to remain in the assembled `dashboard\.json`/);
+  assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/dashboard\.json/);
+  assert.match(source, /Navigate every deployed experimental route/);
+  assert.match(source, /Do not infer availability from the policy setting alone/);
   assert.match(source, /Operations page shell, every editable view on that page/);
   assert.match(source, /navigation sections with `experimental: true`/);
   assert.match(source, /Ignore every view with `locked: true`/);
