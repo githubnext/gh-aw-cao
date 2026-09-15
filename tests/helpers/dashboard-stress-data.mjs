@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { once } from "node:events";
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
@@ -10,6 +10,7 @@ const DEFAULT_SAMPLE = resolve("dashboard/site/test/fixtures/gh-aw-logs/cached-v
 // Keep this aligned with the unconditional run event emitters in the gh-aw
 // logs adapter: started, agent session, completed, usage, and working set.
 const BASE_DERIVED_EVENTS = 5;
+const MAX_DERIVED_EVENTS = 100;
 const MAX_TEMPLATES = 256;
 const RUN_CONCLUSIONS = new Set([
   "action_required",
@@ -319,6 +320,9 @@ export async function generateDashboardStressData({
   if (options.derivedEventsPerRun < BASE_DERIVED_EVENTS) {
     throw new TypeError(`derivedEventsPerRun must be at least ${BASE_DERIVED_EVENTS}.`);
   }
+  if (options.derivedEventsPerRun > MAX_DERIVED_EVENTS) {
+    throw new TypeError(`derivedEventsPerRun must be at most ${MAX_DERIVED_EVENTS}.`);
+  }
   if (!Number.isFinite(options.startedAt)) throw new TypeError("startedAt must be a valid timestamp.");
 
   const inspected = await inspectSamples(samplePath);
@@ -357,7 +361,7 @@ export async function generateDashboardStressData({
 
   const manifest = {
     schemaVersion: 1,
-    sample: basename(samplePath),
+    sample: "schema-v2-run-data",
     sampleProfile: inspected.profile,
     repositories: options.repositories,
     runs: options.runs,

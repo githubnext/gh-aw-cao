@@ -131,6 +131,17 @@ test("stress shards preserve observed operational shapes without copying identit
         assert.equal(JSON.stringify(generated).includes("real-tool"), false);
         assert.equal(JSON.stringify(generated).includes("observed-model"), false);
         assert.equal(JSON.stringify(generated).includes("observed-engine"), false);
+        assert.equal(manifest.sample, "schema-v2-run-data");
+        await assert.rejects(
+          generateDashboardStressData({
+            outputDirectory: join(root, "too-many-events"),
+            samplePath: sampleDirectory,
+            repositories: 1,
+            runs: 1,
+            derivedEventsPerRun: 101,
+          }),
+          /derivedEventsPerRun must be at most 100/,
+        );
       } finally {
         await rm(root, { recursive: true, force: true });
       }

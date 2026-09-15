@@ -287,7 +287,7 @@ test("massive shards populate canonical storage within restricted memory", async
     contentType: "application/json",
   });
 
-  expect(result.returnedRuns).toBe(100);
+  expect(result.returnedRuns).toBe(Math.min(100, runs));
   expect(generationMemory.peakHighWaterBytes).toBeLessThanOrEqual(maximumGeneratorRssMb * megabyte);
   expect(ingestionMemory.peakHighWaterBytes).toBeLessThanOrEqual(maximumIngestionRssMb * megabyte);
   expect(peakPageHeapBytes).toBeLessThanOrEqual(maximumPageHeapMb * megabyte);
