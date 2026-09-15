@@ -135,9 +135,9 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
   assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
-  assert.match(dependabotWorker, /use a canonical unprefixed subject/i);
-  assert.match(dependabotWorker, /Use the same subject for the same unresolved work across reruns/);
-  assert.match(dependabotEvaluator, /decision-ready-dependency-action/);
+  assert.match(dependabotWorker, /canonical unprefixed subject/i);
+  assert.match(dependabotWorker, /Use that exact subject on every run/);
+  assert.match(dependabotEvaluator, /agent-ready-dependency-plan/);
   assert.doesNotMatch(dependabotEvaluator, /--definition|--metric|--grade-run|MATURATION_SECONDS|gh api/);
   assert.match(auditorWorker, /window_start: \$windowStart/);
   assert.match(auditorWorker, /window_end: \$windowEnd/);

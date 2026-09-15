@@ -11,18 +11,19 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 
 - Prioritizes repositories with dependency alerts, stale or conflicted update pull requests, lockfile drift, and actionable Dependabot configuration failures.
 - Understands relationships among manifests, lockfiles, workspaces, solutions, source code, tests, and CI instead of grouping updates only by package name.
-- Builds the smallest independently testable dependency bundle supported by repository evidence.
-- Produces at most one primary dependency-maintenance outcome per worker workflow run.
-- Never auto-merges a pull request.
+- Maintains one repository-scoped issue containing every update currently identified by Dependabot.
+- Refreshes the durable existing issue, posts a confirmation comment on later runs, and replaces obsolete tasks with a completed description when no work remains.
+- Uses progressive disclosure, a visible human call to action, and a complete prompt for an assigned coding agent.
+- Never creates or changes a pull request.
 
 ## Package Contents
 
 | Workflow | Role |
 | --- | --- |
 | [`dependabot`](../.github/workflows/dependabot.md) | Daily orchestrator workflow that discovers, ranks, and selects repositories. |
-| [`dependabot-release-train-updater`](../.github/workflows/dependabot-release-train-updater.md) | Repository-scoped worker workflow that proposes or repairs one reviewable dependency bundle. |
+| [`dependabot-release-train-updater`](../.github/workflows/dependabot-release-train-updater.md) | Repository-scoped worker workflow that creates or refreshes one agent-ready Dependabot update-plan issue. |
 
-The orchestrator workflow can dispatch no more than 50 worker workflows in one run. Each worker workflow handles one target repository and uses only its declared pull request, comment, issue, or `noop` safe outputs.
+The orchestrator workflow can dispatch no more than 50 worker workflows in one run. Each worker workflow handles one target repository and uses only its declared issue, refresh-comment, or `noop` safe outputs.
 
 ## Install
 
@@ -80,7 +81,7 @@ To keep scheduled runs in review, leave `mode` omitted or set it to `review` in 
 | Mode | Behavior |
 | --- | --- |
 | `review` | Routes safe outputs to the control-plane repository; manual runs may override it with `safe_output_repo`. |
-| `live` | Allows declared safe outputs to update the selected target repository. Pull requests remain unmerged. |
+| `live` | Allows the worker to create or refresh the single Dependabot plan issue in the selected target repository. |
 
 Promote in order: one-repository review, limited live, then scheduled live. Change only this package's checked-in `mode`; other packages keep their own rollout state.
 
@@ -103,8 +104,8 @@ Repositories without a recognized dependency ecosystem, readable manifests, or e
 - GitHub tools are read-only; mutations occur only through declared safe outputs.
 - The orchestrator workflow selects repositories but does not mutate them directly.
 - A worker workflow receives one target and cannot discover more repositories, dispatch another workflow, or promote its mode.
-- Pull request safe outputs are draft, branch- and file-constrained, and limited to one per worker workflow run.
-- The worker workflow can update an eligible dependency pull request, add bounded comments, create bounded follow-up issues, or emit `noop`.
+- The worker workflow cannot create or mutate pull requests or repository files.
+- The worker can create one deduplicated plan issue, refresh the existing issue with one confirmation comment, replace resolved work with a completed description, or emit `noop`.
 - Credentials remain in the private control repository and are never included in dispatch inputs.
 
 ## Pause or Stop

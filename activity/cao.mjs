@@ -10,7 +10,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import { createDebug } from './debug.mjs';
-import { adaptCachedGhAwJsonlStream, cachedJsonlPayloadIdentity } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
+import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
@@ -31,25 +31,54 @@ const ENTITY_COLLECTIONS = [
   'events'
 ];
 const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
-const DEFAULT_DEPLOYED_DATA_URL = 'https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl';
+const DEFAULT_DEPLOYED_DATA_URL = 'https://githubnext.github.io/gh-aw-cao/cao/payload-hashes.json';
 const DEFAULT_OUTPUT_DIRECTORY = '.cao';
-const DEFAULT_LOGS_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.jsonl`;
+const DEFAULT_SHARDS_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs-shards`;
 const DEFAULT_DATABASE_PATH = `${DEFAULT_OUTPUT_DIRECTORY}/gh-aw-logs.sqlite`;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
 const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
 const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
-const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats']);
+const DEFAULT_GH_LIMIT = 30;
+const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
+const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao ingest-jsonl [--database FILE] [--input GH_AW_LOGS_JSONL | --input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao audit-jsonl [--input GH_AW_LOGS_JSONL]
+  cao ingest-jsonl [--database FILE] [--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
-  cao hash-payloads [--input GH_AW_LOGS_JSONL] [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
+  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
+  cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
+  cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
+  cao gh prs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
+
+Query local CAO data as JSON. Download the deployed snapshot before querying:
+  cao download
+  cao gh runs -R githubnext/gh-aw-cao -w cao-activity --status failure --since 2026-09-01 --until 2026-09-15
+  cao gh issues -R githubnext/gh-aw-cao --since 2026-09-01
+  cao gh prs -R githubnext/gh-aw-cao -w cao-activity -L 10
+
+Resources:
+  runs    Workflow runs executed in --repo
+  issues  Issues created through safe outputs in the target --repo
+  prs     Pull requests created through safe outputs in the target --repo
+
+gh query options:
+  -R, --repo       Exact OWNER/REPO; execution repo for runs, target repo for issues and prs
+  -w, --workflow   Producing workflow name, path, file name, or ID
+  -s, --status     Runs only: workflow status or conclusion, such as completed or failure
+  -L, --limit      Maximum results, newest first (default ${DEFAULT_GH_LIMIT})
+  --since          Include results at or after ISO 8601 time (example: 2026-09-01T12:00:00Z)
+  --until          Include results at or before ISO 8601 time; a date includes the full day
+  --database       Local SQLite snapshot (default ${DEFAULT_DATABASE_PATH})
+
+Data preparation:
+  cao download writes the deployed JSONL and query-ready SQLite snapshot to ${DEFAULT_OUTPUT_DIRECTORY}/.
+  To query other gh-aw JSONL shards, first run cao ingest-jsonl --input-dir SHARD_DIRECTORY [--database FILE].
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
@@ -59,14 +88,16 @@ Query stdin JSON:
 Download defaults:
   URL        DASHBOARD_DATA_URL or ${DEFAULT_DEPLOYED_DATA_URL}
   DIRECTORY  ${DEFAULT_OUTPUT_DIRECTORY}
-  INPUT      ${DEFAULT_LOGS_PATH}
+  SHARDS     ${DEFAULT_SHARDS_PATH}
   DATABASE   ${DEFAULT_DATABASE_PATH}
 
 Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
   REPO      GITHUB_REPOSITORY
   WORKFLOW  ${DEFAULT_ACTIVITY_STATS_WORKFLOW}
   ARTIFACT  ${DEFAULT_ACTIVITY_STATS_ARTIFACT}
-  LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}`;
+  LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
+
+`;
 
 async function jsonlFiles(root) {
   const files = [];
@@ -89,12 +120,13 @@ async function jsonlFiles(root) {
 }
 
 function parseOptions(arguments_) {
+  const aliases = { '-R': 'repo', '-w': 'workflow', '-s': 'status', '-L': 'limit' };
   /** @type {Record<string, string | string[]>} */
   const options = {};
   for (let index = 0; index < arguments_.length; index += 1) {
     const argument = arguments_[index];
-    if (!argument.startsWith('--')) throw new Error(`Unexpected argument: ${argument}`);
-    const name = argument.slice(2);
+    if (!argument.startsWith('--') && !aliases[argument]) throw new Error(`Unexpected argument: ${argument}`);
+    const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'keep') {
       options[name] = 'true';
       continue;
@@ -182,6 +214,28 @@ function queryLimit(options) {
   return limit;
 }
 
+function ghQueryLimit(options) {
+  return queryLimit(options) ?? DEFAULT_GH_LIMIT;
+}
+
+function timeBoundary(options, name) {
+  const value = option(options, name, false);
+  if (!value) return undefined;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) throw new Error(`--${name} must be a valid ISO 8601 time`);
+  if (name === 'until' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return timestamp + DAY_MS - 1;
+  return timestamp;
+}
+
+function ghTimeRange(options) {
+  const since = timeBoundary(options, 'since');
+  const until = timeBoundary(options, 'until');
+  if (since !== undefined && until !== undefined && since > until) {
+    throw new Error('--since must not be later than --until');
+  }
+  return { since, until };
+}
+
 function ttlDays(options) {
   const value = option(options, 'ttl-days', false);
   if (!value) return undefined;
@@ -261,6 +315,32 @@ async function auditJsonl(inputPath) {
   };
 }
 
+async function auditJsonlDirectory(inputDirectory) {
+  const directory = path.resolve(inputDirectory);
+  const names = (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort();
+  const audits = [];
+  for (const name of names) audits.push(await auditJsonl(path.join(directory, name)));
+  const sourceKeys = Object.keys(audits[0]?.source ?? {});
+  const source = Object.fromEntries(sourceKeys.map((key) => [
+    key,
+    audits.reduce((sum, audit) => sum + (Number(audit.source[key]) || 0), 0)
+  ]));
+  const canonical = Object.fromEntries(ENTITY_COLLECTIONS.map((collection) => [
+    collection,
+    audits.reduce((sum, audit) => sum + audit.canonical[collection], 0)
+  ]));
+  source.enrichmentCoveragePercent = canonical.runs === 0
+    ? 0
+    : Number((source.uniqueEnrichedRuns / canonical.runs * 100).toFixed(1));
+  return {
+    command: 'audit-jsonl',
+    inputDirectory: directory,
+    shards: names.length,
+    source,
+    canonical
+  };
+}
+
 function deployedDataUrl(value) {
   const url = new URL(value);
   if (!['http:', 'https:'].includes(url.protocol)) {
@@ -295,27 +375,51 @@ export async function downloadDeployedDashboardData({
   url = process.env.DASHBOARD_DATA_URL || DEFAULT_DEPLOYED_DATA_URL,
   output = DEFAULT_OUTPUT_DIRECTORY
 } = {}) {
-  const logsUrl = deployedDataUrl(url);
-  const databaseUrl = new URL('gh-aw-logs.sqlite', logsUrl);
+  const manifestUrl = deployedDataUrl(url);
+  if (!manifestUrl.pathname.endsWith('/payload-hashes.json')) {
+    throw new Error('Dashboard data URL must identify payload-hashes.json.');
+  }
+  const databaseUrl = new URL('gh-aw-logs.sqlite', manifestUrl);
   const outputDirectory = path.resolve(output);
   await mkdir(outputDirectory, { recursive: true });
   const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.deployed-dashboard-'));
-  const temporaryLogs = path.join(temporaryDirectory, 'gh-aw-logs.jsonl');
+  const temporaryManifest = path.join(temporaryDirectory, 'payload-hashes.json');
+  const temporaryShards = path.join(temporaryDirectory, 'gh-aw-logs-shards');
   const temporaryDatabase = path.join(temporaryDirectory, 'gh-aw-logs.sqlite');
-  const logsPath = path.join(outputDirectory, 'gh-aw-logs.jsonl');
+  const manifestPath = path.join(outputDirectory, 'payload-hashes.json');
+  const shardsPath = path.join(outputDirectory, 'gh-aw-logs-shards');
   const databasePath = path.join(outputDirectory, 'gh-aw-logs.sqlite');
 
   try {
     await Promise.all([
-      downloadFile(logsUrl, temporaryLogs),
+      downloadFile(manifestUrl, temporaryManifest),
       downloadFile(databaseUrl, temporaryDatabase)
     ]);
-    await replaceFile(temporaryLogs, logsPath);
+    const hashes = JSON.parse(await readFile(temporaryManifest, 'utf8'));
+    const shardEntries = Object.entries(hashes)
+      .filter(([name, digest]) => /^gh-aw-logs-shards\/[^/]+\.jsonl$/.test(name)
+        && /^[a-f0-9]{64}$/i.test(String(digest)))
+      .sort(([left], [right]) => left.localeCompare(right));
+    if (shardEntries.length === 0) throw new Error('Activity shard manifest contains no valid JSONL shards.');
+    await mkdir(temporaryShards);
+    for (const [name, expectedDigest] of shardEntries) {
+      const destination = path.join(temporaryShards, path.basename(name));
+      await downloadFile(new URL(name, manifestUrl), destination);
+      const hash = createHash('sha256');
+      for await (const chunk of createReadStream(destination)) hash.update(chunk);
+      if (hash.digest('hex') !== expectedDigest.toLowerCase()) {
+        throw new Error(`Activity shard checksum mismatch: ${name}`);
+      }
+    }
+    await rm(shardsPath, { recursive: true, force: true });
+    await rename(temporaryShards, shardsPath);
+    await replaceFile(temporaryManifest, manifestPath);
     await replaceFile(temporaryDatabase, databasePath);
     return {
-      logsUrl: logsUrl.href,
+      manifestUrl: manifestUrl.href,
       databaseUrl: databaseUrl.href,
-      logs: logsPath,
+      manifest: manifestPath,
+      shards: shardsPath,
       database: databasePath
     };
   } finally {
@@ -354,14 +458,16 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
     else throw error;
   }
   const shards = [];
+  const totals = {};
   let updated = false;
   let committedRecords = 0;
   debug('scanning shard directory %s (%d shard(s) found)', shardDirectory, shardNames.length);
   for (const name of shardNames) {
     const shardPath = path.join(shardDirectory, name);
     const scope = `gh-aw-jsonl:${name}`;
-    const content = await readFile(shardPath);
-    const payloadIdentity = cachedJsonlPayloadIdentity(content);
+    const identityHasher = createCachedJsonlPayloadHasher();
+    for await (const chunk of createReadStream(shardPath)) identityHasher.update(chunk);
+    const payloadIdentity = identityHasher.digest();
     const current = await isCachedGhAwJsonlCurrent(indexedDB, {
       payloadIdentity,
       payloadScope: scope,
@@ -374,27 +480,32 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
       continue;
     }
     debug('ingesting shard %s: content hash is new or changed', name);
-    const result = await ingestCachedGhAwJsonl(indexedDB, content, {
+    const result = await ingestCachedGhAwJsonl(indexedDB, createReadStream(shardPath), {
       ...options,
       payloadScope: scope,
       payloadIdentity
     });
     if (result.updated) updated = true;
+    for (const [key, value] of Object.entries(result)) {
+      if (typeof value === 'number' && key !== 'committedRecords') {
+        totals[key] = (totals[key] ?? 0) + value;
+      }
+    }
     committedRecords += result.committedRecords ?? 0;
     debug('ingested shard %s: committedRecords=%d', name, result.committedRecords ?? 0);
     shards.push({ shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
   }
-  return { updated, committedRecords, shards };
+  return { ...totals, updated, committedRecords, shards };
 }
 
 /**
  * Computes SHA-256 checksums for the activity snapshot payloads: the
- * consolidated JSONL file, the SQLite projection, and every retained
- * `--cached-logs` wildcard shard file. Missing files are tolerated (an
+ * SQLite projection and every retained `--cached-logs` wildcard shard file.
+ * Missing files are tolerated (an
  * absent shard directory yields no shard entries) so this can run
  * immediately after ingestion in the same workflow step.
  */
-async function hashActivityPayloads({ jsonlPath, databasePath, shardDirectory }) {
+async function hashActivityPayloads({ databasePath, shardDirectory }) {
   const hashFile = async (filePath) => {
     const hash = createHash('sha256');
     for await (const chunk of createReadStream(filePath)) hash.update(chunk);
@@ -403,7 +514,6 @@ async function hashActivityPayloads({ jsonlPath, databasePath, shardDirectory })
     return digest;
   };
   const hashes = {};
-  if (jsonlPath) hashes[path.basename(jsonlPath)] = await hashFile(jsonlPath);
   if (databasePath) hashes[path.basename(databasePath)] = await hashFile(databasePath);
   if (shardDirectory) {
     let shardNames = [];
@@ -459,11 +569,9 @@ async function hashFileNames(hashesPath) {
 /**
  * Downloads the `cao-activity-index` artifact for a single workflow run
  * (via `gh run download`) into a throwaway directory, times the download,
- * and reports the size of the consolidated JSONL/SQLite payloads, the
- * retained wildcard shard files, and the recorded payload hash files.
- * When the JSONL payload is non-empty it is also run through
- * `auditJsonl` so the raw/duplicate run-observation counts already used
- * by `cao audit-jsonl` are available per inspected run.
+ * and reports the size of the SQLite payload, retained wildcard shard files,
+ * and recorded payload hash files. Shards are audited sequentially so the
+ * raw/duplicate run-observation counts are available per inspected run.
  */
 async function inspectActivityRun(repo, run, artifact, execute, keep) {
   const runId = String(run.databaseId ?? run.id ?? '');
@@ -493,13 +601,11 @@ async function inspectActivityRun(repo, run, artifact, execute, keep) {
       stats.error = (download.stderr || '').trim() || download.error?.message || 'gh run download failed';
       return stats;
     }
-    const jsonlPath = path.join(directory, 'gh-aw-logs.jsonl');
-    stats.jsonl = await fileSizeStats(jsonlPath);
     stats.sqlite = await fileSizeStats(path.join(directory, 'gh-aw-logs.sqlite'));
     stats.shards = await shardSizeStats(path.join(directory, 'gh-aw-logs-shards'));
     stats.hashFiles = await hashFileNames(path.join(directory, 'payload-hashes.json'));
-    if (stats.jsonl.exists && stats.jsonl.sizeBytes > 0) {
-      const audit = await auditJsonl(jsonlPath);
+    if (stats.shards.length > 0) {
+      const audit = await auditJsonlDirectory(path.join(directory, 'gh-aw-logs-shards'));
       stats.uniqueRuns = audit.source.uniqueRawRuns;
       stats.duplicateRunObservations = audit.source.duplicateRawRunObservations;
       stats.rawRunObservations = audit.source.rawRunObservations;
@@ -515,7 +621,7 @@ async function inspectActivityRun(repo, run, artifact, execute, keep) {
  * Investigates the performance and health of recent `cao-activity.yml`
  * workflow runs: for each of the most recent runs, the `cao-activity-index`
  * artifact is downloaded via the `gh` CLI and inspected for download
- * duration, JSONL/SQLite payload sizes, retained shard files, recorded
+ * duration, SQLite payload size, retained shard files, recorded
  * payload hash files, and raw/duplicate run-observation counts. Intended
  * to be run as `cao activity-stats` so an agent investigating indexing
  * performance can consume a single JSON report.
@@ -566,7 +672,10 @@ export async function activityWorkflowStats({
     averageDownloadDurationMs: withArtifact.length === 0
       ? 0
       : Math.round(withArtifact.reduce((sum, entry) => sum + (entry.downloadDurationMs || 0), 0) / withArtifact.length),
-    totalJsonlBytes: withArtifact.reduce((sum, entry) => sum + (entry.jsonl?.sizeBytes || 0), 0),
+    totalShardBytes: withArtifact.reduce(
+      (sum, entry) => sum + entry.shards.reduce((shardSum, shard) => shardSum + shard.sizeBytes, 0),
+      0
+    ),
     totalSqliteBytes: withArtifact.reduce((sum, entry) => sum + (entry.sqlite?.sizeBytes || 0), 0),
     totalShardFiles: withArtifact.reduce((sum, entry) => sum + (entry.shards?.length || 0), 0),
     totalHashFiles: withArtifact.reduce((sum, entry) => sum + (entry.hashFiles?.length || 0), 0),
@@ -600,6 +709,135 @@ export async function queryCanonicalData(indexedDB, options) {
   }
   const limit = queryLimit(options);
   return limit ? records.slice(0, limit) : records;
+}
+
+function normalizedWorkflowAliases(workflow) {
+  return [workflow.id, workflow.name, workflow.path]
+    .filter((value) => typeof value === 'string' && value)
+    .flatMap((value) => {
+      const normalized = value.toLowerCase();
+      const basename = normalized.split('/').at(-1) ?? normalized;
+      return [normalized, basename, basename.replace(/\.(?:md|ya?ml)$/, '')];
+    });
+}
+
+function matchesWorkflow(workflow, value) {
+  if (!value) return true;
+  const normalized = value.toLowerCase();
+  const basename = normalized.split('/').at(-1) ?? normalized;
+  const aliases = normalizedWorkflowAliases(workflow);
+  return aliases.includes(normalized)
+    || aliases.includes(basename)
+    || aliases.includes(basename.replace(/\.(?:md|ya?ml)$/, ''));
+}
+
+function githubEntityUrl(value) {
+  if (typeof value !== 'string') return undefined;
+  try {
+    const url = new URL(value);
+    if (url.hostname.toLowerCase() !== 'github.com') return undefined;
+    const match = url.pathname.match(/^\/([^/]+\/[^/]+)\/(issues|pull)\/(\d+)(?:\/|$)/);
+    if (!match) return undefined;
+    return { repository: match[1], number: Number(match[3]), url: value };
+  } catch {
+    return undefined;
+  }
+}
+
+function recordTimestamp(record, fields) {
+  for (const field of fields) {
+    const timestamp = Date.parse(String(record[field] ?? ''));
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return Number.NEGATIVE_INFINITY;
+}
+
+function inTimeRange(timestamp, range) {
+  return (range.since === undefined || timestamp >= range.since)
+    && (range.until === undefined || timestamp <= range.until);
+}
+
+export async function queryGhData(indexedDB, resource, options) {
+  if (!GH_RESOURCES.has(resource)) throw new Error(`Unknown gh resource: ${resource}`);
+  const [repositories, workflows, runs, sessions, events] = await Promise.all([
+    readCollection(indexedDB, 'repositories'),
+    readCollection(indexedDB, 'workflows'),
+    readCollection(indexedDB, 'runs'),
+    readCollection(indexedDB, 'sessions'),
+    readCollection(indexedDB, 'events')
+  ]);
+  const repositoryFilter = option(options, 'repo', false)?.toLowerCase();
+  const workflowFilter = option(options, 'workflow', false);
+  const range = ghTimeRange(options);
+  const repositoriesById = new Map(repositories.map((record) => [record.id, record]));
+  const workflowsById = new Map(workflows.map((record) => [record.id, record]));
+  const runsById = new Map(runs.map((record) => [record.id, record]));
+  const sessionsById = new Map(sessions.map((record) => [record.id, record]));
+  const sourceRepository = (run) => repositoriesById.get(run.repositoryId) ?? {};
+  const sourceWorkflow = (run) => workflowsById.get(run.workflowId) ?? {};
+
+  let records;
+  if (resource === 'runs') {
+    const statusFilter = option(options, 'status', false)?.toLowerCase();
+    records = runs.filter((run) => {
+      const repository = sourceRepository(run);
+      const workflow = sourceWorkflow(run);
+      const fullName = String(repository.fullName ?? run.repositoryFullName ?? '').toLowerCase();
+      const timestamp = recordTimestamp(run, ['startedAt', 'createdAt', 'updatedAt', 'observedAt']);
+      return (!repositoryFilter || fullName === repositoryFilter)
+        && matchesWorkflow(workflow, workflowFilter)
+        && (!statusFilter || [run.status, run.conclusion]
+          .some((value) => String(value ?? '').toLowerCase() === statusFilter))
+        && inTimeRange(timestamp, range);
+    });
+  } else {
+    const entityType = resource === 'issues' ? 'issue' : 'pull_request';
+    const safeOutputType = resource === 'issues' ? 'create_issue' : 'create_pull_request';
+    records = events
+      .filter((event) => (
+        event.type === 'safe_output.created'
+        && event.githubEntityType === entityType
+        && event.safeOutputType === safeOutputType
+      ))
+      .map((event) => {
+        const session = sessionsById.get(event.sessionId) ?? {};
+        const run = runsById.get(session.runId) ?? {};
+        const workflow = sourceWorkflow(run);
+        const executionRepository = sourceRepository(run);
+        const target = githubEntityUrl(event.correlationId);
+        return {
+          id: event.id,
+          number: target?.number ?? null,
+          repository: target?.repository ?? executionRepository.fullName ?? null,
+          workflow: workflow.path ?? workflow.name ?? null,
+          workflowName: workflow.name ?? null,
+          workflowId: workflow.id ?? null,
+          createdAt: event.timestamp ?? event.observedAt ?? null,
+          url: target?.url ?? null,
+          type: event.safeOutputType ?? null,
+          status: event.status ?? null,
+          summary: event.summary ?? null,
+          runId: run.id ?? null,
+          githubRunId: run.githubRunId ?? null
+        };
+      })
+      .filter((record) => (
+        (!repositoryFilter || String(record.repository ?? '').toLowerCase() === repositoryFilter)
+        && matchesWorkflow({
+          id: record.workflowId,
+          path: record.workflow,
+          name: record.workflowName
+        }, workflowFilter)
+        && inTimeRange(recordTimestamp(record, ['createdAt']), range)
+      ));
+  }
+
+  const timestampFields = resource === 'runs'
+    ? ['startedAt', 'createdAt', 'updatedAt', 'observedAt']
+    : ['createdAt'];
+  return records
+    .sort((left, right) => recordTimestamp(right, timestampFields) - recordTimestamp(left, timestampFields))
+    .slice(0, ghQueryLimit(options));
 }
 
 async function queryRawCanonicalData(indexedDB, query) {
@@ -675,7 +913,9 @@ export async function runCli(arguments_, input = process.stdin) {
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
   }
-  const options = parseOptions(optionArguments);
+  const ghResource = command === 'gh' ? optionArguments[0] : undefined;
+  if (command === 'gh' && (!ghResource || ghResource === 'help' || ghResource === '--help')) return USAGE;
+  const options = parseOptions(command === 'gh' ? optionArguments.slice(1) : optionArguments);
   if (options.help) return USAGE;
   if (command === 'download') {
     rejectUnknownOptions(options, ['url', 'output']);
@@ -685,13 +925,12 @@ export async function runCli(arguments_, input = process.stdin) {
     });
   }
   if (command === 'audit-jsonl') {
-    rejectUnknownOptions(options, ['input']);
-    return auditJsonl(option(options, 'input', false) || DEFAULT_LOGS_PATH);
+    rejectUnknownOptions(options, ['input-dir']);
+    return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
   }
   if (command === 'hash-payloads') {
-    rejectUnknownOptions(options, ['input', 'database', 'shard-dir', 'output']);
+    rejectUnknownOptions(options, ['database', 'shard-dir', 'output']);
     const hashes = await hashActivityPayloads({
-      jsonlPath: option(options, 'input', false) ? path.resolve(option(options, 'input', false)) : undefined,
       databasePath: option(options, 'database', false) ? path.resolve(option(options, 'database', false)) : undefined,
       shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined
     });
@@ -729,6 +968,14 @@ export async function runCli(arguments_, input = process.stdin) {
   }
   const indexedDB = await createDatabase(databasePath);
 
+  if (command === 'gh') {
+    rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'status', 'since', 'until', 'limit']);
+    if (ghResource !== 'runs' && options.status) {
+      throw new Error('--status is only supported for cao gh runs');
+    }
+    return queryGhData(indexedDB, ghResource, options);
+  }
+
   if (command === 'ingest') {
     rejectUnknownOptions(options, ['database', 'context', 'logs', 'retention-days', 'run-retention-days']);
     const result = await ingestGhAwLogDirectory(
@@ -743,11 +990,8 @@ export async function runCli(arguments_, input = process.stdin) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
-    const inputDirectory = option(options, 'input-dir', false);
-    if (inputDirectory && option(options, 'input', false)) {
-      throw new Error('Options --input and --input-dir cannot be combined');
-    }
+    rejectUnknownOptions(options, ['database', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
+    const inputDirectory = option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH;
     const contextPath = option(options, 'context', false);
     const context = contextPath
       ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
@@ -757,15 +1001,7 @@ export async function runCli(arguments_, input = process.stdin) {
       retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
       context
     };
-    if (inputDirectory) {
-      const result = await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory), ingestOptions);
-      return { result, counts: await databaseCounts(indexedDB) };
-    }
-    const result = await ingestCachedGhAwJsonl(
-      indexedDB,
-      createReadStream(path.resolve(option(options, 'input', false) || DEFAULT_LOGS_PATH)),
-      ingestOptions
-    );
+    const result = await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory), ingestOptions);
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'query') {

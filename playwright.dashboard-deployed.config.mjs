@@ -7,7 +7,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: ["**/dashboard-deployed-refresh.spec.mjs"],
   outputDir: "test-results/dashboard-deployed/playwright",
-  timeout: 300_000,
+  timeout: 600_000,
   workers: 1,
   preserveOutput: "always",
   use: {

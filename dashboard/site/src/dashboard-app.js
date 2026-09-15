@@ -932,7 +932,7 @@
         cancelCommand.complete();
       } else {
         renderSources({}, "loading");
-        const sourceUrl = new URL("./gh-aw-logs.jsonl", window.location.href).href;
+        const sourceUrl = new URL("./payload-hashes.json", window.location.href).href;
         const dashboardContext = {
           githubUrlBase: dashboardDocument.dashboard["github-url-base"],
           dashboardRepository: dashboardDocument.dashboard.repository,

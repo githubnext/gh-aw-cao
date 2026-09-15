@@ -13,11 +13,12 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
   const outputPath = path.join(root, "aic-usage.json");
-  const logsPath = path.join(root, "gh-aw-logs.jsonl");
+  const logsPath = path.join(root, "gh-aw-logs-shards");
   const cachePath = path.join(root, "cache");
   const runPath = path.join(cachePath, "repo-githubnext-gh-aw-cao", "workflow-data", "run-42");
   await mkdir(path.join(runPath, "evals"), { recursive: true });
   await mkdir(path.join(runPath, "sandbox", "firewall", "logs"), { recursive: true });
+  await mkdir(logsPath);
   await writeFile(path.join(runPath, "evals", "evals.jsonl"),
     `${JSON.stringify({ id: "quality", answer: "YES", runid: "42", timestamp: "2026-08-30T10:05:00Z" })}\n`);
   await writeFile(path.join(runPath, "sandbox", "firewall", "logs", "audit.jsonl"),
@@ -49,7 +50,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
       },
     }],
   }));
-  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
+  await writeFile(path.join(logsPath, "fixture.jsonl"), JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       aic: 2.4,
       safe_items_count: 4,
@@ -77,7 +78,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
         REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
         REPORT_AIC_USAGE: outputPath,
         REPORT_AIC_CACHE: cachePath,
-        REPORT_GH_AW_LOGS: logsPath,
+        REPORT_GH_AW_LOGS_SHARDS: logsPath,
       },
     });
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
@@ -171,7 +172,7 @@ test("AI Credit usage collection reports an unreadable shared snapshot as unavai
         ...process.env,
         REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
         REPORT_AIC_USAGE: outputPath,
-        REPORT_GH_AW_LOGS: path.join(root, "missing.json"),
+        REPORT_GH_AW_LOGS_SHARDS: path.join(root, "missing-shards"),
         REPORT_GH_AW_LOGS_STATE: statePath,
       },
     });

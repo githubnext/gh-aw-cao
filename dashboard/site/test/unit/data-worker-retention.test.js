@@ -1,7 +1,7 @@
 // @vitest-environment node
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 
@@ -146,8 +146,8 @@ describe('canonical dashboard worker retention updates', () => {
     /** @type {string[]} */
     const requestUrls = [];
     const payloadHashes = {
-      'gh-aw-logs.jsonl': 'a'.repeat(64),
-      'gh-aw-logs.sqlite': 'b'.repeat(64)
+      'gh-aw-logs.sqlite': 'b'.repeat(64),
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64)
     };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       requestUrls.push(String(input));
@@ -159,7 +159,7 @@ describe('canonical dashboard worker retention updates', () => {
     dispatch({
       id: 3,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
@@ -168,7 +168,7 @@ describe('canonical dashboard worker retention updates', () => {
     dispatch({
       id: 4,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
@@ -181,12 +181,24 @@ describe('canonical dashboard worker retention updates', () => {
     expect(requestUrls).toEqual([
       'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json',
-      'https://dashboard.example/gh-aw-logs.jsonl',
+      'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
       'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json'
     ]);
+    expect((await readTransactions(indexedDB))
+      .filter((transaction) => transaction.kind === 'ingest-jsonl'))
+      .toEqual([
+        expect.objectContaining({
+          payloadScope: 'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
+          committedRecords: expect.any(Number)
+        })
+      ]);
 
-    const updatedPayloadHashes = { ...payloadHashes, 'gh-aw-logs.jsonl': 'c'.repeat(64) };
+    const updatedPayloadHashes = {
+      ...payloadHashes,
+
+      'gh-aw-logs-shards/logs-1.jsonl': 'e'.repeat(64)
+    };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       if (String(input).endsWith('/payload-hashes.json')) return Response.json(updatedPayloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
@@ -196,17 +208,17 @@ describe('canonical dashboard worker retention updates', () => {
     dispatch({
       id: 5,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
     });
     expect((await settled((message) => message.id === 5))?.data).toMatchObject({ changed: true });
-    expect(new Headers(jsonlRequests[1]?.headers).get('If-None-Match')).toBeNull();
+    expect(jsonlRequests[1]).toBeUndefined();
     dispatch({
       id: 6,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
@@ -214,24 +226,22 @@ describe('canonical dashboard worker retention updates', () => {
     expect((await settled((message) => message.id === 6))?.data).toMatchObject({ changed: false });
     expect(jsonlRequests).toHaveLength(2);
 
-    globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
+    globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {
       if (String(input).endsWith('/payload-hashes.json')) return new Response(null, { status: 404 });
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
-      jsonlRequests.push(init);
-      return new Headers(init?.headers).get('If-None-Match') === '"generation-c"'
-        ? new Response(null, { status: 304 })
-        : new Response('');
+      return new Response('');
     });
     dispatch({
       id: 7,
       operation: 'load-canonical-dashboard',
-      sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
       sourceNames: ['event-inspection'],
       context,
       reportActivation: true
     });
-    expect((await settled((message) => message.id === 7))?.data).toMatchObject({ changed: false });
-    expect(new Headers(jsonlRequests[2]?.headers).get('If-None-Match')).toBe('"generation-c"');
+    expect((await settled((message) => message.id === 7))?.error).toMatch(
+      /Activity shard manifest is missing/
+    );
 
     dispatch({
       id: 8,

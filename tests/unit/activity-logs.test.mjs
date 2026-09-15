@@ -5,6 +5,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import test from "node:test";
+import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -18,7 +19,7 @@ async function fixture() {
   return {
     root,
     bin,
-    logsPath: path.join(root, "cache", "gh-aw-logs.jsonl"),
+    logsPath: path.join(root, "cache", "gh-aw-logs-shards"),
     statePath: path.join(root, "cache", "gh-aw-logs-state.json"),
     outputPath: path.join(root, "cache", "gh-aw-logs"),
     argumentsPath: path.join(root, "arguments.json"),
@@ -57,7 +58,7 @@ process.stderr.write("Fetched 1 run\\n");
       PATH: `${item.bin}:${process.env.PATH}`,
       GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
       REPORT_ROOT: item.root,
-      REPORT_GH_AW_LOGS: item.logsPath,
+      REPORT_GH_AW_LOGS_SHARDS: item.logsPath,
       REPORT_GH_AW_LOGS_STATE: item.statePath,
       REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
       REPORT_AIC_CACHE: item.outputPath,
@@ -89,8 +90,8 @@ process.stderr.write("Fetched 1 run\\n");
       "github/gh-aw",
       "githubnext/gh-aw-cao",
     ]);
-    const runs = (await readFile(item.logsPath, "utf8")).trim().split("\n").map(JSON.parse);
-    assert.deepEqual(runs.map((row) => row.run.repository), [
+    const runs = await readGhAwLogShards(item.logsPath);
+    assert.deepEqual(runs.map((run) => run.repository), [
       "github/gh-aw",
       "githubnext/gh-aw-cao",
     ]);
@@ -111,8 +112,8 @@ test("activity logs preserves cached runs and records collection failure", async
   const ghPath = path.join(item.bin, "gh");
   await writeFile(ghPath, "#!/usr/bin/env node\nprocess.stderr.write('download failed\\n');process.exit(1);\n");
   await chmod(ghPath, 0o755);
-  await mkdir(path.dirname(item.logsPath), { recursive: true });
-  await writeFile(item.logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":7}}\n');
+  await mkdir(item.logsPath, { recursive: true });
+  await writeFile(path.join(item.logsPath, "fixture.jsonl"), '{"schema_version":2,"kind":"run","run":{"database_id":7}}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
@@ -122,7 +123,7 @@ test("activity logs preserves cached runs and records collection failure", async
         PATH: `${item.bin}:${process.env.PATH}`,
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
         REPORT_ROOT: item.root,
-        REPORT_GH_AW_LOGS: item.logsPath,
+        REPORT_GH_AW_LOGS_SHARDS: item.logsPath,
         REPORT_GH_AW_LOGS_STATE: item.statePath,
         REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
         REPORT_AIC_CACHE: item.outputPath,
@@ -130,7 +131,7 @@ test("activity logs preserves cached runs and records collection failure", async
       },
     });
 
-    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).run.database_id, 7);
+    assert.equal((await readGhAwLogShards(item.logsPath))[0].database_id, 7);
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, false);
     assert.equal(state.fallback, true);
@@ -150,8 +151,8 @@ require("node:fs").writeFileSync(process.env.GH_INVOCATION_PATH, process.argv.sl
 process.exit(99);
 `);
   await chmod(ghPath, 0o755);
-  await mkdir(path.dirname(item.logsPath), { recursive: true });
-  await writeFile(item.logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":42,"failure_message":"cached detail"}}\n');
+  await mkdir(item.logsPath, { recursive: true });
+  await writeFile(path.join(item.logsPath, "fixture.jsonl"), '{"schema_version":2,"kind":"run","run":{"database_id":42,"failure_message":"cached detail"}}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
@@ -161,7 +162,7 @@ process.exit(99);
         PATH: `${item.bin}:${process.env.PATH}`,
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
         REPORT_ROOT: item.root,
-        REPORT_GH_AW_LOGS: item.logsPath,
+        REPORT_GH_AW_LOGS_SHARDS: item.logsPath,
         REPORT_GH_AW_LOGS_STATE: item.statePath,
         REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
         REPORT_AIC_CACHE: item.outputPath,
@@ -170,7 +171,7 @@ process.exit(99);
       },
     });
 
-    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).run.failure_message, "cached detail");
+    assert.equal((await readGhAwLogShards(item.logsPath))[0].failure_message, "cached detail");
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, false);
     assert.equal(state.complete, false);
@@ -185,8 +186,8 @@ process.exit(99);
 test("activity logs records a failure when workflow discovery is unavailable", async () => {
   const item = await fixture();
   await rm(path.join(item.root, ".github"), { recursive: true });
-  await mkdir(path.dirname(item.logsPath), { recursive: true });
-  await writeFile(item.logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":7}}\n');
+  await mkdir(item.logsPath, { recursive: true });
+  await writeFile(path.join(item.logsPath, "fixture.jsonl"), '{"schema_version":2,"kind":"run","run":{"database_id":7}}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
@@ -195,7 +196,7 @@ test("activity logs records a failure when workflow discovery is unavailable", a
         ...process.env,
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
         REPORT_ROOT: item.root,
-        REPORT_GH_AW_LOGS: item.logsPath,
+        REPORT_GH_AW_LOGS_SHARDS: item.logsPath,
         REPORT_GH_AW_LOGS_STATE: item.statePath,
         REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
         REPORT_AIC_CACHE: item.outputPath,
@@ -203,7 +204,7 @@ test("activity logs records a failure when workflow discovery is unavailable", a
       },
     });
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
-    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).run.database_id, 7);
+    assert.equal((await readGhAwLogShards(item.logsPath))[0].database_id, 7);
     assert.equal(state.available, false);
     assert.equal(state.targetCount, 0);
     assert.equal(state.fallback, true);

@@ -1,0 +1,76 @@
+name: Dashboard massive-scale stress
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      repositories:
+        description: Synthetic repository count
+        default: "10000"
+        type: string
+      runs:
+        description: Synthetic agentic workflow run count
+        default: "20000"
+        type: string
+      derived_events:
+        description: Derived events per run
+        default: "6"
+        type: string
+      shards:
+        description: Synthetic shard count
+        default: "20"
+        type: string
+      workflows:
+        description: Synthetic workflow count
+        default: "24"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dashboard-massive-scale
+  cancel-in-progress: true
+
+jobs:
+  stress:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DASHBOARD_STRESS_REPOSITORIES: ${{ inputs.repositories || '10000' }}
+      DASHBOARD_STRESS_RUNS: ${{ inputs.runs || '20000' }}
+      DASHBOARD_STRESS_DERIVED_EVENTS: ${{ inputs.derived_events || '6' }}
+      DASHBOARD_STRESS_SHARDS: ${{ inputs.shards || '20' }}
+      DASHBOARD_STRESS_WORKFLOWS: ${{ inputs.workflows || '24' }}
+      DASHBOARD_STRESS_BROWSER_MEMORY_MB: "256"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Cache Chromium
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('package-lock.json') }}-chromium
+      - name: Install Chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps chromium
+      - name: Run massive-scale stress test
+        run: npm run test:stress:dashboard
+      - name: Upload stress measurements
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dashboard-massive-scale-${{ github.run_id }}
+          path: test-results/playwright-dashboard-massive-scale/
+          if-no-files-found: warn
+          retention-days: 14

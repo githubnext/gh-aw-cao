@@ -22,6 +22,9 @@ import {
   requestPersistentStorage
 } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
+import { createDebug } from '../../debug.js';
+
+const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 3;
 const GH_AW_JSONL_INGESTION_VERSION = 2;
@@ -304,6 +307,11 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
   let phase = 'adapting';
+  debug('starting JSONL stream ingestion', {
+    streaming: typeof content !== 'string' && !ArrayBuffer.isView(content),
+    hasPublishedIdentity: typeof options.payloadIdentity === 'string',
+    workflowHints: options.workflowHints?.length ?? 0
+  });
   try {
     const adaptationContext = cachedJsonlAdaptationContext(options);
     const streamed = typeof content !== 'string'
@@ -333,6 +341,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
           adaptationContext
         });
       }
+      debug('skipped current JSONL stream', { records: current.records ?? null });
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
     const adapted = streamed ?? adaptCachedGhAwJsonl(
@@ -341,6 +350,12 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     );
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
+    debug('normalized JSONL stream', {
+      sourceRecords: adapted.records,
+      runs: batch.runs.length,
+      sessions: batch.sessions.length,
+      events: batch.events.length
+    });
     phase = 'writing';
     const result = await ingestCanonicalBatch(indexedDB, batch, {
       ...options,
@@ -366,6 +381,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       duplicateAgenticRunObservations: adapted.duplicateAgenticRunObservations,
       unenrichedRuns: adapted.unenrichedRuns
     });
+    debug('recorded successful JSONL transaction', {
+      sourceRecords: adapted.records,
+      committedRecords: result.committedRecords
+    });
     return {
       ...result,
       records: adapted.records,
@@ -382,6 +401,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       mappedRateLimits: adapted.mappedRateLimits
     };
   } catch (error) {
+    debug('JSONL stream ingestion failed', {
+      phase,
+      error: error instanceof Error ? error.name : 'Error'
+    });
     await recordTransaction(indexedDB, {
       id: `ingest-jsonl-failed:${createdAt}`,
       kind: 'ingest-jsonl-failed',

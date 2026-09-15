@@ -20,7 +20,12 @@ test.beforeAll(async () => {
       response.end("<main>dashboard ingestion scale</main>");
       return;
     }
-    if (pathname === "/gh-aw-logs.jsonl") {
+    if (pathname === "/payload-hashes.json") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ "gh-aw-logs-shards/scale.jsonl": "a".repeat(64) }));
+      return;
+    }
+    if (pathname === "/gh-aw-logs-shards/scale.jsonl") {
       response.writeHead(200, {
         "content-type": "application/x-ndjson",
         "content-length": String(payload.byteLength),
@@ -63,7 +68,7 @@ test("ingesting a large synthetic payload terminates and clears its notification
     let sources = null;
     try {
       sources = await loadCanonicalDashboardSources(
-        `${location.origin}/gh-aw-logs.jsonl`,
+        `${location.origin}/payload-hashes.json`,
         ["runs"],
         { githubUrlBase: "https://github.com", pages: [] },
       );

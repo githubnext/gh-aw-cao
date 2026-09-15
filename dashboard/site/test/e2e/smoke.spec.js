@@ -104,12 +104,16 @@ test('notifications move in at the lower right and center on mobile', async ({ p
 
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {
   await page.setContent(`
+    <main style="height: 2000px"></main>
     <script type="module">
       import { publishNotification } from 'http://dashboard.test/src/notification-service.js';
-      publishNotification({
+      const ingestionNotification = publishNotification({
         message: 'Storing data...',
         duration: 0,
-        details: ['Loading metadata.', 'Parsed 200 records.', 'Storing data...']
+        details: Array.from({ length: 40 }, (_, index) => 'Activity event ' + (index + 1))
+      });
+      window.addEventListener('update-ingestion-notification', (event) => {
+        ingestionNotification.update(event.detail);
       });
     </script>
   `);
@@ -121,8 +125,47 @@ test('ingestion notifications reveal scrollable progress history on click', asyn
   const collapse = page.getByRole('button', { name: /Storing data.*Hide ingestion progress history/ });
   await expect(collapse).toHaveAttribute('aria-expanded', 'true');
   await expect(details).toBeVisible();
-  await expect(details.getByRole('listitem')).toHaveCount(3);
-  await collapse.click();
+  await expect(details.getByRole('listitem')).toHaveCount(40);
+  expect(await details.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  await expect(details).toHaveCSS('list-style-type', 'none');
+  await page.evaluate(() => window.scrollTo(0, 100));
+  await details.hover();
+  await page.mouse.wheel(0, 100);
+  await expect.poll(() => details.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(100);
+  await details.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await details.hover();
+  await page.mouse.wheel(0, 100);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(100);
+  const previousScrollTop = await details.evaluate((element) => element.scrollTop);
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('update-ingestion-notification', {
+      detail: {
+        message: 'Refreshing queries...',
+        duration: 0,
+        details: Array.from({ length: 41 }, (_, index) => 'Activity event ' + (index + 1))
+      }
+    }));
+  });
+  await expect(details.getByRole('listitem')).toHaveCount(41);
+  await expect.poll(() => details.evaluate((element) => element.scrollTop)).toBeGreaterThan(previousScrollTop);
+
+  await details.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('update-ingestion-notification', {
+      detail: {
+        message: 'Still refreshing...',
+        duration: 0,
+        details: Array.from({ length: 42 }, (_, index) => 'Activity event ' + (index + 1))
+      }
+    }));
+  });
+  await expect(details).toHaveJSProperty('scrollTop', 0);
+  await page.locator('.dashboard-notification-toggle').click();
   await expect(details).toBeHidden();
 });
 

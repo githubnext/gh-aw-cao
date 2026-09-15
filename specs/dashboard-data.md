@@ -313,7 +313,7 @@ prefix in the shared shard directory. Repeated collection SHALL reuse known
 shards, and canonical ingestion SHALL skip a shard whose content hash already
 exists in the Transaction ledger. Repository collection MAY be serial to bound
 concurrent GitHub API pressure and reuse shared analysis state. The consolidated
-`gh-aw-logs.jsonl` file SHALL be a publication transport assembled from retained
+The `gh-aw-logs-shards/` directory SHALL be the publication transport of retained
 shards, not an additional authoritative source.
 
 ## 5.4 Canonical join contract
@@ -921,7 +921,7 @@ The relational interchange SHALL consist of one manifest row and denormalized en
 
 ## 14.4 Cached gh-aw JSONL
 
-The normative mapping for cached schema-v2 `gh-aw-logs.jsonl` input is
+The normative mapping for cached schema-v2 activity shard input is
 defined in [Cached gh-aw JSONL Mapping](dashboard-gh-aw-jsonl-mapping.md).
 
 ---

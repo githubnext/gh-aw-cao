@@ -21,11 +21,10 @@ function fakeGh(runs) {
       if (run?.missingArtifact) return { status: 1, stdout: '', stderr: 'artifact not found' };
       mkdirSync(path.join(directory, 'gh-aw-logs-shards'), { recursive: true });
       const jsonl = readFileSync(FIXTURE_JSONL, 'utf8');
-      writeFileSync(path.join(directory, 'gh-aw-logs.jsonl'), jsonl);
       writeFileSync(path.join(directory, 'gh-aw-logs.sqlite'), 'fake sqlite bytes');
       writeFileSync(path.join(directory, 'gh-aw-logs-shards', 'logs-1-a.jsonl'), jsonl);
       writeFileSync(path.join(directory, 'payload-hashes.json'), JSON.stringify({
-        'gh-aw-logs.jsonl': 'abc',
+        'gh-aw-logs-shards/logs-1-a.jsonl': 'abc',
         'gh-aw-logs.sqlite': 'def'
       }));
       return { status: 0, stdout: '', stderr: '' };
@@ -51,17 +50,16 @@ test('activity-stats reports download duration, payload sizes, and hash files fo
   assert.equal(run.runId, '111');
   assert.equal(typeof run.downloadDurationMs, 'number');
   assert.ok(run.downloadDurationMs >= 0);
-  assert.equal(run.jsonl.exists, true);
-  assert.ok(run.jsonl.sizeBytes > 0);
   assert.equal(run.sqlite.exists, true);
   assert.ok(run.sqlite.sizeBytes > 0);
-  assert.deepEqual(run.shards, [{ name: 'logs-1-a.jsonl', sizeBytes: run.jsonl.sizeBytes }]);
-  assert.deepEqual(run.hashFiles, ['gh-aw-logs.jsonl', 'gh-aw-logs.sqlite']);
+  assert.equal(run.shards.length, 1);
+  assert.ok(run.shards[0].sizeBytes > 0);
+  assert.deepEqual(run.hashFiles, ['gh-aw-logs-shards/logs-1-a.jsonl', 'gh-aw-logs.sqlite']);
   assert.equal(typeof run.uniqueRuns, 'number');
   assert.equal(typeof run.duplicateRunObservations, 'number');
   assert.equal(run.directory, undefined);
 
-  assert.equal(stats.summary.totalJsonlBytes, run.jsonl.sizeBytes);
+  assert.equal(stats.summary.totalShardBytes, run.shards[0].sizeBytes);
   assert.equal(stats.summary.totalSqliteBytes, run.sqlite.sizeBytes);
   assert.equal(stats.summary.totalShardFiles, 1);
   assert.equal(stats.summary.totalHashFiles, 2);

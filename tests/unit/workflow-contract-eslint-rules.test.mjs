@@ -163,7 +163,6 @@ test("ESLint Factory workflows keep GitHub evidence acquisition bounded", () => 
       assert.match(line, /never/i, `${name} only ever prohibits unbounded pagination`);
     }
     assert.match(source, /\{\{#runtime-import\? \.github\/cao\/eslint-rules\.md\}\}\s*$/, name);
-    assert.match(source, /environment: central-agentic-ops/, name);
     assert.match(source, /GH_AW_SAFE_OUTPUT_MODE: \$\{\{ inputs\.safe_output_mode \|\| 'review' \}\}/, name);
     assert.match(source, /if: needs\.pre_activation\.outputs\.cao_authorized == 'true'/, name);
   }
@@ -178,7 +177,7 @@ test("ESLint Factory workflows keep GitHub evidence acquisition bounded", () => 
     assert.match(call, /-F page=1/, "every miner API call reads exactly one page");
   }
   assert.ok(shellCommands(minerSteps).length >= 4, "the miner pre-fetches its bounded evidence deterministically");
-  assert.match(miner, /cao-activity\/gh-aw-logs\.jsonl/);
+  assert.match(miner, /cao-activity\/gh-aw-logs-shards/);
   assert.match(miner, /at most one candidate per run|Select \*\*at most one\*\* candidate per run/);
 });
 

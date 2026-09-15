@@ -12,10 +12,11 @@ test("activity index combines local inventory and gh aw logs without GitHub API 
   const root = await mkdtemp(path.join(os.tmpdir(), "activity-index-"));
   const workflowDirectory = path.join(root, ".github", "workflows");
   const inventoryPath = path.join(root, "control-plane-inventory.json");
-  const logsPath = path.join(root, "gh-aw-logs.jsonl");
+  const logsPath = path.join(root, "gh-aw-logs-shards");
   const statePath = path.join(root, "gh-aw-logs-state.json");
   const outputPath = path.join(root, "deployed-workflows.json");
   await mkdir(workflowDirectory, { recursive: true });
+  await mkdir(logsPath);
   await writeFile(path.join(workflowDirectory, "sample.md"), `---
 name: Sample
 graders:
@@ -38,7 +39,7 @@ graders:
       package: null,
     }],
   }));
-  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
+  await writeFile(path.join(logsPath, "fixture.jsonl"), JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       workflow_path: ".github/workflows/sample.lock.yml",
       run_number: 3,
@@ -78,7 +79,7 @@ graders:
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
         REPORT_ROOT: root,
         REPORT_INVENTORY: inventoryPath,
-        REPORT_GH_AW_LOGS: logsPath,
+        REPORT_GH_AW_LOGS_SHARDS: logsPath,
         REPORT_GH_AW_LOGS_STATE: statePath,
         REPORT_DEPLOYED_WORKFLOWS: outputPath,
       },
@@ -110,13 +111,14 @@ graders:
 test("activity index reports fields missing from gh aw usage artifacts", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "activity-index-"));
   const workflowDirectory = path.join(root, ".github", "workflows");
-  const logsPath = path.join(root, "gh-aw-logs.jsonl");
+  const logsPath = path.join(root, "gh-aw-logs-shards");
   const statePath = path.join(root, "gh-aw-logs-state.json");
   const outputPath = path.join(root, "deployed-workflows.json");
   await mkdir(workflowDirectory, { recursive: true });
+  await mkdir(logsPath);
   await writeFile(path.join(workflowDirectory, "sample.md"), "---\nname: Sample\n---\n");
   await writeFile(path.join(workflowDirectory, "sample.lock.yml"), "name: Sample\n");
-  await writeFile(logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":42,"workflow_name":"Sample"}}\n');
+  await writeFile(path.join(logsPath, "fixture.jsonl"), '{"schema_version":2,"kind":"run","run":{"database_id":42,"workflow_name":"Sample"}}\n');
   await writeFile(statePath, '{"available":true,"complete":true,"targetCount":1,"fallback":false}\n');
   try {
     await execFileAsync(process.execPath, [path.resolve("activity/index.mjs")], {
@@ -126,7 +128,7 @@ test("activity index reports fields missing from gh aw usage artifacts", async (
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
         REPORT_ROOT: root,
         REPORT_INVENTORY: path.join(root, "missing-inventory.json"),
-        REPORT_GH_AW_LOGS: logsPath,
+        REPORT_GH_AW_LOGS_SHARDS: logsPath,
         REPORT_GH_AW_LOGS_STATE: statePath,
         REPORT_DEPLOYED_WORKFLOWS: outputPath,
       },
@@ -144,10 +146,11 @@ test("activity index reports fields missing from gh aw usage artifacts", async (
 test("activity index accepts null usage fields and discovers block-list workers", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "activity-index-"));
   const workflowDirectory = path.join(root, ".github", "workflows");
-  const logsPath = path.join(root, "gh-aw-logs.jsonl");
+  const logsPath = path.join(root, "gh-aw-logs-shards");
   const statePath = path.join(root, "gh-aw-logs-state.json");
   const outputPath = path.join(root, "deployed-workflows.json");
   await mkdir(workflowDirectory, { recursive: true });
+  await mkdir(logsPath);
   await writeFile(path.join(workflowDirectory, "orchestrator.md"), `---
 name: Orchestrator
 safe-outputs:
@@ -160,7 +163,7 @@ uses: shared/control.md
 role: orchestrator
 `);
   await writeFile(path.join(workflowDirectory, "orchestrator.lock.yml"), "name: Orchestrator\n");
-  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
+  await writeFile(path.join(logsPath, "fixture.jsonl"), JSON.stringify({ schema_version: 2, kind: "run", run: {
     database_id: 42,
     workflow_name: "Orchestrator",
     run_number: 1,
@@ -182,7 +185,7 @@ role: orchestrator
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
         REPORT_ROOT: root,
         REPORT_INVENTORY: path.join(root, "missing-inventory.json"),
-        REPORT_GH_AW_LOGS: logsPath,
+        REPORT_GH_AW_LOGS_SHARDS: logsPath,
         REPORT_GH_AW_LOGS_STATE: statePath,
         REPORT_DEPLOYED_WORKFLOWS: outputPath,
       },

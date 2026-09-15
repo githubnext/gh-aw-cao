@@ -6,13 +6,14 @@ const CONFIG_URL = new URL('./.dashboard-data-update-config', self.registration.
 const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
-const DATA_FILES = new Set(['payload-hashes.json', 'gh-aw-logs.jsonl', 'inventory-sources.json']);
+const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
 
 function isDashboardDataUrl(value) {
   try {
     const url = new URL(value, self.location.href);
     return url.origin === self.location.origin
-      && DATA_FILES.has(url.pathname.split('/').at(-1));
+      && (DATA_FILES.has(url.pathname.split('/').at(-1))
+        || /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(url.pathname));
   } catch {
     return false;
   }
@@ -33,14 +34,14 @@ function isAppAssetUrl(value) {
 
 async function downloadData(urls) {
   const requested = [...new Set(urls)].filter(isDashboardDataUrl);
-  if (!requested.some((url) => new URL(url).pathname.endsWith('/gh-aw-logs.jsonl'))) {
+  if (!requested.some((url) => new URL(url).pathname.endsWith('/payload-hashes.json'))) {
     throw new Error('Dashboard data URL is missing.');
   }
   const cache = await caches.open(DATA_CACHE);
   const hashesUrl = requested.find((url) => new URL(url).pathname.endsWith('/payload-hashes.json'));
   let hashesResponse;
-  let publishedJsonlHash = null;
-  let unchangedJsonl = false;
+  let previousHashes = null;
+  let currentHashes = null;
   if (hashesUrl) {
     const previous = await cache.match(hashesUrl);
     const response = await fetch(hashesUrl, {
@@ -49,33 +50,25 @@ async function downloadData(urls) {
       signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
     });
     if (response.ok) {
-      const [previousHashes, currentHashes] = await Promise.all([
+      [previousHashes, currentHashes] = await Promise.all([
         previous?.json().catch(() => null) ?? null,
         response.clone().json().catch(() => null)
       ]);
-      const jsonlHash = (hashes) => {
-        const hash = hashes && typeof hashes === 'object' ? hashes['gh-aw-logs.jsonl'] : null;
-        return typeof hash === 'string' && /^[a-f0-9]{64}$/i.test(hash) ? hash.toLowerCase() : null;
-      };
-      publishedJsonlHash = jsonlHash(currentHashes);
-      unchangedJsonl = Boolean(publishedJsonlHash && publishedJsonlHash === jsonlHash(previousHashes));
-      if (publishedJsonlHash) hashesResponse = response;
+      hashesResponse = response;
     } else if (response.status !== 404) {
       throw new Error(`Dashboard data download returned ${response.status}.`);
     }
   }
-  if (hashesUrl && !publishedJsonlHash) await cache.delete(hashesUrl);
+  if (!hashesUrl || !currentHashes || typeof currentHashes !== 'object') {
+    if (hashesUrl) await cache.delete(hashesUrl);
+    throw new Error('Dashboard activity shard manifest is unavailable.');
+  }
   const responses = await Promise.all(requested
     .filter((url) => url !== hashesUrl)
-    .filter((url) => !(unchangedJsonl && new URL(url).pathname.endsWith('/gh-aw-logs.jsonl')))
     .map(async (url) => {
-    const previous = await cache.match(url);
-    const jsonl = new URL(url).pathname.endsWith('/gh-aw-logs.jsonl');
-    const etag = !publishedJsonlHash && jsonl ? previous?.headers.get('etag') : null;
     const response = await fetch(url, {
       cache: 'no-store',
       credentials: 'same-origin',
-      headers: etag ? { 'If-None-Match': etag } : undefined,
       signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
     });
     const optionalInventory = new URL(url).pathname.endsWith('/inventory-sources.json');
@@ -91,12 +84,37 @@ async function downloadData(urls) {
         ? undefined
         : cache.put(url, response.clone())
   )));
+  const shardEntries = Object.entries(currentHashes)
+    .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash))
+    .sort(([left], [right]) => left.localeCompare(right));
+  if (shardEntries.length === 0) throw new Error('Dashboard activity shard manifest is empty.');
+  const currentShardUrls = new Set();
+  for (const [name, hash] of shardEntries) {
+    const url = new URL(`./${name}`, hashesUrl).href;
+    currentShardUrls.add(url);
+    if (previousHashes?.[name]?.toLowerCase?.() === hash.toLowerCase()) continue;
+    const response = await fetch(url, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
+    });
+    if (!response.ok) throw new Error(`Dashboard data download returned ${response.status}.`);
+    await cache.put(url, response);
+  }
+  for (const request of await cache.keys()) {
+    if (/\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(new URL(request.url).pathname)
+        && !currentShardUrls.has(request.url)) {
+      await cache.delete(request);
+    }
+  }
   if (hashesUrl && hashesResponse) await cache.put(hashesUrl, hashesResponse.clone());
 }
 
 async function storeDataUrls(urls) {
   const requested = [...new Set(urls)].filter(isDashboardDataUrl);
-  if (!requested.some((url) => new URL(url).pathname.endsWith('/gh-aw-logs.jsonl'))) {
+  if (!requested.some((url) => new URL(url).pathname.endsWith('/payload-hashes.json'))) {
     throw new Error('Dashboard data URL is missing.');
   }
   const cache = await caches.open(CONFIG_CACHE);

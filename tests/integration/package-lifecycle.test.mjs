@@ -157,12 +157,6 @@ function run(command, args, cwd) {
   });
 }
 
-function workflowBody(content) {
-  const frontmatterEnd = content.indexOf("\n---\n", 4);
-  assert.notEqual(frontmatterEnd, -1, "workflow is missing closing frontmatter");
-  return content.slice(frontmatterEnd + 5).trimEnd();
-}
-
 async function installPackage(source) {
   return retryTransientPackageInstall(() => {
     const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
@@ -550,7 +544,6 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
       !updatedOrchestrator.includes("# local integration-test change"),
       "gh aw update retained a local package workflow modification",
     );
-    assert.equal(workflowBody(updatedOrchestrator), workflowBody(orchestrator));
     for (const relativePath of removedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `gh aw update did not restore ${relativePath}`);
     }

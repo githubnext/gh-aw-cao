@@ -8,6 +8,9 @@ import {
 } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
+import { createDebug } from '../../debug.js';
+
+const debug = createDebug('data:ingestion:jsonl');
 
 const OBSERVATION_SOURCE = 'gh-aw-logs';
 const REPOSITORY_COORDINATE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
@@ -593,7 +596,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
   return accumulator.finish();
 }
 
-function createCachedJsonlPayloadHasher() {
+export function createCachedJsonlPayloadHasher() {
   const hashes = Array.from({ length: 8 }, (_, index) => (0x811c9dc5 ^ (index * 0x9e3779b9)) >>> 0);
   return {
     /** @param {Uint8Array} bytes */
@@ -636,6 +639,8 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   let lineNumber = 0;
   let bytesProcessed = 0;
   let recordsIngested = 0;
+  let chunksProcessed = 0;
+  debug('started streaming JSONL adaptation', { workflowHints: options.workflowHints?.length ?? 0 });
   /** @param {string} line */
   const accept = (line) => {
     lineNumber += 1;
@@ -656,6 +661,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
     }
   };
   for await (const chunk of chunks) {
+    chunksProcessed += 1;
     const bytes = typeof chunk === 'string' ? encoder.encode(chunk) : chunk;
     bytesProcessed += bytes.byteLength;
     hasher.update(bytes);
@@ -667,15 +673,30 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
       start = newline + 1;
     }
     if (start > 0) pending = pending.slice(start);
+    debug('adapted JSONL chunk', {
+      chunksProcessed,
+      chunkBytes: bytes.byteLength,
+      bytesProcessed,
+      linesProcessed: lineNumber,
+      recordsIngested,
+      pendingCharacters: pending.length
+    });
     options.onProgress?.({ bytesProcessed, linesProcessed: lineNumber, recordsIngested });
   }
   pending += decoder.decode();
   if (pending) accept(pending);
   options.onProgress?.({ bytesProcessed, linesProcessed: lineNumber, recordsIngested });
-  return {
+  const result = {
     ...accumulator.finish(),
     payloadIdentity: hasher.digest()
   };
+  debug('completed streaming JSONL adaptation', {
+    chunksProcessed,
+    bytesProcessed,
+    linesProcessed: lineNumber,
+    recordsIngested
+  });
+  return result;
 }
 
 /**
@@ -1069,7 +1090,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           summary,
           status,
           correlationId: fields.correlationId,
-          payloadRef: `gh-aw-logs.jsonl#L${enriched.line}`,
+          payloadRef: `gh-aw-logs-shards#L${enriched.line}`,
           sourceSequence,
           ...fields
         })
@@ -1328,7 +1349,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           correlationId: optionalString(record.url ?? record.temporaryId),
           safeOutputType: optionalString(record.type),
           githubEntityType: safeOutputGithubEntityType(record),
-          payloadRef: `gh-aw-logs.jsonl#L${safeOutput.line}`
+          payloadRef: `gh-aw-logs-shards#L${safeOutput.line}`
         }
       );
     });
@@ -1499,7 +1520,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           summary: `${String(remaining ?? 'unknown')} of ${String(limit ?? 'unknown')} requests remaining`,
           status: remaining !== null && remaining > 0 ? 'available' : 'exhausted',
           correlationId: optionalString(rateLimit.host),
-          payloadRef: `gh-aw-logs.jsonl#L${line}`,
+          payloadRef: `gh-aw-logs-shards#L${line}`,
           sourceSequence: line
         }
       });

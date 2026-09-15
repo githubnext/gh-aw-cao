@@ -54,7 +54,6 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/payload-hashes.json
@@ -154,7 +153,6 @@ jobs:
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_DRAIN3_WEIGHTS: ${{ runner.temp }}/cao-activity/drain3_weights.json
-          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
           REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/cao-activity/gh-aw-logs-exit-code
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
           REPORT_LOG_TIMEOUT: "15"
@@ -217,7 +215,6 @@ jobs:
             exit 1
           fi
           node "$ingestion_script" hash-payloads \
-            --input "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" \
             --database "$ACTIVITY_DATABASE" \
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
             --output "$RUNNER_TEMP/cao-activity/payload-hashes.json"
@@ -229,7 +226,6 @@ jobs:
           retention-days: 1
           if-no-files-found: error
           path: |
-            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/payload-hashes.json
@@ -255,12 +251,16 @@ jobs:
           snapshot_root="$RUNNER_TEMP/cao-activity"
           mkdir -p "$snapshot_root/gh-aw-logs-shards"
           missing=0
-          for file in gh-aw-logs.jsonl gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json drain3_weights.json; do
+          for file in gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json drain3_weights.json; do
             if [[ ! -s "$snapshot_root/$file" ]]; then
               echo "Activity snapshot file is missing or empty: $file" >&2
               missing=1
             fi
           done
+          if ! find "$snapshot_root/gh-aw-logs-shards" -maxdepth 1 -type f -name '*.jsonl' -print -quit | grep -q .; then
+            echo "Activity snapshot contains no JSONL shards" >&2
+            missing=1
+          fi
           if [[ "$missing" -ne 0 ]]; then
             echo "Extracted activity snapshot contents:" >&2
             ls -l "$snapshot_root" >&2 || true
@@ -272,7 +272,6 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/payload-hashes.json

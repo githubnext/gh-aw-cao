@@ -25,7 +25,10 @@ test("Copilot branch cleaner limits weekly discovery and starts in dry-run mode"
   assert.match(source, /beforeOid: oid/);
   assert.match(source, /afterOid: zeroOid/);
   assert.match(source, /catch \{[\s\S]*?failed\.push\(\.\.\.batch\)/);
-  assert.match(source, /addHeading\('Branches not deleted'\)/);
+  assert.match(source, /core\.info\('Branches eligible for deletion \(dry run\)'\)/);
+  assert.match(source, /core\.info\('Deleted branches'\)/);
+  assert.match(source, /core\.info\('Branches not deleted'\)/);
+  assert.doesNotMatch(source, /core\.summary/);
   assert.doesNotMatch(source, /deleteRef/);
   assert.doesNotMatch(source, /github\.rest|gh api/);
 });

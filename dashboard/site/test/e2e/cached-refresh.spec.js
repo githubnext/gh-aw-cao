@@ -108,10 +108,13 @@ test("cached view is populated before background ingestion updates it", async ({
       return;
     }
     if (pathname === "/payload-hashes.json") {
-      await route.fulfill({ status: 404, body: "Not found" });
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ "gh-aw-logs-shards/logs-1.jsonl": "a".repeat(64) }),
+      });
       return;
     }
-    if (pathname === "/gh-aw-logs.jsonl") {
+    if (pathname === "/gh-aw-logs-shards/logs-1.jsonl") {
       freshDataRequested = true;
       await freshDataAllowed;
       await route.fulfill({

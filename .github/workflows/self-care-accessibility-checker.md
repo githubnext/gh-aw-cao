@@ -46,8 +46,6 @@ env:
   SAFE_OUTPUT_REPO: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
   TARGET_REPO: ${{ inputs.target_repo || '' }}
 
-environment: central-agentic-ops
-
 jobs:
   pre-activation:
     outputs:

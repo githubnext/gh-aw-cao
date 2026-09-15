@@ -51,7 +51,7 @@ describe('canonical dashboard worker ingestion order', () => {
     globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {
       const url = String(input);
       if (url.endsWith('/payload-hashes.json')) {
-        return Response.json({ 'gh-aw-logs.jsonl': 'a'.repeat(64) });
+        return Response.json({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) });
       }
       if (url.endsWith('/inventory-sources.json')) return Response.json(inventory);
       return new Response(`${JSON.stringify(run)}\n`);
@@ -71,7 +71,7 @@ describe('canonical dashboard worker ingestion order', () => {
         data: {
           id: 1,
           operation: 'load-canonical-dashboard',
-          sourceUrl: 'https://dashboard.example/gh-aw-logs.jsonl',
+          sourceUrl: 'https://dashboard.example/payload-hashes.json',
           sourceNames: [],
           context: { pages: [], queries: [] }
         }

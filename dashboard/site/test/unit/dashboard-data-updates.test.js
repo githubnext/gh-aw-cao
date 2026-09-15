@@ -202,7 +202,7 @@ describe('automatic dashboard data updates', () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
     localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (false))
       }
@@ -222,7 +222,7 @@ describe('automatic dashboard data updates', () => {
     };
     const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         online: () => true,
@@ -244,7 +244,7 @@ describe('automatic dashboard data updates', () => {
     const currentRegistration = registration(worker);
     const serviceWorkers = { register: vi.fn().mockResolvedValue(currentRegistration) };
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: false, level: 0.1 }),
@@ -270,7 +270,7 @@ describe('automatic dashboard data updates', () => {
     const stop = startAutomaticDashboardDataUpdates(
       [
         'https://example.test/payload-hashes.json',
-        'https://example.test/gh-aw-logs.jsonl',
+        'https://example.test/payload-hashes.json',
         'https://example.test/inventory-sources.json'
       ],
       {
@@ -296,7 +296,7 @@ describe('automatic dashboard data updates', () => {
       type: 'CONFIGURE_BACKGROUND_DATA',
       urls: [
         'https://example.test/payload-hashes.json',
-        'https://example.test/gh-aw-logs.jsonl',
+        'https://example.test/payload-hashes.json',
         'https://example.test/inventory-sources.json'
       ]
     }));
@@ -317,7 +317,7 @@ describe('automatic dashboard data updates', () => {
       register: vi.fn().mockResolvedValue(currentRegistration)
     };
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
@@ -352,7 +352,7 @@ describe('automatic dashboard data updates', () => {
       }))
     }));
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         permissions,
@@ -382,7 +382,7 @@ describe('automatic dashboard data updates', () => {
       getRegistrations: vi.fn().mockResolvedValue([orphanedRegistration])
     };
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         scriptUrl: new URL('https://example.test/service-worker.js')
@@ -404,7 +404,7 @@ describe('automatic dashboard data updates', () => {
     };
     const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
@@ -439,7 +439,7 @@ describe('automatic dashboard data updates', () => {
       query: vi.fn().mockResolvedValue({ state: 'prompt' })
     }));
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
@@ -465,7 +465,7 @@ describe('automatic dashboard data updates', () => {
     };
     const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
@@ -495,7 +495,7 @@ describe('automatic dashboard data updates', () => {
     };
     const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
-      ['https://example.test/gh-aw-logs.jsonl'],
+      ['https://example.test/payload-hashes.json'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         permissions: grantedPermissions,

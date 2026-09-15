@@ -17,7 +17,8 @@ function serviceWorkerHarness(cacheKeys = []) {
     /** @param {string | Request} key */
     match: async (key) => entries.get(String(key))?.clone(),
     /** @param {string | Request} key */
-    delete: async (key) => entries.delete(String(key))
+    delete: async (key) => entries.delete(String(key)),
+    keys: async () => [...entries.keys()].map((url) => new Request(url))
   };
   const fetch = vi.fn(async (
     /** @type {string | URL | Request} */ _url,
@@ -55,6 +56,7 @@ function serviceWorkerHarness(cacheKeys = []) {
     URL,
     Response,
     AbortSignal,
+    Request,
     Set,
     Error,
     Promise,
@@ -82,8 +84,8 @@ describe('dashboard service worker', () => {
   it('downloads configured dashboard data during periodic background sync with no page open', async () => {
     const { listeners, worker, fetch, entries } = serviceWorkerHarness();
     const payloadHashes = JSON.stringify({
-      'gh-aw-logs.jsonl': 'a'.repeat(64),
-      'gh-aw-logs.sqlite': 'b'.repeat(64)
+      'gh-aw-logs.sqlite': 'b'.repeat(64),
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64)
     });
     fetch.mockImplementation(async (url) => new Response(
       String(url).endsWith('/payload-hashes.json') ? payloadHashes : 'updated data'
@@ -94,7 +96,6 @@ describe('dashboard service worker', () => {
         type: 'CONFIGURE_BACKGROUND_DATA',
         urls: [
           'https://example.test/dashboard/payload-hashes.json',
-          'https://example.test/dashboard/gh-aw-logs.jsonl',
           'https://example.test/dashboard/inventory-sources.json'
         ]
       },
@@ -109,14 +110,13 @@ describe('dashboard service worker', () => {
     });
 
     expect(fetch).toHaveBeenCalledTimes(3);
-    expect(entries.has('https://example.test/dashboard/gh-aw-logs.jsonl')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/gh-aw-logs-shards/logs-1.jsonl')).toBe(true);
     expect(entries.has('https://example.test/dashboard/payload-hashes.json')).toBe(true);
     entries.set(
       'https://example.test/dashboard/.dashboard-data-update-config',
       new Response(JSON.stringify({
         urls: [
           'https://example.test/dashboard/payload-hashes.json',
-          'https://example.test/dashboard/gh-aw-logs.jsonl',
           'https://example.test/dashboard/inventory-sources.json'
         ],
         lastSuccess: 0
@@ -126,7 +126,7 @@ describe('dashboard service worker', () => {
       tag: 'central-agentic-ops-dashboard-data'
     });
     expect(fetch).toHaveBeenCalledTimes(5);
-    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/gh-aw-logs.jsonl'))).toHaveLength(1);
+    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/logs-1.jsonl'))).toHaveLength(1);
     worker.navigator.connection.type = 'cellular';
     await dispatchExtendedEvent(listeners.periodicsync, {
       tag: 'central-agentic-ops-dashboard-data'
@@ -136,7 +136,7 @@ describe('dashboard service worker', () => {
 
   it('does not publish a new payload hash when the matching JSONL download fails', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const payloadHashes = JSON.stringify({ 'gh-aw-logs.jsonl': 'a'.repeat(64) });
+    const payloadHashes = JSON.stringify({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) });
     fetch.mockImplementation(async (url) => {
       if (String(url).endsWith('/payload-hashes.json')) return new Response(payloadHashes);
       throw new TypeError('network failure');
@@ -147,8 +147,7 @@ describe('dashboard service worker', () => {
       data: {
         type: 'DOWNLOAD_DATA',
         urls: [
-          'https://example.test/dashboard/payload-hashes.json',
-          'https://example.test/dashboard/gh-aw-logs.jsonl'
+          'https://example.test/dashboard/payload-hashes.json'
         ]
       },
       ports: [{ postMessage: completed }]
@@ -161,7 +160,7 @@ describe('dashboard service worker', () => {
   it('removes an obsolete hash when background downloads fall back to ETags', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
     const hashesUrl = 'https://example.test/dashboard/payload-hashes.json';
-    entries.set(hashesUrl, Response.json({ 'gh-aw-logs.jsonl': 'a'.repeat(64) }));
+    entries.set(hashesUrl, Response.json({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) }));
     fetch.mockImplementation(async (url) => (
       String(url).endsWith('/payload-hashes.json')
         ? new Response(null, { status: 404 })
@@ -172,8 +171,7 @@ describe('dashboard service worker', () => {
       data: {
         type: 'DOWNLOAD_DATA',
         urls: [
-          hashesUrl,
-          'https://example.test/dashboard/gh-aw-logs.jsonl'
+          hashesUrl
         ]
       },
       ports: [{ postMessage: vi.fn() }]
@@ -202,7 +200,7 @@ describe('dashboard service worker', () => {
     });
     await expect((await response)?.text()).resolves.toBe('online');
 
-    const dataRequest = new Request('https://example.test/dashboard/gh-aw-logs.jsonl');
+    const dataRequest = new Request('https://example.test/dashboard/gh-aw-logs-shards/logs-1.jsonl');
     entries.set(String(dataRequest), new Response('cached data'));
     fetch.mockRejectedValueOnce(new TypeError('offline'));
     listeners.fetch({
@@ -222,7 +220,7 @@ describe('dashboard service worker', () => {
       entries.set(String(key), response.clone());
     });
     fetch.mockResolvedValueOnce(new Response('streamed data'));
-    const request = new Request('https://example.test/dashboard/gh-aw-logs.jsonl');
+    const request = new Request('https://example.test/dashboard/gh-aw-logs-shards/logs-1.jsonl');
     /** @type {Promise<Response> | undefined} */
     let response;
     /** @type {Promise<unknown> | undefined} */
@@ -341,7 +339,7 @@ describe('dashboard service worker', () => {
 
   it('does not use stale cached data for hash-identified foreground downloads', async () => {
     const { listeners, fetch, entries } = serviceWorkerHarness();
-    const request = new Request('https://example.test/dashboard/gh-aw-logs.jsonl', {
+    const request = new Request('https://example.test/dashboard/gh-aw-logs-shards/logs-1.jsonl', {
       cache: 'no-store'
     });
     entries.set(String(request), new Response('stale data'));
@@ -362,7 +360,7 @@ describe('dashboard service worker', () => {
     await dispatchExtendedEvent(listeners.message, {
       data: {
         type: 'CONFIGURE_BACKGROUND_DATA',
-        urls: ['https://example.test/dashboard/gh-aw-logs.jsonl']
+        urls: ['https://example.test/dashboard/payload-hashes.json']
       },
       ports: [{ postMessage: vi.fn() }]
     });

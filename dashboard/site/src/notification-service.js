@@ -128,7 +128,7 @@ function renderNotification(initial, container, onRemove) {
     'aria-controls': detailId,
     'aria-label': `${initial.message} Show ingestion progress history`
   }, message, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
-  const details = h('ol', {
+  const details = h('ul', {
     className: 'dashboard-notification-details',
     id: detailId,
     hidden: true
@@ -150,7 +150,15 @@ function renderNotification(initial, container, onRemove) {
 
   const setDetails = () => {
     const expanded = toggle.getAttribute('aria-expanded') === 'true';
-    details.replaceChildren(...current.details.map((detail) => h('li', {}, detail)));
+    const followsLatest = details.scrollTop + details.clientHeight >= details.scrollHeight - 1;
+    const scrollTop = details.scrollTop;
+    current.details.forEach((detail, index) => {
+      const item = details.children[index] ?? h('li', {});
+      item.textContent = detail;
+      if (item.parentElement !== details) details.append(item);
+    });
+    while (details.children.length > current.details.length) details.lastElementChild?.remove();
+    details.scrollTop = followsLatest ? details.scrollHeight : scrollTop;
     if (current.details.length > 0) {
       if (message.parentElement !== toggle) toggle.prepend(message);
       if (!toggle.isConnected) content.prepend(toggle);
@@ -182,7 +190,19 @@ function renderNotification(initial, container, onRemove) {
       `${current.message} ${expanded ? 'Show' : 'Hide'} ingestion progress history`
     );
     details.hidden = expanded;
+    if (!expanded) details.scrollTop = details.scrollHeight;
   };
+  details.addEventListener('wheel', (event) => {
+    const maxScrollTop = details.scrollHeight - details.clientHeight;
+    if (maxScrollTop <= 0 || event.deltaY === 0) return;
+    const scale = event.deltaMode === 1
+      ? 16
+      : event.deltaMode === 2
+        ? details.clientHeight
+        : 1;
+    details.scrollTop = Math.max(0, Math.min(maxScrollTop, details.scrollTop + event.deltaY * scale));
+    event.preventDefault();
+  }, { passive: false });
   const scheduleDismissal = () => {
     if (dismissTimer) clearTimeout(dismissTimer);
     dismissTimer = current.duration > 0 ? setTimeout(dismiss, current.duration) : undefined;
