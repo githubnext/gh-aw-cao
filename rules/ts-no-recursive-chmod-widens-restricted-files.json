@@ -1,0 +1,64 @@
+{
+  "rule_key": "ts-no-recursive-chmod-widens-restricted-files",
+  "language": "typescript",
+  "additional_languages": [
+    "javascript"
+  ],
+  "unsafe_pattern": "Applying a recursive chmod (e.g. `execa(.sync)('chmod', ['-R', 'a+rX', dir])`, an equivalent shell string containing `chmod -R`, or `fs.chmodSync`/`fs.promises.chmod` walked recursively over a directory tree) to a directory that also holds, or may in the future hold, files intentionally created with a restrictive mode (e.g. 0o600) for sensitive content such as audit logs, tokens, or credentials.",
+  "consequence": "The recursive chmod silently widens permissions on every file under the target directory, including files deliberately locked down to owner-only access. Sensitive audit/token/log payloads become world- or group-readable, an information-disclosure defect that is easy to reintroduce because the recursive call looks like ordinary cleanup/log-permission-repair code.",
+  "mechanical_correction": "Restrict the chmod to the specific top-level directory and its direct (non-recursive) files only, or explicitly enumerate/exclude known-sensitive subpaths before any recursive step. When a file must stay private, create it with the restrictive mode via `fs.openSync(path, flags, 0o600)` + `fs.fchmodSync` (or equivalent) rather than relying on a later broad chmod pass to skip it.",
+  "evidence": [
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 8550,
+      "title": "Preserve redacted upstream non-2xx payloads and correlation metadata in API proxy audit logs",
+      "detail": "Changed containers/api-proxy/token-persistence.js audit log file mode from 0o644 to 0o600 and added explicit fs.openSync+fchmodSync to avoid a transient world-readable window; added a test asserting the file mode stays 0o600.",
+      "files": [
+        "containers/api-proxy/token-persistence.js",
+        "src/artifact-preservation.ts"
+      ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 8562,
+      "title": "fix: preserve API proxy log cleanup permissions",
+      "detail": "Removed recursive chmod widening (`chmodRuntimeDir`) for the API-proxy logs directory and removed proxyLogsDir from the recursive `fixArtifactPermissionsForRootless` fix-up list, specifically to stop `chmod -R a+rX` from exposing the 0600 token-tracker-audit.jsonl file that lives in the same directory tree.",
+      "files": [
+        "src/artifact-preservation.ts",
+        "src/container-cleanup-branches.test.ts",
+        "src/docker-manager-cleanup.test.ts"
+      ]
+    },
+    {
+      "type": "review_comment",
+      "repo": "github/gh-aw-firewall",
+      "number": 8562,
+      "url": "https://github.com/github/gh-aw-firewall/pull/8562#discussion_r4008324427",
+      "detail": "Unresolved copilot-pull-request-reviewer comment noting the #8562 fix was incomplete: src/container-stop.ts still runs `chmod -R a+rX /var/log/squid` (via fixSquidLogPermissions), which shares the same host directory as the 0600 token-tracker-audit.jsonl file, so the file is world-readable again before the direct-files-only cleanup in artifact-preservation.ts runs.",
+      "files": [
+        "src/container-stop.ts",
+        "src/artifact-preservation.ts"
+      ]
+    }
+  ],
+  "occurrence_count": 3,
+  "affected_paths": [
+    "src/artifact-preservation.ts",
+    "src/container-stop.ts",
+    "containers/api-proxy/token-persistence.js"
+  ],
+  "syntactic_constructs": [
+    "execa.sync('chmod', ['-R', ...])",
+    "execa('chmod', ['-R', ...])",
+    "shell string containing 'chmod -R'",
+    "fs.chmodSync recursive directory walk"
+  ],
+  "likely_false_positives": "Recursive chmod on directories that are guaranteed never to contain restricted-mode files (e.g. purely public build-output directories) is safe; the rule should allow an explicit exclusion/allowlist comment or a narrower non-recursive alternative to suppress.",
+  "autofix_safe": false,
+  "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
+  "status": "candidate",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/35035445052",
+  "last_updated_target_repo": "github/gh-aw-firewall"
+}
