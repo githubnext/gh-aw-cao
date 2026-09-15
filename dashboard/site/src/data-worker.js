@@ -15,6 +15,7 @@ import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
+import { formatClockDuration } from './view-formatters.js';
 
 /** @param {ReadableStream<Uint8Array>} body */
 async function* responseChunks(body) {
@@ -68,17 +69,37 @@ let nextIngestionProgressId = 0;
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
   let message = 'Preparing source data...';
-  let history = [message];
+  let phase = 'preparing';
+  let phaseStartedAt = Date.now();
+  let history = [];
+  let nextStep = 0;
   let completed = false;
+  /** @param {string} nextMessage @param {string} nextPhase */
+  const updatePhase = (nextMessage, nextPhase) => {
+    if (phase !== nextPhase) {
+      history = [...history, `${message} +${formatClockDuration(Date.now() - phaseStartedAt)}`]
+        .slice(-INGESTION_PROGRESS_HISTORY_LIMIT);
+      phase = nextPhase;
+      phaseStartedAt = Date.now();
+    }
+    message = nextMessage;
+  };
+  const displayedMessage = () => `${message} +${formatClockDuration(Date.now() - phaseStartedAt)}`;
+  const displayedHistory = () => [...history, displayedMessage()]
+    .slice(-INGESTION_PROGRESS_HISTORY_LIMIT);
   /** @param {string} nextMessage */
   const append = (nextMessage) => {
-    message = nextMessage;
-    if (history.at(-1) === nextMessage) return;
-    history = [...history, nextMessage].slice(-INGESTION_PROGRESS_HISTORY_LIMIT);
+    updatePhase(nextMessage, `step-${++nextStep}`);
   };
   const report = () => {
     if (!completed) {
-      publishWorkerNotification({ id, message, details: history, tone: 'info', duration: 0 }, target);
+      publishWorkerNotification({
+        id,
+        message: displayedMessage(),
+        details: displayedHistory(),
+        tone: 'info',
+        duration: 0
+      }, target);
     }
   };
   /** @type {ReturnType<typeof setInterval> | undefined} */
@@ -89,9 +110,18 @@ export function startIngestionProgress(target = self) {
     interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
   }, INGESTION_PROGRESS_DELAY_MS);
   return {
-    /** @param {number} recordsRead */
-    update(recordsRead) {
-      append(`Reading source data... ${recordsRead} ${recordsRead === 1 ? 'record' : 'records'} read.`);
+    /**
+     * @param {{ bytesProcessed: number, recordsIngested: number, totalBytes?: number }} progress
+     */
+    update({ bytesProcessed, recordsIngested, totalBytes }) {
+      const byteProgress = Number.isFinite(totalBytes) && totalBytes > 0
+        ? `${formatDataSize(bytesProcessed)} of ${formatDataSize(totalBytes)}`
+        : formatDataSize(bytesProcessed);
+      updatePhase(
+        `Parsing activity data... ${recordsIngested.toLocaleString('en-US')} `
+          + `${recordsIngested === 1 ? 'record' : 'records'}, ${byteProgress} read.`,
+        'parsing'
+      );
     },
     /**
      * Reports the storage phase, which dominates large ingestions and would
@@ -99,7 +129,11 @@ export function startIngestionProgress(target = self) {
      * @param {{ storedRecords: number, totalRecords: number }} progress
      */
     store({ storedRecords, totalRecords }) {
-      append(`Storing data... ${storedRecords} of ${totalRecords} records stored.`);
+      updatePhase(
+        `Storing data... ${storedRecords.toLocaleString('en-US')} of `
+          + `${totalRecords.toLocaleString('en-US')} records stored.`,
+        'storing'
+      );
     },
     /** @param {string} nextMessage */
     log(nextMessage) {
@@ -113,6 +147,20 @@ export function startIngestionProgress(target = self) {
       publishWorkerNotification({ id, dismiss: true }, target);
     }
   };
+}
+
+/** @param {number} bytes */
+function formatDataSize(bytes) {
+  const value = Math.max(0, Number(bytes) || 0);
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let scaled = value;
+  let unit = units[0];
+  for (let index = 1; index < units.length && scaled >= 1_000; index += 1) {
+    scaled /= 1_000;
+    unit = units[index];
+  }
+  const digits = scaled >= 10 || unit === 'B' ? 0 : 1;
+  return `${scaled.toFixed(digits)} ${unit}`;
 }
 
 async function loadActiveDashboard() {
@@ -369,12 +417,20 @@ export function processDataRequest(request, signal) {
           const payloadHashesUrl = new URL('./payload-hashes.json', sourceUrl);
           progress.log('Checking the published payload identity.');
           const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
-          const publishedIdentity = payloadHashesResponse?.ok
-            ? publishedPayloadIdentity(
-                await payloadHashesResponse.json().catch(() => null),
-                sourceUrl.pathname.split('/').at(-1) ?? ''
-              )
+          const payloadHashes = payloadHashesResponse?.ok
+            ? await payloadHashesResponse.json().catch(() => null)
             : null;
+          const publishedIdentity = publishedPayloadIdentity(
+            payloadHashes,
+            sourceUrl.pathname.split('/').at(-1) ?? ''
+          );
+          const shardCount = payloadHashes && typeof payloadHashes === 'object' && !Array.isArray(payloadHashes)
+            ? Object.keys(payloadHashes).filter((name) => name.startsWith('gh-aw-logs-shards/')).length
+            : 0;
+          if (shardCount > 0) {
+            progress.log(`Published activity data includes ${shardCount.toLocaleString('en-US')} `
+              + `${shardCount === 1 ? 'shard' : 'shards'}.`);
+          }
           const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
           progress.log('Loading workflow and repository inventory.');
           const inventoryResponse = await fetch(inventoryUrl);
@@ -447,13 +503,23 @@ export function processDataRequest(request, signal) {
             } else {
               if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
               if (!response.body) throw new Error('Unable to stream gh-aw JSONL response body');
-              progress.log('Activity data received; parsing records.');
+              const contentLength = Number(response.headers.get('content-length'));
+              const totalBytes = Number.isFinite(contentLength) && contentLength >= 0
+                ? contentLength
+                : undefined;
+              progress.log(totalBytes === undefined
+                ? 'Activity data received; parsing records.'
+                : `Activity data received; parsing ${formatDataSize(totalBytes)}.`);
               const etag = response.headers.get('etag');
               const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
                 storage: globalThis.navigator?.storage,
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
                 workflowHints,
-                onProgress: ({ recordsIngested }) => progress.update(recordsIngested),
+                onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
+                  bytesProcessed,
+                  recordsIngested,
+                  totalBytes
+                }),
                 onWriteProgress: (written) => progress.store(written),
                 payloadIdentity: publishedIdentity ?? (etag ? `${sourceUrl.href}:${etag}` : undefined),
                 payloadEtag: etag ?? undefined,
