@@ -8,6 +8,16 @@
 
 Run trusted agentic operations across your repository fleet from one central control plane.
 
+Bootstrap an empty control repository with:
+
+```bash
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash
+```
+
+The installer adds gh-aw and the core CAO package, creates the minimal control policy, and makes no CAO changes when rerun after installation.
+
 Central Agentic Ops packages reusable orchestrators and focused workers so platform teams can automate repository operations without copying workflows into every repository.
 
 - **Reach more repositories:** deterministically discover and batch inventories of 100,000+ repositories while keeping each run bounded.

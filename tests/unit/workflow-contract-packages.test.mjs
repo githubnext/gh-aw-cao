@@ -253,7 +253,7 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
   assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
   assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
-  assert.match(admission, /root CAO package installs one runtime copy under `\.github\/workflows\/shared\/`/i);
+  assert.match(admission, /Bash installer installs the root CAO package and creates the consumer-owned policy/i);
 });
 
 test("root package composes its operational packages through manifests", () => {
@@ -337,17 +337,13 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /Offer `<organization>\/<control-repository>` as the default/);
   assert.match(setupSkill, /target_repo="<target-owner>\/<target-repository>"/);
   assert.doesNotMatch(setupSkill, /Always target the control repository itself for the first run/);
-  assert.match(setupSkill, /^1\. Install or verify the `gh-aw` CLI before any other setup work/m);
-  assert.match(setupSkill, /install-gh-aw\.sh \| bash/);
-  assert.match(setupSkill, /github\/gh-aw\/blob\/main\/install\.md/);
-  assert.match(setupSkill, /gh aw add githubnext\/gh-aw-cao/);
-  assert.match(setupSkill, /gh-aw resolves the latest published release, retries transient package-install failures/);
+  assert.match(setupSkill, /^1\. Verify GitHub CLI before any other setup work/m);
+  assert.match(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
+  assert.match(setupSkill, /installer verifies or installs gh-aw, adds the latest published root package, and creates a minimal review-safe/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
   assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-aw-cao@main|full commit SHA/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(setupSkill, /gh aw doctor --repo <organization>\/<control-repository> --dir \./);
-  assert.match(setupSkill, /Run `gh aw version`\. Compare it with `min-version` in the root CAO `aw\.yml`/);
-  assert.match(setupSkill, /Do not require the catalog maintainer's current local version when the package supports an older release/);
   assert.match(setupSkill, /gh api orgs\/<organization>\/copilot\/billing/);
   assert.match(setupSkill, /Require confirmed organization billing for Copilot inference/);
   assert.match(setupSkill, /`total_seats: 0`[\s\S]*?HTTP 403/);
@@ -355,8 +351,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /every installed Copilot-backed source declares `copilot-requests: write`/);
   assert.match(setupSkill, /no generated lock declares `\$\{\{ secrets\.COPILOT_GITHUB_TOKEN \}\}`/);
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
-  assert.match(setupSkill, /Do not add release-resolution scripts/);
-  assert.match(setupSkill, /cao init[\s\S]*cao add "githubnext\/gh-aw-cao\/<package-slug>@<release>"/);
+  assert.match(setupSkill, /node \.github\/aw\/activity\/cao\.mjs add githubnext\/gh-aw-cao\/<package-slug>/);
   assert.match(setupSkill, /consumer-owned policy/);
   assert.match(setupSkill, /edit only `control-plane\.scope` to add `target-owner` and `target-owner\/target-repository`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);
