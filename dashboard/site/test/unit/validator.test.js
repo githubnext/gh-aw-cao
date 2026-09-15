@@ -39,6 +39,31 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('validates declarative metric number animations', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const metric = {
+      id: 'animated-run-count',
+      title: 'Animated run count',
+      data: { source: 'runs' },
+      mark: 'metric',
+      metric: { style: 'card', icon: 'play', tone: 'neutral', animate: 'number', 'navigation-page': 'overview' },
+      encoding: { value: { field: 'run', aggregate: 'count' } }
+    };
+    document.dashboard.pages.push({
+      id: 'animated-metric',
+      kind: 'custom',
+      title: 'Animated metric',
+      views: [metric]
+    });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    metric.metric.animate = 'counter';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    metric.metric.animate = 'number';
+    metric.metric.style = 'summary';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({

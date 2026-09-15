@@ -154,7 +154,7 @@ function renderMetricView(context) {
       className: `metric-card-widget-value${animateNumber ? ' metric-number-animated' : ''}`,
       'data-metric-value': fieldName ?? 'unknown',
       ...(animateNumber ? { style: `--metric-number-target: ${displayedValue}` } : {})
-    }, animateNumber ? h('span', { className: 'sr-only' }, displayedValue) : displayedValue),
+    }, animateNumber ? h('span', { className: 'metric-number-animated-value' }, displayedValue) : displayedValue),
     h(headingTag, { className: 'metric-card-widget-label' }, title),
     h('span', { className: 'metric-card-widget-icon', 'aria-hidden': 'true' }, octicon(icon)),
     ...renderViewSectionChrome(metadata, contextDetails));

@@ -2215,8 +2215,16 @@ function validateView(view, viewNode, path, viewIds, errors) {
         `${path}.chart`
       ));
     }
+    if (view.mark !== 'chart') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'chart is allowed only when mark is "chart".',
+        `${path}.chart`
+      ));
+    }
+  }
 
-    if (view.metric !== undefined) {
+  if (view.metric !== undefined) {
       const metricPath = `${path}.metric`;
       if (!isPlainObject(view.metric)) {
         errors.push(createError(
@@ -2279,14 +2287,6 @@ function validateView(view, viewNode, path, viewIds, errors) {
           metricPath
         ));
       }
-    }
-    if (view.mark !== 'chart') {
-      errors.push(createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'chart is allowed only when mark is "chart".',
-        `${path}.chart`
-      ));
-    }
   }
 
   if (view.layout !== undefined) {
