@@ -1015,32 +1015,12 @@
           { "as": "observed-agent-model", "function": "concat", "args": [{ "field": "observed-engine" }, { "value": " / " }, { "field": "observed-model" }] }
         ],
         "aggregate": {
-          "by": [
-            "organization",
-            "repository",
-            "workflow"
-          ],
+          "by": ["organization", "repository", "workflow"],
           "values": [
-            {
-              "field": "run",
-              "as": "runs",
-              "reducer": "distinct-count"
-            },
-            {
-              "field": "aic-total",
-              "as": "aic",
-              "reducer": "sum"
-            },
-            {
-              "field": "failed-run-count",
-              "as": "failed-runs",
-              "reducer": "sum"
-            },
-            {
-              "field": "observed-agent-model",
-              "as": "agent-model",
-              "reducer": "distinct-list"
-            }
+            { "field": "run", "as": "runs", "reducer": "distinct-count" },
+            { "field": "aic-total", "as": "aic", "reducer": "sum" },
+            { "field": "failed-run-count", "as": "failed-runs", "reducer": "sum" },
+            { "field": "observed-agent-model", "as": "agent-model", "reducer": "distinct-list" }
           ]
         }
       },
@@ -1049,31 +1029,10 @@
         "intent": "Count observed MCP tool calls for each declared workflow.",
         "description": "Observed MCP tool-call totals by workflow.",
         "from": "events",
-        "filter": {
-          "predicates": [
-            {
-              "field": "event-source",
-              "equals": "mcp"
-            },
-            {
-              "field": "event-type",
-              "equals": "tool.call"
-            }
-          ]
-        },
+        "filter": { "predicates": [{ "field": "event-source", "equals": "mcp" }, { "field": "event-type", "equals": "tool.call" }] },
         "aggregate": {
-          "by": [
-            "organization",
-            "repository",
-            "workflow"
-          ],
-          "values": [
-            {
-              "field": "event",
-              "as": "mcp-tool-calls",
-              "reducer": "count"
-            }
-          ]
+          "by": ["organization", "repository", "workflow"],
+          "values": [{ "field": "event", "as": "mcp-tool-calls", "reducer": "count" }]
         }
       },
       {
@@ -1081,34 +1040,10 @@
         "intent": "Count observed tool calls denied by gateway guard policy or information-flow filtering for each declared workflow.",
         "description": "Observed denied tool-call totals by workflow.",
         "from": "events",
-        "filter": {
-          "predicates": [
-            {
-              "field": "event-source",
-              "equals": "gateway"
-            },
-            {
-              "field": "event-type",
-              "in": [
-                "guard_blocked",
-                "difc_filtered"
-              ]
-            }
-          ]
-        },
+        "filter": { "predicates": [{ "field": "event-source", "equals": "gateway" }, { "field": "event-type", "in": ["guard_blocked", "difc_filtered"] }] },
         "aggregate": {
-          "by": [
-            "organization",
-            "repository",
-            "workflow"
-          ],
-          "values": [
-            {
-              "field": "event",
-              "as": "denied-tool-calls",
-              "reducer": "count"
-            }
-          ]
+          "by": ["organization", "repository", "workflow"],
+          "values": [{ "field": "event", "as": "denied-tool-calls", "reducer": "count" }]
         }
       },
       {
@@ -1116,27 +1051,10 @@
         "intent": "Sum observed firewall-blocked egress requests for each declared workflow.",
         "description": "Observed blocked egress request totals by workflow.",
         "from": "firewall-observations",
-        "filter": {
-          "predicates": [
-            {
-              "field": "decision",
-              "equals": "denied"
-            }
-          ]
-        },
+        "filter": { "predicates": [{ "field": "decision", "equals": "denied" }] },
         "aggregate": {
-          "by": [
-            "organization",
-            "repository",
-            "workflow"
-          ],
-          "values": [
-            {
-              "field": "request-count",
-              "as": "firewall-blocked",
-              "reducer": "sum"
-            }
-          ]
+          "by": ["organization", "repository", "workflow"],
+          "values": [{ "field": "request-count", "as": "firewall-blocked", "reducer": "sum" }]
         }
       },
       {
@@ -1148,51 +1066,26 @@
           {
             "source": "workflows",
             "type": "left",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" }
-            ],
-            "fields": [
-              { "field": "workflow-name", "as": "declared-workflow-name" },
-              { "field": "workflow-link", "as": "declared-workflow-link" }
-            ]
+            "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "workflow-name", "as": "declared-workflow-name" }, { "field": "workflow-link", "as": "declared-workflow-link" }]
           },
           {
             "source": "cost-workflow-mcp-tool-call-totals",
             "type": "left",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" }
-            ],
-            "fields": [
-              { "field": "mcp-tool-calls", "as": "observed-mcp-tool-calls" }
-            ]
+            "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "mcp-tool-calls", "as": "observed-mcp-tool-calls" }]
           },
           {
             "source": "cost-workflow-denied-tool-call-totals",
             "type": "left",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" }
-            ],
-            "fields": [
-              { "field": "denied-tool-calls", "as": "observed-denied-tool-calls" }
-            ]
+            "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "denied-tool-calls", "as": "observed-denied-tool-calls" }]
           },
           {
             "source": "cost-workflow-firewall-blocked-totals",
             "type": "left",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" }
-            ],
-            "fields": [
-              { "field": "firewall-blocked", "as": "observed-firewall-blocked" }
-            ]
+            "on": [{ "left": "organization", "right": "organization" }, { "left": "repository", "right": "repository" }, { "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "firewall-blocked", "as": "observed-firewall-blocked" }]
           }
         ],
         "compute": [
@@ -1222,16 +1115,7 @@
           { "field": "total-firewall-blocked", "as": "firewall-blocked" },
           { "field": "declared-workflow-link", "as": "workflow-link" }
         ],
-        "order-by": [
-          {
-            "field": "aic",
-            "direction": "desc"
-          },
-          {
-            "field": "workflow",
-            "direction": "asc"
-          }
-        ]
+        "order-by": [{ "field": "aic", "direction": "desc" }, { "field": "workflow", "direction": "asc" }]
       },
       {
         "name": "mcp-tool-results",
@@ -4402,12 +4286,7 @@
             "description": "The ten workflows with the highest measured AI Credit consumption concentrate token-efficiency opportunity.",
             "data": {
               "source": "cost-workflow-efficiency",
-              "order-by": [
-                {
-                  "field": "total-aic",
-                  "direction": "desc"
-                }
-              ],
+              "order-by": [{ "field": "total-aic", "direction": "desc" }],
               "limit": 10
             },
             "mark": "chart",
@@ -4415,32 +4294,16 @@
             "layout": "full",
             "empty-message": "No AI Credit consumption was observed in the selected horizon.",
             "encoding": {
-              "x": {
-                "field": "workflow-name",
-                "type": "nominal",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "as": "total-aic",
-                "title": "Total AIC",
-                "unit": "aic"
-              },
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              }
+              "x": { "field": "workflow-name", "type": "nominal", "title": "Workflow" },
+              "y": { "field": "aic", "type": "quantitative", "aggregate": "sum", "as": "total-aic", "title": "Total AIC", "unit": "aic" },
+              "href": { "field": "workflow-link", "type": "nominal" }
             }
           },
           {
             "id": "cost-workflow-efficiency",
             "title": "Workflow token efficiency",
             "description": "Observed runs, AI Credit consumption per run, failures, tool activity, and blocked egress by workflow.",
-            "data": {
-              "source": "cost-workflow-efficiency"
-            },
+            "data": { "source": "cost-workflow-efficiency" },
             "mark": "table",
             "controls": "interactive",
             "lazy-list": true,
@@ -4449,54 +4312,15 @@
             "empty-message": "No workflow AI Credit consumption was observed in the selected horizon.",
             "encoding": {
               "columns": [
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Workflow",
-                  "display": "workflow-link"
-                },
-                {
-                  "field": "agent-model",
-                  "type": "nominal",
-                  "title": "Agent / model"
-                },
-                {
-                  "field": "runs",
-                  "type": "quantitative",
-                  "title": "Runs"
-                },
-                {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                },
-                {
-                  "field": "aic-per-run",
-                  "type": "quantitative",
-                  "title": "AIC / run",
-                  "unit": "aic-per-run"
-                },
-                {
-                  "field": "failed-runs",
-                  "type": "quantitative",
-                  "title": "Failed runs"
-                },
-                {
-                  "field": "mcp-tool-calls",
-                  "type": "quantitative",
-                  "title": "MCP tool calls"
-                },
-                {
-                  "field": "denied-tool-calls",
-                  "type": "quantitative",
-                  "title": "Denied tool calls"
-                },
-                {
-                  "field": "firewall-blocked",
-                  "type": "quantitative",
-                  "title": "Firewall blocked"
-                }
+                { "field": "workflow-name", "type": "nominal", "title": "Workflow", "display": "workflow-link" },
+                { "field": "agent-model", "type": "nominal", "title": "Agent / model" },
+                { "field": "runs", "type": "quantitative", "title": "Runs" },
+                { "field": "aic", "type": "quantitative", "title": "Total AIC", "unit": "aic" },
+                { "field": "aic-per-run", "type": "quantitative", "title": "AIC / run", "unit": "aic-per-run" },
+                { "field": "failed-runs", "type": "quantitative", "title": "Failed runs" },
+                { "field": "mcp-tool-calls", "type": "quantitative", "title": "MCP tool calls" },
+                { "field": "denied-tool-calls", "type": "quantitative", "title": "Denied tool calls" },
+                { "field": "firewall-blocked", "type": "quantitative", "title": "Firewall blocked" }
               ]
             }
           }
