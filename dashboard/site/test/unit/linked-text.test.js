@@ -47,4 +47,23 @@ describe('linked text helpers', () => {
     expect(plainStatus).toBe('text:completed');
     expect(plainRepository).toBe('text:gh-aw-cao');
   });
+
+  it('DLS-TEST-003 keeps absent entity values unlinked so missing-data markers stay visible', () => {
+    const renderEntityAwareCellValue = createEntityAwareCellRenderer(
+      { workflow: 'workflow-link' },
+      (row, field) => /** @type {{ href: string, label: string } | null} */ (row[field] ?? null),
+      (display, value) => value == null || value === '' ? 'missing data' : `${String(display ?? 'text')}:${String(value)}`,
+      (value) => value == null ? 'unknown' : String(value)
+    );
+    const row = {
+      'workflow-link': {
+        href: 'https://github.com/githubnext/gh-aw-cao',
+        label: 'View workflow on GitHub'
+      }
+    };
+
+    expect(renderEntityAwareCellValue('workflow', null, row)).toBe('missing data');
+    expect(renderEntityAwareCellValue('workflow', '', row)).toBe('missing data');
+    expect(renderEntityAwareCellValue('workflow', '.github/workflows/daily.md', row)).toBeInstanceOf(HTMLElement);
+  });
 });

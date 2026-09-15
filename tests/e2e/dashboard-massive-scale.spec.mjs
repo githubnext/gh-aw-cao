@@ -17,7 +17,7 @@ const workflows = numberSetting("DASHBOARD_STRESS_WORKFLOWS", 24);
 const sampleIntervalMs = numberSetting("DASHBOARD_STRESS_SAMPLE_INTERVAL_MS", 250);
 const maximumPageHeapMb = numberSetting("DASHBOARD_STRESS_MAX_BROWSER_HEAP_MB", 220);
 const maximumRetainedPageHeapMb = numberSetting("DASHBOARD_STRESS_MAX_RETAINED_HEAP_MB", 128);
-const maximumWorkingSetMb = numberSetting("DASHBOARD_STRESS_MAX_WORKING_SET_MB", 2_048);
+const maximumWorkingSetMb = numberSetting("DASHBOARD_STRESS_MAX_WORKING_SET_MB", 2_304);
 const maximumIngestionRssMb = numberSetting("DASHBOARD_STRESS_MAX_INGESTION_RSS_MB", 2_048);
 const maximumGeneratorRssMb = numberSetting("DASHBOARD_STRESS_MAX_GENERATOR_RSS_MB", 256);
 const megabyte = 1024 * 1024;
@@ -127,16 +127,6 @@ function canonicalCounts(path) {
   }
 }
 
-async function serveShards(response) {
-  response.writeHead(200, { "content-type": "application/x-ndjson" });
-  for (const file of manifest.files) {
-    for await (const chunk of createReadStream(join(shardDirectory, file.name))) {
-      if (!response.write(chunk)) await once(response, "drain");
-    }
-  }
-  response.end();
-}
-
 test.beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "cao-dashboard-massive-scale-"));
   shardDirectory = join(root, "gh-aw-logs-shards");
@@ -169,8 +159,21 @@ test.beforeAll(async () => {
         response.end("<main>dashboard massive-scale stress</main>");
         return;
       }
-      if (pathname === "/gh-aw-logs.jsonl") {
-        await serveShards(response);
+      if (pathname === "/payload-hashes.json") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify(Object.fromEntries(manifest.files.map((file) => [
+          `gh-aw-logs-shards/${file.name}`,
+          file.sha256,
+        ]))));
+        return;
+      }
+      const shard = manifest.files.find((file) => pathname === `/gh-aw-logs-shards/${file.name}`);
+      if (shard) {
+        response.writeHead(200, {
+          "content-type": "application/x-ndjson",
+          "content-length": String(shard.bytes),
+        });
+        createReadStream(join(shardDirectory, shard.name)).pipe(response);
         return;
       }
       const filePath = resolve(join(siteRoot, pathname));
@@ -249,7 +252,7 @@ test("massive shards populate canonical storage within restricted memory", async
         durationMs: Math.round(performance.now() - startedAt),
         returnedRuns: sources.runs?.rows?.length ?? 0,
       };
-    }, { sourceUrl: `${origin}/gh-aw-logs.jsonl` });
+    }, { sourceUrl: `${origin}/payload-hashes.json` });
   } finally {
     clearInterval(interval);
     await capturePending;

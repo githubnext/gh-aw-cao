@@ -361,6 +361,9 @@ describe('dashboard document validation', () => {
   });
 
   it('defines every other editable experimental page as one full-view lazy table', () => {
+    // Pages that intentionally compose more than one editable view, asserted separately below
+    // or by their own focused suites: safe-outputs, maintenance, issues, and cost.
+    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'cost']);
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -369,7 +372,7 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
-      if (page.id === 'safe-outputs' || page.id === 'maintenance' || page.id === 'issues') continue;
+      if (multiViewPageIds.has(page.id)) continue;
       const definition = page.definition ?? page;
       const editableViews = (definition.views ?? []).filter(
         (/** @type {{ locked?: boolean }} */ view) => view.locked !== true

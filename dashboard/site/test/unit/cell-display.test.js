@@ -69,4 +69,20 @@ describe('table cell display helper', () => {
       significant: 1
     })).toBe('3 AIC');
   });
+
+  it('DLS-TEST-003 marks absent workflow paths as missing data while leaving other absent values blank', () => {
+    /** @param {unknown} value */
+    const toText = (value) => value == null || value === '' ? 'unknown' : String(value);
+
+    for (const absent of [null, undefined, '']) {
+      const missing = /** @type {HTMLElement} */ (renderCellDisplay(undefined, absent, toText, null, 'nominal', 'workflow-relative-path'));
+      expect(missing).toBeInstanceOf(HTMLElement);
+      expect(missing.className).toBe('table-missing-value');
+      expect(missing.textContent).toBe('missing data');
+      expect(missing.hasAttribute('data-missing-value')).toBe(true);
+    }
+
+    expect(renderCellDisplay(undefined, '', toText, null, 'nominal')).toBe('');
+    expect(renderCellDisplay(undefined, 0, toText, null, 'nominal', 'workflow-relative-path')).toBe('0');
+  });
 });

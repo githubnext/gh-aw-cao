@@ -1943,6 +1943,7 @@ thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75
 :is(.table-summary-quantitative dl, .table-summary-temporal) dt { font-weight: 400; }
 :is(.table-summary-quantitative dl, .table-summary-temporal) dd { margin: 0; color: var(--fg); font-weight: 600; }
 .table-summary-empty { font-weight: 400; font-style: italic; }
+.table-missing-value { color: var(--muted, GrayText); font-style: italic; }
 tbody tr:last-child > * { border-bottom: 0; }
 tbody tr:hover { background: var(--canvas-subtle); }
 .kind, .status, .mode-badge, .workflow-badge { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border: 1px solid var(--border); border-radius: 2em; color: var(--muted); font-size: .6875rem; font-weight: 600; text-transform: capitalize; white-space: nowrap; }
