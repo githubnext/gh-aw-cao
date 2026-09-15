@@ -326,6 +326,25 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .document-list-card-details dd { margin: 0 8px 0 -11px; font-size: .6875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .document-list-card .table-cli-action-button { width: auto; min-height: 32px; padding: 7px; border: 1px solid var(--border); }
 .document-list-empty { margin: 0; padding: 16px; color: var(--muted); font-size: .75rem; }
+.issue-list { display: block; }
+.issue-list-card { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border); list-style: none; }
+.issue-list-card:first-child { border-top: 0; }
+.issue-list-card:hover { background: var(--canvas-subtle); }
+.issue-list-card-icon { padding-top: 2px; color: var(--success); }
+.issue-list-card-icon .octicon { width: 16px; height: 16px; }
+.issue-list-card-content { min-width: 0; display: grid; gap: 4px; }
+.issue-list-card-title { min-width: 0; color: var(--fg); font-size: .875rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.issue-list-card-title a { color: inherit; text-decoration: none; }
+.issue-list-card-title a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.issue-list-card-title a .octicon { width: 12px; height: 12px; color: var(--muted); }
+.issue-list-card-meta { display: flex; flex-wrap: wrap; gap: 2px 6px; margin: 0; color: var(--muted); font-size: .75rem; }
+.issue-list-card-meta > div { display: contents; }
+.issue-list-card-meta dt { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.issue-list-card-meta dd { margin: 0; }
+.issue-list-card-meta dd:not(:last-child)::after { margin-left: 6px; color: var(--muted); content: "·"; }
+.issue-list-card-meta a { color: inherit; }
+.issue-list-labels { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
+.issue-list-labels li { max-width: 220px; padding: 0 7px; overflow: hidden; border: 1px solid var(--accent-muted); border-radius: 999px; background: var(--accent-muted); color: var(--accent); font-size: .6875rem; font-weight: 600; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
 .cli-action-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); text-align: left; white-space: normal; }
 .cli-action-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .cli-action-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
@@ -500,6 +519,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .metric-card-widget .view-source, .metric-card-widget .view-metadata { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .custom-view[data-view-layout="full-view"] { min-height: 100%; display: flex; flex-direction: column; }
 .custom-view[data-view-layout="full-view"] > .table-region { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.custom-view[data-view-layout="full-view"] > .document-list-header { flex: none; margin: 0; padding: 12px 24px; border-bottom: 1px solid var(--border); background: var(--canvas); }
+.custom-view[data-view-layout="full-view"] > .document-list { min-height: 0; flex: 1; overflow: auto; }
 .custom-view[data-view-layout="full-view"] .table-scroll { min-height: 0; flex: 1; overflow: auto; }
 .dashboard-full-view .overview-header .lede,
 .dashboard-full-view .report-footer,
@@ -521,6 +542,11 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > .table-region {
   margin: 0;
   overflow: hidden;
+  border: 0;
+  border-radius: 0;
+}
+.dashboard-full-view .custom-view[data-view-layout="full-view"] > .document-list {
+  margin: 0;
   border: 0;
   border-radius: 0;
 }
@@ -2327,6 +2353,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .document-list-header .declared-cli-action, .document-list-header .cli-action-trigger { width: 100%; }
   .document-list-card { grid-template-columns: auto minmax(0, 1fr); }
   .document-list-card > .table-cli-action-control { grid-column: 2; justify-self: start; }
+  .issue-list-card { grid-template-columns: 20px minmax(0, 1fr); padding: 10px 14px; }
+  .issue-list-labels { grid-column: 2; justify-content: flex-start; }
   .outcome-meta { grid-template-columns: 1fr; }
   .configuration-editor-toolbar { align-items: stretch; flex-direction: column; }
   .configuration-editor-toolbar > div { justify-content: space-between; }

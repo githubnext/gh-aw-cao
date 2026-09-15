@@ -228,7 +228,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
-        expect.objectContaining({ message: 'list.style must be "cards".' })
+        expect.objectContaining({ message: 'list.style must be one of cards, issues.' })
       ])
     });
     starterList.list.style = 'cards';
