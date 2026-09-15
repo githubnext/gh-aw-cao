@@ -1,10 +1,11 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
-import { buildDashboardSite } from '../../scripts/build.mjs';
 
-const repositoryRoot = new URL('../../../../', import.meta.url);
+const buildScript = fileURLToPath(new URL('../../scripts/build.mjs', import.meta.url));
 const sourceDashboard = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
 const policy = JSON.parse(readFileSync(new URL('../../../../.github/workflows/cao.json', import.meta.url), 'utf8'));
 const sourceNavigation = /** @type {Array<{ label?: string, experimental?: boolean, pages: string[] }>} */ (
@@ -17,11 +18,9 @@ test('repository policy exposes every experimental dashboard page and route', as
 
   const root = mkdtempSync(join(tmpdir(), 'cao-experimental-views-'));
   try {
-    await buildDashboardSite({
-      destination: root,
-      controlSettings: policy['control-plane'],
-      repositoryRoot,
-    });
+    const settingsPath = join(root, 'control-settings.json');
+    writeFileSync(settingsPath, JSON.stringify(policy['control-plane']));
+    execFileSync(process.execPath, [buildScript, root, settingsPath]);
 
     await context.route('http://experimental.dashboard.test/**', async (route) => {
       const pathname = new URL(route.request().url()).pathname;
