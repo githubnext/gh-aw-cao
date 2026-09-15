@@ -2729,12 +2729,7 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "organization" for source "runs".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "repository" for source "runs".'
+            message: 'built-in page "runs" definition must expose field "repository-coordinate" for source "runs".'
           }),
           expect.objectContaining({
             code: 'DLS-E003',
@@ -2884,8 +2879,7 @@ dashboard:
                 - field: engine
                 - field: requested-model
                 - field: resolved-model
-                - field: organization
-                - field: repository
+                - field: repository-coordinate
                 - field: workflow
                 - field: rollout-mode
                 - field: observed-at
