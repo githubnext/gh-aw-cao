@@ -127,6 +127,8 @@ resources:
     destination: .github/aw/dashboard/site/src/dom-provenance.js
   - source: site/src/debounce.js
     destination: .github/aw/dashboard/site/src/debounce.js
+  - source: site/src/elapsed-step-tracker.js
+    destination: .github/aw/dashboard/site/src/elapsed-step-tracker.js
   - source: site/src/horizon.js
     destination: .github/aw/dashboard/site/src/horizon.js
   - source: site/src/loading-progress.js
