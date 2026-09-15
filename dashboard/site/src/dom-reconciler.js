@@ -1,67 +1,81 @@
 import { syncDomProperties } from './dom.js';
 
 /**
+ * @typedef {{ nodes: Node[], index: number }} NodeQueue
+ */
+
+/**
  * Reconciles a rendered shadow tree into an owned DOM subtree. The algorithm
- * follows the in-place tree-morphing approach used by established DOM morphers:
- * keyed nodes are matched first, compatible unkeyed nodes are reused in order,
- * and only changed attributes, character data, or child positions are mutated.
+ * uses the indexed-node and live-cursor approach established by DOM morphers:
+ * keyed and compatible unkeyed nodes are consumed in order, then moved into
+ * place while only changed attributes, character data, or positions are mutated.
  *
  * @param {Node} currentParent
  * @param {Node} desiredParent
  */
 export function reconcileChildren(currentParent, desiredParent) {
-  const desiredChildren = [...desiredParent.childNodes];
+  /** @type {Map<string, NodeQueue>} */
   const keyedChildren = new Map();
-  const retained = new Set();
+  /** @type {Map<string, NodeQueue>} */
+  const unkeyedChildren = new Map();
 
   for (const child of currentParent.childNodes) {
     const key = nodeKey(child);
-    if (key !== null && !keyedChildren.has(key)) keyedChildren.set(key, child);
+    addToQueue(key === null ? unkeyedChildren : keyedChildren, key ?? nodeTypeKey(child), child);
   }
 
   let cursor = currentParent.firstChild;
-  for (const desired of desiredChildren) {
+  let desired = desiredParent.firstChild;
+  while (desired) {
+    const nextDesired = desired.nextSibling;
     const key = nodeKey(desired);
-    let current = key === null ? null : keyedChildren.get(key) ?? null;
-    if (current && (!compatibleNodes(current, desired) || retained.has(current))) current = null;
-
-    if (!current && key === null) {
-      current = findCompatibleUnkeyedNode(cursor, desired, retained);
-    }
+    const current = takeFromQueue(
+      key === null ? unkeyedChildren : keyedChildren,
+      key ?? nodeTypeKey(desired)
+    );
 
     if (current) {
+      const nextCursor = current === cursor ? current.nextSibling : cursor;
       if (current !== cursor) currentParent.insertBefore(current, cursor);
       reconcileNode(current, desired);
-      retained.add(current);
-      cursor = current.nextSibling;
-      continue;
+      cursor = nextCursor;
+    } else {
+      currentParent.insertBefore(desired, cursor);
     }
 
-    currentParent.insertBefore(desired, cursor);
-    retained.add(desired);
-    cursor = desired.nextSibling;
+    desired = nextDesired;
   }
 
-  for (const child of [...currentParent.childNodes]) {
-    if (!retained.has(child)) currentParent.removeChild(child);
+  while (cursor) {
+    const next = cursor.nextSibling;
+    currentParent.removeChild(cursor);
+    cursor = next;
   }
 }
 
 /**
- * @param {Node | null} start
- * @param {Node} desired
- * @param {Set<Node>} retained
+ * @param {Map<string, NodeQueue>} queues
+ * @param {string} key
+ * @param {Node} node
+ */
+function addToQueue(queues, key, node) {
+  const queue = queues.get(key);
+  if (queue) {
+    queue.nodes.push(node);
+  } else {
+    queues.set(key, { nodes: [node], index: 0 });
+  }
+}
+
+/**
+ * @param {Map<string, NodeQueue>} queues
+ * @param {string} key
  * @returns {Node | null}
  */
-function findCompatibleUnkeyedNode(start, desired, retained) {
-  let candidate = start;
-  while (candidate) {
-    if (!retained.has(candidate) && nodeKey(candidate) === null && compatibleNodes(candidate, desired)) {
-      return candidate;
-    }
-    candidate = candidate.nextSibling;
-  }
-  return null;
+function takeFromQueue(queues, key) {
+  const queue = queues.get(key);
+  if (!queue || queue.index >= queue.nodes.length) return null;
+  return queue.nodes[queue.index++];
 }
 
 /**
@@ -85,12 +99,14 @@ function reconcileNode(current, desired) {
  * @param {Element} desired
  */
 function reconcileAttributes(current, desired) {
-  for (const attribute of [...current.attributes]) {
+  for (let index = current.attributes.length - 1; index >= 0; index -= 1) {
+    const attribute = current.attributes[index];
     if (!desired.hasAttributeNS(attribute.namespaceURI, attribute.localName)) {
       current.removeAttributeNS(attribute.namespaceURI, attribute.localName);
     }
   }
-  for (const attribute of [...desired.attributes]) {
+  for (let index = 0; index < desired.attributes.length; index += 1) {
+    const attribute = desired.attributes[index];
     if (current.getAttributeNS(attribute.namespaceURI, attribute.localName) === attribute.value) continue;
     if (attribute.namespaceURI) {
       current.setAttributeNS(attribute.namespaceURI, attribute.name, attribute.value);
@@ -101,15 +117,13 @@ function reconcileAttributes(current, desired) {
 }
 
 /**
- * @param {Node} current
- * @param {Node} desired
+ * @param {Node} node
+ * @returns {string}
  */
-function compatibleNodes(current, desired) {
-  return current.nodeType === desired.nodeType
-    && (!(current instanceof Element)
-      || (desired instanceof Element
-        && current.localName === desired.localName
-        && current.namespaceURI === desired.namespaceURI));
+function nodeTypeKey(node) {
+  return node instanceof Element
+    ? `${node.nodeType}:${node.namespaceURI}:${node.localName}`
+    : String(node.nodeType);
 }
 
 /**

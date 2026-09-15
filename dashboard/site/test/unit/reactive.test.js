@@ -272,6 +272,30 @@ describe('reactive core', () => {
     handle.stop();
   });
 
+  it('reconciles adversarial unkeyed reordering with linear node matching', () => {
+    const reverseGroups = state(false);
+    const count = 80;
+    const renderGroup = (name) => Array.from(
+      { length: count },
+      (_, index) => h(name, null, `${name}-${index}`)
+    );
+    const host = h('div');
+    const handle = render(host, () => reverseGroups.get()
+      ? [...renderGroup('div'), ...renderGroup('span')]
+      : [...renderGroup('span'), ...renderGroup('div')]);
+    const originalSpans = [...host.querySelectorAll('span')];
+    const originalDivs = [...host.querySelectorAll(':scope > div')];
+    const localName = vi.spyOn(Element.prototype, 'localName', 'get');
+
+    reverseGroups.set(true);
+
+    expect([...host.children].slice(0, count)).toEqual(originalDivs);
+    expect([...host.children].slice(count)).toEqual(originalSpans);
+    expect(localName.mock.calls.length).toBeLessThan(count * 10);
+    localName.mockRestore();
+    handle.stop();
+  });
+
   it('updates explicit form properties without resetting uncontrolled fields', () => {
     const controlled = state('first');
     const tick = state(0);
