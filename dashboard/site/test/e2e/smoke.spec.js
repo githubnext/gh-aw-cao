@@ -748,7 +748,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
-test('scrolling over a preceding mobile chart advances the full-view table without hiding chrome', async ({ page }) => {
+test('a page combining a chart with a full-view table scrolls the whole page instead of pinning the table', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -826,21 +826,29 @@ test('scrolling over a preceding mobile chart advances the full-view table witho
   const scroll = page.locator('[data-view-id="engines-models-usage"] .table-scroll');
   await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(page.locator('.org-sidebar')).toBeVisible();
-  await expect.poll(async () => scroll.evaluate((element) => element.scrollHeight > element.clientHeight + 48)).toBe(true);
 
+  // A chart sharing the page with a full-view table must not trigger the pinned
+  // single-table layout: pinning would clip the chart with no way to reach it.
+  // Below the 700px breakpoint the whole document scrolls normally instead of a
+  // bounded inner scroller, so the page (not `main.dashboard-prototype`) grows
+  // taller than the viewport.
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
+  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true);
+
+  // Wheeling over the chart scrolls the whole document, not the table's own surface.
   await chart.hover();
-  await page.mouse.wheel(0, 100);
+  await page.mouse.wheel(0, 200);
+  await expect.poll(async () => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBe(0);
 
+  // Scrolling the page all the way down reaches the table beneath the chart.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(scroll).toBeVisible();
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(chart).toBeVisible();
   await expect(page.locator('.org-sidebar')).toBeVisible();
-  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
 
-  await scroll.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(chart).toBeVisible();
+  // Touch gestures over the chart likewise move the document, not the table scroll surface.
+  await page.evaluate(() => window.scrollTo(0, 0));
   await chart.evaluate((element) => {
     const touch = (/** @type {number} */ clientY) => new Touch({ identifier: 1, target: element, clientX: 100, clientY });
     element.dispatchEvent(new TouchEvent('touchstart', {
@@ -854,10 +862,7 @@ test('scrolling over a preceding mobile chart advances the full-view table witho
       touches: [touch(200)]
     }));
   });
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(chart).toBeVisible();
-  await expect(page.locator('.org-sidebar')).toBeVisible();
-  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
+  expect(await scroll.evaluate((element) => element.scrollTop)).toBe(0);
 });
 
 test('Runs renders the worker-projected table for an active time window', async ({ page }) => {

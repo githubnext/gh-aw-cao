@@ -1,29 +1,33 @@
 /**
  * Pinned "full-view" table layout: gives a standalone table the full viewport with a
  * sticky header and its own scroll surface, hiding the surrounding app chrome as the
- * table scrolls. Pinning is only safe when the table is the sole view in its grid — when a
- * chart or other view precedes it (for example the pie chart on the Cost page), pinning
- * would hide the rest of the page behind an `overflow: hidden` container with no way to
- * reach it, so the whole page falls back to scrolling normally instead.
+ * table scrolls. A preceding view is squeezed into the remaining space above the table
+ * and progressively hidden as the table scrolls, so pinning is only safe when that
+ * preceding content has bounded height (a metric card, callout, or compact swimlane like
+ * the one above the Runs table). A pie chart's legend list grows with its data and can
+ * render taller than the space it is squeezed into (for example on the Cost or Models &
+ * Agents pages); since the squeeze container clips overflow instead of scrolling it, that
+ * content would become unreachable. In that case the whole page falls back to scrolling
+ * normally instead of pinning the table.
  */
 
 const FULL_VIEW_SELECTOR = '.custom-view[data-view-layout="full-view"]';
+const UNBOUNDED_SIBLING_SELECTOR = '.pie-chart-card';
 
 /**
  * Toggles `dashboard-full-view` on the dashboard root, scoped to pages where the
- * full-view table is the only view sharing its grid.
+ * full-view table has no siblings with unbounded height (e.g. a pie chart).
  * @param {HTMLElement} root
  * @param {HTMLElement | undefined} page
  */
 export function syncFullViewMode(root, page) {
   const fullView = page?.querySelector(FULL_VIEW_SELECTOR);
-  const isSoleView = Boolean(
-    fullView
-    && fullView.parentElement
-    && fullView.parentElement.querySelectorAll(':scope > .custom-view').length === 1
-  );
-  root.classList.toggle('dashboard-full-view', isSoleView);
-  if (!isSoleView) root.classList.remove('dashboard-full-view-scrolled');
+  const siblings = fullView?.parentElement
+    ? [...fullView.parentElement.querySelectorAll(':scope > .custom-view')].filter((view) => view !== fullView)
+    : [];
+  const canPin = Boolean(fullView) && siblings.every((view) => !view.querySelector(UNBOUNDED_SIBLING_SELECTOR));
+  root.classList.toggle('dashboard-full-view', canPin);
+  if (!canPin) root.classList.remove('dashboard-full-view-scrolled');
 }
 
 /**
