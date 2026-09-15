@@ -4584,7 +4584,7 @@
                   {
                     "field": "workflows",
                     "type": "quantitative",
-                    "title": "Local AWs"
+                    "title": "AWs"
                   },
                   {
                     "field": "status",
