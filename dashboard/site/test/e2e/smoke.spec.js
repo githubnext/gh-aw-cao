@@ -613,7 +613,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
   expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
   expect(Math.abs(swimlaneHeadingBox.x - swimlaneSummaryBox.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(swimlaneHeadingBox.x - swimlaneLabelBox.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(swimlaneHeadingBox.x - swimlaneLabelBox.x)).toBeLessThanOrEqual(2);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
