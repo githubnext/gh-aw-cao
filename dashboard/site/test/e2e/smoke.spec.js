@@ -2818,10 +2818,12 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   })).toBe(true);
 
   await page.setViewportSize({ width: 390, height: 844 });
+  const tableToggle = layout.getByRole('button', { name: 'Hide chart table' });
   await expect(legend).toBeVisible();
-  await chart.click();
+  await expect(tableToggle).toBeVisible();
+  await tableToggle.click();
   await expect(legend).toBeHidden();
-  await chart.click();
+  await layout.getByRole('button', { name: 'Show chart table' }).click();
   await expect(legend).toBeVisible();
 });
 

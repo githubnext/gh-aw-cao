@@ -140,10 +140,15 @@ describe('chart element helpers', () => {
       total: 7
     });
     const layout = renderPieChartLayout(chart, renderPieLegend([['first', 2], ['largest', 5]], 7));
+    const toggle = layout.querySelector('button');
 
-    chart.click();
+    expect(toggle?.getAttribute('aria-controls')).toBe(layout.querySelector('.chart-legend-pie')?.id);
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    toggle?.click();
     expect(layout.hasAttribute('data-chart-table-hidden')).toBe(true);
-    chart.click();
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle?.getAttribute('aria-label')).toBe('Show chart table');
+    toggle?.click();
     expect(layout.hasAttribute('data-chart-table-hidden')).toBe(false);
   });
 

@@ -72,6 +72,7 @@ export const SWIMLANE_LAYOUT = Object.freeze({
 });
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
+let pieChartTableId = 0;
 const SEMANTIC_SERIES_TERMS = {
   failure: new Set(['0', 'denied', 'error', 'errored', 'fail', 'failed', 'failing', 'failure', 'false', 'invalid', 'no', 'rejected', 'stale', 'timeout', 'unhealthy', 'unsuccessful']),
   success: new Set(['approved', 'complete', 'completed', 'healthy', 'pass', 'passed', 'passing', 'resolved', 'succeed', 'succeeded', 'success', 'successful']),
@@ -236,6 +237,7 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
  * @param {Map<string, { href: string, label: string }>} [links]
  * @param {{ name: string, symbol: string, significant: number } | null} [unit]
  * @returns {HTMLElement}
+ * Rows are ranked by value descending while retaining their input-order color.
  */
 export function renderPieLegend(entries, total, links = new Map(), unit = null) {
   const rankedEntries = entries
@@ -263,9 +265,21 @@ export function renderPieLegend(entries, total, links = new Map(), unit = null) 
  * @returns {HTMLElement}
  */
 export function renderPieChartLayout(chart, table) {
-  const layout = h('div', { className: 'pie-chart-layout' }, chart, table);
-  chart.addEventListener('click', () => {
+  const tableId = `pie-chart-table-${++pieChartTableId}`;
+  table.id = tableId;
+  const toggle = h('button', {
+    type: 'button',
+    className: 'pie-chart-table-toggle',
+    'aria-controls': tableId,
+    'aria-expanded': 'true',
+    'aria-label': 'Hide chart table'
+  });
+  const layout = h('div', { className: 'pie-chart-layout' }, chart, toggle, table);
+  toggle.addEventListener('click', () => {
     layout.toggleAttribute('data-chart-table-hidden');
+    const expanded = !layout.hasAttribute('data-chart-table-hidden');
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.setAttribute('aria-label', `${expanded ? 'Hide' : 'Show'} chart table`);
   });
   return layout;
 }
