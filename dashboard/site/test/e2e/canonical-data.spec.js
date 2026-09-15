@@ -701,8 +701,23 @@ test('data worker computes repository and package pages with request-scoped dash
       ['repository-activity'],
       context
     );
+    const horizon = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['repository-activity'],
+      context,
+      undefined,
+      {
+        pageId: 'repositories',
+        queryContext: {
+          timeWindow: {
+            start: '2026-09-10T00:00:00Z',
+            end: '2026-10-01T00:00:00Z'
+          }
+        }
+      }
+    );
     const navigated = await loadCanonicalDashboardPage(['package-inventory'], context);
-    return { initial, navigated };
+    return { initial, horizon, navigated };
   });
 
   expect(Object.keys(result.initial)).toEqual(['repository-activity']);
@@ -717,6 +732,15 @@ test('data worker computes repository and package pages with request-scoped dash
       status: 'Needs attention'
     }],
     metadata: { 'source-kind': 'derived', 'query-name': 'repository-activity' }
+  });
+  const horizonSource = result.horizon[Object.keys(result.horizon)[0]];
+  expect(horizonSource).toMatchObject({
+    rows: [{
+      repository: 'githubnext/gh-aw-cao',
+      runs: 0,
+      aic: 0,
+      status: 'No recent activity'
+    }]
   });
   expect(Object.keys(result.navigated)).toEqual(['package-inventory']);
   expect(result.navigated['package-inventory']).toMatchObject({
