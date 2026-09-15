@@ -1837,6 +1837,45 @@ describe('presenter built-in and custom pages', () => {
     expect(loadHorizonSources).toHaveBeenCalledOnce();
   });
 
+  it('reactively replaces the Horizon skeleton when page sources load', async () => {
+    let publishUpdate = () => {};
+    const loadPageSources = vi.fn(async (_pageId, options) => {
+      publishUpdate = () => options.onUpdate({
+        runs: {
+          source: 'runs',
+          rows: [{ run: '1', 'observed-at': '2026-09-01T11:00:00Z' }],
+          metadata: {
+            'source-id': 'runs',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-01T12:00:00Z',
+            'retrieved-at': '2026-09-01T12:00:00Z',
+            'coverage-start': '2026-08-31T12:00:00Z',
+            'coverage-end': '2026-09-01T12:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      });
+      return {};
+    });
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources
+    });
+
+    expect(rendered.querySelector('.dashboard-horizon-skeleton')).not.toBeNull();
+    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
+    publishUpdate();
+
+    const horizon = rendered.querySelector('.dashboard-horizon');
+    expect(horizon?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+    expect(horizon?.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 day');
+    expect(horizon?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z');
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details')).not.toBeNull();
+  });
+
   it('renders Security assurance records as one full-view lazy table', async () => {
     const metadata = {
       'source-id': 'security-fixture',

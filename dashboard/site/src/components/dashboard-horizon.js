@@ -32,8 +32,8 @@ export function renderDashboardHorizon(options) {
   const durationLabel = h('strong');
   const accessibleLabel = h('span', { className: 'sr-only action-label' });
   const databaseCounts = h('span', { className: 'horizon-tooltip-counts' });
-  const startTime = h('time');
-  const endTime = h('time');
+  const startTime = /** @type {HTMLTimeElement} */ (h('time'));
+  const endTime = /** @type {HTMLTimeElement} */ (h('time'));
   const durationValue = h('span');
   /** @type {Promise<void> | undefined} */
   let countsPromise;
