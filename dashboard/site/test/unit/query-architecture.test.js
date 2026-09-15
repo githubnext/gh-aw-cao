@@ -19,7 +19,10 @@ describe('dashboard query architecture', () => {
     const worker = read('src/data-worker.js');
     const startup = read('src/data/startup.js');
     const presenter = read('src/presenter.js');
-    const factoryOverview = read('src/components/factory-overview.js');
+    const factoryOverview = [
+      read('src/components/factory-overview.js'),
+      read('src/components/factory-overview-elements.js')
+    ].join('\n');
     const workProject = read('src/components/work-project-view.js');
     const presentationQueryFixture = read('test/workflow-inventory-query.js');
 
