@@ -12,7 +12,6 @@ import {
   readTransaction,
   recordTransaction,
   replaceCanonicalBatch,
-  upsertCanonicalBatch,
   withCanonicalIngestionLock
 } from '../storage/indexeddb.js';
 import { capCanonicalBatchSize, estimateCanonicalBatchBytes, mergeRetainedRecords } from '../storage/retention.js';
@@ -191,30 +190,11 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
 }
 
 /**
- * Writes one independently relationship-complete shard without materializing
- * the already-retained database in worker memory.
- *
- * @param {IDBFactory} indexedDB
- * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} options
- */
-async function ingestCanonicalShard(indexedDB, batch, options) {
-  const totalRecords = Object.values(batch).reduce((total, records) => total + records.length, 0);
-  const result = await upsertCanonicalBatch(indexedDB, batch, {
-    onBatchCommitted: ({ committedRecords }) => {
-      options.onWriteProgress?.({ storedRecords: committedRecords, totalRecords });
-    }
-  });
-  if (totalRecords === 0) options.onWriteProgress?.({ storedRecords: 0, totalRecords: 0 });
-  return { updated: true, ...result };
-}
-
-/**
  * Upserts the current published source document onto retained canonical records.
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ incremental?: boolean, storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} [options]
  */
 export function ingestDashboardSources(indexedDB, sources, options = {}) {
   return serializeIngestion(indexedDB, () => ingestDashboardSourcesNow(indexedDB, sources, options));
@@ -223,7 +203,7 @@ export function ingestDashboardSources(indexedDB, sources, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ incremental?: boolean, storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} options
  */
 async function ingestDashboardSourcesNow(indexedDB, sources, options) {
   let phase = 'adapting';
@@ -243,9 +223,7 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
     phase = 'writing';
-    const result = options.incremental
-      ? await ingestCanonicalShard(indexedDB, batch, options)
-      : await ingestCanonicalBatch(indexedDB, batch, options);
+    const result = await ingestCanonicalBatch(indexedDB, batch, options);
     await recordTransaction(indexedDB, {
       id: await transactionId('ingest-dashboard-sources', scope),
       kind: 'ingest-dashboard-sources',
@@ -312,7 +290,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
- * @param {{ incremental?: boolean, storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
  */
 export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   return serializeIngestion(indexedDB, () => ingestCachedGhAwJsonlNow(indexedDB, content, options));
@@ -321,7 +299,7 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
- * @param {{ incremental?: boolean, storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} options
  */
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
@@ -364,13 +342,11 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
     phase = 'writing';
-    const result = options.incremental
-      ? await ingestCanonicalShard(indexedDB, batch, options)
-      : await ingestCanonicalBatch(indexedDB, batch, {
-          ...options,
-          preserveWorkflowPackageMappings: true,
-          preserveRepositoryRecords: true
-        });
+    const result = await ingestCanonicalBatch(indexedDB, batch, {
+      ...options,
+      preserveWorkflowPackageMappings: true,
+      preserveRepositoryRecords: true
+    });
     await recordTransaction(indexedDB, {
       id: await transactionId('ingest-jsonl', scope),
       kind: 'ingest-jsonl',
@@ -415,4 +391,94 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
   }
+}
+
+/**
+ * Adapts bounded payload shards one at a time, retaining only their compact
+ * canonical records in memory before one retention-aware database commit.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {AsyncIterable<{ content: AsyncIterable<string | Uint8Array>, payloadIdentity: string, payloadScope: string }>} shards
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} [options]
+ */
+export function ingestCachedGhAwJsonlShards(indexedDB, shards, options = {}) {
+  return serializeIngestion(indexedDB, async () => {
+    const createdAt = new Date(options.now ?? Date.now()).toISOString();
+    let phase = 'adapting';
+    try {
+      const adaptationContext = cachedJsonlAdaptationContext(options);
+      /** @type {Record<string, Map<string, Record<string, unknown>>>} */
+      const canonical = Object.fromEntries(
+        Object.keys(normalize([])).map((storeName) => [storeName, new Map()])
+      );
+      const transactions = [];
+      let parsedShards = 0;
+      for await (const shard of shards) {
+        const hash = await payloadHash(`${shard.payloadIdentity}\0${adaptationContext}`, undefined);
+        if (await previouslyIngested(indexedDB, 'ingest-jsonl', shard.payloadScope, hash, GH_AW_JSONL_INGESTION_VERSION)) {
+          continue;
+        }
+        const adapted = await adaptCachedGhAwJsonlStream(shard.content, {
+          context: options.context,
+          workflowHints: options.workflowHints,
+          onProgress: options.onProgress
+        });
+        phase = 'normalizing';
+        const batch = normalize(adapted.observations);
+        const committedRecords = Object.values(batch).reduce((total, records) => total + records.length, 0);
+        for (const [storeName, records] of Object.entries(batch)) {
+          const store = canonical[storeName];
+          for (const record of records) store.set(String(record.id), record);
+        }
+        transactions.push({
+          id: await transactionId('ingest-jsonl', shard.payloadScope),
+          kind: 'ingest-jsonl',
+          createdAt,
+          payloadScope: shard.payloadScope,
+          payloadHash: hash,
+          adaptationContext,
+          ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
+          records: adapted.records,
+          committedRecords,
+          rawPayloadRecords: adapted.rawPayloadRecords,
+          rawRuns: adapted.rawRuns,
+          agenticRunRecords: adapted.agenticRunRecords,
+          agenticRuns: adapted.agenticRuns,
+          duplicateRawRunObservations: adapted.duplicateRawRunObservations,
+          duplicateAgenticRunObservations: adapted.duplicateAgenticRunObservations,
+          unenrichedRuns: adapted.unenrichedRuns
+        });
+        parsedShards += 1;
+        phase = 'adapting';
+      }
+      if (parsedShards === 0) {
+        return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0, parsedShards };
+      }
+      const batch = /** @type {import('../model/schema.js').CanonicalBatch} */ (Object.fromEntries(
+        Object.entries(canonical).map(([storeName, records]) => [
+          storeName,
+          [...records.values()].sort((left, right) => String(left.id).localeCompare(String(right.id)))
+        ])
+      ));
+      phase = 'writing';
+      const result = await ingestCanonicalBatch(indexedDB, batch, {
+        ...options,
+        preserveWorkflowPackageMappings: true,
+        preserveRepositoryRecords: true
+      });
+      for (const transaction of transactions) {
+        await recordTransaction(indexedDB, transaction);
+      }
+      return { ...result, parsedShards };
+    } catch (error) {
+      await recordTransaction(indexedDB, {
+        id: `ingest-jsonl-failed:${createdAt}`,
+        kind: 'ingest-jsonl-failed',
+        createdAt,
+        error: error instanceof Error ? error.name : 'Error'
+      }).catch(() => undefined);
+      if (error instanceof CanonicalIngestionError) throw error;
+      throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
+    }
+  });
 }

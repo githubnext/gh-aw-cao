@@ -5,6 +5,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import {
   cachedJsonlAdaptationContext,
   ingestCachedGhAwJsonl,
+  ingestCachedGhAwJsonlShards,
   ingestDashboardSources,
   isCachedGhAwJsonlCurrent,
   readCurrentIngestion
@@ -476,6 +477,19 @@ export function processDataRequest(request, signal) {
             context: collectionContext,
             workflowHints
           });
+          if (inventoryResponse.ok) {
+            progress.log('Normalizing inventory metadata.');
+            const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
+              storage: globalThis.navigator?.storage,
+              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              payloadScope: inventoryUrl.href,
+              onWriteProgress: (written) => progress.store(written)
+            });
+            changed ||= inventoryIngestion.updated;
+            progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
+              ? 'Inventory metadata is already current.'
+              : `Inventory ingestion committed ${inventoryIngestion.committedRecords} canonical records.`);
+          }
           const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', sourceUrl.href);
           const currentEtag = current?.adaptationContext === adaptationContext
             && typeof current.payloadEtag === 'string'
@@ -485,39 +499,45 @@ export function processDataRequest(request, signal) {
           if (publishedShards.length > 0) {
             progress.log(`Loading ${publishedShards.length.toLocaleString('en-US')} bounded activity `
               + `${publishedShards.length === 1 ? 'shard' : 'shards'}.`);
-            for (const [index, shard] of publishedShards.entries()) {
-              const shardUrl = new URL(shard.name, sourceUrl);
-              const currentShard = await isCachedGhAwJsonlCurrent(indexedDB, {
-                payloadIdentity: shard.payloadIdentity,
-                payloadScope: shardUrl.href,
-                context: collectionContext,
-                workflowHints
-              });
-              if (currentShard) {
-                progress.log(`Activity shard ${index + 1} of ${publishedShards.length} is already current.`);
-                continue;
+            const shardContents = async function* () {
+              for (const [index, shard] of publishedShards.entries()) {
+                const shardUrl = new URL(shard.name, sourceUrl);
+                const currentShard = await isCachedGhAwJsonlCurrent(indexedDB, {
+                  payloadIdentity: shard.payloadIdentity,
+                  payloadScope: shardUrl.href,
+                  context: collectionContext,
+                  workflowHints
+                });
+                if (currentShard) {
+                  progress.log(`Activity shard ${index + 1} of ${publishedShards.length} is already current.`);
+                  continue;
+                }
+                const response = await fetch(shardUrl, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
+                if (!response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
+                yield {
+                  content: responseChunks(response.body),
+                  payloadIdentity: shard.payloadIdentity,
+                  payloadScope: shardUrl.href
+                };
+                progress.log(`Parsed activity shard ${index + 1} of ${publishedShards.length}.`);
               }
-              const response = await fetch(shardUrl, { cache: 'no-store' });
-              if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
-              if (!response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
-              const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
-                incremental: true,
-                storage: globalThis.navigator?.storage,
-                retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-                workflowHints,
-                onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
-                  bytesProcessed,
-                  recordsIngested
-                }),
-                onWriteProgress: (written) => progress.store(written),
-                payloadIdentity: shard.payloadIdentity,
-                payloadScope: shardUrl.href,
-                context: collectionContext
-              });
-              changed ||= ingestion.updated;
-              progress.log(`Activity shard ${index + 1} of ${publishedShards.length} committed `
-                + `${ingestion.committedRecords} canonical records.`);
-            }
+            };
+            const ingestion = await ingestCachedGhAwJsonlShards(indexedDB, shardContents(), {
+              storage: globalThis.navigator?.storage,
+              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+              workflowHints,
+              onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
+                bytesProcessed,
+                recordsIngested
+              }),
+              onWriteProgress: (written) => progress.store(written),
+              context: collectionContext
+            });
+            changed ||= ingestion.updated;
+            progress.log('skipped' in ingestion && ingestion.skipped
+              ? 'Published activity shards are already current.'
+              : `Activity shard ingestion committed ${ingestion.committedRecords} canonical records.`);
           } else {
             const currentPublishedPayload = publishedIdentity
               ? await isCachedGhAwJsonlCurrent(indexedDB, {
@@ -581,20 +601,6 @@ export function processDataRequest(request, signal) {
                 : `Activity ingestion committed ${ingestion.committedRecords} canonical records.`);
             }
             }
-          }
-          if (inventoryResponse.ok) {
-            progress.log('Normalizing inventory metadata.');
-            const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
-              incremental: publishedShards.length > 0,
-              storage: globalThis.navigator?.storage,
-              retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-              payloadScope: inventoryUrl.href,
-              onWriteProgress: (written) => progress.store(written)
-            });
-            changed ||= inventoryIngestion.updated;
-            progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
-              ? 'Inventory metadata is already current.'
-              : `Inventory ingestion committed ${inventoryIngestion.committedRecords} canonical records.`);
           }
         } else {
           progress.log('Normalizing dashboard source data.');

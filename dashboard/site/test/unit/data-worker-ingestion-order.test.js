@@ -1,7 +1,7 @@
 // @vitest-environment node
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, readCollection } from '../../src/data/storage/indexeddb.js';
 
 beforeEach(async () => {
   await new Promise((resolve, reject) => {
@@ -43,8 +43,23 @@ describe('canonical dashboard worker ingestion order', () => {
       }
     };
     const inventory = {
+      packages: {
+        rows: [{ package: 'dashboard', 'package-name': 'Dashboard' }],
+        metadata: { 'as-of': '2026-09-09T05:00:00Z' }
+      },
       repositories: {
         rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+        metadata: { 'as-of': '2026-09-09T05:00:00Z' }
+      },
+      workflows: {
+        rows: [{
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md',
+          'workflow-name': 'Dashboard',
+          package: 'dashboard',
+          'package-name': 'Dashboard'
+        }],
         metadata: { 'as-of': '2026-09-09T05:00:00Z' }
       }
     };
@@ -100,6 +115,13 @@ describe('canonical dashboard worker ingestion order', () => {
     expect(storedRunIds).toEqual([
       'github:run:303:attempt:1',
       'github:run:304:attempt:1'
+    ]);
+    expect(await readCollection(indexedDB, 'workflows')).toEqual([
+      expect.objectContaining({
+        id: 'workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdashboard.md',
+        package: 'dashboard',
+        packageName: 'Dashboard'
+      })
     ]);
     expect(requestedUrls).toEqual([
       'https://dashboard.example/payload-hashes.json',
