@@ -430,21 +430,9 @@
       },
       {
         "name": "overview-value-summary",
-        "intent": "Count grader observations whose value exceeds their declared threshold.",
+        "intent": "Count all observed grader results.",
         "from": "grader-observations",
-        "compute": [
-          {
-            "as": "above-threshold",
-            "function": "greater-than",
-            "args": [{ "field": "value" }, { "field": "threshold" }]
-          },
-          {
-            "as": "value-gain",
-            "function": "if",
-            "args": [{ "field": "above-threshold" }, { "value": 1 }, { "value": 0 }]
-          }
-        ],
-        "aggregate": { "values": [{ "field": "value-gain", "as": "value-gains", "reducer": "sum" }] }
+        "aggregate": { "values": [{ "field": "grader", "as": "value-gains", "reducer": "count" }] }
       },
       {
         "name": "overview-registered-repository-summary",

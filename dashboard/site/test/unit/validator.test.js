@@ -39,6 +39,20 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('counts every grader observation in the overview value summary', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const summary = document.dashboard.queries.find((query) => query.name === 'overview-value-summary');
+
+    expect(summary).toMatchObject({
+      intent: 'Count all observed grader results.',
+      from: 'grader-observations',
+      aggregate: {
+        values: [{ field: 'grader', as: 'value-gains', reducer: 'count' }]
+      }
+    });
+    expect(summary.compute).toBeUndefined();
+  });
+
   it('accepts supported dashboard CLI actions', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard['cli-actions'].push({
