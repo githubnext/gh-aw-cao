@@ -1,6 +1,8 @@
 import { h } from '../dom.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
-import { copyTextToClipboard, renderCheckbox } from './ui-primitives.js';
+import { capturedConsoleLogText } from '../console-log-capture.js';
+import { fullDebugUrl } from '../debug.js';
+import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import { renderThemeSettings } from './theme-settings.js';
@@ -9,6 +11,7 @@ import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
   dashboardBackgroundUpdatesUnavailableReason,
+  dashboardInstalled,
   onAutomaticDashboardBackgroundUpdateStatus,
   setAutomaticDashboardDataUpdatesEnabled
 } from '../dashboard-data-updates.js';
@@ -407,6 +410,42 @@ function renderLocalDataSetting() {
   );
 }
 
+function renderDebuggingSettings() {
+  if (dashboardInstalled()) return null;
+
+  const copyControl = createCopyControl({
+    getContent: capturedConsoleLogText,
+    label: 'Copy console logs',
+    buttonClassName: 'configuration-transactions-button',
+    statusClassName: 'configuration-copy-status',
+    successText: 'Console logs copied.',
+    failureText: 'Console logs could not be copied.',
+    trackState: true
+  });
+  return h('section', { className: 'configuration-browser-settings configuration-debug-settings', 'aria-labelledby': 'configuration-debug-heading' },
+    h('div', { className: 'configuration-browser-settings-heading' },
+      h('div', null,
+        h('h3', { id: 'configuration-debug-heading' }, 'Debugging'),
+        h('p', null, 'Collect diagnostic information to share when troubleshooting this dashboard.')
+      )
+    ),
+    h('div', { className: 'configuration-setting-row' },
+      h('div', { className: 'configuration-setting-copy' },
+        h('label', null, 'Enable full debugging'),
+        h('p', null, 'Relaunches this page with all dashboard debug categories enabled.')
+      ),
+      h('a', { href: fullDebugUrl(), className: 'configuration-transactions-button' }, 'Relaunch with debugging')
+    ),
+    h('div', { className: 'configuration-setting-row' },
+      h('div', { className: 'configuration-setting-copy' },
+        h('label', null, 'Console logs'),
+        h('p', null, 'Copies console output captured since this page was loaded.')
+      ),
+      h('div', { className: 'configuration-debug-copy' }, copyControl.button, copyControl.status)
+    )
+  );
+}
+
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
@@ -427,6 +466,7 @@ export function renderConfigurationView(context) {
     renderLocalDataSetting(),
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)
-      : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.')
+      : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.'),
+    renderDebuggingSettings()
   );
 }

@@ -3,7 +3,9 @@ import { notificationStylesheet } from './styles.js';
 
 const DEFAULT_DURATION = 5000;
 const EXIT_DURATION = 180;
+const MAX_DETAIL_MESSAGES = 100;
 const TONES = new Set(['info', 'success', 'warning', 'error']);
+let nextNotificationDetailId = 0;
 /** @typedef {{ dismiss: () => void, update: (notification: string | Notification) => void }} NotificationHandle */
 /** @typedef {{ publish: (notification: string | Notification) => NotificationHandle, connected: boolean, dispose: () => void }} NotificationService */
 /** @type {WeakMap<Document, NotificationService>} */
@@ -14,6 +16,7 @@ const services = new WeakMap();
  *   message: string,
  *   tone?: 'info' | 'success' | 'warning' | 'error',
  *   duration?: number,
+ *   details?: string[],
  *   action?: { label: string, run: () => void }
  * }} Notification
  */
@@ -79,7 +82,7 @@ export function publishNotification(notification, document = globalThis.document
 
 /**
  * @param {string | Notification} input
- * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration'>> & Pick<Notification, 'action'>}
+ * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details'>> & Pick<Notification, 'action'>}
  */
 function normalizeNotification(input) {
   const candidate = typeof input === 'string' ? { message: input } : input;
@@ -98,7 +101,13 @@ function normalizeNotification(input) {
     && typeof candidate.action.run === 'function'
       ? candidate.action
       : undefined;
-  return { message: candidate.message.trim(), tone, duration, action };
+  const details = Array.isArray(candidate.details)
+    ? candidate.details
+        .filter((detail) => typeof detail === 'string' && Boolean(detail.trim()))
+        .map((detail) => detail.trim())
+        .slice(-MAX_DETAIL_MESSAGES)
+    : [];
+  return { message: candidate.message.trim(), tone, duration, details, action };
 }
 
 /**
@@ -107,15 +116,31 @@ function normalizeNotification(input) {
  * @param {() => void} onRemove
  */
 function renderNotification(initial, container, onRemove) {
-  const message = h('span', { className: 'dashboard-notification-message' }, initial.message);
+  const message = h('span', {
+    className: 'dashboard-notification-message',
+    role: initial.tone === 'error' ? 'alert' : 'status'
+  }, initial.message);
+  const detailId = `dashboard-notification-details-${++nextNotificationDetailId}`;
+  const toggle = h('button', {
+    className: 'dashboard-notification-toggle',
+    type: 'button',
+    'aria-expanded': 'false',
+    'aria-controls': detailId,
+    'aria-label': `${initial.message} Show ingestion progress history`
+  }, message, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
+  const details = h('ol', {
+    className: 'dashboard-notification-details',
+    id: detailId,
+    hidden: true
+  });
+  const content = h('div', { className: 'dashboard-notification-content' });
   const action = h('button', {
     className: 'dashboard-notification-action',
     type: 'button'
   });
   const element = h('div', {
-    className: `dashboard-notification dashboard-notification-${initial.tone} dashboard-notification-enter`,
-    role: initial.tone === 'error' ? 'alert' : 'status'
-  }, message);
+    className: `dashboard-notification dashboard-notification-${initial.tone} dashboard-notification-enter`
+  }, content);
   let current = initial;
   let removed = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -123,12 +148,40 @@ function renderNotification(initial, container, onRemove) {
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let removalTimer;
 
+  const setDetails = () => {
+    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+    details.replaceChildren(...current.details.map((detail) => h('li', {}, detail)));
+    if (current.details.length > 0) {
+      if (message.parentElement !== toggle) toggle.prepend(message);
+      if (!toggle.isConnected) content.prepend(toggle);
+      details.hidden = !expanded;
+      if (!details.isConnected) content.append(details);
+    } else {
+      toggle.remove();
+      details.remove();
+      content.prepend(message);
+    }
+    const expandedState = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute(
+      'aria-label',
+      `${current.message} ${expandedState ? 'Hide' : 'Show'} ingestion progress history`
+    );
+  };
   const setAction = () => {
     action.remove();
     if (!current.action) return;
     action.textContent = current.action.label;
     action.onclick = () => current.action?.run();
     element.append(action);
+  };
+  toggle.onclick = () => {
+    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!expanded));
+    toggle.setAttribute(
+      'aria-label',
+      `${current.message} ${expanded ? 'Show' : 'Hide'} ingestion progress history`
+    );
+    details.hidden = expanded;
   };
   const scheduleDismissal = () => {
     if (dismissTimer) clearTimeout(dismissTimer);
@@ -156,12 +209,14 @@ function renderNotification(initial, container, onRemove) {
       current = normalizeNotification(next);
       message.textContent = current.message;
       element.className = `dashboard-notification dashboard-notification-${current.tone}`;
-      element.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
+      message.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
+      setDetails();
       setAction();
       scheduleDismissal();
     }
   };
 
+  setDetails();
   setAction();
   container.append(element);
   requestAnimationFrame(() => element.classList.remove('dashboard-notification-enter'));

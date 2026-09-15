@@ -7,6 +7,7 @@ import { renderConfigurationView } from '../../src/components/configuration-view
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
+import { fullDebugUrl } from '../../src/debug.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'configuration-fixture',
@@ -93,6 +94,45 @@ describe('Configuration dashboard view', () => {
     expect(transactions?.textContent).toContain('View retained transactions');
     expect(transactions?.getAttribute('href')).toBe('#page-transactions');
     expect(transactions?.getAttribute('aria-label')).toBe('View retained transactions table');
+    const debugSettings = rendered.querySelector('.configuration-debug-settings');
+    expect(debugSettings).toBe(rendered.lastElementChild);
+    const debugLink = debugSettings?.querySelector('a');
+    expect(debugLink?.textContent).toBe('Relaunch with debugging');
+    expect(debugLink?.getAttribute('href')).toBe(fullDebugUrl());
+  });
+
+  it('copies captured console logs', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+    const button = rendered?.querySelector('.configuration-debug-settings button');
+    if (!(button instanceof HTMLButtonElement)) throw new Error('copy console logs button did not render');
+
+    button.click();
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(writeText.mock.calls[0][0]).toContain('Central Agentic Ops console log');
+    await vi.waitFor(() => expect(rendered?.querySelector('.configuration-debug-settings output')?.textContent)
+      .toBe('Console logs copied.'));
+  });
+
+  it('hides debugging controls in installed app mode', () => {
+    Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+
+    expect(rendered?.querySelector('.configuration-debug-settings')).toBeNull();
+    delete /** @type {Navigator & { standalone?: boolean }} */ (navigator).standalone;
   });
 
   it('renders repository actions when the settings view is activated lazily', () => {

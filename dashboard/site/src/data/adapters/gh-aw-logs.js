@@ -92,6 +92,14 @@ function firstOptionalString(...values) {
   return values.map(optionalString).find((value) => value !== undefined);
 }
 
+/** @param {string} fallback @param {...unknown} values */
+function normalizedId(fallback, ...values) {
+  return values
+    .map(optionalString)
+    .find((value) => value?.trim())
+    ?.trim() ?? fallback;
+}
+
 /** @param {Record<string, unknown>} value */
 function withoutUndefined(value) {
   return Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined));
@@ -126,14 +134,14 @@ function runMetadata(run) {
     .sort((left, right) => right.aic - left.aic || left.model.localeCompare(right.model))[0]?.model;
   const aicTotal = finiteNumber(summary.total_aic) ?? finiteNumber(run.aic);
   return {
-    agentId: firstOptionalString(run.agent_id, run.agent, run.engine_id, awInfo.engine_id),
+    agentId: normalizedId('copilot', run.agent_id, run.agent, run.engine_id, awInfo.engine_id),
     agentVersion: firstOptionalString(
       run.agent_version,
       run.engine_version,
       awInfo.agent_version,
       awInfo.version
     ),
-    modelId: firstOptionalString(run.model_id, run.resolved_model, run.model, awInfo.model, dominantModel),
+    modelId: normalizedId('auto', run.model_id, run.resolved_model, run.model, awInfo.model, dominantModel),
     ghAwVersion: firstOptionalString(
       run.gh_aw_version,
       run.ghAwVersion,

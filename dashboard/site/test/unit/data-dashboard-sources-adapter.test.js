@@ -185,7 +185,8 @@ describe('current dashboard source adapter', () => {
       runs: {
         rows: [{
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-          run: '303', 'run-attempt': 1, 'started-at': '2026-09-09T04:00:00Z'
+          run: '303', 'run-attempt': 1, 'started-at': '2026-09-09T04:00:00Z',
+          'agent-id': ' ', 'model-id': ''
         }],
         metadata
       },
@@ -218,6 +219,9 @@ describe('current dashboard source adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
+    expect(batch.runs).toEqual([expect.objectContaining({
+      agentId: 'copilot', modelId: 'auto'
+    })]);
     expect(batch.sessions).toEqual([expect.objectContaining({
       runId: 'github:run:303:attempt:1', jobId: 'github:job:404'
     })]);

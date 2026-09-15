@@ -654,7 +654,11 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
         runHealth: { runRecords: [] },
       }],
     },
-    usage: { available: true, complete: true, runs: [] },
+    usage: {
+      available: true,
+      complete: true,
+      runs: [{ repository: "githubnext/gh-aw-cao", runId: 99, agentId: " ", modelId: "" }],
+    },
     operationalValues: { records: [] },
     report: {
       generatedAt: "2026-09-05T12:00:00Z",
@@ -1423,6 +1427,8 @@ test("dashboard source bridge detects rollout mode from run titles with punctuat
   });
 
   assert.equal(sources.runs.rows[0]["rollout-mode"], "review");
+  assert.equal(sources.runs.rows[0]["agent-id"], "copilot");
+  assert.equal(sources.runs.rows[0]["model-id"], "auto");
 });
 
 test("dashboard source bridge omits mcp-calls rows when mcp telemetry is unavailable and correctly counts mcp failures", () => {

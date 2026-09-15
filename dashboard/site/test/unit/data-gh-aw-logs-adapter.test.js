@@ -326,6 +326,8 @@ describe('gh-aw logs adapter', () => {
         attempt: 1,
         workflowName: 'Dashboard',
         displayTitle: 'Build dashboard',
+        agent_id: ' ',
+        model_id: '',
         status: 'completed',
         conclusion: 'success',
         createdAt: '2026-09-09T03:59:00Z',
@@ -351,7 +353,9 @@ describe('gh-aw logs adapter', () => {
     expect(batch.runs).toEqual([
       expect.objectContaining({
         workflowId: batch.workflows[0].id,
-        workflowPath: '.github/workflows/dashboard.md'
+        workflowPath: '.github/workflows/dashboard.md',
+        agentId: 'copilot',
+        modelId: 'auto'
       })
     ]);
   });

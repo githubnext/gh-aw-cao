@@ -116,14 +116,28 @@ test("SelfCare dashboard debug logging worker preserves the logging privacy boun
   assert.match(source, /^name: "SelfCare \/ Dashboard Debug Logging"$/m);
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-debug-logging/);
   assert.match(source, /safe_output_mode` is `live`/);
-  assert.match(source, /Use `createDebug` from `dashboard\/site\/src\/debug\.js`/);
+  assert.match(source, /all-you-can-eat feature grower/);
+  assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-dashboard-debug-logging" in:body'/);
+  assert.match(source, /cache-memory:\n\s+retention-days: 90/);
+  assert.match(source, /dashboard-debug-logging-rotation\.json/);
+  assert.match(source, /sort their repository-relative paths ascending/);
+  assert.match(source, /Begin immediately after `lastPath`, wrapping to the first path/);
+  assert.match(source, /Use `createDebug` from `dashboard\/site\/src\/debug\.mjs`/);
+  assert.match(source, /production `\.js` and `\.mjs` files/);
+  assert.match(source, /remove the final `\.js` or `\.mjs`, lowercase it/);
+  assert.match(source, /source-store\.js` and `source-store\.mjs` use `source-store`/);
   assert.match(source, /Never log secrets, tokens, credentials, prompts, raw records, payload bodies/);
   assert.match(source, /disabled unless the `debug` query argument selects the category/);
+  assert.match(source, /must only observe existing values/);
+  assert.match(source, /Do not add work solely to feed a disabled logger/);
   assert.match(source, /dashboard\/site\/src\/\*\*\/\*\.js/);
+  assert.match(source, /dashboard\/site\/src\/\*\*\/\*\.mjs/);
+  assert.match(source, /dashboard\/site\/test\/\*\*\/\*\.mjs/);
   assert.match(source, /npm --prefix dashboard\/site run typecheck/);
   assert.match(source, /Call `noop` exactly once/);
   assert.match(source, /draft: true/);
   assert.match(compiled, /self-care-dashboard-debug-logging/);
+  assert.match(compiled, /cache-memory/);
 });
 
 test("SelfCare dashboard reviewer checks deployments through stakeholder personas", () => {

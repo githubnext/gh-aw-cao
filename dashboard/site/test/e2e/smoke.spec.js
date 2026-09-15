@@ -102,6 +102,30 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
+test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {
+  await page.setContent(`
+    <script type="module">
+      import { publishNotification } from 'http://dashboard.test/src/notification-service.js';
+      publishNotification({
+        message: 'Storing data...',
+        duration: 0,
+        details: ['Loading metadata.', 'Parsed 200 records.', 'Storing data...']
+      });
+    </script>
+  `);
+
+  const toggle = page.getByRole('button', { name: /Storing data.*Show ingestion progress history/ });
+  const details = page.locator('.dashboard-notification-details');
+  await expect(details).toBeHidden();
+  await toggle.click();
+  const collapse = page.getByRole('button', { name: /Storing data.*Hide ingestion progress history/ });
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+  await expect(details).toBeVisible();
+  await expect(details.getByRole('listitem')).toHaveCount(3);
+  await collapse.click();
+  await expect(details).toBeHidden();
+});
+
 test('Settings disables hourly dashboard downloads when unsupported', async ({ page }) => {
   await page.setContent(`
     <div id="root"></div>
@@ -139,6 +163,10 @@ test('Settings disables hourly dashboard downloads when unsupported', async ({ p
   await expect(checkbox).toBeDisabled();
   await expect(page.locator('#configuration-automatic-dashboard-data-updates-status'))
     .toContainText('Periodic Background Sync is not supported');
+  await expect(page.getByRole('heading', { name: 'Debugging' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Relaunch with debugging' }))
+    .toHaveAttribute('href', 'http://dashboard.test/?debug=1');
+  await expect(page.getByRole('button', { name: 'Copy console logs' })).toBeVisible();
 });
 
 test('production Settings view loads without an unsupported-view warning', async ({ page }) => {

@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDebug, isDebugEnabled } from '../../src/debug.js';
+import { createDebug, fullDebugUrl, isDebugEnabled } from '../../src/debug.js';
 
 describe('dashboard debug logging', () => {
+  it('builds a full-debug reload URL without losing the current route', () => {
+    expect(fullDebugUrl('https://example.test/dashboard?local-preview=1#page-settings'))
+      .toBe('https://example.test/dashboard?local-preview=1&debug=1#page-settings');
+  });
+
   it('is disabled without the debug query parameter', () => {
     expect(isDebugEnabled('data', '?mode=live')).toBe(false);
     expect(isDebugEnabled('data', '?debug=')).toBe(false);
