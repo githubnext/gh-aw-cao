@@ -241,6 +241,11 @@ test("Agent customizations preserve deterministic core package boundaries", () =
   assert.match(agent, /\.github\/aw\/instructions\.md/);
   assert.match(agenticWorkflowsSkill, /\.github\/aw\/instructions\.md/);
   assert.match(packageSkill, /## Deterministic Add-on Exception/);
+  assert.match(packageSkill, /\.github\/aw\/create-agentic-workflow\.md/);
+  assert.match(packageSkill, /Workflow creation is an agent workflow/);
+  assert.match(packageSkill, /upstream `github\/gh-aw` `\.github\/skills\/operational-value-designer\/SKILL\.md`/);
+  assert.match(packageSkill, /Adopt a measurable worker and its evaluator together in one commit/);
+  assert.doesNotMatch(packageSkill, /Evaluator design remains a separate post-adoption maintenance task/);
   assert.match(packageSkill, /core activity cache/);
   assert.match(packageSkill, /unified builder and publisher/);
   assert.match(packageSkill, /complete workflow `name` at 32 characters or fewer/);
@@ -249,6 +254,10 @@ test("Agent customizations preserve deterministic core package boundaries", () =
   assert.match(repositoryInstructions, /upload the reusable dashboard artifact/);
   assert.match(repositoryInstructions, /must not add a schedule or another enable variable/);
   assert.match(repositoryInstructions, /Keep data collection and cache publication out of operational packages and dashboard build jobs/);
+  assert.match(repositoryInstructions, /follow `skills\/create-ops-package\/SKILL\.md`/);
+  assert.match(repositoryInstructions, /apply `skills\/create-ops-package\/SKILL\.md`/);
+  assert.match(repositoryInstructions, /required `\.github\/workflows\/shared\/control\.md` imports/);
+  assert.doesNotMatch(repositoryInstructions, /operational-value-designer\/SKILL\.md/);
 });
 
 test("README routes zero-to-CAO requests to the setup skill", () => {
