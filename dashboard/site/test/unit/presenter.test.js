@@ -1874,6 +1874,14 @@ describe('presenter built-in and custom pages', () => {
     expect(horizon?.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 day');
     expect(horizon?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z');
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details')).not.toBeNull();
+
+    optionsOnUpdateWithNoSources();
+    expect(horizon?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+
+    function optionsOnUpdateWithNoSources() {
+      const latestOptions = loadPageSources.mock.calls.at(-1)?.[1];
+      latestOptions?.onUpdate({});
+    }
   });
 
   it('renders Security assurance records as one full-view lazy table', async () => {

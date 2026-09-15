@@ -121,7 +121,16 @@ export function renderDashboardHorizon(options) {
     element: root,
     /** @param {HorizonViewModel} next */
     update(next) {
-      value.set(next);
+      value.set((current) => {
+        if (current.available && !next.available) return current;
+        return current.available === next.available
+          && current.evaluatedAt === next.evaluatedAt
+          && current.duration === next.duration
+          && current.start === next.start
+          && current.end === next.end
+          ? current
+          : next;
+      });
     },
     dispose() {
       lifetime.abort();

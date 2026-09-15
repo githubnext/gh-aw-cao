@@ -297,12 +297,14 @@ export function renderDashboard(input) {
       if (!page) return null;
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => {
-        dashboardHorizon.update(resolveDashboardHorizonViewModel(
-          pageSources,
-          dashboardDefaults,
-          horizonRange,
-          evaluatedAt
-        ));
+        if (!options.signal.aborted) {
+          dashboardHorizon.update(resolveDashboardHorizonViewModel(
+            pageSources,
+            dashboardDefaults,
+            horizonRange,
+            evaluatedAt
+          ));
+        }
         return showInitialLoadingSkeleton
           ? renderPageLoadingSkeleton(page)
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, options.queryContext);
@@ -1285,6 +1287,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const placeDashboardHorizon = (page) => {
       const filterBar = page?.querySelector('.filter-bar');
       if (dashboardHorizon && filterBar && reportActions) {
+        if (activeFilterBar && activeFilterBar !== filterBar) {
+          const previousDetails = activeFilterBar.querySelector('.horizon-details');
+          if (previousDetails) dashboardHorizon.append(previousDetails);
+          activeFilterBar.remove();
+        }
         filterBar.prepend(dashboardHorizon);
         const horizonDetails = dashboardHorizon.querySelector('.horizon-details');
         const tuningControls = filterBar.querySelector('.filter-tuning-controls');
