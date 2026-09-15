@@ -41,7 +41,10 @@ describe('dashboard document validation', () => {
 
   it('counts every grader observation in the overview value summary', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const summary = document.dashboard.queries.find((query) => query.name === 'overview-value-summary');
+    /** @type {{ name?: string, [key: string]: unknown }[]} */
+    const queries = document.dashboard.queries;
+    const summary = queries.find((query) => query.name === 'overview-value-summary');
+    if (!summary) throw new Error('Overview value summary is missing.');
 
     expect(summary).toMatchObject({
       intent: 'Count all observed grader results.',
