@@ -177,8 +177,9 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     .filter((definition) => typeof definition.name === 'string')
     .map((definition) => [/** @type {string} */ (definition.name), definition]));
   const structuralSources = new Set(['packages', 'repositories', 'workflows']);
+  const rootComputedName = `${alias}:root`;
   /** @param {string} name */
-  const scopedName = (name) => name === sourceName ? alias : `${alias}:dependency:${slug(name)}`;
+  const scopedName = (name) => name === sourceName ? rootComputedName : `${alias}:dependency:${slug(name)}`;
   const temporalPredicates = predicates.filter((predicate) => predicate.field === '@time');
   /** @type {Array<Record<string, unknown>>} */
   const dependencies = [];
@@ -203,29 +204,19 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
       : [])].filter((dependency) => byName.has(dependency));
     for (const dependency of dependencyNames) compile(dependency);
 
-    const root = name === sourceName;
     const declaredFilter = isPlainObject(definition.filter) ? definition.filter : null;
     const declaredPredicates = declaredFilter && Array.isArray(declaredFilter.predicates)
       ? declaredFilter.predicates.filter(isPlainObject)
       : [];
-    const requestPredicates = [
-      ...(root ? predicates.filter((predicate) => predicate.field !== '@time') : []),
-      ...(!byName.has(from) && !structuralSources.has(from)
-        ? temporalPredicates
-        : [])
-    ];
+    const requestPredicates = !byName.has(from) && !structuralSources.has(from)
+      ? temporalPredicates
+      : [];
     const combinedPredicates = applyQueryTime(
       [...declaredPredicates, ...requestPredicates],
       definition.time,
       evaluatedAt
     );
-    const runtimeSearch = root && search && search.query.trim() && search.fields.length > 0
-      ? { fields: search.fields, query: search.query.trim() }
-      : undefined;
-    const filter = {
-      ...(combinedPredicates.length > 0 ? { predicates: combinedPredicates } : {}),
-      ...(runtimeSearch ? { search: runtimeSearch } : {})
-    };
+    const filter = combinedPredicates.length > 0 ? { predicates: combinedPredicates } : {};
     const query = resolveQueryContext({
       ...definition,
       name: scopedName(name),
@@ -236,16 +227,29 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
           return { ...join, source: scopedName(join.source) };
         })
       } : {}),
-      ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined }),
-      ...(root && Array.isArray(orderBy) && orderBy.length > 0 ? { 'order-by': orderBy } : {})
+      ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined })
     }, queryTimeEnd(combinedPredicates) ?? evaluatedAt);
     compiled.add(name);
-    if (root) return query;
     dependencies.push(query);
+    return query;
   };
 
-  const query = compile(sourceName);
-  if (!query) throw new TypeError(`Unable to compile declared dashboard query "${sourceName}".`);
+  compile(sourceName);
+
+  const requestPredicates = predicates.filter((predicate) => predicate.field !== '@time');
+  const runtimeSearch = search && search.query.trim() && search.fields.length > 0
+    ? { fields: search.fields, query: search.query.trim() }
+    : undefined;
+  const filter = {
+    ...(requestPredicates.length > 0 ? { predicates: requestPredicates } : {}),
+    ...(runtimeSearch ? { search: runtimeSearch } : {})
+  };
+  const query = {
+    name: alias,
+    from: rootComputedName,
+    ...(Object.keys(filter).length > 0 ? { filter } : {}),
+    ...(Array.isArray(orderBy) && orderBy.length > 0 ? { 'order-by': orderBy } : {})
+  };
   return { replacesSource: true, dependencies, query };
 }
 
