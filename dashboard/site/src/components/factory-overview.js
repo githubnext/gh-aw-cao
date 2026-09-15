@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { batch, derived, effect, state } from '../reactive.js';
+import { batch, derived, effect, render, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { formatCount } from './count-formatters.js';
 
@@ -361,32 +361,25 @@ function renderFactoryFloor(sources, metrics, label) {
  * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail: string | HTMLElement }) => void }}
  */
 function renderStation(icon, options = {}) {
-  const stationLabel = h('span', {});
-  const value = h('strong', {});
-  const detail = h('small', {});
-  const element = h(
-    'li',
-    { className: 'factory-station' },
-    h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
-    stationLabel,
-    value,
-    detail
-  );
+  const element = h('li', { className: 'factory-station' });
   return {
     element,
     bind(read) {
-      bind(() => {
+      render(element, () => {
         const station = read();
         element.className = `factory-station${options.final ? ' factory-station-final' : ''}`
           + `${station.pending ? ' factory-station-pending' : ''}`
           + `${!station.pending && !station.unavailable && station.value === 0 ? ' factory-station-empty' : ''}`;
         if (station.pending) element.setAttribute('aria-busy', 'true');
         else element.removeAttribute('aria-busy');
-        stationLabel.textContent = station.label;
         const count = station.pending ? '' : station.unavailable ? 'Unavailable' : formatCount(station.value);
-        value.replaceChildren(options.href && !station.pending && !station.unavailable ? h('a', { href: options.href }, count) : count);
-        detail.replaceChildren(station.pending ? '' : station.detail);
-      });
+        return [
+          h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
+          h('span', {}, station.label),
+          h('strong', {}, options.href && !station.pending && !station.unavailable ? h('a', { href: options.href }, count) : count),
+          h('small', {}, station.pending ? '' : station.detail)
+        ];
+      }, { signal: overviewLifetime.signal });
     }
   };
 }
@@ -509,4 +502,3 @@ function createRhythmDay() {
     h('small', {})
   );
 }
-

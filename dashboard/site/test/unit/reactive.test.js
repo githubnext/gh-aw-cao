@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { batch, derived, effect, onCleanup, state, untracked } from '../../src/reactive.js';
+import { batch, derived, effect, onCleanup, render, state, untracked } from '../../src/reactive.js';
 import { h, keyed } from '../../src/dom.js';
 
 describe('reactive core', () => {
@@ -208,5 +208,160 @@ describe('reactive core', () => {
     expect(host.querySelector('[data-id="b"]')).toBeNull();
     expect(host.querySelector('[data-id="c"]')).toBe(existingGamma);
     expect(host.querySelector('[data-id="a"]')).toBe(existingAlpha);
+  });
+
+  it('renders reactive updates through a detached shadow tree', () => {
+    const label = state('Ready');
+    const host = h('div', null, h('p', { id: 'status' }, 'Waiting'));
+    const original = host.firstElementChild;
+    const handle = render(host, () => h('p', { id: 'status' }, label.get()));
+
+    expect(host.textContent).toBe('Ready');
+    expect(host.firstElementChild).toBe(original);
+
+    label.set('Complete');
+
+    expect(host.textContent).toBe('Complete');
+    expect(host.firstElementChild).toBe(original);
+    handle.stop();
+  });
+
+  it('avoids unchanged element mutations during leaf text updates', () => {
+    const label = state('first');
+    const host = h('div');
+    const handle = render(host, () => h('p', { className: 'status' }, label.get()));
+    const paragraph = /** @type {HTMLParagraphElement} */ (host.querySelector('p'));
+    const setAttribute = vi.spyOn(paragraph, 'setAttribute');
+
+    label.set('second');
+
+    expect(paragraph.textContent).toBe('second');
+    expect(setAttribute).not.toHaveBeenCalled();
+    handle.stop();
+  });
+
+  it('reconciles keyed children while preserving identity and local input state', () => {
+    const items = state([
+      { id: 'a', label: 'Alpha' },
+      { id: 'b', label: 'Beta' },
+      { id: 'c', label: 'Gamma' }
+    ]);
+    const host = h('div');
+    const handle = render(host, () => items.get().map((item) => h(
+      'label',
+      { 'data-key': item.id },
+      item.label,
+      h('input', { type: 'text' })
+    )));
+    const alpha = host.querySelector('[data-key="a"]');
+    const gamma = host.querySelector('[data-key="c"]');
+    const input = alpha?.querySelector('input');
+    if (input) input.value = 'local edit';
+
+    items.set([
+      { id: 'c', label: 'Gamma updated' },
+      { id: 'a', label: 'Alpha' }
+    ]);
+
+    expect([...host.children].map((node) => node.getAttribute('data-key'))).toEqual(['c', 'a']);
+    expect(host.querySelector('[data-key="c"]')).toBe(gamma);
+    expect(host.querySelector('[data-key="a"]')).toBe(alpha);
+    expect(/** @type {HTMLInputElement | null} */ (host.querySelector('[data-key="a"] input'))?.value).toBe('local edit');
+    expect(host.querySelector('[data-key="b"]')).toBeNull();
+    expect(gamma?.textContent).toContain('Gamma updated');
+    handle.stop();
+  });
+
+  it('updates explicit form properties without resetting uncontrolled fields', () => {
+    const controlled = state('first');
+    const tick = state(0);
+    const host = h('div');
+    const handle = render(host, () => [
+      h('input', { 'data-key': 'controlled', value: controlled.get() }),
+      h('input', { 'data-key': 'uncontrolled', 'data-tick': tick.get() })
+    ]);
+    const controlledInput = /** @type {HTMLInputElement} */ (host.querySelector('[data-key="controlled"]'));
+    const uncontrolledInput = /** @type {HTMLInputElement} */ (host.querySelector('[data-key="uncontrolled"]'));
+    uncontrolledInput.value = 'local edit';
+
+    batch(() => {
+      controlled.set('second');
+      tick.set(1);
+    });
+
+    expect(controlledInput.value).toBe('second');
+    expect(uncontrolledInput.value).toBe('local edit');
+    handle.stop();
+  });
+
+  it('keeps generated label and form-control associations after an update', () => {
+    const tick = state(0);
+    const host = h('div');
+    const handle = render(host, () => {
+      const input = h('input', { type: 'text', 'data-tick': tick.get() });
+      return [h('label', { htmlFor: input.id }, 'Search'), input];
+    });
+    const input = /** @type {HTMLInputElement} */ (host.querySelector('input'));
+
+    tick.set(1);
+
+    const label = /** @type {HTMLLabelElement} */ (host.querySelector('label'));
+    expect(host.querySelector('input')).toBe(input);
+    expect(label.control).toBe(input);
+    handle.stop();
+  });
+
+  it('refreshes rendered event listeners without replacing their element', () => {
+    const action = state('first');
+    /** @type {string[]} */
+    const calls = [];
+    const host = h('div');
+    const handle = render(host, () => {
+      const current = action.get();
+      return h('button', { onClick: () => calls.push(current) }, current);
+    });
+    const button = /** @type {HTMLButtonElement} */ (host.querySelector('button'));
+
+    button.click();
+    action.set('second');
+    button.click();
+
+    expect(host.querySelector('button')).toBe(button);
+    expect(calls).toEqual(['first', 'second']);
+    handle.stop();
+  });
+
+  it('preserves focus while reconciling nested SVG and HTML nodes', () => {
+    const value = state('one');
+    const host = h('div');
+    document.body.append(host);
+    const handle = render(host, () => [
+      h('input', { id: 'focus-target' }),
+      h('svg', { viewBox: '0 0 10 10' }, h('title', null, value.get()), h('circle', { cx: value.get() === 'one' ? 2 : 4 }))
+    ]);
+    const input = /** @type {HTMLInputElement} */ (host.querySelector('input'));
+    const circle = host.querySelector('circle');
+    input.focus();
+
+    value.set('two');
+
+    expect(document.activeElement).toBe(input);
+    expect(host.querySelector('circle')).toBe(circle);
+    expect(circle?.getAttribute('cx')).toBe('4');
+    expect(host.querySelector('title')?.textContent).toBe('two');
+    handle.stop();
+    host.remove();
+  });
+
+  it('stops shadow-tree rendering with its abort-scoped lifetime', () => {
+    const controller = new AbortController();
+    const value = state('before');
+    const host = h('div');
+    render(host, () => value.get(), { signal: controller.signal });
+
+    controller.abort();
+    value.set('after');
+
+    expect(host.textContent).toBe('before');
   });
 });
