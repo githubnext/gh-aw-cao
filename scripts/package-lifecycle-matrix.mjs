@@ -11,7 +11,6 @@ const suites = [
     testPattern: "root package",
     prefixes: [
       ".github/aw/cao-evolution/graders/",
-      ".github/aw/dependabot/graders/",
       ".github/aw/optimization/graders/",
       ".github/workflows/graders/cao-evolution-",
       ".github/workflows/graders/dependabot-",
@@ -89,7 +88,6 @@ const suites = [
     manifest: "dependabot/aw.yml",
     testPattern: "update replaces",
     prefixes: [
-      ".github/aw/dependabot/graders/",
       ".github/workflows/graders/dependabot-",
       ".github/workflows/dependabot",
       ".github/workflows/shared/",

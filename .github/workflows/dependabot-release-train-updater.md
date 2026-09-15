@@ -141,7 +141,11 @@ tools:
 
 graders:
   operational-value:
-    run: .github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh
+    name: Decision-ready dependency action
+    description: Whether the current run requested one target-bound dependency action with the required decision evidence, or explicitly restrained itself
+    unit: proportion
+    direction: higher_is_better
+    run: ./graders/dependabot-release-train-updater-operational-value.sh
 
 safe-outputs:
   create-pull-request:
