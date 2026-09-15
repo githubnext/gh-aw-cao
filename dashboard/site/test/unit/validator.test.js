@@ -39,6 +39,23 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('counts every grader observation in the overview value summary', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    /** @type {{ name?: string, [key: string]: unknown }[]} */
+    const queries = document.dashboard.queries;
+    const summary = queries.find((query) => query.name === 'overview-value-summary');
+    if (!summary) throw new Error('Overview value summary is missing.');
+
+    expect(summary).toMatchObject({
+      intent: 'Count all observed grader results.',
+      from: 'grader-observations',
+      aggregate: {
+        values: [{ field: 'grader', as: 'value-gains', reducer: 'count' }]
+      }
+    });
+    expect(summary.compute).toBeUndefined();
+  });
+
   it('validates declarative metric number animations', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const metric = {
