@@ -18,3 +18,5 @@ resources:
     destination: .github/aw/optimization/graders/optimization-ai-credit-auditor-operational-value.sh
   - source: .github/graders/optimization-ai-credit-optimizer-operational-value.sh
     destination: .github/aw/optimization/graders/optimization-ai-credit-optimizer-operational-value.sh
+  - source: .github/graders/optimization-token-optimizer-operational-value.sh
+    destination: .github/aw/optimization/graders/optimization-token-optimizer-operational-value.sh

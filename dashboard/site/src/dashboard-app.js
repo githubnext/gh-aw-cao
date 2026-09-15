@@ -1,7 +1,7 @@
       import { dashboardPageLazySourceNames, dashboardPageSourceNames, dashboardTableSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
-      import { startLoadingProgress } from "./loading-progress.js";
+      import { setLoadingProgressState, startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
-      import { processDashboardQueries } from "./data-processor.js";
+      import { processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
       import { startDashboardData } from "./data/startup.js";
       import { octicon } from "./octicons.js";
@@ -53,6 +53,9 @@
       }));
 
       const loadingProgress = startLoadingProgress(document);
+      const stopWorkerLoadingProgress = subscribeWorkerLoadingProgress((state) => {
+        setLoadingProgressState(document, state);
+      });
       /**
        * @template T
        * @param {() => Promise<T>} task
@@ -69,7 +72,10 @@
       const cancelCommand = offerCancelCommand(document);
       const stopDashboardAppUpdates = startDashboardAppUpdates();
       window.addEventListener("pagehide", (event) => {
-        if (!event.persisted) stopDashboardAppUpdates();
+        if (!event.persisted) {
+          stopDashboardAppUpdates();
+          stopWorkerLoadingProgress();
+        }
       });
       const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
         .then((response) => {
