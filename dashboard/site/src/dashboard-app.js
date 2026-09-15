@@ -95,15 +95,10 @@
       /**
        * @param {DashboardSchema} schema
        */
-      const normalizeDashboardSchema = (schema) => {
-        if (Array.isArray(schema.dashboard?.pages) && schema.dashboard.pages.some((page) => typeof page?.chunk === "string")) {
-          return { core: schema, pageChunks: new Map() };
-        }
-        return splitDashboardDocument({
-          languageVersion: schema["language-version"],
-          dashboard: schema.dashboard,
-        });
-      };
+      const normalizeDashboardSchema = (schema) => splitDashboardDocument({
+        languageVersion: schema["language-version"],
+        dashboard: schema.dashboard,
+      });
       /** @type {Map<string, ReturnType<typeof normalizeDashboardPageChunk>>} */
       let dashboardPageChunks = new Map();
       /** @type {Map<string, Promise<ReturnType<typeof normalizeDashboardPageChunk>>>} */

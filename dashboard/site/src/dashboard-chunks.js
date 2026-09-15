@@ -267,6 +267,11 @@ export function splitDashboardDocument(source, options = {}) {
   /** @type {Map<string, { page: DashboardPage, queries: DashboardQuery[] }>} */
   const pageChunks = new Map();
   const corePages = (document.dashboard.pages ?? []).map((page) => {
+    // Pages that already carry a `chunk` pointer are assumed to already be
+    // split (e.g. a previously-built dashboard.json, or a mixed schema where
+    // only some pages have been split so far); leave them exactly as-is
+    // instead of re-splitting or discarding their existing chunk reference.
+    if (typeof page.chunk === 'string' && page.chunk.length > 0) return page;
     const sourceNames = dashboardPageSourceNames(document, page.id ?? '');
     const lazySourceNames = dashboardPageLazySourceNames(document, page.id ?? '');
     const tableSourceNames = dashboardTableSourceNames(document, page.id ?? '');
