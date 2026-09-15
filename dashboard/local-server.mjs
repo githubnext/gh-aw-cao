@@ -322,7 +322,8 @@ async function findCanonicalDashboardData(root) {
   const visit = async (directory) => {
     const entries = await readdir(directory, { withFileTypes: true });
     const names = new Set(entries.map((entry) => entry.name));
-    if (names.has("gh-aw-logs.jsonl") && names.has("inventory-sources.json")) {
+    if (names.has("inventory-sources.json")
+        && (names.has("gh-aw-logs.jsonl") || names.has("gh-aw-logs-shards"))) {
       matches.push(directory);
     }
     await Promise.all(entries
@@ -1486,12 +1487,15 @@ export async function startDashboardServer({
     await downloadData(dashboardDataDirectory, repository, ghExecutable);
     const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
     if (canonicalDataDirectory) {
-      ghAwLogsPath = join(temporaryDirectory, "gh-aw-logs.jsonl");
-      const ghAwLogsHash = await redactJsonlSecretsFile(
-        join(canonicalDataDirectory, "gh-aw-logs.jsonl"),
-        ghAwLogsPath,
-      );
-      const payloadHashes = { "gh-aw-logs.jsonl": ghAwLogsHash };
+      const canonicalGhAwLogsPath = join(canonicalDataDirectory, "gh-aw-logs.jsonl");
+      const payloadHashes = {};
+      if (existsSync(canonicalGhAwLogsPath)) {
+        ghAwLogsPath = join(temporaryDirectory, "gh-aw-logs.jsonl");
+        payloadHashes["gh-aw-logs.jsonl"] = await redactJsonlSecretsFile(
+          canonicalGhAwLogsPath,
+          ghAwLogsPath,
+        );
+      }
       const shardDirectory = join(canonicalDataDirectory, "gh-aw-logs-shards");
       for (const entry of await readdir(shardDirectory, { withFileTypes: true }).catch(() => [])) {
         if (!entry.isFile() || !/^[A-Za-z0-9._-]+\.jsonl$/.test(entry.name)) continue;
