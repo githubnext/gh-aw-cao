@@ -510,14 +510,15 @@ export function processDataRequest(request, signal) {
                 context: collectionContext
               });
               processedBytes += payloadBytes ?? 0;
-              processedRecords += Number(ingestion.records ?? 0);
+              const sourceRecords = 'records' in ingestion ? ingestion.records : 0;
+              processedRecords += sourceRecords;
               changed ||= ingestion.updated;
               debugIngestion('committed activity shard', {
                 shard: shard.name,
                 index: index + 1,
                 shardCount,
                 committedRecords: ingestion.committedRecords,
-                sourceRecords: ingestion.records
+                sourceRecords
               });
               progress.log(`Activity shard ${index + 1} of ${shardCount} committed `
                 + `${ingestion.committedRecords} canonical records.`);

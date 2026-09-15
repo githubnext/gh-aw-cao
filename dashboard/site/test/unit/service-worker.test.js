@@ -17,7 +17,8 @@ function serviceWorkerHarness(cacheKeys = []) {
     /** @param {string | Request} key */
     match: async (key) => entries.get(String(key))?.clone(),
     /** @param {string | Request} key */
-    delete: async (key) => entries.delete(String(key))
+    delete: async (key) => entries.delete(String(key)),
+    keys: async () => [...entries.keys()].map((url) => new Request(url))
   };
   const fetch = vi.fn(async (
     /** @type {string | URL | Request} */ _url,
@@ -55,6 +56,7 @@ function serviceWorkerHarness(cacheKeys = []) {
     URL,
     Response,
     AbortSignal,
+    Request,
     Set,
     Error,
     Promise,
@@ -83,7 +85,8 @@ describe('dashboard service worker', () => {
     const { listeners, worker, fetch, entries } = serviceWorkerHarness();
     const payloadHashes = JSON.stringify({
       'gh-aw-logs.jsonl': 'a'.repeat(64),
-      'gh-aw-logs.sqlite': 'b'.repeat(64)
+      'gh-aw-logs.sqlite': 'b'.repeat(64),
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64)
     });
     fetch.mockImplementation(async (url) => new Response(
       String(url).endsWith('/payload-hashes.json') ? payloadHashes : 'updated data'
@@ -109,7 +112,8 @@ describe('dashboard service worker', () => {
     });
 
     expect(fetch).toHaveBeenCalledTimes(3);
-    expect(entries.has('https://example.test/dashboard/gh-aw-logs.jsonl')).toBe(true);
+    expect(entries.has('https://example.test/dashboard/gh-aw-logs.jsonl')).toBe(false);
+    expect(entries.has('https://example.test/dashboard/gh-aw-logs-shards/logs-1.jsonl')).toBe(true);
     expect(entries.has('https://example.test/dashboard/payload-hashes.json')).toBe(true);
     entries.set(
       'https://example.test/dashboard/.dashboard-data-update-config',
@@ -126,7 +130,8 @@ describe('dashboard service worker', () => {
       tag: 'central-agentic-ops-dashboard-data'
     });
     expect(fetch).toHaveBeenCalledTimes(5);
-    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/gh-aw-logs.jsonl'))).toHaveLength(1);
+    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/gh-aw-logs.jsonl'))).toHaveLength(0);
+    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/logs-1.jsonl'))).toHaveLength(1);
     worker.navigator.connection.type = 'cellular';
     await dispatchExtendedEvent(listeners.periodicsync, {
       tag: 'central-agentic-ops-dashboard-data'
