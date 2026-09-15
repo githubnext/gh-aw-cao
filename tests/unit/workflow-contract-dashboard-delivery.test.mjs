@@ -458,9 +458,11 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /HeapProfiler\.collectGarbage/);
   assert.match(mobileTest, /Memory\.getDOMCounters/);
   assert.match(mobileTest, /VmRSS/);
-  assert.match(mobileTest, /gh-aw-logs\.jsonl/);
+  assert.match(mobileTest, /payload-hashes\.json/);
+  assert.match(mobileTest, /gh-aw-logs-shards\\\/\[A-Za-z0-9\._-\]\+\\\.jsonl/);
   assert.match(mobileTest, /inventory-sources\.json/);
-  assert.match(mobileTest, /pipeline\(logsResponse\.body, createWriteStream\(activityPath\)\)/);
+  assert.match(mobileTest, /for \(const \[name\] of shards\)[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
+  assert.doesNotMatch(mobileTest, /fetch\(dataUrl\)/);
   assert.doesNotMatch(mobileTest, /logsResponse\.text\(\)/);
   assert.match(mobileTest, /mobile-dashboard\.png/);
   assert.match(mobileTest, /minimumTargetSize/);
