@@ -34,6 +34,13 @@ function objectRow(row) {
     : null;
 }
 
+/** @param {unknown} value @param {string} fallback */
+function normalizedId(value, fallback) {
+  return value !== undefined && value !== null && String(value).trim()
+    ? String(value).trim()
+    : fallback;
+}
+
 /**
  * Adapts the current published dashboard source document without exposing its
  * view-shaped field names beyond this boundary.
@@ -190,9 +197,9 @@ export function adaptDashboardSources(sources) {
         failureDetail: row['failure-detail'] ?? row['failure-message'] ?? row['failure-step'] ?? `Run ${githubRunId}`,
         runLink: row['run-link'] ?? null,
         rolloutMode: row['rollout-mode'] ?? 'unknown',
-        agentId: row['agent-id'] ?? null,
+        agentId: normalizedId(row['agent-id'], 'copilot'),
         agentVersion: row['agent-version'] ?? null,
-        modelId: row['model-id'] ?? null,
+        modelId: normalizedId(row['model-id'], 'auto'),
         ghAwVersion: row['gh-aw-version'] ?? null,
         aicTotal: row['aic-total'] ?? null,
         engine: row.engine ?? 'unknown',

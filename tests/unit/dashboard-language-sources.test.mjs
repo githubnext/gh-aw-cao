@@ -1423,6 +1423,8 @@ test("dashboard source bridge detects rollout mode from run titles with punctuat
   });
 
   assert.equal(sources.runs.rows[0]["rollout-mode"], "review");
+  assert.equal(sources.runs.rows[0]["agent-id"], "copilot");
+  assert.equal(sources.runs.rows[0]["model-id"], "auto");
 });
 
 test("dashboard source bridge omits mcp-calls rows when mcp telemetry is unavailable and correctly counts mcp failures", () => {

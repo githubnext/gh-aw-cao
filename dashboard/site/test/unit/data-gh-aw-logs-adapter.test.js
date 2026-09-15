@@ -351,7 +351,9 @@ describe('gh-aw logs adapter', () => {
     expect(batch.runs).toEqual([
       expect.objectContaining({
         workflowId: batch.workflows[0].id,
-        workflowPath: '.github/workflows/dashboard.md'
+        workflowPath: '.github/workflows/dashboard.md',
+        agentId: 'copilot',
+        modelId: 'auto'
       })
     ]);
   });

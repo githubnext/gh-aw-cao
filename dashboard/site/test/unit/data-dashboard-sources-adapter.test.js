@@ -218,6 +218,9 @@ describe('current dashboard source adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
+    expect(batch.runs).toEqual([expect.objectContaining({
+      agentId: 'copilot', modelId: 'auto'
+    })]);
     expect(batch.sessions).toEqual([expect.objectContaining({
       runId: 'github:run:303:attempt:1', jobId: 'github:job:404'
     })]);
