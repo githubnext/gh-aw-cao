@@ -175,20 +175,32 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
 function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy, evaluatedAt, definitions) {
   const byName = new Map(definitions
     .filter((definition) => typeof definition.name === 'string')
-    .map((definition) => [definition.name, definition]));
+    .map((definition) => [/** @type {string} */ (definition.name), definition]));
   const structuralSources = new Set(['packages', 'repositories', 'workflows']);
+  /** @param {string} name */
   const scopedName = (name) => name === sourceName ? alias : `${alias}:dependency:${slug(name)}`;
   const temporalPredicates = predicates.filter((predicate) => predicate.field === '@time');
+  /** @type {Array<Record<string, unknown>>} */
   const dependencies = [];
   const compiled = new Set();
 
+  /**
+   * @param {string} name
+   * @returns {Record<string, unknown> | undefined}
+   */
   const compile = (name) => {
     if (compiled.has(name)) return;
     const definition = byName.get(name);
     if (!definition) return;
-    const dependencyNames = [definition.from, ...(Array.isArray(definition.joins)
-      ? definition.joins.map((join) => isPlainObject(join) ? join.source : undefined)
-      : [])].filter((dependency) => typeof dependency === 'string' && byName.has(dependency));
+    if (typeof definition.from !== 'string') {
+      throw new TypeError(`Declared dashboard query "${name}" requires a source.`);
+    }
+    const from = definition.from;
+    const dependencyNames = [from, ...(Array.isArray(definition.joins)
+      ? definition.joins.flatMap((join) => (
+          isPlainObject(join) && typeof join.source === 'string' ? [join.source] : []
+        ))
+      : [])].filter((dependency) => byName.has(dependency));
     for (const dependency of dependencyNames) compile(dependency);
 
     const root = name === sourceName;
@@ -198,7 +210,7 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
       : [];
     const requestPredicates = [
       ...(root ? predicates.filter((predicate) => predicate.field !== '@time') : []),
-      ...(!byName.has(definition.from) && !structuralSources.has(definition.from)
+      ...(!byName.has(from) && !structuralSources.has(from)
         ? temporalPredicates
         : [])
     ];
@@ -217,11 +229,12 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const query = resolveQueryContext({
       ...definition,
       name: scopedName(name),
-      from: byName.has(definition.from) ? scopedName(definition.from) : definition.from,
+      from: byName.has(from) ? scopedName(from) : from,
       ...(Array.isArray(definition.joins) ? {
-        joins: definition.joins.map((join) => isPlainObject(join) && byName.has(join.source)
-          ? { ...join, source: scopedName(join.source) }
-          : join)
+        joins: definition.joins.map((join) => {
+          if (!isPlainObject(join) || typeof join.source !== 'string' || !byName.has(join.source)) return join;
+          return { ...join, source: scopedName(join.source) };
+        })
       } : {}),
       ...(Object.keys(filter).length > 0 ? { filter } : { filter: undefined }),
       ...(root && Array.isArray(orderBy) && orderBy.length > 0 ? { 'order-by': orderBy } : {})
@@ -232,6 +245,7 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
   };
 
   const query = compile(sourceName);
+  if (!query) throw new TypeError(`Unable to compile declared dashboard query "${sourceName}".`);
   return { replacesSource: true, dependencies, query };
 }
 
