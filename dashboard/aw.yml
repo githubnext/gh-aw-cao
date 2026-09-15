@@ -59,6 +59,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data-worker.js
   - source: site/src/main.js
     destination: .github/aw/dashboard/site/src/main.js
+  - source: site/src/dashboard-app.js
+    destination: .github/aw/dashboard/site/src/dashboard-app.js
   - source: site/src/dashboard-data-updates.js
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/adapters/dashboard-sources.js
@@ -69,6 +71,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/adapters/sql-export.js
   - source: site/src/data/continuation.js
     destination: .github/aw/dashboard/site/src/data/continuation.js
+  - source: site/src/data/startup.js
+    destination: .github/aw/dashboard/site/src/data/startup.js
   - source: site/src/data/ingest/coordinator.js
     destination: .github/aw/dashboard/site/src/data/ingest/coordinator.js
   - source: site/src/data/ingest/expressions/gh-aw-logs-v2.json

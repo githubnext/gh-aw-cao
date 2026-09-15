@@ -10,6 +10,13 @@ import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "../debug-events.j
 import { startAutomaticDashboardDataUpdates } from "../dashboard-data-updates.js";
 import { configureSourceLoader, refreshSources as refreshBoundSources } from "../source-store.js";
 
+/** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
+/** @typedef {Record<string, { limit: number, continuationToken?: string }>} DashboardPagination */
+/** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string } }} DashboardQueryContext */
+/** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
+/** @typedef {(pageId: string, options: PageLoadOptions) => Promise<DashboardSources>} PageSourceLoader */
+/** @typedef {() => Promise<DashboardSources>} HorizonSourceLoader */
+
 /**
  * Gives a cached render two animation frames to commit before network activity starts.
  * @param {Window} browserWindow
@@ -17,10 +24,11 @@ import { configureSourceLoader, refreshSources as refreshBoundSources } from "..
  */
 export function waitForDashboardUi(browserWindow) {
   return new Promise((resolve) => {
+    /** @type {(callback: FrameRequestCallback) => number} */
     const schedule = browserWindow.requestAnimationFrame
       ? (callback) => browserWindow.requestAnimationFrame(callback)
-      : (callback) => browserWindow.setTimeout(callback, 0);
-    schedule(() => schedule(resolve));
+      : (callback) => browserWindow.setTimeout(() => callback(performance.now()), 0);
+    schedule(() => schedule(() => resolve()));
   });
 }
 
@@ -34,7 +42,7 @@ export function waitForDashboardUi(browserWindow) {
  *   dashboardContext: {
  *     githubUrlBase?: string,
  *     dashboardRepository?: string | null,
- *     pages: import('../presenter.js').PresentablePage[],
+ *     pages: import('../presenter.js').PresentationDocument['dashboard']['pages'],
  *     queries: unknown[],
  *   },
  *   initialPageId: string,
@@ -43,7 +51,7 @@ export function waitForDashboardUi(browserWindow) {
  *   pageSourceNames: (pageId: string) => string[],
  *   pageLazySourceNames: (pageId: string) => string[],
  *   runWithLoadingProgress: <T>(task: () => Promise<T>) => Promise<T>,
- *   render: (sources: Record<string, import('../presenter.js').LogicalSourceInput>, state: 'ready' | 'cached' | 'stale', loadPageSources: Function, loadHorizonSources: Function, retryRefresh?: () => void) => void,
+ *   render: (sources: DashboardSources, state: 'ready' | 'cached' | 'stale', loadPageSources: PageSourceLoader, loadHorizonSources: HorizonSourceLoader, retryRefresh?: () => void) => void,
  *   settleUi?: () => Promise<void>,
  * }} options
  * @returns {Promise<() => void>}
@@ -72,6 +80,12 @@ export async function startDashboardData(options) {
     }
   });
 
+  /**
+   * @param {string} pageId
+   * @param {DashboardSources} sources
+   * @param {string[]} sourceNames
+   * @param {Pick<PageLoadOptions, 'routeParameters' | 'queryContext'>} [pageOptions]
+   */
   const bindContinuations = (pageId, sources, sourceNames, pageOptions = {}) => bindSourceContinuations(
     sources,
     sourceNames,
@@ -83,6 +97,7 @@ export async function startDashboardData(options) {
       }),
     ),
   );
+  /** @type {PageSourceLoader} */
   const loadPageSources = (pageId, pageOptions) => {
     const sourceNames = pageSourceNames(pageId);
     const lazySources = pageLazySourceNames(pageId);
@@ -127,6 +142,9 @@ export async function startDashboardData(options) {
   const loadHorizonSources = () => runWithLoadingProgress(
     () => loadCanonicalDashboardPage(DATABASE_COUNT_SOURCE_NAMES, dashboardContext),
   );
+  /**
+   * @param {(sourceNames: string[], pagination: DashboardPagination) => Promise<DashboardSources>} load
+   */
   const loadInitialSources = async (load) => bindContinuations(
     initialPageId,
     await load(initialSources, continuationRequests(initialLazySources)),
@@ -178,6 +196,7 @@ export async function startDashboardData(options) {
   const refreshPagination = continuationRequests(initialLazySources);
   let refreshFailed = false;
   let refreshPending = false;
+  /** @param {unknown} error */
   const showStaleSources = (error) => {
     if (refreshFailed) return;
     refreshFailed = true;

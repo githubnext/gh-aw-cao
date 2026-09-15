@@ -91,7 +91,7 @@ test("docs dashboard installs renderer assets and configured package pages", asy
     );
     const mainSourceMap = JSON.parse(await readFile(new URL("src/main.js.map", destination), "utf8"));
     const workerSourceMap = JSON.parse(await readFile(new URL("src/data-worker.js.map", destination), "utf8"));
-    assert.ok(mainSourceMap.sources.some((source) => source.endsWith("/src/main.js")));
+    assert.ok(mainSourceMap.sources.some((source) => source.endsWith("/src/dashboard-app.js")));
     assert.ok(workerSourceMap.sources.some((source) => source.endsWith("/src/data-worker.js")));
     assert.equal(mainSourceMap.sources.length, mainSourceMap.sourcesContent.length);
     assert.equal(workerSourceMap.sources.length, workerSourceMap.sourcesContent.length);

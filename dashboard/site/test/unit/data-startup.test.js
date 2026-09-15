@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+/** @type {string[]} */
 const calls = [];
 const dataProcessor = vi.hoisted(() => ({
   loadCanonicalDashboardPage: vi.fn(),
@@ -20,6 +21,14 @@ const cachedSources = {
   runs: { source: "runs", rows: [{ run: "cached" }] },
 };
 
+/**
+ * @template T
+ * @param {() => Promise<T>} task
+ * @returns {Promise<T>}
+ */
+const runWithLoadingProgress = (task) => task();
+
+/** @param {Record<string, unknown>} [overrides] */
 function options(overrides = {}) {
   return {
     browserWindow: window,
@@ -31,8 +40,11 @@ function options(overrides = {}) {
     initialLazySources: [],
     pageSourceNames: () => ["runs"],
     pageLazySourceNames: () => [],
-    runWithLoadingProgress: (task) => task(),
-    render: (_sources, state) => calls.push(`render:${state}`),
+    runWithLoadingProgress,
+    render: (
+      /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
+      /** @type {'ready' | 'cached' | 'stale'} */ state,
+    ) => calls.push(`render:${state}`),
     settleUi: async () => {
       calls.push("settle");
     },
