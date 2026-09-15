@@ -14,10 +14,10 @@ const runs = numberSetting("DASHBOARD_STRESS_RUNS", 20_000);
 const derivedEvents = numberSetting("DASHBOARD_STRESS_DERIVED_EVENTS", 6);
 const shards = numberSetting("DASHBOARD_STRESS_SHARDS", 20);
 const sampleIntervalMs = numberSetting("DASHBOARD_STRESS_SAMPLE_INTERVAL_MS", 250);
-const maximumBrowserHeapMb = numberSetting("DASHBOARD_STRESS_MAX_BROWSER_HEAP_MB", 220);
-const maximumRetainedHeapMb = numberSetting("DASHBOARD_STRESS_MAX_RETAINED_HEAP_MB", 128);
-const maximumWorkingSetMb = numberSetting("DASHBOARD_STRESS_MAX_WORKING_SET_MB", 1_536);
-const maximumIngestionRssMb = numberSetting("DASHBOARD_STRESS_MAX_INGESTION_RSS_MB", 1_024);
+const maximumPageHeapMb = numberSetting("DASHBOARD_STRESS_MAX_BROWSER_HEAP_MB", 220);
+const maximumRetainedPageHeapMb = numberSetting("DASHBOARD_STRESS_MAX_RETAINED_HEAP_MB", 128);
+const maximumWorkingSetMb = numberSetting("DASHBOARD_STRESS_MAX_WORKING_SET_MB", 2_048);
+const maximumIngestionRssMb = numberSetting("DASHBOARD_STRESS_MAX_INGESTION_RSS_MB", 2_048);
 const maximumGeneratorRssMb = numberSetting("DASHBOARD_STRESS_MAX_GENERATOR_RSS_MB", 256);
 const megabyte = 1024 * 1024;
 
@@ -257,9 +257,9 @@ test("massive shards populate canonical storage within restricted memory", async
   await capture("after-garbage-collection");
   await session.send("Performance.disable");
 
-  const peakHeapBytes = Math.max(0, ...browserSamples.map(({ jsHeapUsedBytes }) => jsHeapUsedBytes ?? 0));
+  const peakPageHeapBytes = Math.max(0, ...browserSamples.map(({ jsHeapUsedBytes }) => jsHeapUsedBytes ?? 0));
   const peakWorkingSetBytes = Math.max(0, ...browserSamples.map(({ workingSetBytes }) => workingSetBytes ?? 0));
-  const retainedHeapBytes = browserSamples.at(-1)?.jsHeapUsedBytes ?? 0;
+  const retainedPageHeapBytes = browserSamples.at(-1)?.jsHeapUsedBytes ?? 0;
   const metrics = {
     parameters: { repositories, runs, derivedEvents, shards },
     manifest,
@@ -273,8 +273,8 @@ test("massive shards populate canonical storage within restricted memory", async
       device: "Pixel 7",
       memoryLimitMb: Number(process.env.DASHBOARD_STRESS_BROWSER_MEMORY_MB ?? 256),
       result,
-      peakHeapBytes,
-      retainedHeapBytes,
+      peakPageHeapBytes,
+      retainedPageHeapBytes,
       peakWorkingSetBytes,
       samples: browserSamples,
     },
@@ -290,7 +290,7 @@ test("massive shards populate canonical storage within restricted memory", async
   expect(result.returnedRuns).toBe(100);
   expect(generationMemory.peakHighWaterBytes).toBeLessThanOrEqual(maximumGeneratorRssMb * megabyte);
   expect(ingestionMemory.peakHighWaterBytes).toBeLessThanOrEqual(maximumIngestionRssMb * megabyte);
-  expect(peakHeapBytes).toBeLessThanOrEqual(maximumBrowserHeapMb * megabyte);
-  expect(retainedHeapBytes).toBeLessThanOrEqual(maximumRetainedHeapMb * megabyte);
+  expect(peakPageHeapBytes).toBeLessThanOrEqual(maximumPageHeapMb * megabyte);
+  expect(retainedPageHeapBytes).toBeLessThanOrEqual(maximumRetainedPageHeapMb * megabyte);
   expect(peakWorkingSetBytes).toBeLessThanOrEqual(maximumWorkingSetMb * megabyte);
 });

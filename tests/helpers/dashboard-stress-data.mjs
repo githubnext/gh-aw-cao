@@ -6,6 +6,8 @@ import { once } from "node:events";
 import { pathToFileURL } from "node:url";
 
 const DEFAULT_SAMPLE = resolve("dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl");
+// Keep this aligned with the unconditional run event emitters in the gh-aw
+// logs adapter: started, agent session, completed, usage, and working set.
 const BASE_DERIVED_EVENTS = 5;
 
 function positiveInteger(value, name) {
@@ -60,7 +62,10 @@ function syntheticRun(template, index, options) {
   const startedAt = new Date(Date.parse(completedAt) - (20 + index % 180) * 1000).toISOString();
   const repository = `synthetic-org/repository-${String(repositoryIndex).padStart(5, "0")}`;
   const workflowName = `Synthetic Agentic Workflow ${String(workflowIndex).padStart(2, "0")}`;
-  const conclusion = index % 17 === 0 ? "failure" : "success";
+  const conclusion = options.derivedEventsPerRun > BASE_DERIVED_EVENTS && index % 17 === 0
+    ? "failure"
+    : "success";
+  const automaticEvents = BASE_DERIVED_EVENTS + (conclusion === "failure" ? 1 : 0);
   return {
     schema_version: template.schema_version,
     kind: template.kind,
@@ -101,7 +106,7 @@ function syntheticRun(template, index, options) {
         started_at: startedAt,
         completed_at: completedAt,
       }],
-      audit: auditEvents(options.derivedEventsPerRun - BASE_DERIVED_EVENTS, runId, completedAt),
+      audit: auditEvents(options.derivedEventsPerRun - automaticEvents, runId, completedAt),
     },
   };
 }
