@@ -667,7 +667,9 @@ function renderChartView(context) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, buildChartPoints, prepareChartPoints, continuation } = context;
   const encoding = isPlainObject(view.encoding) ? view.encoding : null;
   const x = isPlainObject(encoding?.x) && typeof encoding.x.field === 'string' ? encoding.x : null;
-  const y = isPlainObject(encoding?.y) && typeof encoding.y.field === 'string' ? encoding.y : null;
+  const yDefinitions = (Array.isArray(encoding?.y) ? encoding.y : [encoding?.y])
+    .filter((definition) => isPlainObject(definition) && typeof definition.field === 'string');
+  const y = yDefinitions[0] ?? null;
   const color = isPlainObject(encoding?.color) && typeof encoding.color.field === 'string' ? encoding.color : null;
   const reference = isPlainObject(encoding?.reference) && typeof encoding.reference.field === 'string' ? encoding.reference : null;
   const href = isPlainObject(encoding?.href) && typeof encoding.href.field === 'string' ? encoding.href : null;
@@ -675,13 +677,31 @@ function renderChartView(context) {
   const value = chartType === 'heatmap' ? color : y;
   const series = chartType === 'heatmap' ? y : color;
   /** @param {Array<Record<string, unknown>>} chartRows */
-  const pointsForRows = (chartRows) => prepareChartPoints(
-    buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
-    x,
-    value,
-    series,
-    view.data
-  );
+  const pointsForRows = (chartRows) => {
+    if (chartType === 'line' && yDefinitions.length > 1) {
+      const points = yDefinitions.flatMap((definition) => buildChartPoints(
+        pageId,
+        title,
+        chartRows,
+        x,
+        definition,
+        null,
+        href?.field ?? null
+      ).map((point) => ({
+        ...point,
+        key: `${point.key}-${definition.field}`,
+        color: fieldTitle(definition)
+      })));
+      return prepareChartPoints(points, x, y, null, view.data);
+    }
+    return prepareChartPoints(
+      buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
+      x,
+      value,
+      series,
+      view.data
+    );
+  };
   const points = pointsForRows(rows);
   const description = typeof view.description === 'string' && view.description.length > 0
     ? h('p', { className: 'view-description' }, view.description)
@@ -700,7 +720,7 @@ function renderChartView(context) {
       isPlainObject(view.data) && isPlainObject(view.data.time) ? view.data.time : null,
       reference?.field ?? null
     );
-    const chartLegend = color && !['heatmap', 'pie', 'swimlane'].includes(chartType)
+    const chartLegend = (color || yDefinitions.length > 1) && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)
       : null;
     return {

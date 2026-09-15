@@ -5772,6 +5772,37 @@
         "description": "Inspect retained dashboard ingestion transactions.",
         "views": [
           {
+            "id": "transaction-ingestion-trend",
+            "title": "Run ingestion coverage",
+            "description": "Known factory runs compared with runs that include imported session data at each ingestion transaction.",
+            "data": {
+              "source": "transactions-table"
+            },
+            "mark": "chart",
+            "chart": "line",
+            "layout": "full",
+            "empty-message": "No run ingestion transactions have been retained.",
+            "encoding": {
+              "x": {
+                "field": "created-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp"
+              },
+              "y": [
+                {
+                  "field": "raw-runs",
+                  "type": "quantitative",
+                  "title": "Known runs"
+                },
+                {
+                  "field": "agentic-runs",
+                  "type": "quantitative",
+                  "title": "Runs with session data"
+                }
+              ]
+            }
+          },
+          {
             "id": "transaction-entries",
             "title": "Transaction entries",
             "description": "Retained ingestion transactions ordered from newest to oldest.",

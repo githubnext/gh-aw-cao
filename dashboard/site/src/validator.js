@@ -3741,6 +3741,29 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
   if (chart === undefined) {
     return;
   }
+  if (Array.isArray(encoding.y)) {
+    if (chart !== 'line') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'multiple y fields are supported only by line charts.',
+        `${viewPath}.encoding.y`
+      ));
+    }
+    if (encoding.y.length < 2 || encoding.y.length > 8) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'multiple-measure line charts must encode between two and eight y fields.',
+        `${viewPath}.encoding.y`
+      ));
+    }
+    if (encoding.color !== undefined) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'multiple-measure line charts must not also encode color.',
+        `${viewPath}.encoding.color`
+      ));
+    }
+  }
   if (['dot', 'line', 'scatter'].includes(String(chart)) && isPlainObject(encoding.x) && encoding.x.type !== undefined && encoding.x.type !== 'temporal') {
     errors.push(createError(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3941,7 +3964,19 @@ function validateTableEncoding(encodingNode, encoding, sourceName, path, aggrega
  */
 function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, aggregateOutputIds, errors) {
   validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'x'), encoding.x, sourceName, `${path}.x`, aggregateOutputIds, errors);
-  validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'y'), encoding.y, sourceName, `${path}.y`, aggregateOutputIds, errors);
+  const yNode = getValueNodeByKey(encodingNode, 'y');
+  const yDefinitions = Array.isArray(encoding.y) ? encoding.y : [encoding.y];
+  for (const [index, definition] of yDefinitions.entries()) {
+    const definitionPath = Array.isArray(encoding.y) ? `${path}.y[${index}]` : `${path}.y`;
+    validateRequiredFieldDefinition(
+      Array.isArray(encoding.y) ? getSequenceItemNode(yNode, index) : yNode,
+      definition,
+      sourceName,
+      definitionPath,
+      aggregateOutputIds,
+      errors
+    );
+  }
 
   if (isPlainObject(encoding.x) && encoding.x.type !== undefined && !['nominal', 'ordinal', 'temporal'].includes(String(encoding.x.type))) {
     errors.push(createError(
@@ -4013,20 +4048,22 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
     ));
   }
 
-  if (
-    isPlainObject(encoding.y)
-    && encoding.y.type !== undefined
-    && (['heatmap', 'swimlane'].includes(String(chart))
-      ? !['nominal', 'ordinal'].includes(String(encoding.y.type))
-      : encoding.y.type !== 'quantitative')
-  ) {
-    errors.push(createError(
-      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-      ['heatmap', 'swimlane'].includes(String(chart))
-        ? `${chart} chart y encoding must be nominal or ordinal when explicitly typed.`
-        : 'chart y encoding must be quantitative when explicitly typed.',
-      `${path}.y.type`
-    ));
+  for (const [index, definition] of yDefinitions.entries()) {
+    if (
+      isPlainObject(definition)
+      && definition.type !== undefined
+      && (['heatmap', 'swimlane'].includes(String(chart))
+        ? !['nominal', 'ordinal'].includes(String(definition.type))
+        : definition.type !== 'quantitative')
+    ) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        ['heatmap', 'swimlane'].includes(String(chart))
+          ? `${chart} chart y encoding must be nominal or ordinal when explicitly typed.`
+          : 'chart y encoding must be quantitative when explicitly typed.',
+        Array.isArray(encoding.y) ? `${path}.y[${index}].type` : `${path}.y.type`
+      ));
+    }
   }
 
   const xType = isPlainObject(encoding.x) && typeof encoding.x.type === 'string' ? encoding.x.type : null;
@@ -4035,7 +4072,12 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
   const xHasTimeUnit = isPlainObject(encoding.x) && encoding.x['time-unit'] !== undefined;
   const expectedDefault = xIsTemporal ? 'line' : 'bar';
 
-  if (expectedDefault === 'line' && !['dot', 'scatter', 'swimlane'].includes(String(chart)) && !xHasTimeUnit) {
+  if (
+    expectedDefault === 'line'
+    && !['dot', 'scatter', 'swimlane'].includes(String(chart))
+    && !xHasTimeUnit
+    && !Array.isArray(encoding.y)
+  ) {
     errors.push(createError(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
       'chart views with temporal x must declare a temporal bucket to realize the line time-series default conservatively.',
@@ -4327,7 +4369,7 @@ function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceNam
   if (isPlainObject(encoding)) {
     const definitions = [
       encoding.x,
-      encoding.y,
+      ...(Array.isArray(encoding.y) ? encoding.y : [encoding.y]),
       encoding.color,
       ...(Array.isArray(encoding.columns) ? encoding.columns : []),
     ];

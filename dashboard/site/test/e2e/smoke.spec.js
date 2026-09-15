@@ -580,6 +580,9 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
   const view = transactionsPage.locator('[data-view-layout="full-view"]');
   const scroll = view.locator('.table-scroll');
   await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
+  await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
+  await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with session data');
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();

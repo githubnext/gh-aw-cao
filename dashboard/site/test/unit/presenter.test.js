@@ -577,7 +577,9 @@ describe('presenter built-in and custom pages', () => {
             'created-at': '2026-09-02T12:00:00Z',
             'payload-scope': 'gh-aw-jsonl',
             records: 12,
-            'committed-records': 10
+            'committed-records': 10,
+            'raw-runs': 8,
+            'agentic-runs': 6
           }],
           metadata
         }
@@ -590,6 +592,9 @@ describe('presenter built-in and custom pages', () => {
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="transactions"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="transactions"]');
       expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+      expect(page?.querySelectorAll('.line-chart-series')).toHaveLength(2);
+      expect(page?.querySelector('.chart-legend')?.textContent).toContain('Known runs');
+      expect(page?.querySelector('.chart-legend')?.textContent).toContain('Runs with session data');
       expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
       expect(page?.querySelector('input[type="search"]')).not.toBeNull();
       expect(page?.textContent).toContain('ingest-jsonl');

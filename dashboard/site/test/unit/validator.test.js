@@ -4975,6 +4975,63 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
+  it('DLS-VIEW-005 accepts multiple named measures only for line charts without color', () => {
+    const valid = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: chart-measures
+  title: Chart Measures
+  queries:
+    - name: transaction-points
+      intent: Select transaction run counts.
+      from: transactions
+      select:
+        - { field: createdAt, as: created-at }
+        - { field: rawRuns, as: known-runs }
+        - { field: agenticRuns, as: session-runs }
+  pages:
+    - id: transactions
+      kind: custom
+      views:
+        - id: ingestion
+          data: { source: transaction-points }
+          mark: chart
+          chart: line
+          encoding:
+            x: { field: created-at, type: temporal }
+            y:
+              - { field: known-runs, type: quantitative, title: Known runs }
+              - { field: session-runs, type: quantitative, title: Runs with session data }
+`);
+    expect(valid.ok).toBe(true);
+
+    const invalid = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: chart-measures
+  title: Chart Measures
+  pages:
+    - id: transactions
+      kind: custom
+      views:
+        - id: ingestion
+          data: { source: transactions }
+          mark: chart
+          chart: bar
+          encoding:
+            x: { field: createdAt, type: temporal }
+            y:
+              - { field: rawRuns, type: quantitative }
+              - { field: agenticRuns, type: quantitative }
+            color: { field: kind, type: nominal }
+`);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: expect.stringContaining('.encoding.y') }),
+        expect.objectContaining({ path: expect.stringContaining('.encoding.color') })
+      ]));
+    }
+  });
+
   it('DLS-VIEW-006 accepts a full-view interactive table with lazy-list rendering', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
