@@ -888,9 +888,9 @@ dashboard:
       'configuration'
     ]);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
-      'engines-models',
       'workflows',
       'runs',
+      'engines-models',
       'firewall',
       'mcps',
       'events'
