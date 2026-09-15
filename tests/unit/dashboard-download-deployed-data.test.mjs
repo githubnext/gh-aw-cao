@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
-import { copyFile, mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -33,6 +33,120 @@ test("exposes the dashboard data CLI as cao", async () => {
     assert.match(stdout, /^Usage:\n  cao ingest /);
     assert.match(stdout, /\n  cao download /);
     assert.match(stdout, /cao query .*--stdin/);
+    assert.match(stdout, /cao gh runs /);
+    assert.match(stdout, /cao gh issues /);
+    assert.match(stdout, /cao gh prs /);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("queries canonical data with the gh-like surface", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-gh-cli-"));
+  const input = path.join(root, "gh-aw-logs.jsonl");
+  const database = path.join(root, "gh-aw-logs.sqlite");
+  const records = [
+    {
+      schema_version: 2,
+      kind: "workflow_runs",
+      request: { host: "github.com", repository: "githubnext/gh-aw-cao", args: ["run", "list"] },
+      payload: [{
+        databaseId: 404,
+        attempt: 1,
+        workflowName: "CAO Activity",
+        displayTitle: "Collect activity",
+        event: "workflow_dispatch",
+        status: "completed",
+        conclusion: "success",
+        createdAt: "2026-09-10T03:59:00Z",
+        startedAt: "2026-09-10T04:00:00Z",
+        updatedAt: "2026-09-10T04:01:00Z",
+      }],
+    },
+    {
+      schema_version: 2,
+      kind: "run",
+      run: {
+        run_id: 404,
+        run_attempt: "1",
+        organization: "githubnext",
+        repository: "githubnext/gh-aw-cao",
+        workflow_name: "CAO Activity",
+        workflow_path: ".github/workflows/cao-activity.md",
+        status: "completed",
+        conclusion: "success",
+        created_at: "2026-09-10T03:59:00Z",
+        started_at: "2026-09-10T04:00:00Z",
+        updated_at: "2026-09-10T04:01:00Z",
+      },
+    },
+    {
+      schema_version: 2,
+      kind: "safe_output_item",
+      safe_output: {
+        run_id: 404,
+        type: "create_issue",
+        url: "https://github.com/octo/example/issues/12",
+        timestamp: "2026-09-10T04:00:30Z",
+      },
+    },
+    {
+      schema_version: 2,
+      kind: "safe_output_item",
+      safe_output: {
+        run_id: 404,
+        type: "create_pull_request",
+        url: "https://github.com/octo/example/pull/13",
+        timestamp: "2026-09-10T04:00:45Z",
+      },
+    },
+  ];
+
+  try {
+    await writeFile(input, `${records.map((record) => JSON.stringify(record)).join("\n")}\n`);
+    await executeFile(cao, ["ingest-jsonl", "--input", input, "--database", database]);
+
+    const { stdout: runsOutput } = await executeFile(cao, [
+      "gh", "runs",
+      "--database", database,
+      "-R", "githubnext/gh-aw-cao",
+      "-w", "cao-activity",
+      "--since", "2026-09-10",
+      "--until", "2026-09-10",
+      "-L", "1",
+    ]);
+    const runs = JSON.parse(runsOutput);
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].githubRunId, "404");
+
+    const { stdout: issuesOutput } = await executeFile(cao, [
+      "gh", "issues",
+      "--database", database,
+      "--repo", "octo/example",
+      "--workflow", "CAO Activity",
+      "--since", "2026-09-10T04:00:00Z",
+      "--until", "2026-09-10T04:01:00Z",
+    ]);
+    assert.deepEqual(JSON.parse(issuesOutput).map(({ number, repository }) => ({ number, repository })), [
+      { number: 12, repository: "octo/example" },
+    ]);
+
+    const { stdout: prsOutput } = await executeFile(cao, [
+      "gh", "prs",
+      "--database", database,
+      "--repo", "octo/example",
+      "--workflow", ".github/workflows/cao-activity.md",
+    ]);
+    assert.deepEqual(JSON.parse(prsOutput).map(({ number, repository }) => ({ number, repository })), [
+      { number: 13, repository: "octo/example" },
+    ]);
+
+    const { stdout: outsideRangeOutput } = await executeFile(cao, [
+      "gh", "runs",
+      "--database", database,
+      "--since", "2026-09-11",
+    ]);
+    assert.deepEqual(JSON.parse(outsideRangeOutput), []);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

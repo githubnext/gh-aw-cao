@@ -39,7 +39,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
 const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
 const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
-const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats']);
+const DEFAULT_GH_LIMIT = 30;
+const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
+const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
@@ -50,6 +52,9 @@ const USAGE = `Usage:
   cao download [--url URL] [--output DIRECTORY]
   cao hash-payloads [--input GH_AW_LOGS_JSONL] [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
+  cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
+  cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
+  cao gh prs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
@@ -66,7 +71,14 @@ Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
   REPO      GITHUB_REPOSITORY
   WORKFLOW  ${DEFAULT_ACTIVITY_STATS_WORKFLOW}
   ARTIFACT  ${DEFAULT_ACTIVITY_STATS_ARTIFACT}
-  LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}`;
+ LIMIT     ${DEFAULT_ACTIVITY_STATS_LIMIT}
+
+gh query aliases:
+ -R, --repo       Filter by OWNER/REPO
+ -w, --workflow   Filter by workflow name or file
+ -L, --limit      Maximum results (default ${DEFAULT_GH_LIMIT})
+ --since          Include records at or after an ISO 8601 time
+ --until          Include records at or before an ISO 8601 time`;
 
 async function jsonlFiles(root) {
   const files = [];
@@ -89,12 +101,13 @@ async function jsonlFiles(root) {
 }
 
 function parseOptions(arguments_) {
+  const aliases = { '-R': 'repo', '-w': 'workflow', '-L': 'limit' };
   /** @type {Record<string, string | string[]>} */
   const options = {};
   for (let index = 0; index < arguments_.length; index += 1) {
     const argument = arguments_[index];
-    if (!argument.startsWith('--')) throw new Error(`Unexpected argument: ${argument}`);
-    const name = argument.slice(2);
+    if (!argument.startsWith('--') && !aliases[argument]) throw new Error(`Unexpected argument: ${argument}`);
+    const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'keep') {
       options[name] = 'true';
       continue;
@@ -180,6 +193,28 @@ function queryLimit(options) {
   const limit = Number(value);
   if (!Number.isInteger(limit) || limit < 1) throw new Error('--limit must be a positive integer');
   return limit;
+}
+
+function ghQueryLimit(options) {
+  return queryLimit(options) ?? DEFAULT_GH_LIMIT;
+}
+
+function timeBoundary(options, name) {
+  const value = option(options, name, false);
+  if (!value) return undefined;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) throw new Error(`--${name} must be a valid ISO 8601 time`);
+  if (name === 'until' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return timestamp + DAY_MS - 1;
+  return timestamp;
+}
+
+function ghTimeRange(options) {
+  const since = timeBoundary(options, 'since');
+  const until = timeBoundary(options, 'until');
+  if (since !== undefined && until !== undefined && since > until) {
+    throw new Error('--since must not be later than --until');
+  }
+  return { since, until };
 }
 
 function ttlDays(options) {
@@ -602,6 +637,122 @@ export async function queryCanonicalData(indexedDB, options) {
   return limit ? records.slice(0, limit) : records;
 }
 
+function normalizedWorkflowAliases(workflow) {
+  return [workflow.id, workflow.name, workflow.path]
+    .filter((value) => typeof value === 'string' && value)
+    .flatMap((value) => {
+      const normalized = value.toLowerCase();
+      const basename = normalized.split('/').at(-1) ?? normalized;
+      return [normalized, basename, basename.replace(/\.(?:md|ya?ml)$/, '')];
+    });
+}
+
+function matchesWorkflow(workflow, value) {
+  if (!value) return true;
+  const normalized = value.toLowerCase();
+  const basename = normalized.split('/').at(-1) ?? normalized;
+  const aliases = normalizedWorkflowAliases(workflow);
+  return aliases.includes(normalized)
+    || aliases.includes(basename)
+    || aliases.includes(basename.replace(/\.(?:md|ya?ml)$/, ''));
+}
+
+function githubEntityUrl(value) {
+  if (typeof value !== 'string') return undefined;
+  try {
+    const url = new URL(value);
+    if (url.hostname.toLowerCase() !== 'github.com') return undefined;
+    const match = url.pathname.match(/^\/([^/]+\/[^/]+)\/(issues|pull)\/(\d+)(?:\/|$)/);
+    if (!match) return undefined;
+    return { repository: match[1], number: Number(match[3]), url: value };
+  } catch {
+    return undefined;
+  }
+}
+
+function recordTimestamp(record, fields) {
+  for (const field of fields) {
+    const timestamp = Date.parse(String(record[field] ?? ''));
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return Number.NEGATIVE_INFINITY;
+}
+
+function inTimeRange(timestamp, range) {
+  return (range.since === undefined || timestamp >= range.since)
+    && (range.until === undefined || timestamp <= range.until);
+}
+
+export async function queryGhData(indexedDB, resource, options) {
+  if (!GH_RESOURCES.has(resource)) throw new Error(`Unknown gh resource: ${resource}`);
+  const [repositories, workflows, runs, sessions, events] = await Promise.all([
+    readCollection(indexedDB, 'repositories'),
+    readCollection(indexedDB, 'workflows'),
+    readCollection(indexedDB, 'runs'),
+    readCollection(indexedDB, 'sessions'),
+    readCollection(indexedDB, 'events')
+  ]);
+  const repositoryFilter = option(options, 'repo', false)?.toLowerCase();
+  const workflowFilter = option(options, 'workflow', false);
+  const range = ghTimeRange(options);
+  const repositoriesById = new Map(repositories.map((record) => [record.id, record]));
+  const workflowsById = new Map(workflows.map((record) => [record.id, record]));
+  const runsById = new Map(runs.map((record) => [record.id, record]));
+  const sessionsById = new Map(sessions.map((record) => [record.id, record]));
+  const sourceRepository = (run) => repositoriesById.get(run.repositoryId) ?? {};
+  const sourceWorkflow = (run) => workflowsById.get(run.workflowId) ?? {};
+
+  let records;
+  if (resource === 'runs') {
+    records = runs.filter((run) => {
+      const repository = sourceRepository(run);
+      const workflow = sourceWorkflow(run);
+      const fullName = String(repository.fullName ?? run.repositoryFullName ?? '').toLowerCase();
+      const timestamp = recordTimestamp(run, ['startedAt', 'createdAt', 'updatedAt', 'observedAt']);
+      return (!repositoryFilter || fullName === repositoryFilter)
+        && matchesWorkflow(workflow, workflowFilter)
+        && inTimeRange(timestamp, range);
+    });
+  } else {
+    const entityType = resource === 'issues' ? 'issue' : 'pull_request';
+    records = events
+      .filter((event) => event.type === 'safe_output.created' && event.githubEntityType === entityType)
+      .map((event) => {
+        const session = sessionsById.get(event.sessionId) ?? {};
+        const run = runsById.get(session.runId) ?? {};
+        const workflow = sourceWorkflow(run);
+        const executionRepository = sourceRepository(run);
+        const target = githubEntityUrl(event.correlationId);
+        return {
+          id: event.id,
+          number: target?.number ?? null,
+          repository: target?.repository ?? executionRepository.fullName ?? null,
+          workflow: workflow.path ?? workflow.name ?? null,
+          workflowName: workflow.name ?? null,
+          createdAt: event.timestamp ?? event.observedAt ?? null,
+          url: target?.url ?? null,
+          type: event.safeOutputType ?? null,
+          status: event.status ?? null,
+          summary: event.summary ?? null,
+          runId: run.id ?? null,
+          githubRunId: run.githubRunId ?? null
+        };
+      })
+      .filter((record) => (
+        (!repositoryFilter || String(record.repository ?? '').toLowerCase() === repositoryFilter)
+        && matchesWorkflow({ path: record.workflow, name: record.workflowName }, workflowFilter)
+        && inTimeRange(recordTimestamp(record, ['createdAt']), range)
+      ));
+  }
+
+  const timestampFields = resource === 'runs'
+    ? ['startedAt', 'createdAt', 'updatedAt', 'observedAt']
+    : ['createdAt'];
+  return records
+    .sort((left, right) => recordTimestamp(right, timestampFields) - recordTimestamp(left, timestampFields))
+    .slice(0, ghQueryLimit(options));
+}
+
 async function queryRawCanonicalData(indexedDB, query) {
   const inputNames = queryInputNames(query);
   const unknown = inputNames.find((name) => !QUERY_COLLECTIONS.includes(name));
@@ -675,7 +826,9 @@ export async function runCli(arguments_, input = process.stdin) {
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
   }
-  const options = parseOptions(optionArguments);
+  const ghResource = command === 'gh' ? optionArguments[0] : undefined;
+  if (command === 'gh' && (!ghResource || ghResource === 'help' || ghResource === '--help')) return USAGE;
+  const options = parseOptions(command === 'gh' ? optionArguments.slice(1) : optionArguments);
   if (options.help) return USAGE;
   if (command === 'download') {
     rejectUnknownOptions(options, ['url', 'output']);
@@ -728,6 +881,11 @@ export async function runCli(arguments_, input = process.stdin) {
     });
   }
   const indexedDB = await createDatabase(databasePath);
+
+  if (command === 'gh') {
+    rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'since', 'until', 'limit']);
+    return queryGhData(indexedDB, ghResource, options);
+  }
 
   if (command === 'ingest') {
     rejectUnknownOptions(options, ['database', 'context', 'logs', 'retention-days', 'run-retention-days']);
