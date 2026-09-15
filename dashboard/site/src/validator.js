@@ -2252,7 +2252,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
         if (view.metric.animate !== undefined && view.metric.style !== 'card') {
           errors.push(createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
+            ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
             'metric animate is supported only for card metric widgets.',
             `${metricPath}.animate`
           ));
