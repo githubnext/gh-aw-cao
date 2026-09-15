@@ -202,6 +202,7 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   const admission = readFileSync(join(root, "docs", "admission.md"), "utf8");
   const control = readFileSync(join(root, ".github", "workflows", "shared", "control.md"), "utf8");
   const activity = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
+  const installer = readFileSync(join(root, "install.sh"), "utf8");
   const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
   const policy = JSON.parse(execFileSync(process.execPath, [
     join(root, ".github", "workflows", "shared", "control.mjs"),
@@ -235,10 +236,15 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /setup-central-agentic-ops/);
-  assert.match(quickstart, /CAO_RELEASE=\$\(gh release view --repo githubnext\/gh-aw-cao --json tagName --jq '\.tagName'\)/);
-  assert.match(quickstart, /gh aw add "githubnext\/gh-aw-cao@\$\{CAO_RELEASE\}"/);
-  assert.doesNotMatch(quickstart, /@main|commits\/main|full commit SHA/);
+  assert.match(quickstart, /raw\.githubusercontent\.com\/githubnext\/gh-aw-cao\/main\/install\.sh/);
+  assert.match(quickstart, /Rerunning it after those files are installed makes no changes/);
+  assert.doesNotMatch(quickstart, /githubnext\/gh-aw-cao@main|commits\/main|full commit SHA/);
   assert.doesNotMatch(quickstart, /base64 -d|contents\/\.github\/cao/);
+  assert.match(installer, /^#!\/usr\/bin\/env bash/);
+  assert.match(installer, /if \[\[ -f "\$policy_path" && -f "\$cao_cli" && -f "\$control_runtime" \]\]; then\s+exit 0/);
+  assert.match(installer, /install-gh-aw\.sh/);
+  assert.match(installer, /gh aw add githubnext\/gh-aw-cao/);
+  assert.match(installer, /node "\$cao_cli" init/);
   assert.match(updateSection, /gh aw update https:\/\/github\.com\/githubnext\/gh-aw-cao --major --cool-down 0 --create-pull-request/);
   assert.match(updateSection, /resolves published GitHub releases[\s\S]*?latest compatible release/);
   assert.match(updateSection, /Do not point updates at `main`, fetch control files separately, or copy them with a script/);

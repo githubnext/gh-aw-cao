@@ -63,30 +63,25 @@ The new private repository is the central control plane. Agentic Workflow defini
 The control repository holds credentials, rollout policy, and cross-repository operating records. Do not make it public.
 :::
 
-### Step 2 - Install the `gh-aw` extension
+### Step 2 - Verify GitHub CLI
 
-Install GitHub Agentic Workflows:
-
-```bash
-gh extension install github/gh-aw
-```
-
-If the extension is already installed, verify that it is available:
+Confirm that GitHub CLI is available:
 
 ```bash
-gh aw --help
+gh --version
 ```
 
 ### Step 3 - Add Central Agentic Ops
 
-From the control repository, resolve the latest published CAO release and install the root runtime package:
+From the control repository, run the idempotent installer:
 
 ```bash
-CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-gh aw add "githubnext/gh-aw-cao@${CAO_RELEASE}"
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash
 ```
 
-Use an older published release tag only when you intentionally need that version. Do not install from `main` or copy control files separately; `gh aw add` installs the workflows, shared control files, runtime modules, and package ownership records together.
+The script installs `gh-aw` when needed, adds the latest published core CAO package, and initializes the minimal control policy. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and `cao` commands when you intentionally need an older package release.
 
 The root package installs:
 
@@ -94,11 +89,10 @@ The root package installs:
 2. the activity and dashboard infrastructure;
 3. the `cao` CLI runtime under `.github/aw/activity/`.
 
-Initialize the consumer-owned policy, then install Dependabot through CAO so its package declaration is merged automatically:
+Install Dependabot through CAO so its package declaration is merged automatically:
 
 ```bash
-cao init
-cao add "githubnext/gh-aw-cao/dependabot@${CAO_RELEASE}"
+cao add githubnext/gh-aw-cao/dependabot
 ```
 
 `cao init` creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `cao add` invokes `gh aw add`, reads the installed package's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope.
