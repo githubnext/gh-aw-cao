@@ -275,6 +275,7 @@ describe('reactive core', () => {
   it('reconciles adversarial unkeyed reordering with linear node matching', () => {
     const reverseGroups = state(false);
     const count = 80;
+    /** @param {string} name */
     const renderGroup = (name) => Array.from(
       { length: count },
       (_, index) => h(name, null, `${name}-${index}`)
