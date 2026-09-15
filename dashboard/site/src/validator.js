@@ -2234,7 +2234,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
             `${metricPath}.style`
           ));
         }
-        validateStringField(view.metric.animate, `${metricPath}.animate`, true, errors);
+        validateStringField(view.metric.animate, `${metricPath}.animate`, false, errors);
         if (typeof view.metric.animate === 'string' && !VIEW_METRIC_ANIMATION_VALUES.includes(view.metric.animate)) {
           errors.push(createError(
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,

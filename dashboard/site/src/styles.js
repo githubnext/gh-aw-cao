@@ -772,6 +772,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 }
 @media (prefers-reduced-motion: reduce) {
   .pie-chart-segment, .line-chart-series, .line-chart-point, .dot-chart-point, .scatter-chart-point, .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect, .metric-number-animated { animation: none; }
+  .metric-number-animated { --metric-number: var(--metric-number-target); }
   .pie-chart-segment, .point-tooltip, .swimlane-run-mark, .dashboard-notification-chevron { transition: none; }
 }
 .view-description { margin: 3px 0 0; color: var(--muted); }
