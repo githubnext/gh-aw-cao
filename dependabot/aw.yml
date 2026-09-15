@@ -5,6 +5,7 @@ experimental: true
 includes:
   - ../aw.yml
   - .github/workflows/dependabot.md
+  - .github/workflows/dependabot-release-train-updater.md
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/dependabot.json
