@@ -37,8 +37,8 @@ export async function collectActivityLogs() {
   if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 31) {
     throw new Error("REPORT_RUN_WINDOW_DAYS must be an integer from 1 through 31");
   }
-  if (!Number.isInteger(runLimit) || runLimit < 1 || runLimit > 200) {
-    throw new Error("REPORT_RUN_LIMIT must be an integer from 1 through 200");
+  if (!Number.isInteger(runLimit) || runLimit < 1 || runLimit > 10000) {
+    throw new Error("REPORT_RUN_LIMIT must be an integer from 1 through 10000");
   }
 
   await mkdir(shardDirectory, { recursive: true });

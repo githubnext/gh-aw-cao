@@ -223,6 +223,17 @@ export function renderDigest(value) {
 }
 
 /**
+ * Renders the shared placeholder used by table cells whose underlying record
+ * exists but whose value was never observed, so the cell is explicitly marked
+ * as missing rather than rendered blank.
+ * @param {string} [message]
+ * @returns {HTMLElement}
+ */
+export function renderMissingValue(message = 'missing data') {
+  return h('span', { className: 'table-missing-value', 'data-missing-value': '' }, message);
+}
+
+/**
  * Renders the shared "no data" placeholder used by table-summary cells when
  * a column has no values eligible for summarization.
  * @param {string} message

@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { renderActiveStateBadge, renderGraderStatusBadge, renderModeBadge, renderStatusBadge } from './badge.js';
 import { renderWorkflowRunUrl } from './link-content.js';
 import { formatHumanFriendlyTimestamp, formatNumber, formatString, stringOrFallback } from '../view-formatters.js';
-import { formatUtcDateTime, renderDigest } from './ui-primitives.js';
+import { formatUtcDateTime, renderDigest, renderMissingValue } from './ui-primitives.js';
 
 /**
  * @param {unknown} display
@@ -18,7 +18,9 @@ import { formatUtcDateTime, renderDigest } from './ui-primitives.js';
  * @returns {string | HTMLElement}
  */
 export function renderCellDisplay(display, value, toText, unit = null, type, format) {
-  if (value == null || value === '') return '';
+  if (value == null || value === '') {
+    return format === 'workflow-relative-path' ? renderMissingValue() : '';
+  }
   if (display === 'mode') return renderModeBadge(value);
   if (display === 'active-state') return renderActiveStateBadge(value);
   if (display === 'status') return renderStatusBadge(value);

@@ -821,7 +821,7 @@ describe('declarative dashboard queries', () => {
       expect(derived['event-inspection'].rows.at(-1)?.event).toBe('event-000001');
     });
 
-  it('computes the Repositories and Packages view payloads from dashboard queries', () => {
+  it('computes Repositories, Workflows, and Packages view payloads from dashboard queries', () => {
     const repositories = {
       source: 'repositories',
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'repository-link': { href: 'repo' } }],
@@ -839,6 +839,11 @@ describe('declarative dashboard queries', () => {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
           package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'worker',
           'rollout-mode': 'review', 'workflow-active': 'false'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md',
+          package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'worker',
+          'rollout-mode': 'review', 'workflow-active': 'true'
         }
       ],
       metadata: metadata('workflows')
@@ -856,10 +861,20 @@ describe('declarative dashboard queries', () => {
     const runs = {
       source: 'runs',
       rows: [
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-conclusion': 'failure', 'aic-total': 4 },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-conclusion': 'success', 'aic-total': 6 }
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'failure', 'aic-total': 4 },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', event: 'schedule', 'run-conclusion': 'success', 'aic-total': 6 },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', event: 'schedule', 'run-conclusion': 'success', 'aic-total': 0 }
       ],
       metadata: metadata('runs')
+    };
+    const sessions = {
+      source: 'sessions',
+      rows: [
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', session: 'session-1' },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: 'unobserved', session: 'session-2' },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', session: 'session-3' }
+      ],
+      metadata: metadata('sessions')
     };
     const outcomes = {
       source: 'outcomes',
@@ -874,20 +889,26 @@ describe('declarative dashboard queries', () => {
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { packages, repositories, workflows: queryWorkflows, runs, outcomes, 'operational-values': operationalValues, usage },
-      ['repository-activity', 'package-inventory']
+      { packages, repositories, workflows: queryWorkflows, runs, sessions, outcomes, 'operational-values': operationalValues, usage },
+      ['repository-activity', 'workflow-inventory', 'package-inventory']
     );
 
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
       repository: 'githubnext/gh-aw-cao',
-      workflows: 2,
+      workflows: 3,
       reports: 1,
       'evaluated-workflows': 1,
-      runs: 2,
-      'failure-summary': '50% · 1 failed',
+      runs: 3,
+      ingestion: '66.7%',
+      'failure-summary': '33.3% · 1 failed',
       aic: 10,
       status: 'Needs attention'
     })]);
+    expect(derived['workflow-inventory'].rows).toEqual([
+      expect.objectContaining({ workflow: 'a.md', runs: 2, ingestion: '50%' }),
+      expect.objectContaining({ workflow: 'b.md', runs: 0, ingestion: null }),
+      expect.objectContaining({ workflow: 'c.md', runs: 1, ingestion: '100%' })
+    ]);
     expect(derived['package-inventory'].rows).toEqual([{
       package: 'aw-doctor',
       'package-name': 'AW Doctor',
@@ -895,11 +916,12 @@ describe('declarative dashboard queries', () => {
         'dashboard-href': '#page-package-insights?package=aw-doctor',
         'dashboard-label': 'View AW Doctor package dashboard'
       },
-      workflows: 2,
+      workflows: 3,
       roles: 'orchestrator, worker',
       modes: 'review',
       registration: 'false, true',
-      runs: 2,
+      runs: 3,
+      dispatches: 1,
       aic: 10
     }]);
   });

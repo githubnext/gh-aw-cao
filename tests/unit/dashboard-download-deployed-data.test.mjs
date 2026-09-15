@@ -177,6 +177,13 @@ test("queries canonical data with the gh-like surface", async () => {
   }
 });
 
+test("rejects combining ingest-jsonl input modes", async () => {
+  await assert.rejects(
+    executeFile(cao, ["ingest-jsonl", "--input", "input.jsonl", "--input-dir", "shards"]),
+    /--input and --input-dir cannot be combined/,
+  );
+});
+
 test("downloads the deployed activity shards and SQLite file without rebuilding", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-data-"));
   const output = path.join(root, "activity");

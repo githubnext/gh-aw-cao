@@ -30,9 +30,9 @@ Ready to explore? [See the docs](https://githubnext.github.io/gh-aw-cao/).
 
 ## Agent plugin and Requirements
 
-This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-central-agentic-ops`, `create-ops-package`, and `analyze-agentic-ops` skills.
+This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-central-agentic-ops`, `create-ops-package`, `analyze-agentic-ops`, and `cao-cli` skills.
 
-Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `setup-central-agentic-ops` to create a control plane from scratch, `create-ops-package` with an operational strategy and target-repository description, or `analyze-agentic-ops` to download and query CAO activity data with the `cao` CLI.
+Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `setup-central-agentic-ops` to create a control plane from scratch, `create-ops-package` with an operational strategy and target-repository description, `analyze-agentic-ops` to download and query CAO activity data with the `cao` CLI, or `cao-cli` for a general reference on using `cao` in local development and inside agentic workflow runs.
 
 In Copilot CLI, the plugin also provides a **Central Agentic Ops** Canvas. Open it to start the repository's local dashboard preview, optionally for a specified `OWNER/REPOSITORY`. The extension gives the agent tools to execute declarative queries with the canonical dashboard query engine and read bounded sections of the dashboard data architecture specification.
 

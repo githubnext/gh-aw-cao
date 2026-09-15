@@ -94,7 +94,7 @@ gh run list \
 
 With default one-repository caps, one Advisory orchestration is bounded by 850 AI Credits (250 for the orchestrator plus one 600-credit worker), one Dependabot orchestration is bounded by 850 AI Credits (250 plus one 600-credit worker), one AW Optimization orchestration is bounded by 1,900 AI Credits (250 plus one 350-credit auditor, one 500-credit optimizer, one 400-credit `AGENTS.md` curator, and one 400-credit skills curator), one EU CRA orchestration is bounded by 1,100 AI Credits (200 plus six 150-credit workers), one CAO Evolution orchestration is bounded by 2,950 AI Credits (250 plus four control-plane workers totaling 1,700 credits, one 500-credit failure investigator, and one 500-credit compiler-security worker), one Dev Practices orchestration is bounded by 1,050 AI Credits (250 plus two 400-credit workers), and one ESLint Factory orchestration is bounded by 2,000 AI Credits (250 plus a 200-credit inventory worker, a 450-credit miner, a 450-credit refiner, a 350-credit applier, and a 300-credit librarian). The independent weekly Advisory package maintainer and daily CRA package maintainer are each bounded by 200 AI Credits. Declared dispatch ceilings keep deliberately expanded runs finite. These are hard worst-case envelopes, not expected consumption. Every workflow also has a timeout and same-scope concurrency cancellation.
 
-### Run a Local AW Fixing Loop
+### Run an AW Fixing Loop
 
 The CAO Evolution compiler-security worker reports the exact compiler, validation, lint, image, and security-scanner findings that need remediation. To fix the same findings locally with a coding agent:
 

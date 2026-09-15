@@ -3141,6 +3141,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
     'Roles',
     'Modes',
     'Runs',
+    'Dispatches',
     'AIC',
     'Registration'
   ]);

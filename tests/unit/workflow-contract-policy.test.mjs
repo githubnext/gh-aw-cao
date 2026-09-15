@@ -287,7 +287,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 48, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 53, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -427,6 +427,7 @@ test("orchestrators use checked-in policy with independent manual narrowing", ()
     ["eslint-rules.md", "eslint-rules"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
     ["optimization.md", "optimization"],
+    ["repo-assist.md", "repo-assist"],
     ["software-development-practices.md", "software-development-practices"],
     ["self-care.md", "self-care"],
   ]) {
@@ -473,6 +474,11 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["optimization.md", "optimization"],
     ["optimization-ai-credit-auditor.md", "optimization"],
     ["optimization-ai-credit-optimizer.md", "optimization"],
+    ["repo-assist.md", "repo-assist"],
+    ["repo-assist-issue-fix.md", "repo-assist"],
+    ["repo-assist-issue-triage.md", "repo-assist"],
+    ["repo-assist-maintenance.md", "repo-assist"],
+    ["repo-assist-pr-upkeep.md", "repo-assist"],
     ["software-development-practices.md", "software-development-practices"],
     ["software-development-practices-github-well-architected.md", "software-development-practices"],
     ["software-development-practices-nist-ssdf.md", "software-development-practices"],
@@ -546,7 +552,7 @@ test("shared control keeps manual and scheduled routing event-scoped", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  for (const name of ["uk-ai-advisory.md", "cao-evolution.md", "dependabot.md", "eslint-rules.md", "eu-cra-compliance.md", "optimization.md", "self-care.md", "software-development-practices.md"]) {
+  for (const name of ["uk-ai-advisory.md", "cao-evolution.md", "dependabot.md", "eslint-rules.md", "eu-cra-compliance.md", "optimization.md", "repo-assist.md", "self-care.md", "software-development-practices.md"]) {
     const orchestrator = workflow(name);
     assert.match(orchestrator, /GH_AW_SAFE_OUTPUT_MODE:.*inputs\.safe_output_mode.*\|\| 'review'/);
     assert.match(orchestrator, /REVIEW_OUTPUT_REPO:.*inputs\.safe_output_repo \|\| github\.repository/);

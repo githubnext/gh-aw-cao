@@ -1152,7 +1152,7 @@ describe('presenter built-in and custom pages', () => {
     expect(/** @type {HTMLDetailsElement} */ (sections[1]).open).toBe(true);
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview');
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost & efficiency');
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost');
     rendered.remove();
     window.history.replaceState(null, '', '/');
   });
@@ -2736,12 +2736,34 @@ describe('presenter built-in and custom pages', () => {
           columns: [
             { field: 'repository', type: 'nominal', title: 'Repository' },
             { field: 'runs', type: 'quantitative', title: 'Runs' },
+            { field: 'ingestion', type: 'nominal', title: 'Ingestion %' },
             { field: 'failure-summary', type: 'nominal', title: 'Failure rate', filter: false },
             { field: 'aic', type: 'quantitative', title: 'Local AIC', unit: 'aic' },
-            { field: 'workflows', type: 'quantitative', title: 'Local AWs' },
+            { field: 'workflows', type: 'quantitative', title: 'AWs' },
             { field: 'status', type: 'nominal', title: 'Status', display: 'status' }
           ],
           href: { field: 'repository-link', type: 'nominal' }
+        }
+      }
+    ]);
+
+    const workflowsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'workflows');
+    expect(workflowsPage?.definition.views).toMatchObject([
+      {
+        id: 'workflows-inventory',
+        data: { source: 'workflow-inventory' },
+        encoding: {
+          columns: [
+            { field: 'package-name', type: 'nominal', title: 'Package' },
+            { field: 'repository', type: 'nominal', title: 'Control repository' },
+            { field: 'workflow', type: 'nominal', format: 'workflow-relative-path', title: 'Workflow' },
+            { field: 'workflow-role', type: 'nominal', title: 'Role' },
+            { field: 'rollout-mode', type: 'nominal', title: 'Mode', display: 'mode' },
+            { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
+            { field: 'runs', type: 'quantitative', title: 'Runs' },
+            { field: 'ingestion', type: 'nominal', title: 'Ingestion %' },
+            { field: 'workflow-active', type: 'nominal', title: 'Registration', display: 'active-state' }
+          ]
         }
       }
     ]);
