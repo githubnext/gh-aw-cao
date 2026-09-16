@@ -18,6 +18,7 @@ project:
 
 structure:
   architecture_document: ARCHITECTURE.md
+  codebase_model: CODEBASE.yml
   catalog_manifest: aw.yml
   operations: <operation>/aw.yml
   activity: activity/
@@ -154,6 +155,9 @@ flows:
     - cao_cli_and_agents
 
 generation:
+  codebase_model:
+    path: CODEBASE.yml
+    source: ARCHITECTURE.md
   new_operation:
     path: <operation>/aw.yml
   workflow_source:
@@ -201,6 +205,11 @@ commands:
 validation:
   command_refs:
     - repository_root.entries.full_validation
+  dashboard_site_command_refs:
+    - dashboard_site.entries.tests
+    - dashboard_site.entries.e2e_tests
+    - dashboard_site.entries.lint
+    - dashboard_site.entries.typecheck
   workflow_source_command_refs:
     - repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
