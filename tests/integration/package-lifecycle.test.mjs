@@ -44,6 +44,7 @@ const activityExpectedFiles = [
   ".github/aw/activity/gh-aw-logs.mjs",
   ".github/aw/activity/inventory.mjs",
   ".github/aw/activity/inventory-sources.mjs",
+  ".github/aw/activity/token-intervention-lifecycle.mjs",
   ".github/workflows/cao-activity.yml",
 ];
 const caoEvolutionExpectedFiles = [

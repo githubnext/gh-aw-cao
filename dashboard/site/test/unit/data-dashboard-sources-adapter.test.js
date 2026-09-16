@@ -207,9 +207,32 @@ describe('current dashboard source adapter', () => {
       events: {
         rows: [{
           session: 'githubnext/gh-aw-cao:303:1:gh-aw', event: 'event-1',
-          'event-timestamp': '2026-09-09T04:00:01Z', 'event-source': 'safe-output',
-          'event-type': 'safe_output.created', 'safe-output-type': 'create_issue',
-          'github-entity-type': 'issue', 'source-sequence': 1
+          'event-timestamp': '2026-09-09T04:00:01Z',
+          'event-source': 'token-intervention-lifecycle',
+          'event-type': 'token_efficiency.intervention',
+          'target-repo': 'octo/example',
+          'target-organization': 'octo',
+          'target-repository': 'example',
+          'target-workflow-path': '.github/workflows/review.md',
+          'optimizer-run-attempt': 1,
+          'optimizer-workflow-path': '.github/workflows/optimization-token-optimizer.md',
+          'optimizer-workflow-name': 'AW Optimization / Token Optimizer',
+          'claim-run-id': '1189001',
+          'claim-run-attempt': 1,
+          actor: 'maintainer',
+          'source-provenance': { kind: 'workflow-dispatch-claim' },
+          'opportunity-id': 'token-opportunity:1',
+          'intervention-id': 'token-intervention:1',
+          'lifecycle-observation-id': 'token-lifecycle:1',
+          'intervention-state': 'running',
+          'recommendation-disposition': 'applied',
+          'safe-output-id': 'github:issue:githubnext/gh-aw-cao:11861',
+          'safe-output-url': 'https://github.com/githubnext/gh-aw-cao/issues/11861',
+          'implementation-change-id': 'github:pull-request:octo/example:42',
+          'implementation-pull-request-url': 'https://github.com/octo/example/pull/42',
+          'implementation-run-ids': ['7001'],
+          'accepted-at': '2026-09-08T04:00:00Z',
+          'source-sequence': 1
         }],
         metadata
       }
@@ -226,8 +249,31 @@ describe('current dashboard source adapter', () => {
       runId: 'github:run:303:attempt:1', jobId: 'github:job:404'
     })]);
     expect(batch.events).toEqual([expect.objectContaining({
-      sequence: 0, source: 'safe-output', type: 'safe_output.created',
-      safeOutputType: 'create_issue', githubEntityType: 'issue'
+      sequence: 0,
+      source: 'token-intervention-lifecycle',
+      type: 'token_efficiency.intervention',
+      targetRepo: 'octo/example',
+      targetOrganization: 'octo',
+      targetRepository: 'example',
+      targetWorkflowPath: '.github/workflows/review.md',
+      optimizerRunAttempt: 1,
+      optimizerWorkflowPath: '.github/workflows/optimization-token-optimizer.md',
+      optimizerWorkflowName: 'AW Optimization / Token Optimizer',
+      claimRunId: '1189001',
+      claimRunAttempt: 1,
+      actor: 'maintainer',
+      sourceProvenance: { kind: 'workflow-dispatch-claim' },
+      opportunityId: 'token-opportunity:1',
+      interventionId: 'token-intervention:1',
+      lifecycleObservationId: 'token-lifecycle:1',
+      interventionState: 'running',
+      recommendationDisposition: 'applied',
+      safeOutputId: 'github:issue:githubnext/gh-aw-cao:11861',
+      safeOutputUrl: 'https://github.com/githubnext/gh-aw-cao/issues/11861',
+      implementationChangeId: 'github:pull-request:octo/example:42',
+      implementationPullRequestUrl: 'https://github.com/octo/example/pull/42',
+      implementationRunIds: ['7001'],
+      acceptedAt: '2026-09-08T04:00:00Z'
     })]);
   });
 

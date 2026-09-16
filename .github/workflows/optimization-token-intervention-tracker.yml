@@ -1,0 +1,151 @@
+name: AW Optimization / Token Intervention Tracker
+
+on:
+  workflow_dispatch:
+    inputs:
+      optimizer_run_id:
+        description: Run ID that produced the token-efficiency recommendation
+        required: true
+        type: string
+      optimizer_run_attempt:
+        description: Run attempt that produced the token-efficiency recommendation
+        required: true
+        type: string
+      opportunity_id:
+        description: Stable token-efficiency opportunity identity
+        required: true
+        type: string
+      intervention_id:
+        description: Stable token-efficiency intervention identity
+        required: true
+        type: string
+      safe_output_url:
+        description: Immutable optimizer-created review issue URL
+        required: true
+        type: string
+      decision:
+        description: Explicit maintainer decision
+        required: true
+        type: choice
+        options:
+          - accepted
+          - rejected
+      rejection_disposition:
+        description: Required only when decision is rejected
+        required: false
+        type: string
+      implementation_pull_request_url:
+        description: Target-repository implementation PR, when one exists
+        required: false
+        type: string
+      implementation_run_ids:
+        description: Comma-separated target-repository Actions run IDs, when known
+        required: false
+        type: string
+      superseded_by_intervention_id:
+        description: Replacement intervention identity when superseded
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: token-intervention-${{ inputs.optimizer_run_id }}
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate and record lifecycle claim
+        env:
+          OPTIMIZER_RUN_ID: ${{ inputs.optimizer_run_id }}
+          OPTIMIZER_RUN_ATTEMPT: ${{ inputs.optimizer_run_attempt }}
+          OPPORTUNITY_ID: ${{ inputs.opportunity_id }}
+          INTERVENTION_ID: ${{ inputs.intervention_id }}
+          SAFE_OUTPUT_URL: ${{ inputs.safe_output_url }}
+          DECISION: ${{ inputs.decision }}
+          REJECTION_DISPOSITION: ${{ inputs.rejection_disposition }}
+          IMPLEMENTATION_PULL_REQUEST_URL: ${{ inputs.implementation_pull_request_url }}
+          IMPLEMENTATION_RUN_IDS: ${{ inputs.implementation_run_ids }}
+          SUPERSEDED_BY_INTERVENTION_ID: ${{ inputs.superseded_by_intervention_id }}
+        run: |
+          set -euo pipefail
+          [[ "$OPTIMIZER_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$OPTIMIZER_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          [[ "$OPPORTUNITY_ID" == token-opportunity:* ]]
+          [[ "$INTERVENTION_ID" == "token-intervention:${OPPORTUNITY_ID}:"* ]]
+          [[ "$SAFE_OUTPUT_URL" =~ ^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[0-9]+$ ]]
+          if [[ -n "$IMPLEMENTATION_PULL_REQUEST_URL" ]]; then
+            [[ "$IMPLEMENTATION_PULL_REQUEST_URL" =~ ^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/[0-9]+$ ]]
+          fi
+          [[ -z "$IMPLEMENTATION_RUN_IDS" || "$IMPLEMENTATION_RUN_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]
+          [[ -z "$IMPLEMENTATION_RUN_IDS" || -n "$IMPLEMENTATION_PULL_REQUEST_URL" ]]
+          case "$DECISION" in
+            accepted)
+              [[ -z "$REJECTION_DISPOSITION" ]]
+              [[ -z "$SUPERSEDED_BY_INTERVENTION_ID" ]]
+              ;;
+            rejected)
+              [[ "$REJECTION_DISPOSITION" =~ ^(rejected|failed-start|outdated|duplicate|superseded)$ ]]
+              if [[ -n "$IMPLEMENTATION_PULL_REQUEST_URL" ]]; then
+                [[ "$REJECTION_DISPOSITION" =~ ^(rejected|failed-start)$ ]]
+              fi
+              if [[ "$REJECTION_DISPOSITION" == superseded ]]; then
+                [[ "$SUPERSEDED_BY_INTERVENTION_ID" == token-intervention:* ]]
+              else
+                [[ -z "$SUPERSEDED_BY_INTERVENTION_ID" ]]
+              fi
+              ;;
+            *)
+              exit 1
+              ;;
+          esac
+
+          mkdir -p "$RUNNER_TEMP/token-intervention"
+          jq -cn \
+            --arg claimedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg controlRepository "$GITHUB_REPOSITORY" \
+            --arg claimRunId "$GITHUB_RUN_ID" \
+            --arg claimRunAttempt "$GITHUB_RUN_ATTEMPT" \
+            --arg actor "$GITHUB_ACTOR" \
+            --arg optimizerRunId "$OPTIMIZER_RUN_ID" \
+            --arg optimizerRunAttempt "$OPTIMIZER_RUN_ATTEMPT" \
+            --arg opportunityId "$OPPORTUNITY_ID" \
+            --arg interventionId "$INTERVENTION_ID" \
+            --arg safeOutputUrl "$SAFE_OUTPUT_URL" \
+            --arg decision "$DECISION" \
+            --arg rejectionDisposition "$REJECTION_DISPOSITION" \
+            --arg implementationPullRequestUrl "$IMPLEMENTATION_PULL_REQUEST_URL" \
+            --arg implementationRunIds "$IMPLEMENTATION_RUN_IDS" \
+            --arg supersededByInterventionId "$SUPERSEDED_BY_INTERVENTION_ID" \
+            '{
+              schemaVersion: 1,
+              claimedAt: $claimedAt,
+              controlRepository: $controlRepository,
+              claimRunId: $claimRunId,
+              claimRunAttempt: ($claimRunAttempt | tonumber),
+              actor: $actor,
+              optimizerRunId: $optimizerRunId,
+              optimizerRunAttempt: ($optimizerRunAttempt | tonumber),
+              opportunityId: $opportunityId,
+              interventionId: $interventionId,
+              safeOutputUrl: $safeOutputUrl,
+              decision: $decision
+            }
+            + (if $rejectionDisposition != "" then {rejectionDisposition: $rejectionDisposition} else {} end)
+            + (if $implementationPullRequestUrl != "" then {implementationPullRequestUrl: $implementationPullRequestUrl} else {} end)
+            + (if $implementationRunIds != "" then {implementationRunIds: ($implementationRunIds | split(",") | map(tonumber))} else {} end)
+            + (if $supersededByInterventionId != "" then {supersededByInterventionId: $supersededByInterventionId} else {} end)' \
+            > "$RUNNER_TEMP/token-intervention/token-efficiency-lifecycle-claim.json"
+
+      - name: Upload lifecycle claim
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: token-efficiency-lifecycle-claim
+          path: ${{ runner.temp }}/token-intervention/token-efficiency-lifecycle-claim.json
+          if-no-files-found: error
+          retention-days: 90

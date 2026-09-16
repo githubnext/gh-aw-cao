@@ -22,6 +22,8 @@ describe('dashboard query architecture', () => {
     const factoryOverview = read('src/components/factory-overview.js');
     const workProject = read('src/components/work-project-view.js');
     const presentationQueryFixture = read('test/workflow-inventory-query.js');
+    const canonicalSources = read('src/data/queries/view-sources.js');
+    const dashboard = JSON.parse(read('dashboard.json')).dashboard;
 
     expect(worker).toContain('executeDashboardQueries(context.queries, canonicalPayload, directRequests');
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
@@ -37,6 +39,11 @@ describe('dashboard query architecture', () => {
     expect(read('src/components/ui-elements.js')).not.toContain('filterRows');
     expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");
     expect(presentationQueryFixture).not.toMatch(/executeDashboardQueries|compileDashboardViewPayloadQueries|deriveDashboardLinkSources/);
+    expect(canonicalSources).not.toContain('tokenEfficiencySources');
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities')?.from)
+      .toBe('events');
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions')?.from)
+      .toBe('events');
     for (const legacyModule of [
       'inferred-sources.js',
       'notification-stories.js',

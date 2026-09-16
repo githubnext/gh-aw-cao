@@ -32,6 +32,37 @@ function optionalString(value) {
   return value === undefined || value === null ? undefined : String(value);
 }
 
+/** @param {unknown} value @param {string} field */
+function optionalStringArray(value, field) {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value)) throw new TypeError(`${field} must be an array`);
+  return value.map((item, index) => identifier(item, `${field}[${index}]`));
+}
+
+/** @param {unknown} value @param {string} field */
+function optionalNumber(value, field) {
+  if (value === undefined || value === null) return undefined;
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new TypeError(`${field} must be a finite number`);
+  return number;
+}
+
+/** @param {unknown} value @param {string} field */
+function optionalTimestamp(value, field) {
+  return value === undefined || value === null
+    ? undefined
+    : canonicalTimestamp(value, field);
+}
+
+/** @param {unknown} value @param {string} field @param {string[]} allowed */
+function optionalEnum(value, field, allowed) {
+  const normalized = optionalString(value);
+  if (normalized !== undefined && !allowed.includes(normalized)) {
+    throw new TypeError(`${field} must be one of ${allowed.join(', ')}`);
+  }
+  return normalized;
+}
+
 /**
  * Converts rows exported from the versioned CAO SQL interchange view. Database
  * owners map their schema to this contract before publishing the static JSON.
@@ -145,26 +176,201 @@ export function adaptSqlExport(input) {
         };
         break;
       }
-      case 'event':
+      case 'event': {
         if (row.source_sequence !== undefined && row.source_sequence !== null
           && (!Number.isInteger(Number(row.source_sequence)) || Number(row.source_sequence) < 0)) {
           throw new TypeError('source_sequence must be a non-negative integer');
+        }
+        const eventType = requiredString(row.event_type, 'event_type');
+        const lifecycle = eventType === 'token_efficiency.intervention'
+          && row.event_source === 'token-intervention-lifecycle';
+        const targetRepo = lifecycle
+          ? requiredString(row.optimization_target_repo, 'optimization_target_repo')
+          : optionalString(row.optimization_target_repo);
+        const targetCoordinates = targetRepo?.split('/');
+        if (targetCoordinates && (
+          targetCoordinates.length !== 2
+          || !targetCoordinates[0]
+          || !targetCoordinates[1]
+        )) {
+          throw new TypeError('optimization_target_repo must be an owner/repository coordinate');
         }
         data = {
           sessionId: sourceId('session', source, requiredString(row.session_source_id, 'session_source_id')),
           timestamp: canonicalTimestamp(row.event_timestamp ?? observedAt, 'event_timestamp'),
           source: requiredString(row.event_source, 'event_source'),
-          type: requiredString(row.event_type, 'event_type'),
+          type: eventType,
           summary: optionalString(row.event_summary),
           correlationId: optionalString(row.correlation_id),
           payloadRef: optionalString(row.payload_ref),
           safeOutputType: optionalString(row.safe_output_type),
           githubEntityType: optionalString(row.github_entity_type),
+          targetRepo,
+          targetOrganization: targetCoordinates?.[0],
+          targetRepository: targetCoordinates?.[1],
+          targetWorkflowPath: lifecycle
+            ? requiredString(row.optimization_workflow_path, 'optimization_workflow_path')
+            : optionalString(row.optimization_workflow_path),
+          opportunityId: lifecycle
+            ? requiredString(row.optimization_opportunity_id, 'optimization_opportunity_id')
+            : optionalString(row.optimization_opportunity_id),
+          opportunityKind: optionalString(row.optimization_opportunity_kind),
+          assignmentRunId: optionalString(row.optimization_assignment_run_id),
+          evidenceWindowStart: optionalTimestamp(
+            row.optimization_evidence_window_start,
+            'optimization_evidence_window_start'
+          ),
+          evidenceWindowEnd: optionalTimestamp(
+            row.optimization_evidence_window_end,
+            'optimization_evidence_window_end'
+          ),
+          evidenceConfidence: optionalNumber(
+            row.optimization_evidence_confidence,
+            'optimization_evidence_confidence'
+          ),
+          costGrain: optionalString(row.optimization_cost_grain),
+          evidenceProvenance: row.optimization_evidence_provenance,
+          attributableRunIds: optionalStringArray(
+            row.optimization_attributable_run_ids,
+            'optimization_attributable_run_ids'
+          ),
+          interventionId: lifecycle
+            ? requiredString(row.optimization_intervention_id, 'optimization_intervention_id')
+            : optionalString(row.optimization_intervention_id),
+          lifecycleObservationId: lifecycle
+            ? requiredString(
+              row.optimization_lifecycle_observation_id,
+              'optimization_lifecycle_observation_id'
+            )
+            : optionalString(row.optimization_lifecycle_observation_id),
+          previousInterventionState: optionalEnum(
+            row.optimization_previous_intervention_state,
+            'optimization_previous_intervention_state',
+            ['proposed', 'accepted', 'running', 'verified', 'regressed', 'inconclusive', 'rejected']
+          ),
+          interventionState: optionalEnum(
+            row.optimization_intervention_state,
+            'optimization_intervention_state',
+            ['proposed', 'accepted', 'running', 'verified', 'regressed', 'inconclusive', 'rejected']
+          ),
+          previousRecommendationDisposition: optionalEnum(
+            row.optimization_previous_recommendation_disposition,
+            'optimization_previous_recommendation_disposition',
+            ['applied', 'superseded', 'outdated', 'duplicate', 'unapplied', 'failed-start', 'rejected']
+          ),
+          recommendationDisposition: optionalEnum(
+            row.optimization_recommendation_disposition,
+            'optimization_recommendation_disposition',
+            ['applied', 'superseded', 'outdated', 'duplicate', 'unapplied', 'failed-start', 'rejected']
+          ),
+          supersedesInterventionId: optionalString(row.optimization_supersedes_intervention_id),
+          supersededByInterventionId: optionalString(row.optimization_superseded_by_intervention_id),
+          experimentId: optionalString(row.optimization_experiment_id),
+          controlVariant: optionalString(row.optimization_control_variant),
+          optimizedVariant: optionalString(row.optimization_optimized_variant),
+          proposedSavingsAic: optionalNumber(
+            row.optimization_proposed_savings_aic,
+            'optimization_proposed_savings_aic'
+          ),
+          recommendationChurnCount: optionalNumber(
+            row.optimization_recommendation_churn_count,
+            'optimization_recommendation_churn_count'
+          ),
+          recommendationChurnRate: optionalNumber(
+            row.optimization_recommendation_churn_rate,
+            'optimization_recommendation_churn_rate'
+          ),
+          evidenceState: optionalEnum(
+            row.optimization_evidence_state,
+            'optimization_evidence_state',
+            ['complete', 'incomplete', 'unavailable']
+          ),
+          missingReason: optionalString(row.optimization_missing_reason),
+          safeOutputId: optionalString(row.optimization_safe_output_id),
+          safeOutputUrl: optionalString(row.optimization_safe_output_url),
+          implementationChangeId: optionalString(row.optimization_implementation_change_id),
+          implementationPullRequestUrl: optionalString(
+            row.optimization_implementation_pull_request_url
+          ),
+          implementationRunIds: optionalStringArray(
+            row.optimization_implementation_run_ids,
+            'optimization_implementation_run_ids'
+          ),
+          optimizerRunAttempt: row.optimization_optimizer_run_attempt === undefined
+            || row.optimization_optimizer_run_attempt === null
+            ? undefined
+            : positiveInteger(
+              row.optimization_optimizer_run_attempt,
+              'optimization_optimizer_run_attempt'
+            ),
+          optimizerWorkflowPath: optionalString(row.optimization_optimizer_workflow_path),
+          optimizerWorkflowName: optionalString(row.optimization_optimizer_workflow_name),
+          claimRunId: lifecycle
+            ? identifier(row.optimization_claim_run_id, 'optimization_claim_run_id')
+            : optionalString(row.optimization_claim_run_id),
+          claimRunAttempt: row.optimization_claim_run_attempt === undefined
+            || row.optimization_claim_run_attempt === null
+            ? undefined
+            : positiveInteger(
+              row.optimization_claim_run_attempt,
+              'optimization_claim_run_attempt'
+            ),
+          actor: lifecycle
+            ? requiredString(row.optimization_actor, 'optimization_actor')
+            : optionalString(row.optimization_actor),
+          sourceProvenance: lifecycle
+            ? objectValue(row.optimization_source_provenance, 'optimization_source_provenance')
+            : row.optimization_source_provenance,
+          acceptedAt: optionalTimestamp(row.optimization_accepted_at, 'optimization_accepted_at'),
+          implementationStartedAt: optionalTimestamp(
+            row.optimization_implementation_started_at,
+            'optimization_implementation_started_at'
+          ),
+          implementationCompletedAt: optionalTimestamp(
+            row.optimization_implementation_completed_at,
+            'optimization_implementation_completed_at'
+          ),
+          rejectedAt: optionalTimestamp(row.optimization_rejected_at, 'optimization_rejected_at'),
+          supersededAt: optionalTimestamp(
+            row.optimization_superseded_at,
+            'optimization_superseded_at'
+          ),
           sourceSequence: row.source_sequence === undefined || row.source_sequence === null
             ? undefined
             : Number(row.source_sequence)
         };
+        if (lifecycle) {
+          data.previousInterventionState = requiredString(
+            data.previousInterventionState,
+            'optimization_previous_intervention_state'
+          );
+          data.interventionState = requiredString(
+            data.interventionState,
+            'optimization_intervention_state'
+          );
+          data.previousRecommendationDisposition = requiredString(
+            data.previousRecommendationDisposition,
+            'optimization_previous_recommendation_disposition'
+          );
+          data.recommendationDisposition = requiredString(
+            data.recommendationDisposition,
+            'optimization_recommendation_disposition'
+          );
+          data.evidenceState = requiredString(
+            data.evidenceState,
+            'optimization_evidence_state'
+          );
+          data.safeOutputId = requiredString(
+            data.safeOutputId,
+            'optimization_safe_output_id'
+          );
+          data.safeOutputUrl = requiredString(
+            data.safeOutputUrl,
+            'optimization_safe_output_url'
+          );
+        }
         break;
+      }
       default:
         throw new TypeError(`Unsupported SQL export entity kind: ${kind}`);
     }

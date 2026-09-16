@@ -5,7 +5,7 @@ import { createDebug } from '../../debug.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 10;
+export const DATABASE_VERSION = 11;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -348,7 +348,8 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
       .map((record) => [String(record.id), record]));
     return [storeName, batch[storeName].filter((record) => {
       const retained = previous.get(String(record.id));
-      return !retained || JSON.stringify(retained) !== JSON.stringify(record);
+      return retained !== record
+        && (!retained || JSON.stringify(retained) !== JSON.stringify(record));
     })];
   }));
   const totalRecords = ENTITY_STORES.reduce(

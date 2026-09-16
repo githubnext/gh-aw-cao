@@ -621,8 +621,13 @@ logical sources SHALL be materialized from these canonical facts in the data
 Web Worker; views and components MUST NOT reconstruct relationships.
 
 The IndexedDB Event representation SHALL use camel-case fields:
-`opportunityId`, `opportunityKind`, `interventionId`, `interventionState`,
-`recommendationDisposition`, `supersedesInterventionId`,
+`opportunityId`, `opportunityKind`, `interventionId`, `lifecycleObservationId`,
+`previousInterventionState`, `interventionState`,
+`previousRecommendationDisposition`, `recommendationDisposition`,
+`safeOutputId`, `implementationChangeId`, `implementationRunIds`,
+`optimizerRunAttempt`, `optimizerWorkflowPath`, `optimizerWorkflowName`, `acceptedAt`,
+`implementationStartedAt`, `implementationCompletedAt`, `rejectedAt`,
+`supersededAt`, `missingReason`, `supersedesInterventionId`,
 `supersededByInterventionId`, `comparisonId`, `experimentId`, `evidenceState`,
 `costGrain`, `proposedSavingsAic`, `grossRealizedSavingsAic`,
 `optimizationOverheadAic`, `netRealizedSavingsAic`, `verifiedNetGain`,

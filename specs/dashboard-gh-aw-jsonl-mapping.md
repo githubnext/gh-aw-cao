@@ -279,6 +279,27 @@ identity, disposition, or supersession from issue titles, bodies, comments, or
 other display text. A matching `safe_output_item` MAY supply only the resulting
 issue link by same-Run correlation.
 
+The Activity collector MAY append a schema-v2
+`token_efficiency_lifecycle_observation` envelope only from a validated
+`token-efficiency-lifecycle-claim` artifact produced by
+`optimization-token-intervention-tracker`. The collector SHALL correlate the
+claim to exactly one optimizer observation and exactly one same-Run
+`create_issue` safe-output record. An accepted claim is authoritative for the
+maintainer decision only. Any implementation pull request SHALL independently
+match the assigned target Repository, change the assigned Workflow path, and
+use GitHub's authoritative open or merged state before the lifecycle advances.
+When implementation Run IDs are supplied, the collector SHALL verify that each
+Run belongs to the target Repository and the implementation pull request's head
+commit before retaining it. Each observation SHALL retain its claim source ID,
+schema revision, immutable generation, observed time, completeness, freshness,
+and evidence links in `sourceProvenance`.
+The append-only lifecycle shard SHALL retain that optimizer Run as a
+`token_efficiency_run_context` envelope so lifecycle Events keep their canonical
+Run and Session relationships after ordinary Activity-window pruning. This
+context envelope does not represent an additional Run.
+Issue titles, bodies, comments, and open or closed state MUST NOT establish
+acceptance, implementation, disposition, or lineage.
+
 ## 6 `github_api_rate_limit` envelope
 
 Each `github_api_rate_limit` envelope SHALL map to one Event:

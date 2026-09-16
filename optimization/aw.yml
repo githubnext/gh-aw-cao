@@ -8,6 +8,7 @@ includes:
   - .github/workflows/optimization-ai-credit-auditor.md
   - .github/workflows/optimization-ai-credit-optimizer.md
   - .github/workflows/optimization-skills-curator.md
+  - .github/workflows/optimization-token-intervention-tracker.yml
   - .github/workflows/optimization-token-optimizer.md
   - .github/workflows/optimization.md
 resources:

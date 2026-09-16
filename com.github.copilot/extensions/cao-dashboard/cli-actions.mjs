@@ -42,6 +42,11 @@ function validWorkflowDispatchArguments(args) {
 
 const allowedCommandPrefixes = [
   {
+    tokens: ["./.github/aw/cao.sh"],
+    minimumArguments: 1,
+    usage: "./.github/aw/cao.sh <command>",
+  },
+  {
     tokens: ["gh", "aw"],
     minimumArguments: 1,
     usage: "gh aw <command>",
@@ -292,9 +297,12 @@ export async function executeDashboardCommand({
     ghExecutable,
     execute,
   });
-  const isGhAwCommand = tokens[1] === "aw";
+  const isGhAwCommand = tokens[0] === "gh" && tokens[1] === "aw";
+  const isCaoCommand = tokens[0] === "./.github/aw/cao.sh";
+  const commandExecutable = isCaoCommand ? tokens[0] : ghExecutable;
+  const commandArguments = tokens.slice(1);
   let gitIdentity;
-  if (isGhAwCommand) {
+  if (isGhAwCommand || isCaoCommand) {
     await ensureGhAwAvailable({
       githubToken: resolvedGithubToken,
       workingDirectory,
@@ -309,8 +317,8 @@ export async function executeDashboardCommand({
   }
   if (typeof onOutput === "function") {
     return streamCommand({
-      ghExecutable,
-      args: tokens.slice(1),
+      ghExecutable: commandExecutable,
+      args: commandArguments,
       workingDirectory,
       githubToken: resolvedGithubToken,
       gitIdentity,
@@ -318,7 +326,7 @@ export async function executeDashboardCommand({
     });
   }
   try {
-    const result = await execute(ghExecutable, tokens.slice(1), {
+    const result = await execute(commandExecutable, commandArguments, {
       cwd: workingDirectory,
       env: commandEnvironment(resolvedGithubToken, gitIdentity),
       maxBuffer: maximumOutputBytes,

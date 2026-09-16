@@ -347,6 +347,10 @@ test("Activity package owns the shared collected-data cache contract", () => {
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
     { source: "control-settings.mjs", destination: ".github/aw/activity/control-settings.mjs" },
     { source: "collect-logs.sh", destination: ".github/aw/activity/collect-logs.sh" },
+    {
+      source: "token-intervention-lifecycle.mjs",
+      destination: ".github/aw/activity/token-intervention-lifecycle.mjs",
+    },
     { source: "gh-aw-logs.mjs", destination: ".github/aw/activity/gh-aw-logs.mjs" },
     { source: "inventory.mjs", destination: ".github/aw/activity/inventory.mjs" },
     { source: "inventory-sources.mjs", destination: ".github/aw/activity/inventory-sources.mjs" },
@@ -369,7 +373,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /REPORT_GH_AW_LOGS_SHARDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/);
   assert.match(workflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(workflow, /issues: read/);
-  assert.doesNotMatch(workflow, /pull-requests: read/);
+  assert.equal((workflow.match(/pull-requests: read/g) || []).length, 3);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
   assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);

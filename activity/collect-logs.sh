@@ -89,7 +89,9 @@ if [[ $exit_code -eq 0 ]]; then
       | @tsv' \
     | while IFS=$'\t' read -r artifact_id workflow_run_id archive_url created_at; do
         [[ -n "$artifact_id" && -n "$workflow_run_id" && -n "$archive_url" ]] || continue
-        workflow_path="$(gh api "repos/$repository/actions/runs/$workflow_run_id" --jq '.path' 2>/dev/null || true)"
+        if ! workflow_path="$(gh api "repos/$repository/actions/runs/$workflow_run_id" --jq '.path')"; then
+          exit 1
+        fi
         [[ "$workflow_path" == ".github/workflows/optimization-token-optimizer.lock.yml" ]] || continue
         archive="$output_directory/token-efficiency-observation-$artifact_id.zip"
         extracted="$output_directory/token-efficiency-observation-$artifact_id"
@@ -129,6 +131,78 @@ if [[ "$observation_complete" == true ]]; then
   mv "$observation_tmp" "$observation_shard"
 else
   rm -f "$observation_tmp"
+fi
+
+lifecycle_shard="$shard_directory/token-efficiency-lifecycle-observations.jsonl"
+lifecycle_tmp="$lifecycle_shard.tmp"
+if [[ -f "$lifecycle_shard" ]]; then
+  cp "$lifecycle_shard" "$lifecycle_tmp"
+else
+  : > "$lifecycle_tmp"
+fi
+lifecycle_complete=false
+if [[ $exit_code -eq 0 ]]; then
+  if [[ -f activity/token-intervention-lifecycle.mjs ]]; then
+    lifecycle_script=activity/token-intervention-lifecycle.mjs
+  elif [[ -f .github/aw/activity/token-intervention-lifecycle.mjs ]]; then
+    lifecycle_script=.github/aw/activity/token-intervention-lifecycle.mjs
+  else
+    lifecycle_script=
+  fi
+  if [[ -z "$lifecycle_script" ]]; then
+    exit_code=1
+  else
+    set +e
+    gh api --paginate "repos/$repository/actions/artifacts?name=token-efficiency-lifecycle-claim&per_page=100" \
+      --jq '.artifacts[]
+        | select(.expired == false and .name == "token-efficiency-lifecycle-claim")
+        | select((now - (.created_at | fromdateiso8601)) <= ('"$window_days"' * 86400))
+        | [.id, .workflow_run.id, .archive_download_url, .created_at]
+        | @tsv' \
+      | sort -t $'\t' -k4,4 \
+      | while IFS=$'\t' read -r artifact_id workflow_run_id archive_url created_at; do
+          [[ -n "$artifact_id" && -n "$workflow_run_id" && -n "$archive_url" ]] || continue
+          if ! workflow_path="$(gh api "repos/$repository/actions/runs/$workflow_run_id" --jq '.path')"; then
+            exit 1
+          fi
+          [[ "$workflow_path" == ".github/workflows/optimization-token-intervention-tracker.yml" ]] || continue
+          archive="$output_directory/token-efficiency-lifecycle-claim-$artifact_id.zip"
+          extracted="$output_directory/token-efficiency-lifecycle-claim-$artifact_id"
+          if ! gh api "$archive_url" > "$archive"; then
+            exit 1
+          fi
+          mkdir -p "$extracted"
+          if ! unzip -qq -o "$archive" -d "$extracted"; then
+            exit 1
+          fi
+          claim="$extracted/token-efficiency-lifecycle-claim.json"
+          if ! jq -e --arg run "$workflow_run_id" --arg repository "$repository" '
+              .schemaVersion == 1
+              and .claimRunId == $run
+              and .controlRepository == $repository
+            ' "$claim" >/dev/null 2>&1; then
+            exit 1
+          fi
+          if ! node "$lifecycle_script" \
+              --claim "$claim" \
+              --shard-dir "$shard_directory" \
+              --history-file "$lifecycle_tmp" >> "$lifecycle_tmp"; then
+            exit 1
+          fi
+        done
+    lifecycle_status=("${PIPESTATUS[@]}")
+    set -e
+    if [[ ${lifecycle_status[0]} -eq 0 && ${lifecycle_status[1]} -eq 0 && ${lifecycle_status[2]} -eq 0 ]]; then
+      lifecycle_complete=true
+    else
+      exit_code=1
+    fi
+  fi
+fi
+if [[ "$lifecycle_complete" == true ]]; then
+  mv "$lifecycle_tmp" "$lifecycle_shard"
+else
+  rm -f "$lifecycle_tmp"
 fi
 
 printf '%s\n' "$exit_code" > "$exit_code_path"
