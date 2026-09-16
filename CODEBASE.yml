@@ -185,7 +185,7 @@ commands:
   load_tests: npm run test:load
   svg_check: npm run check:svg
   workflow_compile: npm run compile
-  manual_workflow_compile: gh aw compile --strict --schedule-seed githubnext/gh-aw-cao
+  manual_workflow_compile: gh aw compile --schedule-seed githubnext/gh-aw-cao
   workflow_compile_locks: npm run compile:locks
   docs_build: npm run docs:build
   dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
