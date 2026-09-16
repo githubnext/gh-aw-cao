@@ -183,6 +183,7 @@ commands:
   workflow_compile_locks: npm run compile:locks
   docs_build: npm run docs:build
   dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
+  dashboard_local_copilot: npm run dashboard:local:copilot
   dashboard_site_tests: "cd dashboard/site && npm test"
   dashboard_site_e2e_tests: "cd dashboard/site && npm run test:e2e"
   dashboard_site_performance_tests: "cd dashboard/site && npm run test:performance"
