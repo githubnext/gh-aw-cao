@@ -209,7 +209,7 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
       (/** @type {{ url: string }} */ request) => request.url.endsWith('/configuration.json')
     )
   );
-  expect(configurationFetch?.cache).toBe('no-store');
+  expect(configurationFetch?.cache).toBe('reload');
 });
 
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {

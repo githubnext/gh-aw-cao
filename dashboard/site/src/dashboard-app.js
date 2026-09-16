@@ -194,7 +194,7 @@
         let pendingChunk = dashboardPageChunkLoads.get(pageId);
         if (!pendingChunk) {
           const revision = dashboardSchemaRevision;
-          pendingChunk = fetch(`./${chunkPath}`, { cache: "no-store" })
+          pendingChunk = fetch(`./${chunkPath}`, { cache: "reload" })
             .then((response) => {
               if (!response.ok) throw new Error(`Unable to load dashboard page "${pageId}": ${response.status}`);
               return response.json();
