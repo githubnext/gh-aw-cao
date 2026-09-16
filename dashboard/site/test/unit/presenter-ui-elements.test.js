@@ -26,6 +26,8 @@ describe('dashboard sidebar', () => {
     expect(sidebar.dataset.defaultPageId).toBe('overview');
     expect(sidebar.querySelectorAll('[data-nav-page-id]')).toHaveLength(2);
     const toggle = sidebar.querySelector('.sidebar-toggle');
+    expect(toggle).toBeInstanceOf(HTMLButtonElement);
+    if (!(toggle instanceof HTMLButtonElement)) return;
     toggle.click();
     expect(shell.classList.contains('sidebar-collapsed')).toBe(true);
     expect(toggle.getAttribute('aria-expanded')).toBe('false');

@@ -160,7 +160,10 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('keeps the JSON dashboard shell aligned with its shared component styles', () => {
-    const presenter = readFileSync(resolve('src/presenter.js'), 'utf8');
+    const presenter = [
+      readFileSync(resolve('src/presenter.js'), 'utf8'),
+      readFileSync(resolve('src/components/dashboard-sidebar.js'), 'utf8')
+    ].join('\n');
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
     for (const shellClass of [
