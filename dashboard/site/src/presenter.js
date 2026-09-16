@@ -527,7 +527,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
     && view.layout === 'full-view'
     && view['lazy-list'] === true
   ));
-  const supportsMobileViewMode = mobileTableViewIndex >= 0 && views.length > 1;
+  const supportsMobileViewMode = mobileTableViewIndex >= 0;
   const sections = Array.isArray(page.sections) ? page.sections : [];
   const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
     if (!Array.isArray(section.views) || section.views.length !== 1) return [];
@@ -781,19 +781,22 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const reportActions = root.querySelector('.report-actions');
   const pageScroller = root.querySelector('main.dashboard-prototype');
   const mobileViewModeToggle = root.querySelector('.mobile-view-mode-toggle');
-  /** @type {'chart'|'table'} */
+  /** @type {'chart'|'table'|'card'} */
   let mobileViewMode = 'chart';
   try {
-    mobileViewMode = globalThis.window?.localStorage?.getItem(MOBILE_VIEW_MODE_STORAGE_KEY) === 'table' ? 'table' : 'chart';
+    const storedMode = globalThis.window?.localStorage?.getItem(MOBILE_VIEW_MODE_STORAGE_KEY);
+    mobileViewMode = storedMode === 'table' || storedMode === 'card' ? storedMode : 'chart';
   } catch {
     // Storage can be unavailable in embedded or privacy-restricted contexts.
   }
   root.dataset.mobileViewMode = mobileViewMode;
-  /** @param {'chart'|'table'} mode @param {HTMLElement | undefined} page */
+  /** @type {'chart'|'table'|'card'} */
+  let nextMobileViewMode = 'table';
+  /** @param {'chart'|'table'|'card'} mode @param {HTMLElement | undefined} page */
   const setMobileViewMode = (mode, page) => {
     const pendingTable = page?.querySelector('[data-mobile-view-mode="table"][data-lazy-view]');
     if (pendingTable instanceof HTMLElement) {
-      if (mode === 'table') void hydrateLazyViewAfterPaint(pendingTable);
+      if (mode === 'table' || mode === 'card') void hydrateLazyViewAfterPaint(pendingTable);
       else cancelLazyViewHydration(pendingTable);
     }
     mobileViewMode = mode;
@@ -814,7 +817,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       view.dataset.viewLayout === 'full-view'
       && (view.hasAttribute('data-view-lazy-list') || view.querySelector('[data-lazy-list]'))
     ));
-    const supportsModeSelection = Boolean(tableView) && views.some((view) => view !== tableView);
+    const supportsModeSelection = Boolean(tableView);
+    const hasChartMode = Boolean(tableView) && views.some((view) => view !== tableView);
+    if (supportsModeSelection && !hasChartMode && mobileViewMode === 'chart') {
+      mobileViewMode = 'table';
+      root.dataset.mobileViewMode = mobileViewMode;
+    }
     page?.toggleAttribute('data-mobile-view-mode-page', supportsModeSelection);
     for (const view of views) {
       if (supportsModeSelection) {
@@ -825,19 +833,23 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
     if (mobileViewModeToggle instanceof HTMLButtonElement) {
       mobileViewModeToggle.hidden = !supportsModeSelection;
-      const showTable = mobileViewMode === 'chart';
-      const label = showTable ? 'Show table view' : 'Show chart view';
+      nextMobileViewMode = hasChartMode
+        ? mobileViewMode === 'chart' ? 'table' : mobileViewMode === 'table' ? 'card' : 'chart'
+        : mobileViewMode === 'card' ? 'table' : 'card';
+      const label = `Show ${nextMobileViewMode === 'card' ? 'card list' : nextMobileViewMode} view`;
       mobileViewModeToggle.setAttribute('aria-label', label);
-      mobileViewModeToggle.setAttribute('aria-pressed', String(!showTable));
+      mobileViewModeToggle.setAttribute('aria-pressed', String(mobileViewMode !== 'chart'));
       mobileViewModeToggle.setAttribute('title', label);
-      mobileViewModeToggle.replaceChildren(octicon(showTable ? 'table' : 'graph'));
+      mobileViewModeToggle.replaceChildren(octicon(
+        nextMobileViewMode === 'table' ? 'table' : nextMobileViewMode === 'card' ? 'stack' : 'graph'
+      ));
     }
     syncFullViewModeForPage(root, page);
   };
   if (mobileViewModeToggle instanceof HTMLButtonElement) {
     mobileViewModeToggle.addEventListener('click', () => {
       const page = pages.find((candidate) => candidate.dataset.pageId === activePageId);
-      setMobileViewMode(mobileViewMode === 'chart' ? 'table' : 'chart', page);
+      setMobileViewMode(nextMobileViewMode, page);
     });
     root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.addEventListener?.('change', () => {
       syncFullViewMode(pages.find((candidate) => candidate.dataset.pageId === activePageId));

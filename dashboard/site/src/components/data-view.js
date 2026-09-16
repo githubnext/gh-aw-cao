@@ -12,7 +12,7 @@ import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderO
 import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
-import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog } from './ui-primitives.js';
+import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog, observeLoadMoreBoundary } from './ui-primitives.js';
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
@@ -308,7 +308,47 @@ function renderListView(context) {
 function renderEntityCardListView(options) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, renderValue, toText, definition, listAction } = options;
   const drill = isPlainObject(view.list) && isPlainObject(view.list.drill) ? view.list.drill : null;
-  const cards = rows.map((row, index) => {
+  const cards = renderEntityCardItems(rows, {
+    pageId,
+    title,
+    renderValue,
+    toText,
+    definition,
+    drill
+  });
+  const emptyMessage = metadata.availability === 'unavailable'
+    ? 'Data is unavailable for this view.'
+    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  return renderPageSection(
+    pageId,
+    title,
+    [
+      ...renderViewSectionChrome(metadata, contextDetails),
+      h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
+      cards.length > 0
+        ? h('ul', { className: 'document-list issue-list entity-card-list', 'data-custom-view-mark': 'list' }, cards)
+        : h('p', { className: 'document-list-empty' }, emptyMessage)
+    ],
+    headingTag,
+    view.description
+  );
+}
+
+/**
+ * @param {Array<Record<string, unknown>>} rows
+ * @param {{
+ *   pageId: string,
+ *   title: string,
+ *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
+ *   toText: (value: unknown) => string,
+ *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[] },
+ *   drill?: Record<string, unknown> | null,
+ *   keyOffset?: number
+ * }} options
+ */
+function renderEntityCardItems(rows, options) {
+  const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0 } = options;
+  return rows.map((row, index) => {
     const titleText = toText(row[definition.title.field]);
     const target = resolveEntityCardDrill(row, drill, titleText);
     const titleContent = target?.external
@@ -318,7 +358,7 @@ function renderEntityCardListView(options) {
         : titleText;
     return h(
       'li',
-      { className: 'issue-list-card entity-card-list-card', 'data-custom-row-key': `${pageId}-${title}-${index}` },
+      { className: 'issue-list-card entity-card-list-card', 'data-custom-row-key': `${pageId}-${title}-${keyOffset + index}` },
       h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(definition.icon)),
       h(
         'div',
@@ -346,22 +386,6 @@ function renderEntityCardListView(options) {
       )
     );
   });
-  const emptyMessage = metadata.availability === 'unavailable'
-    ? 'Data is unavailable for this view.'
-    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
-  return renderPageSection(
-    pageId,
-    title,
-    [
-      ...renderViewSectionChrome(metadata, contextDetails),
-      h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
-      cards.length > 0
-        ? h('ul', { className: 'document-list issue-list entity-card-list', 'data-custom-view-mark': 'list' }, cards)
-        : h('p', { className: 'document-list-empty' }, emptyMessage)
-    ],
-    headingTag,
-    view.description
-  );
 }
 
 /**
@@ -665,76 +689,156 @@ function renderTableView(context) {
         }
       }
     : undefined;
+  const tableRegion = renderTableRegion({
+    tableClassName: 'custom-table',
+    tableRole: tree ? 'treegrid' : undefined,
+    regionClassName: interactive ? undefined : 'table-region-static',
+    emptyMessage,
+    emptyAction,
+    colSpan: Math.max(columns.length + actions.length, 1),
+    headCells: [...actions.map((action) => action.presentation === 'cli-action' ? '' : 'Action'), ...columns.map(fieldTitle)],
+    unsortableColumns: actions.map((_, index) => index),
+    compactColumns: actions.flatMap((action, index) => action.presentation === 'cli-action' ? [index] : []),
+    summaryColumns: interactive && view['column-summaries'] !== false
+      ? [
+          ...actions.map((action) => ({
+            label: action.presentation === 'cli-action' ? '' : 'Action',
+            compact: action.presentation === 'cli-action',
+            values: []
+          })),
+          ...columns.map((column) => {
+            const outputField = typeof column.as === 'string' ? column.as : column.field;
+            return {
+              field: outputField,
+              label: fieldTitle(column),
+              type: String(column.type ?? ''),
+              display: typeof column.display === 'string' ? column.display : undefined,
+              values: tableRows.map((row) => row[outputField])
+            };
+          })
+        ]
+      : [],
+    filterLabel: interactive ? `Filter ${title}` : undefined,
+    filterId: typeof view.id === 'string' ? view.id : `${pageId}-table`,
+    filterFields: columns.flatMap((column, columnIndex) => (
+      column.filter !== false && ['nominal', 'ordinal'].includes(String(column.type))
+        ? [{
+            key: typeof column.as === 'string' ? column.as : column.field,
+            label: fieldTitle(column),
+            columnIndex: actions.length + columnIndex,
+            always: column.display === 'status'
+          }]
+        : []
+    )),
+    bodyRows,
+    lazyList: view['lazy-list'] === true,
+    continuation: continuation && renderedRowCount < effectiveRowLimit
+      ? {
+          ...continuation,
+          load: async (token) => {
+            const next = await continuation.load(token);
+            const remainingRows = effectiveRowLimit - renderedRowCount;
+            const nextTableRows = prepareTableRows(next.rows, columns, view.data).slice(0, remainingRows);
+            const nextDisplayedRows = tree
+              ? arrangeTreeRows(nextTableRows, tree['id-field'], tree['parent-field'])
+              : nextTableRows.map((row) => ({ row, depth: 0 }));
+            const rows = renderBodyRows(nextDisplayedRows, renderedRowCount)
+              .filter((row) => row instanceof HTMLTableRowElement);
+            renderedRowCount += rows.length;
+            return {
+              rows,
+              continuationToken: renderedRowCount < effectiveRowLimit
+                ? next.continuationToken
+                : undefined
+            };
+          }
+        }
+      : undefined,
+    sortable: interactive
+  });
+  const mobileCardList = view.layout === 'full-view' && view['lazy-list'] === true
+    ? renderMobileTableCardList(context, columns, tableRows, renderCellValue, effectiveRowLimit)
+    : null;
   return renderPageSection(pageId, title, [
     ...renderViewSectionChrome(metadata, contextDetails),
-    renderTableRegion({
-      tableClassName: 'custom-table',
-      tableRole: tree ? 'treegrid' : undefined,
-      regionClassName: interactive ? undefined : 'table-region-static',
-      emptyMessage,
-      emptyAction,
-      colSpan: Math.max(columns.length + actions.length, 1),
-      headCells: [...actions.map((action) => action.presentation === 'cli-action' ? '' : 'Action'), ...columns.map(fieldTitle)],
-      unsortableColumns: actions.map((_, index) => index),
-      compactColumns: actions.flatMap((action, index) => action.presentation === 'cli-action' ? [index] : []),
-      summaryColumns: interactive && view['column-summaries'] !== false
-        ? [
-            ...actions.map((action) => ({
-              label: action.presentation === 'cli-action' ? '' : 'Action',
-              compact: action.presentation === 'cli-action',
-              values: []
-            })),
-            ...columns.map((column) => {
-              const outputField = typeof column.as === 'string' ? column.as : column.field;
-              return {
-                field: outputField,
-                label: fieldTitle(column),
-                type: String(column.type ?? ''),
-                display: typeof column.display === 'string' ? column.display : undefined,
-                values: tableRows.map((row) => row[outputField])
-              };
-            })
-          ]
-        : [],
-      filterLabel: interactive ? `Filter ${title}` : undefined,
-      filterId: typeof view.id === 'string' ? view.id : `${pageId}-table`,
-      filterFields: columns.flatMap((column, columnIndex) => (
-        column.filter !== false && ['nominal', 'ordinal'].includes(String(column.type))
-          ? [{
-              key: typeof column.as === 'string' ? column.as : column.field,
-              label: fieldTitle(column),
-              columnIndex: actions.length + columnIndex,
-              always: column.display === 'status'
-            }]
-          : []
-      )),
-      bodyRows,
-      lazyList: view['lazy-list'] === true,
-      continuation: continuation && renderedRowCount < effectiveRowLimit
-        ? {
-            ...continuation,
-            load: async (token) => {
-              const next = await continuation.load(token);
-              const remainingRows = effectiveRowLimit - renderedRowCount;
-              const nextTableRows = prepareTableRows(next.rows, columns, view.data).slice(0, remainingRows);
-              const nextDisplayedRows = tree
-                ? arrangeTreeRows(nextTableRows, tree['id-field'], tree['parent-field'])
-                : nextTableRows.map((row) => ({ row, depth: 0 }));
-              const rows = renderBodyRows(nextDisplayedRows, renderedRowCount)
-                .filter((row) => row instanceof HTMLTableRowElement);
-              renderedRowCount += rows.length;
-              return {
-                rows,
-                continuationToken: renderedRowCount < effectiveRowLimit
-                  ? next.continuationToken
-                  : undefined
-              };
-            }
-          }
-        : undefined,
-      sortable: interactive
-    })
+    tableRegion,
+    mobileCardList
   ], headingTag, view.description);
+}
+
+/**
+ * Renders the mobile companion for a full-view lazy table. Declared card templates
+ * are preferred when their title field is present; otherwise the table columns form
+ * a generic built-in card.
+ * @param {DataViewContext} context
+ * @param {TableField[]} columns
+ * @param {Array<Record<string, unknown>>} rows
+ * @param {(column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement} renderValue
+ * @param {number} rowLimit
+ */
+function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit) {
+  const { pageId, title, view, toText, cardTemplates = {}, prepareTableRows } = context;
+  const columnFields = new Set(columns.map((column) => column.field));
+  const definition = Object.values(cardTemplates)
+    .filter((template) => columnFields.has(template.title.field))
+    .toSorted((left, right) => (
+      [...right.labels, ...right.details].filter((field) => columnFields.has(field.field)).length
+      - [...left.labels, ...left.details].filter((field) => columnFields.has(field.field)).length
+    ))[0] ?? {
+      icon: 'table',
+      title: columns[0] ?? { field: '' },
+      labels: columns.slice(1).filter((column) => ['label', 'status', 'active-state', 'mode'].includes(String(column.display))),
+      details: columns.slice(1).filter((column) => !['label', 'status', 'active-state', 'mode'].includes(String(column.display)))
+    };
+  const visibleDefinition = {
+    ...definition,
+    labels: definition.labels.filter((field) => columnFields.has(field.field)),
+    details: definition.details.filter((field) => columnFields.has(field.field))
+  };
+  const list = h('ul', {
+    className: 'document-list issue-list entity-card-list mobile-table-card-list-items',
+    'data-custom-view-mark': 'list'
+  }, ...renderEntityCardItems(rows, { pageId, title, renderValue, toText, definition: visibleDefinition }));
+  const empty = rows.length === 0
+    ? h('p', { className: 'document-list-empty' }, typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.')
+    : null;
+  const more = context.continuation && rows.length < rowLimit
+    ? h('button', { className: 'table-filter-more', type: 'button', 'data-card-list-more': '' }, 'Load more cards')
+    : null;
+  const region = h('div', {
+    className: 'mobile-table-card-list',
+    'data-mobile-card-list': '',
+    role: 'region',
+    'aria-label': `${title}: card list`
+  }, list, empty, more);
+  if (!(more instanceof HTMLButtonElement) || !context.continuation) return region;
+
+  let token = context.continuation.token;
+  let renderedCount = rows.length;
+  let loading = false;
+  const loadMore = async () => {
+    if (loading || !token || renderedCount >= rowLimit) return;
+    loading = true;
+    more.disabled = true;
+    const next = await context.continuation?.load(token);
+    const nextRows = prepareTableRows(next?.rows ?? [], columns, view.data).slice(0, rowLimit - renderedCount);
+    list.append(...renderEntityCardItems(nextRows, {
+      pageId,
+      title,
+      renderValue,
+      toText,
+      definition: visibleDefinition,
+      keyOffset: renderedCount
+    }));
+    renderedCount += nextRows.length;
+    token = renderedCount < rowLimit ? next?.continuationToken ?? '' : '';
+    loading = false;
+    more.disabled = false;
+    more.hidden = !token;
+  };
+  more.addEventListener('click', () => void loadMore());
+  observeLoadMoreBoundary(globalThis.IntersectionObserver, more, () => void loadMore(), { rootMargin: '200px' });
+  return region;
 }
 
 /**
