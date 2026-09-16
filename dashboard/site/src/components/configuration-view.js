@@ -228,6 +228,13 @@ function renderSettingsEditor(policyDocument) {
     'aria-live': 'polite'
   }, 'No changes'));
   const settings = h('div', { className: 'configuration-settings' });
+  const copyControl = createCopyControl({
+    getContent: () => JSON.stringify(draft, null, 2),
+    label: 'Copy updated JSON',
+    buttonClassName: 'configuration-copy-button',
+    statusClassName: 'configuration-copy-status',
+    successText: 'Updated JSON copied.'
+  });
   const updateStatus = () => {
     const modified = JSON.stringify(draft) !== JSON.stringify(original);
     status.textContent = modified ? 'Modified locally' : 'No changes';
@@ -236,6 +243,7 @@ function renderSettingsEditor(policyDocument) {
   /** @param {string[]} segments @param {unknown} value */
   const updateValue = (segments, value) => {
     setDocumentValue(draft, segments, value);
+    copyControl.reset();
     updateStatus();
   };
   const renderSettings = () => settings.replaceChildren(
@@ -247,6 +255,7 @@ function renderSettingsEditor(policyDocument) {
     onClick: () => {
       draft = cloneDocument(original);
       renderSettings();
+      copyControl.reset();
       updateStatus();
     }
   }, 'Discard changes');
@@ -282,6 +291,8 @@ function renderSettingsEditor(policyDocument) {
         status
       ),
       h('div', { className: 'configuration-editor-actions' },
+        copyControl.button,
+        copyControl.status,
         diagnosticsButton,
         diagnosticsStatus,
         resetButton

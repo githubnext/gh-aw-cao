@@ -30,6 +30,7 @@ const DASHBOARD_SOURCE_INGESTION_VERSION = 3;
 const GH_AW_JSONL_INGESTION_VERSION = 2;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
+const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 
 /**
  * Recognizes storage exhaustion across browsers that report it as a
@@ -100,9 +101,10 @@ export async function readCurrentIngestion(indexedDB, kind, scope) {
  */
 export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
   const adaptationContext = cachedJsonlAdaptationContext(options);
-  const hash = await payloadHash(`${options.payloadIdentity}\0${adaptationContext}`, undefined);
   const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', options.payloadScope);
-  return current?.payloadHash === hash;
+  return current?.payloadHash === options.payloadIdentity
+    && current.adaptationContext === adaptationContext
+    && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION;
 }
 
 /**
@@ -306,6 +308,7 @@ export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
  */
 async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
+  const startedAt = monotonicNow();
   let phase = 'adapting';
   debug('starting JSONL stream ingestion', {
     streaming: typeof content !== 'string' && !ArrayBuffer.isView(content),
@@ -322,17 +325,20 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
           {
            context: options.context,
            workflowHints: options.workflowHints,
-           onProgress: options.onProgress
+           onProgress: options.onProgress,
+           payloadIdentity: options.payloadIdentity
           }
         )
       : undefined;
     const payloadIdentity = options.payloadIdentity
       ?? streamed?.payloadIdentity
       ?? cachedJsonlPayloadIdentity(/** @type {string | Uint8Array} */ (content));
-    const hash = await payloadHash(`${payloadIdentity}\0${adaptationContext}`, undefined);
+    const parsingMs = monotonicNow() - startedAt;
     const scope = options.payloadScope ?? 'gh-aw-jsonl';
     const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
-    if (current?.payloadHash === hash) {
+    if (current?.payloadHash === payloadIdentity
+        && current.adaptationContext === adaptationContext
+        && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
       if (options.payloadEtag
           && (current.payloadEtag !== options.payloadEtag || current.adaptationContext !== adaptationContext)) {
         await recordTransaction(indexedDB, {
@@ -341,7 +347,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
           adaptationContext
         });
       }
-      debug('skipped current JSONL stream', { records: current.records ?? null });
+      debug('skipped current JSONL stream', {
+        records: current.records ?? null,
+        parsingMs
+      });
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
     const adapted = streamed ?? adaptCachedGhAwJsonl(
@@ -349,7 +358,9 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       { context: options.context, workflowHints: options.workflowHints }
     );
     phase = 'normalizing';
+    const normalizationStartedAt = monotonicNow();
     const batch = normalize(adapted.observations);
+    const normalizationMs = monotonicNow() - normalizationStartedAt;
     debug('normalized JSONL stream', {
       sourceRecords: adapted.records,
       runs: batch.runs.length,
@@ -357,17 +368,20 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       events: batch.events.length
     });
     phase = 'writing';
+    const storageStartedAt = monotonicNow();
     const result = await ingestCanonicalBatch(indexedDB, batch, {
       ...options,
       preserveWorkflowPackageMappings: true,
       preserveRepositoryRecords: true
     });
+    const storageMs = monotonicNow() - storageStartedAt;
+    const timings = { parsingMs, normalizationMs, storageMs };
     await recordTransaction(indexedDB, {
       id: await transactionId('ingest-jsonl', scope),
       kind: 'ingest-jsonl',
       createdAt,
       payloadScope: scope,
-      payloadHash: hash,
+      payloadHash: payloadIdentity,
       payloadEtag: options.payloadEtag,
       adaptationContext,
       ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
@@ -379,11 +393,13 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       agenticRuns: adapted.agenticRuns,
       duplicateRawRunObservations: adapted.duplicateRawRunObservations,
       duplicateAgenticRunObservations: adapted.duplicateAgenticRunObservations,
-      unenrichedRuns: adapted.unenrichedRuns
+      unenrichedRuns: adapted.unenrichedRuns,
+      timings
     });
     debug('recorded successful JSONL transaction', {
       sourceRecords: adapted.records,
-      committedRecords: result.committedRecords
+      committedRecords: result.committedRecords,
+      ...timings
     });
     return {
       ...result,
@@ -398,7 +414,8 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       sessions: adapted.sessions,
       events: adapted.events,
       rateLimits: adapted.rateLimits,
-      mappedRateLimits: adapted.mappedRateLimits
+      mappedRateLimits: adapted.mappedRateLimits,
+      timings
     };
   } catch (error) {
     debug('JSONL stream ingestion failed', {

@@ -645,7 +645,7 @@ export function cachedJsonlPayloadIdentity(content) {
 
 /**
  * @param {AsyncIterable<string | Uint8Array>} chunks
- * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void }} [options]
+ * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, payloadIdentity?: string }} [options]
  */
 export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   if (cachedJsonlExpression.contract !== 'gh-aw-cao.jsonl-ingestion'
@@ -656,7 +656,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   const knownKinds = new Set(Object.keys(cachedJsonlExpression.variants));
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
-  const hasher = createCachedJsonlPayloadHasher();
+  const hasher = options.payloadIdentity === undefined ? createCachedJsonlPayloadHasher() : null;
   const accumulator = createCachedGhAwJsonlAccumulator(options);
   let pending = '';
   let lineNumber = 0;
@@ -687,7 +687,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
     chunksProcessed += 1;
     const bytes = typeof chunk === 'string' ? encoder.encode(chunk) : chunk;
     bytesProcessed += bytes.byteLength;
-    hasher.update(bytes);
+    hasher?.update(bytes);
     pending += decoder.decode(bytes, { stream: true });
     let start = 0;
     let newline;
@@ -711,7 +711,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   options.onProgress?.({ bytesProcessed, linesProcessed: lineNumber, recordsIngested });
   const result = {
     ...accumulator.finish(),
-    payloadIdentity: hasher.digest()
+    payloadIdentity: options.payloadIdentity ?? hasher?.digest()
   };
   debug('completed streaming JSONL adaptation', {
     chunksProcessed,
