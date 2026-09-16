@@ -2,21 +2,17 @@
  * Pinned "full-view" table layout: gives a standalone table the full viewport with a
  * sticky header and its own scroll surface, hiding the surrounding app chrome as the
  * table scrolls. A preceding view is squeezed into the remaining space above the table
- * and progressively hidden as the table scrolls, so pinning is only safe when that
- * preceding content has bounded height (a metric card, callout, or compact swimlane like
- * the one above the Runs table). A pie chart's legend list grows with its data and can
- * render taller than the space it is squeezed into (for example on the Cost or Models &
- * Agents pages); since the squeeze container clips overflow instead of scrolling it, that
- * content would become unreachable. In that case the whole page falls back to scrolling
- * normally instead of pinning the table.
+ * and progressively hidden as the table scrolls. Pages with a chart before the table use
+ * normal page scrolling instead, keeping the chart reachable and making chart-plus-table
+ * pages such as Runs and Cost behave consistently.
  */
 
 const FULL_VIEW_SELECTOR = '.custom-view[data-view-layout="full-view"]';
-const UNBOUNDED_SIBLING_SELECTOR = '.pie-chart-card';
+const CHART_SIBLING_SELECTOR = '.chart-widget';
 
 /**
  * Toggles `dashboard-full-view` on the dashboard root, scoped to pages where the
- * full-view table has no siblings with unbounded height (e.g. a pie chart).
+ * full-view table has no chart siblings.
  * @param {HTMLElement} root
  * @param {HTMLElement | undefined} page
  */
@@ -25,7 +21,7 @@ export function syncFullViewMode(root, page) {
   const siblings = fullView?.parentElement
     ? [...fullView.parentElement.querySelectorAll(':scope > .custom-view')].filter((view) => view !== fullView)
     : [];
-  const canPin = Boolean(fullView) && siblings.every((view) => !view.querySelector(UNBOUNDED_SIBLING_SELECTOR));
+  const canPin = Boolean(fullView) && siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR));
   root.classList.toggle('dashboard-full-view', canPin);
   if (!canPin) root.classList.remove('dashboard-full-view-scrolled');
 }

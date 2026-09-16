@@ -632,7 +632,7 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
-test('Runs renders a last-week swimlane above its responsive table and scrolls it away with the page chrome', async ({ page }) => {
+test('Runs renders a last-week swimlane above its responsive table and scrolls like Cost', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -723,7 +723,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   };
   await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
   await expect(view).toHaveCount(1);
   await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
   await expect(swimlane.locator('.swimlane-summary')).toContainText('50 runs');
@@ -760,15 +760,15 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(swimlane).toBeHidden();
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(swimlane).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(table).toBeVisible();
   await expectAlignedColumnHeaders();
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true);
 });
 
 test('a page combining a chart with a full-view table scrolls the whole page instead of pinning the table', async ({ page }) => {
