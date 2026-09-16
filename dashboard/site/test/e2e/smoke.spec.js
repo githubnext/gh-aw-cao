@@ -636,6 +636,12 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-0.jsonl');
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
+  await scroll.evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
