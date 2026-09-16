@@ -225,7 +225,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /core\.info\('Dashboard build dependencies installed'\)[\s\S]*?core\.info\(`Restored activity data validation completed \(\$\{activityFiles\.length\} files\)`\)[\s\S]*?core\.info\('Activity database health assessment completed'\)[\s\S]*?core\.info\('Dashboard site build completed'\)[\s\S]*?core\.info\(`Dashboard artifact assembly completed \(\$\{collectedFiles\.length\} collected data files\)`\)/);
   assert.doesNotMatch(dashboardWorkflow, /core\.(?:info|error)\(`[^`]*\$\{activityFile\}/);
   assert.match(siteBuildScript, /from "esbuild"/);
-  assert.match(dashboardWorkflow, /const collectedFiles = \[[\s\S]*?'inventory-sources\.json'[\s\S]*?'gh-aw-logs\.sqlite'[\s\S]*?'payload-hashes\.json'[\s\S]*?for \(const fileName of collectedFiles\)[\s\S]*?fs\.copyFileSync[\s\S]*?\['gh-aw-logs-shards', 'gh-aw-logs-normalized'\][\s\S]*?recursive: true/);
+  assert.match(dashboardWorkflow, /const collectedFiles = \[[\s\S]*?'inventory-sources\.json'[\s\S]*?'gh-aw-logs\.sqlite'[\s\S]*?'payload-hashes\.json'[\s\S]*?for \(const fileName of collectedFiles\)[\s\S]*?fs\.copyFileSync[\s\S]*?'gh-aw-logs-shards'[\s\S]*?const normalizedDirectory = path\.join\([\s\S]*?'gh-aw-logs-normalized'[\s\S]*?if \(fs\.existsSync\(normalizedDirectory\)\)[\s\S]*?fs\.cpSync\([\s\S]*?normalizedDirectory[\s\S]*?'gh-aw-logs-normalized'[\s\S]*?recursive: true/);
   assert.doesNotMatch(dashboardWorkflow, /REPORT_DASHBOARD_SOURCES|\/sources\.json/);
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);

@@ -254,10 +254,20 @@ jobs:
               )
               core.info(`Copied ${fileName} (${fs.statSync(destination).size} bytes)`)
             }
-            for (const directory of ['gh-aw-logs-shards', 'gh-aw-logs-normalized']) {
+            fs.cpSync(
+              path.join(process.env.RUNNER_TEMP, 'cao-activity', 'gh-aw-logs-shards'),
+              path.join(process.env.REPORT_OUTPUT, 'gh-aw-logs-shards'),
+              { recursive: true },
+            )
+            const normalizedDirectory = path.join(
+              process.env.RUNNER_TEMP,
+              'cao-activity',
+              'gh-aw-logs-normalized',
+            )
+            if (fs.existsSync(normalizedDirectory)) {
               fs.cpSync(
-                path.join(process.env.RUNNER_TEMP, 'cao-activity', directory),
-                path.join(process.env.REPORT_OUTPUT, directory),
+                normalizedDirectory,
+                path.join(process.env.REPORT_OUTPUT, 'gh-aw-logs-normalized'),
                 { recursive: true },
               )
             }
