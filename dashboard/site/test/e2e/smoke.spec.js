@@ -904,7 +904,8 @@ test('a mobile page combining a chart with a full-view table switches between ch
   await expect(page.locator('[data-mobile-card-list]')).toBeVisible();
   await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toBeVisible();
   await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toContainText('copilot / model-1');
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  await expect(page.getByRole('heading', { name: 'Engines and models', level: 3 })).toBeHidden();
 
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(chart).toBeVisible();
