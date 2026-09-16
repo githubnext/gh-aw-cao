@@ -267,8 +267,10 @@ export function renderDashboard(input) {
       return renderedPage instanceof Promise ? renderedPage.then(annotate) : annotate(renderedPage);
     },
     sidebar.dataset.defaultPageId,
-    Boolean(input.loadPageSources)
-
+    Boolean(input.loadPageSources),
+    new Set((document.dashboard.queries ?? []).flatMap((query) => (
+      isPlainObject(query) && typeof query.name === 'string' ? [query.name] : []
+    )))
   );
   dashboardDisposals.set(root, () => {
     disposeNavigation();
@@ -1099,9 +1101,10 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
  * @param {(pageId: string, options: PageSourceLoadOptions & { renderUpdate: (page: HTMLElement) => void }) => HTMLElement | Promise<HTMLElement> | null} [renderPageById]
  * @param {string} [defaultPageId]
  * @param {boolean} [reloadPopulatedPages]
+ * @param {Set<string>} [knownQueries]
  * @returns {() => void}
  */
-export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '', reloadPopulatedPages = false) {
+export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '', reloadPopulatedPages = false, knownQueries = new Set()) {
   const pages = [...root.querySelectorAll('.dashboard-page')]
     .filter((page) => page instanceof HTMLElement);
   /** @type {Map<string, { details: boolean[], scrollTop: number }>} */
@@ -1382,7 +1385,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const routeParameter = page?.dataset.routeParameter;
     const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
     if (page) page.dataset.routeValue = routeValue;
-    const title = routeValue || page?.dataset.pageTitle || '';
+    const queryTitle = resolveQueryDrillPageTitle(parameters, knownQueries);
+    const title = queryTitle || routeValue || page?.dataset.pageTitle || '';
     const description = page?.dataset.pageDescription ?? '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
@@ -1532,6 +1536,15 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   defaultView?.addEventListener('popstate', onPopState);
   defaultView?.addEventListener('hashchange', onHashChange);
   return () => pageOwner.abort();
+}
+
+/**
+ * @param {URLSearchParams} parameters
+ * @param {Set<string>} knownQueries
+ */
+export function resolveQueryDrillPageTitle(parameters, knownQueries) {
+  const queryName = parameters.get('query')?.trim() ?? '';
+  return knownQueries.has(queryName) ? parameters.get('title')?.trim() ?? '' : '';
 }
 
 /**

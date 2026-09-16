@@ -283,7 +283,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
-        expect.objectContaining({ message: 'list.style must be one of cards, issues.' })
+        expect.objectContaining({ message: 'list.style must be one of cards, issues, entity-cards.' })
       ])
     });
     starterList.list.style = 'cards';
@@ -307,6 +307,39 @@ describe('dashboard document validation', () => {
         expect.objectContaining({
           message: 'list.action must reference a view-placed dashboard CLI action.'
         })
+      ])
+    });
+  });
+
+  it('validates reusable entity cards and declared query drills', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const issuesPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'issues'
+    );
+    const issueList = issuesPage.definition.views[0];
+    issueList.list.drill = {
+      type: 'query',
+      page: 'issues',
+      query: 'safe-output-items',
+      'title-field': 'event-summary',
+      arguments: [{ name: 'entity-url', field: 'entity-url' }]
+    };
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    issueList.list.drill.query = 'missing-query';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'query drill query must reference a declared dashboard query.' })
+      ])
+    });
+    issueList.list.drill.query = 'safe-output-items';
+    delete issueList.list.drill['title-field'];
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'title-field is required and must be a non-empty string.' })
       ])
     });
   });

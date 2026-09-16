@@ -399,8 +399,18 @@ function resolveEntityCardDrill(row, drill, title) {
     const link = resolveCardLink(row, drill.field, title);
     return link ? { external: true, link: { ...link, label: title || link.label } } : null;
   }
-  if (drill.type !== 'query' || typeof drill.page !== 'string' || !Array.isArray(drill.arguments)) return null;
+  if (
+    drill.type !== 'query'
+    || typeof drill.page !== 'string'
+    || typeof drill.query !== 'string'
+    || typeof drill['title-field'] !== 'string'
+    || !Array.isArray(drill.arguments)
+  ) return null;
+  const pageTitle = row[drill['title-field']];
+  if (!['string', 'number', 'boolean'].includes(typeof pageTitle) || String(pageTitle).length === 0) return null;
   const parameters = new URLSearchParams();
+  parameters.set('query', drill.query);
+  parameters.set('title', String(pageTitle));
   for (const argument of drill.arguments) {
     if (!isPlainObject(argument) || typeof argument.name !== 'string' || typeof argument.field !== 'string') return null;
     const value = row[argument.field];

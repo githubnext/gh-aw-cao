@@ -874,6 +874,9 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       : page.views;
     if (Array.isArray(views)) {
       views.forEach((view, viewIndex) => {
+        const viewPath = page.kind === 'built-in'
+          ? `$.dashboard.pages[${index}].definition.views[${viewIndex}]`
+          : `$.dashboard.pages[${index}].views[${viewIndex}]`;
         const navigationPage = isPlainObject(view) && isPlainObject(view.metric)
           ? view.metric['navigation-page']
           : undefined;
@@ -881,8 +884,27 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             'metric navigation-page must reference a declared dashboard page id.',
-            `$.dashboard.pages[${index}].views[${viewIndex}].metric.navigation-page`
+            `${viewPath}.metric.navigation-page`
           ));
+        }
+        const drill = isPlainObject(view) && isPlainObject(view.list) && isPlainObject(view.list.drill)
+          ? view.list.drill
+          : null;
+        if (drill?.type === 'query') {
+          if (typeof drill.page === 'string' && IDENTIFIER_PATTERN.test(drill.page) && !pageIds.has(drill.page)) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              'query drill page must reference a declared dashboard page id.',
+              `${viewPath}.list.drill.page`
+            ));
+          }
+          if (typeof drill.query === 'string' && IDENTIFIER_PATTERN.test(drill.query) && !declaredQueries.has(drill.query)) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'query drill query must reference a declared dashboard query.',
+              `${viewPath}.list.drill.query`
+            ));
+          }
         }
       });
     }
@@ -1378,6 +1400,16 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
     }
 
     const viewPath = `${path}.definition.views[${index}]`;
+    if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
+      if (typeof view.list.card !== 'string' || !VIEW_LIST_CARD_VALUES.includes(view.list.card)) {
+        errors.push(createError(
+          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+          `list.card must be one of ${VIEW_LIST_CARD_VALUES.join(', ')}.`,
+          `${viewPath}.list.card`
+        ));
+      }
+      validateListDrill(view.list.drill, undefined, `${viewPath}.list`, view.list.style, errors);
+    }
     if (view.element !== undefined && view.mark !== 'element') {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
@@ -2320,64 +2352,6 @@ function validateView(view, viewNode, path, viewIds, errors) {
         );
       }
 
-      /**
-       * @param {unknown} drill
-       * @param {unknown} drillNode
-       * @param {string} listPath
-       * @param {unknown} style
-       * @param {ValidationError[]} errors
-       */
-      function validateListDrill(drill, drillNode, listPath, style, errors) {
-        const path = `${listPath}.drill`;
-        if (drill === undefined) {
-          if (style === 'entity-cards') {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'entity-cards lists must declare drill behavior.', path));
-          }
-          return;
-        }
-        if (style !== 'entity-cards') {
-          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill is supported only for entity-cards lists.', path));
-          return;
-        }
-        if (!isPlainObject(drill)) {
-          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill must be a mapping.', path));
-          return;
-        }
-        validateObjectKeys(drillNode, VIEW_LIST_DRILL_KEYS, path, errors);
-        validateStringField(drill.type, `${path}.type`, true, errors);
-        if (typeof drill.type === 'string' && !VIEW_LIST_DRILL_TYPE_VALUES.includes(drill.type)) {
-          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.drill.type must be one of ${VIEW_LIST_DRILL_TYPE_VALUES.join(', ')}.`, `${path}.type`));
-        }
-        if (drill.type === 'external') {
-          validateRequiredIdentifier(drill.field, `${path}.field`, 'external drill field', errors);
-          if (drill.page !== undefined || drill.arguments !== undefined) {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'external drill behavior supports only field.', path));
-          }
-          return;
-        }
-        if (drill.type !== 'query') return;
-        validateRequiredIdentifier(drill.page, `${path}.page`, 'query drill page', errors);
-        if (!Array.isArray(drill.arguments) || drill.arguments.length === 0) {
-          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query drill behavior requires non-empty arguments.', `${path}.arguments`));
-          return;
-        }
-        const names = new Set();
-        const argumentsNode = getValueNodeByKey(drillNode, 'arguments');
-        for (const [index, argument] of drill.arguments.entries()) {
-          const argumentPath = `${path}.arguments[${index}]`;
-          if (!isPlainObject(argument)) {
-            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query drill argument must be a mapping.', argumentPath));
-            continue;
-          }
-          validateObjectKeys(getSequenceItemNode(argumentsNode, index), VIEW_LIST_DRILL_ARGUMENT_KEYS, argumentPath, errors);
-          validateRequiredIdentifier(argument.name, `${argumentPath}.name`, 'query drill argument name', errors);
-          validateRequiredIdentifier(argument.field, `${argumentPath}.field`, 'query drill argument field', errors);
-          if (typeof argument.name === 'string' && names.has(argument.name)) {
-            errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'query drill argument names must be unique.', `${argumentPath}.name`));
-          }
-          names.add(argument.name);
-        }
-      }
       if (view.mark !== 'metric') {
         errors.push(createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -2487,6 +2461,67 @@ function validateView(view, viewNode, path, viewIds, errors) {
     `${path}.encoding.actions`,
     errors
   );
+}
+
+/**
+ * @param {unknown} drill
+ * @param {unknown} drillNode
+ * @param {string} listPath
+ * @param {unknown} style
+ * @param {ValidationError[]} errors
+ */
+function validateListDrill(drill, drillNode, listPath, style, errors) {
+  const path = `${listPath}.drill`;
+  if (drill === undefined) {
+    if (style === 'entity-cards') {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'entity-cards lists must declare drill behavior.', path));
+    }
+    return;
+  }
+  if (style !== 'entity-cards') {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill is supported only for entity-cards lists.', path));
+    return;
+  }
+  if (!isPlainObject(drill)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(drillNode, VIEW_LIST_DRILL_KEYS, path, errors);
+  validateStringField(drill.type, `${path}.type`, true, errors);
+  if (typeof drill.type === 'string' && !VIEW_LIST_DRILL_TYPE_VALUES.includes(drill.type)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.drill.type must be one of ${VIEW_LIST_DRILL_TYPE_VALUES.join(', ')}.`, `${path}.type`));
+  }
+  if (drill.type === 'external') {
+    validateRequiredIdentifier(drill.field, `${path}.field`, 'external drill field', errors);
+    if (drill.page !== undefined || drill.query !== undefined || drill['title-field'] !== undefined || drill.arguments !== undefined) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'external drill behavior supports only field.', path));
+    }
+    return;
+  }
+  if (drill.type !== 'query') return;
+  validateRequiredIdentifier(drill.page, `${path}.page`, 'query drill page', errors);
+  validateRequiredIdentifier(drill.query, `${path}.query`, 'query drill query', errors);
+  validateRequiredIdentifier(drill['title-field'], `${path}.title-field`, 'query drill title field', errors);
+  if (!Array.isArray(drill.arguments) || drill.arguments.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query drill behavior requires non-empty arguments.', `${path}.arguments`));
+    return;
+  }
+  const names = new Set();
+  const argumentsNode = getValueNodeByKey(drillNode, 'arguments');
+  for (const [index, argument] of drill.arguments.entries()) {
+    const argumentPath = `${path}.arguments[${index}]`;
+    if (!isPlainObject(argument)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query drill argument must be a mapping.', argumentPath));
+      continue;
+    }
+    validateObjectKeys(getSequenceItemNode(argumentsNode, index), VIEW_LIST_DRILL_ARGUMENT_KEYS, argumentPath, errors);
+    validateRequiredIdentifier(argument.name, `${argumentPath}.name`, 'query drill argument name', errors);
+    validateRequiredIdentifier(argument.field, `${argumentPath}.field`, 'query drill argument field', errors);
+    if (typeof argument.name === 'string' && names.has(argument.name)) {
+      errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'query drill argument names must be unique.', `${argumentPath}.name`));
+    }
+    names.add(argument.name);
+  }
 }
 
 /**

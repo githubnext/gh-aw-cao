@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard as renderDashboardView, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames } from '../../src/presenter.js';
+import { renderDashboard as renderDashboardView, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { deriveDataHealthSources } from '../../src/data-health.js';
@@ -2674,12 +2674,12 @@ describe('presenter built-in and custom pages', () => {
     expect(unavailablePackagesPage?.querySelector('.custom-table')).not.toBeNull();
   });
 
-  it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
+  it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 DLS-PAGE-017 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
     const pages = authoritativeDashboardDocument.dashboard.pages.filter(
       (/** @type {{ kind: string }} */ page) => page.kind === 'built-in'
     );
     expect(Array.isArray(pages)).toBe(true);
-    expect(pages).toHaveLength(11);
+    expect(pages).toHaveLength(12);
     expect(pages.map((/** @type {{ page: string }} */ page) => page.page)).toEqual([
       'overview',
       'organizations',
@@ -2691,7 +2691,8 @@ describe('presenter built-in and custom pages', () => {
       'graders',
       'evals',
       'usage',
-      'findings'
+      'findings',
+      'issues'
     ]);
 
     for (const page of pages) {
@@ -3629,6 +3630,22 @@ describe('presenter built-in and custom pages', () => {
       root.remove();
       window.history.replaceState(null, '', '/');
     }
+  });
+
+  it('uses only declared query drill titles at every navigation depth', () => {
+    const knownQueries = new Set(['issue-events']);
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=issue-events&title=Issue+42&issue-id=42'),
+      knownQueries
+    )).toBe('Issue 42');
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=issue-events&title=Issue+43&issue-id=43'),
+      knownQueries
+    )).toBe('Issue 43');
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=unknown&title=Untrusted'),
+      knownQueries
+    )).toBe('');
   });
 
   it('opens coverage diagnostics as an Overview subpage with canonical breadcrumbs', async () => {

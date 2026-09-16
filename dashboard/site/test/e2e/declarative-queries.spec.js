@@ -192,6 +192,54 @@ function loadThroughWorker(page, queries, requested) {
   }, { queries, requested });
 }
 
+test('entity cards drill through declared queries without a depth limit and set page titles', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const { renderDataView } = await import(`${location.origin}/src/components/data-view.js`);
+    const { resolveQueryDrillPageTitle } = await import(`${location.origin}/src/presenter.js`);
+    const render = (id, title) => renderDataView('list', {
+      pageId: 'issues',
+      title: 'Issues',
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          card: 'issue',
+          drill: {
+            type: 'query',
+            page: 'issues',
+            query: 'safe-output-items',
+            'title-field': 'event-summary',
+            arguments: [{ name: 'issue-id', field: 'issue-id' }]
+          }
+        },
+        encoding: { columns: [{ field: 'event-summary' }] }
+      },
+      sourceName: 'safe-output-items',
+      rows: [{ 'event-summary': title, 'issue-id': id }],
+      metadata: { availability: 'available', completeness: 'complete', freshness: 'fresh' },
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+    const titles = [];
+    for (const [id, title] of [[42, 'Issue 42'], [43, 'Issue 43'], [44, 'Issue 44']]) {
+      const rendered = render(id, title);
+      document.body.replaceChildren(rendered);
+      const link = rendered.querySelector('[data-card-drill="query"]');
+      link.click();
+      const parameters = new URLSearchParams(location.hash.split('?')[1] ?? '');
+      titles.push(resolveQueryDrillPageTitle(parameters, new Set(['safe-output-items'])));
+    }
+    return { hash: location.hash, titles };
+  });
+
+  expect(result.titles).toEqual(['Issue 42', 'Issue 43', 'Issue 44']);
+  expect(result.hash).toBe('#page-issues?query=safe-output-items&title=Issue+44&issue-id=44');
+});
+
 /** Aggregates runs per workflow so joins have a many-to-one right side. */
 const runTotals = {
   name: 'run-totals',
