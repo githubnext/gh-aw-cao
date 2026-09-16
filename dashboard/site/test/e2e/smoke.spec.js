@@ -1010,6 +1010,7 @@ test('full-view unavailable-data callout keeps responsive page margins', async (
 test('Safe Outputs renders every retained outcome in one progressive full-view table', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
+  await page.evaluate(() => Reflect.deleteProperty(window, 'IntersectionObserver'));
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
