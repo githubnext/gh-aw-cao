@@ -119,6 +119,40 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
+test('issue card labels stay compact with centered text and balanced padding', async ({ page }) => {
+  await page.setContent(`
+    <style id="dashboard-styles"></style>
+    <ul class="issue-list-labels" style="width: 240px; height: 80px">
+      <li>unknown</li>
+    </ul>
+    <script type="module">
+      import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
+      document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
+    </script>
+  `);
+
+  const label = page.locator('.issue-list-labels li');
+  await expect(label).toHaveCSS('height', '20px');
+  await expect(label).toHaveCSS('padding-left', '9px');
+  await expect(label).toHaveCSS('padding-right', '9px');
+  await expect(label).toHaveCSS('text-align', 'center');
+
+  const centers = await label.evaluate((element) => {
+    const labelBounds = element.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const textBounds = range.getBoundingClientRect();
+    return {
+      labelX: labelBounds.x + labelBounds.width / 2,
+      labelY: labelBounds.y + labelBounds.height / 2,
+      textX: textBounds.x + textBounds.width / 2,
+      textY: textBounds.y + textBounds.height / 2,
+    };
+  });
+  expect(Math.abs(centers.textX - centers.labelX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(centers.textY - centers.labelY)).toBeLessThanOrEqual(1);
+});
+
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {
   await page.setContent(`
     <main style="height: 2000px"></main>

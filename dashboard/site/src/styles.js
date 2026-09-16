@@ -356,8 +356,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .issue-list-card-meta dd { margin: 0; }
 .issue-list-card-meta dd:not(:last-child)::after { margin-left: 6px; color: var(--muted); content: "·"; }
 .issue-list-card-meta a { color: inherit; }
-.issue-list-labels { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
-.issue-list-labels li { max-width: 220px; padding: 0 7px; overflow: hidden; border: 1px solid var(--accent-muted); border-radius: 999px; background: var(--accent-muted); color: var(--accent); font-size: .6875rem; font-weight: 600; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.issue-list-labels { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
+.issue-list-labels li { max-width: 220px; padding: 0 9px; overflow: hidden; border: 1px solid var(--accent-muted); border-radius: 999px; background: var(--accent-muted); color: var(--accent); font-size: .6875rem; font-weight: 600; line-height: 18px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .cli-action-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); text-align: left; white-space: normal; }
 .cli-action-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .cli-action-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
