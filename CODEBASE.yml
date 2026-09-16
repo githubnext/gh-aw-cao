@@ -285,6 +285,10 @@ validation:
 provenance:
   source: ARCHITECTURE.md
   status: experimental compiled representation; ARCHITECTURE.md remains the human-oriented source
+  relationship_namespaces:
+    dependencies_and_flows: architecture.roles and components
+    boundary_subjects: architecture.roles and components
+    boundary_values: architecture.concepts
   intentionally_compressed:
     - Architectural history, examples, diagrams, and explanatory prose
     - Individual leaf files and package inventory details

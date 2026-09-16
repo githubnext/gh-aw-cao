@@ -65,6 +65,30 @@ test("Codebase Model declares the supported schema version", async () => {
   const model = YAML.parse(await readFile(new URL("CODEBASE.yml", root), "utf8"));
 
   assert.equal(model.spec, "cbm/v0.1");
+  for (const category of [
+    "project",
+    "structure",
+    "architecture",
+    "components",
+    "dependencies",
+    "boundaries",
+    "invariants",
+    "flows",
+    "generation",
+    "commands",
+    "validation",
+  ]) {
+    assert.ok(model[category], `missing ${category}`);
+  }
+  for (const [name, references] of Object.entries(model.validation)) {
+    if (!name.endsWith("_refs")) continue;
+    for (const reference of references) {
+      const command = reference
+        .split(".")
+        .reduce((value, key) => value?.[key], model);
+      assert.ok(command, `unresolved command reference: ${reference}`);
+    }
+  }
 });
 
 test("Copilot extension uses the current Canvas provider contract", async () => {
