@@ -339,8 +339,9 @@ function configurationPolicyRows(controlSettings) {
     return [];
   }
   const status = resolution.status;
-  // The policy resolver emits "available" or "unavailable"; any other present
-  // status means the policy was collected but not validated by this sidecar.
+  // No collected policy fields produces an empty Settings source. When any
+  // policy field is present, the resolver status distinguishes "available" and
+  // "unavailable"; any other status means collected but not validated.
   let diagnostic;
   if (status === "available") {
     diagnostic = {
@@ -381,17 +382,18 @@ export function buildInventoryDashboardSources({
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
+  const settings = controlSettings ?? {};
   return {
-    packages: source("packages", packageRows(inventory, controlSettings, generatedAt), generatedAt),
+    packages: source("packages", packageRows(inventory, settings, generatedAt), generatedAt),
     repositories: source("repositories", repositoryRows(discoveredRepositories, repository, generatedAt), generatedAt),
     workflows: source(
       "workflows",
-      workflowRows(inventory, controlSettings, repository, generatedAt),
+      workflowRows(inventory, settings, repository, generatedAt),
       generatedAt,
     ),
     "configuration-policy": source(
       "configuration-policy",
-      configurationPolicyRows(controlSettings),
+      configurationPolicyRows(settings),
       generatedAt,
     ),
   };

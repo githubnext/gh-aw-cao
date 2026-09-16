@@ -232,6 +232,18 @@ test("inventory configuration policy source stays empty when no policy was colle
   assert.deepEqual(sources["configuration-policy"].rows, []);
 });
 
+test("inventory sources tolerate null control settings", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: null,
+  });
+
+  assert.deepEqual(sources.packages.rows, []);
+  assert.deepEqual(sources["configuration-policy"].rows, []);
+});
+
 test("inventory configuration policy source distinguishes collected unvalidated policy", () => {
   const sources = buildInventoryDashboardSources({
     repository: "githubnext/control",
