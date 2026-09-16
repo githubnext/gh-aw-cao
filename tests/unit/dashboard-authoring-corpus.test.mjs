@@ -80,6 +80,11 @@ test("every production dashboard page starts with an executive summary or prescr
         && summary.mark === "element"
         && summary.element === "signal-list"
         && summary.data?.sources?.includes("attention-signals");
+      const isAuditEventSummary = page.id === "audit"
+        && summary.id === "audit-event-summary-buckets"
+        && summary.mark === "chart"
+        && summary.chart === "bar"
+        && summary.data?.source === "audit-event-summary-buckets";
       const isDeclarativeOverview = page.id === "overview"
         && page["class-name"] === "dashboard-overview-page"
         && page.sections?.[0]?.layout === "horizontal"
@@ -118,6 +123,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isOverviewDrillDown
           || isDeclarativeOverview
           || isFactoryOverview
+          || isAuditEventSummary
           || isAttentionFirstHome,
         `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`
           + ` (first view "${summary.id ?? "<unnamed>"}" has ${summaryDescription})`,
