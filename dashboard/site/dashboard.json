@@ -1919,7 +1919,11 @@
               "field": "run-conclusion",
               "as": "failed-runs",
               "reducer": "count",
-              "filter": { "predicates": [{ "field": "run-conclusion", "in": ["failure", "timed-out", "startup-failure"] }] }
+              "filter": {
+                "predicates": [
+                  { "field": "run-conclusion", "in": ["failure", "timed-out", "startup-failure", "timed_out", "startup_failure"] }
+                ]
+              }
             },
             { "field": "observed-agent-model", "as": "agent-model", "reducer": "distinct-list" }
           ]

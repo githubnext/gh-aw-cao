@@ -192,7 +192,9 @@ describe('declarative dashboard queries', () => {
     expect(efficiency.aggregate.values.find((value) => value.as === 'failed-runs')).toMatchObject({
       field: 'run-conclusion',
       reducer: 'count',
-      filter: { predicates: [{ field: 'run-conclusion', in: ['failure', 'timed-out', 'startup-failure'] }] }
+      filter: {
+        predicates: [{ field: 'run-conclusion', in: ['failure', 'timed-out', 'startup-failure', 'timed_out', 'startup_failure'] }]
+      }
     });
   });
 
