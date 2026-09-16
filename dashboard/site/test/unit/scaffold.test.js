@@ -127,6 +127,12 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('text-size-adjust: 100%;');
   });
 
+  it('uses the Primer body font size on mobile', () => {
+    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+
+    expect(styles).toMatch(/@media \(max-width: 700px\) \{[\s\S]*body, \.dashboard-root \{ font-size: 1rem; \}/);
+  });
+
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
     const styleLines = styles.split('\n');
