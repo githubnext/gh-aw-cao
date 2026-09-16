@@ -96,6 +96,68 @@
           { "field": "run", "title": "Run", "display": "run-link" },
           { "field": "observed-at", "title": "Opened", "format": "human-friendly-timestamp" }
         ]
+      },
+      {
+        "id": "mcp-tool",
+        "icon": "mcp",
+        "title": { "field": "mcp-tool-label", "title": "MCP tool" },
+        "labels": [
+          { "field": "mcp-status", "title": "Status", "display": "status" }
+        ],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "workflow-inventory",
+        "icon": "workflow",
+        "title": { "field": "workflow-name", "title": "Workflow" },
+        "labels": [
+          { "field": "workflow-role", "title": "Role", "display": "label" },
+          { "field": "workflow-active", "title": "State", "display": "active-state" },
+          { "field": "rollout-mode", "title": "Mode", "display": "mode" }
+        ],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "package-name", "title": "Package" },
+          { "field": "runs", "title": "Runs" },
+          { "field": "aic", "title": "AIC", "unit": "aic" }
+        ]
+      },
+      {
+        "id": "run-log",
+        "icon": "play",
+        "title": { "field": "run", "title": "Run" },
+        "labels": [
+          { "field": "run-status", "title": "Status", "display": "status" },
+          { "field": "run-conclusion", "title": "Conclusion", "display": "status" },
+          { "field": "rollout-mode", "title": "Mode", "display": "mode" }
+        ],
+        "details": [
+          { "field": "repository-coordinate", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "engine", "title": "Engine" },
+          { "field": "resolved-model", "title": "Model" },
+          { "field": "started-at", "title": "Started", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "firewall-domain",
+        "icon": "globe",
+        "title": { "field": "domain", "title": "Domain" },
+        "labels": [
+          { "field": "decision-label", "title": "Decision", "display": "status" }
+        ],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" },
+          { "field": "request-count", "title": "Requests" }
+        ]
       }
     ],
     "views": [
@@ -452,6 +514,150 @@
             { "field": "session", "type": "nominal", "title": "Session" },
             { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
             { "field": "event-url", "type": "nominal", "title": "External URL" }
+          ]
+        }
+      },
+      {
+        "id": "mcp-tool-observations",
+        "title": "MCP tools",
+        "description": "Open an observed MCP tool call to inspect its workflow run logs.",
+        "data": {
+          "source": "mcp-tool-observations",
+          "order-by": [
+            {
+              "field": "observed-at",
+              "direction": "desc"
+            }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "mcp-tool",
+          "icon": "mcp",
+          "drill": {
+            "type": "external",
+            "field": "run-link"
+          }
+        },
+        "empty-message": "No MCP tool activity was observed.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "mcp-tool-label", "type": "nominal", "title": "MCP tool" },
+            { "field": "mcp-status", "type": "nominal", "title": "Status" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+            { "field": "run-link", "type": "nominal", "title": "Run link" }
+          ]
+        }
+      },
+      {
+        "id": "workflow-inventory-cards",
+        "title": "Workflows",
+        "description": "Declared workflows across the configured repository scope.",
+        "data": {
+          "source": "workflow-inventory"
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "workflow-inventory",
+          "icon": "workflow",
+          "drill": {
+            "type": "external",
+            "field": "workflow-link"
+          }
+        },
+        "empty-message": "No workflows observed.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "workflow-name", "type": "nominal", "title": "Workflow" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "package-name", "type": "nominal", "title": "Package" },
+            { "field": "workflow-role", "type": "nominal", "title": "Role" },
+            { "field": "rollout-mode", "type": "nominal", "title": "Mode" },
+            { "field": "workflow-active", "type": "nominal", "title": "State" },
+            { "field": "aic", "type": "quantitative", "title": "AIC", "unit": "aic" },
+            { "field": "runs", "type": "quantitative", "title": "Runs" },
+            { "field": "workflow-link", "type": "nominal", "title": "Workflow link" }
+          ]
+        }
+      },
+      {
+        "id": "runs-table-cards",
+        "title": "Runs",
+        "description": "Open an observed workflow run to inspect its jobs and logs.",
+        "data": {
+          "source": "runs-table"
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "run-log",
+          "icon": "play",
+          "drill": {
+            "type": "external",
+            "field": "run-link"
+          }
+        },
+        "empty-message": "No runs observed.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "run", "type": "nominal", "title": "Run" },
+            { "field": "run-status", "type": "nominal", "title": "Status" },
+            { "field": "run-conclusion", "type": "nominal", "title": "Conclusion" },
+            { "field": "repository-coordinate", "type": "nominal", "title": "Repository" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "rollout-mode", "type": "nominal", "title": "Mode" },
+            { "field": "engine", "type": "nominal", "title": "Engine" },
+            { "field": "engine-version", "type": "nominal", "title": "Engine version" },
+            { "field": "requested-model", "type": "nominal", "title": "Requested model" },
+            { "field": "resolved-model", "type": "nominal", "title": "Resolved model" },
+            { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" },
+            { "field": "run-link", "type": "nominal", "title": "Run link" }
+          ]
+        }
+      },
+      {
+        "id": "firewall-domain-observations",
+        "title": "Firewall domains",
+        "description": "Open an observed firewall domain to inspect its workflow run logs.",
+        "data": {
+          "source": "firewall-domain-observations",
+          "order-by": [
+            {
+              "field": "observed-at",
+              "direction": "desc"
+            }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "firewall-domain",
+          "icon": "globe",
+          "drill": {
+            "type": "external",
+            "field": "run-link"
+          }
+        },
+        "empty-message": "No observed firewall domains are available for this selection.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "domain", "type": "nominal", "title": "Domain" },
+            { "field": "decision-label", "type": "nominal", "title": "Decision" },
+            { "field": "request-count", "type": "quantitative", "title": "Requests" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+            { "field": "run-link", "type": "nominal", "title": "Run link" }
           ]
         }
       },
@@ -1710,6 +1916,25 @@
         ]
       },
       {
+        "name": "firewall-domain-observations",
+        "intent": "List observed firewall domain decisions as cards that open their workflow run logs.",
+        "description": "Observed allowed and denied firewall domain decisions ordered from newest to oldest.",
+        "from": "firewall-observations",
+        "filter": { "predicates": [{ "field": "decision", "in": ["allowed", "denied"] }] },
+        "select": [
+          { "field": "domain" },
+          { "field": "decision-label" },
+          { "field": "request-count" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "observed-at" },
+          { "field": "run-link" }
+        ],
+        "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "domain", "direction": "asc" }]
+      },
+      {
         "name": "firewall-most-blocked-domains",
         "intent": "Highlight the domains with the most blocked firewall requests.",
         "description": "The ten domains with the highest observed blocked request totals.",
@@ -2072,6 +2297,14 @@
         },
         "select": [{ "field": "mcp-tool-label", "as": "mcp-tool" }, { "field": "calls" }],
         "order-by": [{ "field": "calls", "direction": "desc" }, { "field": "mcp-tool", "direction": "asc" }]
+      },
+      {
+        "name": "mcp-tool-observations",
+        "intent": "List observed MCP tool calls as cards that open their workflow run logs.",
+        "description": "Observed MCP tool calls excluding the internal safe outputs server.",
+        "from": "mcp-tool-calls",
+        "filter": { "predicates": [{ "field": "safe-output-server", "equals": false }] },
+        "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "mcp-observation", "direction": "asc" }]
       },
       {
         "name": "mcp-top-tools",
@@ -3847,75 +4080,7 @@
         "icon": "globe",
         "class-name": "firewall-page",
         "description": "Observed firewall domains and aggregate request activity for agent egress.",
-        "views": [
-          {
-            "id": "security-firewall-most-blocked-domains",
-            "title": "Most blocked domains",
-            "description": "The ten domains with the highest observed blocked request totals.",
-            "data": {
-              "source": "firewall-most-blocked-domains"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "empty-message": "No blocked firewall domains are available for this selection.",
-            "encoding": {
-              "x": { "field": "domain", "type": "nominal", "title": "Domain" },
-              "y": { "field": "blocked", "type": "quantitative", "title": "Blocked requests" }
-            }
-          },
-          {
-            "id": "security-firewall-domains",
-            "title": "Domains",
-            "description": "Observed runs and accepted and blocked requests by normalized domain.",
-            "data": {
-              "source": "firewall-domain-totals",
-              "order-by": [
-                {
-                  "field": "blocked",
-                  "direction": "desc"
-                },
-                {
-                  "field": "accepted",
-                  "direction": "desc"
-                },
-                {
-                  "field": "domain",
-                  "direction": "asc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "column-summaries": true,
-            "layout": "full-view",
-            "empty-message": "No observed firewall domains are available for this selection.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "domain",
-                  "type": "nominal"
-                },
-                {
-                  "field": "run",
-                  "type": "quantitative",
-                  "title": "Run"
-                },
-                {
-                  "field": "accepted",
-                  "type": "quantitative",
-                  "title": "Accepted"
-                },
-                {
-                  "field": "blocked",
-                  "type": "quantitative",
-                  "title": "Blocked"
-                }
-              ]
-            }
-          }
-        ]
+        "views": ["firewall-domain-observations"]
       },
       {
         "id": "mcps",
@@ -3925,59 +4090,7 @@
         "icon": "mcp",
         "class-name": "mcps-page",
         "description": "Diagnose MCP tool reliability across agentic workflow runs.",
-        "views": [
-          {
-            "id": "mcp-top-tools",
-            "title": "Top MCP tools",
-            "description": "The ten most frequently called MCP tools, excluding the internal safe outputs server.",
-            "data": {
-              "source": "mcp-top-tools"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "empty-message": "No MCP tool activity was observed.",
-            "encoding": {
-              "x": {
-                "field": "mcp-tool",
-                "type": "nominal",
-                "title": "MCP tool"
-              },
-              "y": {
-                "field": "calls",
-                "type": "quantitative",
-                "title": "Calls"
-              }
-            }
-          },
-          {
-            "id": "mcp-tool-inventory",
-            "title": "MCP tools",
-            "description": "Observed MCP activity grouped by tool, excluding the internal safe outputs server.",
-            "data": {
-              "source": "mcp-tool-totals"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "empty-message": "No MCP tool activity was observed.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "mcp-tool",
-                  "type": "nominal",
-                  "title": "MCP tool"
-                },
-                {
-                  "field": "calls",
-                  "type": "quantitative",
-                  "title": "Calls"
-                }
-              ]
-            }
-          }
-        ]
+        "views": ["mcp-tool-observations"]
       },
       {
         "id": "security",
@@ -5394,111 +5507,7 @@
           "data-state": {
             "availability": true
           },
-          "views": [
-            {
-              "id": "workflows-by-runs",
-              "title": "Workflows by runs",
-              "description": "Declared workflows ranked by the number of observed runs.",
-              "data": {
-                "source": "workflow-inventory",
-                "order-by": [
-                  {
-                    "field": "runs",
-                    "direction": "desc"
-                  }
-                ],
-                "limit": 10
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "horizontal",
-              "empty-message": "No workflow runs observed.",
-              "encoding": {
-                "x": {
-                  "field": "workflow-label",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                "y": {
-                  "field": "runs",
-                  "type": "quantitative",
-                  "title": "Runs"
-                },
-                "href": {
-                  "field": "workflow-link",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "workflows-inventory",
-              "title": "Workflows",
-              "description": "Declared workflows across the configured repository scope.",
-              "data": {
-                "source": "workflow-inventory"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "column-summaries": true,
-              "layout": "full-view",
-              "empty-message": "No workflows observed.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "workflow-name",
-                    "type": "nominal",
-                    "title": "Workflow",
-                    "display": "workflow-link"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal",
-                    "title": "Repository",
-                    "display": "repository-link"
-                  },
-                  {
-                    "field": "package-name",
-                    "type": "nominal",
-                    "title": "Package"
-                  },
-                  {
-                    "field": "workflow-role",
-                    "type": "nominal",
-                    "title": "Role"
-                  },
-                  {
-                    "field": "rollout-mode",
-                    "type": "nominal",
-                    "title": "Mode",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "workflow-active",
-                    "type": "nominal",
-                    "title": "State",
-                    "display": "active-state"
-                  },
-                  {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "title": "AIC",
-                    "unit": "aic"
-                  },
-                  {
-                    "field": "runs",
-                    "type": "quantitative",
-                    "title": "Runs"
-                  },
-                  {
-                    "field": "ingestion",
-                    "type": "nominal",
-                    "title": "Ingestion"
-                  }
-                ]
-              }
-            }
-          ]
+          "views": ["workflow-inventory-cards"]
         }
       },
       {
@@ -5682,117 +5691,7 @@
           "data-state": {
             "availability": true
           },
-          "views": [
-            {
-              "id": "runs-last-week",
-              "title": "Runs in the last week",
-              "description": "Workflow run conclusions observed during the last seven days.",
-              "data": {
-                "source": "runs-table",
-                "time": {
-                  "range": "7d"
-                }
-              },
-              "mark": "chart",
-              "chart": "swimlane",
-              "layout": "horizontal",
-              "encoding": {
-                "x": {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Started"
-                },
-                "y": {
-                  "field": "run-conclusion",
-                  "type": "ordinal",
-                  "title": "Conclusion"
-                },
-                "color": {
-                  "field": "run-conclusion",
-                  "type": "nominal"
-                },
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "runs-runs-source",
-              "title": "Runs",
-              "description": "Observed workflow runs across the configured repository scope.",
-              "data": {
-                "source": "runs-table"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "column-summaries": true,
-              "layout": "full-view",
-              "empty-message": "No runs observed.",
-              "encoding": {
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "run",
-                    "type": "nominal",
-                    "display": "run-link"
-                  },
-                  {
-                    "field": "run-status",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "run-conclusion",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "repository-coordinate",
-                    "type": "nominal",
-                    "title": "Repository",
-                    "display": "repository-link"
-                  },
-                  {
-                    "field": "workflow",
-                    "type": "nominal",
-                    "display": "workflow-link"
-                  },
-                  {
-                    "field": "rollout-mode",
-                    "type": "nominal",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "engine",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "engine-version",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "requested-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "resolved-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "started-at",
-                    "type": "temporal",
-                    "format": "human-friendly-timestamp"
-                  }
-                ]
-              }
-            }
-          ]
+          "views": ["runs-table-cards"]
         }
       },
       {

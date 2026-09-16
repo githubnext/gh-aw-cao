@@ -13,6 +13,9 @@ const views = Object.fromEntries(dashboard.views.map(
 const pages = Object.fromEntries(dashboard.pages.map(
   (/** @type {Record<string, any>} */ page) => [page.id, page]
 ));
+const queries = Object.fromEntries(dashboard.queries.map(
+  (/** @type {Record<string, any>} */ query) => [query.name, query]
+));
 
 describe('entity card templates', () => {
   it('declares cards for every navigable canonical entity', () => {
@@ -78,6 +81,55 @@ describe('entity card templates', () => {
     expect(views['pull-requests'].list).toMatchObject({
       card: 'pull-request',
       drill: { type: 'external', field: 'entity-url' }
+    });
+  });
+
+  it('routes workflow, run, MCP, and firewall pages through stored-query cards', () => {
+    expect(pages.workflows.definition.views).toEqual(['workflow-inventory-cards']);
+    expect(pages.runs.definition.views).toEqual(['runs-table-cards']);
+    expect(pages.mcps.views).toEqual(['mcp-tool-observations']);
+    expect(pages.firewall.views).toEqual(['firewall-domain-observations']);
+
+    expect(views['workflow-inventory-cards']).toMatchObject({
+      data: { source: 'workflow-inventory' },
+      list: {
+        style: 'entity-cards',
+        card: 'workflow-inventory',
+        drill: { type: 'external', field: 'workflow-link' }
+      }
+    });
+    expect(views['runs-table-cards']).toMatchObject({
+      data: { source: 'runs-table' },
+      list: {
+        style: 'entity-cards',
+        card: 'run-log',
+        drill: { type: 'external', field: 'run-link' }
+      }
+    });
+    expect(views['mcp-tool-observations']).toMatchObject({
+      data: { source: 'mcp-tool-observations' },
+      list: {
+        style: 'entity-cards',
+        card: 'mcp-tool',
+        drill: { type: 'external', field: 'run-link' }
+      }
+    });
+    expect(views['firewall-domain-observations']).toMatchObject({
+      data: { source: 'firewall-domain-observations' },
+      list: {
+        style: 'entity-cards',
+        card: 'firewall-domain',
+        drill: { type: 'external', field: 'run-link' }
+      }
+    });
+
+    expect(queries['mcp-tool-observations']).toMatchObject({
+      from: 'mcp-tool-calls',
+      filter: { predicates: [{ field: 'safe-output-server', equals: false }] }
+    });
+    expect(queries['firewall-domain-observations']).toMatchObject({
+      from: 'firewall-observations',
+      filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] }
     });
   });
 });
