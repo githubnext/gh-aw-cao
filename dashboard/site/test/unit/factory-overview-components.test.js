@@ -10,14 +10,6 @@ import { renderFactoryStation } from '../../src/components/factory-station.js';
 /** @typedef {{ total: number, registered: number, unavailable: boolean, registeredUnavailable: boolean }} Coverage */
 /** @typedef {{ successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} TestMetrics */
 
-/** @returns {{ bind: (render: () => void) => void, memo: <T>(compute: () => T) => () => T }} */
-function immediateScope() {
-  return {
-    bind(render) { render(); },
-    memo(compute) { return compute; }
-  };
-}
-
 /**
  * @param {{ pending?: boolean, unavailable?: boolean, rows?: Record<string, unknown>[] }} [options]
  */
@@ -63,14 +55,14 @@ function metrics(overrides = {}) {
   };
 }
 
-/** @returns {Record<string, unknown>[]} */
-function rhythmRows() {
+/** @param {number} [currentOffset] @returns {Record<string, unknown>[]} */
+function rhythmRows(currentOffset = 0) {
   return [{
     rhythm: {
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, index) => ({
         label,
         date: `2026-09-${String(7 + index).padStart(2, '0')}`,
-        current: index + 1,
+        current: index + 1 + currentOffset,
         previous: 7 - index,
         reached: index < 3
       }))
@@ -118,13 +110,22 @@ describe('Overview component boundaries', () => {
   });
 
   it('rhythm owns the seven-day chart, period selection, and accessible descriptions', () => {
-    const rendered = renderFactoryRhythm(binding({ rows: rhythmRows() }), immediateScope());
+    const controller = new AbortController();
+    const rows = state(rhythmRows());
+    const rendered = renderFactoryRhythm({ rows: rows.get }, { signal: controller.signal });
     const days = [...rendered.querySelectorAll('.factory-rhythm-day')];
 
     expect(days).toHaveLength(7);
     expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 1 successful run this week.');
     expect(days[3]?.getAttribute('aria-label')).toBe('Thu 2026-09-10: 4 successful runs last week.');
     expect(rendered.querySelectorAll('.factory-rhythm-day-future')).toHaveLength(4);
+
+    rows.set(rhythmRows(10));
+    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week.');
+
+    controller.abort();
+    rows.set([]);
+    expect(days[0]?.getAttribute('aria-label')).toBe('Mon 2026-09-07: 11 successful runs this week.');
   });
 
   it('floor composes four stations and owns their aggregate accessible summary', () => {
@@ -143,26 +144,40 @@ describe('Overview component boundaries', () => {
       dispatches: count === 1 ? 'Dispatch' : 'Dispatches',
       'value-gains': count === 1 ? 'Value gain' : 'Value gains'
     })[name] ?? name;
-    const scope = { ...immediateScope(), signal: controller.signal, motion };
+    const scope = { signal: controller.signal, motion };
     const rendered = renderFactoryFloor(sources, metrics(), label, false, scope);
 
     expect([...rendered.querySelectorAll('.factory-station strong')].map((element) => element.textContent)).toEqual(['6', '8', '7', '3']);
     expect(rendered.classList.contains('factory-floor-active')).toBe(true);
     expect(rendered.getAttribute('aria-label')).toContain('6 repositories registered with 4 delivered to');
+    motion.set({ operations: 0, live: 0, review: 0 });
+    expect(rendered.classList.contains('factory-floor-active')).toBe(false);
     controller.abort();
   });
 
   it('header owns motion, heading priority, outcome summary, and rhythm composition', () => {
+    const controller = new AbortController();
     const motion = state({ operations: 0, live: 0, review: 0 });
+    const metricMotion = state({ operations: 0, live: 0, review: 0 });
     const sources = {
       'overview-factory-status': binding({ rows: [{ 'factory-heading': 'Your factory is delivering value.' }] }),
       'overview-rhythm': binding({ rows: rhythmRows() })
     };
-    const rendered = renderFactoryHeader(sources, metrics(), { ...immediateScope(), motion });
+    const rendered = renderFactoryHeader(
+      sources,
+      { ...metrics(), motion: metricMotion.get },
+      { signal: controller.signal, motion }
+    );
 
-    expect(rendered.querySelector('.factory-running')?.textContent).toBe('Work in motion');
+    expect(rendered.querySelector('.factory-running')?.textContent).toBe('Actions activity observed');
     expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
     expect(rendered.querySelector('.factory-intro-copy > p:last-child')?.textContent).toBe('5 retained issue and pull request outputs are backed by Actions evidence across 4 repositories.');
     expect(rendered.querySelector('.factory-rhythm')).not.toBeNull();
+
+    metricMotion.set({ operations: 2, live: 1, review: 1 });
+    expect(rendered.querySelector('.factory-running')?.classList.contains('factory-running-active')).toBe(true);
+    controller.abort();
+    metricMotion.set({ operations: 0, live: 0, review: 0 });
+    expect(rendered.querySelector('.factory-running')?.classList.contains('factory-running-active')).toBe(true);
   });
 });

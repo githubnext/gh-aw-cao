@@ -1,9 +1,10 @@
 import { h } from '../dom.js';
+import { derived, effect } from '../reactive.js';
 import { formatCount } from './count-formatters.js';
 
 /** @typedef {{ label: string, date: string, count: number, previous: number, reached: boolean }} RhythmDay */
 /** @typedef {{ rows: () => Record<string, unknown>[] }} RhythmSource */
-/** @typedef {{ bind: (render: () => void) => void, memo: <T>(compute: () => T) => () => T }} ReactiveScope */
+/** @typedef {{ signal: AbortSignal }} ReactiveScope */
 
 /**
  * @param {RhythmSource} source
@@ -11,8 +12,7 @@ import { formatCount } from './count-formatters.js';
  */
 export function renderFactoryRhythm(source, scope) {
   const bars = h('div', { className: 'factory-rhythm-bars' });
-  const rhythm = scope.memo(() => rhythmPayload(source));
-  const rhythmDays = scope.memo(() => rhythm().days);
+  const rhythmDays = derived(() => rhythmPayload(source).days, { signal: scope.signal });
   const section = h(
     'section',
     {
@@ -33,8 +33,8 @@ export function renderFactoryRhythm(source, scope) {
     bars
   );
 
-  scope.bind(() => {
-    const days = rhythmDays();
+  effect(() => {
+    const days = rhythmDays.get();
     const maximum = Math.max(...days.flatMap((day) => [day.count, day.previous]), 1);
     if (bars.childElementCount !== days.length) {
       bars.replaceChildren(...days.map(() => createRhythmDay()));
@@ -59,7 +59,7 @@ export function renderFactoryRhythm(source, scope) {
       const label = element.querySelector('small');
       if (label) label.textContent = day.label;
     }
-  });
+  }, { signal: scope.signal });
 
   return section;
 }
