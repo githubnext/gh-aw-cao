@@ -852,6 +852,7 @@ describe('dashboard document validation', () => {
         'overview-run-summary',
         'overview-dispatch-summary',
         'overview-value-summary',
+        'overview-factory-status',
         'overview-registered-repository-summary',
         'overview-worker-summary',
         'overview-rhythm'

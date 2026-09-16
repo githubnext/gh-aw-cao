@@ -28,7 +28,7 @@ Mobile is a distinct composition, not the desktop layout reduced to one column. 
 | Component | Owner | Responsibility | Locked states |
 | --- | --- | --- | --- |
 | Overview shell | `factory-overview.js` | Source bindings, reactive lifetime, shared metrics, labels, composition | initial render, progressive source arrival, reset |
-| Header | `factory-header.js` | Motion label, prioritized heading, outcome summary | idle, active, attention, strain, value, unavailable |
+| Header | `factory-header.js` | Motion label, worker-classified heading, outcome summary | idle, active, attention, strain, value, unavailable |
 | Rhythm | `factory-rhythm.js` | Seven-day current/previous week chart | reached day, future day, zero, malformed payload |
 | Floor | `factory-floor.js` | Four-station composition and aggregate accessible description | active, idle, partial evidence |
 | Station | `factory-station.js` | Icon, label, count, detail, link, animation | loading, unavailable, zero, populated |
@@ -54,6 +54,8 @@ This package does not use Storybook. The repository-native equivalent has three 
 3. The focused Overview scenario in `test/e2e/smoke.spec.js` locks browser layout, navigation, links, and responsive behavior.
 
 Add a state to the direct component cases before changing its implementation. Add Playwright coverage only when the behavior depends on layout, focus, navigation, workers, or viewport size. Prefer role, accessible-name, state, and destination assertions over broad DOM snapshots.
+
+Factory status priority is declared by the `overview-factory-status` query. The Header validates and presents its `factory-heading` field but does not infer business state from run or value counts. Component tests also abort an owning signal and verify that subsequent state changes cannot update the released DOM.
 
 ## Refactoring sequence
 

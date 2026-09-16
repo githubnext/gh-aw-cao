@@ -105,6 +105,18 @@ describe('Overview component boundaries', () => {
     controller.abort();
   });
 
+  it('station stops reacting after its owner aborts', () => {
+    const controller = new AbortController();
+    const stationState = state({ pending: false, unavailable: false, label: 'Runs', value: 1, detail: '' });
+    const station = renderFactoryStation('play', { signal: controller.signal });
+    station.bind(stationState.get);
+
+    expect(station.element.querySelector('strong')?.textContent).toBe('1');
+    controller.abort();
+    stationState.set({ pending: false, unavailable: false, label: 'Runs', value: 9, detail: '' });
+    expect(station.element.querySelector('strong')?.textContent).toBe('1');
+  });
+
   it('rhythm owns the seven-day chart, period selection, and accessible descriptions', () => {
     const rendered = renderFactoryRhythm(binding({ rows: rhythmRows() }), immediateScope());
     const days = [...rendered.querySelectorAll('.factory-rhythm-day')];
@@ -143,7 +155,7 @@ describe('Overview component boundaries', () => {
   it('header owns motion, heading priority, outcome summary, and rhythm composition', () => {
     const motion = state({ operations: 0, live: 0, review: 0 });
     const sources = {
-      'overview-run-summary': binding(),
+      'overview-factory-status': binding({ rows: [{ 'factory-heading': 'Your factory is delivering value.' }] }),
       'overview-rhythm': binding({ rows: rhythmRows() })
     };
     const rendered = renderFactoryHeader(sources, metrics(), { ...immediateScope(), motion });

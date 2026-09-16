@@ -13,6 +13,7 @@ const OVERVIEW_SOURCE_NAMES = [
   'overview-dispatch-summary',
   'overview-delivery-summary',
   'overview-value-summary',
+  'overview-factory-status',
   'overview-registered-repository-summary',
   'overview-worker-summary',
   'overview-rhythm'

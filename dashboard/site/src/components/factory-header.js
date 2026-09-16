@@ -5,7 +5,7 @@ import { renderFactoryRhythm } from './factory-rhythm.js';
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} HeaderMetrics */
+/** @typedef {{ usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} HeaderMetrics */
 /** @typedef {{ bind: (render: () => void) => void, memo: <T>(compute: () => T) => () => T, motion: import('../reactive.js').State<Motion> }} HeaderScope */
 
 /**
@@ -32,7 +32,11 @@ export function renderFactoryHeader(sources, metrics, scope) {
   });
 
   scope.bind(() => {
-    heading.textContent = factoryHeading(sources, metrics);
+    const status = sources['overview-factory-status'];
+    const candidate = status.rows()[0]?.['factory-heading'];
+    heading.textContent = !status.unavailable() && typeof candidate === 'string' && candidate
+      ? candidate
+      : 'Your factory status is unavailable.';
   });
 
   scope.bind(() => {
@@ -57,20 +61,4 @@ function sameMotion(current, next) {
   return current.operations === next.operations
     && current.live === next.live
     && current.review === next.review;
-}
-
-/** @param {SourceBindings} sources @param {HeaderMetrics} metrics */
-function factoryHeading(sources, metrics) {
-  if (sources['overview-run-summary'].unavailable()) {
-    return 'Your factory status is unavailable.';
-  }
-  const successfulRuns = metrics.successfulRuns();
-  const failedRuns = metrics.failedRuns();
-  const activeRuns = metrics.activeRuns();
-  if (metrics.valueGains() > 0) return 'Your factory is delivering value.';
-  if (activeRuns > 0) return 'Your factory is humming.';
-  if (failedRuns > successfulRuns && failedRuns > 0) return 'Your factory is under strain.';
-  if (failedRuns > 0) return 'Your factory needs attention.';
-  if (successfulRuns > 0) return 'Your factory is humming.';
-  return 'Your factory is idle.';
 }

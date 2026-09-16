@@ -125,6 +125,7 @@ describe('dashboard DOM provenance', () => {
       'overview-dispatch-summary',
       'overview-delivery-summary',
       'overview-value-summary',
+      'overview-factory-status',
       'overview-registered-repository-summary',
       'overview-worker-summary',
       'overview-rhythm',

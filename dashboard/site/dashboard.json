@@ -538,6 +538,126 @@
         "aggregate": { "values": [{ "field": "grader", "as": "value-gains", "reducer": "count" }] }
       },
       {
+        "name": "overview-run-status-input",
+        "intent": "Prepare the compact run summary for declarative factory status classification.",
+        "from": "overview-run-summary",
+        "compute": [
+          {
+            "as": "status-join-key",
+            "function": "concat",
+            "args": [{ "value": "factory" }, { "value": "-status" }]
+          }
+        ],
+        "select": [
+          { "field": "status-join-key" },
+          { "field": "successful-runs" },
+          { "field": "failed-runs" },
+          { "field": "active-runs" }
+        ]
+      },
+      {
+        "name": "overview-value-status-input",
+        "intent": "Prepare the compact value summary for declarative factory status classification.",
+        "from": "overview-value-summary",
+        "compute": [
+          {
+            "as": "status-join-key",
+            "function": "concat",
+            "args": [{ "value": "factory" }, { "value": "-status" }]
+          }
+        ],
+        "select": [
+          { "field": "status-join-key" },
+          { "field": "value-gains" }
+        ]
+      },
+      {
+        "name": "overview-factory-status",
+        "intent": "Classify the factory heading from compact run and optional value evidence.",
+        "from": "overview-run-status-input",
+        "joins": [
+          {
+            "source": "overview-value-status-input",
+            "type": "left",
+            "on": [{ "left": "status-join-key", "right": "status-join-key" }],
+            "fields": [{ "field": "value-gains", "as": "value-gains" }]
+          }
+        ],
+        "compute": [
+          {
+            "as": "has-successful-runs",
+            "function": "greater-than",
+            "args": [{ "field": "successful-runs" }, { "value": 0 }]
+          },
+          {
+            "as": "has-failed-runs",
+            "function": "greater-than",
+            "args": [{ "field": "failed-runs" }, { "value": 0 }]
+          },
+          {
+            "as": "failures-exceed-successes",
+            "function": "greater-than",
+            "args": [{ "field": "failed-runs" }, { "field": "successful-runs" }]
+          },
+          {
+            "as": "has-active-runs",
+            "function": "greater-than",
+            "args": [{ "field": "active-runs" }, { "value": 0 }]
+          },
+          {
+            "as": "has-value-gains",
+            "function": "greater-than",
+            "args": [{ "field": "value-gains" }, { "value": 0 }]
+          },
+          {
+            "as": "successful-heading",
+            "function": "if",
+            "args": [
+              { "field": "has-successful-runs" },
+              { "value": "Your factory is humming." },
+              { "value": "Your factory is idle." }
+            ]
+          },
+          {
+            "as": "attention-heading",
+            "function": "if",
+            "args": [
+              { "field": "has-failed-runs" },
+              { "value": "Your factory needs attention." },
+              { "field": "successful-heading" }
+            ]
+          },
+          {
+            "as": "strain-heading",
+            "function": "if",
+            "args": [
+              { "field": "failures-exceed-successes" },
+              { "value": "Your factory is under strain." },
+              { "field": "attention-heading" }
+            ]
+          },
+          {
+            "as": "active-heading",
+            "function": "if",
+            "args": [
+              { "field": "has-active-runs" },
+              { "value": "Your factory is humming." },
+              { "field": "strain-heading" }
+            ]
+          },
+          {
+            "as": "factory-heading",
+            "function": "if",
+            "args": [
+              { "field": "has-value-gains" },
+              { "value": "Your factory is delivering value." },
+              { "field": "active-heading" }
+            ]
+          }
+        ],
+        "select": [{ "field": "factory-heading" }]
+      },
+      {
         "name": "overview-registered-repository-summary",
         "intent": "Count the distinct target repositories registered in the resolved control-plane scope.",
         "from": "repositories",
@@ -6762,6 +6882,7 @@
                 "overview-dispatch-summary",
                 "overview-delivery-summary",
                 "overview-value-summary",
+                "overview-factory-status",
                 "overview-registered-repository-summary",
                 "overview-worker-summary",
                 "overview-rhythm"

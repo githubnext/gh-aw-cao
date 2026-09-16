@@ -44,6 +44,7 @@ function overviewSources(overrides = {}) {
     'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 0, 'failed-dispatches': 0 }]),
     'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 0 }]),
     'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 0 }]),
+    'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is idle.' }]),
     'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 0 }]),
     'overview-worker-summary': source('overview-worker-summary', [{ workers: 0 }]),
     'overview-rhythm': source('overview-rhythm', []),
@@ -66,6 +67,7 @@ it('renders compact database summaries and distinct registered repository covera
       'overview-dispatch-summary': source('overview-dispatch-summary', [{ dispatches: 4, 'failed-dispatches': 2 }]),
       'overview-delivery-summary': source('overview-delivery-summary', [{ 'delivered-repositories': 3 }]),
       'overview-value-summary': source('overview-value-summary', [{ 'value-gains': 1 }]),
+      'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is delivering value.' }]),
       'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
       'overview-worker-summary': source('overview-worker-summary', [{ workers: 2 }]),
       'overview-rhythm': rhythmSource({ Wed: { current: 2, previous: 1, reached: true } })
@@ -114,22 +116,14 @@ it('animates overview counters only when selected by its JSON element configurat
 });
 
 it.each([
-  ['humming with active runs', { 'active-runs': 1 }, 'Your factory is humming.'],
-  ['under strain', { 'failed-runs': 2, 'successful-runs': 1 }, 'Your factory is under strain.'],
-  ['needs attention', { 'failed-runs': 1, 'successful-runs': 1 }, 'Your factory needs attention.'],
-  ['humming', { 'successful-runs': 1 }, 'Your factory is humming.'],
-  ['idle', {}, 'Your factory is idle.']
-])('describes a factory that is %s', (_state, values, expected) => {
+  ['humming', 'Your factory is humming.'],
+  ['under strain', 'Your factory is under strain.'],
+  ['needs attention', 'Your factory needs attention.'],
+  ['idle', 'Your factory is idle.']
+])('presents a factory status that is %s', (_state, expected) => {
   const rendered = renderFactoryOverview({
     sources: overviewSources({
-      'overview-run-summary': source('overview-run-summary', [{
-        'successful-runs': 0,
-        'failed-runs': 0,
-        'active-runs': 0,
-        'active-live': 0,
-        'active-review': 0,
-        ...values
-      }])
+      'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': expected }])
     })
   });
   expect(rendered.querySelector('h2')?.textContent).toBe(expected);
@@ -138,7 +132,7 @@ it.each([
 it('reports unavailable query evidence instead of inferring a factory state', () => {
   const rendered = renderFactoryOverview({
     sources: overviewSources({
-      'overview-run-summary': source('overview-run-summary', [], { availability: 'unavailable' })
+      'overview-factory-status': source('overview-factory-status', [], { availability: 'unavailable' })
     })
   });
   expect(rendered.querySelector('h2')?.textContent).toBe('Your factory status is unavailable.');
@@ -154,7 +148,8 @@ it('retains run status when optional outcome evidence is unavailable', () => {
         'active-runs': 0,
         'active-live': 0,
         'active-review': 0
-      }])
+      }]),
+      'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is humming.' }])
     })
   });
 
@@ -217,6 +212,7 @@ it('requests only compact query outputs and updates each station independently',
     'overview-dispatch-summary',
     'overview-delivery-summary',
     'overview-value-summary',
+    'overview-factory-status',
     'overview-registered-repository-summary',
     'overview-worker-summary',
     'overview-rhythm'
