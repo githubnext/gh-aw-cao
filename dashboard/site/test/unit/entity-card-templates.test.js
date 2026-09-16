@@ -46,9 +46,16 @@ describe('entity card templates', () => {
       page: 'workflow-run-cards',
       query: 'entity-runs'
     });
-    expect(views['workflow-runs-cards'].list.drill).toMatchObject({
-      page: 'run-events',
-      query: 'entity-events'
+    expect(templates.run).toMatchObject({
+      title: { field: 'workflow', format: 'workflow-relative-path' },
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: 'duration', title: 'Duration' }),
+        expect.objectContaining({ field: 'started-at', type: 'temporal', format: 'human-friendly-timestamp' })
+      ])
+    });
+    expect(views['workflow-runs-cards'].list.drill).toEqual({
+      type: 'external',
+      field: 'run-link'
     });
     expect(pages['run-events'].views).toEqual(['run-sessions', 'run-events']);
   });

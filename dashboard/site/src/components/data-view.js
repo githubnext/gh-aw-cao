@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js';
+import { formatAggregateValue, formatRelativeTime, formatString } from '../view-formatters.js';
 import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
 import { listChartSeries, pieChartEntries, renderChartLegend, renderPieChartLayout, renderPieLegend, renderChartWidget } from './chart-elements.js';
@@ -349,7 +349,10 @@ function renderEntityCardListView(options) {
 function renderEntityCardItems(rows, options) {
   const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0 } = options;
   return rows.map((row, index) => {
-    const titleText = toText(row[definition.title.field]);
+    const rawTitle = row[definition.title.field];
+    const titleText = definition.title.format
+      ? formatString(rawTitle, definition.title.format, '')
+      : toText(rawTitle);
     const target = resolveEntityCardDrill(row, drill, titleText);
     const titleContent = target?.external
       ? renderExternalLink(target.link)

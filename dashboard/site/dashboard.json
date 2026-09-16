@@ -33,16 +33,17 @@
       {
         "id": "run",
         "icon": "play",
-        "title": { "field": "run", "title": "Run" },
+        "title": { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
         "labels": [
           { "field": "run-status", "title": "Status", "display": "status" },
           { "field": "run-conclusion", "title": "Conclusion", "display": "status" }
         ],
         "details": [
+          { "field": "run", "title": "Run" },
           { "field": "repository", "title": "Repository" },
-          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
           { "field": "run-attempt", "title": "Attempt" },
-          { "field": "started-at", "title": "Started", "format": "human-friendly-timestamp" }
+          { "field": "duration", "title": "Duration" },
+          { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" }
         ]
       },
       {
@@ -220,17 +221,8 @@
           "card": "run",
           "icon": "play",
           "drill": {
-            "type": "query",
-            "page": "run-events",
-            "query": "entity-events",
-            "title-field": "run",
-            "arguments": [
-              { "name": "organization", "field": "organization" },
-              { "name": "repository", "field": "repository" },
-              { "name": "workflow", "field": "workflow" },
-              { "name": "run", "field": "run" },
-              { "name": "run-attempt", "field": "run-attempt" }
-            ]
+            "type": "external",
+            "field": "run-link"
           }
         },
         "empty-message": "No runs observed.",
@@ -266,17 +258,8 @@
           "card": "run",
           "icon": "play",
           "drill": {
-            "type": "query",
-            "page": "run-events",
-            "query": "entity-events",
-            "title-field": "run",
-            "arguments": [
-              { "name": "organization", "field": "organization" },
-              { "name": "repository", "field": "repository" },
-              { "name": "workflow", "field": "workflow" },
-              { "name": "run", "field": "run" },
-              { "name": "run-attempt", "field": "run-attempt" }
-            ]
+            "type": "external",
+            "field": "run-link"
           }
         },
         "empty-message": "No runs were observed for this workflow.",
@@ -753,6 +736,7 @@
           { "field": "run-status" },
           { "field": "run-conclusion" },
           { "field": "started-at" },
+          { "field": "duration" },
           { "field": "run-link" }
         ],
         "order-by": [{ "field": "started-at", "direction": "desc" }]

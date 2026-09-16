@@ -336,6 +336,57 @@ describe('data view renderer', () => {
       .toBe('#page-issue-events?query=issue-events&title=Investigate+failing+compiler+run&issue-id=42');
   });
 
+  it('formats workflow run card titles and links them to GitHub', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'runs',
+      title: 'Runs',
+      sourceName: 'entity-runs',
+      rows: [{
+        workflow: '.github/workflows/dashboard.md',
+        run: '303',
+        duration: '2m 14s',
+        'started-at': new Date(Date.now() - 5 * 60_000).toISOString(),
+        'run-link': {
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303',
+          label: 'Run 303'
+        }
+      }],
+      cardTemplates: {
+        run: {
+          icon: 'play',
+          title: { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
+          labels: [],
+          details: [
+            { field: 'duration', title: 'Duration' },
+            { field: 'started-at', type: 'temporal', title: 'Started', format: 'human-friendly-timestamp' }
+          ]
+        }
+      },
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          card: 'run',
+          drill: { type: 'external', field: 'run-link' }
+        },
+        encoding: { columns: [{ field: 'workflow' }] }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const title = rendered?.querySelector('.entity-card-list-title a');
+    expect(title?.textContent).toContain('dashboard.md');
+    expect(title?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/303');
+    expect(rendered?.querySelector('.issue-list-card-meta')?.textContent).toContain('2m 14s');
+    expect(rendered?.querySelector('.issue-list-card-meta time')?.textContent).toBe('5 minutes ago');
+  });
+
   it('keeps a list action available when its source is unavailable', () => {
     setDeclaredCliActions([{
       id: 'upgrade-repository',
