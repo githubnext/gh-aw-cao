@@ -40,7 +40,7 @@ Ready to explore? [See the docs](https://githubnext.github.io/gh-aw-cao/).
 
 ## Agent plugin and Requirements
 
-This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-cao`, `add-cao-package`, `create-cao-package`, `analyze-cao`, and `cao-cli` skills. The experimental repository-local `codebase-model` skill lives under `.github/skills/`.
+This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-cao`, `add-cao-package`, `create-cao-package`, `analyze-cao`, and `cao-cli` skills.
 
 Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `setup-cao` to create a control plane from scratch, `add-cao-package` to discover and safely install an existing catalog package, `create-cao-package` with an operational strategy and target-repository description, `analyze-cao` to download and query CAO activity data with the `cao` CLI, or `cao-cli` for a general reference on using `cao` in local development and inside agentic workflow runs.
 
