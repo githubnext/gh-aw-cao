@@ -367,7 +367,7 @@ function enableResponsiveReportActions(root, signal) {
       && mobileToggleAnchor instanceof HTMLElement
       && desktopToggleSlot instanceof HTMLElement
     ) {
-      if (media.matches) {
+      if (media.matches || root.classList.contains('dashboard-full-view-scrolled')) {
         if (viewModeToggle.parentElement !== mobileToggleSlot) {
           mobileToggleSlot.insertBefore(viewModeToggle, mobileToggleAnchor);
         }
@@ -378,6 +378,9 @@ function enableResponsiveReportActions(root, signal) {
   };
   placeActions();
   media.addEventListener?.('change', placeActions, { signal });
+  const observer = new MutationObserver(placeActions);
+  observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+  signal.addEventListener('abort', () => observer.disconnect(), { once: true });
 }
 
 /**
