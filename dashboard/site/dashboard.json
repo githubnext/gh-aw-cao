@@ -3334,27 +3334,69 @@
         "description": "Observed operational value totals grouped by producing workflow.",
         "from": "operational-values",
         "aggregate": {
-          "by": ["workflow"],
+          "by": ["organization", "repository", "workflow"],
           "values": [{ "field": "operational-value", "as": "value-created", "reducer": "sum" }]
         }
+      },
+      {
+        "name": "workflow-operational-values",
+        "intent": "Attribute each workflow's operational value to its centrally managed package.",
+        "description": "Observed operational value totals enriched with package and workflow identity.",
+        "from": "workflow-operational-value-totals",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "inner",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [
+              { "field": "package" },
+              { "field": "package-name" },
+              { "field": "workflow-name" },
+              { "field": "workflow-role" },
+              { "field": "workflow-link" }
+            ]
+          }
+        ],
+        "filter": { "predicates": [{ "field": "workflow-role", "in": ["orchestrator", "worker"] }] },
+        "compute": [
+          {
+            "as": "workflow-display-name",
+            "function": "coalesce",
+            "args": [{ "field": "workflow-name" }, { "field": "workflow" }]
+          },
+          {
+            "as": "repository-slug",
+            "function": "concat",
+            "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+          }
+        ],
+        "select": [
+          { "field": "package" },
+          { "field": "package-name" },
+          { "field": "repository-slug", "as": "repository" },
+          { "field": "workflow" },
+          { "field": "workflow-display-name", "as": "workflow-name" },
+          { "field": "workflow-role" },
+          { "field": "value-created" },
+          { "field": "workflow-link" }
+        ],
+        "order-by": [
+          { "field": "value-created", "direction": "desc" },
+          { "field": "workflow-name", "direction": "asc" }
+        ]
       },
       {
         "name": "package-operational-value-totals",
         "intent": "Summarize the operational value created by each centrally managed package.",
         "description": "Observed operational value totals attributed to centrally managed package workflows.",
-        "from": "workflow-inventory",
-        "joins": [
-          {
-            "source": "workflow-operational-value-totals",
-            "type": "inner",
-            "on": [{ "left": "workflow", "right": "workflow" }],
-            "fields": [{ "field": "value-created", "as": "workflow-value-created" }]
-          }
-        ],
-        "filter": { "predicates": [{ "field": "workflow-role", "in": ["orchestrator", "worker"] }] },
+        "from": "workflow-operational-values",
         "aggregate": {
-          "by": ["package"],
-          "values": [{ "field": "workflow-value-created", "as": "value-created", "reducer": "sum" }]
+          "by": ["package", "package-name"],
+          "values": [{ "field": "value-created", "as": "value-created", "reducer": "sum" }]
         }
       },
       {
@@ -6868,64 +6910,77 @@
         "navigation-label": "Value",
         "icon": "beaker",
         "class-name": "value-page",
-        "description": "Outcome, grader, maturity, AI Credit, and experiment-readiness evidence for the configured repositories.",
+        "description": "Operational value created by centrally managed packages and their workflows.",
         "views": [
           {
-            "id": "operational-value-ledger",
+            "id": "operational-value-by-package",
+            "title": "Value created by package",
+            "description": "The share of observed operational value created by each centrally managed package.",
             "data": {
-              "source": "grader-observations"
+              "source": "package-operational-value-totals"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "empty-message": "No package operational value was observed in the selected horizon.",
+            "layout": "horizontal",
+            "encoding": {
+              "x": {
+                "field": "package-name",
+                "type": "nominal",
+                "title": "Package"
+              },
+              "y": {
+                "field": "value-created",
+                "type": "quantitative",
+                "aggregate": "sum",
+                "title": "Value created",
+                "unit": "grade"
+              }
+            }
+          },
+          {
+            "id": "operational-value-by-workflow",
+            "title": "Workflow operational value",
+            "description": "Individual operational value totals for each evaluated package workflow.",
+            "data": {
+              "source": "workflow-operational-values"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No operational-value grader records were retained.",
+            "empty-message": "No workflow operational value was observed in the selected horizon.",
             "layout": "full-view",
             "encoding": {
+              "href": {
+                "field": "workflow-link",
+                "type": "nominal"
+              },
               "columns": [
                 {
-                  "field": "grader",
+                  "field": "package-name",
+                  "type": "nominal",
+                  "title": "Package"
+                },
+                {
+                  "field": "workflow-name",
                   "type": "nominal",
                   "title": "Workflow"
                 },
                 {
-                  "field": "status",
-                  "type": "nominal",
-                  "display": "grader-status",
-                  "title": "Status"
-                },
-                {
-                  "field": "maturity-status",
+                  "field": "workflow-role",
                   "type": "nominal",
                   "display": "label",
-                  "title": "Maturity"
+                  "title": "Role"
                 },
                 {
-                  "field": "value",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Value"
-                },
-                {
-                  "field": "baseline-value",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Baseline"
-                },
-                {
-                  "field": "delta-from-baseline",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Delta"
-                },
-                {
-                  "field": "evaluator-digest",
+                  "field": "repository",
                   "type": "nominal",
-                  "display": "digest",
-                  "title": "Evaluator"
+                  "title": "Repository"
                 },
                 {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
+                  "field": "value-created",
+                  "type": "quantitative",
+                  "unit": "grade",
+                  "title": "Operational value"
                 }
               ]
             },
