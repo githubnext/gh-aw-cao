@@ -15,20 +15,13 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
   assert.match(manifest.description, /analyze activity data/);
   assert.match(manifest.description, /local CAO dashboard previews/);
   assert.deepEqual(manifest.extensions, { "com.github.copilot": {} });
-  await readFile(new URL("skills/create-ops-package/SKILL.md", root), "utf8");
-  await readFile(new URL("skills/analyze-agentic-ops/SKILL.md", root), "utf8");
-
-  const caoCliSkill = await readFile(
-    new URL("skills/cao-cli/SKILL.md", root),
-    "utf8",
-  );
-  assert.match(caoCliSkill, /^---\nname: cao-cli\n/);
-
-  const setupSkill = await readFile(
-    new URL("skills/setup-central-agentic-ops/SKILL.md", root),
-    "utf8",
-  );
-  assert.match(setupSkill, /^---\nname: setup-central-agentic-ops\n/);
+  for (const skillName of ["setup-cao", "create-cao-package", "analyze-cao", "cao-cli"]) {
+    const skill = await readFile(
+      new URL(`skills/${skillName}/SKILL.md`, root),
+      "utf8",
+    );
+    assert.match(skill, new RegExp(`^---\\nname: ${skillName}\\n`));
+  }
 });
 
 test("Copilot extension uses the current Canvas provider contract", async () => {

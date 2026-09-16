@@ -25,7 +25,7 @@ Before you begin, make sure you have:
 
 :::tip[Start with the setup skill]
 From an empty control repository, ask your coding agent to load and follow the
-[`setup-central-agentic-ops` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-central-agentic-ops/SKILL.md).
+[`setup-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-cao/SKILL.md).
 The skill gathers the control repository, operation, target, visibility, and authentication choices before it changes the repository, then proves the boundary with one review run. The manual steps below describe the same boundary for operators who need to inspect each action.
 :::
 
@@ -87,7 +87,8 @@ The root package installs:
 
 1. shared authentication, routing, and fail-closed controls;
 2. the activity and dashboard infrastructure;
-3. the `cao` CLI runtime under `.github/aw/activity/`.
+3. the `cao` CLI runtime under `.github/aw/activity/`; and
+4. CAO project skills under `.github/skills/` for Copilot discovery in the control repository.
 
 Install Dependabot through CAO so its package declaration is merged automatically:
 

@@ -445,7 +445,7 @@ test("orchestrators use checked-in policy with independent manual narrowing", ()
 });
 
 test("operation workflows optionally load per-operation markdown steering", () => {
-  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
 
   assert.match(packageSkill, /Every orchestrator and worker prompt must include[\s\S]*at the bottom of the Markdown body/);
   assert.match(packageSkill, /Never place the runtime import at the top of the Markdown body/);

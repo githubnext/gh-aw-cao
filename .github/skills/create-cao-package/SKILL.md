@@ -1,16 +1,16 @@
 ---
-name: create-ops-package
-description: "Create a Central Agentic Ops package from an agentic strategy, operational idea, or deterministic add-on. Use when adding an ops package, orchestrator/worker workflow family, organization-wide agentic automation, or the dashboard package; follows the repository's operational-package and add-on contracts."
+name: create-cao-package
+description: "Create a CAO package from an agentic strategy, operational idea, or deterministic add-on. Use when adding a CAO package, orchestrator/worker workflow family, organization-wide agentic automation, or the dashboard package; follows the repository's operational-package and add-on contracts."
 argument-hint: "Describe the agentic strategy, target repositories, and desired outcomes"
 ---
 
-# Create a Central Agentic Ops Package
+# Create a CAO Package
 
 Turn an operational idea into a complete package of GitHub Agentic Workflows. An operational package always contains one orchestrator and at least one worker. Never finish an operational package with a standalone workflow. The deterministic dashboard follows the explicit add-on exception below.
 
 ## Setup Handoff
 
-When invoked from `.github/skills/setup-central-agentic-ops/SKILL.md`, accept the recorded desired outcome and target-repository description as the starting package contract. Do not repeat the custom-package yes/no question or restart control-plane setup. Ask only for unresolved package decisions, work in a CAO package-authoring checkout, and keep package authoring separate from the already proven control-repository setup commit and run.
+When invoked from `.github/skills/setup-cao/SKILL.md`, accept the recorded desired outcome and target-repository description as the starting package contract. Do not repeat the custom-package yes/no question or restart control-plane setup. Ask only for unresolved package decisions, work in a CAO package-authoring checkout, and keep package authoring separate from the already proven control-repository setup commit and run.
 
 ## Copilot Authentication Profile
 

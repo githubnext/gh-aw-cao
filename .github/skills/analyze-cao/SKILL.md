@@ -1,13 +1,13 @@
 ---
-name: analyze-agentic-ops
-description: Download and query Central Agentic Ops activity data with the cao CLI.
+name: analyze-cao
+description: Download and query CAO activity data with the cao CLI.
 argument-hint: "[dashboard-data-url-or-owner/repo]"
 allowed-tools: bash jq
 metadata:
   version: "1.0.0"
 ---
 
-# Analyze Agentic Ops Data
+# Analyze CAO Data
 
 Use this skill when a user asks to inspect, analyze, investigate, or summarize Central Agentic Ops activity data from the deployed dashboard snapshot or another published dashboard data URL.
 
