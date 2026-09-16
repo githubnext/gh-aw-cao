@@ -203,6 +203,8 @@ validation:
     - repository_root.entries.full_validation
   workflow_source_command_refs:
     - repository_root.entries.workflow_compile
+  workflow_source_generated_artifact_command_refs:
+    - repository_root.entries.workflow_compile_locks
   architecture:
     - "Verify package contents against root and package aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."
