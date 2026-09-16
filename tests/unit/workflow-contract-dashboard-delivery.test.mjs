@@ -426,8 +426,8 @@ test("Documentation Pages deploys stable release and current beta dashboards", (
   assert.match(workflow, /actions: read/);
   assert.match(workflow, /Mount current CAO Dashboard as beta[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: dist\/cao-beta[\s\S]*?run-id: \$\{\{ steps\.dashboard-run\.outputs\.run-id \}\}/);
   assert.match(workflow, /Mount latest CAO release dashboard[\s\S]*?if: needs\.latest-dashboard\.result == 'success'[\s\S]*?name: cao-release-dashboard[\s\S]*?path: dist\/cao/);
-  assert.match(workflow, /Find previous successful Documentation Pages dashboard[\s\S]*?if: needs\.latest-dashboard\.result != 'success'[\s\S]*?actions\/workflows\/docs\.yml\/runs\?branch=\$DEFAULT_BRANCH&status=success&per_page=100/);
-  assert.match(workflow, /Mount previous successful CAO release dashboard[\s\S]*?name: cao-release-dashboard[\s\S]*?path: dist\/cao[\s\S]*?run-id: \$\{\{ steps\.previous-documentation-run\.outputs\.run-id \}\}/);
+  assert.match(workflow, /Use current CAO Dashboard as stable fallback\n\s+if: needs\.latest-dashboard\.result != 'success'\n\s+run: cp -R dist\/cao-beta dist\/cao/);
+  assert.doesNotMatch(workflow, /previous-documentation-run|actions\/workflows\/docs\.yml\/runs/);
   assert.equal((workflow.match(/actions\/upload-pages-artifact@/g) || []).length, 1);
   assert.equal((workflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(dashboardWorkflow, /workflow_call:/);
