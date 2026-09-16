@@ -14,11 +14,10 @@ and tested independently. Components own presentation and interaction while
 Dashboard Language owns filtering, joins, and operational calculations. This
 keeps the interface consistent without hiding business logic in page code.
 
-<picture>
-	<source media="(prefers-color-scheme: dark)" srcset="/gh-aw-cao/assets/dashboard-overview-desktop-dark.svg">
-	<source media="(prefers-color-scheme: light)" srcset="/gh-aw-cao/assets/dashboard-overview-desktop-light.svg">
-	<img alt="Color-coded map of the Overview page component boundaries" src="/gh-aw-cao/assets/dashboard-overview-desktop-light.svg">
-</picture>
+<div class="docs-theme-diagram">
+	<img class="docs-theme-diagram-light" alt="Color-coded map of the Overview page component boundaries" src="/gh-aw-cao/assets/dashboard-overview-desktop-light.svg">
+	<img class="docs-theme-diagram-dark" alt="Color-coded map of the Overview page component boundaries" src="/gh-aw-cao/assets/dashboard-overview-desktop-dark.svg">
+</div>
 
 ## Responsive by design
 

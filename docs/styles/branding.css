@@ -8,6 +8,27 @@
   -webkit-text-fill-color: var(--sl-color-white) !important;
 }
 
+.docs-theme-diagram-dark {
+  display: block;
+}
+
+.docs-theme-diagram-light {
+  display: none;
+}
+
+:root[data-theme="light"] .docs-theme-diagram-dark {
+  display: none;
+}
+
+:root[data-theme="light"] .docs-theme-diagram-light {
+  display: block;
+}
+
+.mermaid {
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
 @media (max-width: 22rem) {
   .site-title {
     gap: 0.5rem;

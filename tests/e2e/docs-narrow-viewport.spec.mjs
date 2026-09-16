@@ -32,30 +32,15 @@ test("sidebar groups Dashboard documentation by reader task", async ({ page }) =
   const dashboardGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Dashboard$/ }).locator("..");
   await expect(dashboardGroup.locator(":scope > summary")).toHaveText("Dashboard");
   await expect(dashboardGroup.getByRole("link")).toHaveText([
-    "What it shows",
+    "At a glance",
+    "Data ingestion",
     "Data model",
     "Language",
-    "About this view",
-    "Status header",
-    "Factory rhythm",
-    "Registered repositories",
-    "Successful runs",
-    "Dispatches",
-    "Value gains"
+    "Overview"
   ]);
   const viewsGroup = dashboardGroup.locator(":scope > ul > li > details");
   await expect(viewsGroup.locator(":scope > summary")).toHaveText("Views");
-  const overviewGroup = viewsGroup.locator(":scope > ul > li > details");
-  await expect(overviewGroup.locator(":scope > summary")).toHaveText("Overview");
-  await expect(overviewGroup.getByRole("link")).toHaveText([
-    "About this view",
-    "Status header",
-    "Factory rhythm",
-    "Registered repositories",
-    "Successful runs",
-    "Dispatches",
-    "Value gains"
-  ]);
+  await expect(viewsGroup.getByRole("link")).toHaveText(["Overview"]);
 });
 
 for (const { name, viewport, scene } of [
@@ -91,44 +76,44 @@ for (const { name, viewport, scene } of [
   }
 }
 
-for (const colorScheme of ["light", "dark"]) {
-  test(`dashboard view diagram loads its ${colorScheme} SVG`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme });
-    expect((await page.goto("dashboard/"))?.ok()).toBe(true);
+const dashboardDiagramPages = [
+  { name: "view system", path: "dashboard/" },
+  { name: "data flow", path: "dashboard-data-ingestion/" },
+  { name: "Overview components", path: "dashboard-overview-components/" },
+];
 
-    const diagram = page.locator('img[alt^="Language queries the shared data model"]');
-    await expect(diagram).toHaveJSProperty("complete", true);
-    expect(await diagram.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
-    expect(await diagram.evaluate((image) => image.naturalHeight)).toBeGreaterThan(0);
-    expect(await diagram.evaluate((image) => image.currentSrc)).toContain(`-${colorScheme}.svg`);
-  });
+for (const { name, path } of dashboardDiagramPages) {
+  for (const colorScheme of ["light", "dark"]) {
+    test(`${name} diagram loads its ${colorScheme} SVG in auto mode`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme });
+      expect((await page.goto(path))?.ok()).toBe(true);
+      await page.getByRole("combobox", { name: "Select theme" }).selectOption("auto");
 
-  test(`dashboard data flow diagram loads its ${colorScheme} SVG`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme });
-    expect((await page.goto("dashboard-data-model/"))?.ok()).toBe(true);
-
-    const diagram = page.locator('img[alt^="Agentic workflow logs are collected by Activity"]');
-    await expect(diagram).toHaveJSProperty("complete", true);
-    expect(await diagram.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
-    expect(await diagram.evaluate((image) => image.naturalHeight)).toBeGreaterThan(0);
-    expect(await diagram.evaluate((image) => image.currentSrc)).toContain(`-${colorScheme}.svg`);
-  });
-}
-
-for (const colorScheme of ["light", "dark"]) {
-  test(`Overview component diagram loads its ${colorScheme} SVG`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme });
-    expect((await page.goto("dashboard-overview-components/"))?.ok()).toBe(true);
-
-    const diagrams = page.locator('img[alt^="Color-coded map of the Overview"]');
-    await expect(diagrams).toHaveCount(1);
-    for (const diagram of await diagrams.all()) {
+      const diagram = page.locator(`.docs-theme-diagram-${colorScheme}`);
+      const otherDiagram = page.locator(`.docs-theme-diagram-${colorScheme === "light" ? "dark" : "light"}`);
+      await expect(diagram).toBeVisible();
+      await expect(otherDiagram).toBeHidden();
       await expect(diagram).toHaveJSProperty("complete", true);
       expect(await diagram.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
       expect(await diagram.evaluate((image) => image.naturalHeight)).toBeGreaterThan(0);
       expect(await diagram.evaluate((image) => image.currentSrc)).toContain(`-${colorScheme}.svg`);
-    }
-  });
+    });
+  }
+
+  for (const theme of ["light", "dark"]) {
+    test(`${name} diagram honors manual ${theme} mode`, async ({ page }) => {
+      const oppositeTheme = theme === "light" ? "dark" : "light";
+      await page.emulateMedia({ colorScheme: oppositeTheme });
+      expect((await page.goto(path))?.ok()).toBe(true);
+      await page.getByRole("combobox", { name: "Select theme" }).selectOption(theme);
+
+      const diagram = page.locator(`.docs-theme-diagram-${theme}`);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      await expect(diagram).toBeVisible();
+      await expect(page.locator(`.docs-theme-diagram-${oppositeTheme}`)).toBeHidden();
+      expect(await diagram.evaluate((image) => image.currentSrc)).toContain(`-${theme}.svg`);
+    });
+  }
 }
 
 test("long code remains in a keyboard-focusable local scroll region", async ({ page }) => {

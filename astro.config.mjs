@@ -123,24 +123,14 @@ export default defineConfig({
         {
           label: "Dashboard",
           items: [
-            { label: "What it shows", link: "/dashboard/" },
+            { label: "At a glance", link: "/dashboard/" },
+            { label: "Data ingestion", link: "/dashboard-data-ingestion/" },
             { label: "Data model", link: "/dashboard-data-model/" },
-            { label: "Language", link: "/dashboard-language-specification/" },
+            { label: "Language", link: "/dashboard-language/" },
             {
               label: "Views",
               items: [
-                {
-                  label: "Overview",
-                  items: [
-                    { label: "About this view", link: "/dashboard-overview-components/" },
-                    { label: "Status header", link: "/dashboard-overview-status-header/" },
-                    { label: "Factory rhythm", link: "/dashboard-overview-factory-rhythm/" },
-                    { label: "Registered repositories", link: "/dashboard-overview-registered-repositories/" },
-                    { label: "Successful runs", link: "/dashboard-overview-successful-runs/" },
-                    { label: "Dispatches", link: "/dashboard-overview-dispatches/" },
-                    { label: "Value gains", link: "/dashboard-overview-value-gains/" },
-                  ],
-                },
+                { label: "Overview", link: "/dashboard-overview/" },
               ],
             },
           ],
