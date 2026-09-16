@@ -17,6 +17,7 @@ project:
     - Astro/Starlight
 
 structure:
+  architecture_document: ARCHITECTURE.md
   catalog_manifest: aw.yml
   operations: <operation>/aw.yml
   activity: activity/
@@ -169,33 +170,39 @@ generation:
     path: specs/
 
 commands:
-  full_validation: npm run check
-  control_typecheck: npm run typecheck:cao
-  tests: npm test
-  unit_tests: npm run test:unit
-  integration_tests: npm run test:integration
-  package_lifecycle_tests: npm run test:package-lifecycle
-  package_root_tests: npm run test:package-root
-  load_tests: npm run test:load
-  svg_check: npm run check:svg
-  workflow_compile: npm run compile
-  manual_workflow_compile: gh aw compile --schedule-seed githubnext/gh-aw-cao
-  workflow_compile_locks: npm run compile:locks
-  docs_build: npm run docs:build
-  dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
-  dashboard_local_copilot: npm run dashboard:local:copilot
-  dashboard_site_tests: "cd dashboard/site && npm test"
-  dashboard_site_e2e_tests: "cd dashboard/site && npm run test:e2e"
-  dashboard_site_performance_tests: "cd dashboard/site && npm run test:performance"
-  dashboard_site_lint: "cd dashboard/site && npm run lint"
-  dashboard_site_typecheck: "cd dashboard/site && npm run typecheck"
-  dashboard_site_corpus_validation: "cd dashboard/site && npm run validate:corpus"
+  repository_root:
+    working_directory: .
+    entries:
+      full_validation: npm run check
+      control_typecheck: npm run typecheck:cao
+      tests: npm test
+      unit_tests: npm run test:unit
+      integration_tests: npm run test:integration
+      package_lifecycle_tests: npm run test:package-lifecycle
+      package_root_tests: npm run test:package-root
+      load_tests: npm run test:load
+      svg_check: npm run check:svg
+      workflow_compile: npm run compile
+      manual_workflow_compile: gh aw compile --schedule-seed githubnext/gh-aw-cao
+      workflow_compile_locks: npm run compile:locks
+      docs_build: npm run docs:build
+      dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
+      dashboard_local_copilot: npm run dashboard:local:copilot
+  dashboard_site:
+    working_directory: dashboard/site/
+    entries:
+      tests: npm test
+      e2e_tests: npm run test:e2e
+      performance_tests: npm run test:performance
+      lint: npm run lint
+      typecheck: npm run typecheck
+      corpus_validation: npm run validate:corpus
 
 validation:
   command_refs:
-    - full_validation
+    - repository_root.entries.full_validation
   workflow_source_command_refs:
-    - workflow_compile
+    - repository_root.entries.workflow_compile
   architecture:
     - "Verify package contents against root and package aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."
