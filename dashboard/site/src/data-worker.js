@@ -331,6 +331,7 @@ export function processDataRequest(request, signal) {
     return (async () => {
       const progress = startIngestionProgress();
       const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
+      if (!activity) progress.start();
       let changed = false;
       try {
         progress.log(activity ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
@@ -351,7 +352,6 @@ export function processDataRequest(request, signal) {
           const shards = normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
           const normalized = normalizedShards.length > 0;
           const shardCount = shards.length;
-          progress.reportShardImportProgress(0, shardCount);
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
             shardCount,
@@ -416,6 +416,10 @@ export function processDataRequest(request, signal) {
             shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
           }
           const pendingShards = shardStates.filter(({ current }) => !current);
+          if (pendingShards.length > 0) {
+            progress.start();
+            progress.reportShardImportProgress(shardStates.length - pendingShards.length, shardCount);
+          }
           await Promise.all(pendingShards.map(async (state) => {
             const response = await fetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
             const contentLength = response?.ok ? Number(response.headers.get('content-length')) : Number.NaN;

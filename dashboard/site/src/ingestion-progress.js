@@ -29,7 +29,6 @@ function publishWorkerLoadingProgress(state, target = self) {
  */
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
-  publishWorkerLoadingProgress({ id, phase: 'start' }, target);
   const clock = createElapsedStepTracker('Preparing data...', {
     historyLimit: INGESTION_PROGRESS_HISTORY_LIMIT
   });
@@ -38,6 +37,7 @@ export function startIngestionProgress(target = self) {
   let processedBytes = 0;
   /** @type {number | undefined} */
   let totalBytes;
+  let started = false;
   let completed = false;
   const updateStatus = () => {
     if (workloadStartedAt === 0) {
@@ -73,12 +73,19 @@ export function startIngestionProgress(target = self) {
   };
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let interval;
-  const delay = setTimeout(() => {
-    if (completed) return;
-    report();
-    interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
-  }, INGESTION_PROGRESS_DELAY_MS);
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let delay;
   return {
+    start() {
+      if (started || completed) return;
+      started = true;
+      publishWorkerLoadingProgress({ id, phase: 'start' }, target);
+      delay = setTimeout(() => {
+        if (completed) return;
+        report();
+        interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
+      }, INGESTION_PROGRESS_DELAY_MS);
+    },
     /** @param {number | undefined} bytes */
     setWorkload(bytes) {
       totalBytes = typeof bytes === 'number' && Number.isFinite(bytes) && bytes >= 0 ? bytes : undefined;
@@ -121,13 +128,15 @@ export function startIngestionProgress(target = self) {
     },
     /** @param {number} completed @param {number} total */
     reportShardImportProgress(completed, total) {
+      if (!started) return;
       publishWorkerLoadingProgress({ id, phase: 'update', completed, total }, target);
     },
     complete() {
       if (completed) return;
       completed = true;
-      clearTimeout(delay);
+      if (delay) clearTimeout(delay);
       if (interval) clearInterval(interval);
+      if (!started) return;
       publishWorkerLoadingProgress({ id, phase: 'complete' }, target);
       publishWorkerNotification({ id, dismiss: true }, target);
     }
