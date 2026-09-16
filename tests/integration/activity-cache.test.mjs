@@ -54,6 +54,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?Download agentic workflow logs/,
   );
+  assert.match(
+    indexJob,
+    /Download agentic workflow logs\n\s+continue-on-error: true[\s\S]*?Ingest activity database/,
+  );
   assert.match(workflow, /REPORT_CONTROL_SETTINGS:[\s\S]*?bash "\$collector"/);
   assert.match(collector, /jq -r '\.allowed_repositories\[\]\?'/);
   assert.match(collector, /--repo "\$target_repository"/);
@@ -68,7 +72,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /Hash activity payloads[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
+    /Hash activity payloads[\s\S]*?REPORT_GH_AW_LOGS_NORMALIZED: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-normalized[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--normalized-dir "\$REPORT_GH_AW_LOGS_NORMALIZED"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
   );
   assert.match(
     cacheJob,

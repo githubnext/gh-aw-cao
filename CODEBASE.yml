@@ -170,6 +170,7 @@ invariants:
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute in the data Web Worker."
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
+  - "ADRs are durable decision history; current requirements and conformance rules live in specs/ or specification-style documentation."
   - "Generated workflow lock files MUST NOT be edited directly."
   - "Installed package records MUST be updated through gh-aw package commands."
   - "Policy and workflow changes MUST be committed together."

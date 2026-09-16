@@ -717,75 +717,42 @@ describe('declarative dashboard queries', () => {
     });
   });
 
-  it('projects MCP activity entirely from declarative event queries', () => {
-      const events = {
-        source: 'events',
+  it('groups MCP activity by tool and excludes the safe outputs server', () => {
+      const mcpCalls = {
+        source: 'mcp-calls',
         rows: [
           {
-            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
-            session: 'session-1', 'event-source': 'mcp',
-            'event-type': 'tool.call', 'event-summary': 'github/search_issues',
-            'event-timestamp': '2026-09-01T00:00:00Z', 'correlation-id': 'call-1'
+            'mcp-observation': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
           },
           {
-            session: 'session-1', 'event-source': 'mcp',
-            'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': 'call-1'
+            'mcp-observation': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
           },
           {
-            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
-            session: 'session-2', 'event-source': 'mcp',
-            'event-type': 'tool.call', 'event-summary': 'github/create_issue',
-            'event-timestamp': '2026-09-02T00:00:00Z', 'correlation-id': 'call-1'
+            'mcp-observation': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue'
           },
           {
-            session: 'session-2', 'event-source': 'mcp',
-            'event-type': 'tool.error', 'event-status': 'failure', 'correlation-id': 'call-1'
-          },
-          {
-            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '3', 'run-attempt': 1,
-            session: 'session-3', 'event-source': 'mcp',
-            'event-type': 'tool.call', 'event-summary': 'github/get_file',
-            'event-timestamp': '2026-08-31T00:00:00Z', 'correlation-id': 'call-3'
-          },
-          {
-            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '4', 'run-attempt': 1,
-            session: 'session-4', 'event-source': 'agent',
-            'event-type': 'tool.call', 'event-summary': 'shell',
-            'event-timestamp': '2026-09-03T00:00:00Z', 'correlation-id': 'call-4'
+            'mcp-observation': 'call-4', 'mcp-server': 'safe_outputs', 'mcp-tool': 'create_issue'
           }
         ],
-        metadata: metadata('events')
-      };
-      const runs = {
-        source: 'runs',
-        rows: [
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, 'run-link': { href: 'run-1' } },
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, 'run-link': { href: 'run-2' } },
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '3', 'run-attempt': 1, 'run-link': { href: 'run-3' } },
-          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '4', 'run-attempt': 1, 'run-link': { href: 'run-4' } }
-        ],
-        metadata: metadata('runs')
+        metadata: metadata('mcp-calls')
       };
 
-      const derived = executeDashboardQueries(dashboardQueries, { events, runs }, ['mcp-tool-activity']);
+      const derived = executeDashboardQueries(dashboardQueries, { 'mcp-calls': mcpCalls }, ['mcp-tool-totals', 'mcp-top-tools']);
 
-      expect(Object.keys(derived)).toEqual(['mcp-tool-activity']);
-      expect(derived['mcp-tool-activity']).toMatchObject({
+      expect(Object.keys(derived)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
+      expect(derived['mcp-tool-totals']).toMatchObject({
         rows: [
-          {
-            'mcp-tool': 'github/create_issue', 'mcp-status': 'failure',
-            repository: 'gh-aw-cao', run: '2', 'run-link': { href: 'run-2' }
-          },
-          {
-            'mcp-tool': 'github/search_issues', 'mcp-status': 'success',
-            repository: 'gh-aw-cao', run: '1', 'run-link': { href: 'run-1' }
-          },
-          {
-            'mcp-tool': 'github/get_file', 'mcp-status': 'missing',
-            repository: 'gh-aw-cao', run: '3', 'run-link': { href: 'run-3' }
-          }
+          { 'mcp-tool': 'github/search_issues', calls: 2 },
+          { 'mcp-tool': 'github/create_issue', calls: 1 }
         ],
-        metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-activity' }
+        metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-totals' }
+      });
+      expect(derived['mcp-top-tools']).toMatchObject({
+        rows: [
+          { 'mcp-tool': 'github/search_issues', calls: 2 },
+          { 'mcp-tool': 'github/create_issue', calls: 1 }
+        ],
+        metadata: { 'source-kind': 'derived', 'query-name': 'mcp-top-tools' }
     });
   });
 

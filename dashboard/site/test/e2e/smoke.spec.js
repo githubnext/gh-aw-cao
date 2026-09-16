@@ -641,6 +641,10 @@ test('Transactions includes local database controls and a responsive transaction
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect(view).toBeHidden();
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(view).toBeVisible();
+  await expect(root).toHaveClass(/dashboard-full-view/);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
@@ -794,14 +798,18 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   await expect(swimlane).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(swimlane).toBeVisible();
+  await expect(table).toBeHidden();
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(swimlane).toBeHidden();
   await expect(table).toBeVisible();
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expectAlignedColumnHeaders();
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true);
 });
 
-test('a page combining a chart with a full-view table scrolls the whole page instead of pinning the table', async ({ page }) => {
+test('a mobile page combining a chart with a full-view table switches between the two layouts', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -879,43 +887,19 @@ test('a page combining a chart with a full-view table scrolls the whole page ins
   const scroll = page.locator('[data-view-id="engines-models-usage"] .table-scroll');
   await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(page.locator('.org-sidebar')).toBeVisible();
-
-  // A chart sharing the page with a full-view table must not trigger the pinned
-  // single-table layout: pinning would clip the chart with no way to reach it.
-  // Below the 700px breakpoint the whole document scrolls normally instead of a
-  // bounded inner scroller, so the page (not `main.dashboard-prototype`) grows
-  // taller than the viewport.
+  await expect(scroll).toBeHidden();
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
-  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true);
 
-  // Wheeling over the chart scrolls the whole document, not the table's own surface.
-  await chart.hover();
-  await page.mouse.wheel(0, 200);
-  await expect.poll(async () => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-  expect(await scroll.evaluate((element) => element.scrollTop)).toBe(0);
-
-  // Scrolling the page all the way down reaches the table beneath the chart.
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(chart).toBeHidden();
   await expect(scroll).toBeVisible();
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
 
-  // Touch gestures over the chart likewise move the document, not the table scroll surface.
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await chart.evaluate((element) => {
-    const touch = (/** @type {number} */ clientY) => new Touch({ identifier: 1, target: element, clientX: 100, clientY });
-    element.dispatchEvent(new TouchEvent('touchstart', {
-      bubbles: true,
-      cancelable: true,
-      touches: [touch(300)]
-    }));
-    element.dispatchEvent(new TouchEvent('touchmove', {
-      bubbles: true,
-      cancelable: true,
-      touches: [touch(200)]
-    }));
-  });
-  expect(await scroll.evaluate((element) => element.scrollTop)).toBe(0);
+  await page.getByRole('button', { name: 'Show chart view' }).click();
+  await expect(chart).toBeVisible();
+  await expect(scroll).toBeHidden();
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
 });
 
 test('Runs renders the worker-projected table for an active time window', async ({ page }) => {
@@ -2591,6 +2575,10 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect(view).toBeHidden();
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(view).toBeVisible();
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   const mobileViewportHeight = await page.evaluate(() => innerHeight);
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(mobileViewportHeight / 2);
   await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
@@ -4864,4 +4852,82 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   await expect(historyBack).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('phone pages toggle between chart and full-view lazy table modes', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      document.querySelector('#root').append(renderDashboard({
+        document: {
+          languageVersion: '0.1.0',
+          dashboard: {
+            id: 'phone-view-mode-dashboard',
+            title: 'Phone View Mode',
+            pages: [{
+              id: 'runs',
+              kind: 'custom',
+              title: 'Runs',
+              views: [
+                {
+                  id: 'runs-chart',
+                  title: 'Run trend',
+                  data: { source: 'runs' },
+                  mark: 'chart',
+                  chart: 'line',
+                  encoding: {
+                    x: { field: 'started-at', type: 'temporal' },
+                    y: { field: 'run-count', type: 'quantitative' }
+                  }
+                },
+                {
+                  id: 'runs-table',
+                  title: 'Runs',
+                  data: { source: 'runs' },
+                  mark: 'table',
+                  controls: 'interactive',
+                  'lazy-list': true,
+                  layout: 'full-view',
+                  encoding: { columns: [{ field: 'run', title: 'Run' }] }
+                }
+              ]
+            }]
+          }
+        },
+        sources: {
+          runs: {
+            source: 'runs',
+            rows: [{ run: '1', 'run-count': 1, 'started-at': '2026-09-16T10:00:00Z' }],
+            metadata: {
+              availability: 'available',
+              completeness: 'complete',
+              freshness: 'fresh'
+            }
+          }
+        }
+      }));
+    </script>
+  `);
+
+  const root = page.locator('.dashboard-root');
+  const chart = page.locator('[data-view-id="runs-chart"]');
+  const table = page.locator('[data-view-id="runs-table"]');
+  const toggle = page.getByRole('button', { name: 'Show table view' });
+  await expect(toggle).toBeVisible();
+  await expect(toggle.locator('.octicon-table')).toBeVisible();
+  await expect(chart).toBeVisible();
+  await expect(table).toBeHidden();
+  await expect(root).not.toHaveClass(/dashboard-full-view/);
+
+  await toggle.click();
+
+  await expect(page.getByRole('button', { name: 'Show chart view' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show chart view' }).locator('.octicon-graph')).toBeVisible();
+  await expect(chart).toBeHidden();
+  await expect(table).toBeVisible();
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('table');
 });

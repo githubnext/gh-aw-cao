@@ -158,8 +158,20 @@ async function pageText(page, pageId) {
   return (await page.locator(`[data-page-id="${pageId}"]`).textContent()) ?? '';
 }
 
-test('core dashboard stays small and page chunks load on demand with caching', async ({ page }) => {
+test('core dashboard stays small and page chunks load on demand with in-memory caching', async ({ page }) => {
   const chunkRequests = captureChunkRequests(page);
+  await page.addInitScript(() => {
+    const nativeFetch = window.fetch;
+    window.fetch = (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.includes('dashboard-pages/')) {
+        const requests = Reflect.get(window, '__dashboardChunkFetches') ?? [];
+        requests.push({ url, cache: init?.cache });
+        Reflect.set(window, '__dashboardChunkFetches', requests);
+      }
+      return nativeFetch(input, init);
+    };
+  });
   await page.goto(`${origin}/#page-repositories`);
 
   const core = await page.evaluate(async () => {
@@ -192,6 +204,12 @@ test('core dashboard stays small and page chunks load on demand with caching', a
   await expect(page.locator('[data-page-id="configuration"] .configuration-view')).toBeVisible();
   await expect(page.locator('[data-page-id="configuration"]')).not.toContainText('Affected source: configuration-policy');
   await expect.poll(() => chunkRequests.filter((id) => id === 'configuration').length).toBe(1);
+  const configurationFetch = await page.evaluate(() =>
+    Reflect.get(window, '__dashboardChunkFetches')?.find(
+      (/** @type {{ url: string }} */ request) => request.url.endsWith('/configuration.json')
+    )
+  );
+  expect(configurationFetch?.cache).toBe('reload');
 });
 
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {

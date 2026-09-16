@@ -1,3 +1,9 @@
+import { ReadableStream as NodeReadableStream } from 'node:stream/web';
+
+if (typeof globalThis.ReadableStream === 'undefined') {
+  Object.defineProperty(globalThis, 'ReadableStream', { configurable: true, value: NodeReadableStream });
+}
+
 function createMemoryStorage() {
   const entries = new Map();
   return {

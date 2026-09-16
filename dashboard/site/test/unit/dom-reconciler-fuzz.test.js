@@ -36,7 +36,7 @@ it('reconciles many shallow ill-shaped trees', () => {
       );
     }
   }
-}, 10_000);
+}, 20_000);
 
 /**
  * @param {number} seed

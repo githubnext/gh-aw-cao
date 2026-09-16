@@ -301,6 +301,8 @@ export function adaptDashboardSources(sources) {
         status: row['event-status'],
         correlationId: row['correlation-id'],
         payloadRef: row['payload-ref'],
+        mcpServer: row['mcp-server'],
+        mcpTool: row['mcp-tool'],
         safeOutputType: row['safe-output-type'],
         githubEntityType: row['github-entity-type'],
         targetRepo: row['target-repo'],
