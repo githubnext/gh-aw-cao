@@ -158,7 +158,7 @@ async function pageText(page, pageId) {
   return (await page.locator(`[data-page-id="${pageId}"]`).textContent()) ?? '';
 }
 
-test('core dashboard stays small and page chunks load on demand with caching', async ({ page }) => {
+test('core dashboard stays small and page chunks load on demand with in-memory caching', async ({ page }) => {
   const chunkRequests = captureChunkRequests(page);
   await page.addInitScript(() => {
     const nativeFetch = window.fetch;
