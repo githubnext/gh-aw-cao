@@ -78,7 +78,7 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
   const control = workflow("shared/control.md");
   const configuration = readFileSync(join(root, "docs", "configuration.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
-  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
 
   assert.match(control, /post-steps:[\s\S]*?Emit control-plane dispatcher telemetry/);
   assert.match(control, /if: \$\{\{ always\(\) \}\}/);

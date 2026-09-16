@@ -132,7 +132,7 @@ Build one bounded comparison:
 3. Compare at most 20 public catalog packages against those needs using their tagged manifest, guide, declared workflows, experimental status, and required gh-aw version.
 4. Exclude already installed capabilities, semantically duplicate operations, incompatible packages, and candidates whose required access or outputs exceed the control repository's demonstrated boundary.
 5. Rank remaining candidates by evidence-backed expected outcome, repository coverage, review-mode feasibility, cost visibility, maintenance status, and fit with current policy. Downloads, stars, package count, and promotional claims are not value evidence.
-6. If no catalog operation fits, describe one custom operation gap only when the evidence supports a stable outcome, bounded target population, and reviewable output. Point maintainers to the packaged `create-ops-package` skill; do not create the package in this run.
+6. If no catalog operation fits, describe one custom operation gap only when the evidence supports a stable outcome, bounded target population, and reviewable output. Point maintainers to the packaged `create-cao-package` skill; do not create the package in this run.
 
 ## Outcome
 

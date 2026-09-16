@@ -278,7 +278,7 @@ function renderFactoryFloor(sources, metrics, label, animateNumbers) {
   const repositories = renderStation('repo', { animate: animateNumbers, href: '#page-repositories' });
   const runs = renderStation('play', { animate: animateNumbers, href: '#page-runs?runs-runs-source.run-conclusion=success' });
   const dispatches = renderStation('workflow', { animate: animateNumbers, href: '#page-runs' });
-  const valueGains = renderStation('trophy', { animate: animateNumbers, final: true });
+  const valueGains = renderStation('trophy', { animate: animateNumbers, final: true, href: '#page-operational-value' });
 
   repositories.bind(() => {
     const coverage = metrics.coverage();
@@ -323,7 +323,7 @@ function renderFactoryFloor(sources, metrics, label, animateNumbers) {
       pending: sources['overview-value-summary'].pending(),
       label: label('value-gains', gains),
       value: gains,
-      detail: 'Coming soon'
+      detail: ''
     };
   });
 

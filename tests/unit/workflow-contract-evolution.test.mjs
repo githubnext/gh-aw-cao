@@ -110,7 +110,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(efficiency, /Select one package and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
   assert.match(efficiency, /Do not duplicate `AW Optimization`/);
 
-  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
   assert.match(packageSkill, /When a worker optimizes a package or package portfolio/);
   assert.match(packageSkill, /A package workflow has no dashboard browser session/);
   assert.match(packageSkill, /never add browser automation or Pages access merely to query IndexedDB/);

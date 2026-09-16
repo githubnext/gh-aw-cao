@@ -164,8 +164,12 @@ function packageRows(inventory, controlSettings, generatedAt) {
     String(bundle.controlPackage || bundle.id || "").trim(),
     bundle,
   ]).filter(([id]) => id));
+  const registered = new Map((inventory.packages || []).map((entry) => [
+    String(entry.id || "").trim(),
+    entry,
+  ]).filter(([id]) => id));
   const ids = new Set(
-    [...bundles.keys(), ...Object.keys(controlSettings.packages || {})]
+    [...bundles.keys(), ...registered.keys(), ...Object.keys(controlSettings.packages || {})]
       .filter((id) => !INTERNAL_PACKAGES.has(id)),
   );
   return [...ids].sort().map((id) => {
@@ -190,7 +194,7 @@ function packageRows(inventory, controlSettings, generatedAt) {
       .reduce((total, value) => total + value, 0);
     return {
       package: id,
-      "package-name": bundle.name || id,
+      "package-name": bundle.name || registered.get(id)?.name || id,
       "package-description": bundle.description || "",
       "package-icon": policy.icon || "package",
       "package-mode": rolloutMode(policy.mode),

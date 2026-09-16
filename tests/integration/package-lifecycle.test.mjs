@@ -21,6 +21,12 @@ const controlRuntimeFiles = [
   ".github/workflows/shared/policy.mjs",
   ".github/workflows/shared/setup-github-apps.mjs",
 ];
+const controlPlaneSkillFiles = [
+  ".github/skills/analyze-cao/SKILL.md",
+  ".github/skills/cao-cli/SKILL.md",
+  ".github/skills/create-cao-package/SKILL.md",
+  ".github/skills/setup-cao/SKILL.md",
+];
 function focusedPackageSource(slug, source = packageSource) {
   const separator = source.lastIndexOf("@");
   assert.notEqual(separator, -1, "package source must include a ref");
@@ -185,6 +191,9 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
     for (const relativePath of controlRuntimeFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root package omitted control file ${relativePath}`);
+    }
+    for (const relativePath of controlPlaneSkillFiles) {
+      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted project skill ${relativePath}`);
     }
     const policyPath = join(consumer, ".github", "workflows", "cao.json");
     const policy = `${JSON.stringify({
