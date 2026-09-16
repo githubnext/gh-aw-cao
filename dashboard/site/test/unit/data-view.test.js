@@ -431,6 +431,79 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('[data-table-more]')?.hasAttribute('hidden')).toBe(true);
   });
 
+  it('replays continuation pages when table and mobile card modes load the same rows', async () => {
+    const load = vi.fn(async () => ({
+      rows: [{ event: 'event-26' }],
+      continuationToken: undefined
+    }));
+    const rendered = renderDataView('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 26, load }
+    });
+
+    const tableMore = rendered?.querySelector('[data-table-more]');
+    expect(tableMore).toBeInstanceOf(HTMLButtonElement);
+    /** @type {HTMLButtonElement} */ (tableMore).click();
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('tbody tr')).toHaveLength(26));
+    const cardMore = rendered?.querySelector('[data-card-list-more]');
+    expect(cardMore).toBeInstanceOf(HTMLButtonElement);
+    /** @type {HTMLButtonElement} */ (cardMore).click();
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] li')).toHaveLength(26));
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a mobile card continuation retry after a load failure', async () => {
+    const load = vi.fn()
+      .mockRejectedValueOnce(new Error('worker unavailable'))
+      .mockResolvedValueOnce({ rows: [{ event: 'event-26' }], continuationToken: undefined });
+    const rendered = renderDataView('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 26, load }
+    });
+    const more = /** @type {HTMLButtonElement} */ (rendered?.querySelector('[data-card-list-more]'));
+
+    more.click();
+    await vi.waitFor(() => expect(more.textContent).toBe('Retry loading cards'));
+    expect(more.disabled).toBe(false);
+    more.click();
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] li')).toHaveLength(26));
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
   it('omits table facets for columns with filtering disabled', () => {
     const rendered = renderDataView('table', {
       pageId: 'repositories',

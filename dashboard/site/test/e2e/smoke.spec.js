@@ -4862,7 +4862,7 @@ test('phone navigation uses overview actions and a full-label view menu without 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
-test('phone pages toggle between chart and full-view lazy table modes', async ({ page }) => {
+test('phone pages toggle between chart, full-view table, and card-list modes', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
@@ -4932,10 +4932,18 @@ test('phone pages toggle between chart and full-view lazy table modes', async ({
 
   await toggle.click();
 
-  await expect(page.getByRole('button', { name: 'Show chart view' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Show chart view' }).locator('.octicon-graph')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show card list view' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show card list view' }).locator('.octicon-stack')).toBeVisible();
   await expect(chart).toBeHidden();
   await expect(table).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('table');
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(page.getByRole('button', { name: 'Show chart view' }).locator('.octicon-graph')).toBeVisible();
+  await expect(chart).toBeHidden();
+  await expect(table.locator('.table-region')).toBeHidden();
+  await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
+  await expect(root).not.toHaveClass(/dashboard-full-view/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('card');
 });

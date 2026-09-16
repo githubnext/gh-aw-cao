@@ -664,7 +664,7 @@ function renderTableView(context) {
   ));
   const bodyRows = renderBodyRows(displayedRows);
   let renderedRowCount = bodyRows.length;
-  const continuation = context.continuation;
+  const continuation = replayableContinuation(context.continuation);
 
   const interactive = view.controls !== 'static';
   const staticEmptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.';
@@ -757,7 +757,7 @@ function renderTableView(context) {
     sortable: interactive
   });
   const mobileCardList = view.layout === 'full-view' && view['lazy-list'] === true
-    ? renderMobileTableCardList(context, columns, tableRows, renderCellValue, effectiveRowLimit)
+    ? renderMobileTableCardList({ ...context, continuation }, columns, tableRows, renderCellValue, effectiveRowLimit)
     : null;
   return renderPageSection(pageId, title, [
     ...renderViewSectionChrome(metadata, contextDetails).filter((node) => node instanceof HTMLElement),
@@ -824,30 +824,61 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
     if (loading || renderedCount >= rowLimit || (renderedCount >= availableRows.length && !token)) return;
     loading = true;
     more.disabled = true;
-    let nextToken = token;
-    if (renderedCount >= availableRows.length && token && continuation) {
-      const next = await continuation.load(token);
-      availableRows.push(...prepareTableRows(next.rows, columns, view.data));
-      nextToken = next.continuationToken ?? '';
+    try {
+      let nextToken = token;
+      if (renderedCount >= availableRows.length && token && continuation) {
+        const next = await continuation.load(token);
+        availableRows.push(...prepareTableRows(next.rows, columns, view.data));
+        nextToken = next.continuationToken ?? '';
+      }
+      const nextRows = availableRows.slice(renderedCount, Math.min(renderedCount + pageSize, rowLimit));
+      list.append(...renderEntityCardItems(nextRows, {
+        pageId,
+        title,
+        renderValue,
+        toText,
+        definition: visibleDefinition,
+        keyOffset: renderedCount
+      }));
+      renderedCount += nextRows.length;
+      token = renderedCount < rowLimit ? nextToken : '';
+      more.textContent = 'Load more cards';
+      more.hidden = renderedCount >= availableRows.length && !token;
+    } catch {
+      more.textContent = 'Retry loading cards';
+    } finally {
+      loading = false;
+      more.disabled = false;
     }
-    const nextRows = availableRows.slice(renderedCount, Math.min(renderedCount + pageSize, rowLimit));
-    list.append(...renderEntityCardItems(nextRows, {
-      pageId,
-      title,
-      renderValue,
-      toText,
-      definition: visibleDefinition,
-      keyOffset: renderedCount
-    }));
-    renderedCount += nextRows.length;
-    token = renderedCount < rowLimit ? nextToken : '';
-    loading = false;
-    more.disabled = false;
-    more.hidden = renderedCount >= availableRows.length && !token;
   };
   more.addEventListener('click', () => void loadMore());
   observeLoadMoreBoundary(globalThis.IntersectionObserver, more, () => void loadMore(), { rootMargin: '200px' });
   return region;
+}
+
+/**
+ * Makes a stateful source continuation safe for the table and card-list
+ * presentations to consume independently by replaying already loaded pages.
+ * @param {DataViewContext['continuation']} continuation
+ * @returns {DataViewContext['continuation']}
+ */
+function replayableContinuation(continuation) {
+  if (!continuation) return undefined;
+  /** @type {Map<string, Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }>>} */
+  const pages = new Map();
+  return {
+    ...continuation,
+    load(token) {
+      const existing = pages.get(token);
+      if (existing) return existing;
+      const loaded = continuation.load(token).catch((error) => {
+        pages.delete(token);
+        throw error;
+      });
+      pages.set(token, loaded);
+      return loaded;
+    }
+  };
 }
 
 /**
