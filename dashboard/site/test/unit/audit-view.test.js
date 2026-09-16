@@ -40,6 +40,9 @@ describe('Audit dashboard view', () => {
     expect(page.views[1].encoding.columns).toContainEqual(
       expect.objectContaining({ field: 'run', display: 'run-link' })
     );
+    expect(dashboard.queries.find(
+      (/** @type {{ name: string }} */ query) => query.name === 'audit-event-summary-buckets'
+    )).toMatchObject({ limit: 20 });
   });
 
   it('filters info events before grouping shared summaries by workflow', () => {

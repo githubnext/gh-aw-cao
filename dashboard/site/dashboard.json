@@ -2285,7 +2285,7 @@
       {
         "name": "audit-event-summary-buckets",
         "intent": "Aggregate high- and medium-severity audit events with the same summary by workflow.",
-        "description": "High- and medium-severity audit event counts grouped by workflow and shared summary.",
+        "description": "The 20 most frequent high- and medium-severity audit event counts grouped by workflow and shared summary.",
         "from": "events",
         "filter": {
           "predicates": [
@@ -2318,7 +2318,8 @@
           { "field": "events", "direction": "desc" },
           { "field": "workflow", "direction": "asc" },
           { "field": "event-summary", "direction": "asc" }
-        ]
+        ],
+        "limit": 20
       },
       {
         "name": "engines-models-usage",
@@ -6646,7 +6647,7 @@
           {
             "id": "audit-event-summary-buckets",
             "title": "High and medium severity audit events",
-            "description": "Audit events grouped by workflow and shared summary after info-level events are excluded.",
+            "description": "The 20 most frequent audit-event buckets grouped by workflow and shared summary after info-level events are excluded.",
             "data": {
               "source": "audit-event-summary-buckets"
             },
@@ -6699,7 +6700,7 @@
                 {
                   "field": "event-status",
                   "type": "nominal",
-                  "title": "Severity",
+                  "title": "Status",
                   "display": "status"
                 },
                 {
