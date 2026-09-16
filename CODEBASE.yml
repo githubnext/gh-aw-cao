@@ -185,6 +185,13 @@ commands:
   workflow_compile_locks: npm run compile:locks
   docs_build: npm run docs:build
   dashboard_local: npm run dashboard:local -- --repo OWNER/REPOSITORY
+  dashboard_site:
+    working_directory: dashboard/site/
+    tests: npm test
+    e2e_tests: npm run test:e2e
+    performance_tests: npm run test:performance
+    lint: npm run lint
+    typecheck: npm run typecheck
 
 validation:
   commands:
