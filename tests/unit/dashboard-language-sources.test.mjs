@@ -102,6 +102,9 @@ test("builds deployable package and workflow inventory sources", () => {
           },
         },
       },
+      policy_resolution: { status: "available", reason: "" },
+      policy_document: { version: 1, "control-plane": { packages: { "daily-ops": { mode: "review" } } } },
+      policy_source: '{\n  "version": 1\n}\n',
     },
   });
 
@@ -165,6 +168,16 @@ test("builds deployable package and workflow inventory sources", () => {
       "observed-at": generatedAt,
     },
   );
+  assert.equal(sources["configuration-policy"].source, "configuration-policy");
+  assert.equal(sources["configuration-policy"].rows[0].path, ".github/workflows/cao.json");
+  assert.equal(sources["configuration-policy"].rows[0].document.version, 1);
+  assert.equal(sources["configuration-policy"].rows[0].raw, '{\n  "version": 1\n}\n');
+  assert.deepEqual(sources["configuration-policy"].rows[0].diagnostics, [{
+    severity: "valid",
+    path: ".github/workflows/cao.json",
+    title: "Policy is valid",
+    detail: "The runtime policy resolver accepted this revision.",
+  }]);
 });
 
 test("excludes internal packages from user-facing package inventory", () => {

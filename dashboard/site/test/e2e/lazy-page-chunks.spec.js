@@ -48,6 +48,20 @@ const inventory = {
     }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
   },
+  'configuration-policy': {
+    rows: [{
+      path: '.github/workflows/cao.json',
+      document: { version: 1, 'control-plane': { packages: {} } },
+      raw: '{"version":1,"control-plane":{"packages":{}}}',
+      diagnostics: [{
+        severity: 'valid',
+        path: '.github/workflows/cao.json',
+        title: 'Policy is valid',
+        detail: 'The runtime policy resolver accepted this revision.',
+      }],
+    }],
+    metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
+  },
 };
 
 const logs = `${JSON.stringify({
@@ -172,6 +186,12 @@ test('core dashboard stays small and page chunks load on demand with caching', a
   await navigateToPage(page, 'repositories');
   await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
   await expect.poll(() => chunkRequests.filter((id) => id === 'repositories').length).toBe(1);
+
+  await navigateToPage(page, 'configuration');
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await expect(page.locator('[data-page-id="configuration"] .configuration-view')).toBeVisible();
+  await expect(page.locator('[data-page-id="configuration"]')).not.toContainText('Affected source: configuration-policy');
+  await expect.poll(() => chunkRequests.filter((id) => id === 'configuration').length).toBe(1);
 });
 
 test('deep links and redirect routes fetch only the requested initial page chunk', async ({ page }) => {

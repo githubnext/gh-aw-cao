@@ -329,6 +329,23 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
   });
 }
 
+function configurationPolicyRows(controlSettings) {
+  const resolution = controlSettings.policy_resolution ?? {};
+  return [{
+    path: ".github/workflows/cao.json",
+    document: controlSettings.policy_document ?? null,
+    raw: controlSettings.policy_source || "",
+    diagnostics: [{
+      severity: resolution.status === "available" ? "valid" : "error",
+      path: ".github/workflows/cao.json",
+      title: resolution.status === "available" ? "Policy is valid" : "Policy validation failed",
+      detail: resolution.status === "available"
+        ? "The runtime policy resolver accepted this revision."
+        : resolution.reason || "The control policy could not be resolved.",
+    }],
+  }];
+}
+
 export function buildInventoryDashboardSources({
   inventory = {},
   controlSettings = {},
@@ -342,6 +359,11 @@ export function buildInventoryDashboardSources({
     workflows: source(
       "workflows",
       workflowRows(inventory, controlSettings, repository, generatedAt),
+      generatedAt,
+    ),
+    "configuration-policy": source(
+      "configuration-policy",
+      configurationPolicyRows(controlSettings),
       generatedAt,
     ),
   };
