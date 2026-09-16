@@ -5,7 +5,6 @@ import { DASHBOARD_QUERY_LIMITS, QUERY_MAX_JOINS } from '../../src/specification
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 
 const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
-const authoritativeDashboardDocument = JSON.parse(authoritativeDashboardSource);
 
 const validDocument = `language-version: "0.1.0"
 dashboard:
@@ -1550,14 +1549,9 @@ dashboard:
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('accepts every package dashboard document with built-in queries', () => {
+  it('accepts every package dashboard document', () => {
     for (const source of packageDashboardSources) {
-      const document = JSON.parse(source);
-      document.dashboard.queries = [
-        ...authoritativeDashboardDocument.dashboard.queries,
-        ...document.dashboard.queries
-      ];
-      expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+      expect(validateDashboardDocument(source).ok).toBe(true);
     }
   });
 
