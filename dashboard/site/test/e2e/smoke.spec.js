@@ -2957,6 +2957,10 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
 test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory, and package activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
+  const operationalValuePage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value'
+  );
+  assert(operationalValuePage, 'Missing operational value page');
 
   await page.setContent(`
     <div id="root"></div>
@@ -2999,12 +3003,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
               title: 'Packages',
               description: 'Activity from centrally managed packages.',
             }))},
-            {
-              id: 'operational-value',
-              kind: 'custom',
-              title: 'Value & outcomes',
-              views: []
-            },
+            ${JSON.stringify(operationalValuePage)},
             {
               id: 'package-insights',
               kind: 'custom',
@@ -3276,6 +3275,19 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-insights?package=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
+  await page.evaluate(() => {
+    window.location.hash = '#page-operational-value';
+  });
+  const operationalValue = page.locator('[data-page-id="operational-value"]');
+  await expect(page.getByRole('heading', { name: 'Operational value', level: 1 })).toBeVisible();
+  await expect(operationalValue.locator('[data-view-id="operational-value-by-package"] [data-chart-widget="pie"]')).toBeAttached();
+  await expect(operationalValue.locator('.chart-legend-pie')).toContainText('Ambient Context');
+  await expect(operationalValue.locator('.chart-legend-pie')).toContainText('AW Doctor');
+  await expect(operationalValue.locator('.custom-table tbody tr')).toHaveCount(2);
+  await expect(operationalValue.locator('.custom-table thead tr').first().locator('th')).toHaveText([
+    'Package',
+    'Operational value'
+  ]);
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });
