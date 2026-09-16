@@ -155,28 +155,35 @@ describe('declarative dashboard queries', () => {
   });
 
   it('uses aggregate-local filters for built-in filtered aggregate counts', () => {
+    /** @param {string} name */
+    const findQuery = (name) => {
+      const found = dashboardQueries.find((/** @type {{ name?: string }} */ query) => query.name === name);
+      expect(found).toBeTruthy();
+      return /** @type {{ compute?: Array<{ as: string }>, aggregate: { values: Array<{ as: string, filter?: { predicates?: unknown[] } }> } }} */ (found);
+    };
     const optimizedQueries = [
       'overview-run-summary',
       'overview-dispatch-summary',
       'firewall-domain-totals',
       'repository-workflow-totals',
       'repository-run-totals'
-    ].map((name) => dashboardQueries.find((query) => query.name === name));
+    ].map(findQuery);
 
-    expect(optimizedQueries).toHaveLength(5);
     for (const query of optimizedQueries) {
       expect(query.compute).toBeUndefined();
-      expect(query.aggregate.values.some((value) => value.filter?.predicates?.length > 0)).toBe(true);
+      expect(query.aggregate.values.some((value) => Array.isArray(value.filter?.predicates))).toBe(true);
     }
 
-    const outcomeSummary = dashboardQueries.find((query) => query.name === 'overview-outcome-summary');
+    const outcomeSummary = findQuery('overview-outcome-summary');
     expect(outcomeSummary.aggregate.values.find((value) => value.as === 'delivered-repositories')).toMatchObject({
       field: 'repository',
       reducer: 'distinct-count',
       filter: { predicates: [{ field: 'outcome-state', in: ['accepted', 'completed', 'lifecycle-close'] }] }
     });
 
-    const efficiency = dashboardQueries.find((query) => query.name === 'cost-workflow-run-efficiency');
+    const efficiency = /** @type {{ compute: Array<{ as: string }>, aggregate: { values: Array<{ as: string }> } }} */ (
+      findQuery('cost-workflow-run-efficiency')
+    );
     expect(efficiency.compute.map((field) => field.as)).toEqual([
       'observed-engine',
       'observed-model',

@@ -577,8 +577,18 @@ describe('dashboard document validation', () => {
         by: ['domain'],
         values: [
           { field: 'run', as: 'run', reducer: 'distinct-count' },
-          { field: 'accepted', as: 'accepted', reducer: 'sum' },
-          { field: 'blocked', as: 'blocked', reducer: 'sum' }
+          {
+            field: 'request-count',
+            as: 'accepted',
+            reducer: 'sum',
+            filter: { predicates: [{ field: 'decision', equals: 'allowed' }] }
+          },
+          {
+            field: 'request-count',
+            as: 'blocked',
+            reducer: 'sum',
+            filter: { predicates: [{ field: 'decision', equals: 'denied' }] }
+          }
         ]
       }
     }));
