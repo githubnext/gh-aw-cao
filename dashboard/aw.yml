@@ -219,8 +219,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/histogram.js
   - source: site/src/components/link-content.js
     destination: .github/aw/dashboard/site/src/components/link-content.js
-  - source: site/src/components/local-database-view.js
-    destination: .github/aw/dashboard/site/src/components/local-database-view.js
   - source: site/src/components/lazy-infinite-list.js
     destination: .github/aw/dashboard/site/src/components/lazy-infinite-list.js
   - source: site/src/components/lazy-view.js
