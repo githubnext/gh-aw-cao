@@ -23,12 +23,17 @@ export function renderFactoryRhythm(source, scope) {
       { label: 'This week', className: 'factory-rhythm-legend-current' },
       { label: 'Last week', className: 'factory-rhythm-legend-previous' }
     ],
-    items: () => rhythmPayload(source).days,
+    items: () => {
+      const days = rhythmPayload(source).days;
+      const maximum = Math.max(...days.flatMap((day) => [day.count, day.previous]), 1);
+      return days.map((day) => ({
+        ...day,
+        height: Math.max(5, (day.reached ? day.count : day.previous) / maximum * 100)
+      }));
+    },
     key: (day) => day.label,
     renderItem: () => createRhythmDay(),
-    updateItem: (element, day, _index, days) => {
-      const maximum = Math.max(...days.flatMap((candidate) => [candidate.count, candidate.previous]), 1);
-      const value = day.reached ? day.count : day.previous;
+    updateItem: (element, day) => {
       const description = rhythmDayDescription(day);
       element.classList.toggle('factory-rhythm-day-future', !day.reached);
       element.setAttribute('aria-label', description);
@@ -36,12 +41,12 @@ export function renderFactoryRhythm(source, scope) {
       const current = element.querySelector('.factory-rhythm-current');
       if (current instanceof HTMLElement) {
         current.hidden = !day.reached;
-        current.style.height = `${Math.max(5, value / maximum * 100)}%`;
+        current.style.height = `${day.height}%`;
       }
       const baseline = element.querySelector('.factory-rhythm-baseline');
       if (baseline instanceof HTMLElement) {
         baseline.hidden = day.reached;
-        baseline.style.height = `${Math.max(5, value / maximum * 100)}%`;
+        baseline.style.height = `${day.height}%`;
       }
       const label = element.querySelector('small');
       if (label) label.textContent = day.label;

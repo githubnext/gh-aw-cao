@@ -16,7 +16,7 @@ export function renderPanel({ className, labelledBy, label, children }) {
     {
       className: ['ui-panel', className].filter(Boolean).join(' '),
       ...(labelledBy ? { 'aria-labelledby': labelledBy } : {}),
-      ...(label ? { 'aria-label': label } : {})
+      ...(!labelledBy && label ? { 'aria-label': label } : {})
     },
     ...children
   );
