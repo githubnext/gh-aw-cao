@@ -535,6 +535,7 @@ export function processDataRequest(request, signal) {
                   totalBytes: undefined
                 }),
                 onWriteProgress: (written) => progress.store(written),
+                onLockWait: () => progress.log('Waiting for another dashboard ingestion to finish.'),
                 payloadIdentity: shard.hash,
                 payloadScope: shardUrl.href,
                 context: collectionContext
@@ -561,7 +562,8 @@ export function processDataRequest(request, signal) {
               storage: globalThis.navigator?.storage,
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               payloadScope: inventoryUrl.href,
-              onWriteProgress: (written) => progress.store(written)
+              onWriteProgress: (written) => progress.store(written),
+              onLockWait: () => progress.log('Waiting for another dashboard ingestion to finish.')
             });
             changed ||= inventoryIngestion.updated;
             progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
@@ -574,7 +576,8 @@ export function processDataRequest(request, signal) {
             storage: globalThis.navigator?.storage,
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
             payloadScope: sourceUrl.href,
-            onWriteProgress: (written) => progress.store(written)
+            onWriteProgress: (written) => progress.store(written),
+            onLockWait: () => progress.log('Waiting for another dashboard ingestion to finish.')
           });
           changed ||= ingestion.updated;
           progress.log('skipped' in ingestion && ingestion.skipped

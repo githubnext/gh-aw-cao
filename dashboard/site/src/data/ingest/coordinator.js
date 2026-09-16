@@ -122,9 +122,14 @@ async function previouslyIngested(indexedDB, kind, scope, hash, ingestionVersion
 
 let ingestionQueue = Promise.resolve();
 
-/** @template T @param {IDBFactory} indexedDB @param {() => Promise<T>} task */
-function serializeIngestion(indexedDB, task) {
-  const lockedTask = () => withCanonicalIngestionLock(indexedDB, task);
+/**
+ * @template T
+ * @param {IDBFactory} indexedDB
+ * @param {() => Promise<T>} task
+ * @param {{ onLockWait?: () => void }} [options]
+ */
+function serializeIngestion(indexedDB, task, options = {}) {
+  const lockedTask = () => withCanonicalIngestionLock(indexedDB, task, { onWaiting: options.onLockWait });
   const result = ingestionQueue.then(lockedTask, lockedTask);
   ingestionQueue = result.then(() => undefined, () => undefined);
   return result;
@@ -199,10 +204,14 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string, payloadScope?: string, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void }} [options]
  */
 export function ingestDashboardSources(indexedDB, sources, options = {}) {
-  return serializeIngestion(indexedDB, () => ingestDashboardSourcesNow(indexedDB, sources, options));
+  return serializeIngestion(
+    indexedDB,
+    () => ingestDashboardSourcesNow(indexedDB, sources, options),
+    { onLockWait: options.onLockWait }
+  );
 }
 
 /**
@@ -295,10 +304,14 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string | Uint8Array | AsyncIterable<string | Uint8Array>} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity?: string, payloadEtag?: string, payloadScope?: string, onLockWait?: () => void }} [options]
  */
 export function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
-  return serializeIngestion(indexedDB, () => ingestCachedGhAwJsonlNow(indexedDB, content, options));
+  return serializeIngestion(
+    indexedDB,
+    () => ingestCachedGhAwJsonlNow(indexedDB, content, options),
+    { onLockWait: options.onLockWait }
+  );
 }
 
 /**
