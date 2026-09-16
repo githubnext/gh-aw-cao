@@ -343,6 +343,10 @@ function enableResponsiveReportActions(root, signal) {
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');
   const headerDesktopSlot = overviewHeader?.parentElement;
+  const viewModeToggle = root.querySelector('.mobile-view-mode-toggle');
+  const mobileToggleSlot = viewModeToggle?.parentElement;
+  const mobileToggleAnchor = root.querySelector('.mobile-nav-menu');
+  const desktopToggleSlot = overviewHeader?.querySelector('.title-area');
   const view = root.ownerDocument.defaultView;
   const media = view?.matchMedia?.('(max-width: 700px)');
   if (!(actions instanceof HTMLElement) || !(mobileSlot instanceof HTMLElement) || !desktopSlot || !media) return;
@@ -355,6 +359,20 @@ function enableResponsiveReportActions(root, signal) {
         if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.prepend(overviewHeader);
       } else if (overviewHeader.parentElement !== headerDesktopSlot) {
         headerDesktopSlot.prepend(overviewHeader);
+      }
+    }
+    if (
+      viewModeToggle instanceof HTMLElement
+      && mobileToggleSlot
+      && mobileToggleAnchor instanceof HTMLElement
+      && desktopToggleSlot instanceof HTMLElement
+    ) {
+      if (media.matches) {
+        if (viewModeToggle.parentElement !== mobileToggleSlot) {
+          mobileToggleSlot.insertBefore(viewModeToggle, mobileToggleAnchor);
+        }
+      } else if (viewModeToggle.parentElement !== desktopToggleSlot) {
+        desktopToggleSlot.append(viewModeToggle);
       }
     }
   };

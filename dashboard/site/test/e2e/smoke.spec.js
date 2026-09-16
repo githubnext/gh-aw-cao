@@ -651,6 +651,9 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with session data');
+  expect(await page.getByRole('button', { name: 'Show table view' }).evaluate(
+    (toggle) => toggle.parentElement?.classList.contains('title-area')
+  )).toBe(true);
   await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
@@ -681,6 +684,7 @@ test('Transactions includes local database controls and a responsive transaction
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect(page.locator('.sidebar-header > .mobile-view-mode-toggle')).toBeVisible();
   await expect(view).toBeHidden();
   await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(view).toBeVisible();
