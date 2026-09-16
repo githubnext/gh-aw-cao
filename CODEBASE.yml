@@ -1,0 +1,215 @@
+spec: cbm/v0.1
+
+project:
+  name: central-agentic-ops
+  purpose: >
+    Public CAO package catalog and source-managed control plane for bounded,
+    policy-governed agentic operations across an explicitly enrolled repository fleet.
+  stack:
+    - GitHub Actions
+    - gh-aw
+    - Node.js 24
+    - ECMAScript modules
+    - JSONL
+    - SQLite
+    - IndexedDB
+    - Dashboard Language
+    - Astro/Starlight
+
+structure:
+  catalog_manifest: aw.yml
+  operations: <operation>/aw.yml
+  activity: activity/
+  dashboard: dashboard/
+  dashboard_data: dashboard/site/src/data/
+  workflow_sources: .github/workflows/*.md
+  workflow_artifacts: .github/workflows/*.lock.yml
+  workflow_shared: .github/workflows/shared/
+  rollout_policy: .github/workflows/cao.json
+  workflow_resources: .github/aw/
+  skills: skills/
+  specifications: specs/
+  documentation: docs/
+  decisions: adr/
+  tests: tests/
+  utilities: scripts/
+
+architecture:
+  style: policy-governed central control plane with catalog packages and bounded workers
+  roles:
+    catalog: publishes versioned operation packages
+    control_repository: owns rollout policy, credentials, installed workflows, and workflow runs
+    target_repository: supplies source data and receives only declared safe outputs
+    gh_aw: compiles workflows and controls execution capabilities, limits, authentication, and safe outputs
+  authority: >
+    A run's authority is the intersection of reviewed policy, dispatch request,
+    worker ceilings, credential reach, and gh-aw-compiled capabilities.
+
+components:
+  policy_resolution:
+    path: .github/workflows/shared/control.md
+    responsibility: load policy at the workflow revision and resolve the effective run envelope
+  orchestrator:
+    path: .github/workflows/
+    responsibility: discover, filter, rank, select, and dispatch targets within the resolved policy
+  worker:
+    path: .github/workflows/
+    responsibility: revalidate an envelope, analyze one target, and emit declared safe outputs
+  activity:
+    path: activity/
+    responsibility: collect bounded evidence, ingest JSONL, create SQLite projections, and provide the cao CLI
+  dashboard:
+    path: dashboard/
+    responsibility: publish evidence and provide a static operational dashboard
+  dashboard_data:
+    path: dashboard/site/src/data/
+    responsibility: normalize, persist, and declaratively query canonical browser data in a Web Worker
+
+dependencies:
+  - catalog -> control_repository
+  - control_repository -> policy_resolution
+  - policy_resolution -> orchestrator
+  - orchestrator -> worker
+  - worker -> review_repository
+  - worker -> target_repository
+  - gh_aw_logs -> activity_jsonl_shards
+  - activity_jsonl_shards -> sqlite_projection
+  - activity_jsonl_shards -> dashboard_publisher
+  - dashboard_publisher -> browser_data_worker
+  - browser_data_worker -> indexeddb_projection
+  - indexeddb_projection -> dashboard_language_queries
+  - dashboard_language_queries -> dashboard_ui
+
+boundaries:
+  - subject: cao_policy
+    may_depend_on:
+      - reviewed workflow revision
+    must_not_depend_on:
+      - credentials
+  - subject: orchestrator
+    may_depend_on:
+      - resolved_policy
+    must_not_depend_on:
+      - target_repository_mutation
+      - targets_outside_resolved_policy
+  - subject: worker
+    may_depend_on:
+      - dispatched_target
+      - declared_safe_output_capabilities
+    must_not_depend_on:
+      - additional_target_discovery
+      - further_work_dispatch
+      - mode_widening
+  - subject: target_repository
+    must_not_depend_on:
+      - control_plane_authority
+  - subject: dashboard_ui
+    may_depend_on:
+      - bounded_worker_query_payloads
+    must_not_depend_on:
+      - source_data_queries
+      - business_relationship_reconstruction
+  - subject: dashboard_language
+    may_depend_on:
+      - canonical_browser_database
+    must_not_depend_on:
+      - browser_main_thread_execution
+
+invariants:
+  - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
+  - "No authority input can widen another."
+  - "Review mode is the default; live mode requires explicit package, worker, scope, and target authority."
+  - "Credentials remain GitHub Actions secrets and are resolved only inside a run."
+  - "Missing policy, authority, credentials, access, or required evidence MUST fail closed."
+  - "GitHub tools available to agents are read-only; repository changes use only workflow-declared safe outputs."
+  - "Workers process exactly one dispatched target and MUST NOT discover targets, dispatch work, or widen mode."
+  - "Dispatch envelopes include identity, mode, review destination, and provenance; they MUST NOT include credentials."
+  - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
+  - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
+  - "Missing, stale, partial, and zero evidence are distinct states."
+  - "Dashboard data operations MUST be declared in Dashboard Language and execute in the data Web Worker."
+  - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
+  - "Generated workflow lock files MUST NOT be edited directly."
+  - "Installed package records MUST be updated through gh-aw package commands."
+  - "Policy and workflow changes MUST be committed together."
+
+flows:
+  operation_execution:
+    - control_repository_schedule_or_manual_dispatch
+    - policy_resolution
+    - orchestrator_selection
+    - one_worker_per_selected_repository
+    - review_repository_or_authorized_target_repository
+  activity_dashboard:
+    - gh_aw_logs
+    - bounded_jsonl_shards
+    - dashboard_publisher
+    - browser_data_web_worker
+    - indexeddb_projection
+    - dashboard_language_queries
+    - static_dashboard_ui
+  activity_cli:
+    - gh_aw_logs
+    - bounded_jsonl_shards
+    - sqlite_projection
+    - cao_cli_and_agents
+
+generation:
+  new_operation:
+    path: <operation>/aw.yml
+  workflow_source:
+    path: .github/workflows/<workflow>.md
+  shared_workflow_control:
+    path: .github/workflows/shared/
+  portable_agent_skill:
+    path: skills/<name>/SKILL.md
+  architecture_decision:
+    path: adr/
+  normative_contract:
+    path: specs/
+
+commands:
+  full_validation: npm run check
+  control_typecheck: npm run typecheck:cao
+  tests: npm test
+  load_tests: npm run test:load
+  workflow_compile: npm run compile
+  workflow_compile_locks: npm run compile:locks
+  docs_build: npm run docs:build
+  dashboard_local: npm run dashboard:local -- --repo OWNER/REPOSITORY
+
+validation:
+  commands:
+    - npm run check
+    - npm run compile
+  architecture:
+    - "Verify package contents against root and package aw.yml manifests."
+    - "Verify policy and workflow changes are reviewed together."
+    - "Verify workflow sources, not generated lock files, are edited."
+    - "Verify dashboard data access crosses the Web Worker and declarative query boundary."
+
+provenance:
+  source: ARCHITECTURE.md
+  status: experimental compiled representation; ARCHITECTURE.md remains the human-oriented source
+  intentionally_compressed:
+    - Architectural history, examples, diagrams, and explanatory prose
+    - Individual leaf files and package inventory details
+    - Detailed normative contract text; retain it in specs/
+
+benchmark:
+  hypothesis: >
+    This model preserves the architectural constraints needed for safe repository
+    modification with materially less context than ARCHITECTURE.md.
+  compare:
+    - no_architecture_context
+    - full_ARCHITECTURE.md
+    - CODEBASE.yml
+  measure:
+    - task_completion
+    - architectural_violations
+    - incorrect_file_placement
+    - dependency_violations
+    - test_failures
+    - token_usage
+    - tool_calls
+    - time_to_completion
