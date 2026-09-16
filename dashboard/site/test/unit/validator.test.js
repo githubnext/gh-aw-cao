@@ -1120,12 +1120,17 @@ dashboard:
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
       'workflows',
       'runs',
-      'sessions',
       'engines-models',
       'firewall',
       'mcps',
       'events'
     ]);
+    expect(document.dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ section) => section.label === 'Investigate'
+    )).toMatchObject({
+      experimental: true,
+      pages: expect.arrayContaining(['sessions'])
+    });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
