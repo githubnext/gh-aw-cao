@@ -104,8 +104,7 @@ boundaries:
       - further_work_dispatch
       - mode_widening
   - subject: target_repository
-    may_depend_on: []
-    must_not_depend_on:
+    must_not_grant:
       - control_plane_authority
   - subject: dashboard_ui
     may_depend_on:
@@ -113,12 +112,6 @@ boundaries:
     must_not_depend_on:
       - source_data_queries
       - business_relationship_reconstruction
-  - subject: dashboard_language
-    may_depend_on:
-      - canonical_browser_database
-    must_not_depend_on:
-      - browser_main_thread_execution
-
 invariants:
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
   - "No authority input can widen another."
