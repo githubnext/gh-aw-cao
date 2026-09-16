@@ -948,7 +948,7 @@ describe('declarative dashboard queries', () => {
     const derived = executeDashboardQueries(
       dashboardQueries,
       { packages, repositories, workflows: queryWorkflows, runs, sessions, outcomes, 'operational-values': operationalValues, usage },
-      ['repository-activity', 'workflow-inventory', 'package-inventory']
+      ['repository-activity', 'workflow-inventory', 'package-operational-value-totals', 'package-inventory']
     );
 
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
@@ -967,6 +967,10 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'b.md', runs: 0, ingestion: null }),
       expect.objectContaining({ workflow: 'c.md', runs: 1, ingestion: '100%' })
     ]);
+    expect(derived['package-operational-value-totals'].rows).toEqual([{
+      package: 'aw-doctor',
+      'value-created': 1
+    }]);
     expect(derived['package-inventory'].rows).toEqual([{
       package: 'aw-doctor',
       'package-name': 'AW Doctor',
@@ -980,7 +984,8 @@ describe('declarative dashboard queries', () => {
       registration: 'false, true',
       runs: 3,
       dispatches: 1,
-      aic: 10
+      aic: 10,
+      'value-created': 1
     }]);
   });
 
