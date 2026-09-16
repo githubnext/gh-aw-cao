@@ -27,7 +27,8 @@ structure:
   workflow_shared: .github/workflows/shared/
   rollout_policy: .github/workflows/cao.json
   workflow_resources: .github/aw/
-  skills: skills/
+  workflow_agent_skills: .github/skills/
+  portable_agent_skills: skills/
   specifications: specs/
   documentation: docs/
   decisions: adr/
@@ -39,6 +40,7 @@ architecture:
   roles:
     catalog: publishes versioned operation packages
     control_repository: owns rollout policy, credentials, installed workflows, and workflow runs
+    review_repository: receives declared safe outputs in review mode
     target_repository: supplies source data and receives only declared safe outputs
     gh_aw: compiles workflows and controls execution capabilities, limits, authentication, and safe outputs
   authority: >
@@ -161,6 +163,8 @@ generation:
     path: .github/workflows/<workflow>.md
   shared_workflow_control:
     path: .github/workflows/shared/
+  workflow_agent_skill:
+    path: .github/skills/<name>/SKILL.md
   portable_agent_skill:
     path: skills/<name>/SKILL.md
   architecture_decision:
