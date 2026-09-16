@@ -22,11 +22,10 @@ export function syncFullViewMode(root, page) {
     ? [...fullView.parentElement.querySelectorAll(':scope > .custom-view')].filter((view) => view !== fullView)
     : [];
   const modeSelectionPage = page?.hasAttribute('data-mobile-view-mode-page') === true;
-  const mobileTableMode = root.dataset.mobileViewMode === 'table'
-    && modeSelectionPage
-    && root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.matches === true;
+  const mobileViewport = root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.matches === true;
+  const mobileTableMode = root.dataset.mobileViewMode === 'table' && modeSelectionPage && mobileViewport;
   const canPin = Boolean(fullView) && (
-    modeSelectionPage
+    modeSelectionPage && mobileViewport
       ? mobileTableMode
       : siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
   );

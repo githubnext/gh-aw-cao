@@ -895,6 +895,12 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
   const views = Array.isArray(page.views)
     ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults))
     : [];
+  const mobileTableViewIndex = views.findIndex((view) => (
+    isPlainObject(view)
+    && view.layout === 'full-view'
+    && view['lazy-list'] === true
+  ));
+  const supportsMobileViewMode = mobileTableViewIndex >= 0 && views.length > 1;
   const sections = Array.isArray(page.sections) ? page.sections : [];
   const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
     if (!Array.isArray(section.views) || section.views.length !== 1) return [];
@@ -939,6 +945,12 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
         rendered.setAttribute('data-view-layout', layout);
       }
       rendered.setAttribute('data-disclosure', disclosure);
+      if (isPlainObject(view) && view['lazy-list'] === true) {
+        rendered.setAttribute('data-view-lazy-list', '');
+      }
+      if (supportsMobileViewMode) {
+        rendered.dataset.mobileViewMode = index === mobileTableViewIndex ? 'table' : 'chart';
+      }
       return rendered;
     };
     const rendered = isRouteView || index === 0 || (isPlainObject(view) && view.mark === 'callout')
@@ -1015,7 +1027,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       'data-page-title': title,
       'data-page-description': page.description ?? '',
       'data-route-parameter': routeParameter,
-      'data-route-navigation-page': routeNavigationPage
+      'data-route-navigation-page': routeNavigationPage,
+      'data-mobile-view-mode-page': supportsMobileViewMode ? '' : undefined
     },
     filterBar,
     ...(renderedViews.length > 0
