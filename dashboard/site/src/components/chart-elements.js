@@ -251,12 +251,21 @@ export function renderPieLegend(entries, total, links = new Map(), unit = null) 
       const link = links.get(label) ?? null;
       return [
         h('span', null, renderSafeLink(label, link)),
-        h('strong', null, formatNumber(value, unit)),
+        h('strong', null, formatPieValue(value, unit)),
         h('small', null, total > 0 ? formatCoveragePercent(value / total) : '0%')
       ];
     },
     { 'data-chart-legend': 'visual' }
   );
+}
+
+/**
+ * @param {number} value
+ * @param {{ name: string, symbol: string, significant: number } | null} unit
+ * @param {boolean} [includeUnit]
+ */
+function formatPieValue(value, unit, includeUnit = true) {
+  return unit ? formatNumber(value, unit, includeUnit) : formatCount(value);
 }
 
 /**
@@ -430,14 +439,14 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       null,
       h(
         'svg',
-        { viewBox: '0 0 42 42', role: 'img', 'aria-label': `Pie chart: ${entries.map(([label, value]) => `${label} ${formatNumber(value, unit)}`).join(', ') || 'no data'}` },
+        { viewBox: '0 0 42 42', role: 'img', 'aria-label': `Pie chart: ${entries.map(([label, value]) => `${label} ${formatPieValue(value, unit)}`).join(', ') || 'no data'}` },
         h('circle', { className: 'pie-chart-track', cx: PIE_CHART_CENTER, cy: PIE_CHART_CENTER, r: PIE_CHART_RADIUS, fill: 'none', 'stroke-width': PIE_CHART_STROKE_WIDTH }),
         ...entries.map(([label, value], index) => {
           const segmentValue = Number.isFinite(value) && value > 0 ? value : 0;
           const startFraction = safeTotal > 0 ? cumulativeValue / safeTotal : 0;
           cumulativeValue = Math.min(safeTotal, cumulativeValue + segmentValue);
           const endFraction = safeTotal > 0 ? cumulativeValue / safeTotal : startFraction;
-          const segmentLabel = `${label}: ${formatNumber(value, unit)}`;
+          const segmentLabel = `${label}: ${formatPieValue(value, unit)}`;
           const midpoint = ((startFraction + endFraction) / 2) * Math.PI * 2 - (Math.PI / 2);
           const tooltipWidth = Math.min(40, Math.max(18, (segmentLabel.length * 1.25) + 5));
           const tooltipX = Math.min(Math.max(21 + (Math.cos(midpoint) * 14) - (tooltipWidth / 2), 1), 41 - tooltipWidth);
@@ -466,7 +475,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             }
           });
         }),
-        h('text', { className: 'pie-chart-total-value', x: 21, y: 20, 'text-anchor': 'middle', 'aria-hidden': 'true' }, formatNumber(total, unit, false)),
+        h('text', { className: 'pie-chart-total-value', x: 21, y: 20, 'text-anchor': 'middle', 'aria-hidden': 'true' }, formatPieValue(total, unit, false)),
         h('text', { className: 'pie-chart-total-label', x: 21, y: 25.5, 'text-anchor': 'middle', 'aria-hidden': 'true' }, totalLabel)
       )
     );
