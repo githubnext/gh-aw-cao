@@ -747,6 +747,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   const scroll = view.locator('.table-scroll');
   const swimlane = runsPage.locator('[data-view-id="runs-last-week"]');
   const columnHeaders = view.locator('thead > tr:first-child > th');
+  const facetControl = columnHeaders.locator('.filter-select-control').first();
   const expectAlignedColumnHeaders = async () => {
     const headerTops = await columnHeaders.evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().top));
     expect(Math.max(...headerTops) - Math.min(...headerTops)).toBeLessThanOrEqual(1);
@@ -796,6 +797,11 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
+  const facetControlBox = await facetControl.boundingBox();
+  const scrolledSummaryBox = await summaryRow.boundingBox();
+  assert(facetControlBox);
+  assert(scrolledSummaryBox);
+  expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(swimlane).toBeVisible();
 

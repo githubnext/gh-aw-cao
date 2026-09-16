@@ -1889,7 +1889,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .table-region[data-lazy-list] .table-scroll { overscroll-behavior-x: none; }
 .table-region-static .table-scroll, .table-region-expanded .table-scroll { max-height: none; overflow: visible; overscroll-behavior: auto; }
 .table-scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-.table-scroll thead th { position: sticky; top: 0; z-index: 1; }
+.table-scroll thead { position: sticky; top: 0; z-index: 1; }
 .table-sort { display: inline-flex; align-items: center; gap: 4px; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .table-sort::after { content: "↕"; color: var(--muted); font-size: .6875rem; opacity: .5; }
 .table-sort:hover { color: var(--fg); }
