@@ -141,6 +141,8 @@ resources:
     destination: .github/aw/dashboard/site/src/elapsed-step-tracker.js
   - source: site/src/horizon.js
     destination: .github/aw/dashboard/site/src/horizon.js
+  - source: site/src/ingestion-progress.js
+    destination: .github/aw/dashboard/site/src/ingestion-progress.js
   - source: site/src/loading-progress.js
     destination: .github/aw/dashboard/site/src/loading-progress.js
   - source: site/src/notification-service.js
