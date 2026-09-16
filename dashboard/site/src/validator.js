@@ -335,8 +335,12 @@ export function validateDashboardDocument(source) {
 export function validateLogicalSources(sources) {
   /** @type {ValidationError[]} */
   const errors = [];
+  validateDetectionObservationRows(sources['detection-observations']?.rows, errors);
+
   const workflowRows = sources.workflows?.rows;
-  if (workflowRows === undefined) return { ok: true, errors: [] };
+  if (workflowRows === undefined) {
+    return errors.length > 0 ? { ok: false, errors } : { ok: true, errors: [] };
+  }
   if (!Array.isArray(workflowRows)) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
@@ -423,6 +427,151 @@ export function validateLogicalSources(sources) {
   }
 
   return errors.length > 0 ? { ok: false, errors } : { ok: true, errors: [] };
+}
+
+const DETECTION_BOOLEAN_VALUES = ['true', 'false'];
+const DETECTION_TRISTATE_VALUES = [...DETECTION_BOOLEAN_VALUES, 'unknown'];
+const DETECTION_ATTENTION_PRIORITIES = {
+  threat: 1,
+  'tooling-failure': 2,
+  degraded: 3,
+  unknown: 4,
+  skipped: 5,
+  clean: 6
+};
+
+/**
+ * @param {unknown[] | undefined} rows
+ * @param {ValidationError[]} errors
+ */
+function validateDetectionObservationRows(rows, errors) {
+  if (rows === undefined) return;
+  if (!Array.isArray(rows)) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'detection-observations.rows must be a sequence.',
+      '$.sources.detection-observations.rows'
+    ));
+    return;
+  }
+
+  for (const [index, candidate] of rows.entries()) {
+    const path = `$.sources.detection-observations.rows[${index}]`;
+    if (!isPlainObject(candidate)) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'Each detection-observations row must be a mapping.',
+        path
+      ));
+      continue;
+    }
+
+    validateSourceVocabulary(candidate['detection-state'], DETECTION_STATE_VALUES,
+      'detection-state must use a canonical detection state.', `${path}.detection-state`, errors);
+    for (const field of ['detection-expected', 'detection-applicable', 'detection-executed']) {
+      validateSourceVocabulary(candidate[field], DETECTION_TRISTATE_VALUES,
+        `${field} must use true, false, or unknown.`, `${path}.${field}`, errors);
+    }
+    validateSourceVocabulary(candidate['verdict-available'], DETECTION_BOOLEAN_VALUES,
+      'verdict-available must use true or false.', `${path}.verdict-available`, errors);
+    for (const field of ['prompt-injection-detected', 'secret-leak-detected', 'malicious-patch-detected']) {
+      validateSourceVocabulary(candidate[field], DETECTION_BOOLEAN_VALUES,
+        `${field} must use true or false.`, `${path}.${field}`, errors);
+    }
+    validateSourceVocabulary(candidate['job-status'], RUN_STATUS_VALUES,
+      'job-status must use a canonical run status.', `${path}.job-status`, errors);
+    validateSourceVocabulary(candidate['job-conclusion'], RUN_CONCLUSION_VALUES,
+      'job-conclusion must use a canonical run conclusion.', `${path}.job-conclusion`, errors);
+    validateSourceVocabulary(candidate['rollout-mode'], ROLLOUT_MODE_VALUES,
+      'rollout-mode must use review, live, or unknown.', `${path}.rollout-mode`, errors);
+
+    const verdictAvailable = candidate['verdict-available'] === 'true';
+    const warningCount = candidate['inspection-warning-count'];
+    const threatDetected = [
+      candidate['prompt-injection-detected'],
+      candidate['secret-leak-detected'],
+      candidate['malicious-patch-detected']
+    ].includes('true');
+    const state = candidate['detection-state'];
+    const usableVerdictPercent = candidate['usable-verdict-percent'];
+
+    if (![0, 100].includes(usableVerdictPercent) ||
+        usableVerdictPercent !== (verdictAvailable ? 100 : 0)) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        'usable-verdict-percent must be 100 exactly when a verdict is available, otherwise 0.',
+        `${path}.usable-verdict-percent`
+      ));
+    }
+    if (candidate['detection-count'] !== 1) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        'detection-count must be 1 at detection-observation grain.',
+        `${path}.detection-count`
+      ));
+    }
+    if (!Number.isInteger(warningCount) || warningCount < 0) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        'inspection-warning-count must be a non-negative integer.',
+        `${path}.inspection-warning-count`
+      ));
+    }
+    const duration = candidate['job-duration-seconds'];
+    if (duration !== null && !isNonNegativeFiniteNumber(duration)) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        'job-duration-seconds must be null or a finite non-negative number.',
+        `${path}.job-duration-seconds`
+      ));
+    }
+    if (DETECTION_ATTENTION_PRIORITIES[state] !== candidate['attention-priority']) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        'attention-priority must match the canonical detection-state priority.',
+        `${path}.attention-priority`
+      ));
+    }
+
+    const stateIsConsistent = (
+      (state === 'threat' && verdictAvailable && threatDetected) ||
+      (state === 'degraded' && verdictAvailable && !threatDetected && Number.isInteger(warningCount) && warningCount > 0) ||
+      (state === 'clean' && verdictAvailable && !threatDetected && warningCount === 0) ||
+      (state === 'tooling-failure' && !verdictAvailable) ||
+      (state === 'skipped' && !verdictAvailable &&
+        candidate['job-conclusion'] === 'skipped' &&
+        candidate['detection-applicable'] === 'false' &&
+        candidate['detection-executed'] === 'false') ||
+      (state === 'unknown' && !verdictAvailable && !threatDetected && warningCount === 0)
+    );
+    if (!stateIsConsistent || (threatDetected && state !== 'threat')) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        'detection-state must agree with verdict availability, threat flags, warnings, and skipped-job evidence.',
+        `${path}.detection-state`
+      ));
+    }
+    if (verdictAvailable && candidate['detection-executed'] !== 'true') {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        'An available verdict requires detection-executed to be true.',
+        `${path}.detection-executed`
+      ));
+    }
+  }
+}
+
+/**
+ * @param {unknown} value
+ * @param {string[]} allowed
+ * @param {string} message
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateSourceVocabulary(value, allowed, message, path, errors) {
+  if (typeof value !== 'string' || !allowed.includes(value)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, message, path));
+  }
 }
 
 /**

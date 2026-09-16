@@ -3824,6 +3824,102 @@ dashboard:
     }
   });
 
+  it('validates detection job observations and rejects unsafe state changes', () => {
+    const validRow = {
+      organization: 'octo-org',
+      repository: 'platform',
+      workflow: '.github/workflows/example.md',
+      run: '123',
+      'rollout-mode': 'review',
+      'detection-expected': 'true',
+      'detection-applicable': 'true',
+      'detection-executed': 'true',
+      'verdict-available': 'true',
+      'usable-verdict-percent': 100,
+      'detection-state': 'threat',
+      'detection-count': 1,
+      'prompt-injection-detected': 'true',
+      'secret-leak-detected': 'false',
+      'malicious-patch-detected': 'false',
+      'inspection-warning-count': 0,
+      'attention-priority': 1,
+      'job-status': 'completed',
+      'job-conclusion': 'success',
+      'job-duration-seconds': 12.5
+    };
+
+    expect(validateLogicalSources({
+      'detection-observations': { rows: [validRow] }
+    }).ok).toBe(true);
+
+    const unsafeChanges = [
+      ['detection-state', 'clean', 'detection-state'],
+      ['verdict-available', 'false', 'detection-state'],
+      ['usable-verdict-percent', 0, 'usable-verdict-percent'],
+      ['prompt-injection-detected', 'unknown', 'prompt-injection-detected'],
+      ['inspection-warning-count', -1, 'inspection-warning-count'],
+      ['attention-priority', 6, 'attention-priority'],
+      ['job-status', 'running', 'job-status'],
+      ['job-conclusion', 'passed', 'job-conclusion'],
+      ['job-duration-seconds', Number.NaN, 'job-duration-seconds']
+    ];
+    for (const [field, value, errorField] of unsafeChanges) {
+      const rejected = validateLogicalSources({
+        'detection-observations': { rows: [{ ...validRow, [field]: value }] }
+      });
+      expect(rejected.ok, `${field} should be rejected`).toBe(false);
+      if (!rejected.ok) {
+        expect(rejected.errors).toEqual(expect.arrayContaining([
+          expect.objectContaining({
+            path: `$.sources.detection-observations.rows[0].${errorField}`
+          })
+        ]));
+      }
+    }
+  });
+
+  it('rejects malformed detection rows and inconsistent skipped-job evidence', () => {
+    const malformed = validateLogicalSources({
+      'detection-observations': { rows: 'unsafe' }
+    });
+    expect(malformed).toMatchObject({
+      ok: false,
+      errors: [
+        expect.objectContaining({ path: '$.sources.detection-observations.rows' })
+      ]
+    });
+
+    const skipped = {
+      'rollout-mode': 'unknown',
+      'detection-expected': 'true',
+      'detection-applicable': 'false',
+      'detection-executed': 'false',
+      'verdict-available': 'false',
+      'usable-verdict-percent': 0,
+      'detection-state': 'skipped',
+      'detection-count': 1,
+      'prompt-injection-detected': 'false',
+      'secret-leak-detected': 'false',
+      'malicious-patch-detected': 'false',
+      'inspection-warning-count': 0,
+      'attention-priority': 5,
+      'job-status': 'completed',
+      'job-conclusion': 'success',
+      'job-duration-seconds': null
+    };
+    const rejected = validateLogicalSources({
+      'detection-observations': { rows: [null, skipped] }
+    });
+
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: '$.sources.detection-observations.rows[0]' }),
+        expect.objectContaining({ path: '$.sources.detection-observations.rows[1].detection-state' })
+      ]));
+    }
+  });
+
   it('DLS-CTX-009 DLS-CTX-002 accepts valid scope and time context shapes', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
