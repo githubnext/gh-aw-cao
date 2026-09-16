@@ -482,7 +482,9 @@ async function withWebIngestionLock(locks, task, options) {
       }
     });
   } catch (error) {
-    if (!acquired && /** @type {{ name?: unknown }} */ (error)?.name === 'AbortError') {
+    if (!acquired
+        && controller.signal.aborted
+        && /** @type {{ name?: unknown }} */ (error)?.name === 'AbortError') {
       debug('timed out waiting for canonical ingestion lock', { name, waitedMs: Date.now() - startedAt });
       throw ingestionLockTimeoutError();
     }
