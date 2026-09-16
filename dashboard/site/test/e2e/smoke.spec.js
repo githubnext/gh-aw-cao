@@ -617,6 +617,7 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with session data');
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
@@ -635,11 +636,8 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-0.jsonl');
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
-  await scroll.evaluate((element) => {
-    element.scrollTop = 100;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
@@ -770,6 +768,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
   const more = table.locator('[data-table-more]');
@@ -797,6 +796,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
     element.dispatchEvent(new Event('scroll'));
   });
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(swimlane).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -986,10 +987,11 @@ test('Runs renders the worker-projected table for an active time window', async 
   const horizonFilter = page.getByLabel('Dashboard filters');
   const select = horizonFilter.locator('[aria-label="Time window"]');
 
+  await expect(select).toHaveValue('custom');
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('2');
   await expect(rows.locator('a').first()).toBeVisible();
-  await expect(select).toHaveValue('custom');
 });
 
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
@@ -2510,9 +2512,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   const fieldName = view.locator('thead > tr:first-child > th').first();
   const summaryCell = view.locator('.table-summary-row > th').first();
   await expect(view).toHaveCount(1);
-  await expect(siteCallout).toBeVisible();
-  await expect(warningCallout).toBeVisible();
-  await expect(summary).toBeVisible();
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(pageTitle).toBeVisible();
   await expect(tableFilter).toBeVisible();
   await expect(lazyList).toHaveCount(1);
@@ -2568,9 +2568,6 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-    await expect(siteCallout).toBeVisible();
-    await expect(warningCallout).toBeVisible();
-    await expect(summary).toBeVisible();
     await expect(pageTitle).toBeVisible();
     await expect(tableFilter).toBeVisible();
     await expect(summaryCell).toHaveCSS('opacity', '1');
@@ -2582,6 +2579,8 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     }
   }
 
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
@@ -3178,14 +3177,15 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   `);
 
   await expect(page.getByRole('heading', { name: 'Packages', level: 1 })).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
   const valueChart = page.locator('[data-view-id="packages-value-created"]');
   await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
   const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
   await expect(packageRows).toHaveCount(2);
   await expect(page.locator('[data-page-id="packages"] .custom-table thead tr').first().locator('th')).toHaveText([
