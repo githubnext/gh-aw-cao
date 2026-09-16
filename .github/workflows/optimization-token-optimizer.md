@@ -47,6 +47,9 @@ on:
       experiment_id:
         required: true
         type: string
+      variant:
+        required: true
+        type: string
       evaluator_digest:
         required: true
         type: string
@@ -57,7 +60,7 @@ on:
         required: true
         type: boolean
       evidence_confidence:
-        required: true
+        required: false
         type: string
       evidence_provenance_json:
         required: true
@@ -65,8 +68,11 @@ on:
       attributable_run_ids_json:
         required: true
         type: string
-      proposed_savings_aic:
+      cost_grain:
         required: true
+        type: string
+      proposed_savings_aic:
+        required: false
         type: string
       supersedes_intervention_id:
         type: string
@@ -101,12 +107,14 @@ jobs:
           EVIDENCE_WINDOW_END: ${{ inputs.evidence_window_end }}
           ASSIGNMENT_RUN_ID: ${{ inputs.assignment_run_id }}
           EXPERIMENT_ID: ${{ inputs.experiment_id }}
+          VARIANT: ${{ inputs.variant }}
           EVALUATOR_DIGEST: ${{ inputs.evaluator_digest }}
           OPPORTUNITY_KIND: ${{ inputs.opportunity_kind }}
           EVIDENCE_COMPLETE: ${{ inputs.evidence_complete }}
           EVIDENCE_CONFIDENCE: ${{ inputs.evidence_confidence }}
           EVIDENCE_PROVENANCE_JSON: ${{ inputs.evidence_provenance_json }}
           ATTRIBUTABLE_RUN_IDS_JSON: ${{ inputs.attributable_run_ids_json }}
+          COST_GRAIN: ${{ inputs.cost_grain }}
           PROPOSED_SAVINGS_AIC: ${{ inputs.proposed_savings_aic }}
           SUPERSEDES_INTERVENTION_ID: ${{ inputs.supersedes_intervention_id }}
         run: |
@@ -131,11 +139,13 @@ jobs:
             --arg evidenceWindowEnd "$EVIDENCE_WINDOW_END" \
             --arg assignmentRunId "$ASSIGNMENT_RUN_ID" \
             --arg experimentId "$EXPERIMENT_ID" \
+            --arg variant "$VARIANT" \
             --arg evaluatorDigest "$EVALUATOR_DIGEST" \
             --arg opportunityKind "$OPPORTUNITY_KIND" \
             --arg evidenceConfidence "$EVIDENCE_CONFIDENCE" \
             --arg evidenceProvenance "$EVIDENCE_PROVENANCE_JSON" \
             --arg attributableRunIds "$ATTRIBUTABLE_RUN_IDS_JSON" \
+            --arg costGrain "$COST_GRAIN" \
             --arg proposedSavingsAic "$PROPOSED_SAVINGS_AIC" \
             --arg supersedesInterventionId "$SUPERSEDES_INTERVENTION_ID" \
             '{
@@ -148,10 +158,24 @@ jobs:
               experimentId: $experimentId,
               evaluatorDigest: $evaluatorDigest,
               opportunityKind: $opportunityKind,
-              evidenceConfidence: ($evidenceConfidence | tonumber?),
+              variant: $variant,
+              evidenceConfidenceSupplied: ($evidenceConfidence != ""),
+              evidenceConfidence: (
+                if $evidenceConfidence == ""
+                then null
+                else (($evidenceConfidence | tonumber?) // "__invalid_number__")
+                end
+              ),
               evidenceProvenance: ($evidenceProvenance | fromjson?),
               attributableRunIds: ($attributableRunIds | fromjson?),
-              proposedSavingsAic: ($proposedSavingsAic | tonumber?)
+              proposedSavingsAicSupplied: ($proposedSavingsAic != ""),
+              proposedSavingsAic: (
+                if $proposedSavingsAic == ""
+                then null
+                else (($proposedSavingsAic | tonumber?) // "__invalid_number__")
+                end
+              ),
+              costGrain: $costGrain
             }
             + (if $supersedesInterventionId != ""
               then {supersedesInterventionId: $supersedesInterventionId}
@@ -161,8 +185,15 @@ jobs:
             reason=evidence-not-complete
           elif [ -z "$cao_script" ] || [ ! -s "$db" ]; then
             reason=activity-cache-unavailable
+          elif [ ! -s "$RUNNER_TEMP/cao-activity/payload-hashes.json" ]; then
+            reason=activity-cache-digest-unavailable
+          elif ! expected_database_hash="$(jq -er '."gh-aw-logs.sqlite" | select(test("^[0-9a-f]{64}$"))' "$RUNNER_TEMP/cao-activity/payload-hashes.json" 2>/dev/null)"; then
+            reason=activity-cache-digest-unavailable
+          elif [ "$(shasum -a 256 "$db" | awk '{print $1}')" != "$expected_database_hash" ]; then
+            reason=activity-cache-digest-mismatch
           elif ! jq -e '
-              .schemaVersion == 1
+              . as $assignment
+              | .schemaVersion == 1
               and (.targetRepo | test("^[a-z0-9][a-z0-9-]*/[a-z0-9._-]+$"))
               and (.workflowPath | test("^\\.github/workflows/[^/]+\\.(md|lock\\.yml)$"))
               and (.evidenceWindowStart | fromdateiso8601? != null)
@@ -170,6 +201,7 @@ jobs:
               and ((.evidenceWindowStart | fromdateiso8601) < (.evidenceWindowEnd | fromdateiso8601))
               and (.assignmentRunId | test("^[0-9]+$"))
               and (.experimentId | test("^[A-Za-z0-9][A-Za-z0-9._:-]*$"))
+              and (.variant | test("^[A-Za-z0-9][A-Za-z0-9._:-]*$"))
               and (.evaluatorDigest | test("^[0-9a-f]{64}$"))
               and (.opportunityKind | IN(
                 "avoidable-agent-invocation",
@@ -182,14 +214,27 @@ jobs:
                 "avoidable-trigger-frequency",
                 "duplicated-work-across-repositories"
               ))
-              and (.evidenceConfidence | type == "number" and . >= 0 and . <= 1)
-              and (.proposedSavingsAic | type == "number" and . >= 0)
+              and (
+                (.evidenceConfidenceSupplied == false and .evidenceConfidence == null)
+                or (
+                  .evidenceConfidenceSupplied == true
+                  and (.evidenceConfidence | type == "number" and . >= 0 and . <= 1)
+                )
+              )
+              and (
+                (.proposedSavingsAicSupplied == false and .proposedSavingsAic == null)
+                or (
+                  .proposedSavingsAicSupplied == true
+                  and (.proposedSavingsAic | type == "number" and . >= 0)
+                )
+              )
               and (.evidenceProvenance | type == "array" and length > 0)
               and (all(.evidenceProvenance[];
                 (.source | type == "string" and length > 0)
                 and (.runId | type == "string" and test("^[0-9]+$"))
-                and .costGrain == "run-aggregate"
+                and .costGrain == $assignment.costGrain
               ))
+              and (.costGrain | IN("invocation", "run-aggregate"))
               and (.attributableRunIds | type == "array" and length > 0)
               and (all(.attributableRunIds[]; type == "string" and test("^[0-9]+$")))
             ' <<<"$assignment" >/dev/null; then
@@ -216,6 +261,44 @@ jobs:
 
             if [ "$runs_status" -ne 0 ] || ! jq -e 'type == "array" and length > 0' <<<"$runs" >/dev/null; then
               reason=assigned-runs-unavailable
+            elif ! jq -e --argjson assignment "$assignment" '
+                [
+                  .[]
+                  | {
+                      id: ((.githubRunId // .runId // .id // empty) | tostring),
+                      startedAt: (.startedAt // .createdAt // ""),
+                      completedAt: (.completedAt // .updatedAt // ""),
+                      graders: (.graders.results // [])
+                    }
+                ] as $runs
+                | ($runs | map(.id)) as $runIds
+                | ($runIds | index($assignment.assignmentRunId)) != null
+                and all($assignment.attributableRunIds[] as $runId; $runIds | index($runId) != null)
+                and any($runs[];
+                  .id == $assignment.assignmentRunId
+                  and (.startedAt | fromdateiso8601? != null)
+                  and (.completedAt | fromdateiso8601? != null)
+                  and ((.startedAt | fromdateiso8601) >= ($assignment.evidenceWindowStart | fromdateiso8601))
+                  and ((.completedAt | fromdateiso8601) <= ($assignment.evidenceWindowEnd | fromdateiso8601))
+                  and any(.graders[]?;
+                    .id == "operational-value"
+                    and (.status == "pass" or .passed == true)
+                    and (
+                      (.implementation.digest // .evaluatorDigest // .observation.evaluatorDigest // "")
+                      == $assignment.evaluatorDigest
+                    )
+                    and (
+                      (.observation.case.experimentId // .observation.experimentId // "")
+                      == $assignment.experimentId
+                    )
+                    and (
+                      (.observation.mature // false) == true
+                      or (.maturityStatus // "") == "matured"
+                    )
+                  )
+                )
+              ' <<<"$runs" >/dev/null; then
+              reason=assigned-run-evidence-mismatch
             elif [ "$events_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$events" >/dev/null; then
               reason=intervention-history-unavailable
             elif jq -e --arg opportunity "$opportunity_id" '
@@ -243,7 +326,7 @@ jobs:
               eligible=true
               reason=eligible
               jq --arg opportunityId "$opportunity_id" \
-                '. + {opportunityId: $opportunityId, evidenceState: "complete", costGrain: "run-aggregate"}' \
+                '. + {opportunityId: $opportunityId, evidenceState: "complete"}' \
                 <<<"$assignment" > /tmp/gh-aw/token-optimizer/opportunity.json
             fi
           fi
@@ -330,11 +413,13 @@ post-steps:
       EVIDENCE_WINDOW_END: ${{ inputs.evidence_window_end }}
       ASSIGNMENT_RUN_ID: ${{ inputs.assignment_run_id }}
       EXPERIMENT_ID: ${{ inputs.experiment_id }}
+      VARIANT: ${{ inputs.variant }}
       EVALUATOR_DIGEST: ${{ inputs.evaluator_digest }}
       OPPORTUNITY_KIND: ${{ inputs.opportunity_kind }}
       EVIDENCE_CONFIDENCE: ${{ inputs.evidence_confidence }}
       EVIDENCE_PROVENANCE_JSON: ${{ inputs.evidence_provenance_json }}
       ATTRIBUTABLE_RUN_IDS_JSON: ${{ inputs.attributable_run_ids_json }}
+      COST_GRAIN: ${{ inputs.cost_grain }}
       PROPOSED_SAVINGS_AIC: ${{ inputs.proposed_savings_aic }}
       SUPERSEDES_INTERVENTION_ID: ${{ inputs.supersedes_intervention_id }}
     run: |
@@ -356,6 +441,7 @@ post-steps:
         --arg evidenceWindowEnd "$EVIDENCE_WINDOW_END" \
         --arg assignmentRunId "$ASSIGNMENT_RUN_ID" \
         --arg experimentId "$EXPERIMENT_ID" \
+        --arg variant "$VARIANT" \
         '"token-opportunity:\($targetRepo | @uri):\($workflowPath | @uri):\($evidenceWindowStart | fromdateiso8601 | strftime("%Y-%m-%dT%H:%M:%SZ")):\($evidenceWindowEnd | fromdateiso8601 | strftime("%Y-%m-%dT%H:%M:%SZ")):\($assignmentRunId):\($experimentId | @uri)"')"
       intervention_component="$(jq -rn --arg value "$EXPERIMENT_ID" '$value | @uri')"
       intervention_id="token-intervention:${opportunity_id}:${intervention_component}"
@@ -377,9 +463,18 @@ post-steps:
         --arg evidenceConfidence "$EVIDENCE_CONFIDENCE" \
         --arg evidenceProvenance "$EVIDENCE_PROVENANCE_JSON" \
         --arg attributableRunIds "$ATTRIBUTABLE_RUN_IDS_JSON" \
+        --arg costGrain "$COST_GRAIN" \
         --arg proposedSavingsAic "$PROPOSED_SAVINGS_AIC" \
         --arg supersedesInterventionId "$SUPERSEDES_INTERVENTION_ID" \
-        '{
+        '(if $proposedSavingsAic == ""
+          then null
+          else (($proposedSavingsAic | tonumber?) // "__invalid_number__")
+          end) as $proposedSavings
+        | (if $evidenceConfidence == ""
+          then null
+          else (($evidenceConfidence | tonumber?) // "__invalid_number__")
+          end) as $confidence
+        | {
           schemaVersion: 1,
           observedAt: $observedAt,
           controlRepository: $controlRepository,
@@ -394,8 +489,7 @@ post-steps:
           opportunityKind: $opportunityKind,
           opportunityId: $opportunityId,
           evidenceState: "complete",
-          evidenceConfidence: ($evidenceConfidence | tonumber),
-          costGrain: "run-aggregate",
+          costGrain: $costGrain,
           evidenceProvenance: ($evidenceProvenance | fromjson),
           interventionId: $interventionId,
           interventionState: "proposed",
@@ -404,7 +498,7 @@ post-steps:
           optimizedVariant: "optimized",
           verificationContract: {
             evaluatorDigest: $evaluatorDigest,
-            costGrain: "run-aggregate",
+            costGrain: $costGrain,
             controlVariant: "control",
             optimizedVariant: "optimized",
             workloadComparisonKey: "accepted-target-outcome:v1",
@@ -412,9 +506,16 @@ post-steps:
             minimumSampleSize: 2,
             minimumMaturityDays: 14
           },
-          proposedSavingsAic: ($proposedSavingsAic | tonumber),
           attributableRunIds: (($attributableRunIds | fromjson) + [$optimizerRunId] | unique)
         }
+        + (if ($confidence | type) == "number"
+            then {evidenceConfidence: $confidence}
+            else {}
+          end)
+        + (if ($proposedSavings | type) == "number"
+          then {proposedSavingsAic: $proposedSavings}
+          else {}
+          end)
         + (if $supersedesInterventionId != ""
           then {supersedesInterventionId: $supersedesInterventionId}
           else {}
@@ -486,10 +587,11 @@ Start the body with a concise executive summary, followed immediately by one
 `**Action:**` sentence naming the maintainer action and acceptance check. Use
 `###` headings. Include:
 
-- the stable `opportunityId`, `experimentId`, assignment Run, frozen evidence
-  window, opportunity kind, confidence, and evidence links;
+- the stable `opportunityId`, `experimentId`, assigned variant, assignment Run, frozen evidence
+  window, opportunity kind, confidence when supplied, and evidence links;
 - the observed evidence rule and separate AIC/raw-token measures;
-- one proposed change, expected AIC savings, correctness risks, and rollback;
+- one proposed change, expected AIC savings only when the frozen assignment
+  supplies that estimate, correctness risks, and rollback;
 - an experiment plan comparing equivalent accepted outcomes with reliability
   and outcome-quality gates;
 - all attributable auditor/optimizer/verifier Run identities, including this

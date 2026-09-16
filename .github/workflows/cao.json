@@ -130,6 +130,10 @@
           "skills-curator": {
             "workflow": "optimization-skills-curator"
           },
+          "token-efficiency-auditor": {
+            "workflow": "optimization-token-efficiency-auditor",
+            "max-mode": "review"
+          },
           "token-optimizer": {
             "workflow": "optimization-token-optimizer",
             "max-mode": "review"
