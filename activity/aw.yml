@@ -21,3 +21,5 @@ resources:
     destination: .github/aw/activity/inventory.mjs
   - source: inventory-sources.mjs
     destination: .github/aw/activity/inventory-sources.mjs
+  - source: package-name.mjs
+    destination: .github/aw/activity/package-name.mjs

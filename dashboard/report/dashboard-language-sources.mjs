@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { packageName } from "../../activity/package-name.mjs";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
 import { firstText } from "./text-utils.mjs";
 
@@ -558,14 +559,6 @@ function workflowAdmission(controlSettings, packageName, role, workflowId) {
     if (workerPolicy.enabled === false) return { status: "blocked", reason: "worker-disabled" };
   }
   return { status: "authorized", reason: "authorized" };
-}
-
-function packageName(id) {
-  return id
-    .split("-")
-    .filter(Boolean)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(" ");
 }
 
 function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {

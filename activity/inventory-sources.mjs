@@ -2,16 +2,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "./actions-log.mjs";
+import { packageName } from "./package-name.mjs";
 
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
-
-function packageName(id) {
-  return id
-    .split("-")
-    .filter(Boolean)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(" ");
-}
 
 function rolloutMode(value) {
   return ["review", "live"].includes(value) ? value : "unknown";
