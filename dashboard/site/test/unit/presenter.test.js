@@ -2988,23 +2988,6 @@ describe('presenter built-in and custom pages', () => {
           href: { field: 'workflow-link', type: 'nominal' }
         }
       },
-      {
-        id: 'workflows-inventory',
-        data: { source: 'workflow-inventory' },
-        encoding: {
-          columns: [
-            { field: 'package-name', type: 'nominal', title: 'Package' },
-            { field: 'repository', type: 'nominal', title: 'Control repository' },
-            { field: 'workflow', type: 'nominal', format: 'workflow-relative-path', title: 'Workflow' },
-            { field: 'workflow-role', type: 'nominal', title: 'Role' },
-            { field: 'rollout-mode', type: 'nominal', title: 'Mode', display: 'mode' },
-            { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
-            { field: 'runs', type: 'quantitative', title: 'Runs' },
-            { field: 'ingestion', type: 'nominal', title: 'Ingestion %' },
-            { field: 'workflow-active', type: 'nominal', title: 'Registration', display: 'active-state' }
-          ]
-        }
-      },
       'entity-workflows'
     ]);
   });
