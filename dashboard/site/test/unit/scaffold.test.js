@@ -134,9 +134,9 @@ describe('DLS-CONF-004 scaffold gates', () => {
     document.head.append(style);
     try {
       const stylesheet = style.sheet;
-      expect(stylesheet).not.toBeNull();
+      if (!stylesheet) throw new Error('Primer stylesheet did not parse');
       let mobileBodyRule;
-      for (const rule of stylesheet?.cssRules ?? []) {
+      for (const rule of stylesheet.cssRules) {
         if (rule.type !== window.CSSRule.MEDIA_RULE) continue;
         const mediaRule = /** @type {CSSMediaRule} */ (rule);
         if (mediaRule.conditionText.replace(/\s/g, '') !== '(max-width:700px)') continue;
