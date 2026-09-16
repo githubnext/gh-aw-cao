@@ -283,7 +283,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,
       errors: expect.arrayContaining([
-        expect.objectContaining({ message: 'list.style must be one of cards, issues.' })
+        expect.objectContaining({ message: 'list.style must be one of cards, issues, entity-cards.' })
       ])
     });
     starterList.list.style = 'cards';
@@ -307,6 +307,77 @@ describe('dashboard document validation', () => {
         expect.objectContaining({
           message: 'list.action must reference a view-placed dashboard CLI action.'
         })
+      ])
+    });
+  });
+
+  it('validates reusable entity cards and declared query drills', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const issuesPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'issues'
+    );
+    const issueList = document.dashboard.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === issuesPage.definition.views[0]
+    );
+    issueList.list.drill = {
+      type: 'query',
+      page: 'issues',
+      query: 'issues',
+      'title-field': 'event-summary',
+      arguments: [{ name: 'entity-url', field: 'entity-url' }]
+    };
+    issueList.data.arguments = [{ name: 'entity-url', field: 'entity-url' }];
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    issuesPage.definition.views[0] = 'missing-view';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'page view must reference a declared reusable dashboard view.' })
+      ])
+    });
+    issuesPage.definition.views[0] = 'issues';
+
+    issueList.list.card = 'missing-template';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'list.card must reference a declared dashboard card template.' })
+      ])
+    });
+    issueList.list.card = 'issue';
+
+    document.dashboard['card-templates'].push({ ...document.dashboard['card-templates'][0] });
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'card template id must be unique.' })
+      ])
+    });
+    document.dashboard['card-templates'].pop();
+
+    issueList.list.drill.query = 'missing-query';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'query drill query must reference a declared dashboard query.' })
+      ])
+    });
+    issueList.list.drill.query = 'issues';
+    delete issueList.list.drill['title-field'];
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'title-field is required and must be a non-empty string.' })
+      ])
+    });
+    issueList.list.drill['title-field'] = 'event-summary';
+    issueList.data.arguments[0].field = 'missing-field';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'data argument field must be declared by data.source.' })
       ])
     });
   });

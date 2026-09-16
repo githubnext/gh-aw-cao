@@ -5,6 +5,74 @@
     "title": "Central Agentic Ops Dashboard",
     "description": "Authoritative declarative dashboard document for built-in and custom pages in the presenter prototype.",
     "repository": "githubnext/gh-aw-cao",
+    "card-templates": [
+      {
+        "id": "issue",
+        "icon": "issue-opened",
+        "title": { "field": "event-summary", "title": "Issue" },
+        "labels": [{ "field": "safe-output-type", "title": "Safe output", "display": "label" }],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Opened", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "pull-request",
+        "icon": "git-pull-request",
+        "title": { "field": "event-summary", "title": "Pull request" },
+        "labels": [{ "field": "safe-output-type", "title": "Safe output", "display": "label" }],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Opened", "format": "human-friendly-timestamp" }
+        ]
+      }
+    ],
+    "views": [
+      {
+        "id": "issues",
+        "title": "Issues",
+        "description": "Open an issue or its producing workflow run from retained safe-output item evidence.",
+        "data": {
+          "source": "issues",
+          "limit": 100,
+          "order-by": [
+            {
+              "field": "observed-at",
+              "direction": "desc"
+            }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "issue",
+          "icon": "issue-opened",
+          "drill": {
+            "type": "external",
+            "field": "entity-url"
+          }
+        },
+        "empty-message": "No issue safe outputs were retained in the current report.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "event-summary", "type": "nominal", "title": "Issue" },
+            { "field": "safe-output-type", "type": "nominal", "title": "Safe output", "display": "label" },
+            { "field": "github-entity-type", "type": "nominal", "title": "Entity type" },
+            { "field": "entity-url", "type": "nominal", "title": "Entity URL" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+            { "field": "run-link", "type": "nominal", "title": "Run link" },
+            { "field": "observed-at", "type": "temporal", "format": "human-friendly-timestamp", "title": "Opened" }
+          ]
+        }
+      }
+    ],
     "cli-actions": [
       {
         "id": "update-repository",
@@ -1744,41 +1812,23 @@
       },
       {
         "name": "issues",
-        "intent": "List GitHub issue safe-output items from retained events.",
-        "description": "Issue safe-output item events retain target issue links and producing workflow run provenance.",
-        "from": "events",
-        "joins": [
-          {
-            "source": "runs",
-            "type": "left",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" },
-              { "left": "run", "right": "run" },
-              { "left": "run-attempt", "right": "run-attempt" }
-            ],
-            "fields": [{ "field": "run-link", "as": "linked-run" }]
-          }
-        ],
-        "filter": {
-          "predicates": [
-            { "field": "event-type", "equals": "safe_output.created" },
-            { "field": "github-entity-type", "equals": "issue" }
-          ]
-        },
+        "intent": "List retained GitHub issue safe outputs.",
+        "description": "Issue-only projection of retained safe-output items.",
+        "from": "safe-output-items",
+        "filter": { "predicates": [{ "field": "github-entity-type", "equals": "issue" }] },
         "select": [
-          { "field": "event-timestamp", "as": "observed-at" },
-          { "field": "event-summary", "as": "issue-title" },
-          { "field": "correlation-id", "as": "issue-link" },
+          { "field": "observed-at" },
+          { "field": "github-entity-type" },
           { "field": "safe-output-type" },
+          { "field": "event-summary" },
+          { "field": "entity-url" },
           { "field": "organization" },
           { "field": "repository" },
           { "field": "workflow" },
           { "field": "run" },
-          { "field": "linked-run", "as": "run-link" }
+          { "field": "run-link" }
         ],
-        "order-by": [{ "field": "observed-at", "direction": "desc" }]
+        "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "entity-url", "direction": "asc" }]
       },
       {
         "name": "workflow-inventory",
@@ -6692,77 +6742,18 @@
       },
       {
         "id": "issues",
-        "kind": "custom",
+        "kind": "built-in",
+        "page": "issues",
         "title": "Issues",
         "navigation-label": "Issues",
         "icon": "issue-opened",
         "description": "GitHub issue safe outputs rendered as a GitHub-style issue list.",
-        "views": [
-          {
-            "id": "issue-list",
-            "title": "Issues",
-            "description": "Open an issue or its producing workflow run from retained safe-output item evidence.",
-            "data": {
-              "source": "issues",
-              "limit": 100,
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "list",
-            "list": {
-              "style": "issues",
-              "icon": "issue-opened"
-            },
-            "empty-message": "No issue safe outputs were retained in the current report.",
-            "layout": "full-view",
-            "encoding": {
-              "href": {
-                "field": "issue-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "issue-title",
-                  "type": "nominal",
-                  "title": "Issue"
-                },
-                {
-                  "field": "safe-output-type",
-                  "type": "nominal",
-                  "title": "Safe output",
-                  "display": "label"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow",
-                  "format": "workflow-relative-path"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run",
-                  "display": "run-link"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Opened"
-                }
-              ]
-            }
-          }
-        ]
+        "definition": {
+          "data-state": {
+            "availability": true
+          },
+          "views": ["issues"]
+        }
       },
       {
         "id": "preview",

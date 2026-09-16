@@ -40,6 +40,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `engines-models` | Model and engine utilization plus run aggregates. |
 | `operational-value` | Value observations, evidence, maturity, and baseline deltas. |
 | `findings` | Linked security and quality findings with status and severity. |
+| `issues` | Reusable issue entity cards bound to safe-output queries with explicit drill behavior. |
 
 ## Declarative marks
 

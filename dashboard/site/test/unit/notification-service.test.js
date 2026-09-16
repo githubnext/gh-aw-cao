@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNotificationService } from '../../src/notification-service.js';
-import { publishWorkerNotification } from '../../src/data-worker.js';
+import { publishWorkerNotification } from '../../src/ingestion-progress.js';
 
 describe('dashboard notification service', () => {
   beforeEach(() => {
@@ -46,6 +46,7 @@ describe('dashboard notification service', () => {
     const service = createNotificationService(document);
     const handle = service.publish({
       message: 'Storing data...',
+      detailsSubtitle: 'A local copy is being downloaded in this browser.',
       duration: 0,
       details: Array.from({ length: 105 }, (_, index) => `Step ${index + 1}`)
     });
@@ -60,20 +61,28 @@ describe('dashboard notification service', () => {
     expect(details.hidden).toBe(true);
     expect(details.children).toHaveLength(100);
     expect(details.firstElementChild?.textContent).toBe('Step 6');
+    const subtitle = /** @type {HTMLParagraphElement} */ (
+      document.querySelector('.dashboard-notification-details-subtitle')
+    );
+    expect(subtitle.hidden).toBe(true);
 
     toggle.click();
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(toggle.getAttribute('aria-label')).toBe('Storing data... Hide ingestion progress history');
     expect(details.hidden).toBe(false);
+    expect(subtitle.hidden).toBe(false);
+    expect(subtitle.textContent).toContain('local copy');
 
     handle.update({
       message: 'Refreshing queries...',
+      detailsSubtitle: 'Cached shards are reused.',
       duration: 0,
       details: ['Parsing complete.', 'Refreshing queries.']
     });
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(details.hidden).toBe(false);
     expect(details.textContent).toContain('Refreshing queries.');
+    expect(subtitle.textContent).toBe('Cached shards are reused.');
     expect(details.tagName).toBe('UL');
 
     toggle.click();

@@ -7,6 +7,7 @@ import { buildWizardPolicy, selectConfiguredOperations } from "../../docs/lib/co
 const controlPolicy = JSON.parse(readFileSync(".github/workflows/cao.json", "utf8"));
 
 const hero = readFileSync("docs/components/HierarchyHero.astro", "utf8");
+const illustration = readFileSync("docs/components/DispatchIllustration.astro", "utf8");
 const wizard = readFileSync("docs/components/OpsWizard.astro", "utf8");
 const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
 const packageManifest = readFileSync("package.json", "utf8");
@@ -33,17 +34,17 @@ test("landing diagram fallbacks use concrete light and dark palettes", () => {
     assert.equal(withoutRootPalette(light), withoutRootPalette(dark));
   }
 
-  assert.equal((hero.match(/class="[^"]*theme-light/g) ?? []).length, 2);
-  assert.equal((hero.match(/class="[^"]*theme-dark/g) ?? []).length, 2);
-  assert.match(hero, /:global\(:root\[data-theme="light"\]\) \.theme-dark/);
+  assert.equal((illustration.match(/class="[^"]*theme-light/g) ?? []).length, 2);
+  assert.equal((illustration.match(/class="[^"]*theme-dark/g) ?? []).length, 2);
+  assert.match(illustration, /:global\(:root\[data-theme="light"\]\) \.theme-dark/);
 });
 
 test("landing animations use SVG and CSS without a JavaScript player", () => {
-  assert.doesNotMatch(hero, /<script>|lottie/i);
+  assert.doesNotMatch(illustration, /<script>|lottie/i);
   assert.doesNotMatch(packageManifest, /lottie-web/);
-  assert.match(hero, /control-plane-dispatch-motion\.svg/);
-  assert.match(hero, /control-plane-dispatch-mobile-motion\.svg/);
-  assert.match(hero, /@media \(prefers-reduced-motion: reduce\) \{\s+\.dispatch-motion \{\s+display: none;/);
+  assert.match(illustration, /control-plane-dispatch-motion\.svg/);
+  assert.match(illustration, /control-plane-dispatch-mobile-motion\.svg/);
+  assert.match(illustration, /@media \(prefers-reduced-motion: reduce\) \{\s+\.dispatch-motion \{\s+display: none;/);
 
   for (const layout of ["", "-mobile"]) {
     const motion = readFileSync(`docs/assets/control-plane-dispatch${layout}-motion.svg`, "utf8");

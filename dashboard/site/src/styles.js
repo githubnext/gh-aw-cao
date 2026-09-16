@@ -20,6 +20,7 @@ export function notificationStylesheet() {
 .dashboard-notification-toggle:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 3px; border-radius: 3px; }
 .dashboard-notification-chevron { width: 7px; height: 7px; flex: 0 0 auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 120ms ease; }
 .dashboard-notification-toggle[aria-expanded="true"] .dashboard-notification-chevron { transform: rotate(225deg); }
+.dashboard-notification-details-subtitle { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--border, ButtonBorder); color: var(--muted, GrayText); font-size: .75rem; line-height: 1.4; }
 .dashboard-notification-details { max-height: min(320px, 45vh); margin: 10px 0 0; padding: 8px; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--border, ButtonBorder); color: var(--muted, GrayText); font: .6875rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; list-style: none; }
 .dashboard-notification-details li + li { margin-top: 4px; }
 .dashboard-notification-action { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--border, ButtonBorder); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
@@ -417,6 +418,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .repository-link { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; border-radius: 6px; color: var(--muted); text-decoration: none; transition: background-color 120ms ease, color 120ms ease; }
 .repository-link:hover { background: var(--neutral-muted); color: var(--fg); }
 .repository-link .octicon { width: 18px; height: 18px; }
+.viewer-avatar { width: 28px; height: 28px; display: block; flex: 0 0 28px; border: 1px solid var(--border); border-radius: 50%; overflow: hidden; background: var(--canvas-subtle); }
+.viewer-avatar-image { width: 100%; height: 100%; display: block; object-fit: cover; }
 .account-menu { position: relative; flex: 0 0 auto; }
 .account-menu > summary { list-style: none; }
 .account-menu > summary::-webkit-details-marker { display: none; }
@@ -2098,6 +2101,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) > .octicon { width: 16px; height: 16px; color: var(--muted); }
   .mobile-nav-menu-actions .account-menu-avatar { border-radius: 6px; box-shadow: none; }
   .mobile-nav-menu-actions .account-menu-avatar-image { width: 20px; height: 20px; border-radius: 50%; }
+  .mobile-nav-menu-actions .viewer-avatar { width: 28px; height: 28px; margin: 6px 8px; }
   .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) .action-label { position: static; width: auto; height: auto; overflow: visible; margin: 0; padding: 0; clip: auto; color: var(--fg); font-size: .8125rem; font-weight: 500; white-space: normal; }
   .mobile-nav-menu-actions .account-menu-popover { width: 100%; position: static; margin-top: 4px; box-shadow: none; }
   .sidebar-toggle { display: none; }

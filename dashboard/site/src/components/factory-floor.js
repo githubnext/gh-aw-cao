@@ -30,7 +30,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       unavailable: coverage.registeredUnavailable,
       label: label('repositories', coverage.registered),
       value: coverage.registered,
-      detail: ''
+      detail: { text: '' }
     };
   });
 
@@ -41,7 +41,10 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       pending: sources['overview-run-summary'].pending(),
       label: label('successful-runs', successfulRuns),
       value: successfulRuns,
-      detail: h('a', { href: '#page-runs?runs-runs-source.run-conclusion=failure' }, `${formatCount(failedRuns)} failed`)
+      detail: {
+        text: `${formatCount(failedRuns)} failed`,
+        href: '#page-runs?runs-runs-source.run-conclusion=failure'
+      }
     };
   });
 
@@ -52,11 +55,10 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       pending: sources['overview-dispatch-summary'].pending(),
       label: label('dispatches', dispatchCount),
       value: dispatchCount,
-      detail: h(
-        'a',
-        { href: '#page-dispatches?package-worker-dispatches.status=failure' },
-        `${formatCount(failedDispatches)} failed`
-      )
+      detail: {
+        text: `${formatCount(failedDispatches)} failed`,
+        href: '#page-dispatches?package-worker-dispatches.status=failure'
+      }
     };
   });
 
@@ -66,7 +68,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       pending: sources['overview-value-summary'].pending(),
       label: label('value-gains', gains),
       value: gains,
-      detail: ''
+      detail: { text: '' }
     };
   });
 

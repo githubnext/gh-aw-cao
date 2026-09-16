@@ -121,15 +121,26 @@ export default defineConfig({
           ],
         },
         {
+          label: "Dashboard",
+          items: [
+            { label: "At a glance", link: "/dashboard/" },
+            { label: "Data ingestion", link: "/dashboard-data-ingestion/" },
+            { label: "Data model", link: "/dashboard-data-model/" },
+            { label: "Language", link: "/dashboard-language/" },
+            {
+              label: "Views",
+              items: [
+                { label: "Overview", link: "/dashboard-overview/" },
+              ],
+            },
+          ],
+        },
+        {
           label: "Reference",
           items: [
             { label: "Configuration", link: "/configuration/" },
             { label: "Control plane overview", link: "/architecture/" },
             { label: "What is CAO?", link: "/architecture-at-a-glance/" },
-            { label: "Dashboard Overview", link: "/dashboard-overview/" },
-            { label: "Dashboard view catalog", link: "/dashboard-view-catalog/" },
-            { label: "Overview components", link: "/dashboard-overview-components/" },
-            { label: "Dashboard Data Model", link: "/dashboard-data-model/" },
             { label: "CAO Activity", link: "/activity/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },

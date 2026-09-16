@@ -1,134 +1,29 @@
 ---
-title: Dashboard data model
+title: Data model
 description: Understand the canonical entities, relationships, identities, and lifecycle of Central Agentic Ops dashboard data.
 ---
 
-The dashboard converts GitHub, gh-aw, activity, log, SQL, and published JSON observations into one source-neutral model. Views query this model instead of interpreting upstream formats directly.
+The dashboard converts source observations into canonical entities with stable identities and explicit relationships. Views query this source-neutral model instead of interpreting upstream formats directly.
 
-> [!NOTE]
-> IndexedDB persists normalized Repository, Workflow, Run, Job, Session, and Event records, plus an ingestion transaction audit trail. The dedicated data worker owns source download, hydration, canonical ingestion, and queries. It retains noncanonical logical sources in memory for the current page session and sends the main thread only bounded page-scoped projections; source-shaped rows are never duplicated into IndexedDB or sent as one whole-dashboard object graph.
-
-## Data flow
-
-Data is collected once and converted for two different users. SQLite supports
-agents and command-line tools. IndexedDB supports the browser dashboard.
-
-```mermaid
-flowchart LR
-  logs["gh aw logs"] --> source["JSONL<br/>authoritative input"]
-  source --> sqlite["SQLite"]
-  sqlite --> agents["Agents"]
-  sqlite --> cli["CLI"]
-  source --> indexeddb["IndexedDB<br/>browser"]
-  indexeddb --> dashboard["Dashboard"]
-```
-
-SQLite and IndexedDB are rebuildable copies. Neither is the source for the
-other. Both use the same conversion rules. Both keep all run summaries available
-in the published JSONL. Detailed jobs, sessions, and events remain bounded to 30
-days unless a separate full-detail SQLite archive is requested.
-
-## Collection sequence
-
-```mermaid
-sequenceDiagram
-  participant Activity
-  participant JSONL as JSONL source
-  participant SQLite
-  participant Browser
-  participant IDB as IndexedDB
-  participant Dashboard
-
-  Activity->>JSONL: Collect logs
-  Activity->>SQLite: Build agent copy
-  Browser->>JSONL: Download logs
-  Browser->>IDB: Build browser copy
-  Dashboard->>IDB: Query data
-```
-
-## Completeness and duplicates
-
-The scheduled Activity workflow is a rolling operational snapshot, not a full
-historical archive. Data can be incomplete at these boundaries:
-
-| Boundary | What can be missing |
-| --- | --- |
-| Collection | Runs outside the configured 30-day window. |
-| Enrichment | The scheduled command downloads at most five matching usage artifacts across all workflow targets per Activity invocation. |
-| GitHub retention | Expired or unavailable artifacts cannot provide agent, usage, job, or audit detail. The run summary may still exist. |
-| Mapping | GitHub API rate-limit records without collection context are intentionally not attached to a run. |
-| Browser storage | IndexedDB keeps all published run summaries and expires detailed Job, Session, and Event records after 30 days. |
-
-Cached JSONL can repeat the same run in later snapshots. These are repeated
-observations, not duplicate database records. Raw runs are deduplicated by
-GitHub run ID and attempt. Enriched runs are deduplicated by run ID and attempt,
-with the newest observation winning.
-
-Audit a JSONL source without changing a database:
-
-```bash
-cao audit-jsonl
-```
-
-The report separates raw observations, unique raw runs, enriched observations,
-unique enriched runs, repeated observations, unenriched runs, and the canonical
-record counts that ingestion will produce.
-
-## Historical archives
-
-For a full-detail local archive, collect into
-`_activity/gh-aw-history.jsonl`, then audit and ingest it with unbounded
-retention:
-
-Audit and ingest the completed source into an archive database:
-
-```bash
-cao audit-jsonl \
-  --input _activity/gh-aw-history.jsonl
-
-cao ingest-jsonl \
-  --database _activity/gh-aw-history.sqlite \
-  --input _activity/gh-aw-history.jsonl \
-  --retention-days all
-
-cao doctor \
-  --database _activity/gh-aw-history.sqlite \
-  --ttl-days all
-```
-
-"Full" means all run summaries discoverable in the selected range plus every
-artifact still available from GitHub. Expired artifacts remain visible as
-unenriched runs rather than being silently counted as complete.
+See [Data ingestion](/gh-aw-cao/dashboard-data-ingestion/) for collection, JSONL publication, retention, browser updates, and SQLite projections.
 
 ## Entity map
 
 ```mermaid
-%%{init: {"flowchart": {"curve": "basis", "nodeSpacing": 56, "rankSpacing": 48}}}%%
-flowchart TB
-    repository["<b>Repository</b><br/><small>Stable GitHub repository identity</small>"]
-    workflow["<b>Workflow</b><br/><small>Agentic workflow definition</small>"]
-    run["<b>Run</b><br/><small>One workflow run attempt</small>"]
-    job["<b>Job</b><br/><small>GitHub Actions execution unit</small>"]
-    session["<b>Session</b><br/><small>Operational execution context</small>"]
-    event["<b>Event</b><br/><small>Ordered operational observation</small>"]
+%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 36, "rankSpacing": 52}}}%%
+flowchart LR
+  repository["Repository"] --> workflow["Workflow"] --> run["Run"] --> session["Session"] --> event["Event"]
+  run --> job["Job"]
+  job -. optional .-> session
 
-    repository -- "1 · owns · 0..*" --> workflow
-    workflow -- "1 · defines · 0..*" --> run
-    repository -. "1 · executes · 0..*" .-> run
-    run -- "1 · contains · 0..*" --> job
-    job -. "0..1 · scopes · 0..*" .-> session
-    run -- "1 · observes · 0..*" --> session
-    session -- "1 · records · 0..*" --> event
-
-    classDef ownership fill:#ddf4ff,stroke:#0969da,color:#0a3069,stroke-width:2px
-    classDef execution fill:#dafbe1,stroke:#1a7f37,color:#044f1e,stroke-width:2px
-    classDef telemetry fill:#fff8c5,stroke:#9a6700,color:#633c01,stroke-width:2px
-    class repository,workflow ownership
-    class run,job execution
-    class session,event telemetry
+  classDef entity fill:#ddf4ff,stroke:#0969da,color:#0a3069,stroke-width:2px
+  class repository,workflow,run,job,session,event entity
 ```
 
-Blue entities describe ownership, green entities describe GitHub Actions execution, and yellow entities describe operational telemetry. Solid arrows are the primary hierarchy. Dotted arrows are denormalized or optional relationships used for efficient queries.
+The main path follows activity from a repository to the events recorded for a
+workflow run. A run can also contain Jobs, and a Session can optionally belong
+to one of those Jobs. The table below provides the exact identities and parent
+relationships.
 
 ## Entities
 

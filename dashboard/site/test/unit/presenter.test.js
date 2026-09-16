@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard as renderDashboardView, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames } from '../../src/presenter.js';
+import { renderDashboard as renderDashboardView, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { deriveDataHealthSources } from '../../src/data-health.js';
@@ -11,7 +11,7 @@ import { SOURCE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
-import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
+import { dashboardPagePayload, resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
@@ -1119,6 +1119,15 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')?.textContent).toContain('Settings');
     expect(rendered.querySelector('.account-menu')).toBeNull();
+    const viewerAvatar = rendered.querySelector('.viewer-avatar-image');
+    expect(viewerAvatar?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
+    expect(viewerAvatar?.getAttribute('alt')).toBe('The Octocat avatar');
+    const unsafeViewer = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      viewer: { login: 'octocat', name: 'The Octocat', avatarUrl: 'javascript:alert(1)' }
+    });
+    expect(unsafeViewer.querySelector('.viewer-avatar-image')).toBeNull();
     expect(rendered.querySelector('.appearance-settings')).toBeNull();
     expect(rendered.querySelector('.database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-control')).toBeNull();
@@ -2774,12 +2783,12 @@ describe('presenter built-in and custom pages', () => {
     expect(unavailablePackagesPage?.querySelector('.custom-table')).not.toBeNull();
   });
 
-  it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
+  it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 DLS-PAGE-017 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
     const pages = authoritativeDashboardDocument.dashboard.pages.filter(
       (/** @type {{ kind: string }} */ page) => page.kind === 'built-in'
     );
     expect(Array.isArray(pages)).toBe(true);
-    expect(pages).toHaveLength(11);
+    expect(pages).toHaveLength(12);
     expect(pages.map((/** @type {{ page: string }} */ page) => page.page)).toEqual([
       'overview',
       'organizations',
@@ -2791,10 +2800,15 @@ describe('presenter built-in and custom pages', () => {
       'graders',
       'evals',
       'usage',
-      'findings'
+      'findings',
+      'issues'
     ]);
 
     for (const page of pages) {
+      const views = dashboardPagePayload(
+        page,
+        authoritativeDashboardDocument.dashboard.views
+      ).views;
       expect(page.kind).toBe('built-in');
       expect(page.id).toBe(page.page === 'overview' ? 'operations' : page.page);
       expect(typeof page.icon).toBe('string');
@@ -2803,10 +2817,11 @@ describe('presenter built-in and custom pages', () => {
       });
       expect(Array.isArray(page.definition?.views)).toBe(true);
       expect(page.definition.views.length).toBeGreaterThan(0);
-      expect(page.definition.views.every((/** @type {{ data?: { source?: unknown, sources?: unknown } }} */ view) => (
-        typeof view?.data?.source === 'string'
-        || (Array.isArray(view?.data?.sources) && view.data.sources.every((source) => typeof source === 'string'))
-      ))).toBe(true);
+      expect(views.every((view) => {
+        const configuredView = /** @type {{ data?: { source?: unknown, sources?: unknown } }} */ (view);
+        return typeof configuredView?.data?.source === 'string'
+          || (Array.isArray(configuredView?.data?.sources) && configuredView.data.sources.every((source) => typeof source === 'string'));
+      })).toBe(true);
     }
 
     const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs');
@@ -3729,6 +3744,22 @@ describe('presenter built-in and custom pages', () => {
       root.remove();
       window.history.replaceState(null, '', '/');
     }
+  });
+
+  it('uses only declared query drill titles at every navigation depth', () => {
+    const knownQueries = new Set(['issue-events']);
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=issue-events&title=Issue+42&issue-id=42'),
+      knownQueries
+    )).toBe('Issue 42');
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=issue-events&title=Issue+43&issue-id=43'),
+      knownQueries
+    )).toBe('Issue 43');
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=unknown&title=Untrusted'),
+      knownQueries
+    )).toBe('');
   });
 
   it('opens coverage diagnostics as an Overview subpage with canonical breadcrumbs', async () => {

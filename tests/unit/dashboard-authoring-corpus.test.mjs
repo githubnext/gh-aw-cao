@@ -26,8 +26,14 @@ test("every production dashboard page starts with an executive summary or prescr
 
   for (const path of dashboardFiles) {
     const document = JSON.parse(readFileSync(path, "utf8"));
+    const reusableViews = new Map(
+      (document.dashboard.views ?? []).map((view) => [view.id, view]),
+    );
     for (const page of document.dashboard.pages) {
-      const views = page.kind === "built-in" ? page.definition?.views : page.views;
+      const configuredViews = page.kind === "built-in" ? page.definition?.views : page.views;
+      const views = configuredViews?.map((view) => (
+        typeof view === "string" ? reusableViews.get(view) : view
+      ));
       const summary = views?.[0];
       assert.ok(summary, `${path}: page "${page.id}" must contain a view`);
       const isSummaryTable = summary.mark === "table"
@@ -69,7 +75,7 @@ test("every production dashboard page starts with an executive summary or prescr
       const isFullViewIssueList = page.id === "issues"
         && views.length === 1
         && summary.mark === "list"
-        && summary.list?.style === "issues"
+        && ["issues", "entity-cards"].includes(summary.list?.style)
         && summary.layout === "full-view";
       const isAttentionFirstHome = page.id === "home"
         && page["class-name"] === "dashboard-next-home-page"

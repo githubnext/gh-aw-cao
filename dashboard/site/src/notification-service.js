@@ -14,6 +14,7 @@ const services = new WeakMap();
 /**
  * @typedef {{
  *   message: string,
+ *   detailsSubtitle?: string,
  *   tone?: 'info' | 'success' | 'warning' | 'error',
  *   duration?: number,
  *   details?: string[],
@@ -82,7 +83,7 @@ export function publishNotification(notification, document = globalThis.document
 
 /**
  * @param {string | Notification} input
- * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details'>> & Pick<Notification, 'action'>}
+ * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details'>> & Pick<Notification, 'action' | 'detailsSubtitle'>}
  */
 function normalizeNotification(input) {
   const candidate = typeof input === 'string' ? { message: input } : input;
@@ -107,7 +108,10 @@ function normalizeNotification(input) {
         .map((detail) => detail.trim())
         .slice(-MAX_DETAIL_MESSAGES)
     : [];
-  return { message: candidate.message.trim(), tone, duration, details, action };
+  const detailsSubtitle = typeof candidate.detailsSubtitle === 'string' && candidate.detailsSubtitle.trim()
+    ? candidate.detailsSubtitle.trim()
+    : undefined;
+  return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, action };
 }
 
 /**
@@ -121,17 +125,22 @@ function renderNotification(initial, container, onRemove) {
     role: initial.tone === 'error' ? 'alert' : 'status'
   }, initial.message);
   const detailId = `dashboard-notification-details-${++nextNotificationDetailId}`;
+  const detailSubtitleId = `${detailId}-subtitle`;
   const toggle = h('button', {
     className: 'dashboard-notification-toggle',
     type: 'button',
     'aria-expanded': 'false',
-    'aria-controls': detailId,
+    'aria-controls': `${detailSubtitleId} ${detailId}`,
     'aria-label': `${initial.message} Show ingestion progress history`
   }, message, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
   const details = h('ul', {
     className: 'dashboard-notification-details',
     id: detailId,
     hidden: true
+  });
+  const detailsSubtitle = h('p', {
+    className: 'dashboard-notification-details-subtitle',
+    id: detailSubtitleId
   });
   const content = h('div', { className: 'dashboard-notification-content' });
   const action = h('button', {
@@ -163,9 +172,14 @@ function renderNotification(initial, container, onRemove) {
       if (message.parentElement !== toggle) toggle.prepend(message);
       if (!toggle.isConnected) content.prepend(toggle);
       details.hidden = !expanded;
+      detailsSubtitle.textContent = current.detailsSubtitle ?? '';
+      detailsSubtitle.hidden = !expanded || !current.detailsSubtitle;
+      if (current.detailsSubtitle && !detailsSubtitle.isConnected) content.append(detailsSubtitle);
+      if (!current.detailsSubtitle) detailsSubtitle.remove();
       if (!details.isConnected) content.append(details);
     } else {
       toggle.remove();
+      detailsSubtitle.remove();
       details.remove();
       content.prepend(message);
     }
@@ -190,6 +204,7 @@ function renderNotification(initial, container, onRemove) {
       `${current.message} ${expanded ? 'Show' : 'Hide'} ingestion progress history`
     );
     details.hidden = expanded;
+    detailsSubtitle.hidden = expanded || !current.detailsSubtitle;
     if (!expanded) details.scrollTop = details.scrollHeight;
   };
   details.addEventListener('wheel', (event) => {

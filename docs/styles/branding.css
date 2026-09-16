@@ -26,6 +26,11 @@
   display: none !important;
 }
 
+.mermaid {
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
 @media (max-width: 22rem) {
   .site-title {
     gap: 0.5rem;

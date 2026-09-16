@@ -18,7 +18,8 @@ export const LANGUAGE_VERSION = '0.1.0';
 export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
-export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
+export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'views', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
+export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'title', 'labels', 'details'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
 export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'view', 'row'];
@@ -59,7 +60,8 @@ export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'des
 export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page'];
 
 export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
-export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'route-field', 'limit', 'order-by', 'source-metadata'];
+export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata'];
+export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'labels', 'animate'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
 export const PLURAL_TEXT_KEYS = ['singular', 'plural'];
@@ -102,8 +104,11 @@ export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'an
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];
 export const VIEW_METRIC_ANIMATION_VALUES = ['number'];
-export const VIEW_LIST_KEYS = ['style', 'icon', 'action'];
-export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues'];
+export const VIEW_LIST_KEYS = ['style', 'icon', 'action', 'card', 'drill'];
+export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues', 'entity-cards'];
+export const VIEW_LIST_DRILL_KEYS = ['type', 'field', 'page', 'query', 'title-field', 'arguments'];
+export const VIEW_LIST_DRILL_TYPE_VALUES = ['external', 'query'];
+export const VIEW_LIST_DRILL_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third', 'horizontal'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
 export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
@@ -243,7 +248,8 @@ export const BUILT_IN_PAGE_VALUES = [
   'usage',
   'engines-models',
   'operational-value',
-  'findings'
+  'findings',
+  'issues'
 ];
 
 export const BUILT_IN_PAGE_DEFINITION_KEYS = ['views', 'sections', 'data-state'];
@@ -265,7 +271,8 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   usage: ['usage'],
   'engines-models': ['model-usage-summary', 'engine-usage-summary', 'run-aggregate-summary'],
   'operational-value': ['operational-values'],
-  findings: ['findings']
+  findings: ['findings'],
+  issues: ['issues']
 };
 
 export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
@@ -320,6 +327,9 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
   },
   findings: {
     findings: ['finding-summary', 'finding-severity', 'finding-status', 'organization', 'repository', 'workflow', 'observed-at', 'issue-link', 'pull-request-link', 'run-link']
+  },
+  issues: {
+    issues: ['github-entity-type', 'safe-output-type', 'event-summary', 'entity-url', 'repository', 'workflow', 'run', 'run-link', 'observed-at']
   }
 };
 

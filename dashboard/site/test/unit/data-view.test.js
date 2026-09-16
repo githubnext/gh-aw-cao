@@ -232,6 +232,74 @@ describe('data view renderer', () => {
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/303');
   });
 
+  it('renders reusable entity cards with external and query drill behavior', () => {
+    const baseContext = {
+      pageId: 'items',
+      title: 'Items',
+      sourceName: 'safe-output-items',
+      rows: [{
+        'event-summary': 'Investigate failing compiler run',
+        'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/42',
+        'safe-output-type': 'create_issue',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run: '303',
+        'observed-at': '2026-09-14T22:00:00Z',
+        'issue-id': 42
+      }],
+      cardTemplates: {
+        issue: {
+          icon: 'issue-opened',
+          title: { field: 'event-summary', title: 'Issue' },
+          labels: [{ field: 'safe-output-type', title: 'Safe output', display: 'label' }],
+          details: [{ field: 'repository', title: 'Repository' }]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: /** @type {'h3'} */ ('h3'),
+      prepareTableRows: (/** @type {Record<string, unknown>[]} */ rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    };
+    const external = renderDataView('list', {
+      ...baseContext,
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          card: 'issue',
+          drill: { type: 'external', field: 'entity-url' }
+        },
+        encoding: { columns: [{ field: 'event-summary' }] }
+      }
+    });
+    const query = renderDataView('list', {
+      ...baseContext,
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          card: 'issue',
+          drill: {
+            type: 'query',
+            page: 'issue-events',
+            query: 'issue-events',
+            'title-field': 'event-summary',
+            arguments: [{ name: 'issue-id', field: 'issue-id' }]
+          }
+        },
+        encoding: { columns: [{ field: 'event-summary' }] }
+      }
+    });
+
+    expect(external?.querySelector('.entity-card-list-title a')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/gh-aw-cao/issues/42');
+    expect(query?.querySelector('.entity-card-list-title a')?.getAttribute('href'))
+      .toBe('#page-issue-events?query=issue-events&title=Investigate+failing+compiler+run&issue-id=42');
+  });
+
   it('keeps a list action available when its source is unavailable', () => {
     setDeclaredCliActions([{
       id: 'upgrade-repository',

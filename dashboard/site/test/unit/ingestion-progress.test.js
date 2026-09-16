@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { startIngestionProgress } from '../../src/data-worker.js';
+import { estimateRemainingTime, startIngestionProgress } from '../../src/ingestion-progress.js';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -7,6 +7,12 @@ afterEach(() => {
 });
 
 describe('data-worker ingestion progress', () => {
+  it('predicts remaining processing time with a linear byte model', () => {
+    expect(estimateRemainingTime(250_000, 1_000_000, 2_000)).toBe(6_000);
+    expect(estimateRemainingTime(0, 1_000_000, 2_000)).toBeNull();
+    expect(estimateRemainingTime(1_000_000, 1_000_000, 2_000)).toBeNull();
+  });
+
   it('reports preparation before the first JSONL record is read', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
@@ -17,7 +23,8 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenNthCalledWith(2, {
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Preparing data... +3s',
+        message: 'Preparing data...',
+        detailsSubtitle: expect.stringContaining('local copy'),
         details: ['Preparing data... +3s'],
         duration: 0
       })
@@ -49,6 +56,7 @@ describe('data-worker ingestion progress', () => {
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
 
+    progress.setWorkload(1_500_000);
     progress.update({ bytesProcessed: 750_000, recordsIngested: 1_000, totalBytes: 1_500_000 });
     progress.log('Normalizing parsed records.');
     progress.store({ storedRecords: 250, totalRecords: 1_000 });
@@ -57,7 +65,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Storing 250/1,000 rec. +3s',
+        message: 'Saving local copy · 750 KB/1.5 MB · 3s remaining',
         details: [
           'Preparing data... +0s',
           'Parsing 1,000 rec, 750 KB/1.5 MB. +0s',
@@ -73,7 +81,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Storing 1,000/1,000 rec. +4s'
+        message: 'Saving local copy · 750 KB/1.5 MB · 4s remaining'
       })
     });
 
@@ -123,6 +131,7 @@ describe('data-worker ingestion progress', () => {
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
 
+    progress.setWorkload(2_048);
     progress.update({ bytesProcessed: 1_024, recordsIngested: 42, totalBytes: 2_048 });
     vi.advanceTimersByTime(2_999);
     expect(postMessage).toHaveBeenCalledTimes(1);
@@ -133,7 +142,7 @@ describe('data-worker ingestion progress', () => {
       type: 'notification',
       notification: expect.objectContaining({
         id: expect.stringMatching(/^ingestion-progress-/),
-        message: 'Parsing 42 rec, 1.0 KB/2.0 KB. +3s',
+        message: 'Processing local copy · 1.0 KB/2.0 KB · 3s remaining',
         duration: 0
       })
     });
@@ -143,7 +152,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Parsing 84 rec, 2.0 KB/2.0 KB. +4s'
+        message: 'Processing local copy · 2.0 KB/2.0 KB · 0s remaining'
       })
     });
 

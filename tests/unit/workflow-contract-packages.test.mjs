@@ -8,6 +8,13 @@ import { escapedGhAwVersion, ghAwVersion, root, script, workflow, workflowsDirec
 
 // Package manifest, bundle, and catalog ownership contracts.
 
+function localJavaScriptDependencies(source) {
+  const dependencies = [];
+  const pattern = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+|\bexport\s+(?:\*|\{[^}]*\})\s+from\s+)["'](\.{1,2}\/[^"']+\.(?:c|m)?js)["']/g;
+  for (const match of source.matchAll(pattern)) dependencies.push(match[1]);
+  return dependencies;
+}
+
 test("packages and repository workflows pin the supported gh-aw version", () => {
   const manifests = [
     "aw.yml",
@@ -93,6 +100,32 @@ test("package manifests exclude repository-only tests", () => {
   for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eslint-rules", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("repo-assist", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
+  }
+});
+
+test("activity and dashboard packages include every local JavaScript dependency", () => {
+  const packaged = new Set();
+
+  for (const packageDirectory of ["activity", "dashboard"]) {
+    const manifest = parse(readFileSync(join(root, packageDirectory, "aw.yml"), "utf8"));
+    for (const { source } of manifest.resources ?? []) {
+      if (/\.(?:c|m)?js$/.test(source)) packaged.add(join(packageDirectory, source));
+    }
+  }
+
+  const pending = [...packaged];
+  const visited = new Set();
+  while (pending.length > 0) {
+    const source = pending.pop();
+    if (visited.has(source)) continue;
+    visited.add(source);
+
+    const contents = readFileSync(join(root, source), "utf8");
+    for (const dependency of localJavaScriptDependencies(contents)) {
+      const resolved = join(source, "..", dependency);
+      assert.ok(packaged.has(resolved), `${source} depends on unpackaged JavaScript resource ${resolved}`);
+      pending.push(resolved);
+    }
   }
 });
 

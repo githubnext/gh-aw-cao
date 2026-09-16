@@ -15,7 +15,7 @@ import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-
 import { createDashboardQueryMemoization, dashboardQueryMemoizationKey } from './data/queries/memoization.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
-import { createElapsedStepTracker } from './elapsed-step-tracker.js';
+import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
 import { createDebug } from './debug.js';
 
@@ -54,116 +54,7 @@ const dirtyDashboardSubscriptions = new Set();
 let subscriptionFlushScheduled = false;
 let subscriptionFlushRunning = false;
 
-/**
- * Publishes a user-facing notification from the data worker.
- * @param {{ id?: string, message?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], dismiss?: boolean }} notification
- * @param {{ postMessage: (message: unknown) => void }} [target]
- */
-export function publishWorkerNotification(notification, target = self) {
-  target.postMessage({ type: 'notification', notification });
-}
-
-/**
- * Publishes the worker-owned state for the top loading bar.
- * @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state
- * @param {{ postMessage: (message: unknown) => void }} [target]
- */
-export function publishWorkerLoadingProgress(state, target = self) {
-  target.postMessage({ type: 'loading-progress', state });
-}
-
 const INGESTION_LOCK_WAIT_MESSAGE = 'Waiting for another dashboard ingestion to finish.';
-const INGESTION_PROGRESS_DELAY_MS = 3_000;
-const INGESTION_PROGRESS_INTERVAL_MS = 1_000;
-const INGESTION_PROGRESS_HISTORY_LIMIT = 100;
-let nextIngestionProgressId = 0;
-
-/**
- * Reports long-running ingestion status through the main-thread notification manager.
- * @param {{ postMessage: (message: unknown) => void }} [target]
- */
-export function startIngestionProgress(target = self) {
-  const id = `ingestion-progress-${++nextIngestionProgressId}`;
-  publishWorkerLoadingProgress({ id, phase: 'start' }, target);
-  const clock = createElapsedStepTracker('Preparing data...', {
-    historyLimit: INGESTION_PROGRESS_HISTORY_LIMIT
-  });
-  let completed = false;
-  const report = () => {
-    if (!completed) {
-      const snapshot = clock.snapshot();
-      publishWorkerNotification({
-        id,
-        message: snapshot.message,
-        details: snapshot.history,
-        tone: 'info',
-        duration: 0
-      }, target);
-    }
-  };
-  /** @type {ReturnType<typeof setInterval> | undefined} */
-  let interval;
-  const delay = setTimeout(() => {
-    if (completed) return;
-    report();
-    interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
-  }, INGESTION_PROGRESS_DELAY_MS);
-  return {
-    /**
-     * @param {{ bytesProcessed: number, recordsIngested: number, totalBytes?: number }} progress
-     */
-    update({ bytesProcessed, recordsIngested, totalBytes }) {
-      const byteProgress = typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0
-        ? `${formatDataSize(bytesProcessed)}/${formatDataSize(totalBytes)}`
-        : formatDataSize(bytesProcessed);
-      clock.update(
-        `Parsing ${recordsIngested.toLocaleString('en-US')} rec, ${byteProgress}.`,
-        'parsing'
-      );
-    },
-    /**
-     * Reports the storage phase, which dominates large ingestions and would
-     * otherwise leave the notification frozen on the last parsed record count.
-     * @param {{ storedRecords: number, totalRecords: number }} progress
-     */
-    store({ storedRecords, totalRecords }) {
-      clock.update(
-        `Storing ${storedRecords.toLocaleString('en-US')}/${totalRecords.toLocaleString('en-US')} rec.`,
-        'storing'
-      );
-    },
-    /** @param {string} nextMessage */
-    log(nextMessage) {
-      clock.advance(nextMessage);
-    },
-    /** @param {number} completed @param {number} total */
-    reportShardImportProgress(completed, total) {
-      publishWorkerLoadingProgress({ id, phase: 'update', completed, total }, target);
-    },
-    complete() {
-      if (completed) return;
-      completed = true;
-      clearTimeout(delay);
-      if (interval) clearInterval(interval);
-      publishWorkerLoadingProgress({ id, phase: 'complete' }, target);
-      publishWorkerNotification({ id, dismiss: true }, target);
-    }
-  };
-}
-
-/** @param {number} bytes */
-function formatDataSize(bytes) {
-  const value = Math.max(0, Number(bytes) || 0);
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let scaled = value;
-  let unit = units[0];
-  for (let index = 1; index < units.length && scaled >= 1_000; index += 1) {
-    scaled /= 1_000;
-    unit = units[index];
-  }
-  const digits = scaled >= 10 || unit === 'B' ? 0 : 1;
-  return `${scaled.toFixed(digits)} ${unit}`;
-}
 
 async function loadActiveDashboard() {
   if (liveDashboard) return liveDashboard;
@@ -241,7 +132,8 @@ async function queryLiveDashboard(
           routeParameters,
           queryContext,
           evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
-          queries: context.queries
+          queries: context.queries,
+          views: context.views
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
@@ -360,18 +252,22 @@ function dashboardContext(value) {
     throw new TypeError('Canonical dashboard queries require a dashboard context.');
   }
 
-  const context = /** @type {{ githubUrlBase?: unknown, pages?: unknown, queries?: unknown }} */ (value);
+  const context = /** @type {{ githubUrlBase?: unknown, pages?: unknown, queries?: unknown, views?: unknown }} */ (value);
   if (!Array.isArray(context.pages)) {
     throw new TypeError('Canonical dashboard context requires pages.');
   }
   if (context.queries !== undefined && !Array.isArray(context.queries)) {
     throw new TypeError('Canonical dashboard queries must be an array.');
   }
+  if (context.views !== undefined && !Array.isArray(context.views)) {
+    throw new TypeError('Canonical dashboard views must be an array.');
+  }
   return {
     githubUrlBase: typeof context.githubUrlBase === 'string' && context.githubUrlBase
       ? context.githubUrlBase : 'https://github.com',
     pages: /** @type {Array<{ id: string, kind: 'built-in' | 'custom', route?: { ['hash-query-parameter']?: string } }>} */ (context.pages),
-    queries: /** @type {unknown[]} */ (context.queries ?? [])
+    queries: /** @type {unknown[]} */ (context.queries ?? []),
+    views: /** @type {unknown[]} */ (context.views ?? [])
   };
 }
 
@@ -502,8 +398,8 @@ export function processDataRequest(request, signal) {
           if (shards.length === 0) {
             throw new Error('Activity shard manifest is missing or contains no valid activity shards.');
           }
-          let processedBytes = 0;
-          let processedRecords = 0;
+          /** @type {Array<{ index: number, shard: { name: string, hash: string }, shardUrl: URL, current: boolean, sizeBytes: number | undefined }>} */
+          const shardStates = [];
           for (const [index, shard] of shards.entries()) {
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
             const current = normalized
@@ -517,13 +413,33 @@ export function processDataRequest(request, signal) {
                   context: collectionContext,
                   workflowHints
                 });
+            shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
+          }
+          const pendingShards = shardStates.filter(({ current }) => !current);
+          await Promise.all(pendingShards.map(async (state) => {
+            const response = await fetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
+            const contentLength = response?.ok ? Number(response.headers.get('content-length')) : Number.NaN;
+            state.sizeBytes = Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : undefined;
+          }));
+          const workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
+            ? pendingShards.reduce((sum, { sizeBytes }) => sum + (sizeBytes ?? 0), 0)
+            : undefined;
+          progress.setWorkload(workloadBytes);
+          let completedShardCount = shardStates.length - pendingShards.length;
+          progress.reportShardImportProgress(completedShardCount, shardCount);
+          if (completedShardCount > 0) {
+            progress.log(`Reusing ${completedShardCount}/${shardCount} cached activity `
+              + `${completedShardCount === 1 ? 'shard' : 'shards'}.`);
+          }
+          let processedBytes = 0;
+          let processedRecords = 0;
+          for (const { index, shard, shardUrl, current, sizeBytes } of shardStates) {
             if (current) {
               debugIngestion('skipping current activity shard', {
                 shard: shard.name,
                 index: index + 1,
                 shardCount
               });
-              progress.reportShardImportProgress(index + 1, shardCount);
               continue;
             }
             progress.log(`Downloading shard ${index + 1}/${shardCount}.`);
@@ -538,9 +454,9 @@ export function processDataRequest(request, signal) {
             {
               const contentLengthHeader = response.headers.get('content-length');
               const contentLength = contentLengthHeader === null ? Number.NaN : Number(contentLengthHeader);
-              const payloadBytes = Number.isFinite(contentLength) && contentLength >= 0
+              const payloadBytes = sizeBytes ?? (Number.isFinite(contentLength) && contentLength >= 0
                 ? contentLength
-                : undefined;
+                : undefined);
               const compressed = response.headers.has('content-encoding');
               progress.log(payloadBytes === undefined
                 ? `Shard ${index + 1} received; parsing.`
@@ -560,9 +476,9 @@ export function processDataRequest(request, signal) {
                     ...ingestionOptions,
                     workflowHints,
                     onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
-                      bytesProcessed: processedBytes + bytesProcessed,
+                      bytesProcessed: processedBytes + (compressed ? 0 : bytesProcessed),
                       recordsIngested: processedRecords + recordsIngested,
-                      totalBytes: undefined
+                      totalBytes: workloadBytes
                     }),
                     context: collectionContext
                   });
@@ -579,7 +495,13 @@ export function processDataRequest(request, signal) {
               });
               progress.log(`Shard ${index + 1}/${shardCount} committed `
                 + `${ingestion.committedRecords.toLocaleString('en-US')} rec.`);
-              progress.reportShardImportProgress(index + 1, shardCount);
+              progress.update({
+                bytesProcessed: processedBytes,
+                recordsIngested: processedRecords,
+                totalBytes: workloadBytes
+              });
+              completedShardCount += 1;
+              progress.reportShardImportProgress(completedShardCount, shardCount);
             }
           }
           if (inventoryResponse.ok) {
