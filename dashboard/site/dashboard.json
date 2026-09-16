@@ -11,7 +11,7 @@
         "label": "Update all",
         "description": "Update all installed Agentic Workflow packages in this repository.",
         "icon": "sync",
-        "command": "gh aw update --repo {{repository}}",
+        "command": "./.github/aw/cao.sh update --repo {{repository}}",
         "placement": "view",
         "arguments": [
           {
@@ -81,7 +81,7 @@
         "label": "Update package",
         "description": "Update this package's agentic workflow.",
         "icon": "sync",
-        "command": "gh aw update {{package}}",
+        "command": "./.github/aw/cao.sh add {{package}}",
         "placement": "row"
       }
     ],
