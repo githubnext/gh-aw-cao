@@ -962,10 +962,12 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect(cards.locator('.entity-card-list-card').first()).toContainText('copilot / model-1');
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Engines and models', level: 3 })).toBeHidden();
-  await expect.poll(async () => cardScroll.evaluate((element) => ({
-    fillsView: Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1,
-    scrollable: element.scrollHeight > element.clientHeight
-  }))).toEqual({ fillsView: true, scrollable: true });
+  await expect.poll(async () => cards.evaluate((element) =>
+    Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1
+  )).toBe(true);
+  await expect.poll(async () => cardScroll.evaluate((element) =>
+    element.scrollHeight > element.clientHeight
+  )).toBe(true);
   await cardScroll.evaluate((element) => { element.scrollTop = 100; });
   await expect.poll(async () => cardScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
