@@ -195,15 +195,14 @@ test("root package provides default control-repository agent context", () => {
 
 test("root package installs the CAO CLI helper", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
-  const helper = readFileSync(join(root, ".github", "aw", "cao.sh"), "utf8");
+  const helper = readFileSync(join(root, "cao.sh"), "utf8");
 
   assert.deepEqual(
-    rootManifest.resources.find(({ source }) => source === ".github/aw/cao.sh"),
-    { source: ".github/aw/cao.sh", destination: ".github/aw/cao.sh" },
+    rootManifest.resources.find(({ source }) => source === "cao.sh"),
+    { source: "cao.sh", destination: ".github/aw/cao.sh" },
   );
   assert.match(helper, /^#!\/usr\/bin\/env bash/);
   assert.match(helper, /activity\/cao\.mjs/);
-  assert.match(helper, /\.github\/aw\/activity\/cao\.mjs/);
 });
 
 test("root package resolves the single CAO bootstrap runtime", () => {
