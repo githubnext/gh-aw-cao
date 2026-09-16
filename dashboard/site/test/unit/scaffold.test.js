@@ -142,7 +142,10 @@ describe('DLS-CONF-004 scaffold gates', () => {
         if (mediaRule.conditionText.replace(/\s/g, '') !== '(max-width:700px)') continue;
         mobileBodyRule = [...mediaRule.cssRules]
           .map((nestedRule) => /** @type {CSSStyleRule} */ (nestedRule))
-          .find((nestedRule) => nestedRule.selectorText === 'body, .dashboard-root');
+          .find((nestedRule) => {
+            const selectors = new Set(nestedRule.selectorText?.split(',').map((selector) => selector.trim()));
+            return selectors.size === 2 && selectors.has('body') && selectors.has('.dashboard-root');
+          });
         if (mobileBodyRule) break;
       }
 
