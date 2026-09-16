@@ -155,21 +155,10 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings,
     preserveRepositoryRecords: options.preserveRepositoryRecords
   }), targetDatabaseBytes);
-  let previousBatch = /** @type {import('../model/schema.js').CanonicalBatch | undefined} */ (retained);
-  const write = async () => {
-    try {
-      await replaceCanonicalBatch(indexedDB, batch, {
-        onProgress: options.onWriteProgress,
-        previousBatch
-      });
-      previousBatch = batch;
-    } catch (error) {
-      // A quota failure may leave earlier bounded transactions committed, so
-      // the next attempt must inspect storage instead of trusting the snapshot.
-      previousBatch = undefined;
-      throw error;
-    }
-  };
+  const write = () => replaceCanonicalBatch(indexedDB, batch, {
+    onProgress: options.onWriteProgress,
+    previousBatch: retained
+  });
   // Every write of a large batch costs minutes in a constrained browser, so
   // recovery halves the batch a bounded number of times and then reports the
   // quota failure instead of retrying until the tab looks stuck.
