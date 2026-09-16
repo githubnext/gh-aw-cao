@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import YAML from "yaml";
 
 const root = new URL("../../", import.meta.url);
 
@@ -15,7 +16,13 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
   assert.match(manifest.description, /analyze activity data/);
   assert.match(manifest.description, /local CAO dashboard previews/);
   assert.deepEqual(manifest.extensions, { "com.github.copilot": {} });
-  for (const skillName of ["setup-cao", "add-cao-package", "create-cao-package", "analyze-cao", "cao-cli"]) {
+  for (const skillName of [
+    "setup-cao",
+    "add-cao-package",
+    "create-cao-package",
+    "analyze-cao",
+    "cao-cli",
+  ]) {
     const skill = await readFile(
       new URL(`skills/${skillName}/SKILL.md`, root),
       "utf8",
@@ -37,6 +44,51 @@ test("add-cao-package requires discovery, consent, and review-safe installation"
   assert.match(skill, /cao\.mjs add githubnext\/gh-aw-cao\/<package-slug>@<catalog-commit>/);
   assert.match(skill, /must remain in review/);
   assert.match(skill, /did not broaden or change/);
+});
+
+test("experimental Codebase Model skill remains repository-local", async () => {
+  const skill = await readFile(
+    new URL(".github/skills/codebase-model/SKILL.md", root),
+    "utf8",
+  );
+
+  assert.match(skill, /^---\r?\n/);
+  assert.match(skill, /\bname:\s*codebase-model\b/);
+  assert.match(skill, /ARCHITECTURE\.md/);
+  await assert.rejects(
+    readFile(new URL("skills/codebase-model/SKILL.md", root), "utf8"),
+    { code: "ENOENT" },
+  );
+});
+
+test("Codebase Model declares the supported schema version", async () => {
+  const model = YAML.parse(await readFile(new URL("CODEBASE.yml", root), "utf8"));
+
+  assert.equal(model.spec, "cbm/v0.1");
+  for (const category of [
+    "project",
+    "structure",
+    "architecture",
+    "components",
+    "dependencies",
+    "boundaries",
+    "invariants",
+    "flows",
+    "generation",
+    "commands",
+    "validation",
+  ]) {
+    assert.ok(model[category], `missing ${category}`);
+  }
+  for (const [name, references] of Object.entries(model.validation)) {
+    if (!name.endsWith("_refs")) continue;
+    for (const reference of references) {
+      const command = reference
+        .split(".")
+        .reduce((value, key) => value?.[key], model);
+      assert.ok(command, `unresolved command reference: ${reference}`);
+    }
+  }
 });
 
 test("Copilot extension uses the current Canvas provider contract", async () => {

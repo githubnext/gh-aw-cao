@@ -1,0 +1,313 @@
+spec: cbm/v0.1
+
+project:
+  name: central-agentic-ops
+  purpose: >
+    Public CAO package catalog and source-managed control plane for bounded,
+    policy-governed agentic operations across an explicitly enrolled repository fleet.
+  stack:
+    - GitHub Actions
+    - gh-aw
+    - Node.js 24
+    - ECMAScript modules
+    - JSONL
+    - SQLite
+    - IndexedDB
+    - Dashboard Language
+    - Astro/Starlight
+
+structure:
+  architecture_document: ARCHITECTURE.md
+  codebase_model: CODEBASE.yml
+  agent_instructions: AGENTS.md
+  catalog_manifest: aw.yml
+  operations: <operation>/aw.yml
+  activity: activity/
+  dashboard: dashboard/
+  dashboard_data: dashboard/site/src/data/
+  workflow_sources: .github/workflows/*.md
+  workflow_artifacts: .github/workflows/*.lock.yml
+  workflow_shared: .github/workflows/shared/
+  rollout_policy: .github/workflows/cao.json
+  workflow_resources: .github/aw/
+  package_records: .github/aw/packages/
+  workflow_agent_skills: .github/skills/
+  portable_agent_skills: skills/
+  specifications: specs/
+  documentation: docs/
+  decisions: adr/
+  tests: tests/
+  utilities: scripts/
+
+architecture:
+  style: policy-governed central control plane with catalog packages and bounded workers
+  roles:
+    catalog: publishes versioned operation packages
+    control_repository: owns rollout policy, credentials, installed workflows, and workflow runs
+    review_repository: receives declared safe outputs in review mode
+    target_repository: supplies source data and receives only declared safe outputs
+    gh_aw: compiles workflows and controls execution capabilities, limits, authentication, and safe outputs
+  authority: >
+    A run's authority is the intersection of reviewed policy, dispatch request,
+    worker ceilings, credential reach, and gh-aw-compiled capabilities.
+  concepts:
+    reviewed_workflow_revision: workflow revision from which policy is resolved
+    credentials: GitHub Actions secrets resolved only inside a run
+    resolved_policy: effective CAO authority and rollout envelope
+    target_repository_mutation: direct target repository modification by an orchestrator
+    targets_outside_resolved_policy: repositories not admitted by the effective envelope
+    dispatched_target: single repository identity carried by a worker envelope
+    declared_safe_output_capabilities: compiled gh-aw repository-write capabilities
+    additional_target_discovery: worker discovery beyond its dispatched target
+    further_work_dispatch: worker dispatch of additional work
+    mode_widening: promotion beyond the envelope or worker mode ceiling
+    control_plane_authority: authority to authorize control-plane execution
+    bounded_worker_query_payloads: bounded query results sent from the data worker
+    source_data_queries: direct source-data queries from UI code
+    business_relationship_reconstruction: UI derivation of source-data relationships
+
+components:
+  policy_resolution:
+    path: .github/workflows/shared/control.md
+    responsibility: load policy at the workflow revision and resolve the effective run envelope
+  orchestrator:
+    path: .github/workflows/<operation>.md
+    responsibility: discover, filter, rank, select, and dispatch targets within the resolved policy
+  worker:
+    path: .github/workflows/<operation>-<worker>.md
+    responsibility: revalidate an envelope, analyze one target, and emit declared safe outputs
+  activity:
+    path: activity/
+    responsibility: collect bounded evidence, ingest JSONL, create SQLite projections, and provide the cao CLI
+  dashboard:
+    path: dashboard/
+    responsibility: publish evidence and provide a static operational dashboard
+  dashboard_data:
+    path: dashboard/site/src/data/
+    responsibility: normalize, persist, and declaratively query canonical browser data in a Web Worker
+  gh_aw_logs:
+    external: true
+    responsibility: authoritative execution-log source for Activity collection
+  activity_jsonl_shards:
+    path: activity/
+    responsibility: bounded, authoritative Activity evidence snapshots
+  sqlite_projection:
+    path: activity/
+    responsibility: rebuildable local query projection for the cao CLI and agents
+  dashboard_publisher:
+    path: dashboard/
+    responsibility: publish immutable Activity evidence cache artifacts
+  browser_data_worker:
+    path: dashboard/site/src/data/
+    responsibility: download, normalize, persist, and query browser data off the main thread
+  indexeddb_projection:
+    path: dashboard/site/src/data/
+    responsibility: rebuildable per-browser data projection
+  dashboard_language_queries:
+    path: dashboard/site/src/data/
+    responsibility: declarative query definitions executed by the browser data worker
+  dashboard_ui:
+    path: dashboard/site/
+    responsibility: render bounded Dashboard Language query payloads
+  cao_cli:
+    path: activity/cao.mjs
+    responsibility: query Activity SQLite projections for local tooling and agents
+
+dependencies:
+  - catalog -> control_repository
+  - control_repository -> policy_resolution
+  - policy_resolution -> orchestrator
+  - orchestrator -> worker
+  - worker -> review_repository
+  - worker -> target_repository
+  - gh_aw_logs -> activity_jsonl_shards
+  - activity_jsonl_shards -> sqlite_projection
+  - activity_jsonl_shards -> dashboard_publisher
+  - dashboard_publisher -> browser_data_worker
+  - browser_data_worker -> indexeddb_projection
+  - browser_data_worker -> dashboard_language_queries
+  - dashboard_language_queries -> dashboard_ui
+
+boundaries:
+  - subject: policy_resolution
+    may_depend_on:
+      - reviewed_workflow_revision
+    must_not_depend_on:
+      - credentials
+  - subject: orchestrator
+    may_depend_on:
+      - resolved_policy
+    must_not_depend_on:
+      - target_repository_mutation
+      - targets_outside_resolved_policy
+  - subject: worker
+    may_depend_on:
+      - dispatched_target
+      - declared_safe_output_capabilities
+    must_not_depend_on:
+      - additional_target_discovery
+      - further_work_dispatch
+      - mode_widening
+  - subject: dashboard_ui
+    may_depend_on:
+      - bounded_worker_query_payloads
+    must_not_depend_on:
+      - source_data_queries
+      - business_relationship_reconstruction
+
+invariants:
+  - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
+  - "No authority input can widen another."
+  - "Review mode is the default; live mode requires explicit package, worker, scope, and target authority."
+  - "Credentials remain GitHub Actions secrets and are resolved only inside a run."
+  - "Missing policy, authority, credentials, access, or required evidence MUST fail closed."
+  - "GitHub tools available to agents are read-only; repository changes use only workflow-declared safe outputs."
+  - "Target repository files MUST NOT grant, narrow, or revoke control-plane authority."
+  - "Workers process exactly one dispatched target and MUST NOT discover targets, dispatch work, or widen mode."
+  - "Dispatch envelopes include identity, mode, review destination, and provenance; they MUST NOT include credentials."
+  - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
+  - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
+  - "Missing, stale, partial, and zero evidence are distinct states."
+  - "Dashboard data operations MUST be declared in Dashboard Language and execute in the data Web Worker."
+  - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
+  - "Generated workflow lock files MUST NOT be edited directly."
+  - "Installed package records MUST be updated through gh-aw package commands."
+  - "Policy and workflow changes MUST be committed together."
+
+flows:
+  operation_review:
+    - control_repository
+    - policy_resolution
+    - orchestrator
+    - worker
+    - review_repository
+  operation_live:
+    - control_repository
+    - policy_resolution
+    - orchestrator
+    - worker
+    - target_repository
+  activity_dashboard:
+    - gh_aw_logs
+    - activity_jsonl_shards
+    - dashboard_publisher
+    - browser_data_worker
+    - indexeddb_projection
+    - dashboard_language_queries
+    - dashboard_ui
+  activity_cli:
+    - gh_aw_logs
+    - activity_jsonl_shards
+    - sqlite_projection
+    - cao_cli
+
+generation:
+  codebase_model:
+    path: CODEBASE.yml
+    source: ARCHITECTURE.md
+    compilation_skill: .github/skills/codebase-model/SKILL.md
+  new_operation:
+    path: <operation>/aw.yml
+  workflow_source:
+    path: .github/workflows/<workflow>.md
+  shared_workflow_control:
+    path: .github/workflows/shared/
+  workflow_agent_skill:
+    path: .github/skills/<name>/SKILL.md
+  portable_agent_skill:
+    path: skills/<name>/SKILL.md
+  architecture_decision:
+    path: adr/
+  normative_contract:
+    path: specs/
+
+commands:
+  repository_root:
+    working_directory: .
+    entries:
+      full_validation: npm run check
+      control_typecheck: npm run typecheck:cao
+      tests: npm test
+      unit_tests: npm run test:unit
+      integration_tests: npm run test:integration
+      package_lifecycle_tests: npm run test:package-lifecycle
+      package_root_tests: npm run test:package-root
+      load_tests: npm run test:load
+      svg_check: npm run check:svg
+      workflow_compile: npm run compile
+      manual_workflow_compile: gh aw compile --schedule-seed githubnext/gh-aw-cao
+      workflow_compile_locks: npm run compile:locks
+      docs_build: npm run docs:build
+      dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
+      dashboard_local_copilot: npm run dashboard:local:copilot
+  dashboard_site:
+    working_directory: dashboard/site/
+    entries:
+      tests: npm test
+      e2e_tests: npm run test:e2e
+      performance_tests: npm run test:performance
+      lint: npm run lint
+      typecheck: npm run typecheck
+      corpus_validation: npm run validate:corpus
+
+validation:
+  default_command_refs:
+    - commands.repository_root.entries.full_validation
+  dashboard_site_command_refs:
+    - commands.dashboard_site.entries.tests
+    - commands.dashboard_site.entries.e2e_tests
+    - commands.dashboard_site.entries.performance_tests
+    - commands.dashboard_site.entries.lint
+    - commands.dashboard_site.entries.typecheck
+    - commands.dashboard_site.entries.corpus_validation
+  workflow_source_command_refs:
+    - commands.repository_root.entries.workflow_compile
+  workflow_source_generated_artifact_command_refs:
+    - commands.repository_root.entries.workflow_compile_locks
+  package_lifecycle_command_refs:
+    - commands.repository_root.entries.package_lifecycle_tests
+    - commands.repository_root.entries.package_root_tests
+  load_command_refs:
+    - commands.repository_root.entries.load_tests
+  control_source_command_refs:
+    - commands.repository_root.entries.control_typecheck
+    - commands.repository_root.entries.tests
+  svg_command_refs:
+    - commands.repository_root.entries.svg_check
+  documentation_command_refs:
+    - commands.repository_root.entries.docs_build
+  architecture:
+    - "Verify package contents against root and package aw.yml manifests."
+    - "Verify policy and workflow changes are reviewed together."
+    - "Verify workflow sources, not generated lock files, are edited."
+    - "Verify dashboard data access crosses the Web Worker and declarative query boundary."
+
+provenance:
+  source: ARCHITECTURE.md
+  status: experimental compiled representation; ARCHITECTURE.md remains the human-oriented source
+  relationship_namespaces:
+    dependencies_and_flows: architecture.roles and components
+    boundary_subjects: architecture.roles and components
+    boundary_values: architecture.concepts
+  intentionally_compressed:
+    - Architectural history, examples, diagrams, and explanatory prose
+    - Individual leaf files and package inventory details
+    - Detailed normative contract text; retain it in specs/
+
+benchmark:
+  hypothesis: >
+    This model preserves the architectural constraints needed for safe repository
+    modification with materially less context than ARCHITECTURE.md.
+  compare:
+    - no_architecture_context
+    - full_ARCHITECTURE.md
+    - CODEBASE.yml
+  measure:
+    - task_completion
+    - architectural_violations
+    - incorrect_file_placement
+    - dependency_violations
+    - test_failures
+    - token_usage
+    - tool_calls
+    - time_to_completion
