@@ -68,7 +68,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /Hash activity payloads[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
+    /Hash activity payloads[\s\S]*?REPORT_GH_AW_LOGS_NORMALIZED: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-normalized[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--normalized-dir "\$REPORT_GH_AW_LOGS_NORMALIZED"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
   );
   assert.match(
     cacheJob,
