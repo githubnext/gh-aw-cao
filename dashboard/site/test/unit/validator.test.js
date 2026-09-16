@@ -488,8 +488,8 @@ describe('dashboard document validation', () => {
 
   it('defines every other editable experimental page as one full-view lazy table', () => {
     // Pages that intentionally compose more than one editable view, asserted separately below
-    // or by their own focused suites: safe-outputs, maintenance, issues, and cost.
-    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'cost']);
+    // or by their own focused suites: safe-outputs, maintenance, entity cards, and cost.
+    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'cost']);
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -837,7 +837,7 @@ describe('dashboard document validation', () => {
     if (!invalidContext.ok) {
       expect(invalidContext.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E010',
-        path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].context[9]`
+        path: `$.dashboard.pages[${runsPageIndex}].views[${runsPage.views.indexOf(detailsView)}].encoding.actions[0].context[9]`
       }));
     }
     detailsView.encoding.actions[0].context.pop();
@@ -848,7 +848,7 @@ describe('dashboard document validation', () => {
     if (!duplicateContext.ok) {
       expect(duplicateContext.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E003',
-        path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].context[9]`
+        path: `$.dashboard.pages[${runsPageIndex}].views[${runsPage.views.indexOf(detailsView)}].encoding.actions[0].context[9]`
       }));
     }
     detailsView.encoding.actions[0].context.pop();
@@ -859,7 +859,7 @@ describe('dashboard document validation', () => {
     if (!rejected.ok) {
       expect(rejected.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E010',
-        path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].when.field`
+        path: `$.dashboard.pages[${runsPageIndex}].views[${runsPage.views.indexOf(detailsView)}].encoding.actions[0].when.field`
       }));
     }
   });
@@ -1057,8 +1057,8 @@ dashboard:
       layout: 'full-view'
     });
     expect(packagesPage.definition.views).toHaveLength(1);
-    expect(workflowsPage.definition.views).toHaveLength(1);
-    expect(runsPage.definition.views).toHaveLength(2);
+    expect(workflowsPage.definition.views).toHaveLength(2);
+    expect(runsPage.definition.views).toHaveLength(3);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
       'repositories',
@@ -1068,6 +1068,7 @@ dashboard:
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
       'workflows',
       'runs',
+      'sessions',
       'engines-models',
       'firewall',
       'mcps',
