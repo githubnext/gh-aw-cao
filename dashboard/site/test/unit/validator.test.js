@@ -1599,7 +1599,9 @@ dashboard:
       );
       const expectedSources = pageId === 'cao-evolution-dashboard'
         ? ['operational-values', 'operational-values', 'outcomes', 'outcomes', 'runs']
-        : ['operational-values', 'operational-values', 'outcomes', 'runs'];
+        : pageId === 'optimization-dashboard'
+          ? ['grader-observations', 'grader-observations', 'outcomes', 'runs']
+          : ['operational-values', 'operational-values', 'outcomes', 'runs'];
       expect(sources.sort()).toEqual(expectedSources.sort());
     }
   });
