@@ -16,7 +16,7 @@ import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilte
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
-import { disconnectLazyViews, enableLazyViews, hydrateLazyViewAfterPaint, renderLazyView } from './components/lazy-view.js';
+import { cancelLazyViewHydration, disconnectLazyViews, enableLazyViews, hydrateLazyViewAfterPaint, renderLazyView } from './components/lazy-view.js';
 import { enableFullViewScrollForwarding, syncFullViewMode as syncFullViewModeForPage } from './components/full-view-scroll.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
@@ -791,9 +791,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   root.dataset.mobileViewMode = mobileViewMode;
   /** @param {'chart'|'table'} mode @param {HTMLElement | undefined} page */
   const setMobileViewMode = (mode, page) => {
-    if (mode === 'table') {
-      const pendingTable = page?.querySelector('[data-mobile-view-mode="table"][data-lazy-view]');
-      if (pendingTable instanceof HTMLElement) void hydrateLazyViewAfterPaint(pendingTable);
+    const pendingTable = page?.querySelector('[data-mobile-view-mode="table"][data-lazy-view]');
+    if (pendingTable instanceof HTMLElement) {
+      if (mode === 'table') void hydrateLazyViewAfterPaint(pendingTable);
+      else cancelLazyViewHydration(pendingTable);
     }
     mobileViewMode = mode;
     root.dataset.mobileViewMode = mode;
