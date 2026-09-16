@@ -5455,6 +5455,40 @@ describe('declarative query validation', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('accepts aggregate-local filters at every declared size ceiling', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'events',
+      aggregate: {
+        by: ['workflow'],
+        values: Array.from(
+          { length: DASHBOARD_QUERY_LIMITS['max-aggregate-values'] },
+          (_, index) => ({
+            field: 'event',
+            as: `event-count-${index}`,
+            reducer: 'count',
+            ...(index === 0 ? {
+              filter: {
+                predicates: Array.from(
+                  { length: DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates'] },
+                  () => ({
+                    field: 'event-type',
+                    in: Array.from(
+                      { length: DASHBOARD_QUERY_LIMITS['max-predicate-alternatives'] },
+                      (_, alternative) => `event-type-${alternative}`
+                    )
+                  })
+                )
+              }
+            } : {})
+          })
+        )
+      }
+    }]));
+
+    expect(result.ok).toBe(true);
+  });
+
   it('rejects invalid aggregate-local filter shapes, fields, and literals', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',
@@ -5489,6 +5523,20 @@ describe('declarative query validation', () => {
                 () => ({ field: 'event-type', equals: 'blocked' })
               )
             }
+          },
+          {
+            field: 'event',
+            as: 'too-many-alternatives',
+            reducer: 'count',
+            filter: {
+              predicates: [{
+                field: 'event-type',
+                in: Array.from(
+                  { length: DASHBOARD_QUERY_LIMITS['max-predicate-alternatives'] + 1 },
+                  (_, index) => `event-type-${index}`
+                )
+              }]
+            }
           }
         ]
       }
@@ -5500,7 +5548,29 @@ describe('declarative query validation', () => {
         expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values[0].filter.predicates[0]' }),
         expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[0].aggregate.values[1].filter.predicates[0].field' }),
         expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values[2].filter.predicates[0].equals' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values[3].filter.predicates' })
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values[3].filter.predicates' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values[4].filter.predicates[0].in' })
+      ]));
+    }
+  });
+
+  it('rejects aggregate value lists above the declared ceiling', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'events',
+      aggregate: {
+        by: ['workflow'],
+        values: Array.from(
+          { length: DASHBOARD_QUERY_LIMITS['max-aggregate-values'] + 1 },
+          (_, index) => ({ field: 'event', as: `event-count-${index}`, reducer: 'count' })
+        )
+      }
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values' })
       ]));
     }
   });

@@ -697,30 +697,89 @@ describe('declarative dashboard queries', () => {
   });
 
   it('rejects malformed aggregate filters before reading source rows', () => {
+    const aggregateValue = {
+      field: 'event',
+      as: 'blocked-events',
+      reducer: 'count'
+    };
+    const malformedValues = [
+      { ...aggregateValue, filter: null },
+      { ...aggregateValue, filter: { predicates: [], extra: true } },
+      { ...aggregateValue, filter: { predicates: [null] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type' }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: 'blocked', in: ['blocked'] }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: null }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: Number.NaN }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: Number.POSITIVE_INFINITY }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', in: [] }] } },
+      {
+        ...aggregateValue,
+        filter: {
+          predicates: [{
+            field: 'event-type',
+            in: Array.from(
+              { length: DASHBOARD_QUERY_LIMITS['max-predicate-alternatives'] + 1 },
+              (_, index) => `type-${index}`
+            )
+          }]
+        }
+      },
+      {
+        ...aggregateValue,
+        filter: {
+          predicates: Array.from(
+            { length: DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates'] + 1 },
+            () => ({ field: 'event-type', equals: 'blocked' })
+          )
+        }
+      }
+    ];
+
+    for (const [index, value] of malformedValues.entries()) {
+      let reads = 0;
+      const source = {
+        source: 'events',
+        get rows() {
+          reads += 1;
+          return [{ event: '1', 'event-type': 'firewall.request.blocked' }];
+        },
+        metadata: metadata('events')
+      };
+      const result = executeDashboardQueries([{
+        name: `blocked-events-${index}`,
+        from: 'events',
+        aggregate: { values: [value] }
+      }], { events: source }, [`blocked-events-${index}`])[`blocked-events-${index}`];
+
+      expect(result.metadata.availability).toBe('unavailable');
+      expect(result.metadata['query-diagnostic']).toEqual(expect.any(String));
+      expect(reads).toBe(0);
+    }
+  });
+
+  it('rejects an oversized aggregate value list before reading source rows', () => {
     let reads = 0;
     const source = {
       source: 'events',
       get rows() {
         reads += 1;
-        return [{ event: '1', 'event-type': 'firewall.request.blocked' }];
+        return [{ event: '1' }];
       },
       metadata: metadata('events')
     };
     const result = executeDashboardQueries([{
-      name: 'blocked-events',
+      name: 'event-counts',
       from: 'events',
       aggregate: {
-        values: [{
-          field: 'event',
-          as: 'blocked-events',
-          reducer: 'count',
-          filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked', in: ['other'] }] }
-        }]
+        values: Array.from(
+          { length: DASHBOARD_QUERY_LIMITS['max-aggregate-values'] + 1 },
+          (_, index) => ({ field: 'event', as: `events-${index}`, reducer: 'count' })
+        )
       }
-    }], { events: source }, ['blocked-events'])['blocked-events'];
+    }], { events: source }, ['event-counts'])['event-counts'];
 
     expect(result.metadata.availability).toBe('unavailable');
-    expect(result.metadata['query-diagnostic']).toContain('exactly one bounded equals or in comparison');
+    expect(result.metadata['query-diagnostic']).toContain('aggregate values must contain between');
     expect(reads).toBe(0);
   });
 
