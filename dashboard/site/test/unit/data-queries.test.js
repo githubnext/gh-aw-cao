@@ -154,6 +154,41 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
+  it('uses aggregate-local filters for built-in filtered aggregate counts', () => {
+    const optimizedQueries = [
+      'overview-run-summary',
+      'overview-dispatch-summary',
+      'firewall-domain-totals',
+      'repository-workflow-totals',
+      'repository-run-totals'
+    ].map((name) => dashboardQueries.find((query) => query.name === name));
+
+    expect(optimizedQueries).toHaveLength(5);
+    for (const query of optimizedQueries) {
+      expect(query.compute).toBeUndefined();
+      expect(query.aggregate.values.some((value) => value.filter?.predicates?.length > 0)).toBe(true);
+    }
+
+    const outcomeSummary = dashboardQueries.find((query) => query.name === 'overview-outcome-summary');
+    expect(outcomeSummary.aggregate.values.find((value) => value.as === 'delivered-repositories')).toMatchObject({
+      field: 'repository',
+      reducer: 'distinct-count',
+      filter: { predicates: [{ field: 'outcome-state', in: ['accepted', 'completed', 'lifecycle-close'] }] }
+    });
+
+    const efficiency = dashboardQueries.find((query) => query.name === 'cost-workflow-run-efficiency');
+    expect(efficiency.compute.map((field) => field.as)).toEqual([
+      'observed-engine',
+      'observed-model',
+      'observed-agent-model'
+    ]);
+    expect(efficiency.aggregate.values.find((value) => value.as === 'failed-runs')).toMatchObject({
+      field: 'run-conclusion',
+      reducer: 'count',
+      filter: { predicates: [{ field: 'run-conclusion', in: ['failure', 'timed_out', 'startup_failure'] }] }
+    });
+  });
+
   it('counts distinct targets from successful worker dispatches only', () => {
     const runRows = [
       { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'github/gh-aw' },
