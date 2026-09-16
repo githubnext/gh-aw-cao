@@ -185,7 +185,7 @@ export function renderDashboard(input) {
       viewer
     }),
     callouts: renderSiteCallouts(document.dashboard.callouts, sources),
-    pages: pages.map((page) => renderPagePlaceholder(page)),
+    pages: pages.map((page) => renderPagePlaceholder(page, reusableViews)),
     footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha })
   });
   const root = h(
@@ -231,7 +231,7 @@ export function renderDashboard(input) {
           ));
         }
         return showInitialLoadingSkeleton
-          ? renderPageLoadingSkeleton(page)
+          ? renderPageLoadingSkeleton(page, reusableViews)
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
       };
       if (input.loadPageSources) {
@@ -452,10 +452,11 @@ function formatReportDate(value) {
 
 /**
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
+ * @param {Array<Record<string, unknown>>} [reusableViews]
  * @returns {HTMLElement}
  */
-function renderPagePlaceholder(page) {
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+function renderPagePlaceholder(page, reusableViews = []) {
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page, reusableViews) : page;
   const pageClassName = typeof payload['class-name'] === 'string' && payload['class-name'].length > 0
     ? ` ${payload['class-name']}`
     : '';
@@ -481,10 +482,11 @@ function renderPagePlaceholder(page) {
 
 /**
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
+ * @param {Array<Record<string, unknown>>} [reusableViews]
  * @returns {HTMLElement}
  */
-function renderPageLoadingSkeleton(page) {
-  const placeholder = renderPagePlaceholder(page);
+function renderPageLoadingSkeleton(page, reusableViews = []) {
+  const placeholder = renderPagePlaceholder(page, reusableViews);
   placeholder.removeAttribute('data-page-pending');
   placeholder.setAttribute('aria-busy', 'true');
   placeholder.append(renderPageSkeleton());

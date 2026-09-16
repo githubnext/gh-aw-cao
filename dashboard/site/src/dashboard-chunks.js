@@ -182,7 +182,7 @@ export function dashboardTableSourceNames(document, pageId) {
  * resolved document without going through the runtime chunk-loading path.
  * @template {{ dashboard: { pages: DashboardPage[] } & Record<string, unknown> } & Record<string, unknown>} Document
  * @param {Document} document
- * @param {{ dashboard: { pages: DashboardPage[] } }} templateDocument
+ * @param {{ dashboard: { pages: DashboardPage[] } & Record<string, unknown> }} templateDocument
  * @returns {Document}
  */
 export function resolveBuiltInPages(document, templateDocument) {
@@ -190,6 +190,8 @@ export function resolveBuiltInPages(document, templateDocument) {
     ...document,
     dashboard: {
       ...document.dashboard,
+      views: document.dashboard.views ?? templateDocument.dashboard.views,
+      'card-templates': document.dashboard['card-templates'] ?? templateDocument.dashboard['card-templates'],
       pages: document.dashboard.pages.map((page) => {
         if (page.kind !== 'built-in') return page;
         const template = templateDocument.dashboard.pages.find((candidate) => (

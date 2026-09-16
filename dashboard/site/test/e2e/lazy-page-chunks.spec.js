@@ -191,7 +191,7 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
 
   await navigateToPage(page, 'runs');
   await expect(page.getByRole('heading', { name: 'Runs' })).toBeVisible();
-  await expect.poll(() => pageText(page, 'runs')).toMatch(/Runs in the last week/);
+  await expect.poll(() => pageText(page, 'runs')).toMatch(/Select a run to inspect its sessions and events/);
   await expect.poll(() => pageText(page, 'runs')).toMatch(/No runs observed\.|1001|Runs/);
   await expect.poll(() => chunkRequests.filter((id) => id === 'runs').length).toBe(1);
 
@@ -216,7 +216,7 @@ test('deep links and redirect routes fetch only the requested initial page chunk
   const hashChunkRequests = captureChunkRequests(page);
   await page.goto(`${origin}/#page-runs`);
   await expect(page.getByRole('heading', { name: 'Runs' })).toBeVisible();
-  await expect.poll(() => pageText(page, 'runs')).toMatch(/Runs in the last week/);
+  await expect.poll(() => pageText(page, 'runs')).toMatch(/Select a run to inspect its sessions and events/);
   await expect.poll(() => [...new Set(hashChunkRequests)].sort()).toEqual(['runs']);
 
   const routeChunkRequests = captureChunkRequests(page);

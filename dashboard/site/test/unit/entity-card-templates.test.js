@@ -86,7 +86,7 @@ describe('entity card templates', () => {
 
   it('routes workflow, run, MCP, and firewall pages through stored-query cards', () => {
     expect(pages.workflows.definition.views).toEqual(['workflow-inventory-cards']);
-    expect(pages.runs.definition.views).toEqual(['runs-table-cards']);
+    expect(pages.runs.definition.views).toEqual(['entity-runs']);
     expect(pages.mcps.views).toEqual(['mcp-tool-observations']);
     expect(pages.firewall.views).toEqual(['firewall-domain-observations']);
 
@@ -94,23 +94,23 @@ describe('entity card templates', () => {
       data: { source: 'workflow-inventory' },
       list: {
         style: 'entity-cards',
-        card: 'workflow-inventory',
-        drill: { type: 'external', field: 'workflow-link' }
+        card: 'workflow',
+        drill: { type: 'query', page: 'workflow-run-cards', query: 'entity-runs' }
       }
     });
-    expect(views['runs-table-cards']).toMatchObject({
-      data: { source: 'runs-table' },
+    expect(views['entity-runs']).toMatchObject({
+      data: { source: 'entity-runs' },
       list: {
         style: 'entity-cards',
-        card: 'run-log',
-        drill: { type: 'external', field: 'run-link' }
+        card: 'run',
+        drill: { type: 'query', page: 'run-events', query: 'entity-events' }
       }
     });
     expect(views['mcp-tool-observations']).toMatchObject({
       data: { source: 'mcp-tool-observations' },
       list: {
         style: 'entity-cards',
-        card: 'mcp-tool',
+        card: 'event',
         drill: { type: 'external', field: 'run-link' }
       }
     });
@@ -118,7 +118,7 @@ describe('entity card templates', () => {
       data: { source: 'firewall-domain-observations' },
       list: {
         style: 'entity-cards',
-        card: 'firewall-domain',
+        card: 'event',
         drill: { type: 'external', field: 'run-link' }
       }
     });

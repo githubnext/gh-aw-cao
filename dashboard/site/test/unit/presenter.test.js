@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
+import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageSourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { deriveDataHealthSources } from '../../src/data-health.js';
@@ -133,9 +133,8 @@ describe('dashboard DOM provenance', () => {
     ]);
   });
 
-  it('reports the paginated source shared by the runs page views', () => {
-    const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
-    expect(lazySourceNames).toContain('runs-table');
+  it('reports the stored source used by the routed runs card view', () => {
+    expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'runs')).toContain('entity-runs');
   });
 
   it('maps every rendered element and dynamic descendant to its owning JSON view when ?debug=1 is set', async () => {
@@ -388,7 +387,7 @@ describe('presenter built-in and custom pages', () => {
     expect(view?.textContent).not.toContain('Invalid custom view definition.');
   });
 
-  it('renders the most-blocked domains pie chart and aggregated domain table', async () => {
+  it('renders firewall observations as cards that open run logs', async () => {
     const metadata = /** @type {const} */ ({
       'source-id': 'firewall-fixture',
       'source-kind': 'fixture',
@@ -399,33 +398,41 @@ describe('presenter built-in and custom pages', () => {
       availability: 'available'
     });
     const rows = [
-      { domain: 'api.github.com', run: 4, accepted: 12, blocked: 1 },
-      { domain: 'new.example', run: 2, accepted: 3, blocked: 0 },
-      { domain: 'blocked.example', run: 1, accepted: 0, blocked: 3_177_281 },
-      { domain: 'changed.example', run: 2, accepted: 1, blocked: 2 }
+      {
+        'event-summary': 'api.github.com',
+        'event-status': 'Allowed',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run: '4',
+        'observed-at': '2026-09-05T11:00:00Z',
+        'run-link': { href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/4', label: 'Run 4' }
+      },
+      {
+        'event-summary': 'blocked.example',
+        'event-status': 'Denied',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run: '5',
+        'observed-at': '2026-09-05T10:00:00Z',
+        'run-link': { href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/5', label: 'Run 5' }
+      }
     ];
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        'firewall-most-blocked-domains': { source: 'firewall-most-blocked-domains', rows, metadata },
-        'firewall-domain-totals': { source: 'firewall-domain-totals', rows, metadata },
-        'firewall-policy-rules': { source: 'firewall-policy-rules', rows: [], metadata }
+        'firewall-domain-observations': { source: 'firewall-domain-observations', rows, metadata }
       }
     });
 
     const page = await activatePage(rendered, 'firewall');
-    expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
-    expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
-    expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
-    expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="firewall-domain-observations"][data-view-layout="full-view"]')).not.toBeNull();
+    expect(page?.querySelector('.entity-card-list-title a')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/4');
     const text = page?.textContent ?? '';
     expect(text).toContain('api.github.com');
-    expect(text).toContain('new.example');
     expect(text).toContain('blocked.example');
-    expect(text).toContain('changed.example');
-    expect(text).toContain('Accepted');
-    expect(text).toContain('Blocked');
+    expect(text).toContain('Allowed');
+    expect(text).toContain('Denied');
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });
@@ -434,21 +441,8 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        'firewall-most-blocked-domains': {
-          source: 'firewall-most-blocked-domains',
-          rows: [],
-          metadata: {
-            'source-id': 'firewall-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-05T11:00:00Z',
-            'retrieved-at': '2026-09-05T11:05:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'empty'
-          }
-        },
-        'firewall-domain-totals': {
-          source: 'firewall-domain-totals',
+        'firewall-domain-observations': {
+          source: 'firewall-domain-observations',
           rows: [],
           metadata: {
             'source-id': 'firewall-fixture',
@@ -464,9 +458,9 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'firewall');
-    const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
+    const view = page?.querySelector('[data-view-id="firewall-domain-observations"]');
     expect(view?.getAttribute('data-view-layout')).toBe('full-view');
-    expect(view?.querySelector('.table-region')?.textContent).toContain(
+    expect(view?.textContent).toContain(
       'No observed firewall domains are available for this selection.'
     );
     rendered.remove();
@@ -705,7 +699,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders the JSON-declared workflow chart and inventory table', () => {
+  it('renders the JSON-declared workflow inventory as routed cards', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -799,11 +793,12 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml');
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml');
-    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
-    expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="workflow-inventory-cards"][data-view-layout="full-view"]')).not.toBeNull();
+    expect(page?.querySelectorAll('.entity-card-list-card')).toHaveLength(3);
+    expect(page?.textContent).toContain('Dependabot');
+    expect(page?.textContent).toContain('.github/workflows/ci.yml');
+    expect(page?.querySelector('[data-card-drill="query"]')?.getAttribute('href'))
+      .toMatch(/^#page-workflow-run-cards\?query=entity-runs&title=/);
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-rocket$/);
   });
@@ -814,12 +809,18 @@ describe('presenter built-in and custom pages', () => {
       dashboard: {
         id: 'workflow-topology-links-dashboard',
         title: 'Workflow Topology Links',
+        'card-templates': authoritativeDashboardDocument.dashboard['card-templates'],
+        views: authoritativeDashboardDocument.dashboard.views,
         pages: [
           {
             id: 'workflows',
             kind: /** @type {'built-in'} */ ('built-in'),
             page: 'workflows',
-            title: 'Workflows'
+            title: 'Workflows',
+            definition: {
+              'data-state': { availability: true },
+              views: ['workflow-inventory-cards']
+            }
           },
           {
             id: 'repository-detail',
@@ -887,14 +888,9 @@ describe('presenter built-in and custom pages', () => {
       })
     });
 
-    const links = [...rendered.querySelectorAll('[data-page-name="workflows"] .chart-legend-pie a')]
-      .map((link) => link.getAttribute('href'));
-    expect(links).toHaveLength(0);
-    expect(rendered.querySelector('[data-page-name="workflows"] table')).not.toBeNull();
-    expect(rendered.querySelector('[data-page-name="workflows"] table a')?.getAttribute('href'))
-      .toMatch(/^#page-workflow-runtime\?workflow=/);
-    expect([...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
-      .every((link) => !(link.parentElement instanceof HTMLAnchorElement))).toBe(true);
+    expect(rendered.querySelectorAll('[data-page-name="workflows"] .entity-card-list-card')).toHaveLength(2);
+    expect(rendered.querySelector('[data-page-name="workflows"] [data-card-drill="query"]')?.getAttribute('href'))
+      .toMatch(/^#page-workflow-run-cards\?query=entity-runs&title=/);
   });
 
   it('DLS-LINK-006 DLS-LINK-007 renders worker-provided entity links in table columns and honours explicit link overrides', () => {
@@ -3013,8 +3009,11 @@ describe('presenter built-in and custom pages', () => {
     }
 
     const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs');
-    expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
-      .toEqual(['runs-table', 'runs-table']);
+    expect(dashboardPagePayload(
+      runsPage,
+      authoritativeDashboardDocument.dashboard.views
+    ).views.map((view) => /** @type {{ data: { source: string } }} */ (view).data.source))
+      .toEqual(['entity-runs']);
 
     const repositoriesPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'repositories');
     expect(repositoriesPage?.definition.views).toMatchObject([
@@ -3045,32 +3044,7 @@ describe('presenter built-in and custom pages', () => {
     ]);
 
     const workflowsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'workflows');
-    expect(workflowsPage?.definition.views).toMatchObject([
-      {
-        id: 'workflows-by-runs',
-        data: {
-          source: 'workflow-inventory',
-          'order-by': [{ field: 'runs', direction: 'desc' }],
-          limit: 10
-        },
-        mark: 'chart',
-        chart: 'pie',
-        layout: 'horizontal',
-        encoding: {
-          x: { field: 'workflow-label', type: 'nominal', title: 'Workflow' },
-          y: { field: 'runs', type: 'quantitative', title: 'Runs' },
-          href: { field: 'workflow-link', type: 'nominal' }
-        }
-      },
-      {
-        id: 'workflows-inventory',
-        data: { source: 'workflow-inventory' },
-        mark: 'table',
-        controls: 'interactive',
-        'lazy-list': true,
-        layout: 'full-view'
-      }
-    ]);
+    expect(workflowsPage?.definition.views).toEqual(['workflow-inventory-cards']);
   });
 
   it('DLS-PAGE-002 DLS-PAGE-006 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 renders built-in sections in authoritative dashboard.json view order grouped by declared source instead of hard-coded section index positions', () => {
@@ -3113,13 +3087,15 @@ describe('presenter built-in and custom pages', () => {
               repository: 'gh-aw-cao',
               workflow: '.github/workflows/daily.yml',
               run: '1001',
+              'run-attempt': 1,
               'run-status': 'completed',
               'run-conclusion': 'success',
               'rollout-mode': 'live',
               engine: 'actions',
               'requested-model': 'gpt-4o',
               'resolved-model': 'gpt-4.1',
-              'started-at': '2026-08-29T10:00:00Z'
+              'started-at': '2026-08-29T10:00:00Z',
+              'run-link': { href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1001', label: 'Run 1001' }
             }
           ],
           metadata: {
@@ -3150,13 +3126,14 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }, ['runs-table'])
+      }, ['entity-runs'])
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
-    expect(headings).toEqual(['Runs in the last week', 'Runs']);
-    expect(rendered.querySelectorAll('[data-page-id="runs"] [data-chart-widget="swimlane"]')).toHaveLength(1);
-    expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
+    expect(headings).toEqual(['Runs']);
+    expect(rendered.querySelectorAll('[data-page-id="runs"] .entity-card-list-card')).toHaveLength(1);
+    expect(rendered.querySelector('[data-page-id="runs"] .entity-card-list-title a')?.getAttribute('href'))
+      .toMatch(/^#page-run-events\?query=entity-events&title=1001/);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });
 

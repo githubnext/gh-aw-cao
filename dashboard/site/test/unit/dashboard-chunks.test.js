@@ -7,6 +7,7 @@ import {
   dashboardTableSourceNames,
   mergeDashboardPage,
   normalizeDashboardPageChunk,
+  resolveBuiltInPages,
   resolveDashboardDocument,
   splitDashboardDocument,
 } from '../../src/dashboard-chunks.js';
@@ -82,6 +83,22 @@ describe('dashboardPageIsLoaded', () => {
     expect(dashboardPageIsLoaded(undefined)).toBe(false);
     expect(dashboardPageIsLoaded({ id: 'stub-custom', kind: 'custom' })).toBe(false);
     expect(dashboardPageIsLoaded({ id: 'stub-built-in', kind: 'built-in' })).toBe(false);
+  });
+
+  describe('resolveBuiltInPages', () => {
+    it('carries reusable views and card templates required by built-in page definitions', () => {
+      const document = sampleDocument();
+      delete document.dashboard.views;
+      delete document.dashboard['card-templates'];
+      const template = sampleDocument();
+      template.dashboard.views = [{ id: 'workflow-cards', data: { source: 'alpha-source' } }];
+      template.dashboard['card-templates'] = [{ id: 'workflow', icon: 'workflow' }];
+
+      const resolved = resolveBuiltInPages(document, template);
+
+      expect(resolved.dashboard.views).toEqual(template.dashboard.views);
+      expect(resolved.dashboard['card-templates']).toEqual(template.dashboard['card-templates']);
+    });
   });
 
   it('reports true once a page has views or a built-in definition', () => {

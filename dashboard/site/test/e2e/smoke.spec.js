@@ -704,7 +704,7 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
-test('Runs renders a last-week swimlane above its responsive table and scrolls like Cost', async ({ page }) => {
+test('Runs renders routed run cards responsively', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -722,8 +722,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
         availability: 'available'
       };
       const sources = {
-        'runs-table': {
-          source: 'runs-table',
+        'entity-runs': {
+          source: 'entity-runs',
           metadata,
           rows: [
             {
@@ -766,8 +766,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
         }
       };
       for (let run = 3; run <= 100; run += 1) {
-        const template = sources['runs-table'].rows[run % 2];
-        sources['runs-table'].rows.push({
+        const template = sources['entity-runs'].rows[run % 2];
+        sources['entity-runs'].rows.push({
           ...template,
           run: String(run),
           'run-link': {
@@ -782,84 +782,19 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
     </script>
   `);
 
-  const dashboardRoot = page.locator('.dashboard-root');
   const runsPage = page.locator('[data-page-id="runs"]');
-  const view = runsPage.locator('[data-view-layout="full-view"]');
-  const table = view.locator('[data-lazy-list]');
-  const scroll = view.locator('.table-scroll');
-  const swimlane = runsPage.locator('[data-view-id="runs-last-week"]');
-  const columnHeaders = view.locator('thead > tr:first-child > th');
-  const facetControl = columnHeaders.locator('.filter-select-control').first();
-  const expectAlignedColumnHeaders = async () => {
-    const headerTops = await columnHeaders.evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().top));
-    expect(Math.max(...headerTops) - Math.min(...headerTops)).toBeLessThanOrEqual(1);
-  };
+  const view = runsPage.locator('[data-view-id="entity-runs"]');
+  const cards = view.locator('.entity-card-list-card');
   await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
-  await expect(view).toHaveCount(1);
-  await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
-  await expect(swimlane.locator('.swimlane-summary')).toContainText('100 runs');
-  const swimlaneHeadingBox = await swimlane.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
-  const swimlaneSummaryBox = await swimlane.locator('.swimlane-summary').boundingBox();
-  const swimlaneChartBox = await swimlane.locator('[data-chart-widget="swimlane"] svg').boundingBox();
-  const swimlaneLabelBox = await swimlane.locator('.swimlane-label').first().boundingBox();
-  if (swimlaneHeadingBox === null || swimlaneSummaryBox === null || swimlaneChartBox === null || swimlaneLabelBox === null) {
-    throw new Error('Expected swimlane heading, summary, and chart boxes to be measurable.');
-  }
-  const swimlaneChartMaxHeight = await swimlane.locator('[data-chart-widget="swimlane"] svg')
-    .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
-  expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
-  expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
-  expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
-  expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
-  await page.getByRole('button', { name: 'Show table view' }).click();
-  await expect(table).toBeVisible();
-  await expect(table.locator('tbody > tr')).toHaveCount(25);
-  const more = table.locator('[data-table-more]');
-  for (let pageIndex = 0; pageIndex < 3; pageIndex += 1) {
-    await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
-  }
-  await expect(table.locator('tbody > tr')).toHaveCount(50);
-  await expect(view.locator('[data-table-filter]')).toBeVisible();
-  const summaryRow = view.locator('.table-summary-row');
-  const summaryToggle = summaryRow.getByRole('button', { name: 'Collapse column summaries' });
-  await expect(summaryRow).toBeVisible();
-  const expandedHeight = await summaryRow.evaluate((element) => element.getBoundingClientRect().height);
-  await summaryToggle.click();
-  await expect(summaryRow).toHaveClass(/table-summary-collapsed/);
-  await expect(summaryRow.locator('.table-summary-expanded').first()).toBeHidden();
-  await expect(summaryRow.locator('.table-summary-compact:visible').first()).toBeVisible();
-  expect(await summaryRow.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(expandedHeight);
-  await summaryRow.getByRole('button', { name: 'Expand column summaries' }).click();
-  await expect(summaryRow).not.toHaveClass(/table-summary-collapsed/);
-  await expect(view.locator('.custom-table tbody tr')).not.toHaveCount(0);
-  await expect(view.locator('.custom-table tbody tr').first()).toContainText('2');
-  await expectAlignedColumnHeaders();
-  await scroll.evaluate((element) => {
-    element.scrollTop = 100;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  const facetControlBox = await facetControl.boundingBox();
-  const scrolledSummaryBox = await summaryRow.boundingBox();
-  assert(facetControlBox);
-  assert(scrolledSummaryBox);
-  expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
-  await page.getByRole('button', { name: 'Show card list view' }).click();
-  await page.getByRole('button', { name: 'Show chart view' }).click();
-  await expect(swimlane).toBeVisible();
+  await expect(view).toBeVisible();
+  await expect(cards).toHaveCount(100);
+  await expect(cards.first()).toContainText('gh-aw-cao');
+  await expect(cards.first()).toContainText('aw-doctor.md');
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(swimlane).toBeVisible();
-  await expect(table).toBeHidden();
-  await page.getByRole('button', { name: 'Show table view' }).click();
-  await expect(swimlane).toBeHidden();
-  await expect(table).toBeVisible();
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
-  await expectAlignedColumnHeaders();
-  await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-  await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expect(view).toBeVisible();
+  await expect(cards.first()).toBeVisible();
 });
 
 test('a page combining a chart with a full-view table fills and scrolls in table and card layouts', async ({ page }) => {
@@ -981,7 +916,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
 });
 
-test('Runs renders the worker-projected table for an active time window', async ({ page }) => {
+test('Runs renders worker-projected cards for an active time window', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -1048,18 +983,15 @@ test('Runs renders the worker-projected table for an active time window', async 
   `);
 
   const runsPage = page.locator('[data-page-id="runs"]');
-  const view = runsPage.locator('[data-view-layout="full-view"]');
-  const rows = view.locator('.custom-table tbody tr');
+  const cards = runsPage.locator('[data-view-id="entity-runs"] .entity-card-list-card');
   // The shared time-window select lives once in the top-nav filter bar
   // (relocated there for the active page), not nested inside the page section.
   const horizonFilter = page.getByLabel('Dashboard filters');
   const select = horizonFilter.locator('[aria-label="Time window"]');
 
   await expect(select).toHaveValue('custom');
-  await page.getByRole('button', { name: 'Show table view' }).click();
-  await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText('2');
-  await expect(rows.locator('a').first()).toBeVisible();
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText('2');
 });
 
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
@@ -5059,10 +4991,12 @@ test('phone pages toggle between chart, full-view table, and card-list modes', a
   await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('card');
 });
 
-test('phone Workflows page cycles through chart, table, and card-list views', async ({ page }) => {
+test('phone Workflows page renders routed workflow cards', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const workflowsPage = builtInPage('workflows');
-  await page.evaluate(async ({ presenterModuleUrl, workflowsPage }) => {
+  const dashboardViews = authoritativeDashboard.dashboard.views;
+  const cardTemplates = authoritativeDashboard.dashboard['card-templates'];
+  await page.evaluate(async ({ presenterModuleUrl, workflowsPage, dashboardViews, cardTemplates }) => {
     window.location.hash = '#page-workflows';
     const { renderDashboard } = await import(presenterModuleUrl);
     document.querySelector('#root')?.append(renderDashboard({
@@ -5071,6 +5005,8 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
         dashboard: {
           id: 'workflows-view-mode-dashboard',
           title: 'Workflows View Mode',
+          views: dashboardViews,
+          'card-templates': cardTemplates,
           pages: [workflowsPage]
         }
       },
@@ -5079,7 +5015,9 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
           source: 'workflow-inventory',
           rows: [{
             'package-name': 'Maintenance',
+            organization: 'githubnext',
             repository: 'githubnext/gh-aw-cao',
+            'repository-name': 'gh-aw-cao',
             workflow: '.github/workflows/aw-maintenance.md',
             'workflow-name': 'AW Maintenance',
             'workflow-label': 'githubnext/gh-aw-cao:.github/workflows/aw-maintenance.md',
@@ -5100,23 +5038,12 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
         }
       }
     }));
-  }, { presenterModuleUrl: buildPresenterModuleUrl(), workflowsPage });
+  }, { presenterModuleUrl: buildPresenterModuleUrl(), workflowsPage, dashboardViews, cardTemplates });
 
-  const chart = page.locator('[data-view-id="workflows-by-runs"]');
-  const table = page.locator('[data-view-id="workflows-inventory"]');
-  await expect(chart).toBeVisible();
-  await expect(table).toBeHidden();
-
-  await page.getByRole('button', { name: 'Show table view' }).click();
-  await expect(chart).toBeHidden();
-  await expect(table.locator('.table-region')).toBeVisible();
-  await expect(table.locator('tbody')).toContainText('AW Maintenance');
-
-  await page.getByRole('button', { name: 'Show card list view' }).click();
-  await expect(table.locator('.table-region')).toBeHidden();
-  await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
-  await expect(table.locator('[data-mobile-card-list]')).toContainText('AW Maintenance');
-  await expect(page.getByRole('button', { name: 'Show chart view' })).toBeVisible();
+  const view = page.locator('[data-view-id="workflow-inventory-cards"]');
+  await expect(view).toBeVisible();
+  await expect(view.locator('.entity-card-list-card')).toHaveCount(1);
+  await expect(view).toContainText('.github/workflows/aw-maintenance.md');
 });
 
 test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {

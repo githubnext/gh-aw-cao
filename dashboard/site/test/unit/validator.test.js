@@ -575,7 +575,7 @@ describe('dashboard document validation', () => {
       name: 'firewall-domain-observations',
       from: 'firewall-observations',
       filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] },
-      'order-by': [{ field: 'observed-at', direction: 'desc' }, { field: 'domain', direction: 'asc' }]
+      'order-by': [{ field: 'observed-at', direction: 'desc' }, { field: 'event-summary', direction: 'asc' }]
     }));
     expect(view).toMatchObject({
       mark: 'list',
@@ -583,7 +583,7 @@ describe('dashboard document validation', () => {
       data: { source: 'firewall-domain-observations' },
       list: {
         style: 'entity-cards',
-        card: 'firewall-domain',
+        card: 'event',
         drill: { type: 'external', field: 'run-link' }
       }
     });
@@ -615,7 +615,7 @@ describe('dashboard document validation', () => {
       data: { source: 'mcp-tool-observations' },
       list: {
         style: 'entity-cards',
-        card: 'mcp-tool',
+        card: 'event',
         drill: { type: 'external', field: 'run-link' }
       }
     });
@@ -864,16 +864,16 @@ describe('dashboard document validation', () => {
       'order-by': [{ field: 'started-at', direction: 'desc' }]
     });
 
-    expect(page.definition.views).toEqual(['runs-table-cards']);
+    expect(page.definition.views).toEqual(['entity-runs']);
     expect(document.dashboard.views.find((/** @type {{ id: string }} */ view) =>
       view.id === page.definition.views[0]
     )).toMatchObject({
-      data: { source: 'runs-table' },
+      data: { source: 'entity-runs' },
       mark: 'list',
       list: {
         style: 'entity-cards',
-        card: 'run-log',
-        drill: { type: 'external', field: 'run-link' }
+        card: 'run',
+        drill: { type: 'query', page: 'run-events', query: 'entity-events' }
       }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
@@ -895,15 +895,13 @@ describe('dashboard document validation', () => {
       layout: 'full-view',
       list: {
         style: 'entity-cards',
-        card: 'workflow-inventory',
-        drill: { type: 'external', field: 'workflow-link' }
+        card: 'workflow',
+        drill: { type: 'query', page: 'workflow-run-cards', query: 'entity-runs' }
       }
     });
     const columns = view.encoding.columns;
     expect(columns).toEqual(expect.arrayContaining([
       expect.objectContaining({ field: 'workflow-name' }),
-      expect.objectContaining({ field: 'repository' }),
-      expect.objectContaining({ field: 'package-name' }),
       expect.objectContaining({ field: 'runs', type: 'quantitative' })
     ]));
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
@@ -1000,7 +998,7 @@ dashboard:
     expect(runsView).toMatchObject({
       mark: 'list',
       layout: 'full-view',
-      list: { style: 'entity-cards', drill: { type: 'external', field: 'run-link' } }
+      list: { style: 'entity-cards', drill: { type: 'query', page: 'run-events', query: 'entity-events' } }
     });
     expect(packagesView.data.source).toBe('package-inventory');
     expect(packagesChart).toMatchObject({
@@ -1050,11 +1048,11 @@ dashboard:
     for (const view of [packagesView, packageWorkflowsView]) {
       expect(view.encoding.columns.at(-1)?.title).toBe('Registration');
     }
-    expect(runsView.data.source).toBe('runs-table');
-    expect(runsView.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).not.toContain('organization');
+    expect(runsView.data.source).toBe('entity-runs');
+    expect(runsView.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toContain('organization');
     expect(runsView.encoding.columns).toContainEqual(expect.objectContaining({ field: 'run' }));
     expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'repository-coordinate')).toMatchObject({
-      title: 'Repository'
+      title: 'Repository coordinate'
     });
     expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'workflow')?.format).toBe('workflow-relative-path');
     expect(transactionsView).toMatchObject({
@@ -1071,7 +1069,7 @@ dashboard:
     expect(workflowsPage.definition.views.map((/** @type {{ id?: string } | string} */ view) =>
       typeof view === 'string' ? view : view.id
     )).toEqual(['workflow-inventory-cards']);
-    expect(runsPage.definition.views).toEqual(['runs-table-cards']);
+    expect(runsPage.definition.views).toEqual(['entity-runs']);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
       'repositories',
@@ -1638,12 +1636,7 @@ dashboard:
     }
   });
 
-  it('keeps the CAO Evolution run inventory aligned with the built-in run drill target', () => {
-    const builtInDocument = JSON.parse(authoritativeDashboardSource);
-    const builtInRunPage = builtInDocument.dashboard.pages
-      .find((/** @type {{ id: string }} */ page) => page.id === 'runs');
-    const builtInRunView = builtInDocument.dashboard.views
-      .find((/** @type {{ id: string }} */ view) => view.id === builtInRunPage.definition.views[0]);
+  it('keeps the CAO Evolution run inventory linked to GitHub run logs', () => {
     const evolutionDocument = packageDashboardSources
       .map((source) => JSON.parse(source))
       .find((document) => document.dashboard.id === 'cao-evolution-dashboard');
@@ -1653,7 +1646,7 @@ dashboard:
     expect(runView).toMatchObject({
       mark: 'table',
       controls: 'interactive',
-      encoding: { href: { field: builtInRunView.list.drill.field, type: 'nominal' } }
+      encoding: { href: { field: 'run-link', type: 'nominal' } }
     });
     expect(runView.encoding.columns.map(
       (/** @type {{ field: string }} */ column) => column.field
