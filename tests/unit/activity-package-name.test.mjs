@@ -4,6 +4,7 @@ import { packageName } from "../../activity/package-name.mjs";
 
 test("formats package identifiers as display names", () => {
   assert.equal(packageName("repo-assist"), "Repo Assist");
+  assert.equal(packageName("repo-ASSIST"), "Repo Assist");
   assert.equal(packageName("a-b"), "A B");
   assert.equal(packageName(""), "");
   assert.equal(packageName(null), "");
