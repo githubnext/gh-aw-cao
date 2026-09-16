@@ -1082,7 +1082,7 @@ dashboard:
       layout: 'full-view'
     });
     expect(packagesPage.definition.views).toHaveLength(1);
-    expect(workflowsPage.definition.views).toHaveLength(2);
+    expect(workflowsPage.definition.views).toHaveLength(3);
     expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
