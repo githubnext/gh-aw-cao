@@ -858,8 +858,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
-test('a mobile page combining a chart with a full-view table switches between chart, table, and card layouts', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('a page combining a chart with a full-view table fills and scrolls in table and card layouts', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -933,7 +933,10 @@ test('a mobile page combining a chart with a full-view table switches between ch
 
   const dashboardRoot = page.locator('.dashboard-root');
   const chart = page.locator('[data-view-id="engines-models-distribution"]');
-  const scroll = page.locator('[data-view-id="engines-models-usage"] .table-scroll');
+  const view = page.locator('[data-view-id="engines-models-usage"]');
+  const scroll = view.locator('.table-scroll');
+  const cards = view.locator('[data-mobile-card-list]');
+  const cardScroll = cards.locator('.mobile-table-card-list-items');
   await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(scroll).toBeHidden();
@@ -944,15 +947,27 @@ test('a mobile page combining a chart with a full-view table switches between ch
   await expect(scroll).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => ({
+    fillsView: Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1,
+    scrollable: element.scrollHeight > element.clientHeight
+  }))).toEqual({ fillsView: true, scrollable: true });
+  await scroll.evaluate((element) => { element.scrollTop = 100; });
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await expect(chart).toBeHidden();
   await expect(scroll).toBeHidden();
-  await expect(page.locator('[data-mobile-card-list]')).toBeVisible();
-  await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toBeVisible();
-  await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toContainText('copilot / model-1');
+  await expect(cards).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card').first()).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card').first()).toContainText('copilot / model-1');
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Engines and models', level: 3 })).toBeHidden();
+  await expect.poll(async () => cardScroll.evaluate((element) => ({
+    fillsView: Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1,
+    scrollable: element.scrollHeight > element.clientHeight
+  }))).toEqual({ fillsView: true, scrollable: true });
+  await cardScroll.evaluate((element) => { element.scrollTop = 100; });
+  await expect.poll(async () => cardScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(chart).toBeVisible();
