@@ -514,7 +514,9 @@ describe('data view renderer', () => {
     expect(card?.querySelector('.entity-card-list-metric strong')?.textContent).toBe('2');
     expect(card?.querySelector('.entity-card-list-metric span')?.textContent).toBe('Workflows');
     expect(card?.querySelectorAll('.entity-card-list-metric')).toHaveLength(2);
-    expect(card?.querySelector('.issue-list-labels')?.textContent).toContain('active');
+    const labels = card?.querySelector('.issue-list-labels');
+    expect(labels?.textContent).toContain('active');
+    expect(labels?.getAttribute('aria-label')).toBe('Daily ops labels and metrics');
   });
 
   it('lets a mobile card continuation retry after a load failure', async () => {

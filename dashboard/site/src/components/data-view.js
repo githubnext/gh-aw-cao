@@ -356,6 +356,25 @@ function renderEntityCardItems(rows, options) {
       : target
         ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
         : titleText;
+    const labels = definition.labels.flatMap((column) => {
+      const value = row[column.field];
+      const values = Array.isArray(value) ? value : [value];
+      return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
+    });
+    const metrics = (definition.metrics ?? []).flatMap((column) => {
+      const rawValue = row[column.field];
+      if (rawValue === null || rawValue === undefined) return [];
+      return [h(
+        'li',
+        { className: 'entity-card-list-metric' },
+        h('strong', null, renderValue(column, rawValue, row)),
+        h('span', null, fieldTitle(column))
+      )];
+    });
+    const labelsDescription = [
+      ...(labels.length > 0 ? ['labels'] : []),
+      ...(metrics.length > 0 ? ['metrics'] : [])
+    ].join(' and ');
     return h(
       'li',
       { className: 'issue-list-card entity-card-list-card', 'data-custom-row-key': `${pageId}-${title}-${keyOffset + index}` },
@@ -377,22 +396,9 @@ function renderEntityCardItems(rows, options) {
       ),
       h(
         'ul',
-        { className: 'issue-list-labels', 'aria-label': `${titleText || 'Item'} labels and metrics` },
-        ...definition.labels.flatMap((column) => {
-          const value = row[column.field];
-          const values = Array.isArray(value) ? value : [value];
-          return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
-        }),
-        ...(definition.metrics ?? []).flatMap((column) => {
-          const rawValue = row[column.field];
-          if (rawValue === null || rawValue === undefined) return [];
-          return [h(
-            'li',
-            { className: 'entity-card-list-metric' },
-            h('strong', null, renderValue(column, rawValue, row)),
-            h('span', null, fieldTitle(column))
-          )];
-        })
+        { className: 'issue-list-labels', 'aria-label': labelsDescription ? `${titleText || 'Item'} ${labelsDescription}` : undefined },
+        ...labels,
+        ...metrics
       )
     );
   });
@@ -807,18 +813,22 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const quantitativeFields = new Set(columns
     .filter((column) => column.type === 'quantitative')
     .map((column) => column.field));
-  const declaredMetricFields = new Set(definition.metrics?.map((field) => field.field));
   const visibleDetails = [];
   const visibleMetrics = [];
   const seenFields = new Set();
-  for (const field of [...definition.details, ...(definition.metrics ?? [])]) {
+  for (const field of definition.details) {
     if (!columnFields.has(field.field) || seenFields.has(field.field)) continue;
     seenFields.add(field.field);
-    if (quantitativeFields.has(field.field) || declaredMetricFields.has(field.field)) {
+    if (quantitativeFields.has(field.field)) {
       visibleMetrics.push(field);
     } else {
       visibleDetails.push(field);
     }
+  }
+  for (const field of definition.metrics ?? []) {
+    if (!columnFields.has(field.field) || seenFields.has(field.field)) continue;
+    seenFields.add(field.field);
+    visibleMetrics.push(field);
   }
   const visibleDefinition = {
     ...definition,
