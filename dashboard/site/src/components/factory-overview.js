@@ -1,4 +1,3 @@
-import { h } from '../dom.js';
 import { batch, derived, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { renderFactoryFloor } from './factory-floor.js';
