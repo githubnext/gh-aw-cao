@@ -135,23 +135,20 @@ describe('DLS-CONF-004 scaffold gates', () => {
     try {
       const stylesheet = style.sheet;
       if (!stylesheet) throw new Error('Primer stylesheet did not parse');
-      let mobileBodyRule;
+      const mobileBodySelectors = new Set();
       for (const rule of stylesheet.cssRules) {
         if (rule.type !== window.CSSRule.MEDIA_RULE) continue;
         const mediaRule = /** @type {CSSMediaRule} */ (rule);
         if (mediaRule.conditionText.replace(/\s/g, '') !== '(max-width:700px)') continue;
-        mobileBodyRule = [...mediaRule.cssRules]
-          .map((nestedRule) => /** @type {CSSStyleRule} */ (nestedRule))
-          .find((nestedRule) => {
-            if (!nestedRule.selectorText) return false;
-            const selectors = new Set(nestedRule.selectorText.split(',').map((selector) => selector.trim()));
-            return selectors.size === 2 && selectors.has('body') && selectors.has('.dashboard-root');
-          });
-        if (mobileBodyRule) break;
+        for (const rule of mediaRule.cssRules) {
+          const styleRule = /** @type {CSSStyleRule} */ (rule);
+          if (!styleRule.selectorText || styleRule.style.getPropertyValue('font-size') !== '1rem') continue;
+          for (const selector of styleRule.selectorText.split(',')) mobileBodySelectors.add(selector.trim());
+        }
       }
 
-      expect(mobileBodyRule).toBeDefined();
-      expect(mobileBodyRule?.style.getPropertyValue('font-size')).toBe('1rem');
+      expect(mobileBodySelectors.has('body')).toBe(true);
+      expect(mobileBodySelectors.has('.dashboard-root')).toBe(true);
     } finally {
       style.remove();
     }
