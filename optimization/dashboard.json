@@ -671,9 +671,54 @@
         ]
       },
       {
+        "name": "optimization-token-efficiency-interventions",
+        "intent": "Project token-efficiency intervention lifecycle observations needed for optimization comparisons.",
+        "from": "events",
+        "filter": {
+          "predicates": [
+            {
+              "field": "event-type",
+              "equals": "token_efficiency.intervention"
+            }
+          ]
+        },
+        "select": [
+          {
+            "field": "target-organization",
+            "as": "organization"
+          },
+          {
+            "field": "target-repository",
+            "as": "repository"
+          },
+          {
+            "field": "target-workflow-path",
+            "as": "workflow"
+          },
+          {
+            "field": "experiment"
+          },
+          {
+            "field": "control-variant"
+          },
+          {
+            "field": "optimized-variant"
+          },
+          {
+            "field": "intervention-id"
+          },
+          {
+            "field": "recommendation-disposition"
+          },
+          {
+            "field": "evidence-state"
+          }
+        ]
+      },
+      {
         "name": "token-efficiency-applied-intervention-candidates",
         "intent": "Collapse complete applied intervention observations to one bounded experiment and control-variant grain.",
-        "from": "token-efficiency-interventions",
+        "from": "optimization-token-efficiency-interventions",
         "filter": {
           "predicates": [
             {
