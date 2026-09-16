@@ -27,6 +27,7 @@ structure:
   workflow_shared: .github/workflows/shared/
   rollout_policy: .github/workflows/cao.json
   workflow_resources: .github/aw/
+  package_records: .github/aw/packages/
   workflow_agent_skills: .github/skills/
   portable_agent_skills: skills/
   specifications: specs/
@@ -176,7 +177,10 @@ commands:
   full_validation: npm run check
   control_typecheck: npm run typecheck:cao
   tests: npm test
+  unit_tests: npm run test:unit
+  integration_tests: npm run test:integration
   load_tests: npm run test:load
+  svg_check: npm run check:svg
   workflow_compile: npm run compile
   workflow_compile_locks: npm run compile:locks
   docs_build: npm run docs:build
