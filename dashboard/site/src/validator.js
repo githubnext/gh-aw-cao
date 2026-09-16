@@ -11,6 +11,7 @@ import {
   DASHBOARD_QUERY_LIMITS,
   COMPUTE_FUNCTION_ARITY,
   NUMERIC_COMPUTE_FUNCTIONS,
+  QUERY_AGGREGATE_FILTER_PREDICATE_KEYS,
   QUERY_AGGREGATE_KEYS,
   QUERY_AGGREGATE_VALUE_KEYS,
   QUERY_COMPUTE_ARGUMENT_KEYS,
@@ -3444,10 +3445,12 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           }
         }
       }
-      if (!Array.isArray(query.aggregate.values) || query.aggregate.values.length === 0) {
+      if (!Array.isArray(query.aggregate.values)
+          || query.aggregate.values.length === 0
+          || query.aggregate.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
         errors.push(createError(
           ERROR_CODES.missingOrInvalidRequiredField,
-          'aggregate values must be a non-empty sequence.',
+          `aggregate values must be a sequence of 1 to ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions.`,
           `${aggregatePath}.values`
         ));
       } else {
@@ -3480,6 +3483,79 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
               `${valuePath}.reducer`
             ));
           }
+          if (value.filter !== undefined) {
+            const filterPath = `${valuePath}.filter`;
+            const filterNode = getValueNodeByKey(
+              getSequenceItemNode(getValueNodeByKey(aggregateNode, 'values'), index),
+              'filter'
+            );
+            if (!isPlainObject(value.filter)) {
+              errors.push(createError(
+                ERROR_CODES.missingOrInvalidRequiredField,
+                'aggregate filter must be a mapping.',
+                filterPath
+              ));
+            } else {
+              validateObjectKeys(filterNode, QUERY_FILTER_KEYS, filterPath, errors);
+              const predicates = value.filter.predicates;
+              if (!Array.isArray(predicates)
+                  || predicates.length === 0
+                  || predicates.length > DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates']) {
+                errors.push(createError(
+                  ERROR_CODES.missingOrInvalidRequiredField,
+                  `aggregate filter predicates must be a sequence of 1 to ${DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates']} definitions.`,
+                  `${filterPath}.predicates`
+                ));
+              } else {
+                for (const [predicateIndex, predicate] of predicates.entries()) {
+                  const predicatePath = `${filterPath}.predicates[${predicateIndex}]`;
+                  if (!isPlainObject(predicate)) {
+                    errors.push(createError(
+                      ERROR_CODES.missingOrInvalidRequiredField,
+                      'aggregate filter predicate must be a mapping.',
+                      predicatePath
+                    ));
+                    continue;
+                  }
+                  validateObjectKeys(
+                    getSequenceItemNode(getValueNodeByKey(filterNode, 'predicates'), predicateIndex),
+                    QUERY_AGGREGATE_FILTER_PREDICATE_KEYS,
+                    predicatePath,
+                    errors
+                  );
+                  validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
+                  requireField(predicate.field, `${predicatePath}.field`);
+                  requireSchemaType(predicate.field, `${predicatePath}.field`, 'scalar');
+                  const hasEquals = Object.hasOwn(predicate, 'equals');
+                  const hasIn = Object.hasOwn(predicate, 'in');
+                  if (Number(hasEquals) + Number(hasIn) !== 1) {
+                    errors.push(createError(
+                      ERROR_CODES.missingOrInvalidRequiredField,
+                      'aggregate filter predicate must declare exactly one of equals or in.',
+                      predicatePath
+                    ));
+                  } else if (hasEquals && !isAggregateFilterLiteral(predicate.equals)) {
+                    errors.push(createError(
+                      ERROR_CODES.missingOrInvalidRequiredField,
+                      'aggregate filter equals must be a string, number, or boolean literal.',
+                      `${predicatePath}.equals`
+                    ));
+                  } else if (hasIn && (
+                    !Array.isArray(predicate.in)
+                    || predicate.in.length === 0
+                    || predicate.in.length > DASHBOARD_QUERY_LIMITS['max-predicate-alternatives']
+                    || predicate.in.some((candidate) => !isAggregateFilterLiteral(candidate))
+                  )) {
+                    errors.push(createError(
+                      ERROR_CODES.missingOrInvalidRequiredField,
+                      `aggregate filter in must contain 1 to ${DASHBOARD_QUERY_LIMITS['max-predicate-alternatives']} string, number, or boolean literals.`,
+                      `${predicatePath}.in`
+                    ));
+                  }
+                }
+              }
+            }
+          }
           if (typeof value.as === 'string' && grouped.includes(value.as)) {
             errors.push(createError(
               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -3487,6 +3563,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
               `${valuePath}.as`
             ));
           }
+
           if (typeof value.as === 'string') grouped.push(value.as);
         }
       }
@@ -5242,6 +5319,12 @@ function createError(code, message, path) {
  */
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {unknown} value */
+function isAggregateFilterLiteral(value) {
+  return ['string', 'number', 'boolean'].includes(typeof value)
+    && (typeof value !== 'number' || Number.isFinite(value));
 }
 
 /**

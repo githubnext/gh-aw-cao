@@ -299,6 +299,7 @@ export function adaptDashboardSources(sources) {
         type: requiredString(row['event-type'], 'event.event-type'),
         summary: row['event-summary'],
         status: row['event-status'],
+        requestCount: row['request-count'],
         correlationId: row['correlation-id'],
         payloadRef: row['payload-ref'],
         mcpServer: row['mcp-server'],

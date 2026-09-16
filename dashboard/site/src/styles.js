@@ -2082,6 +2082,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .sidebar-header { position: relative; margin: 0 0 8px; }
   .mobile-history-back:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }
   .mobile-history-back:hover { background: var(--neutral-muted); }
+  .mobile-history-back-icon { width: 28px; height: 28px; flex-basis: 28px; }
   .sidebar-brand { display: none; }
   .mobile-page-header { min-width: 0; display: flex; flex: 1 1 auto; flex-direction: column; align-items: flex-start; justify-content: center; overflow: hidden; margin: 0 4px; }
   .mobile-brand-name { max-width: 100%; display: block; overflow: hidden; color: var(--muted); font-size: .75rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }

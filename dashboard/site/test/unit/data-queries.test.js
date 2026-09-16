@@ -612,6 +612,207 @@ describe('declarative dashboard queries', () => {
     expect(derived['aic-totals'].metadata['query-name']).toBe('aic-totals');
   });
 
+  it('filters each aggregate independently without changing groups or sibling values', () => {
+    const events = {
+      source: 'events',
+      rows: [
+        { repository: 'api', event: '1', 'event-type': 'firewall.request.blocked', 'request-count': 2 },
+        { repository: 'api', event: '2', 'event-type': 'firewall.request.allowed', 'request-count': 0 },
+        { repository: 'api', event: null, 'event-type': 'firewall.request.blocked', 'request-count': null },
+        { repository: 'web', event: '3', 'event-type': 'gateway.request', 'request-count': 4 },
+        { repository: 'web', event: '4', 'event-type': null, 'request-count': 3 }
+      ],
+      metadata: metadata('events')
+    };
+    const result = executeDashboardQuery({
+      name: 'event-counts',
+      from: 'events',
+      aggregate: {
+        by: ['repository'],
+        values: [
+          { field: 'event', as: 'all-events', reducer: 'count' },
+          {
+            field: 'event',
+            as: 'matched-blocked-records',
+            reducer: 'count',
+            filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+          },
+          {
+            field: 'request-count',
+            as: 'blocked-requests',
+            reducer: 'sum',
+            filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+          },
+          {
+            field: 'event',
+            as: 'firewall-events',
+            reducer: 'count',
+            filter: {
+              predicates: [{
+                field: 'event-type',
+                in: ['firewall.request.allowed', 'firewall.request.blocked']
+              }, {
+                field: 'repository',
+                equals: 'api'
+              }]
+            }
+          },
+          {
+            field: 'request-count',
+            as: 'missing-mean',
+            reducer: 'mean',
+            filter: { predicates: [{ field: 'event-type', equals: 'not-observed' }] }
+          },
+          {
+            field: 'event',
+            as: 'unknown-types',
+            reducer: 'count',
+            filter: { predicates: [{ field: 'event-type', equals: 'unknown' }] }
+          }
+        ]
+      },
+      'order-by': [{ field: 'repository', direction: 'asc' }]
+    }, { events });
+
+    expect(result.rows).toEqual([
+      {
+        repository: 'api',
+        'all-events': 2,
+        'matched-blocked-records': 1,
+        'blocked-requests': 2,
+        'firewall-events': 2,
+        'missing-mean': null,
+        'unknown-types': 0
+      },
+      {
+        repository: 'web',
+        'all-events': 2,
+        'matched-blocked-records': 0,
+        'blocked-requests': 0,
+        'firewall-events': 0,
+        'missing-mean': null,
+        'unknown-types': 1
+      }
+    ]);
+  });
+
+  it('rejects malformed aggregate filters before reading source rows', () => {
+    const aggregateValue = {
+      field: 'event',
+      as: 'blocked-events',
+      reducer: 'count'
+    };
+    const malformedValues = [
+      { ...aggregateValue, filter: null },
+      { ...aggregateValue, filter: { predicates: [], extra: true } },
+      { ...aggregateValue, filter: { predicates: [null] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type' }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: 'blocked', in: ['blocked'] }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: null }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: Number.NaN }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: Number.POSITIVE_INFINITY }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', in: [] }] } },
+      {
+        ...aggregateValue,
+        filter: {
+          predicates: [{
+            field: 'event-type',
+            in: Array.from(
+              { length: DASHBOARD_QUERY_LIMITS['max-predicate-alternatives'] + 1 },
+              (_, index) => `type-${index}`
+            )
+          }]
+        }
+      },
+      {
+        ...aggregateValue,
+        filter: {
+          predicates: Array.from(
+            { length: DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates'] + 1 },
+            () => ({ field: 'event-type', equals: 'blocked' })
+          )
+        }
+      }
+    ];
+
+    for (const [index, value] of malformedValues.entries()) {
+      let reads = 0;
+      const source = {
+        source: 'events',
+        get rows() {
+          reads += 1;
+          return [{ event: '1', 'event-type': 'firewall.request.blocked' }];
+        },
+        metadata: metadata('events')
+      };
+      const result = executeDashboardQueries([{
+        name: `blocked-events-${index}`,
+        from: 'events',
+        aggregate: { values: [value] }
+      }], { events: source }, [`blocked-events-${index}`])[`blocked-events-${index}`];
+
+      expect(result.metadata.availability).toBe('unavailable');
+      expect(result.metadata['query-diagnostic']).toEqual(expect.any(String));
+      expect(reads).toBe(0);
+    }
+  });
+
+  it('rejects an oversized aggregate value list before reading source rows', () => {
+    let reads = 0;
+    const source = {
+      source: 'events',
+      get rows() {
+        reads += 1;
+        return [{ event: '1' }];
+      },
+      metadata: metadata('events')
+    };
+    const result = executeDashboardQueries([{
+      name: 'event-counts',
+      from: 'events',
+      aggregate: {
+        values: Array.from(
+          { length: DASHBOARD_QUERY_LIMITS['max-aggregate-values'] + 1 },
+          (_, index) => ({ field: 'event', as: `events-${index}`, reducer: 'count' })
+        )
+      }
+    }], { events: source }, ['event-counts'])['event-counts'];
+
+    expect(result.metadata.availability).toBe('unavailable');
+    expect(result.metadata['query-diagnostic']).toContain('aggregate values must contain between');
+    expect(reads).toBe(0);
+  });
+
+  it('charges aggregate-local predicate scans to the query operation budget', () => {
+    const query = /** @type {Parameters<typeof executeDashboardQuery>[0]} */ ({
+      name: 'blocked-events',
+      from: 'events',
+      aggregate: {
+        values: [{
+          field: 'event',
+          as: 'blocked-events',
+          reducer: 'count',
+          filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+        }]
+      }
+    });
+    const events = {
+      source: 'events',
+      rows: [
+        { event: '1', 'event-type': 'firewall.request.blocked' },
+        { event: '2', 'event-type': 'firewall.request.allowed' }
+      ],
+      metadata: metadata('events')
+    };
+
+    expect(() => executeDashboardQuery(
+      query,
+      { events },
+      undefined,
+      createDashboardQueryBudget({ maxOperations: 5 })
+    ).rows).toThrow(DashboardQueryCancelledError);
+  });
+
   it('projects the Models & agents view from its request-scoped dashboard query', () => {
     const events = {
       source: 'events',
