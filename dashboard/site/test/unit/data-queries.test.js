@@ -192,8 +192,78 @@ describe('declarative dashboard queries', () => {
     expect(efficiency.aggregate.values.find((value) => value.as === 'failed-runs')).toMatchObject({
       field: 'run-conclusion',
       reducer: 'count',
-      filter: { predicates: [{ field: 'run-conclusion', in: ['failure', 'timed_out', 'startup_failure'] }] }
+      filter: { predicates: [{ field: 'run-conclusion', in: ['failure', 'timed-out', 'startup-failure'] }] }
     });
+  });
+
+  it('executes built-in aggregate-local filters with the same filtered totals', () => {
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      {
+        runs: {
+          source: 'runs',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success', 'run-status': 'completed', 'rollout-mode': 'live' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', event: 'workflow_dispatch', 'run-conclusion': 'failure', 'run-status': 'completed', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '3', event: 'workflow_dispatch', 'run-conclusion': 'timed-out', 'run-status': 'queued', 'rollout-mode': 'live', 'aic-total': 3 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '4', event: 'workflow_dispatch', 'run-conclusion': 'startup-failure', 'run-status': 'in_progress', 'rollout-mode': 'review', 'aic-total': 5 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '5', event: 'push', 'run-conclusion': 'success', 'run-status': 'in-progress', 'rollout-mode': 'review', 'aic-total': 7 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '6', event: 'push', 'run-conclusion': 'action-required', 'run-status': 'completed', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '7', event: 'push', 'run-conclusion': 'success', 'run-status': 'completed', 'rollout-mode': 'review' }
+          ],
+          metadata: metadata('runs')
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', package: 'dashboard', 'workflow-active': 'false' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md', 'workflow-active': false },
+            { organization: 'githubnext', repository: 'other', workflow: 'c.md', 'workflow-active': 'true' }
+          ],
+          metadata: metadata('workflows')
+        },
+        'firewall-observations': {
+          source: 'firewall-observations',
+          rows: [
+            { domain: 'api.github.com', run: '1', decision: 'allowed', 'request-count': 2 },
+            { domain: 'api.github.com', run: '2', decision: 'denied', 'request-count': 5 },
+            { domain: 'api.github.com', run: '2', decision: 'denied', 'request-count': 3 },
+            { domain: 'uploads.github.com', run: '3', decision: 'allowed', 'request-count': 7 }
+          ],
+          metadata: metadata('firewall-observations')
+        },
+        sessions: {
+          source: 'sessions',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', session: 'session-1' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', session: 'session-2' }
+          ],
+          metadata: metadata('sessions')
+        }
+      },
+      [
+        'overview-run-summary',
+        'firewall-domain-totals',
+        'repository-workflow-totals',
+        'repository-run-totals'
+      ]
+    );
+
+    expect(result['overview-run-summary'].rows).toEqual([
+      { 'successful-runs': 3, 'failed-runs': 3, 'active-runs': 3, 'active-live': 1, 'active-review': 2 }
+    ]);
+    expect(result['firewall-domain-totals'].rows).toEqual([
+      { domain: 'api.github.com', run: 2, accepted: 2, blocked: 8 },
+      { domain: 'uploads.github.com', run: 1, accepted: 7, blocked: 0 }
+    ]);
+    expect(result['repository-workflow-totals'].rows).toEqual([
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflows: 2, disabled: 2 },
+      { organization: 'githubnext', repository: 'other', workflows: 1, disabled: 0 }
+    ]);
+    expect(result['repository-run-totals'].rows).toEqual([
+      { organization: 'githubnext', repository: 'gh-aw-cao', runs: 6, failed: 3, 'action-required': 1, 'imported-runs': 2 },
+      { organization: 'githubnext', repository: 'other', runs: 1, failed: 0, 'action-required': 0, 'imported-runs': 0 }
+    ]);
   });
 
   it('counts distinct targets from successful worker dispatches only', () => {
