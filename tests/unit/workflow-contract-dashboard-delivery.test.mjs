@@ -553,6 +553,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
           "optimization-agents-md-curator",
           "optimization-skills-curator",
           "optimization-token-optimizer",
+          "optimization-token-efficiency-verifier",
         ],
       },
       {

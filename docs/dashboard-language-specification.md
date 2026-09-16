@@ -431,6 +431,37 @@ queries:
     limit: 5000
 ```
 
+#### Aggregate-Local Filters
+
+An aggregate value may declare a `filter` containing `predicates`. This filter selects that value's contributing rows without changing the query's groups or any sibling aggregate. Predicates are conjunctive and each declares a pre-aggregation scalar `field` plus exactly one scalar `equals` value or non-empty `in` sequence:
+
+```yaml
+queries:
+  - name: event-and-blocked-request-counts
+    intent: Count all events and sum firewall-blocked requests by repository.
+    from: events
+    aggregate:
+      by: [organization, repository]
+      values:
+        - { field: event, as: all-events, reducer: count }
+        - field: request-count
+          as: blocked-requests
+          reducer: sum
+          filter:
+            predicates:
+              - { field: event-type, equals: firewall.request.blocked }
+        - field: event
+          as: policy-events
+          reducer: count
+          filter:
+            predicates:
+              - { field: event-type, in: [firewall.request.allowed, firewall.request.blocked] }
+```
+
+Firewall event arity is the numeric `request-count` field. Counting matching event records is not equivalent to summing blocked requests when one event represents multiple requests.
+
+Query-level filtering and computation execute first. Group tuples are then formed from every remaining row. For each group and aggregate value independently, its aggregate-local filter is applied to the group's pre-aggregation rows and the reducer consumes only matching measure values. Aggregate-local filters do not remove a group, filter another aggregate, read an aggregate output, or imply event ordering, adjacency, windows, correlation, or any other sequence semantics.
+
 #### 5.5.1 Computed-Field Vocabulary
 
 Computed fields use only the following typed, deterministic functions with the stated inclusive argument counts. Each argument is exactly one `field` reference valid at that point in the query, one scalar `value` literal, or the execution `context` value `time-end`.
@@ -524,7 +555,7 @@ The built-in methods require no registry or external configuration. Future langu
 - **DLS-QUERY-008:** For an unmatched `left` join row, every imported join field **MUST** be null; an unmatched `inner` join row **MUST** be dropped.
 - **DLS-QUERY-009:** Every output name **MUST** be unique. A join field alias, computed field name, aggregate output name, or `select` alias that collides with an existing output name **MUST** be rejected.
 - **DLS-QUERY-010:** Computed fields **MUST** use only the Section 5.5.1 vocabulary with a valid argument count. An argument **MUST** declare exactly one valid `field`, scalar `value`, or `context`; Version 0.1.0 defines only `time-end` context, resolved to the active query window's exclusive UTC endpoint. A missing, null, empty, or structured input to a numeric function, a non-numeric text input, and division by zero **MUST** produce null. Text functions **MUST** treat null, missing, and structured inputs as empty text. A computation **MUST NOT** produce `NaN`, `Infinity`, or an error value.
-- **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. Query aggregates additionally permit `distinct-list`, which returns distinct non-null scalar values sorted as text and joined with `, `, and `calendar-week-rhythm`, which consumes `calendar-week-point` values and returns seven Monday-to-Sunday UTC slots containing current-week and matching previous-week counts. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
+- **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. Query aggregates additionally permit `distinct-list`, which returns distinct non-null scalar values sorted as text and joined with `, `, and `calendar-week-rhythm`, which consumes `calendar-week-point` values and returns seven Monday-to-Sunday UTC slots containing current-week and matching previous-week counts. An aggregate value **MAY** declare the aggregate-local `filter` defined above. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
 - **DLS-QUERY-012:** The output field schema of a query **MUST** be statically derivable from its declaration so encodings, filters, and `order-by` references can be validated before execution. A reference to a field the preceding clauses do not produce **MUST** be rejected with `DLS-E010`.
 - **DLS-QUERY-013:** A query **MUST NOT** read more than 200000 input rows per source, produce more than 200000 joined rows, or produce more than 100000 output rows; `limit` **MUST NOT** exceed 100000. Exceeding a limit **MUST** fail the query closed and **MUST NOT** truncate results silently.
 - **DLS-QUERY-014:** A derived source's metadata **MUST** compose its inputs' provenance: it **MUST** report `source-kind` `derived`, the oldest input `as-of` and `retrieved-at`, and the weakest input completeness and freshness. A missing or unavailable `from` or `inner`-join input **MUST** produce `unavailable` availability. A missing or unavailable `left`-join input **MUST** be evaluated as an empty enrichment, preserve the primary rows with null imported fields under **DLS-QUERY-008**, and degrade completeness without making a non-empty result unavailable. An executed query with zero output rows **MUST** report `empty` availability under **DLS-DATA-004**.
@@ -537,6 +568,8 @@ The built-in methods require no registry or external configuration. Future langu
 - **DLS-QUERY-021:** `predict` **MUST** be a non-empty sequence. Each entry **MUST** declare one numeric `field`, one `on` predictor field or a sequence of one to eight numeric predictor fields, and a unique `as` output name; **MAY** declare `method`, `groupby`, and `order`; and **MUST NOT** declare another key. `method` **MUST** be one Section 5.5.2 built-in and defaults to `linear`. Only `linear` **MAY** declare more than one predictor. `order` **MAY** appear only with `poly`.
 - **DLS-QUERY-022:** A prediction **MUST** fit independently for each distinct `groupby` tuple, or once for all rows when `groupby` is absent. Fitting **MUST** ignore rows whose target or predictor input is not a finite number. Prediction **MUST** preserve row count and order, MUST NOT mutate an input row, and **MUST** append a finite numeric value or null under the Section 5.5.2 semantics.
 - **DLS-QUERY-023:** Prediction fitting and evaluation **MUST** execute in the data Web Worker, remain subject to the cancellation, duration, and operation budgets in **DLS-QUERY-018**, and require no network, external configuration, or model registry. A future registered model extension **MUST** fail closed when its explicit registry or model is unavailable and **MUST NOT** change built-in method behavior.
+- **DLS-QUERY-024:** An aggregate-local `filter` **MUST** contain only `predicates`, with one to eight entries. Each predicate **MUST** contain only `field` and exactly one of `equals` or `in`; `equals` **MUST** be a finite number, text, or boolean, and `in` **MUST** contain one to 32 such literals. The referenced field **MUST** exist immediately before aggregation and **MUST** be scalar. Structured links, aggregate outputs, and fields produced by later clauses **MUST** be rejected with `DLS-E011` or `DLS-E010` as applicable.
+- **DLS-QUERY-025:** A query **MUST NOT** declare more than 64 aggregate values. Aggregate-local predicate evaluation **MUST** count against the operation budget in **DLS-QUERY-018**. It **MUST NOT** expand rows, alter group formation, access external state, execute code, or introduce sequence semantics.
 
 ---
 
@@ -678,14 +711,14 @@ Every request contains `data`, a sequence of row mappings, and `operators`, an o
 | Operator | Shape | Result |
 |---|---|---|
 | `filter` | `predicates` and optional `search` | Retains rows matching every predicate and the optional case-insensitive search. A predicate has `field` and exactly one of `equals`, `in`, or `includes`. `search` has `fields` and `query`. |
-| `summarize` | optional `by` and required `values` | Produces one row per distinct `by` tuple, or one row for the full input when `by` is omitted. Each value has `field`, `as`, and a `reducer`. |
+| `summarize` | optional `by` and required `values` | Produces one row per distinct `by` tuple, or one row for the full input when `by` is omitted. Each value has `field`, `as`, and a `reducer`, and may have an aggregate-local `filter`. |
 | `arrange` | ordered `by` entries | Orders rows by each `field`; `direction` is `asc` or `desc`. |
 | `compute` | required `values` | Appends deterministic computed fields in declaration order. |
 | `predict` | required `values` | Fits grouped built-in regression models and appends finite predictions or null without changing row order. |
 | `select` | required `fields` | Projects and optionally renames fields. |
 | `slice` | `limit` and optional `offset` | Retains the requested contiguous range. |
 
-The `summarize` reducers are `count`, `distinct-count`, `distinct-list`, `sum`, `mean`, `min`, and `max`, with the semantics in Section 7.3 and Section 5.5.3. An empty numeric input yields `null` for `mean`, `min`, and `max`, and zero for `sum`. Operators execute from first to last; therefore a conforming compilation places filtering before summarization, prediction, arrangement, and slicing.
+The `summarize` reducers are `count`, `distinct-count`, `distinct-list`, `sum`, `mean`, `min`, and `max`, with the semantics in Section 7.3 and Section 5.5.3. Within `summarize`, each aggregate-local filter executes after grouping and before its reducer. A missing or null filter field does not match a concrete literal; the explicit text value `unknown` matches a missing or null field. A matching row whose measure is missing, null, or empty is ignored by the reducer. An empty filtered input yields zero for `count`, `distinct-count`, and `sum`, and `null` for `mean`, `min`, and `max`; an observed numeric zero remains a contributing value. Thus zero and an absent aggregate result remain distinct. Operators execute from first to last; therefore a conforming compilation places query-level filtering before summarization, prediction, arrangement, and slicing.
 
 ```json
 {
@@ -748,7 +781,7 @@ Data quality has three independent axes:
 - **DLS-DATA-001:** Every consumed logical source **MUST** provide `source-id`, `source-kind`, `as-of`, `retrieved-at`, `completeness`, and `freshness`.
 - **DLS-DATA-002:** Provenance and freshness **MUST** remain associated with derived metrics, tables, charts, rankings, and links.
 - **DLS-DATA-003:** A presenter **MUST** expose `as-of`, availability, and source identity for every page or view. Source metadata is runtime input outside the dashboard YAML.
-- **DLS-DATA-004:** An empty selection **MUST** have availability `empty`; `count` and `distinct-count` over that selection **MUST** produce zero, while other aggregates **MUST** remain absent.
+- **DLS-DATA-004:** An empty query-level selection **MUST** have availability `empty`; `count` and `distinct-count` over that selection **MUST** produce zero, while other view aggregates **MUST** remain absent. An empty aggregate-local selection does not make a non-empty query result `empty`; its value follows the zero-versus-null rules in Section 7.5.
 - **DLS-DATA-005:** An unavailable result **MUST** identify the affected source and **MUST NOT** fabricate observations or carry forward an unmarked previous value.
 - **DLS-DATA-006:** A partial result **MUST** identify known missing scope or time coverage and **MUST NOT** be labeled complete.
 - **DLS-DATA-007:** A stale result **MUST** retain its original `as-of` value and **MUST** be explicitly identified as stale.
@@ -1261,6 +1294,7 @@ dashboard:
 - Aligned page icons with the presenter's canonical Octicon set and defined the icon-only, tooltip-backed horizon control.
 - Added declarative `dashboard.queries` derived sources in Section 5.5 with required original-specification `intent` metadata, constrained equality joins, an allowlisted computed-field vocabulary, static output schemas, documented resource limits, composed data states, and worker-only execution through **DLS-QUERY-001** to **DLS-QUERY-019**, and revised Section 1.2, **DLS-VIEW-011**, and Appendix C.3 accordingly. `queries` is an optional additive key, so conforming `"0.1.0"` documents without queries remain valid and the language version is unchanged.
 - Added first-class `predict` query transforms with Vega-aligned `linear`, `log`, `exp`, `pow`, `quad`, and `poly` regression methods, grouped and multivariate linear fitting, forecast rows, static output fields, and worker-only execution through **DLS-QUERY-021** to **DLS-QUERY-023**.
+- Added bounded aggregate-local `filter` predicates for conditional query aggregation, with deterministic per-group execution, explicit empty and null semantics, static validation, and operation-budget accounting through **DLS-QUERY-024** and **DLS-QUERY-025**.
 
 ---
 

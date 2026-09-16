@@ -887,6 +887,7 @@ function collectedLogRuns(usage) {
 }
 
 const TRANSACTION_EVENT_FIELDS = {
+  requestCount: "request-count",
   safeOutputType: "safe-output-type",
   githubEntityType: "github-entity-type",
   targetRepo: "target-repo",
@@ -995,7 +996,9 @@ export function transactionLogRows(usage) {
       event: sourceId("event", "gh-aw-logs", event.sourceId),
       "event-timestamp": event.timestamp,
       "event-source": event.source,
-      "event-type": event.type,
+      "event-type": event.source === "firewall"
+        ? { net_allowed: "firewall.request.allowed", net_blocked: "firewall.request.blocked" }[event.type] || event.type
+        : event.type,
       ...(event.summary ? { "event-summary": event.summary } : {}),
       ...(event.status ? { "event-status": event.status } : {}),
       ...(event.correlationId ? { "correlation-id": event.correlationId } : {}),

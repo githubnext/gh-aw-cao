@@ -6,6 +6,7 @@
     "ai-credit-optimizer": "optimization-ai-credit-optimizer",
     "agents-md-curator": "optimization-agents-md-curator",
     "skills-curator": "optimization-skills-curator",
-    "token-optimizer": "optimization-token-optimizer"
+    "token-optimizer": "optimization-token-optimizer",
+    "token-efficiency-verifier": "optimization-token-efficiency-verifier"
   }
 }

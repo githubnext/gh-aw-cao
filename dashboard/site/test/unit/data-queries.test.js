@@ -154,6 +154,120 @@ describe('declarative dashboard queries', () => {
     ]);
   });
 
+  it('uses aggregate-local filters for built-in filtered aggregate counts', () => {
+    /** @param {string} name */
+    const findQuery = (name) => {
+      const found = dashboardQueries.find((/** @type {{ name?: string }} */ query) => query.name === name);
+      expect(found).toBeTruthy();
+      return /** @type {{ compute?: Array<{ as: string }>, aggregate: { values: Array<{ as: string, filter?: { predicates?: unknown[] } }> } }} */ (found);
+    };
+    const optimizedQueries = [
+      'overview-run-summary',
+      'overview-dispatch-summary',
+      'firewall-domain-totals',
+      'repository-workflow-totals',
+      'repository-run-totals'
+    ].map(findQuery);
+
+    for (const query of optimizedQueries) {
+      expect(query.compute).toBeUndefined();
+      expect(query.aggregate.values.some((value) => Array.isArray(value.filter?.predicates))).toBe(true);
+    }
+
+    const outcomeSummary = findQuery('overview-outcome-summary');
+    expect(outcomeSummary.aggregate.values.find((value) => value.as === 'delivered-repositories')).toMatchObject({
+      field: 'repository',
+      reducer: 'distinct-count',
+      filter: { predicates: [{ field: 'outcome-state', in: ['accepted', 'completed', 'lifecycle-close'] }] }
+    });
+
+    const efficiency = /** @type {{ compute: Array<{ as: string }>, aggregate: { values: Array<{ as: string }> } }} */ (
+      findQuery('cost-workflow-run-efficiency')
+    );
+    expect(efficiency.compute.map((field) => field.as)).toEqual([
+      'observed-engine',
+      'observed-model',
+      'observed-agent-model'
+    ]);
+    expect(efficiency.aggregate.values.find((value) => value.as === 'failed-runs')).toMatchObject({
+      field: 'run-conclusion',
+      reducer: 'count',
+      filter: {
+        predicates: [{ field: 'run-conclusion', in: ['failure', 'timed-out', 'startup-failure', 'timed_out', 'startup_failure'] }]
+      }
+    });
+  });
+
+  it('executes built-in aggregate-local filters with the same filtered totals', () => {
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      {
+        runs: {
+          source: 'runs',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success', 'run-status': 'completed', 'rollout-mode': 'live' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', event: 'workflow_dispatch', 'run-conclusion': 'failure', 'run-status': 'completed', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '3', event: 'workflow_dispatch', 'run-conclusion': 'timed-out', 'run-status': 'queued', 'rollout-mode': 'live', 'aic-total': 3 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '4', event: 'workflow_dispatch', 'run-conclusion': 'startup-failure', 'run-status': 'in_progress', 'rollout-mode': 'review', 'aic-total': 5 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '5', event: 'push', 'run-conclusion': 'success', 'run-status': 'in-progress', 'rollout-mode': 'review', 'aic-total': 7 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '6', event: 'push', 'run-conclusion': 'action-required', 'run-status': 'completed', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'other', workflow: 'c.md', run: '7', event: 'push', 'run-conclusion': 'success', 'run-status': 'completed', 'rollout-mode': 'review' }
+          ],
+          metadata: metadata('runs')
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', package: 'dashboard', 'workflow-active': 'false' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md', 'workflow-active': false },
+            { organization: 'githubnext', repository: 'other', workflow: 'c.md', 'workflow-active': 'true' }
+          ],
+          metadata: metadata('workflows')
+        },
+        'firewall-observations': {
+          source: 'firewall-observations',
+          rows: [
+            { domain: 'api.github.com', run: '1', decision: 'allowed', 'request-count': 2 },
+            { domain: 'api.github.com', run: '2', decision: 'denied', 'request-count': 5 },
+            { domain: 'api.github.com', run: '2', decision: 'denied', 'request-count': 3 },
+            { domain: 'uploads.github.com', run: '3', decision: 'allowed', 'request-count': 7 }
+          ],
+          metadata: metadata('firewall-observations')
+        },
+        sessions: {
+          source: 'sessions',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', session: 'session-1' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', session: 'session-2' }
+          ],
+          metadata: metadata('sessions')
+        }
+      },
+      [
+        'overview-run-summary',
+        'firewall-domain-totals',
+        'repository-workflow-totals',
+        'repository-run-totals'
+      ]
+    );
+
+    expect(result['overview-run-summary'].rows).toEqual([
+      { 'successful-runs': 3, 'failed-runs': 3, 'active-runs': 3, 'active-live': 1, 'active-review': 2 }
+    ]);
+    expect(result['firewall-domain-totals'].rows).toEqual([
+      { domain: 'api.github.com', run: 2, accepted: 2, blocked: 8 },
+      { domain: 'uploads.github.com', run: 1, accepted: 7, blocked: 0 }
+    ]);
+    expect(result['repository-workflow-totals'].rows).toEqual([
+      { organization: 'githubnext', repository: 'gh-aw-cao', workflows: 2, disabled: 2 },
+      { organization: 'githubnext', repository: 'other', workflows: 1, disabled: 0 }
+    ]);
+    expect(result['repository-run-totals'].rows).toEqual([
+      { organization: 'githubnext', repository: 'gh-aw-cao', runs: 6, failed: 3, 'action-required': 1, 'imported-runs': 2 },
+      { organization: 'githubnext', repository: 'other', runs: 1, failed: 0, 'action-required': 0, 'imported-runs': 0 }
+    ]);
+  });
+
   it('counts distinct targets from successful worker dispatches only', () => {
     const runRows = [
       { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'worker.md', run: '1', event: 'workflow_dispatch', 'run-conclusion': 'success', 'target-repository': 'github/gh-aw' },
@@ -610,6 +724,207 @@ describe('declarative dashboard queries', () => {
     ]);
     expect(derived.inventory.metadata.freshness).toBe('stale');
     expect(derived['aic-totals'].metadata['query-name']).toBe('aic-totals');
+  });
+
+  it('filters each aggregate independently without changing groups or sibling values', () => {
+    const events = {
+      source: 'events',
+      rows: [
+        { repository: 'api', event: '1', 'event-type': 'firewall.request.blocked', 'request-count': 2 },
+        { repository: 'api', event: '2', 'event-type': 'firewall.request.allowed', 'request-count': 0 },
+        { repository: 'api', event: null, 'event-type': 'firewall.request.blocked', 'request-count': null },
+        { repository: 'web', event: '3', 'event-type': 'gateway.request', 'request-count': 4 },
+        { repository: 'web', event: '4', 'event-type': null, 'request-count': 3 }
+      ],
+      metadata: metadata('events')
+    };
+    const result = executeDashboardQuery({
+      name: 'event-counts',
+      from: 'events',
+      aggregate: {
+        by: ['repository'],
+        values: [
+          { field: 'event', as: 'all-events', reducer: 'count' },
+          {
+            field: 'event',
+            as: 'matched-blocked-records',
+            reducer: 'count',
+            filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+          },
+          {
+            field: 'request-count',
+            as: 'blocked-requests',
+            reducer: 'sum',
+            filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+          },
+          {
+            field: 'event',
+            as: 'firewall-events',
+            reducer: 'count',
+            filter: {
+              predicates: [{
+                field: 'event-type',
+                in: ['firewall.request.allowed', 'firewall.request.blocked']
+              }, {
+                field: 'repository',
+                equals: 'api'
+              }]
+            }
+          },
+          {
+            field: 'request-count',
+            as: 'missing-mean',
+            reducer: 'mean',
+            filter: { predicates: [{ field: 'event-type', equals: 'not-observed' }] }
+          },
+          {
+            field: 'event',
+            as: 'unknown-types',
+            reducer: 'count',
+            filter: { predicates: [{ field: 'event-type', equals: 'unknown' }] }
+          }
+        ]
+      },
+      'order-by': [{ field: 'repository', direction: 'asc' }]
+    }, { events });
+
+    expect(result.rows).toEqual([
+      {
+        repository: 'api',
+        'all-events': 2,
+        'matched-blocked-records': 1,
+        'blocked-requests': 2,
+        'firewall-events': 2,
+        'missing-mean': null,
+        'unknown-types': 0
+      },
+      {
+        repository: 'web',
+        'all-events': 2,
+        'matched-blocked-records': 0,
+        'blocked-requests': 0,
+        'firewall-events': 0,
+        'missing-mean': null,
+        'unknown-types': 1
+      }
+    ]);
+  });
+
+  it('rejects malformed aggregate filters before reading source rows', () => {
+    const aggregateValue = {
+      field: 'event',
+      as: 'blocked-events',
+      reducer: 'count'
+    };
+    const malformedValues = [
+      { ...aggregateValue, filter: null },
+      { ...aggregateValue, filter: { predicates: [], extra: true } },
+      { ...aggregateValue, filter: { predicates: [null] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type' }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: 'blocked', in: ['blocked'] }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: null }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: Number.NaN }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', equals: Number.POSITIVE_INFINITY }] } },
+      { ...aggregateValue, filter: { predicates: [{ field: 'event-type', in: [] }] } },
+      {
+        ...aggregateValue,
+        filter: {
+          predicates: [{
+            field: 'event-type',
+            in: Array.from(
+              { length: DASHBOARD_QUERY_LIMITS['max-predicate-alternatives'] + 1 },
+              (_, index) => `type-${index}`
+            )
+          }]
+        }
+      },
+      {
+        ...aggregateValue,
+        filter: {
+          predicates: Array.from(
+            { length: DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates'] + 1 },
+            () => ({ field: 'event-type', equals: 'blocked' })
+          )
+        }
+      }
+    ];
+
+    for (const [index, value] of malformedValues.entries()) {
+      let reads = 0;
+      const source = {
+        source: 'events',
+        get rows() {
+          reads += 1;
+          return [{ event: '1', 'event-type': 'firewall.request.blocked' }];
+        },
+        metadata: metadata('events')
+      };
+      const result = executeDashboardQueries([{
+        name: `blocked-events-${index}`,
+        from: 'events',
+        aggregate: { values: [value] }
+      }], { events: source }, [`blocked-events-${index}`])[`blocked-events-${index}`];
+
+      expect(result.metadata.availability).toBe('unavailable');
+      expect(result.metadata['query-diagnostic']).toEqual(expect.any(String));
+      expect(reads).toBe(0);
+    }
+  });
+
+  it('rejects an oversized aggregate value list before reading source rows', () => {
+    let reads = 0;
+    const source = {
+      source: 'events',
+      get rows() {
+        reads += 1;
+        return [{ event: '1' }];
+      },
+      metadata: metadata('events')
+    };
+    const result = executeDashboardQueries([{
+      name: 'event-counts',
+      from: 'events',
+      aggregate: {
+        values: Array.from(
+          { length: DASHBOARD_QUERY_LIMITS['max-aggregate-values'] + 1 },
+          (_, index) => ({ field: 'event', as: `events-${index}`, reducer: 'count' })
+        )
+      }
+    }], { events: source }, ['event-counts'])['event-counts'];
+
+    expect(result.metadata.availability).toBe('unavailable');
+    expect(result.metadata['query-diagnostic']).toContain('aggregate values must contain between');
+    expect(reads).toBe(0);
+  });
+
+  it('charges aggregate-local predicate scans to the query operation budget', () => {
+    const query = /** @type {Parameters<typeof executeDashboardQuery>[0]} */ ({
+      name: 'blocked-events',
+      from: 'events',
+      aggregate: {
+        values: [{
+          field: 'event',
+          as: 'blocked-events',
+          reducer: 'count',
+          filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
+        }]
+      }
+    });
+    const events = {
+      source: 'events',
+      rows: [
+        { event: '1', 'event-type': 'firewall.request.blocked' },
+        { event: '2', 'event-type': 'firewall.request.allowed' }
+      ],
+      metadata: metadata('events')
+    };
+
+    expect(() => executeDashboardQuery(
+      query,
+      { events },
+      undefined,
+      createDashboardQueryBudget({ maxOperations: 5 })
+    ).rows).toThrow(DashboardQueryCancelledError);
   });
 
   it('projects the Models & agents view from its request-scoped dashboard query', () => {

@@ -301,7 +301,7 @@ function renderListView(context) {
  *   headingTag: 'h3'|'h4',
  *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[] },
+ *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
  *   listAction: HTMLElement | null
  * }} options
  */
@@ -341,7 +341,7 @@ function renderEntityCardListView(options) {
  *   title: string,
  *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[] },
+ *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
  *   drill?: Record<string, unknown> | null,
  *   keyOffset?: number
  * }} options
@@ -356,6 +356,25 @@ function renderEntityCardItems(rows, options) {
       : target
         ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
         : titleText;
+    const labels = definition.labels.flatMap((column) => {
+      const value = row[column.field];
+      const values = Array.isArray(value) ? value : [value];
+      return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
+    });
+    const metrics = (definition.metrics ?? []).flatMap((column) => {
+      const rawValue = row[column.field];
+      if (rawValue === null || rawValue === undefined) return [];
+      return [h(
+        'li',
+        { className: 'entity-card-list-metric' },
+        h('strong', null, renderValue(column, rawValue, row)),
+        h('span', null, fieldTitle(column))
+      )];
+    });
+    const labelsDescription = [
+      ...(labels.length > 0 ? ['labels'] : []),
+      ...(metrics.length > 0 ? ['metrics'] : [])
+    ].join(' and ');
     return h(
       'li',
       { className: 'issue-list-card entity-card-list-card', 'data-custom-row-key': `${pageId}-${title}-${keyOffset + index}` },
@@ -377,12 +396,9 @@ function renderEntityCardItems(rows, options) {
       ),
       h(
         'ul',
-        { className: 'issue-list-labels', 'aria-label': `${titleText || 'Item'} labels` },
-        ...definition.labels.flatMap((column) => {
-          const value = row[column.field];
-          const values = Array.isArray(value) ? value : [value];
-          return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
-        })
+        { className: 'issue-list-labels', 'aria-label': labelsDescription ? `${titleText || 'Item'} ${labelsDescription}` : undefined },
+        ...labels,
+        ...metrics
       )
     );
   });
@@ -782,6 +798,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const availableRows = [...rows];
   const initialRows = availableRows.slice(0, pageSize);
   const columnFields = new Set(columns.map((column) => column.field));
+  /** @type {{ icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] }} */
   const definition = Object.values(cardTemplates)
     .filter((template) => columnFields.has(template.title.field))
     .toSorted((left, right) => (
@@ -793,10 +810,31 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       labels: columns.slice(1).filter((column) => ['label', 'status', 'active-state', 'mode'].includes(String(column.display))),
       details: columns.slice(1).filter((column) => !['label', 'status', 'active-state', 'mode'].includes(String(column.display)))
     };
+  const quantitativeFields = new Set(columns
+    .filter((column) => column.type === 'quantitative')
+    .map((column) => column.field));
+  const visibleDetails = [];
+  const visibleMetrics = [];
+  const seenFields = new Set();
+  for (const field of definition.details) {
+    if (!columnFields.has(field.field) || seenFields.has(field.field)) continue;
+    seenFields.add(field.field);
+    if (quantitativeFields.has(field.field)) {
+      visibleMetrics.push(field);
+    } else {
+      visibleDetails.push(field);
+    }
+  }
+  for (const field of definition.metrics ?? []) {
+    if (!columnFields.has(field.field) || seenFields.has(field.field)) continue;
+    seenFields.add(field.field);
+    visibleMetrics.push(field);
+  }
   const visibleDefinition = {
     ...definition,
     labels: definition.labels.filter((field) => columnFields.has(field.field)),
-    details: definition.details.filter((field) => columnFields.has(field.field))
+    details: visibleDetails,
+    metrics: visibleMetrics
   };
   const list = h('ul', {
     className: 'document-list issue-list entity-card-list mobile-table-card-list-items',

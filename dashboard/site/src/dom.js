@@ -1,15 +1,17 @@
 /**
- * @typedef {{ __keyedList: true, items: Array<unknown>, renderItem: (item: unknown, index: number) => Node, key: (item: unknown, index: number) => string, render: () => void, _attach: (parent: Node) => void }} KeyedListDescriptor
+ * @template T
+ * @typedef {{ __keyedList: true, items: Array<T>, renderItem: (item: T, index: number) => Node, key: (item: T, index: number) => string, render: () => void, _attach: (parent: Node) => void }} KeyedListDescriptor
  */
 
 /** @type {WeakMap<Element, Map<string, unknown>>} */
 const appliedProps = new WeakMap();
 
 /**
- * @param {Array<unknown>} items
- * @param {(item: unknown, index: number) => Node} renderItem
- * @param {(item: unknown, index: number) => string} key
- * @returns {KeyedListDescriptor}
+ * @template T
+ * @param {Array<T>} items
+ * @param {(item: T, index: number) => Node} renderItem
+ * @param {(item: T, index: number) => string} key
+ * @returns {KeyedListDescriptor<T>}
  */
 export function keyed(items, renderItem, key) {
   /** @type {Comment | null} */
@@ -21,7 +23,7 @@ export function keyed(items, renderItem, key) {
   /** @type {Map<string, Node>} */
   const nodeByKey = new Map();
 
-  /** @type {KeyedListDescriptor} */
+  /** @type {KeyedListDescriptor<T>} */
   const descriptor = {
     __keyedList: true,
     items,
@@ -223,7 +225,7 @@ function appendNode(parent, child) {
 
 /**
  * @param {unknown} child
- * @returns {child is KeyedListDescriptor}
+ * @returns {child is KeyedListDescriptor<unknown>}
  */
 function isKeyedListDescriptor(child) {
   return typeof child === 'object' && child !== null && '__keyedList' in child;

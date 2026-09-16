@@ -64,6 +64,7 @@ imports:
       dispatch_max: 20
       orchestrator_credits: 250
       worker_credits_per_target: 1950
+  - uses: shared/activity-cache.md
 
 permissions:
   contents: read
@@ -84,7 +85,7 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [optimization-ai-credit-auditor, optimization-ai-credit-optimizer, optimization-agents-md-curator, optimization-skills-curator, optimization-token-optimizer]
+    workflows: [optimization-ai-credit-auditor, optimization-ai-credit-optimizer, optimization-agents-md-curator, optimization-skills-curator, optimization-token-optimizer, optimization-token-efficiency-verifier]
     max: 20
   threat-detection: false
 
@@ -108,8 +109,9 @@ Deprioritize repositories with neither Agentic Workflow definitions nor a root `
 - `optimization-agents-md-curator`: reads a repository's root `AGENTS.md`, git history, and merged pull request and review-comment history; files one issue containing an agentic prompt for a small, evidence-backed update.
 - `optimization-skills-curator`: reads agent skills, agent definitions, and their in-repository references; files one issue containing an agentic prompt that improves the layering between `AGENTS.md` and skills.
 - `optimization-token-optimizer`: consumes one frozen evidence-complete repository/workflow/experiment assignment, deterministically rejects incomplete or duplicate work, and publishes at most one review-only recommendation with canonical opportunity and intervention lineage.
+- `optimization-token-efficiency-verifier`: consumes exactly one authoritative applied intervention as a bounded, review-only verification checkpoint. The Optimization dashboard computes progress and regression from canonical evidence with Dashboard Language queries; the worker never writes a target repository or transforms dashboard data.
 
-Dispatch stays repository-scoped: one dispatch per selected repository and eligible worker. Dispatch `optimization-token-optimizer` only with all of its frozen assignment inputs; do not ask it to discover an opportunity. The ambient-context workers apply their existing 10 percent gain gate before publishing and return a `noop` when the estimated reduction in always-loaded context is smaller.
+Dispatch stays repository-scoped: one dispatch per selected repository and eligible worker. Dispatch `optimization-token-optimizer` only with all of its frozen assignment inputs, including the exact `evaluator_digest` from the target workflow's authoritative schema-version-4 operational-value result; do not ask it to discover an opportunity and do not substitute the optimizer's evaluator. Dispatch `optimization-token-efficiency-verifier` only for one latest authoritative lifecycle observation whose disposition is `applied` and whose implementation is complete. Supply only `target_repo`, `opportunity_id`, `intervention_id`, and an `evidence_cutoff` from the complete Activity generation. Do not supply Run lists, measurements, outcome lists, AIC, or evaluator contracts. The dashboard query owns comparison, aggregation, and verification-state derivation from canonical lifecycle, experiment-assignment, grader, usage, and Run sources. Do not dispatch proposed, unapplied, rejected, failed-start, superseded, outdated, duplicate, unmatured, stale, ambiguous, or mixed-grain evidence. The ambient-context workers apply their existing 10 percent gain gate before publishing and return a `noop` when the estimated reduction in always-loaded context is smaller.
 
 ## Completion
 

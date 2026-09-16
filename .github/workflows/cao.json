@@ -133,6 +133,10 @@
           "token-optimizer": {
             "workflow": "optimization-token-optimizer",
             "max-mode": "review"
+          },
+          "token-efficiency-verifier": {
+            "workflow": "optimization-token-efficiency-verifier",
+            "max-mode": "review"
           }
         }
       },

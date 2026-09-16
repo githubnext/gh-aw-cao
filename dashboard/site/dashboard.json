@@ -994,27 +994,17 @@
             "as": "useful-output",
             "function": "if",
             "args": [{ "field": "useful" }, { "field": "safe-output" }, { "value": "" }]
-          },
-          {
-            "as": "delivered",
-            "function": "equals-any",
-            "args": [
-              { "field": "outcome-state" },
-              { "value": "accepted" },
-              { "value": "completed" },
-              { "value": "lifecycle-close" }
-            ]
-          },
-          {
-            "as": "delivered-repository",
-            "function": "if",
-            "args": [{ "field": "delivered" }, { "field": "repository" }, { "value": "" }]
           }
         ],
         "aggregate": {
           "values": [
             { "field": "useful-output", "as": "useful-outputs", "reducer": "distinct-count" },
-            { "field": "delivered-repository", "as": "delivered-repositories", "reducer": "distinct-count" }
+            {
+              "field": "repository",
+              "as": "delivered-repositories",
+              "reducer": "distinct-count",
+              "filter": { "predicates": [{ "field": "outcome-state", "in": ["accepted", "completed", "lifecycle-close"] }] }
+            }
           ]
         }
       },
@@ -1034,76 +1024,50 @@
             "fields": [{ "field": "package", "as": "declared-package" }]
           }
         ],
-        "compute": [
-          {
-            "as": "successful",
-            "function": "equals-any",
-            "args": [{ "field": "run-conclusion" }, { "value": "success" }]
-          },
-          {
-            "as": "failed",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-conclusion" },
-              { "value": "failure" },
-              { "value": "startup-failure" },
-              { "value": "stale" },
-              { "value": "timed-out" }
-            ]
-          },
-          {
-            "as": "active",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-status" },
-              { "value": "queued" },
-              { "value": "in-progress" },
-              { "value": "in_progress" }
-            ]
-          },
-          {
-            "as": "live-mode",
-            "function": "equals-any",
-            "args": [{ "field": "rollout-mode" }, { "value": "live" }]
-          },
-          {
-            "as": "review-mode",
-            "function": "equals-any",
-            "args": [{ "field": "rollout-mode" }, { "value": "review" }]
-          },
-          {
-            "as": "successful-count",
-            "function": "if",
-            "args": [{ "field": "successful" }, { "value": 1 }, { "value": 0 }]
-          },
-          {
-            "as": "failed-count",
-            "function": "if",
-            "args": [{ "field": "failed" }, { "value": 1 }, { "value": 0 }]
-          },
-          {
-            "as": "active-count",
-            "function": "if",
-            "args": [{ "field": "active" }, { "value": 1 }, { "value": 0 }]
-          },
-          {
-            "as": "active-live",
-            "function": "if",
-            "args": [{ "field": "live-mode" }, { "field": "active-count" }, { "value": 0 }]
-          },
-          {
-            "as": "active-review",
-            "function": "if",
-            "args": [{ "field": "review-mode" }, { "field": "active-count" }, { "value": 0 }]
-          }
-        ],
         "aggregate": {
           "values": [
-            { "field": "successful-count", "as": "successful-runs", "reducer": "sum" },
-            { "field": "failed-count", "as": "failed-runs", "reducer": "sum" },
-            { "field": "active-count", "as": "active-runs", "reducer": "sum" },
-            { "field": "active-live", "as": "active-live", "reducer": "sum" },
-            { "field": "active-review", "as": "active-review", "reducer": "sum" }
+            {
+              "field": "run-conclusion",
+              "as": "successful-runs",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] }
+            },
+            {
+              "field": "run-conclusion",
+              "as": "failed-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+              }
+            },
+            {
+              "field": "run-status",
+              "as": "active-runs",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-status", "in": ["queued", "in-progress", "in_progress"] }] }
+            },
+            {
+              "field": "run-status",
+              "as": "active-live",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  { "field": "run-status", "in": ["queued", "in-progress", "in_progress"] },
+                  { "field": "rollout-mode", "equals": "live" }
+                ]
+              }
+            },
+            {
+              "field": "run-status",
+              "as": "active-review",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  { "field": "run-status", "in": ["queued", "in-progress", "in_progress"] },
+                  { "field": "rollout-mode", "equals": "review" }
+                ]
+              }
+            }
           ]
         }
       },
@@ -1112,28 +1076,17 @@
         "intent": "Count workflow dispatch runs and failures in the selected horizon.",
         "from": "runs",
         "filter": { "predicates": [{ "field": "event", "equals": "workflow_dispatch" }] },
-        "compute": [
-          {
-            "as": "failed",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-conclusion" },
-              { "value": "failure" },
-              { "value": "startup-failure" },
-              { "value": "stale" },
-              { "value": "timed-out" }
-            ]
-          },
-          {
-            "as": "failed-count",
-            "function": "if",
-            "args": [{ "field": "failed" }, { "value": 1 }, { "value": 0 }]
-          }
-        ],
         "aggregate": {
           "values": [
             { "field": "run", "as": "dispatches", "reducer": "count" },
-            { "field": "failed-count", "as": "failed-dispatches", "reducer": "sum" }
+            {
+              "field": "run-conclusion",
+              "as": "failed-dispatches",
+              "reducer": "count",
+              "filter": {
+                "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+              }
+            }
           ]
         }
       },
@@ -1778,34 +1731,22 @@
         "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
         "from": "firewall-observations",
         "filter": { "predicates": [{ "field": "decision", "in": ["allowed", "denied"] }] },
-        "compute": [
-          {
-            "as": "is-accepted",
-            "function": "equals-any",
-            "args": [{ "field": "decision" }, { "value": "allowed" }]
-          },
-          {
-            "as": "accepted",
-            "function": "if",
-            "args": [{ "field": "is-accepted" }, { "field": "request-count" }, { "value": 0 }]
-          },
-          {
-            "as": "is-blocked",
-            "function": "equals-any",
-            "args": [{ "field": "decision" }, { "value": "denied" }]
-          },
-          {
-            "as": "blocked",
-            "function": "if",
-            "args": [{ "field": "is-blocked" }, { "field": "request-count" }, { "value": 0 }]
-          }
-        ],
         "aggregate": {
           "by": ["domain"],
           "values": [
             { "field": "run", "as": "run", "reducer": "distinct-count" },
-            { "field": "accepted", "as": "accepted", "reducer": "sum" },
-            { "field": "blocked", "as": "blocked", "reducer": "sum" }
+            {
+              "field": "request-count",
+              "as": "accepted",
+              "reducer": "sum",
+              "filter": { "predicates": [{ "field": "decision", "equals": "allowed" }] }
+            },
+            {
+              "field": "request-count",
+              "as": "blocked",
+              "reducer": "sum",
+              "filter": { "predicates": [{ "field": "decision", "equals": "denied" }] }
+            }
           ]
         },
         "order-by": [
@@ -1949,21 +1890,6 @@
         "from": "runs",
         "compute": [
           {
-            "as": "run-failed",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-conclusion" },
-              { "value": "failure" },
-              { "value": "timed_out" },
-              { "value": "startup_failure" }
-            ]
-          },
-          {
-            "as": "failed-run-count",
-            "function": "if",
-            "args": [{ "field": "run-failed" }, { "value": 1 }, { "value": 0 }]
-          },
-          {
             "as": "observed-engine",
             "function": "coalesce",
             "args": [{ "field": "engine" }, { "value": "unknown engine" }]
@@ -1989,7 +1915,16 @@
           "values": [
             { "field": "run", "as": "runs", "reducer": "distinct-count" },
             { "field": "aic-total", "as": "aic", "reducer": "sum" },
-            { "field": "failed-run-count", "as": "failed-runs", "reducer": "sum" },
+            {
+              "field": "run-conclusion",
+              "as": "failed-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  { "field": "run-conclusion", "in": ["failure", "timed-out", "startup-failure", "timed_out", "startup_failure"] }
+                ]
+              }
+            },
             { "field": "observed-agent-model", "as": "agent-model", "reducer": "distinct-list" }
           ]
         }
@@ -3129,18 +3064,16 @@
         "intent": "Summarize declared and disabled workflow counts by repository.",
         "description": "Declared and disabled workflow totals for each repository.",
         "from": "workflows",
-        "compute": [
-          {
-            "as": "disabled",
-            "function": "equals-any",
-            "args": [{ "field": "workflow-active" }, { "value": "false" }]
-          }
-        ],
         "aggregate": {
           "by": ["organization", "repository"],
           "values": [
             { "field": "workflow", "as": "workflows", "reducer": "count" },
-            { "field": "disabled", "as": "disabled", "reducer": "sum" }
+            {
+              "field": "workflow",
+              "as": "disabled",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "workflow-active", "equals": "false" }] }
+            }
           ]
         }
       },
@@ -3169,29 +3102,22 @@
         "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
         "description": "Distinct run and conclusion totals for each repository.",
         "from": "run-import-status",
-        "compute": [
-          {
-            "as": "failed",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-conclusion" },
-              { "value": "failure" },
-              { "value": "startup-failure" },
-              { "value": "timed-out" }
-            ]
-          },
-          {
-            "as": "action-required",
-            "function": "equals-any",
-            "args": [{ "field": "run-conclusion" }, { "value": "action-required" }]
-          }
-        ],
         "aggregate": {
           "by": ["organization", "repository"],
           "values": [
             { "field": "run", "as": "runs", "reducer": "distinct-count" },
-            { "field": "failed", "as": "failed", "reducer": "sum" },
-            { "field": "action-required", "as": "action-required", "reducer": "sum" },
+            {
+              "field": "run-conclusion",
+              "as": "failed",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "timed-out"] }] }
+            },
+            {
+              "field": "run-conclusion",
+              "as": "action-required",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "equals": "action-required" }] }
+            },
             { "field": "imported", "as": "imported-runs", "reducer": "sum" }
           ]
         }

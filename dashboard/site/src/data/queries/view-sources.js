@@ -314,9 +314,12 @@ function eventsSource(events, sessionsById, runsById, sources) {
           event: event.id,
           'event-timestamp': event.timestamp,
           'event-source': event.source,
-          'event-type': event.type,
+          'event-type': event.source === 'firewall'
+            ? { net_allowed: 'firewall.request.allowed', net_blocked: 'firewall.request.blocked' }[String(event.type)] ?? event.type
+            : event.type,
           'event-summary': event.summary,
           'event-status': event.status,
+          'request-count': event.requestCount,
           'correlation-id': event.correlationId,
           'payload-ref': event.payloadRef,
           'mcp-server': event.mcpServer,

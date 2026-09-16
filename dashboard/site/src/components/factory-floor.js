@@ -1,7 +1,6 @@
-import { h } from '../dom.js';
-import { effect } from '../reactive.js';
 import { formatCount } from './count-formatters.js';
 import { renderFactoryStation } from './factory-station.js';
+import { renderReactiveGrid } from './reactive-grid.js';
 
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
@@ -18,7 +17,6 @@ import { renderFactoryStation } from './factory-station.js';
  * @param {FactoryFloorScope} scope
  */
 export function renderFactoryFloor(sources, metrics, label, animateNumbers, scope) {
-  const floor = h('section', { className: 'factory-floor' });
   const repositories = renderFactoryStation('repo', { animate: animateNumbers, href: '#page-repositories', signal: scope.signal });
   const runs = renderFactoryStation('play', { animate: animateNumbers, href: '#page-runs?runs-runs-source.run-conclusion=success', signal: scope.signal });
   const dispatches = renderFactoryStation('workflow', { animate: animateNumbers, href: '#page-runs', signal: scope.signal });
@@ -73,31 +71,32 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     };
   });
 
-  effect(() => {
-    const coverage = metrics.coverage();
-    const successfulRuns = metrics.successfulRuns();
-    const dispatchCount = metrics.dispatches();
-    const workers = metrics.workers();
-    const gains = metrics.valueGains();
-    const usefulOutputs = metrics.usefulOutputs();
-    const activeRuns = scope.motion.get().operations;
-    floor.className = `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`;
+  const stations = [
+    { id: 'repositories', element: repositories.element },
+    { id: 'runs', element: runs.element },
+    { id: 'dispatches', element: dispatches.element },
+    { id: 'value-gains', element: valueGains.element }
+  ];
+  return renderReactiveGrid({
+    className: 'factory-floor',
+    activeClassName: 'factory-floor-active',
+    listClassName: 'factory-stations',
+    items: () => stations,
+    key: (station) => station.id,
+    renderItem: (station) => station.element,
+    active: () => scope.motion.get().operations > 0,
+    ariaLabel: () => {
+      const coverage = metrics.coverage();
+      const successfulRuns = metrics.successfulRuns();
+      const dispatchCount = metrics.dispatches();
+      const workers = metrics.workers();
+      const gains = metrics.valueGains();
+      const usefulOutputs = metrics.usefulOutputs();
     const repositoriesDescription = coverage.registeredUnavailable
       ? 'Registered repositories unavailable'
       : `${formatCount(coverage.registered)} ${label('repositories', coverage.registered).toLowerCase()}${coverage.unavailable ? '; repository delivery evidence unavailable' : ` with ${formatCount(coverage.total)} delivered to`}`;
-    floor.setAttribute(
-      'aria-label',
-      `${repositoriesDescription}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
-    );
-  }, { signal: scope.signal });
-
-  floor.append(h(
-    'ol',
-    { className: 'factory-stations' },
-    repositories.element,
-    runs.element,
-    dispatches.element,
-    valueGains.element
-  ));
-  return floor;
+      return `${repositoriesDescription}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`;
+    },
+    signal: scope.signal
+  });
 }
