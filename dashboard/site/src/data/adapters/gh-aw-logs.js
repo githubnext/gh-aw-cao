@@ -1545,7 +1545,12 @@ function createCachedGhAwJsonlAccumulator(options) {
         summary,
         'started',
         { type: 'mcp-call', index, server: record.server_name, tool: record.tool_name },
-        { source: 'mcp', correlationId }
+        {
+          source: 'mcp',
+          correlationId,
+          mcpServer: optionalString(record.server_name),
+          mcpTool: optionalString(record.tool_name)
+        }
       );
       emitEvent(
         status === 'success' ? 'tool.result' : 'tool.error',
@@ -1553,7 +1558,12 @@ function createCachedGhAwJsonlAccumulator(options) {
         summary,
         status,
         { type: 'mcp-outcome', index, status },
-        { source: 'mcp', correlationId }
+        {
+          source: 'mcp',
+          correlationId,
+          mcpServer: optionalString(record.server_name),
+          mcpTool: optionalString(record.tool_name)
+        }
       );
     });
     /**

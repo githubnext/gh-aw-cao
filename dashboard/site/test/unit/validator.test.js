@@ -553,25 +553,30 @@ describe('dashboard document validation', () => {
       'navigation-label': 'MCPs',
       views: [
         {
+          id: 'mcp-top-tools',
+          mark: 'chart',
+          chart: 'pie',
+          layout: 'full',
+          data: {
+            source: 'mcp-top-tools'
+          }
+        },
+        {
           id: 'mcp-tool-inventory',
           mark: 'table',
           controls: 'interactive',
           'lazy-list': true,
           layout: 'full-view',
           data: {
-            source: 'mcp-tool-activity'
+            source: 'mcp-tool-totals'
           }
         }
       ]
     });
-    expect(mcps.views).toHaveLength(1);
-    expect(mcps.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
+    expect(mcps.views).toHaveLength(2);
+    expect(mcps.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'mcp-tool',
-      'mcp-status',
-      'repository',
-      'workflow',
-      'run',
-      'observed-at'
+      'calls'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });

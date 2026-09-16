@@ -432,7 +432,9 @@ describe('canonical source ingestion and queries', () => {
           source: 'mcp',
           type: 'tool.call',
           correlationId: 'call-7',
-          summary: 'github/get_file'
+          summary: 'github/get_file',
+          mcpServer: 'github',
+          mcpTool: 'get_file'
         }),
         expect.objectContaining({
           source: 'mcp',
