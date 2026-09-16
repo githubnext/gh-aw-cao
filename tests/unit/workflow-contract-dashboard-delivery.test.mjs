@@ -397,7 +397,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(readme, /gh-aw-logs-shards/);
 });
 
-test("Documentation Pages deploys docs with the latest dashboard artifact", () => {
+test("Documentation Pages deploys stable release and current beta dashboards", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "docs.yml"), "utf8");
   const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8");
   const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf8");
@@ -406,7 +406,15 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-pages.yml")), false);
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-build.yml")), false);
 
-  assert.doesNotMatch(workflow, /dashboard-build|needs: dashboard/);
+  assert.match(workflow, /latest-dashboard:\n[\s\S]*?runs-on: ubuntu-latest[\s\S]*?Install latest CAO release[\s\S]*?bash install\.sh/);
+  const latestDashboardJob = workflow.slice(
+    workflow.indexOf("  latest-dashboard:"),
+    workflow.indexOf("\n  build:"),
+  );
+  assert.doesNotMatch(latestDashboardJob, /actions\/checkout/);
+  assert.match(latestDashboardJob, /releases\/latest[\s\S]*?Download latest CAO Dashboard build[\s\S]*?Build latest CAO release dashboard pages[\s\S]*?npm --prefix \.github\/aw\/dashboard\/site run build/);
+  assert.match(latestDashboardJob, /Package latest CAO release dashboard[\s\S]*?name: cao-release-dashboard[\s\S]*?path: \$\{\{ runner\.temp \}\}\/release-dashboard/);
+  assert.match(workflow, /build:\n\s+needs: latest-dashboard\n\s+if: always\(\)/);
   assert.match(workflow, /name: Restore node_modules[\s\S]*?id: node-modules-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ runner\.os \}\}-node-24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/);
   assert.match(workflow, /name: Install dependencies\n\s+if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'\n\s+run: npm ci/);
   assert.match(workflow, /name: Save node_modules[\s\S]*?if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ steps\.node-modules-cache\.outputs\.cache-primary-key \}\}/);
@@ -416,10 +424,10 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.doesNotMatch(workflow, /inputs\.mode|"mode":/);
   assert.match(workflow, /workflow_run:[\s\S]*?workflows:[\s\S]*?- CAO Dashboard[\s\S]*?types:[\s\S]*?- completed/);
   assert.match(workflow, /actions: read/);
-  assert.match(workflow, /Restore cached CAO Dashboard[\s\S]*?id: dashboard-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: dist\/cao[\s\S]*?key: central-agentic-ops-dashboard/);
-  assert.match(workflow, /Find latest CAO Dashboard run[\s\S]*?if: steps\.dashboard-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/workflows\/cao-dashboard\.yml\/runs\?branch=\$DEFAULT_BRANCH&status=success&per_page=20[\s\S]*?\.workflow_runs\[0\]\.id/);
-  assert.match(workflow, /Mount latest CAO Dashboard artifact[\s\S]*?if: steps\.dashboard-cache\.outputs\.cache-hit != 'true'[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: dist\/cao[\s\S]*?run-id: \$\{\{ steps\.dashboard-run\.outputs\.run-id \}\}/);
-  assert.doesNotMatch(workflow, /gh aw add|DASHBOARD_PACKAGE/);
+  assert.match(workflow, /Mount current CAO Dashboard as beta[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: dist\/cao-beta[\s\S]*?run-id: \$\{\{ steps\.dashboard-run\.outputs\.run-id \}\}/);
+  assert.match(workflow, /Mount latest CAO release dashboard[\s\S]*?if: needs\.latest-dashboard\.result == 'success'[\s\S]*?name: cao-release-dashboard[\s\S]*?path: dist\/cao/);
+  assert.match(workflow, /Find previous successful Documentation Pages dashboard[\s\S]*?if: needs\.latest-dashboard\.result != 'success'[\s\S]*?actions\/workflows\/docs\.yml\/runs\?branch=\$DEFAULT_BRANCH&status=success&per_page=100/);
+  assert.match(workflow, /Mount previous successful CAO release dashboard[\s\S]*?name: cao-release-dashboard[\s\S]*?path: dist\/cao[\s\S]*?run-id: \$\{\{ steps\.previous-documentation-run\.outputs\.run-id \}\}/);
   assert.equal((workflow.match(/actions\/upload-pages-artifact@/g) || []).length, 1);
   assert.equal((workflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(dashboardWorkflow, /workflow_call:/);
