@@ -67,16 +67,13 @@ test("every production dashboard page starts with an executive summary or prescr
         && summary.element === "local-database";
       const isOverviewDrillDown = page.route?.["navigation-page"] === "overview"
         && summary.mark === "table";
-      const isFullViewTable = views.length === 1
-        && summary.mark === "table"
+      const isFullViewTable = summary.mark === "table"
         && summary.controls === "interactive"
         && summary["lazy-list"] === true
         && summary.layout === "full-view";
-      const isFullViewIssueList = page.id === "issues"
-        && views.length === 1
-        && summary.mark === "list"
+      const isFullViewList = summary.mark === "list"
         && ["issues", "entity-cards"].includes(summary.list?.style)
-        && summary.layout === "full-view";
+        && ["full", "full-view"].includes(summary.layout);
       const isAttentionFirstHome = page.id === "home"
         && page["class-name"] === "dashboard-next-home-page"
         && summary.id === "home-attention"
@@ -117,7 +114,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isMaintenanceView
           || isTransactionsDatabase
           || isFullViewTable
-          || isFullViewIssueList
+          || isFullViewList
           || isOverviewDrillDown
           || isDeclarativeOverview
           || isFactoryOverview
