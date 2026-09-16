@@ -655,7 +655,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders a JSON-declared full-view workflow inventory', () => {
+  it('renders the JSON-declared workflow chart without associated detail views', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -749,21 +749,18 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
-    expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelector('[data-table-filter]')).not.toBeNull();
-    const rows = [...(page?.querySelectorAll('tbody tr') ?? [])];
-    expect(rows).toHaveLength(3);
-    expect(rows.find((row) => row.textContent?.includes('dependabot.yml'))?.textContent).toContain('30');
-    expect(rows.find((row) => row.textContent?.includes('ci.yml'))?.textContent).toContain('5');
-    expect(page?.querySelector('.mode-review')).not.toBeNull();
-    expect(page?.querySelector('.mode-live')).not.toBeNull();
-    expect(page?.querySelector('.status-success')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml');
+    expect([...(page?.querySelectorAll('.chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
+    expect(page?.querySelector('[data-view-layout="full-view"]')).toBeNull();
+    expect(page?.querySelector('[data-lazy-list]')).toBeNull();
+    expect(page?.querySelector('table')).toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-rocket$/);
   });
 
-  it('DLS-LINK-006 DLS-LINK-007 derives organization, repository, and workflow links from raw identity fields in the topology view', () => {
+  it('does not render the former workflow detail table links', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -842,12 +839,10 @@ describe('presenter built-in and custom pages', () => {
       })
     });
 
-    const links = [...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
+    const links = [...rendered.querySelectorAll('[data-page-name="workflows"] .chart-legend-pie a')]
       .map((link) => link.getAttribute('href'));
-    expect(links).toContain('#page-package-insights?package=dependabot');
-    expect(links).toContain('#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdependabot.yml');
-    expect(links).toContain('#page-workflow-runtime?workflow=github%2Ftarget-service%3A.github%2Fworkflows%2Fci.yml');
-    expect(links).toContain('#page-repository-detail?repository=github%2Ftarget-service');
+    expect(links).toHaveLength(0);
+    expect(rendered.querySelector('[data-page-name="workflows"] table')).toBeNull();
   });
 
   it('DLS-LINK-006 DLS-LINK-007 renders worker-provided entity links in table columns and honours explicit link overrides', () => {
@@ -2987,8 +2982,7 @@ describe('presenter built-in and custom pages', () => {
           y: { field: 'runs', type: 'quantitative', title: 'Runs' },
           href: { field: 'workflow-link', type: 'nominal' }
         }
-      },
-      'entity-workflows'
+      }
     ]);
   });
 
