@@ -9,8 +9,10 @@ export const FACTORY_OVERVIEW_SECTION_VALUES = ['header', 'floor'];
  */
 export function factoryOverviewSections(config) {
   if (!Array.isArray(config?.sections)) return [...FACTORY_OVERVIEW_SECTION_VALUES];
-  const sections = config.sections.filter((section) => (
-    typeof section === 'string' && FACTORY_OVERVIEW_SECTION_VALUES.includes(section)
+  const sections = config.sections.filter((section, index, values) => (
+    typeof section === 'string'
+    && FACTORY_OVERVIEW_SECTION_VALUES.includes(section)
+    && values.indexOf(section) === index
   ));
   return sections.length > 0 ? sections : [...FACTORY_OVERVIEW_SECTION_VALUES];
 }

@@ -1477,6 +1477,31 @@ dashboard:
         path: '$.dashboard.pages[0].views[0].config.sections[0]'
       }));
     }
+
+    const duplicate = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, header]
+`);
+    expect(duplicate.ok).toBe(false);
+    if (!duplicate.ok) {
+      expect(duplicate.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
+        path: '$.dashboard.pages[0].views[0].config.sections[1]'
+      }));
+    }
   });
 
   it('defines work-project-view composition through canonical body values', () => {

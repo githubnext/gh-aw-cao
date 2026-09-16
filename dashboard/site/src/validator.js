@@ -2385,9 +2385,18 @@ function validateView(view, viewNode, path, viewIds, errors) {
            `${path}.config.sections`
          ));
        } else {
+         const seenSections = new Set();
          for (let index = 0; index < view.config.sections.length; index += 1) {
            const section = view.config.sections[index];
            validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
+           if (seenSections.has(section)) {
+             errors.push(createError(
+               ERROR_CODES.unknownOrDuplicateKey,
+               `${view.element} config.sections values must be unique.`,
+               `${path}.config.sections[${index}]`
+             ));
+           }
+           seenSections.add(section);
            if (typeof section === 'string' && !allowedSections.includes(section)) {
              errors.push(createError(
                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,

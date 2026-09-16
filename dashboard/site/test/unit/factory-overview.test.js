@@ -128,6 +128,17 @@ it('composes reusable factory sections selected by JSON configuration', () => {
   expect(rendered.hasAttribute('aria-labelledby')).toBe(false);
 });
 
+it('defensively renders each configured factory section once', () => {
+  const rendered = renderFactoryOverview({
+    elementConfig: { sections: ['header', 'header', 'floor'] },
+    sources: overviewSources()
+  });
+
+  expect(rendered.querySelectorAll('.factory-intro')).toHaveLength(1);
+  expect(rendered.querySelectorAll('#agent-factory-heading')).toHaveLength(1);
+  expect(rendered.querySelectorAll('.factory-floor')).toHaveLength(1);
+});
+
 it.each([
   ['humming', 'Your factory is humming.'],
   ['under strain', 'Your factory is under strain.'],
