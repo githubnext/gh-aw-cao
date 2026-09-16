@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  schedule: "hourly"
+  schedule: "daily"
   workflow_dispatch:
     inputs:
       target_repo:

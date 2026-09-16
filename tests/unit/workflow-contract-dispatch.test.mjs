@@ -126,6 +126,18 @@ test("AW Optimization emits a no-op safe output when no workers are dispatched",
   );
 });
 
+test("Dependabot dispatches its planner daily in review mode", () => {
+  const dependabot = workflow("dependabot.md");
+  const policy = JSON.parse(readFileSync(join(workflowsDirectory, "cao.json"), "utf8"));
+
+  assert.match(dependabot, /^  schedule: "daily"$/m);
+  assert.match(dependabot, /^  dispatch-workflow:\n    workflows: \[dependabot-release-train-updater\]$/m);
+  assert.deepEqual(policy["control-plane"].packages.dependabot.workers["release-train-updater"], {
+    workflow: "dependabot-release-train-updater",
+    "max-mode": "review",
+  });
+});
+
 test("every worker uses the standard dispatch envelope and safe mode vocabulary", () => {
   const workerNames = [
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory", "operational-resilience"],
