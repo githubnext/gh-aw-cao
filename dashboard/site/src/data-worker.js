@@ -639,7 +639,7 @@ export function processDataRequest(request, signal) {
                     ...ingestionOptions,
                     workflowHints,
                     onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
-                      bytesProcessed: processedBytes + bytesProcessed,
+                      bytesProcessed: processedBytes + (compressed ? 0 : bytesProcessed),
                       recordsIngested: processedRecords + recordsIngested,
                       totalBytes: workloadBytes
                     }),

@@ -125,11 +125,12 @@ function renderNotification(initial, container, onRemove) {
     role: initial.tone === 'error' ? 'alert' : 'status'
   }, initial.message);
   const detailId = `dashboard-notification-details-${++nextNotificationDetailId}`;
+  const detailSubtitleId = `${detailId}-subtitle`;
   const toggle = h('button', {
     className: 'dashboard-notification-toggle',
     type: 'button',
     'aria-expanded': 'false',
-    'aria-controls': detailId,
+    'aria-controls': `${detailSubtitleId} ${detailId}`,
     'aria-label': `${initial.message} Show ingestion progress history`
   }, message, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
   const details = h('ul', {
@@ -138,7 +139,8 @@ function renderNotification(initial, container, onRemove) {
     hidden: true
   });
   const detailsSubtitle = h('p', {
-    className: 'dashboard-notification-details-subtitle'
+    className: 'dashboard-notification-details-subtitle',
+    id: detailSubtitleId
   });
   const content = h('div', { className: 'dashboard-notification-content' });
   const action = h('button', {
