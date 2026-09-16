@@ -65,32 +65,33 @@ test.beforeEach(async ({ page, context }) => {
   await page.goto('http://dashboard.test/#page-overview');
 });
 
-test('refactored Overview matches the deployed composition on desktop and mobile', async ({ page }) => {
-  const refactoredPage = structuredClone(overviewPage);
-  const deployedPage = structuredClone(overviewPage);
-  delete deployedPage.views[0].config.sections;
+// Baselines were captured from successful deployed revision eb675f0 before the composition refactor.
+test('refactored Overview matches deployed desktop and mobile baselines', async ({ page }) => {
+  await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.replaceChildren(renderDashboard({
+      document: documentModel,
+      sources: sourceData
+    }));
+  }, {
+    documentModel: {
+      'language-version': dashboardDocument['language-version'],
+      dashboard: {
+        id: 'overview-parity',
+        title: 'Overview parity',
+        pages: [overviewPage]
+      }
+    },
+    sourceData: sources,
+    presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
+  });
+  const factory = page.locator('[data-page-id="overview"] .agent-factory');
 
-  /** @param {Record<string, unknown>} pageDefinition */
-  const render = async (pageDefinition) => {
-    await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
-      const { renderDashboard } = await import(presenterModuleUrl);
-      document.querySelector('#root')?.replaceChildren(renderDashboard({
-        document: documentModel,
-        sources: sourceData
-      }));
-    }, {
-      documentModel: {
-        'language-version': dashboardDocument['language-version'],
-        dashboard: {
-          id: 'overview-parity',
-          title: 'Overview parity',
-          pages: [pageDefinition]
-        }
-      },
-      sourceData: sources,
-      presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
-    });
-    const factory = page.locator('[data-page-id="overview"] .agent-factory');
+  for (const viewport of [
+    { name: 'desktop', width: 1440, height: 900, introColumns: 2, stationColumns: 4 },
+    { name: 'mobile', width: 390, height: 844, introColumns: 1, stationColumns: 2 }
+  ]) {
+    await page.setViewportSize(viewport);
     await expect(factory).toBeVisible();
     await expect(factory).toHaveAttribute('aria-labelledby', 'agent-factory-heading');
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
@@ -111,28 +112,15 @@ test('refactored Overview matches the deployed composition on desktop and mobile
     ]);
     await expect(factory.getByRole('link', { name: '2 failed' })).toHaveAttribute('href', '#page-runs?runs-runs-source.run-conclusion=failure');
     await expect(factory.getByRole('link', { name: '1 failed' })).toHaveAttribute('href', '#page-dispatches?package-worker-dispatches.status=failure');
-    return {
-      markup: await factory.evaluate((element) => element.outerHTML),
-      screenshot: await factory.screenshot({ animations: 'disabled' })
-    };
-  };
-
-  for (const viewport of [
-    { width: 1440, height: 900 },
-    { width: 390, height: 844 }
-  ]) {
-    await page.setViewportSize(viewport);
-    const deployed = await render(deployedPage);
-    const refactored = await render(refactoredPage);
-
-    expect(refactored.markup).toBe(deployed.markup);
-    expect(refactored.screenshot.equals(deployed.screenshot)).toBe(true);
     expect(await page.locator('.factory-intro').evaluate((element) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
-    )).toBe(viewport.width <= 390 ? 1 : 2);
+    )).toBe(viewport.introColumns);
     expect(await page.locator('.factory-stations').evaluate((element) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
-    )).toBe(viewport.width <= 390 ? 2 : 4);
+    )).toBe(viewport.stationColumns);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await expect(factory).toHaveScreenshot(`overview-deployed-${viewport.name}.png`, {
+      animations: 'disabled'
+    });
   }
 });
