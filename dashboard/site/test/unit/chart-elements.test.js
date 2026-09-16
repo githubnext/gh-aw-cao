@@ -135,6 +135,7 @@ describe('chart element helpers', () => {
   });
 
   it('formats unitless pie counters for quick scanning', () => {
+    /** @type {Array<[string, number]>} */
     const entries = [['blocked.example', 3_177_281]];
     const legend = renderPieLegend(entries, 3_177_281);
     const chart = renderChartWidget('pie', [], [], { entries, total: 3_177_281 });
