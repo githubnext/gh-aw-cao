@@ -217,6 +217,13 @@ validation:
     - repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
     - repository_root.entries.workflow_compile_locks
+  control_source_command_refs:
+    - repository_root.entries.control_typecheck
+    - repository_root.entries.tests
+  svg_command_refs:
+    - repository_root.entries.svg_check
+  documentation_command_refs:
+    - repository_root.entries.docs_build
   architecture:
     - "Verify package contents against root and package aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."

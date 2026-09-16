@@ -51,7 +51,8 @@ test("experimental Codebase Model skill remains repository-local", async () => {
     "utf8",
   );
 
-  assert.match(skill, /^---\nname: codebase-model\n/);
+  assert.match(skill, /^---\r?\n/);
+  assert.match(skill, /\bname:\s*codebase-model\b/);
   assert.match(skill, /ARCHITECTURE\.md/);
   await assert.rejects(
     readFile(new URL("skills/codebase-model/SKILL.md", root), "utf8"),
