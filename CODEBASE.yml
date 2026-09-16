@@ -113,7 +113,7 @@ dependencies:
   - dashboard_language_queries -> dashboard_ui
 
 boundaries:
-  - subject: cao_policy
+  - subject: policy_resolution
     may_depend_on:
       - reviewed workflow revision
     must_not_depend_on:
@@ -238,25 +238,25 @@ commands:
 
 validation:
   default_command_refs:
-    - repository_root.entries.full_validation
+    - commands.repository_root.entries.full_validation
   dashboard_site_command_refs:
-    - dashboard_site.entries.tests
-    - dashboard_site.entries.e2e_tests
-    - dashboard_site.entries.performance_tests
-    - dashboard_site.entries.lint
-    - dashboard_site.entries.typecheck
-    - dashboard_site.entries.corpus_validation
+    - commands.dashboard_site.entries.tests
+    - commands.dashboard_site.entries.e2e_tests
+    - commands.dashboard_site.entries.performance_tests
+    - commands.dashboard_site.entries.lint
+    - commands.dashboard_site.entries.typecheck
+    - commands.dashboard_site.entries.corpus_validation
   workflow_source_command_refs:
-    - repository_root.entries.workflow_compile
+    - commands.repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
-    - repository_root.entries.workflow_compile_locks
+    - commands.repository_root.entries.workflow_compile_locks
   control_source_command_refs:
-    - repository_root.entries.control_typecheck
-    - repository_root.entries.tests
+    - commands.repository_root.entries.control_typecheck
+    - commands.repository_root.entries.tests
   svg_command_refs:
-    - repository_root.entries.svg_check
+    - commands.repository_root.entries.svg_check
   documentation_command_refs:
-    - repository_root.entries.docs_build
+    - commands.repository_root.entries.docs_build
   architecture:
     - "Verify package contents against root and package aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."
