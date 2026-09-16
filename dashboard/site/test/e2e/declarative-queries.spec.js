@@ -415,6 +415,9 @@ test('the authored basic table queries return the populated canonical database r
     ['githubnext/gh-aw-cao', '.github/workflows/dashboard.md'],
     ['githubnext/gh-aw-cao', '.github/workflows/doctor.md']
   ]);
+  expect(payload['workflow-inventory'].rows.map((row) => row['workflow-label'])).toEqual(
+    payload['workflow-inventory'].rows.map((row) => `${row.repository}:${row.workflow}`)
+  );
   expect(payload['runs-table'].rows.map((row) => row.run)).toEqual(['1005', '1004', '1003', '1002', '1001']);
   expect(payload['package-inventory'].rows).toEqual([
     expect.objectContaining({ package: 'dashboard', 'package-name': 'CAO Dashboard', workflows: 1, runs: 3, dispatches: 2 })

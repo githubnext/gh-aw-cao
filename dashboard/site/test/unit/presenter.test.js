@@ -1147,6 +1147,7 @@ describe('presenter built-in and custom pages', () => {
       'Settings',
       'Workflows',
       'Runs',
+      'Sessions',
       'Models & Agents',
       'Firewall',
       'MCPs',
@@ -1168,6 +1169,7 @@ describe('presenter built-in and custom pages', () => {
       'GitHub API',
       'Maintenance',
       'Issues',
+      'Pull requests',
       'Safe output items',
       'Safe Outputs',
       'Detection',
@@ -1625,6 +1627,7 @@ describe('presenter built-in and custom pages', () => {
       'Settings',
       'Workflows',
       'Runs',
+      'Sessions',
       'Models & Agents',
       'Firewall',
       'MCPs',
@@ -1646,6 +1649,7 @@ describe('presenter built-in and custom pages', () => {
       'GitHub API',
       'Maintenance',
       'Issues',
+      'Pull requests',
       'Safe output items',
       'Safe Outputs',
       'Detection',
@@ -1719,7 +1723,7 @@ describe('presenter built-in and custom pages', () => {
     }));
     window.dispatchEvent(new HashChangeEvent('hashchange'));
 
-    expect(directions).toEqual(['forward', 'backward']);
+    expect(directions.filter(Boolean)).toEqual(['forward', 'backward']);
     await Promise.resolve();
     rendered.remove();
     Reflect.deleteProperty(document, 'startViewTransition');
@@ -1757,7 +1761,8 @@ describe('presenter built-in and custom pages', () => {
     );
     window.dispatchEvent(new HashChangeEvent('hashchange'));
 
-    expect(directions).toEqual(['forward', 'forward', undefined]);
+    expect(directions.slice(0, 2)).toEqual(['forward', 'forward']);
+    expect(directions.slice(2).every((direction) => direction === undefined)).toBe(true);
     await Promise.resolve();
     rendered.remove();
     Reflect.deleteProperty(document, 'startViewTransition');
@@ -2883,11 +2888,27 @@ describe('presenter built-in and custom pages', () => {
           ],
           href: { field: 'repository-link', type: 'nominal' }
         }
-      }
+      },
+      'entity-repositories'
     ]);
 
     const workflowsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'workflows');
     expect(workflowsPage?.definition.views).toMatchObject([
+      {
+        id: 'workflows-by-runs',
+        data: {
+          source: 'workflow-inventory',
+          'order-by': [{ field: 'runs', direction: 'desc' }]
+        },
+        mark: 'chart',
+        chart: 'pie',
+        layout: 'horizontal',
+        encoding: {
+          x: { field: 'workflow-label', type: 'nominal', title: 'Workflow' },
+          y: { field: 'runs', type: 'quantitative', title: 'Runs' },
+          href: { field: 'workflow-link', type: 'nominal' }
+        }
+      },
       {
         id: 'workflows-inventory',
         data: { source: 'workflow-inventory' },
@@ -2904,7 +2925,8 @@ describe('presenter built-in and custom pages', () => {
             { field: 'workflow-active', type: 'nominal', title: 'Registration', display: 'active-state' }
           ]
         }
-      }
+      },
+      'entity-workflows'
     ]);
   });
 

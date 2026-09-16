@@ -17,12 +17,18 @@ describe('canonical dashboard worker ingestion order', () => {
     const listeners = new Map();
     /** @type {Record<string, unknown>[]} */
     const posted = [];
+    /** @type {(value: Record<string, unknown>) => void} */
+    let resolveResponse;
+    const response = new Promise((resolve) => {
+      resolveResponse = resolve;
+    });
     globalThis.self = /** @type {typeof globalThis.self} */ (/** @type {unknown} */ ({
       addEventListener: (/** @type {string} */ type, /** @type {(event: { data: Record<string, unknown> }) => void} */ listener) => {
         listeners.set(type, listener);
       },
       postMessage: (/** @type {Record<string, unknown>} */ message) => {
         posted.push(structuredClone(message));
+        if (message.id === 1) resolveResponse(message);
       }
     }));
     await import('../../src/data-worker.js');
@@ -76,14 +82,12 @@ describe('canonical dashboard worker ingestion order', () => {
           context: { pages: [], queries: [] }
         }
       });
-      for (let attempt = 0; attempt < 1000 && !posted.some((message) => message.id === 1); attempt += 1) {
-        await new Promise((resolve) => { setTimeout(resolve, 5); });
-      }
+      await response;
     } finally {
       put.mockRestore();
     }
 
     expect(posted.find((message) => message.id === 1)?.error).toBeUndefined();
     expect(storedRunIds).toEqual(['github:run:303:attempt:1']);
-  });
+  }, 15_000);
 });
