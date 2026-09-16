@@ -149,11 +149,20 @@ export function disconnectLazyViews(root) {
 }
 
 /**
+ * Hydrates a newly revealed lazy view after its skeleton has had an opportunity to paint.
  * @param {HTMLElement} element
- * @param {{ immediate?: boolean }} [options]
  * @returns {Promise<void>}
  */
-function hydrateLazyView(element, { immediate = false } = {}) {
+export function hydrateLazyViewAfterPaint(element) {
+  return hydrateLazyView(element, { afterPaint: true });
+}
+
+/**
+ * @param {HTMLElement} element
+ * @param {{ immediate?: boolean, afterPaint?: boolean }} [options]
+ * @returns {Promise<void>}
+ */
+function hydrateLazyView(element, { immediate = false, afterPaint = false } = {}) {
   const existing = hydrationPromises.get(element);
   if (existing) return existing;
 
@@ -168,6 +177,7 @@ function hydrateLazyView(element, { immediate = false } = {}) {
   }
 
   const hydration = queueHydration(ownerDocument, async () => {
+    if (afterPaint) await waitForPaint(ownerDocument);
     const transition = activeTransitions.get(ownerDocument);
     if (transition) {
       await transition;
@@ -178,6 +188,23 @@ function hydrateLazyView(element, { immediate = false } = {}) {
 
   hydrationPromises.set(element, hydration);
   return hydration;
+}
+
+/**
+ * @param {Document} ownerDocument
+ * @returns {Promise<void>}
+ */
+function waitForPaint(ownerDocument) {
+  const view = ownerDocument.defaultView;
+  return new Promise((resolve) => {
+    if (typeof view?.requestAnimationFrame === 'function') {
+      view.requestAnimationFrame(() => view.requestAnimationFrame(() => resolve()));
+    } else if (typeof view?.setTimeout === 'function') {
+      view.setTimeout(resolve, 0);
+    } else {
+      resolve();
+    }
+  });
 }
 
 /**
