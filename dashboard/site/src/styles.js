@@ -20,6 +20,7 @@ export function notificationStylesheet() {
 .dashboard-notification-toggle:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 3px; border-radius: 3px; }
 .dashboard-notification-chevron { width: 7px; height: 7px; flex: 0 0 auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 120ms ease; }
 .dashboard-notification-toggle[aria-expanded="true"] .dashboard-notification-chevron { transform: rotate(225deg); }
+.dashboard-notification-details-subtitle { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--border, ButtonBorder); color: var(--muted, GrayText); font-size: .75rem; line-height: 1.4; }
 .dashboard-notification-details { max-height: min(320px, 45vh); margin: 10px 0 0; padding: 8px; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--border, ButtonBorder); color: var(--muted, GrayText); font: .6875rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; list-style: none; }
 .dashboard-notification-details li + li { margin-top: 4px; }
 .dashboard-notification-action { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--border, ButtonBorder); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }

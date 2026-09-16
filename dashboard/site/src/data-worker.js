@@ -56,7 +56,7 @@ let subscriptionFlushRunning = false;
 
 /**
  * Publishes a user-facing notification from the data worker.
- * @param {{ id?: string, message?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], dismiss?: boolean }} notification
+ * @param {{ id?: string, message?: string, detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], dismiss?: boolean }} notification
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 export function publishWorkerNotification(notification, target = self) {
@@ -88,13 +88,28 @@ export function startIngestionProgress(target = self) {
   const clock = createElapsedStepTracker('Preparing data...', {
     historyLimit: INGESTION_PROGRESS_HISTORY_LIMIT
   });
+  let status = 'Preparing data...';
+  let workloadStartedAt = 0;
+  let processedBytes = 0;
+  let totalBytes;
   let completed = false;
+  const updateStatus = (label) => {
+    if (typeof totalBytes !== 'number') {
+      status = label;
+      return;
+    }
+    const byteProgress = `${formatDataSize(processedBytes)}/${formatDataSize(totalBytes)}`;
+    const elapsedMs = workloadStartedAt > 0 ? Date.now() - workloadStartedAt : 0;
+    const remainingMs = estimateRemainingTime(processedBytes, totalBytes, elapsedMs);
+    status = `${label} · ${byteProgress} · ${remainingMs === null ? 'Estimating time remaining' : `${formatRemainingTime(remainingMs)} remaining`}`;
+  };
   const report = () => {
     if (!completed) {
       const snapshot = clock.snapshot();
       publishWorkerNotification({
         id,
-        message: snapshot.message,
+        message: status,
+        detailsSubtitle: 'Downloading and processing a local copy in this browser can take several minutes. Cached shards are reused.',
         details: snapshot.history,
         tone: 'info',
         duration: 0
@@ -109,13 +124,25 @@ export function startIngestionProgress(target = self) {
     interval = setInterval(report, INGESTION_PROGRESS_INTERVAL_MS);
   }, INGESTION_PROGRESS_DELAY_MS);
   return {
+    /** @param {number | undefined} bytes */
+    setWorkload(bytes) {
+      totalBytes = typeof bytes === 'number' && Number.isFinite(bytes) && bytes >= 0 ? bytes : undefined;
+      processedBytes = 0;
+      workloadStartedAt = Date.now();
+      updateStatus('Preparing local copy');
+    },
     /**
      * @param {{ bytesProcessed: number, recordsIngested: number, totalBytes?: number }} progress
      */
-    update({ bytesProcessed, recordsIngested, totalBytes }) {
-      const byteProgress = typeof totalBytes === 'number' && Number.isFinite(totalBytes) && totalBytes > 0
-        ? `${formatDataSize(bytesProcessed)}/${formatDataSize(totalBytes)}`
-        : formatDataSize(bytesProcessed);
+    update({ bytesProcessed: nextProcessedBytes, recordsIngested, totalBytes: nextTotalBytes }) {
+      processedBytes = Math.max(0, Number(nextProcessedBytes) || 0);
+      if (typeof nextTotalBytes === 'number' && Number.isFinite(nextTotalBytes) && nextTotalBytes >= 0) {
+        totalBytes = nextTotalBytes;
+      }
+      const byteProgress = typeof totalBytes === 'number' && totalBytes > 0
+        ? `${formatDataSize(processedBytes)}/${formatDataSize(totalBytes)}`
+        : formatDataSize(processedBytes);
+      updateStatus('Processing local copy');
       clock.update(
         `Parsing ${recordsIngested.toLocaleString('en-US')} rec, ${byteProgress}.`,
         'parsing'
@@ -127,6 +154,7 @@ export function startIngestionProgress(target = self) {
      * @param {{ storedRecords: number, totalRecords: number }} progress
      */
     store({ storedRecords, totalRecords }) {
+      updateStatus('Saving local copy');
       clock.update(
         `Storing ${storedRecords.toLocaleString('en-US')}/${totalRecords.toLocaleString('en-US')} rec.`,
         'storing'
@@ -149,6 +177,29 @@ export function startIngestionProgress(target = self) {
       publishWorkerNotification({ id, dismiss: true }, target);
     }
   };
+}
+
+/**
+ * Predicts remaining processing time with a linear bytes-to-time model.
+ * @param {number} processedBytes
+ * @param {number} totalBytes
+ * @param {number} elapsedMs
+ */
+export function estimateRemainingTime(processedBytes, totalBytes, elapsedMs) {
+  if (!Number.isFinite(processedBytes) || !Number.isFinite(totalBytes) || !Number.isFinite(elapsedMs)
+      || processedBytes <= 0 || totalBytes <= processedBytes || elapsedMs <= 0) {
+    return null;
+  }
+  return Math.max(0, Math.round((totalBytes - processedBytes) * elapsedMs / processedBytes));
+}
+
+/** @param {number} milliseconds */
+function formatRemainingTime(milliseconds) {
+  const seconds = Math.max(1, Math.ceil(milliseconds / 1_000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
 /** @param {number} bytes */
@@ -502,8 +553,7 @@ export function processDataRequest(request, signal) {
           if (shards.length === 0) {
             throw new Error('Activity shard manifest is missing or contains no valid activity shards.');
           }
-          let processedBytes = 0;
-          let processedRecords = 0;
+          const shardStates = [];
           for (const [index, shard] of shards.entries()) {
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
             const current = normalized
@@ -517,13 +567,33 @@ export function processDataRequest(request, signal) {
                   context: collectionContext,
                   workflowHints
                 });
+            shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
+          }
+          const pendingShards = shardStates.filter(({ current }) => !current);
+          await Promise.all(pendingShards.map(async (state) => {
+            const response = await fetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
+            const contentLength = response?.ok ? Number(response.headers.get('content-length')) : Number.NaN;
+            state.sizeBytes = Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : undefined;
+          }));
+          const workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
+            ? pendingShards.reduce((sum, { sizeBytes }) => sum + (sizeBytes ?? 0), 0)
+            : undefined;
+          progress.setWorkload(workloadBytes);
+          let completedShardCount = shardStates.length - pendingShards.length;
+          progress.reportShardImportProgress(completedShardCount, shardCount);
+          if (completedShardCount > 0) {
+            progress.log(`Reusing ${completedShardCount}/${shardCount} cached activity `
+              + `${completedShardCount === 1 ? 'shard' : 'shards'}.`);
+          }
+          let processedBytes = 0;
+          let processedRecords = 0;
+          for (const { index, shard, shardUrl, current, sizeBytes } of shardStates) {
             if (current) {
               debugIngestion('skipping current activity shard', {
                 shard: shard.name,
                 index: index + 1,
                 shardCount
               });
-              progress.reportShardImportProgress(index + 1, shardCount);
               continue;
             }
             progress.log(`Downloading shard ${index + 1}/${shardCount}.`);
@@ -540,7 +610,7 @@ export function processDataRequest(request, signal) {
               const contentLength = contentLengthHeader === null ? Number.NaN : Number(contentLengthHeader);
               const payloadBytes = Number.isFinite(contentLength) && contentLength >= 0
                 ? contentLength
-                : undefined;
+                : sizeBytes;
               const compressed = response.headers.has('content-encoding');
               progress.log(payloadBytes === undefined
                 ? `Shard ${index + 1} received; parsing.`
@@ -562,7 +632,7 @@ export function processDataRequest(request, signal) {
                     onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
                       bytesProcessed: processedBytes + bytesProcessed,
                       recordsIngested: processedRecords + recordsIngested,
-                      totalBytes: undefined
+                      totalBytes: workloadBytes
                     }),
                     context: collectionContext
                   });
@@ -579,7 +649,13 @@ export function processDataRequest(request, signal) {
               });
               progress.log(`Shard ${index + 1}/${shardCount} committed `
                 + `${ingestion.committedRecords.toLocaleString('en-US')} rec.`);
-              progress.reportShardImportProgress(index + 1, shardCount);
+              progress.update({
+                bytesProcessed: processedBytes,
+                recordsIngested: processedRecords,
+                totalBytes: workloadBytes
+              });
+              completedShardCount += 1;
+              progress.reportShardImportProgress(completedShardCount, shardCount);
             }
           }
           if (inventoryResponse.ok) {
