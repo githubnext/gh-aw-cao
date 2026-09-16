@@ -559,6 +559,11 @@ test('Transactions includes local database controls and a responsive transaction
       };
       const sources = {
         'transactions-table': { source: 'transactions-table', rows, metadata },
+        'configuration-policy': {
+          source: 'configuration-policy',
+          rows: [{ document: { version: 1 }, raw: '{"version":1}', diagnostics: [] }],
+          metadata
+        },
         'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
@@ -571,7 +576,9 @@ test('Transactions includes local database controls and a responsive transaction
   `);
 
   const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
-  await dataNavigation.getByRole('link', { name: 'Transactions' }).click();
+  await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('link', { name: 'View retained transactions table' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="transactions"]');
@@ -1605,12 +1612,15 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-configuration$/);
   await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Appearance', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'View retained transactions table' }).click();
+  await expect(page).toHaveURL(/#page-transactions$/);
   await page.getByRole('button', { name: 'Reset local data' }).click();
   const resetDialog = page.getByRole('dialog', { name: 'Reset dashboard confirmation' });
   await expect(resetDialog).toBeVisible();
   await expect(resetDialog).toContainText('This action cannot be undone.');
   await resetDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(resetDialog).not.toBeVisible();
+  await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.dashboard-root')).not.toHaveAttribute('data-theme');
   await page.getByRole('button', { name: 'Light' }).click();

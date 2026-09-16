@@ -397,6 +397,14 @@ function renderDebuggingSettings() {
   );
 }
 
+function renderTransactionsLink() {
+  return h('a', {
+    href: '#page-transactions',
+    className: 'configuration-transactions-button',
+    'aria-label': 'View retained transactions table'
+  }, 'View retained transactions');
+}
+
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
@@ -410,6 +418,7 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
+    renderTransactionsLink(),
     renderThemeSettings(),
     renderSettingsCliActions(),
     renderAutomaticDataUpdatesSetting(),

@@ -1257,6 +1257,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .configuration-appearance-options .octicon { width: 14px; height: 14px; }
 .configuration-database-counts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+.configuration-database-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.configuration-database-body .configuration-local-data-actions { padding-left: 0; }
 .configuration-database-counts > span { min-width: 0; display: grid; gap: 3px; padding: 10px 6px; border-radius: 6px; background: var(--canvas-subtle); text-align: center; }
 .configuration-database-counts strong { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; }
 .configuration-database-counts small { overflow: hidden; color: var(--muted); font-size: .6875rem; text-overflow: ellipsis; }

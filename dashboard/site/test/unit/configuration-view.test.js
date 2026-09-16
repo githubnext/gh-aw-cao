@@ -72,6 +72,7 @@ describe('Configuration dashboard view', () => {
     expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
     expect(rendered.querySelector('.configuration-database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-trigger')).toBeNull();
+    expect(rendered.querySelector('.configuration-transactions-button')?.getAttribute('href')).toBe('#page-transactions');
     const debugSettings = rendered.querySelector('.configuration-debug-settings');
     expect(debugSettings).toBe(rendered.lastElementChild);
     const debugLink = debugSettings?.querySelector('a');

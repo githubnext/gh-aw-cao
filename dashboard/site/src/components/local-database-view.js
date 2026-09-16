@@ -11,7 +11,7 @@ export function renderLocalDatabaseView(context) {
     ['database-event-count', 'events', 'Events']
   ]);
   const available = fields.every(([sourceName, field]) => context.sources[sourceName]?.rows?.[0]?.[field] !== undefined);
-  return h('div', { className: 'configuration-view' },
+  return h('div', { className: 'configuration-view local-database-view' },
     h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'transactions-database-heading' },
       h('div', { className: 'configuration-browser-settings-heading' },
         h('div', null,
@@ -19,23 +19,19 @@ export function renderLocalDatabaseView(context) {
           h('p', null, 'Records currently stored in this browser.')
         )
       ),
-      available
-        ? h('div', { className: 'configuration-database-counts' },
-          fields.map(([sourceName, field, label]) => h('span', null,
-            h('strong', null, String(context.sources[sourceName]?.rows?.[0]?.[field] ?? 0)),
-            h('small', null, label)
-          ))
+      h('div', { className: 'configuration-database-body' },
+        available
+          ? h('div', { className: 'configuration-database-counts' },
+            fields.map(([sourceName, field, label]) => h('span', null,
+              h('strong', null, String(context.sources[sourceName]?.rows?.[0]?.[field] ?? 0)),
+              h('small', null, label)
+            ))
+          )
+          : h('p', { className: 'configuration-browser-setting-status' }, 'Database counts unavailable.'),
+        h('div', { className: 'configuration-local-data-actions' },
+          renderResetDashboardControl()
         )
-        : h('p', { className: 'configuration-browser-setting-status' }, 'Database counts unavailable.')
-    ),
-    h('section', { className: 'configuration-browser-settings configuration-danger-settings', 'aria-labelledby': 'transactions-local-data-heading' },
-      h('div', { className: 'configuration-browser-settings-heading' },
-        h('div', null,
-          h('h3', { id: 'transactions-local-data-heading' }, 'Local data'),
-          h('p', null, 'Delete cached dashboard data and browser preferences from this device.')
-        )
-      ),
-      h('div', { className: 'configuration-local-data-actions' }, renderResetDashboardControl())
+      )
     )
   );
 }
