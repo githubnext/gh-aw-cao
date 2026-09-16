@@ -339,21 +339,35 @@ function configurationPolicyRows(controlSettings) {
     return [];
   }
   const status = resolution.status;
-  const available = status === "available";
-  const unavailable = status === "unavailable";
+  let diagnostic;
+  if (status === "available") {
+    diagnostic = {
+      severity: "valid",
+      title: "Policy is valid",
+      detail: "The runtime policy resolver accepted this revision.",
+    };
+  } else if (status === "unavailable") {
+    diagnostic = {
+      severity: "error",
+      title: "Policy validation failed",
+      detail: resolution.reason || "The control policy could not be resolved.",
+    };
+  } else {
+    diagnostic = {
+      severity: "warning",
+      title: "Policy validation status unavailable",
+      detail: resolution.reason || "The control policy was collected but not validated.",
+    };
+  }
   return [{
     path: POLICY_PATH,
     document: controlSettings.policy_document ?? null,
     raw: controlSettings.policy_source || "",
     diagnostics: [{
-      severity: available ? "valid" : unavailable ? "error" : "warning",
+      severity: diagnostic.severity,
       path: POLICY_PATH,
-      title: available ? "Policy is valid" : unavailable ? "Policy validation failed" : "Policy validation status unavailable",
-      detail: available
-        ? "The runtime policy resolver accepted this revision."
-        : resolution.reason || (unavailable
-          ? "The control policy could not be resolved."
-          : "The control policy was collected but not validated."),
+      title: diagnostic.title,
+      detail: diagnostic.detail,
     }],
   }];
 }
