@@ -17,6 +17,7 @@ describe('data-worker ingestion progress', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
+    progress.start();
 
     vi.advanceTimersByTime(3_000);
 
@@ -41,6 +42,7 @@ describe('data-worker ingestion progress', () => {
     });
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
+    progress.start();
 
     progress.complete();
     delayedReport();
@@ -56,6 +58,7 @@ describe('data-worker ingestion progress', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
+    progress.start();
 
     progress.setWorkload(1_500_000);
     progress.update({ bytesProcessed: 750_000, recordsIngested: 1_000, totalBytes: 1_500_000 });
@@ -97,6 +100,7 @@ describe('data-worker ingestion progress', () => {
   it('publishes shard import state as the manifest and imports progress', () => {
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
+    progress.start();
 
     progress.reportShardImportProgress(0, 4);
     progress.reportShardImportProgress(2, 4);
@@ -116,6 +120,7 @@ describe('data-worker ingestion progress', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
+    progress.start();
 
     for (let index = 1; index <= 105; index += 1) progress.log(`Step ${index}`);
     progress.log('Step 105');
@@ -132,6 +137,7 @@ describe('data-worker ingestion progress', () => {
     vi.useFakeTimers();
     const postMessage = vi.fn();
     const progress = startIngestionProgress({ postMessage });
+    progress.start();
 
     progress.setWorkload(2_048);
     progress.update({ bytesProcessed: 1_024, recordsIngested: 42, totalBytes: 2_048 });
@@ -166,5 +172,17 @@ describe('data-worker ingestion progress', () => {
     });
     vi.advanceTimersByTime(1_000);
     expect(postMessage).toHaveBeenCalledTimes(5);
+  });
+
+  it('stays silent when ingestion completes before work is required', () => {
+    vi.useFakeTimers();
+    const postMessage = vi.fn();
+    const progress = startIngestionProgress({ postMessage });
+
+    progress.log('Checking the published payload identity.');
+    vi.advanceTimersByTime(3_000);
+    progress.complete();
+
+    expect(postMessage).not.toHaveBeenCalled();
   });
 });

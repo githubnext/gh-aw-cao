@@ -2886,7 +2886,7 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   await expect(legend).toBeVisible();
 });
 
-test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode filters, AIC utilization, and run trends in browser', async ({ page }) => {
+test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory, and package activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
 
@@ -3154,7 +3154,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
         },
         'operational-values': {
           source: 'operational-values',
-          rows: [],
+          rows: [
+            { workflow: '.github/workflows/ambient-context-worker.md', run: '4', 'operational-value': 0.75 },
+            { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-value': 0.25 }
+          ],
           metadata
         }
       };
@@ -3179,6 +3182,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
   await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
   await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
+  const valueChart = page.locator('[data-view-id="packages-value-created"]');
+  await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
+  await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
+  await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
   const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
   await expect(packageRows).toHaveCount(2);
   await expect(page.locator('[data-page-id="packages"] .custom-table thead tr').first().locator('th')).toHaveText([
@@ -3189,11 +3196,13 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
     'Runs',
     'Dispatches',
     'AIC',
+    'Value created',
     'Registration'
   ]);
   const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
+  await expect(awDoctorSummary.locator('[data-field="value-created"]')).toHaveText('0.25');
   await expect(awDoctorSummary.getByRole('button', { name: 'Update package' })).toHaveCount(0);
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-insights?package=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');

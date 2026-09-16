@@ -488,8 +488,8 @@ describe('dashboard document validation', () => {
 
   it('defines every other editable experimental page as one full-view lazy table', () => {
     // Pages that intentionally compose more than one editable view, asserted separately below
-    // or by their own focused suites: safe-outputs, maintenance, entity cards, and cost.
-    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'cost']);
+    // or by their own focused suites: safe-outputs, maintenance, entity cards, cost, and audit.
+    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'cost', 'audit']);
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -1034,7 +1034,8 @@ dashboard:
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
     const transactionsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'transactions');
 
-    const packagesView = packagesPage.definition.views[0];
+    const packagesChart = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-value-created');
+    const packagesView = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-inventory');
     const workflowsView = workflowsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflows-inventory');
     const packageWorkflowsView = packageDetailPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-workflow-table');
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
@@ -1049,6 +1050,15 @@ dashboard:
       });
     }
     expect(packagesView.data.source).toBe('package-inventory');
+    expect(packagesChart).toMatchObject({
+      data: { source: 'package-inventory' },
+      mark: 'chart',
+      chart: 'pie',
+      encoding: {
+        x: { field: 'package-name', type: 'nominal', title: 'Package' },
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Value created', unit: 'grade' }
+      }
+    });
     expect(packagesView.encoding.href).toEqual({ field: 'package-dashboard-link', type: 'nominal' });
     expect(packagesView.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
       'Package',
@@ -1058,6 +1068,7 @@ dashboard:
       'Runs',
       'Dispatches',
       'AIC',
+      'Value created',
       'Registration'
     ]);
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
@@ -1081,7 +1092,10 @@ dashboard:
       'lazy-list': true,
       layout: 'full-view'
     });
-    expect(packagesPage.definition.views).toHaveLength(1);
+    expect(packagesPage.definition.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
+      'packages-value-created',
+      'packages-inventory'
+    ]);
     expect(workflowsPage.definition.views.map((/** @type {{ id?: string } | string} */ view) =>
       typeof view === 'string' ? view : view.id
     )).toEqual(['workflows-by-runs', 'workflows-inventory', 'entity-workflows']);

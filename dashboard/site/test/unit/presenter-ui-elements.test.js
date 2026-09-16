@@ -25,6 +25,11 @@ describe('dashboard sidebar', () => {
 
     expect(sidebar.dataset.defaultPageId).toBe('overview');
     expect(sidebar.querySelectorAll('[data-nav-page-id]')).toHaveLength(2);
+    const backIcon = sidebar.querySelector('.mobile-history-back .octicon');
+    expect(backIcon).toBeInstanceOf(SVGElement);
+    if (!(backIcon instanceof SVGElement)) return;
+    expect(backIcon.classList.contains('octicon-chevron-left')).toBe(true);
+    expect(backIcon.classList.contains('mobile-history-back-icon')).toBe(true);
     const toggle = sidebar.querySelector('.sidebar-toggle');
     expect(toggle).toBeInstanceOf(HTMLButtonElement);
     if (!(toggle instanceof HTMLButtonElement)) return;

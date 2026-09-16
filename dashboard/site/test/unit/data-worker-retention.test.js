@@ -181,6 +181,7 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     const firstJsonl = await settled((message) => message.id === 3);
+    const repeatedStart = posted.length;
     dispatch({
       id: 4,
       operation: 'load-canonical-dashboard',
@@ -193,6 +194,9 @@ describe('canonical dashboard worker retention updates', () => {
 
     expect(firstJsonl?.data).toMatchObject({ changed: true });
     expect(repeatedJsonl?.data).toMatchObject({ changed: false });
+    expect(posted.slice(repeatedStart).filter(({ type }) => (
+      type === 'notification' || type === 'loading-progress'
+    ))).toEqual([]);
     expect(jsonlRequests).toEqual([{ method: 'HEAD' }, undefined]);
     expect(requestUrls).toEqual([
       'https://dashboard.example/payload-hashes.json',

@@ -55,7 +55,7 @@ export function renderDashboardNavigation(pages, title, navigation) {
           title: 'Go back',
           hidden: true
         },
-        octicon('arrow-left')
+        octicon('chevron-left', 'mobile-history-back-icon')
       ),
       h(
         'a',
