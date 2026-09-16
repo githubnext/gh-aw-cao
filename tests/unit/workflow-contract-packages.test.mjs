@@ -193,6 +193,18 @@ test("root package provides default control-repository agent context", () => {
   assert.match(setupSkill, /preserve it unchanged unless the user explicitly approves a merge/);
 });
 
+test("root package installs the CAO CLI helper", () => {
+  const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
+  const helper = readFileSync(join(root, "cao.sh"), "utf8");
+
+  assert.deepEqual(
+    rootManifest.resources.find(({ source }) => source === "cao.sh"),
+    { source: "cao.sh", destination: ".github/aw/cao.sh" },
+  );
+  assert.match(helper, /^#!\/usr\/bin\/env bash/);
+  assert.match(helper, /activity\/cao\.mjs/);
+});
+
 test("root package resolves the single CAO bootstrap runtime", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
   const setupSkill = readFileSync(join(root, ".github", "skills", "setup-central-agentic-ops", "SKILL.md"), "utf8");
@@ -220,7 +232,7 @@ test("root package resolves the single CAO bootstrap runtime", () => {
 
   assert.equal(policy.authorized, true);
   assert.equal(policy.package, "dependabot");
-  assert.doesNotMatch(rootManifest, /\.github\/aw\/cao/);
+  assert.doesNotMatch(rootManifest, /\.github\/aw\/cao\//);
   for (const path of ["control.mjs", "policy.mjs", "setup-github-apps.mjs"]) {
     assert.match(
       rootManifest,

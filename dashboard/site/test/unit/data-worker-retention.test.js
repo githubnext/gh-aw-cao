@@ -190,6 +190,7 @@ describe('canonical dashboard worker retention updates', () => {
       .toEqual([
         expect.objectContaining({
           payloadScope: 'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
+          payloadHash: payloadHashes['gh-aw-logs-shards/logs-1.jsonl'],
           committedRecords: expect.any(Number)
         })
       ]);

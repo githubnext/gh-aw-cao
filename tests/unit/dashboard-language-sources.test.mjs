@@ -229,6 +229,66 @@ test("transaction log events preserve correlation ids", () => {
   assert.equal(rows.events[0]["correlation-id"], "call-305");
 });
 
+test("transaction log events preserve token-efficiency lifecycle fields", () => {
+  const rows = transactionLogRows({
+    generatedAt: "2026-09-09T05:00:00Z",
+    securityRuns: [{
+      repository: "githubnext/gh-aw-cao",
+      workflowPath: ".github/workflows/optimization-token-optimizer.lock.yml",
+      runId: 306,
+      runAttempt: 1,
+      createdAt: "2026-09-09T04:02:00Z",
+      logsPayload: { status: "completed" },
+      timeline: [{
+        sourceId: "event-token-lifecycle",
+        timestamp: "2026-09-09T04:02:01Z",
+        source: "token-intervention-lifecycle",
+        type: "token_efficiency.intervention",
+        targetRepo: "octo/example",
+        targetOrganization: "octo",
+        targetRepository: "example",
+        targetWorkflowPath: ".github/workflows/review.md",
+        opportunityId: "token-opportunity:1",
+        interventionId: "token-intervention:1",
+        lifecycleObservationId: "token-lifecycle:1",
+        interventionState: "running",
+        recommendationDisposition: "applied",
+        safeOutputUrl: "https://github.com/githubnext/gh-aw-cao/issues/11861",
+        implementationPullRequestUrl: "https://github.com/octo/example/pull/42",
+        implementationRunIds: ["7001"],
+        acceptedAt: "2026-09-08T04:00:00Z",
+      }],
+    }],
+  });
+
+  assert.deepEqual(rows.events[0], {
+    organization: "githubnext",
+    repository: "gh-aw-cao",
+    workflow: ".github/workflows/optimization-token-optimizer.md",
+    run: "306",
+    "run-attempt": 1,
+    session: rows.sessions[0].session,
+    event: "event:gh-aw-logs:event-token-lifecycle",
+    "event-timestamp": "2026-09-09T04:02:01Z",
+    "event-source": "token-intervention-lifecycle",
+    "event-type": "token_efficiency.intervention",
+    "target-repo": "octo/example",
+    "target-organization": "octo",
+    "target-repository": "example",
+    "target-workflow-path": ".github/workflows/review.md",
+    "opportunity-id": "token-opportunity:1",
+    "intervention-id": "token-intervention:1",
+    "lifecycle-observation-id": "token-lifecycle:1",
+    "intervention-state": "running",
+    "recommendation-disposition": "applied",
+    "safe-output-url": "https://github.com/githubnext/gh-aw-cao/issues/11861",
+    "implementation-pull-request-url": "https://github.com/octo/example/pull/42",
+    "implementation-run-ids": ["7001"],
+    "accepted-at": "2026-09-08T04:00:00Z",
+    "observed-at": "2026-09-09T04:02:00Z",
+  });
+});
+
 test("detection observations preserve verdict, warning, tooling, skipped, and unknown states", () => {
   const clear = { promptInjection: false, secretLeak: false, maliciousPatch: false, warnings: [] };
   const usage = {

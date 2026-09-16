@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 7;
+export const CANONICAL_SCHEMA_VERSION = 8;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'package',

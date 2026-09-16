@@ -70,10 +70,18 @@ process.stderr.write("Fetched 1 run\\n");
       GH_ARGS_PATH: item.argumentsPath,
       GITHUB_OUTPUT: item.githubOutput,
     };
+    await mkdir(item.logsPath, { recursive: true });
+    const lifecyclePath = path.join(
+      item.logsPath,
+      "token-efficiency-lifecycle-observations.jsonl",
+    );
+    const existingLifecycle =
+      '{"schema_version":2,"kind":"token_efficiency_lifecycle_observation","observation":{"claimRunId":"7"}}\n';
+    await writeFile(lifecyclePath, existingLifecycle);
     const collection = await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
     const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { env });
     const invocations = (await readFile(item.argumentsPath, "utf8")).trim().split("\n").map(JSON.parse);
-    assert.equal(invocations.length, 3);
+    assert.equal(invocations.length, 4);
     const args = invocations[0];
     assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--audit"]);
     assert.equal(args.includes("--json"), false);
@@ -98,6 +106,11 @@ process.stderr.write("Fetched 1 run\\n");
       "api",
       "repos/githubnext/gh-aw-cao/actions/artifacts?name=token-efficiency-observation&per_page=10",
     ]);
+    assert.deepEqual(invocations[3].slice(0, 3), [
+      "api",
+      "--paginate",
+      "repos/githubnext/gh-aw-cao/actions/artifacts?name=token-efficiency-lifecycle-claim&per_page=100",
+    ]);
     const runs = await readGhAwLogShards(item.logsPath);
     assert.deepEqual(runs.map((run) => run.repository), [
       "github/gh-aw",
@@ -109,6 +122,7 @@ process.stderr.write("Fetched 1 run\\n");
     assert.equal(Object.hasOwn(state, "jobDetails"), false);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
     assert.equal(collection.stderr.match(/Fetched 1 run/g)?.length, 2);
+    assert.equal(await readFile(lifecyclePath, "utf8"), existingLifecycle);
     assert.match(stdout, /Collected snapshot with 2 runs across 1 workflow/);
   } finally {
     await rm(item.root, { recursive: true, force: true });

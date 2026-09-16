@@ -74,7 +74,7 @@ describe('gh-aw logs adapter', () => {
       },
       {
         schema_version: 2,
-        kind: 'run',
+        kind: 'token_efficiency_run_context',
         run: {
           run_id: 303,
           run_attempt: '1',
@@ -408,6 +408,70 @@ describe('gh-aw logs adapter', () => {
     expect(() => adaptCachedGhAwJsonl(
       '{"schema_version":3,"kind":"run","run":{}}\n'
     )).toThrow('Unsupported gh-aw JSONL schema version');
+  });
+
+  it('retains lifecycle observations with their append-only optimizer run context', () => {
+    const run = {
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 1186001,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'githubnext/gh-aw-cao',
+        workflow_name: 'AW Optimization / Token Optimizer',
+        workflow_path: '.github/workflows/optimization-token-optimizer.md',
+        status: 'completed',
+        conclusion: 'success',
+        created_at: '2026-09-15T04:00:00Z',
+        updated_at: '2026-09-15T04:02:00Z'
+      }
+    };
+    const lifecycle = {
+      schema_version: 2,
+      kind: 'token_efficiency_lifecycle_observation',
+      observation: {
+        schemaVersion: 1,
+        lifecycleObservationId: 'token-lifecycle:retained',
+        observedAt: '2026-10-17T00:00:00Z',
+        controlRepository: 'githubnext/gh-aw-cao',
+        claimRunId: '1189002',
+        claimRunAttempt: 1,
+        actor: 'maintainer',
+        optimizerRunId: '1186001',
+        optimizerRunAttempt: 1,
+        optimizerWorkflowPath: '.github/workflows/optimization-token-optimizer.md',
+        optimizerWorkflowName: 'AW Optimization / Token Optimizer',
+        targetRepo: 'octo/example',
+        workflowPath: '.github/workflows/review.md',
+        opportunityId: 'token-opportunity:retained',
+        interventionId: 'token-intervention:retained',
+        previousInterventionState: 'accepted',
+        interventionState: 'running',
+        previousRecommendationDisposition: 'unapplied',
+        recommendationDisposition: 'applied',
+        evidenceState: 'complete',
+        safeOutputId: 'github:issue:githubnext/gh-aw-cao:11861',
+        safeOutputUrl: 'https://github.com/githubnext/gh-aw-cao/issues/11861',
+        sourceProvenance: {
+          kind: 'workflow-dispatch-claim',
+          sourceId: 'github-actions-run:githubnext/gh-aw-cao:1189002:attempt:1'
+        }
+      }
+    };
+
+    const content = `${JSON.stringify(run)}\n${JSON.stringify(lifecycle)}\n`;
+    const batch = normalize(adaptCachedGhAwJsonl(content).observations);
+    expect(relationshipErrors(batch)).toEqual([]);
+    expect(batch.runs).toEqual([
+      expect.objectContaining({ githubRunId: '1186001', attempt: 1 })
+    ]);
+    expect(batch.events.find((event) =>
+      event.lifecycleObservationId === 'token-lifecycle:retained'
+    )).toMatchObject({
+      interventionState: 'running',
+      recommendationDisposition: 'applied'
+    });
   });
 
   it('ignores unsupported cached JSONL kinds in string and binary input', () => {

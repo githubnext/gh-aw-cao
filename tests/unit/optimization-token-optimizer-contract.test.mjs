@@ -167,13 +167,35 @@ test("token optimizer observations use the Activity JSONL boundary, not issue te
     join(root, "dashboard", "site", "src", "data", "queries", "view-sources.js"),
     "utf8",
   );
+  const dashboard = readFileSync(
+    join(root, "dashboard", "site", "dashboard.json"),
+    "utf8",
+  );
 
   assert.match(collector, /name == "token-efficiency-observation"/);
   assert.match(collector, /kind: "token_efficiency_observation"/);
   assert.match(adapter, /envelope\.kind === 'token_efficiency_observation'/);
   assert.match(adapter, /'token_efficiency\.opportunity'/);
   assert.match(adapter, /'token_efficiency\.intervention'/);
-  assert.match(sources, /source: 'token-efficiency-opportunities'/);
-  assert.match(sources, /source: 'token-efficiency-interventions'/);
+  assert.doesNotMatch(sources, /tokenEfficiencySources/);
+  assert.match(dashboard, /"name": "token-efficiency-opportunities"[\s\S]*?"from": "events"/);
+  assert.match(dashboard, /"name": "token-efficiency-interventions"[\s\S]*?"from": "events"/);
   assert.doesNotMatch(adapter, /token_efficiency[\s\S]{0,1000}(title|body)/i);
+});
+
+test("token intervention tracking is deterministic, read-only, and package-owned", () => {
+  const tracker = readFileSync(
+    join(root, ".github", "workflows", "optimization-token-intervention-tracker.yml"),
+    "utf8",
+  );
+  const manifest = readFileSync(join(root, "optimization", "aw.yml"), "utf8");
+  const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
+
+  assert.match(tracker, /workflow_dispatch:/);
+  assert.match(tracker, /decision:/);
+  assert.match(tracker, /token-efficiency-lifecycle-claim/);
+  assert.match(tracker, /permissions:\n  actions: read\n  contents: read/);
+  assert.doesNotMatch(tracker, /\bwrite\b|safe-outputs:|create-issue:|create-pull-request:/);
+  assert.match(manifest, /optimization-token-intervention-tracker\.yml/);
+  assert.match(activityManifest, /token-intervention-lifecycle\.mjs/);
 });

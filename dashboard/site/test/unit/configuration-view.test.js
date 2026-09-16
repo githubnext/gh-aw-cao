@@ -271,7 +271,7 @@ describe('Configuration dashboard view', () => {
       database: expect.any(Object),
       ui: expect.any(Object)
     }));
-    expect(rendered.querySelector('.configuration-copy-status')?.textContent).toBe('Diagnostics copied.');
+    await vi.waitFor(() => expect(button.nextElementSibling?.textContent).toBe('Diagnostics copied.'));
   });
 
   it('defers settings inside collapsed groups until they are expanded', () => {
@@ -344,7 +344,12 @@ describe('Configuration dashboard view', () => {
     expect(values.value).toBe('[2, false, {"mode":"live"}]');
   });
 
-  it('can discard local changes without offering JSON copy', () => {
+  it('copies edited policy JSON', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
     const rendered = renderConfigurationView(context({
       document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
       raw: '',
@@ -356,7 +361,31 @@ describe('Configuration dashboard view', () => {
     if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
     input.value = '12';
     input.dispatchEvent(new Event('input'));
-    expect(rendered.querySelector('.configuration-copy-button')).toBeNull();
+    const copyButton = rendered.querySelector('.configuration-copy-button');
+    if (!(copyButton instanceof HTMLButtonElement)) throw new Error('copy button did not render');
+    copyButton.click();
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(JSON.parse(writeText.mock.calls[0][0])).toEqual({
+      version: 1,
+      'control-plane': { defaults: { 'max-repositories': 12 } }
+    });
+    await vi.waitFor(() => expect(copyButton.nextElementSibling?.textContent).toBe('Updated JSON copied.'));
+  });
+
+  it('can discard local changes', () => {
+    const rendered = renderConfigurationView(context({
+      document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+
+    const input = rendered.querySelector('#configuration-control-plane-defaults-max-repositories');
+    if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
+    input.value = '12';
+    input.dispatchEvent(new Event('input'));
+    expect(rendered.querySelector('.configuration-copy-button')).not.toBeNull();
 
     const resetButton = rendered.querySelector('.configuration-reset-button');
     if (!(resetButton instanceof HTMLButtonElement)) throw new Error('reset button did not render');

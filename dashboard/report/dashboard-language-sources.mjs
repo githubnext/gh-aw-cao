@@ -882,6 +882,64 @@ function collectedLogRuns(usage) {
   return [...runs.values()];
 }
 
+const TRANSACTION_EVENT_FIELDS = {
+  safeOutputType: "safe-output-type",
+  githubEntityType: "github-entity-type",
+  targetRepo: "target-repo",
+  targetOrganization: "target-organization",
+  targetRepository: "target-repository",
+  targetWorkflowPath: "target-workflow-path",
+  optimizerRunAttempt: "optimizer-run-attempt",
+  optimizerWorkflowPath: "optimizer-workflow-path",
+  optimizerWorkflowName: "optimizer-workflow-name",
+  claimRunId: "claim-run-id",
+  claimRunAttempt: "claim-run-attempt",
+  actor: "actor",
+  sourceProvenance: "source-provenance",
+  opportunityId: "opportunity-id",
+  opportunityKind: "opportunity-kind",
+  assignmentRunId: "assignment-run",
+  experimentId: "experiment",
+  evidenceWindowStart: "evidence-window-start",
+  evidenceWindowEnd: "evidence-window-end",
+  evidenceState: "evidence-state",
+  evidenceConfidence: "evidence-confidence",
+  costGrain: "cost-grain",
+  evidenceProvenance: "evidence-provenance",
+  attributableRunIds: "attributable-run-ids",
+  interventionId: "intervention-id",
+  lifecycleObservationId: "lifecycle-observation-id",
+  previousInterventionState: "previous-intervention-state",
+  interventionState: "intervention-state",
+  previousRecommendationDisposition: "previous-recommendation-disposition",
+  recommendationDisposition: "recommendation-disposition",
+  supersedesInterventionId: "supersedes-intervention-id",
+  supersededByInterventionId: "superseded-by-intervention-id",
+  recommendationChurnCount: "recommendation-churn-count",
+  recommendationChurnRate: "recommendation-churn-rate",
+  controlVariant: "control-variant",
+  optimizedVariant: "optimized-variant",
+  proposedSavingsAic: "proposed-savings-aic",
+  missingReason: "missing-reason",
+  safeOutputId: "safe-output-id",
+  safeOutputUrl: "safe-output-url",
+  implementationChangeId: "implementation-change-id",
+  implementationPullRequestUrl: "implementation-pull-request-url",
+  implementationRunIds: "implementation-run-ids",
+  acceptedAt: "accepted-at",
+  implementationStartedAt: "implementation-started-at",
+  implementationCompletedAt: "implementation-completed-at",
+  rejectedAt: "rejected-at",
+  supersededAt: "superseded-at",
+};
+
+function transactionEventFields(event) {
+  return Object.fromEntries(Object.entries(TRANSACTION_EVENT_FIELDS)
+    .flatMap(([canonical, published]) => event[canonical] === undefined
+      ? []
+      : [[published, event[canonical]]]));
+}
+
 export function transactionLogRows(usage) {
   const sessions = [];
   const events = [];
@@ -938,6 +996,7 @@ export function transactionLogRows(usage) {
       ...(event.status ? { "event-status": event.status } : {}),
       ...(event.correlationId ? { "correlation-id": event.correlationId } : {}),
       ...(event.payloadRef ? { "payload-ref": event.payloadRef } : {}),
+      ...transactionEventFields(event),
       ...(event.sourceSequence !== undefined ? { "source-sequence": event.sourceSequence } : {}),
       "observed-at": run.createdAt || usage.generatedAt,
     }));

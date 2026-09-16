@@ -115,6 +115,29 @@ function finiteNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+/** @param {unknown} value @param {string} field @param {string[]} allowed */
+function enumValue(value, field, allowed) {
+  const normalized = requiredString(value, field);
+  if (!allowed.includes(normalized)) {
+    throw new TypeError(`${field} must be one of ${allowed.join(', ')}`);
+  }
+  return normalized;
+}
+
+/** @param {unknown} value @param {string} field */
+function optionalTimestamp(value, field) {
+  return value === undefined || value === null
+    ? undefined
+    : canonicalTimestamp(value, field);
+}
+
+/** @param {unknown} value @param {string} field */
+function optionalIdentifierArray(value, field) {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value)) throw new TypeError(`${field} must be an array`);
+  return value.map((item, index) => identifier(item, `${field}[${index}]`));
+}
+
 /** @param {Record<string, unknown>} run */
 function runMetadata(run) {
   const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
@@ -725,6 +748,8 @@ function createCachedGhAwJsonlAccumulator(options) {
   const safeOutputItemsByRun = new Map();
   /** @type {Map<string, Record<string, unknown>[]>} */
   const tokenEfficiencyObservationsByRun = new Map();
+  /** @type {Map<string, Record<string, unknown>[]>} */
+  const tokenEfficiencyLifecycleObservationsByRun = new Map();
   /** @type {Map<string, string>} */
   const latestRunByGithubId = new Map();
   /** @type {Map<string, CachedRun>} */
@@ -772,13 +797,37 @@ function createCachedGhAwJsonlAccumulator(options) {
         observation.optimizerRunId,
         `gh-aw JSONL line ${line}.observation.optimizerRunId`
       );
-      const observations = tokenEfficiencyObservationsByRun.get(optimizerRunId) ?? [];
+      const optimizerRunAttempt = positiveInteger(
+        observation.runAttempt ?? 1,
+        `gh-aw JSONL line ${line}.observation.runAttempt`
+      );
+      const optimizerRunKey = runId(optimizerRunId, optimizerRunAttempt);
+      const observations = tokenEfficiencyObservationsByRun.get(optimizerRunKey) ?? [];
       observations.push({ ...observation, __line: line });
-      tokenEfficiencyObservationsByRun.set(optimizerRunId, observations);
+      tokenEfficiencyObservationsByRun.set(optimizerRunKey, observations);
       return;
     }
-    if (envelope.kind === 'run') {
-      agenticRunRecords += 1;
+    if (envelope.kind === 'token_efficiency_lifecycle_observation') {
+      const observation = objectValue(
+        envelope.observation,
+        `gh-aw JSONL line ${line}.observation`
+      );
+      const optimizerRunId = identifier(
+        observation.optimizerRunId,
+        `gh-aw JSONL line ${line}.observation.optimizerRunId`
+      );
+      const optimizerRunAttempt = positiveInteger(
+        observation.optimizerRunAttempt,
+        `gh-aw JSONL line ${line}.observation.optimizerRunAttempt`
+      );
+      const optimizerRunKey = runId(optimizerRunId, optimizerRunAttempt);
+      const observations = tokenEfficiencyLifecycleObservationsByRun.get(optimizerRunKey) ?? [];
+      observations.push({ ...observation, __line: line });
+      tokenEfficiencyLifecycleObservationsByRun.set(optimizerRunKey, observations);
+      return;
+    }
+    if (envelope.kind === 'run' || envelope.kind === 'token_efficiency_run_context') {
+      if (envelope.kind === 'run') agenticRunRecords += 1;
       const run = objectValue(envelope.run, `gh-aw JSONL line ${line}.run`);
       const organization = requiredString(run.organization, `gh-aw JSONL line ${line}.run.organization`);
       const coordinates = repositoryCoordinates(
@@ -870,7 +919,6 @@ function createCachedGhAwJsonlAccumulator(options) {
       );
       run.workflowPath = paths?.size === 1 ? [...paths][0] : undefined;
     }
-
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
   /** @type {Map<string, import('../model/schema.js').CanonicalObservation>} */
@@ -1234,10 +1282,21 @@ function createCachedGhAwJsonlAccumulator(options) {
         }
       );
     });
-    for (const tokenObservation of tokenEfficiencyObservationsByRun.get(String(run.run_id)) ?? []) {
+    const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
+      ? /** @type {Record<string, unknown>} */ (run.audit)
+      : {};
+    const explicitSafeOutputs = safeOutputItemsByRun.get(id) ?? [];
+    const nestedSafeOutputs = Array.isArray(run.safe_outputs)
+      ? run.safe_outputs
+      : Array.isArray(audit.created_items) ? audit.created_items : [];
+    const safeOutputs = explicitSafeOutputs.length > 0
+      ? explicitSafeOutputs
+      : nestedSafeOutputs.map((value) => ({ value, line: enriched.line }));
+    for (const tokenObservation of tokenEfficiencyObservationsByRun.get(id) ?? []) {
       const observed = timestamp(tokenObservation.observedAt) ?? completedAt ?? enriched.observedAt;
       const targetRepo = requiredString(tokenObservation.targetRepo, 'token observation targetRepo').toLowerCase();
       if (!REPOSITORY_COORDINATE_PATTERN.test(targetRepo)) continue;
+      const targetCoordinates = repositoryCoordinates(targetRepo);
       const targetWorkflowPath = requiredString(
         tokenObservation.workflowPath,
         'token observation workflowPath'
@@ -1259,6 +1318,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         {
           source: 'token-optimizer-observation',
           targetRepo,
+          targetOrganization: targetCoordinates.owner,
+          targetRepository: targetCoordinates.name,
           targetWorkflowPath,
           opportunityId,
           opportunityKind: optionalString(tokenObservation.opportunityKind),
@@ -1282,6 +1343,8 @@ function createCachedGhAwJsonlAccumulator(options) {
         {
           source: 'token-optimizer-observation',
           targetRepo,
+          targetOrganization: targetCoordinates.owner,
+          targetRepository: targetCoordinates.name,
           targetWorkflowPath,
           opportunityId,
           interventionId,
@@ -1297,10 +1360,161 @@ function createCachedGhAwJsonlAccumulator(options) {
           payloadRef: `gh-aw-logs-shards#L${String(tokenObservation.__line)}`
         }
       );
+      const supersedesInterventionId = optionalString(tokenObservation.supersedesInterventionId);
+      if (supersedesInterventionId) {
+        emitEvent(
+          'token_efficiency.intervention',
+          observed,
+          'Token-efficiency intervention superseded',
+          'rejected',
+          {
+            type: 'token-efficiency-intervention-superseded',
+            interventionId: supersedesInterventionId,
+            supersededByInterventionId: interventionId
+          },
+          {
+            source: 'token-optimizer-observation',
+            targetRepo,
+            targetOrganization: targetCoordinates.owner,
+            targetRepository: targetCoordinates.name,
+            targetWorkflowPath,
+            opportunityId,
+            interventionId: supersedesInterventionId,
+            interventionState: 'rejected',
+            recommendationDisposition: 'superseded',
+            supersededByInterventionId: interventionId,
+            supersededAt: observed,
+            evidenceState: 'complete',
+            payloadRef: `gh-aw-logs-shards#L${String(tokenObservation.__line)}`
+          }
+        );
+      }
     }
-    const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
-      ? /** @type {Record<string, unknown>} */ (run.audit)
-      : {};
+    for (const lifecycle of tokenEfficiencyLifecycleObservationsByRun.get(id) ?? []) {
+      const observed = canonicalTimestamp(
+        lifecycle.observedAt,
+        'token lifecycle observedAt'
+      );
+      const targetRepo = requiredString(lifecycle.targetRepo, 'token lifecycle targetRepo').toLowerCase();
+      if (!REPOSITORY_COORDINATE_PATTERN.test(targetRepo)) {
+        throw new TypeError('token lifecycle targetRepo must be an owner/repository coordinate');
+      }
+      const targetCoordinates = repositoryCoordinates(targetRepo);
+      const targetWorkflowPath = requiredString(
+        lifecycle.workflowPath,
+        'token lifecycle workflowPath'
+      );
+      const opportunityId = requiredString(
+        lifecycle.opportunityId,
+        'token lifecycle opportunityId'
+      );
+      const interventionId = requiredString(
+        lifecycle.interventionId,
+        'token lifecycle interventionId'
+      );
+      const lifecycleObservationId = requiredString(
+        lifecycle.lifecycleObservationId,
+        'token lifecycle lifecycleObservationId'
+      );
+      const previousInterventionState = enumValue(
+        lifecycle.previousInterventionState,
+        'token lifecycle previousInterventionState',
+        ['proposed', 'accepted', 'running', 'verified', 'regressed', 'inconclusive', 'rejected']
+      );
+      const interventionState = enumValue(
+        lifecycle.interventionState,
+        'token lifecycle interventionState',
+        ['proposed', 'accepted', 'running', 'verified', 'regressed', 'inconclusive', 'rejected']
+      );
+      const previousRecommendationDisposition = enumValue(
+        lifecycle.previousRecommendationDisposition,
+        'token lifecycle previousRecommendationDisposition',
+        ['applied', 'superseded', 'outdated', 'duplicate', 'unapplied', 'failed-start', 'rejected']
+      );
+      const recommendationDisposition = enumValue(
+        lifecycle.recommendationDisposition,
+        'token lifecycle recommendationDisposition',
+        ['applied', 'superseded', 'outdated', 'duplicate', 'unapplied', 'failed-start', 'rejected']
+      );
+      const evidenceState = enumValue(
+        lifecycle.evidenceState,
+        'token lifecycle evidenceState',
+        ['complete', 'incomplete', 'unavailable']
+      );
+      emitEvent(
+        'token_efficiency.intervention',
+        observed,
+        optionalString(lifecycle.missingReason) ?? 'Token-efficiency lifecycle updated',
+        interventionState,
+        { type: 'token-efficiency-lifecycle', lifecycleObservationId },
+        {
+          source: 'token-intervention-lifecycle',
+          optimizerRunAttempt: positiveInteger(
+            lifecycle.optimizerRunAttempt,
+            'token lifecycle optimizerRunAttempt'
+          ),
+          optimizerWorkflowPath: requiredString(
+            lifecycle.optimizerWorkflowPath,
+            'token lifecycle optimizerWorkflowPath'
+          ),
+          optimizerWorkflowName: requiredString(
+            lifecycle.optimizerWorkflowName,
+            'token lifecycle optimizerWorkflowName'
+          ),
+          targetRepo,
+          targetOrganization: targetCoordinates.owner,
+          targetRepository: targetCoordinates.name,
+          targetWorkflowPath,
+          opportunityId,
+          interventionId,
+          experimentId: optionalString(lifecycle.experimentId),
+          controlVariant: optionalString(lifecycle.controlVariant),
+          optimizedVariant: optionalString(lifecycle.optimizedVariant),
+          proposedSavingsAic: finiteNumber(lifecycle.proposedSavingsAic),
+          supersedesInterventionId: optionalString(lifecycle.supersedesInterventionId),
+          recommendationChurnCount: finiteNumber(lifecycle.recommendationChurnCount),
+          recommendationChurnRate: finiteNumber(lifecycle.recommendationChurnRate),
+          lifecycleObservationId,
+          previousInterventionState,
+          interventionState,
+          previousRecommendationDisposition,
+          recommendationDisposition,
+          evidenceState,
+          missingReason: optionalString(lifecycle.missingReason),
+          safeOutputId: requiredString(lifecycle.safeOutputId, 'token lifecycle safeOutputId'),
+          safeOutputUrl: requiredString(lifecycle.safeOutputUrl, 'token lifecycle safeOutputUrl'),
+          implementationChangeId: optionalString(lifecycle.implementationChangeId),
+          implementationPullRequestUrl: optionalString(lifecycle.implementationPullRequestUrl),
+          implementationRunIds: optionalIdentifierArray(
+            lifecycle.implementationRunIds,
+            'token lifecycle implementationRunIds'
+          ),
+          acceptedAt: optionalTimestamp(lifecycle.acceptedAt, 'token lifecycle acceptedAt'),
+          implementationStartedAt: optionalTimestamp(
+            lifecycle.implementationStartedAt,
+            'token lifecycle implementationStartedAt'
+          ),
+          implementationCompletedAt: optionalTimestamp(
+            lifecycle.implementationCompletedAt,
+            'token lifecycle implementationCompletedAt'
+          ),
+          rejectedAt: optionalTimestamp(lifecycle.rejectedAt, 'token lifecycle rejectedAt'),
+          supersededAt: optionalTimestamp(lifecycle.supersededAt, 'token lifecycle supersededAt'),
+          supersededByInterventionId: optionalString(lifecycle.supersededByInterventionId),
+          claimRunId: identifier(lifecycle.claimRunId, 'token lifecycle claimRunId'),
+          claimRunAttempt: positiveInteger(
+            lifecycle.claimRunAttempt,
+            'token lifecycle claimRunAttempt'
+          ),
+          actor: requiredString(lifecycle.actor, 'token lifecycle actor'),
+          sourceProvenance: objectValue(
+            lifecycle.sourceProvenance,
+            'token lifecycle sourceProvenance'
+          ),
+          payloadRef: `gh-aw-logs-shards#L${String(lifecycle.__line)}`
+        }
+      );
+    }
     const runMcpToolUsage = run.mcp_tool_usage && typeof run.mcp_tool_usage === 'object'
       && !Array.isArray(run.mcp_tool_usage)
       ? /** @type {Record<string, unknown>} */ (run.mcp_tool_usage)
@@ -1402,13 +1616,6 @@ function createCachedGhAwJsonlAccumulator(options) {
         );
       }
     }
-    const explicitSafeOutputs = safeOutputItemsByRun.get(id) ?? [];
-    const nestedSafeOutputs = Array.isArray(run.safe_outputs)
-      ? run.safe_outputs
-      : Array.isArray(audit.created_items) ? audit.created_items : [];
-    const safeOutputs = explicitSafeOutputs.length > 0
-      ? explicitSafeOutputs
-      : nestedSafeOutputs.map((value) => ({ value, line: enriched.line }));
     safeOutputs.forEach((safeOutput, index) => {
       const record = safeOutput.value && typeof safeOutput.value === 'object'
         && !Array.isArray(safeOutput.value)
@@ -1455,6 +1662,13 @@ function createCachedGhAwJsonlAccumulator(options) {
         { type: 'comparison', value: run.comparison }
       );
     }
+  }
+  const unmatchedLifecycleRuns = [...tokenEfficiencyLifecycleObservationsByRun.keys()]
+    .filter((id) => !runIds.has(id));
+  if (unmatchedLifecycleRuns.length > 0) {
+    throw new TypeError(
+      `Token lifecycle observations require retained optimizer runs: ${unmatchedLifecycleRuns.join(', ')}`
+    );
   }
 
   let mappedRateLimits = 0;

@@ -101,9 +101,10 @@ export async function readCurrentIngestion(indexedDB, kind, scope) {
  */
 export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
   const adaptationContext = cachedJsonlAdaptationContext(options);
-  const hash = await payloadHash(`${options.payloadIdentity}\0${adaptationContext}`, undefined);
   const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', options.payloadScope);
-  return current?.payloadHash === hash;
+  return current?.payloadHash === options.payloadIdentity
+    && current.adaptationContext === adaptationContext
+    && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION;
 }
 
 /**
@@ -333,10 +334,11 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       ?? streamed?.payloadIdentity
       ?? cachedJsonlPayloadIdentity(/** @type {string | Uint8Array} */ (content));
     const parsingMs = monotonicNow() - startedAt;
-    const hash = await payloadHash(`${payloadIdentity}\0${adaptationContext}`, undefined);
     const scope = options.payloadScope ?? 'gh-aw-jsonl';
     const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
-    if (current?.payloadHash === hash) {
+    if (current?.payloadHash === payloadIdentity
+        && current.adaptationContext === adaptationContext
+        && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
       if (options.payloadEtag
           && (current.payloadEtag !== options.payloadEtag || current.adaptationContext !== adaptationContext)) {
         await recordTransaction(indexedDB, {
@@ -379,7 +381,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       kind: 'ingest-jsonl',
       createdAt,
       payloadScope: scope,
-      payloadHash: hash,
+      payloadHash: payloadIdentity,
       payloadEtag: options.payloadEtag,
       adaptationContext,
       ingestionVersion: GH_AW_JSONL_INGESTION_VERSION,
