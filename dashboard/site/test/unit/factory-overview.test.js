@@ -79,13 +79,15 @@ it('renders compact database summaries and distinct registered repository covera
     'Repositories registered6',
     'Successful runs22 failed',
     'Dispatches42 failed',
-    'Value gain1Coming soon'
+    'Value gain1'
   ]);
   expect(rendered.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('6 repositories registered with 3 delivered to');
   expect(rendered.querySelector('.factory-station:first-child strong a')?.getAttribute('href')).toBe('#page-repositories');
   expect(rendered.querySelector('.factory-station:first-child strong a')?.textContent).toBe('6');
   expect(rendered.querySelector('.factory-station:first-child small')?.textContent).toBe('');
   expect(rendered.querySelector('.factory-station:nth-child(3) small a')?.getAttribute('href')).toBe('#page-dispatches?package-worker-dispatches.status=failure');
+  expect(rendered.querySelector('.factory-station:nth-child(4) strong a')?.getAttribute('href')).toBe('#page-operational-value');
+  expect(rendered.querySelector('.factory-station:nth-child(4) strong a')?.textContent).toBe('1');
   expect([...rendered.querySelectorAll('.factory-rhythm-day small')].map((day) => day.textContent)).toEqual([
     'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
   ]);
