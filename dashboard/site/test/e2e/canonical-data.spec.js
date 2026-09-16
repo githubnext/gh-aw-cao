@@ -214,6 +214,13 @@ test.beforeEach(async ({ context, page }) => {
     }
     if (pathname === '/inventory-sources.json') {
       const sources = canonicalSources();
+      sources.packages.rows.push({
+        package: 'repo-assist',
+        'package-name': 'Repo Assist',
+        'package-mode': 'review',
+        'package-registration': 'true',
+        'observed-at': '2026-09-09T05:00:00Z'
+      });
       await route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify({
@@ -774,16 +781,25 @@ test('deployed JSONL ingestion includes the published package inventory', async 
     );
   });
 
-  expect(result.packages.rows).toHaveLength(1);
+  expect(result.packages.rows).toHaveLength(2);
   expect(result.workflows.rows).toHaveLength(1);
   expect(result['package-inventory']).toMatchObject({
-    rows: [{
-      package: 'dashboard',
-      'package-name': 'CAO Dashboard',
-      workflows: 1,
-      runs: 1,
-      dispatches: 0
-    }]
+    rows: [
+      {
+        package: 'dashboard',
+        'package-name': 'CAO Dashboard',
+        workflows: 1,
+        runs: 1,
+        dispatches: 0
+      },
+      {
+        package: 'repo-assist',
+        'package-name': 'Repo Assist',
+        workflows: 0,
+        runs: 0,
+        dispatches: 0
+      }
+    ]
   });
 });
 

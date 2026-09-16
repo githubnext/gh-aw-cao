@@ -5,6 +5,14 @@ import { actionsLog as log } from "./actions-log.mjs";
 
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
 
+function packageName(id) {
+  return id
+    .split("-")
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
 function rolloutMode(value) {
   return ["review", "live"].includes(value) ? value : "unknown";
 }
@@ -185,7 +193,7 @@ function packageRows(inventory, controlSettings, generatedAt) {
       .reduce((total, value) => total + value, 0);
     return {
       package: id,
-      "package-name": bundle.name || id,
+      "package-name": bundle.name || packageName(id),
       "package-description": bundle.description || "",
       "package-icon": policy.icon || "package",
       "package-mode": rolloutMode(policy.mode),

@@ -560,6 +560,14 @@ function workflowAdmission(controlSettings, packageName, role, workflowId) {
   return { status: "authorized", reason: "authorized" };
 }
 
+function packageName(id) {
+  return id
+    .split("-")
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
 function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {
   const details = new Map();
   for (const workflow of inventory.workflows || []) {
@@ -668,7 +676,7 @@ function packageRows(inventory = {}, controlSettings = {}, generatedAt) {
       .reduce((total, value) => total + value, 0);
     return {
       package: id,
-      "package-name": bundle.name || id,
+      "package-name": bundle.name || packageName(id),
       "package-description": bundle.description || "",
       "package-icon": policy.icon || "package",
       "package-mode": rolloutMode(policy.mode),

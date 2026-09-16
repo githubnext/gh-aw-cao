@@ -183,6 +183,41 @@ test("excludes internal packages from user-facing package inventory", () => {
   assert.deepEqual(sources.packages.rows, []);
 });
 
+test("includes registered packages that have no inventory or run history", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-16T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: {
+      packages: {
+        "repo-assist": {
+          mode: "review",
+          worker_policies: {
+            "repo-assist-issue-triage": {
+              worker: "issue-triage",
+              enabled: true,
+              max_mode: null,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(sources.packages.rows.map((row) => ({
+    package: row.package,
+    name: row["package-name"],
+    mode: row["package-mode"],
+    workers: row["package-worker-count"],
+  })), [{
+    package: "repo-assist",
+    name: "Repo Assist",
+    mode: "review",
+    workers: 1,
+  }]);
+  assert.deepEqual(sources.workflows.rows, []);
+});
+
 test("transaction logs retain a session when artifacts contain no timeline", () => {
   const rows = transactionLogRows({
     generatedAt: "2026-09-09T05:00:00Z",
