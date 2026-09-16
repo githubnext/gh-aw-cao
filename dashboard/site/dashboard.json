@@ -6864,72 +6864,75 @@
       {
         "id": "operational-value",
         "kind": "custom",
-        "title": "Value & outcomes",
+        "title": "Operational value",
         "navigation-label": "Value",
         "icon": "beaker",
         "class-name": "value-page",
-        "description": "Outcome, grader, maturity, AI Credit, and experiment-readiness evidence for the configured repositories.",
+        "description": "Operational value created by centrally managed packages.",
         "views": [
           {
-            "id": "operational-value-ledger",
+            "id": "operational-value-by-package",
+            "title": "Operational value by package",
+            "description": "The share of observed operational value created by each centrally managed package.",
             "data": {
-              "source": "grader-observations"
+              "source": "package-inventory"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "horizontal",
+            "empty-message": "No package operational value was observed in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "package-name",
+                "type": "nominal",
+                "title": "Package"
+              },
+              "y": {
+                "field": "value-created",
+                "type": "quantitative",
+                "aggregate": "sum",
+                "as": "total-value-created",
+                "title": "Operational value",
+                "unit": "grade"
+              },
+              "href": {
+                "field": "package-dashboard-link",
+                "type": "nominal"
+              }
+            }
+          },
+          {
+            "id": "operational-value-packages",
+            "title": "Packages",
+            "description": "Observed operational value created by each centrally managed package.",
+            "data": {
+              "source": "package-inventory"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No operational-value grader records were retained.",
+            "lazy-list": true,
+            "column-summaries": true,
             "layout": "full-view",
+            "empty-message": "No package operational value was observed in the selected horizon.",
             "encoding": {
+              "href": {
+                "field": "package-dashboard-link",
+                "type": "nominal"
+              },
               "columns": [
                 {
-                  "field": "grader",
+                  "field": "package-name",
                   "type": "nominal",
-                  "title": "Workflow"
+                  "title": "Package"
                 },
                 {
-                  "field": "status",
-                  "type": "nominal",
-                  "display": "grader-status",
-                  "title": "Status"
-                },
-                {
-                  "field": "maturity-status",
-                  "type": "nominal",
-                  "display": "label",
-                  "title": "Maturity"
-                },
-                {
-                  "field": "value",
+                  "field": "value-created",
                   "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Value"
-                },
-                {
-                  "field": "baseline-value",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Baseline"
-                },
-                {
-                  "field": "delta-from-baseline",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Delta"
-                },
-                {
-                  "field": "evaluator-digest",
-                  "type": "nominal",
-                  "display": "digest",
-                  "title": "Evaluator"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
+                  "title": "Operational value",
+                  "unit": "grade"
                 }
               ]
-            },
-            "lazy-list": true
+            }
           }
         ]
       },

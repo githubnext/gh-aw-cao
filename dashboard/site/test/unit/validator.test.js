@@ -1043,12 +1043,15 @@ dashboard:
   it('defines core data pages as declarative full-view lazy tables', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
+    const operationalValuePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operational-value');
     const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
     const packageDetailPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'package-detail');
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
     const transactionsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'transactions');
 
     const packagesChart = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-value-created');
+    const operationalValueChart = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-by-package');
+    const operationalValueTable = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-packages');
     const packagesView = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-inventory');
     const packageWorkflowsView = packageDetailPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-workflow-table');
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
@@ -1072,6 +1075,27 @@ dashboard:
         y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Value created', unit: 'grade' }
       }
     });
+    expect(operationalValueChart).toMatchObject({
+      data: { source: 'package-inventory' },
+      mark: 'chart',
+      chart: 'pie',
+      encoding: {
+        x: { field: 'package-name', type: 'nominal', title: 'Package' },
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Operational value', unit: 'grade' }
+      }
+    });
+    expect(operationalValueTable).toMatchObject({
+      data: { source: 'package-inventory' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      'column-summaries': true,
+      layout: 'full-view'
+    });
+    expect(operationalValueTable.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
+      'Package',
+      'Operational value'
+    ]);
     expect(packagesView.encoding.href).toEqual({ field: 'package-dashboard-link', type: 'nominal' });
     expect(packagesView.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
       'Package',
