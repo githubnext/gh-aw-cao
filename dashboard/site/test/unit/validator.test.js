@@ -995,6 +995,7 @@ describe('dashboard document validation', () => {
       ]) },
       mark: 'element',
       element: 'outcomes-overview',
+      config: expect.objectContaining({ sections: ['header', 'floor'] }),
       layout: 'full'
     })]);
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
@@ -1428,6 +1429,52 @@ dashboard:
       expect(incompleteText.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E005',
         path: '$.dashboard.pages[0].views[0].config.labels.Repositories'
+      }));
+    }
+  });
+
+  it('accepts declarative factory overview sections and rejects unknown sections', () => {
+    const accepted = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, floor]
+`);
+    expect(accepted.ok).toBe(true);
+
+    const invalid = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [status]
+`);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].config.sections[0]'
       }));
     }
   });

@@ -115,6 +115,19 @@ it('animates overview counters only when selected by its JSON element configurat
   expect(counter instanceof HTMLElement && counter.style.getPropertyValue('--metric-number-target')).toBe('2');
 });
 
+it('composes reusable factory sections selected by JSON configuration', () => {
+  const rendered = renderFactoryOverview({
+    title: 'Factory floor',
+    elementConfig: { sections: ['floor'] },
+    sources: overviewSources()
+  });
+
+  expect(rendered.querySelector('.factory-intro')).toBeNull();
+  expect(rendered.querySelector('.factory-floor')).not.toBeNull();
+  expect(rendered.getAttribute('aria-label')).toBe('Factory floor');
+  expect(rendered.hasAttribute('aria-labelledby')).toBe(false);
+});
+
 it.each([
   ['humming', 'Your factory is humming.'],
   ['under strain', 'Your factory is under strain.'],

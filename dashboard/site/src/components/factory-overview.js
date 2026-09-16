@@ -2,6 +2,7 @@ import { batch, derived, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { renderFactoryFloor } from './factory-floor.js';
 import { renderFactoryHeader } from './factory-header.js';
+import { factoryOverviewSections } from './factory-overview-sections.js';
 import { renderPanel } from './panel.js';
 
 /**
@@ -133,24 +134,29 @@ function bindOverviewSources(context) {
   return bindings;
 }
 
-/** @param {{ sources?: Record<string, LogicalSourceInput>, elementConfig?: Record<string, unknown> }} context */
+/** @param {{ title?: string, sources?: Record<string, LogicalSourceInput>, elementConfig?: Record<string, unknown> }} context */
 export function renderFactoryOverview(context) {
   releaseFactoryOverviewEffects();
   const sources = bindOverviewSources(context);
   const metrics = createOverviewMetrics(sources);
-  return renderPanel({
-    className: 'agent-factory',
-    labelledBy: 'agent-factory-heading',
-    children: [
-      renderFactoryHeader(sources, metrics, { signal: overviewLifetime.signal, motion: factoryMotionState }),
-      renderFactoryFloor(
+  const sections = factoryOverviewSections(context.elementConfig);
+  const scope = { signal: overviewLifetime.signal, motion: factoryMotionState };
+  /** @type {Record<string, () => HTMLElement>} */
+  const sectionRenderers = {
+    header: () => renderFactoryHeader(sources, metrics, scope),
+    floor: () => renderFactoryFloor(
       sources,
       metrics,
       pluralLabelResolver(context.elementConfig),
       context.elementConfig?.animate === 'number',
-      { signal: overviewLifetime.signal, motion: factoryMotionState }
-      )
-    ]
+      scope
+    )
+  };
+  return renderPanel({
+    className: 'agent-factory',
+    labelledBy: sections.includes('header') ? 'agent-factory-heading' : undefined,
+    label: context.title ?? 'Factory overview',
+    children: sections.map((section) => sectionRenderers[section]())
   });
 }
 

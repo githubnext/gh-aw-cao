@@ -7618,6 +7618,7 @@
             "element": "outcomes-overview",
             "config": {
               "animate": "number",
+              "sections": ["header", "floor"],
               "labels": {
                 "repositories": {
                   "singular": "Repository registered",
