@@ -222,6 +222,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--output', manifestPath
     ], { encoding: 'utf8' }));
     const normalizedName = readdirSync(normalizedDirectory).find((name) => name.endsWith('.json'));
+    if (!normalizedName) throw new Error('Normalized payload was not generated');
     expect(normalizedName).toMatch(/^[a-f0-9]{64}-[a-f0-9]{16}\.json$/);
     expect(hashes).toMatchObject({
       'dashboard.sqlite': expect.stringMatching(/^[a-f0-9]{64}$/),
