@@ -45,13 +45,13 @@ describe('dashboard query memoization', () => {
   it('does not insert an older result after a newer database revision starts', async () => {
     const memoization = createDashboardQueryMemoization();
     /** @type {(value: { revision: number }) => void} */
-    let resolveOlder;
+    let resolveOlder = () => {};
     const older = memoization.get(1, 'overview', () => new Promise((resolve) => {
       resolveOlder = resolve;
     }));
 
     await memoization.get(2, 'overview', async () => ({ revision: 2 }));
-    resolveOlder?.({ revision: 1 });
+    resolveOlder({ revision: 1 });
     await older;
     const recompute = vi.fn(async () => ({ revision: 2 }));
 
