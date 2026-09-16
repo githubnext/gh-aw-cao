@@ -188,6 +188,7 @@ commands:
   dashboard_site_performance_tests: "cd dashboard/site && npm run test:performance"
   dashboard_site_lint: "cd dashboard/site && npm run lint"
   dashboard_site_typecheck: "cd dashboard/site && npm run typecheck"
+  dashboard_site_corpus_validation: "cd dashboard/site && npm run validate:corpus"
 
 validation:
   command_refs:
