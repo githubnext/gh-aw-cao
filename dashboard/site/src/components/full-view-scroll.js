@@ -25,9 +25,8 @@ export function syncFullViewMode(root, page) {
   const selectedFullViewMode = ['table', 'card'].includes(root.dataset.mobileViewMode ?? '')
     && modeSelectionPage;
   const canPin = Boolean(fullView) && (
-    modeSelectionPage
-      ? selectedFullViewMode
-      : siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
+    selectedFullViewMode
+    || siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
   );
   root.classList.toggle('dashboard-full-view', canPin);
   if (!canPin) root.classList.remove('dashboard-full-view-scrolled');

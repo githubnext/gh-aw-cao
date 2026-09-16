@@ -841,7 +841,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   assert(facetControlBox);
   assert(scrolledSummaryBox);
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(swimlane).toBeVisible();
