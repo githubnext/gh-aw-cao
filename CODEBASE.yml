@@ -104,6 +104,7 @@ boundaries:
       - further_work_dispatch
       - mode_widening
   - subject: target_repository
+    may_depend_on: []
     must_not_depend_on:
       - control_plane_authority
   - subject: dashboard_ui
@@ -184,16 +185,15 @@ commands:
   load_tests: npm run test:load
   svg_check: npm run check:svg
   workflow_compile: npm run compile
+  manual_workflow_compile: gh aw compile --strict --schedule-seed githubnext/gh-aw-cao
   workflow_compile_locks: npm run compile:locks
   docs_build: npm run docs:build
   dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
-  dashboard_site:
-    working_directory: dashboard/site/
-    tests: npm test
-    e2e_tests: npm run test:e2e
-    performance_tests: npm run test:performance
-    lint: npm run lint
-    typecheck: npm run typecheck
+  dashboard_site_tests: cd dashboard/site && npm test
+  dashboard_site_e2e_tests: cd dashboard/site && npm run test:e2e
+  dashboard_site_performance_tests: cd dashboard/site && npm run test:performance
+  dashboard_site_lint: cd dashboard/site && npm run lint
+  dashboard_site_typecheck: cd dashboard/site && npm run typecheck
 
 validation:
   commands:
