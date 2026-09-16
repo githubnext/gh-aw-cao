@@ -339,6 +339,8 @@ function configurationPolicyRows(controlSettings) {
     return [];
   }
   const status = resolution.status;
+  // The policy resolver emits "available" or "unavailable"; any other present
+  // status means the policy was collected but not validated by this sidecar.
   let diagnostic;
   if (status === "available") {
     diagnostic = {
