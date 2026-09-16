@@ -138,6 +138,18 @@ describe('dashboard DOM provenance', () => {
     expect(lazySourceNames).toContain('runs-table');
   });
 
+  it('keeps Settings useful while the policy source is unavailable', async () => {
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    const page = await activatePage(rendered, 'configuration');
+
+    expect(page?.querySelector('.configuration-view')).not.toBeNull();
+    expect(page?.textContent).toContain('The policy cannot be edited until it contains valid JSON.');
+    expect(page?.textContent).not.toContain('Affected source: configuration-policy');
+  });
+
   it('maps every rendered element and dynamic descendant to its owning JSON view when ?debug=1 is set', async () => {
     window.history.pushState(null, '', '?debug=1');
     try {

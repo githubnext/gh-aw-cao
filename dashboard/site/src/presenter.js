@@ -10,7 +10,7 @@ import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, renderUiElement } from './components/ui-elements.js';
+import { elementHandlesEmptyRows, elementHandlesUnavailableSource, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -1681,14 +1681,16 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
   if (sourceNames.length === 1) {
     const sourceName = sourceNames[0];
     const source = selectedSources[sourceName];
-    if (!source) {
+    if (!source && !elementHandlesUnavailableSource(elementName)) {
       return renderCustomViewState(pageId, title, sourceName, 'unavailable', contextDetails, headingTag);
     }
-    const state = source.metadata?.availability ?? inferAvailability(source.rows);
-    if (state !== 'available' && !(state === 'empty' && elementHandlesEmptyRows(elementName))) {
+    const state = source?.metadata?.availability ?? (source ? inferAvailability(source.rows) : 'unavailable');
+    if (state !== 'available'
+        && !(state === 'empty' && elementHandlesEmptyRows(elementName))
+        && !(state === 'unavailable' && elementHandlesUnavailableSource(elementName))) {
       return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag);
     }
-    if (source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
+    if (source && source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
       return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag);
     }
   }

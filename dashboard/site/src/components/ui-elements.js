@@ -91,6 +91,7 @@ export function elementLoadsSourcesAsync(name) {
 }
 
 const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'outcomes-overview', 'local-database']);
+const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
@@ -229,6 +230,14 @@ function renderPackageActivityShellElement(context) {
  */
 export function elementHandlesEmptyRows(name) {
   return EMPTY_AWARE_ELEMENTS.has(name);
+}
+
+/**
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function elementHandlesUnavailableSource(name) {
+  return UNAVAILABLE_AWARE_ELEMENTS.has(name);
 }
 
 /**
