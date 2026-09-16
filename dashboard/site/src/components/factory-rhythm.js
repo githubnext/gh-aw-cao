@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
-import { derived, effect } from '../reactive.js';
 import { formatCount } from './count-formatters.js';
+import { renderReactiveGraphWidget } from './graph-widget.js';
 
 /** @typedef {{ label: string, date: string, count: number, previous: number, reached: boolean }} RhythmDay */
 /** @typedef {{ rows: () => Record<string, unknown>[] }} RhythmSource */
@@ -11,37 +11,29 @@ import { formatCount } from './count-formatters.js';
  * @param {ReactiveScope} scope
  */
 export function renderFactoryRhythm(source, scope) {
-  const bars = h('div', { className: 'factory-rhythm-bars' });
-  const rhythmDays = derived(() => rhythmPayload(source).days, { signal: scope.signal });
-  const section = h(
-    'section',
-    {
-      className: 'factory-rhythm',
-      'aria-label': 'Successful Actions runs from Monday through Sunday'
+  return renderReactiveGraphWidget({
+    className: 'factory-rhythm',
+    headingClassName: 'factory-rhythm-heading',
+    legendClassName: 'factory-rhythm-legend',
+    plotClassName: 'factory-rhythm-bars',
+    title: 'Factory rhythm',
+    ariaLabel: 'Successful Actions runs from Monday through Sunday',
+    legendLabel: 'Factory rhythm legend',
+    legend: [
+      { label: 'This week', className: 'factory-rhythm-legend-current' },
+      { label: 'Last week', className: 'factory-rhythm-legend-previous' }
+    ],
+    items: () => {
+      const days = rhythmPayload(source).days;
+      const maximum = Math.max(...days.flatMap((day) => [day.count, day.previous]), 1);
+      return days.map((day) => ({
+        ...day,
+        height: Math.max(5, (day.reached ? day.count : day.previous) / maximum * 100)
+      }));
     },
-    h(
-      'div',
-      { className: 'factory-rhythm-heading' },
-      h('span', {}, 'Factory rhythm'),
-      h(
-        'ul',
-        { className: 'factory-rhythm-legend', 'aria-label': 'Factory rhythm legend' },
-        h('li', {}, h('i', { className: 'factory-rhythm-legend-current', 'aria-hidden': 'true' }), 'This week'),
-        h('li', {}, h('i', { className: 'factory-rhythm-legend-previous', 'aria-hidden': 'true' }), 'Last week')
-      )
-    ),
-    bars
-  );
-
-  effect(() => {
-    const days = rhythmDays.get();
-    const maximum = Math.max(...days.flatMap((day) => [day.count, day.previous]), 1);
-    if (bars.childElementCount !== days.length) {
-      bars.replaceChildren(...days.map(() => createRhythmDay()));
-    }
-    for (const [index, element] of rhythmDayElements(bars).entries()) {
-      const day = days[index];
-      const value = day.reached ? day.count : day.previous;
+    key: (day) => day.label,
+    renderItem: () => createRhythmDay(),
+    updateItem: (element, day) => {
       const description = rhythmDayDescription(day);
       element.classList.toggle('factory-rhythm-day-future', !day.reached);
       element.setAttribute('aria-label', description);
@@ -49,19 +41,18 @@ export function renderFactoryRhythm(source, scope) {
       const current = element.querySelector('.factory-rhythm-current');
       if (current instanceof HTMLElement) {
         current.hidden = !day.reached;
-        current.style.height = `${Math.max(5, value / maximum * 100)}%`;
+        current.style.height = `${day.height}%`;
       }
       const baseline = element.querySelector('.factory-rhythm-baseline');
       if (baseline instanceof HTMLElement) {
         baseline.hidden = day.reached;
-        baseline.style.height = `${Math.max(5, value / maximum * 100)}%`;
+        baseline.style.height = `${day.height}%`;
       }
       const label = element.querySelector('small');
       if (label) label.textContent = day.label;
-    }
-  }, { signal: scope.signal });
-
-  return section;
+    },
+    signal: scope.signal
+  });
 }
 
 /** @param {RhythmDay} day */
@@ -108,11 +99,6 @@ function rhythmPayload(source) {
 function numberField(row, field) {
   const value = Number(row[field]);
   return Number.isFinite(value) ? value : 0;
-}
-
-/** @param {HTMLElement} bars @returns {HTMLElement[]} */
-function rhythmDayElements(bars) {
-  return [...bars.querySelectorAll('.factory-rhythm-day')].filter((element) => element instanceof HTMLElement);
 }
 
 function createRhythmDay() {

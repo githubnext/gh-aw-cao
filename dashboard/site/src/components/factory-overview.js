@@ -1,8 +1,8 @@
-import { h } from '../dom.js';
 import { batch, derived, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { renderFactoryFloor } from './factory-floor.js';
 import { renderFactoryHeader } from './factory-header.js';
+import { renderPanel } from './panel.js';
 
 /**
  * Compact worker-query results consumed by the overview.
@@ -138,18 +138,20 @@ export function renderFactoryOverview(context) {
   releaseFactoryOverviewEffects();
   const sources = bindOverviewSources(context);
   const metrics = createOverviewMetrics(sources);
-  return h(
-    'section',
-    { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
-    renderFactoryHeader(sources, metrics, { signal: overviewLifetime.signal, motion: factoryMotionState }),
-    renderFactoryFloor(
+  return renderPanel({
+    className: 'agent-factory',
+    labelledBy: 'agent-factory-heading',
+    children: [
+      renderFactoryHeader(sources, metrics, { signal: overviewLifetime.signal, motion: factoryMotionState }),
+      renderFactoryFloor(
       sources,
       metrics,
       pluralLabelResolver(context.elementConfig),
       context.elementConfig?.animate === 'number',
       { signal: overviewLifetime.signal, motion: factoryMotionState }
-    )
-  );
+      )
+    ]
+  });
 }
 
 
