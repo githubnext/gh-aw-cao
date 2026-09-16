@@ -7,6 +7,7 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["minimal-ui", "standalone"],
   "background_color": "#0d1117",
   "theme_color": "#0d1117",
   "categories": ["business", "productivity", "utilities"],
