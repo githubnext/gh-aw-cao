@@ -149,6 +149,14 @@ jobs:
           script: |
             const fs = require('fs')
             const path = require('path')
+            const formatFileSize = (bytes) => {
+              const units = ['bytes', 'KiB', 'MiB', 'GiB']
+              const unitIndex = bytes === 0
+                ? 0
+                : Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+              const value = bytes / 1024 ** unitIndex
+              return `${unitIndex === 0 ? value : value.toFixed(1)} ${units[unitIndex]}`
+            }
             const activityFiles = [
               process.env.ACTIVITY_DATABASE,
               process.env.REPORT_PAYLOAD_HASHES,
@@ -175,7 +183,7 @@ jobs:
                 core.error(`Required activity data file is empty: ${fileName}`)
                 validationFailed = true
               } else {
-                core.info(`Validated ${fileName} (${size} bytes)`)
+                core.info(`Validated ${fileName} (${formatFileSize(size)})`)
               }
             }
             if (validationFailed) {
@@ -186,7 +194,7 @@ jobs:
                   .filter((entry) => entry.isFile())
                   .toSorted((a, b) => a.name.localeCompare(b.name))
                 for (const entry of restoredFiles) {
-                  core.info(`  ${entry.name} (${fs.statSync(path.join(activityRoot, entry.name)).size} bytes)`)
+                  core.info(`  ${entry.name} (${formatFileSize(fs.statSync(path.join(activityRoot, entry.name)).size)})`)
                 }
               }
               throw new Error('Restored activity data validation failed')
@@ -227,6 +235,14 @@ jobs:
           script: |
             const fs = require('fs')
             const path = require('path')
+            const formatFileSize = (bytes) => {
+              const units = ['bytes', 'KiB', 'MiB', 'GiB']
+              const unitIndex = bytes === 0
+                ? 0
+                : Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+              const value = bytes / 1024 ** unitIndex
+              return `${unitIndex === 0 ? value : value.toFixed(1)} ${units[unitIndex]}`
+            }
             core.info(`Building dashboard site from ${process.env.DASHBOARD_LAYOUT} layout`)
             const controlSettings = path.join(process.env.RUNNER_TEMP, 'cao-activity', 'control-settings.json')
             await exec.exec('npm', [
@@ -252,7 +268,7 @@ jobs:
                 path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName),
                 destination,
               )
-              core.info(`Copied ${fileName} (${fs.statSync(destination).size} bytes)`)
+              core.info(`Copied ${fileName} (${formatFileSize(fs.statSync(destination).size)})`)
             }
             for (const directory of ['gh-aw-logs-shards', 'gh-aw-logs-normalized']) {
               fs.cpSync(

@@ -260,15 +260,35 @@ test.beforeEach(async ({ context, page }) => {
           url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/12345',
           audit: {
             mcp_tool_usage: {
-              tool_calls: [{
-                tool_call_id: 'call-12345',
-                timestamp: '2026-09-09T04:02:00Z',
-                server_name: 'github',
-                tool_name: 'search_issues',
-                input_size: 42,
-                output_size: 128,
-                status: 'success'
-              }]
+              tool_calls: [
+                {
+                  tool_call_id: 'call-12345-1',
+                  timestamp: '2026-09-09T04:02:00Z',
+                  server_name: 'github',
+                  tool_name: 'search_issues',
+                  input_size: 42,
+                  output_size: 128,
+                  status: 'success'
+                },
+                {
+                  tool_call_id: 'call-12345-2',
+                  timestamp: '2026-09-09T04:03:00Z',
+                  server_name: 'github',
+                  tool_name: 'search_issues',
+                  input_size: 42,
+                  output_size: 128,
+                  status: 'success'
+                },
+                {
+                  tool_call_id: 'call-12345-3',
+                  timestamp: '2026-09-09T04:04:00Z',
+                  server_name: 'safe_outputs',
+                  tool_name: 'create_issue',
+                  input_size: 42,
+                  output_size: 128,
+                  status: 'success'
+                }
+              ]
             },
             firewall_analysis: {
               requests_by_domain: {
@@ -574,7 +594,7 @@ test('data worker returns the Models & agents query on initial and navigated req
   }
 });
 
-test('data worker returns declarative MCP activity on initial and navigated requests', async ({ page }) => {
+test('data worker returns MCP tool totals without safe outputs calls on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -586,24 +606,37 @@ test('data worker returns declarative MCP activity on initial and navigated requ
     };
     const initial = await loadCanonicalDashboardSources(
       `${location.origin}/payload-hashes.json`,
-      ['mcp-tool-activity'],
+      ['mcp-tool-totals', 'mcp-top-tools'],
       context
     );
-    const navigated = await loadCanonicalDashboardPage(['mcp-tool-activity'], context);
-    return { initial, navigated };
+    const navigated = await loadCanonicalDashboardPage(['mcp-tool-totals', 'mcp-top-tools'], context);
+    const base = await loadCanonicalDashboardPage(['mcp-calls'], context);
+    const { executeDashboardQueries } = await import(`${location.origin}/src/data/queries/declarative.js`);
+    const direct = executeDashboardQueries(dashboard.dashboard.queries, base, ['mcp-tool-calls', 'mcp-tool-totals']);
+    return { initial, navigated, base, direct };
   });
 
+  expect(result.base['mcp-calls'].rows).toHaveLength(3);
+  expect(result.base['mcp-calls'].rows[0]).toMatchObject({
+    'mcp-server': 'github',
+    'mcp-tool': 'search_issues'
+  });
+  expect(result.direct['mcp-tool-calls'].rows).toHaveLength(3);
+  expect(result.direct['mcp-tool-totals'].rows).toHaveLength(1);
   for (const payload of [result.initial, result.navigated]) {
-    expect(Object.keys(payload)).toEqual(['mcp-tool-activity']);
-    expect(payload['mcp-tool-activity']).toMatchObject({
-      source: 'mcp-tool-activity',
+    expect(Object.keys(payload)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
+    expect(payload['mcp-tool-totals']).toMatchObject({
+      source: 'mcp-tool-totals',
       rows: [{
         'mcp-tool': 'github/search_issues',
-        'mcp-status': 'success',
-        repository: 'gh-aw-cao',
-        run: '12345'
+        calls: 2
       }],
-      metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-activity' }
+      metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-totals' }
+    });
+    expect(payload['mcp-top-tools']).toMatchObject({
+      source: 'mcp-top-tools',
+      rows: [{ 'mcp-tool': 'github/search_issues', calls: 2 }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'mcp-top-tools' }
     });
   }
 });
@@ -645,7 +678,7 @@ test('data worker returns GitHub API events on initial and navigated requests', 
   }
 });
 
-test('data worker queries firewall domain totals on initial and navigated requests', async ({ page }) => {
+test('data worker queries firewall domain totals and most-blocked domains on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -657,18 +690,25 @@ test('data worker queries firewall domain totals on initial and navigated reques
     };
     const initial = await loadCanonicalDashboardSources(
       `${location.origin}/sources.json`,
-      ['firewall-domain-totals'],
+      ['firewall-domain-totals', 'firewall-most-blocked-domains'],
       context
     );
-    const navigated = await loadCanonicalDashboardPage(['firewall-domain-totals'], context);
+    const navigated = await loadCanonicalDashboardPage(
+      ['firewall-domain-totals', 'firewall-most-blocked-domains'],
+      context
+    );
     return { initial, navigated };
   });
 
   for (const payload of [result.initial, result.navigated]) {
-    expect(Object.keys(payload)).toEqual(['firewall-domain-totals']);
+    expect(Object.keys(payload)).toEqual(['firewall-domain-totals', 'firewall-most-blocked-domains']);
     expect(payload['firewall-domain-totals']).toMatchObject({
       rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
       metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domain-totals' }
+    });
+    expect(payload['firewall-most-blocked-domains']).toMatchObject({
+      rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'firewall-most-blocked-domains' }
     });
   }
 });

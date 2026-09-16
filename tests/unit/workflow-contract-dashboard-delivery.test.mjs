@@ -209,6 +209,11 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?Resolve fallback activity run[\s\S]*?Download fallback activity data[\s\S]*?Validate restored activity data[\s\S]*?Assemble Dashboard Language site/);
   assert.match(dashboardWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?REPORT_GH_AW_LOGS_SHARDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards[\s\S]*?REPORT_PAYLOAD_HASHES: \$\{\{ runner\.temp \}\}\/cao-activity\/payload-hashes\.json[\s\S]*?REPORT_CONTROL_SETTINGS: \$\{\{ runner\.temp \}\}\/cao-activity\/control-settings\.json[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?const activityFiles = \[[\s\S]*?process\.env\.ACTIVITY_DATABASE[\s\S]*?process\.env\.REPORT_PAYLOAD_HASHES[\s\S]*?process\.env\.REPORT_CONTROL_SETTINGS[\s\S]*?process\.env\.REPORT_INVENTORY_SOURCES[\s\S]*?process\.env\.REPORT_GH_AW_LOGS_SHARDS/);
   assert.match(dashboardWorkflow, /Required activity data file is missing[\s\S]*?fs\.statSync[\s\S]*?Required activity data file is empty[\s\S]*?Restored activity cache directory contents/);
+  assert.match(dashboardWorkflow, /const formatFileSize = \(bytes\) => \{[\s\S]*?\['bytes', 'KiB', 'MiB', 'GiB'\]/);
+  assert.match(dashboardWorkflow, /Validated \$\{fileName\} \(\$\{formatFileSize\(size\)\}\)/);
+  assert.match(dashboardWorkflow, /\$\{entry\.name\} \(\$\{formatFileSize\(fs\.statSync\([\s\S]*?\.size\)\}\)/);
+  assert.match(dashboardWorkflow, /Copied \$\{fileName\} \(\$\{formatFileSize\(fs\.statSync\(destination\)\.size\)\}\)/);
+  assert.doesNotMatch(dashboardWorkflow, /core\.info\(`[^`]*\$\{[^}]*size[^}]*\} bytes/);
   assert.match(activityWorkflow, /name: Save activity cache[\s\S]*?path: \|[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?gh-aw-logs-shards[\s\S]*?gh-aw-logs-normalized[\s\S]*?control-settings\.json[\s\S]*?inventory-sources\.json/);
   assert.match(dashboardWorkflow, /name: Assess activity database health[\s\S]*?await exec\.exec\(process\.execPath,[\s\S]*?'doctor'[\s\S]*?'--database'[\s\S]*?process\.env\.ACTIVITY_DATABASE/);
   assert.doesNotMatch(dashboardWorkflow, /control-settings\.mjs|ACTIVITY_ROOT/);

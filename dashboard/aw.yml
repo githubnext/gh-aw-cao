@@ -197,6 +197,10 @@ resources:
     destination: .github/aw/dashboard/site/src/components/local-database-view.js
   - source: site/src/components/dashboard-horizon.js
     destination: .github/aw/dashboard/site/src/components/dashboard-horizon.js
+  - source: site/src/components/dashboard-interactions.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-interactions.js
+  - source: site/src/components/dashboard-sidebar.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-sidebar.js
   - source: site/src/components/cli-actions.js
     destination: .github/aw/dashboard/site/src/components/cli-actions.js
   - source: site/src/components/chart-elements.js
@@ -295,6 +299,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/ui-primitives.js
   - source: site/src/components/view-chrome.js
     destination: .github/aw/dashboard/site/src/components/view-chrome.js
+  - source: site/src/components/view-data.js
+    destination: .github/aw/dashboard/site/src/components/view-data.js
   - source: site/src/components/view-element-composition.js
     destination: .github/aw/dashboard/site/src/components/view-element-composition.js
   - source: site/src/components/work-item-card.js
