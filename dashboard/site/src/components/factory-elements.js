@@ -2,7 +2,7 @@
  * Shared data adapters for the declaratively composed factory elements.
  */
 
-import { batch } from '../reactive.js';
+import { batch, effect, state } from '../reactive.js';
 import { publishSource, requestSource, sourceState } from '../source-store.js';
 
 /** @typedef {Record<string, unknown>} Row */
@@ -95,6 +95,24 @@ export function createFactoryMetrics(sources) {
       review: numberField(row('overview-run-summary'), 'active-review')
     })
   };
+}
+
+/**
+ * Creates the reactive state shared by one factory element's widgets.
+ * @param {FactoryMetrics} metrics
+ */
+export function createFactoryScope(metrics) {
+  const lifetime = new AbortController();
+  const motion = state(metrics.motion());
+  effect(() => {
+    const next = metrics.motion();
+    motion.set((current) => (
+      current.operations === next.operations && current.live === next.live && current.review === next.review
+        ? current
+        : next
+    ));
+  }, { signal: lifetime.signal });
+  return { signal: lifetime.signal, motion };
 }
 
 /**

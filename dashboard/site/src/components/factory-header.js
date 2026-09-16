@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
-import { effect, state } from '../reactive.js';
+import { effect } from '../reactive.js';
 import { formatCount } from './count-formatters.js';
-import { bindFactorySources, createFactoryMetrics } from './factory-elements.js';
+import { bindFactorySources, createFactoryMetrics, createFactoryScope } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
@@ -78,9 +78,5 @@ export function renderFactoryHeaderElement(context) {
     queryContext: context.queryContext
   });
   const metrics = createFactoryMetrics(sources);
-  const lifetime = new AbortController();
-  return renderFactoryHeader(sources, metrics, {
-    signal: lifetime.signal,
-    motion: state(metrics.motion())
-  });
+  return renderFactoryHeader(sources, metrics, createFactoryScope(metrics));
 }

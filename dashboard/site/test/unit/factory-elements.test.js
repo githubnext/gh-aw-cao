@@ -111,12 +111,14 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
   expect(rendered?.getAttribute('aria-label')).toContain('Registered repositories unavailable');
 });
 
-it('renders both elements immediately while each declared query resolves independently', () => {
+it('renders both elements immediately and updates only widgets whose query resolves', async () => {
   /** @type {Array<{ name: string, pageId?: string }>} */
   const requests = [];
+  /** @type {Map<string, (value: import('../../src/presenter.js').LogicalSourceInput) => void>} */
+  const resolvers = new Map();
   configureSourceLoader((name, options) => {
     requests.push({ name, pageId: options?.pageId });
-    return new Promise(() => {});
+    return new Promise((resolve) => resolvers.set(name, resolve));
   });
 
   const header = renderUiElement('factory-header', context('factory-header', {}));
@@ -139,4 +141,19 @@ it('renders both elements immediately while each declared query resolves indepen
     'overview-worker-summary'
   ]);
   expect(requests.every(({ pageId }) => pageId === 'overview')).toBe(true);
+
+  resolvers.get('overview-run-summary')?.(source('overview-run-summary', [{
+    'successful-runs': 3,
+    'failed-runs': 1,
+    'active-runs': 2,
+    'active-live': 1,
+    'active-review': 1
+  }]));
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(header?.querySelector('.factory-running-active')?.textContent).toBe('Work in motion');
+  expect(floor?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Successful runs31 failed');
+  expect(floor?.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(false);
+  expect(floor?.querySelector('.factory-station:nth-child(3)')?.classList.contains('factory-station-pending')).toBe(true);
 });

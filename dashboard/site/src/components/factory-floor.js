@@ -1,6 +1,5 @@
 import { formatCount } from './count-formatters.js';
-import { state } from '../reactive.js';
-import { bindFactorySources, createFactoryMetrics, factoryStationLabel } from './factory-elements.js';
+import { bindFactorySources, createFactoryMetrics, createFactoryScope, factoryStationLabel } from './factory-elements.js';
 import { renderFactoryStation } from './factory-station.js';
 import { renderReactiveGrid } from './reactive-grid.js';
 
@@ -123,12 +122,11 @@ export function renderFactoryFloorElement(context) {
     queryContext: context.queryContext
   });
   const metrics = createFactoryMetrics(sources);
-  const lifetime = new AbortController();
   return renderFactoryFloor(
     sources,
     metrics,
     factoryStationLabel(context.elementConfig),
     context.elementConfig?.animate === 'number',
-    { signal: lifetime.signal, motion: state(metrics.motion()) }
+    createFactoryScope(metrics)
   );
 }
