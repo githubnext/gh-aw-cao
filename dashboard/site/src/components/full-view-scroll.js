@@ -23,7 +23,9 @@ export function syncFullViewMode(root, page) {
     : [];
   const modeSelectionPage = page?.hasAttribute('data-mobile-view-mode-page') === true;
   const mobileViewport = root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.matches === true;
-  const mobileFullViewMode = ['table', 'card'].includes(root.dataset.mobileViewMode ?? '') && modeSelectionPage && mobileViewport;
+  const mobileFullViewMode = ['table', 'card'].includes(root.dataset.mobileViewMode ?? '')
+    && modeSelectionPage
+    && mobileViewport;
   const canPin = Boolean(fullView) && (
     modeSelectionPage && mobileViewport
       ? mobileFullViewMode
