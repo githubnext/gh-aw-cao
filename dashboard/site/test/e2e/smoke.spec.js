@@ -393,6 +393,29 @@ test('mobile shell shows large overview actions and moves other views into the h
   expectLayoutWithin(factoryBox.y, mainBox.y, layoutPixelTolerance);
   expectLayoutWithin(factoryBox.width, viewportWidth, layoutPixelTolerance);
 
+  const headerCopy = factoryOverview.locator('.factory-intro-copy');
+  const rhythm = factoryOverview.locator('.factory-rhythm');
+  const stations = factoryOverview.locator('.factory-station');
+  const [headerCopyBox, rhythmBox, firstStationBox, secondStationBox, thirdStationBox, fourthStationBox] = await Promise.all([
+    headerCopy.boundingBox(),
+    rhythm.boundingBox(),
+    stations.nth(0).boundingBox(),
+    stations.nth(1).boundingBox(),
+    stations.nth(2).boundingBox(),
+    stations.nth(3).boundingBox()
+  ]);
+  if (!headerCopyBox || !rhythmBox || !firstStationBox || !secondStationBox || !thirdStationBox || !fourthStationBox) {
+    throw new Error('Expected responsive Overview component boxes to be available');
+  }
+  expect(rhythmBox.y).toBeGreaterThanOrEqual(headerCopyBox.y + headerCopyBox.height);
+  expect(await factoryOverview.locator('.factory-stations').evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
+  )).toBe(2);
+  expect(thirdStationBox.y).toBeGreaterThan(firstStationBox.y + firstStationBox.height);
+  expect(firstStationBox.x).toBeLessThan(secondStationBox.x);
+  expect(thirdStationBox.x).toBeLessThan(fourthStationBox.x);
+  await expect(factoryOverview.locator('.factory-rhythm-day')).toHaveCount(7);
+
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="cost"]').click();
 

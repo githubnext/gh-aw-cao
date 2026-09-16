@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title description" data-visual-kind="diagram" data-visual-id="dashboard-overview-mobile">
+  <title id="title">Overview mobile component layout</title>
+  <desc id="description">The Overview mobile layout places the status narrative before a compact seven-day rhythm chart, followed by a two-by-two station grid.</desc>
+  <rect width="1200" height="820" fill="#0d1117"/>
+  <text x="60" y="58" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="32" font-weight="700">Overview mobile layout</text>
+  <text x="60" y="91" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18">Components reshape for reading and comparison instead of simply stacking desktop blocks</text>
+
+  <g data-node="mobile-shell">
+    <rect x="350" y="120" width="500" height="650" rx="28" fill="#161b22" stroke="#58a6ff" stroke-width="4"/>
+    <text x="390" y="165" fill="#79c0ff" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="700">Overview shell · one reading column</text>
+  </g>
+  <g data-node="mobile-header">
+    <rect x="390" y="190" width="420" height="245" rx="10" fill="#12261e" stroke="#3fb950" stroke-width="3"/>
+    <text x="418" y="226" fill="#7ee787" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="19" font-weight="700">Header</text>
+    <text x="418" y="260" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">Work in motion</text>
+    <text x="418" y="298" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="24" font-weight="700">Your factory is delivering value.</text>
+  </g>
+  <g data-node="mobile-rhythm">
+    <rect x="418" y="330" width="364" height="78" rx="8" fill="#272115" stroke="#d29922" stroke-width="2"/>
+    <text x="436" y="357" fill="#e3b341" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16" font-weight="700">Rhythm · seven fixed day cells</text>
+    <g fill="#3fb950"><rect x="440" y="374" width="20" height="20" rx="3"/><rect x="489" y="366" width="20" height="28" rx="3"/><rect x="538" y="380" width="20" height="14" rx="3"/></g>
+    <g fill="#30363d" stroke="#8b949e"><rect x="587" y="362" width="20" height="32" rx="3"/><rect x="636" y="372" width="20" height="22" rx="3"/><rect x="685" y="381" width="20" height="13" rx="3"/><rect x="734" y="375" width="20" height="19" rx="3"/></g>
+  </g>
+  <g data-node="mobile-floor">
+    <rect x="390" y="460" width="420" height="270" rx="10" fill="#211a2e" stroke="#a371f7" stroke-width="3"/>
+    <text x="418" y="496" fill="#d2a8ff" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="19" font-weight="700">Factory floor · 2 × 2 touch grid</text>
+  </g>
+  <g data-node="mobile-repositories-station"><rect x="418" y="520" width="170" height="80" rx="8" fill="#2d1618" stroke="#f85149" stroke-width="2"/><text x="438" y="551" fill="#ff7b72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16" font-weight="700">Repositories</text><text x="438" y="584" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="26" font-weight="700">6</text></g>
+  <g data-node="mobile-runs-station"><rect x="612" y="520" width="170" height="80" rx="8" fill="#2d1618" stroke="#f85149" stroke-width="2"/><text x="632" y="551" fill="#ff7b72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16" font-weight="700">Runs</text><text x="632" y="584" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="26" font-weight="700">8</text></g>
+  <g data-node="mobile-dispatch-station"><rect x="418" y="620" width="170" height="80" rx="8" fill="#2d1618" stroke="#f85149" stroke-width="2"/><text x="438" y="651" fill="#ff7b72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16" font-weight="700">Dispatches</text><text x="438" y="684" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="26" font-weight="700">7</text></g>
+  <g data-node="mobile-value-station"><rect x="612" y="620" width="170" height="80" rx="8" fill="#2d1618" stroke="#f85149" stroke-width="2"/><text x="632" y="651" fill="#ff7b72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16" font-weight="700">Value gains</text><text x="632" y="684" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="26" font-weight="700">3</text></g>
+
+  <g data-node="mobile-header-note"><path d="M 325 285 L 370 285 L 390 305" fill="none" stroke="#3fb950" stroke-width="3"/><text x="60" y="254" fill="#7ee787" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="19" font-weight="700">Header reshapes</text><text x="60" y="284" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">Narrative precedes chart.</text></g>
+  <g data-node="mobile-floor-note"><path d="M 810 590 L 875 590 L 900 570" fill="none" stroke="#a371f7" stroke-width="3"/><text x="900" y="530" fill="#d2a8ff" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="19" font-weight="700">Floor reflows</text><text x="900" y="560" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">Two columns preserve comparison.</text></g>
+  <text x="350" y="800" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">305–700 CSS px · no horizontal overflow · DOM order preserved</text>
+</svg>

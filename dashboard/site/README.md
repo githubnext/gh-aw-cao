@@ -14,6 +14,8 @@ The dashboard build workflow copies this directory to its configured `site-path`
 
 `sources.json` is the default deployed input. Add `?fixtures` locally to use the illustrative fixture data.
 
+The [Overview component model](../../docs/dashboard-overview-components.md) documents that page's UI ownership boundaries, state coverage, and fixture-based visual testing convention. The [dashboard view catalog](../../docs/dashboard-view-catalog.md) indexes every standardized product view, built-in page, mark, chart, and named element.
+
 ## Quality gates
 
 ```bash
