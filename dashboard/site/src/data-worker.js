@@ -18,6 +18,7 @@ import { DashboardQueryCancelledError, continuationRevision, executeDashboardQue
 import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
 import { createDebug } from './debug.js';
+import { withRetries } from './retry.js';
 
 const debugIngestion = createDebug('data:ingestion');
 
@@ -343,6 +344,22 @@ export function processDataRequest(request, signal) {
         });
         if (activity) {
           const payloadHashesUrl = sourceUrl;
+          const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
+          progress.log('Refreshing workflow and repository inventory.');
+          const { response: inventoryResponse, value: inventorySources } = await withRetries(async () => {
+            const response = await fetch(inventoryUrl, { cache: 'no-store' });
+            if (!response.ok) {
+              if (response.status === 404) return { response, value: {} };
+              throw new Error(`Unable to load dashboard inventory sources: ${response.status}`);
+            }
+            return { response, value: await response.json() };
+          });
+          if (inventoryResponse.ok) {
+            sources = inventorySources;
+            progress.log('Inventory metadata refreshed.');
+          } else {
+            progress.log('No separate inventory metadata was published.');
+          }
           progress.log('Checking the published payload identity.');
           const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
           const payloadHashes = payloadHashesResponse?.ok
@@ -360,17 +377,6 @@ export function processDataRequest(request, signal) {
           if (shardCount > 0) {
             progress.log(`Published activity data includes ${shardCount.toLocaleString('en-US')} `
               + `${shardCount === 1 ? 'shard' : 'shards'}.`);
-          }
-          const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
-          progress.log('Loading workflow and repository inventory.');
-          const inventoryResponse = await fetch(inventoryUrl);
-          if (inventoryResponse.ok) {
-            sources = await inventoryResponse.json();
-            progress.log('Inventory metadata loaded.');
-          } else if (inventoryResponse.status !== 404) {
-            throw new Error(`Unable to load dashboard inventory sources: ${inventoryResponse.status}`);
-          } else {
-            progress.log('No separate inventory metadata was published.');
           }
           const workflowSource = sources.workflows && typeof sources.workflows === 'object'
             ? /** @type {{ rows?: unknown }} */ (sources.workflows)
