@@ -168,7 +168,7 @@ test("token optimizer observations use the Activity JSONL boundary, not issue te
     "utf8",
   );
   const dashboard = readFileSync(
-    join(root, "dashboard", "site", "dashboard.json"),
+    join(root, "optimization", "dashboard.json"),
     "utf8",
   );
 

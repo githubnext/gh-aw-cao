@@ -829,52 +829,6 @@
         "aggregate": { "values": [{ "field": "event", "as": "events", "reducer": "count" }] }
       },
       {
-        "name": "token-efficiency-opportunities",
-        "intent": "Project stable token-efficiency opportunities from canonical events.",
-        "from": "events",
-        "filter": {
-          "predicates": [{ "field": "event-type", "equals": "token_efficiency.opportunity" }]
-        },
-        "compute": [
-          {
-            "as": "target-repository-link",
-            "function": "concat",
-            "args": [{ "value": "https://github.com/" }, { "field": "target-repo" }]
-          },
-          {
-            "as": "target-workflow-link",
-            "function": "concat",
-            "args": [
-              { "value": "https://github.com/" },
-              { "field": "target-repo" },
-              { "value": "/blob/HEAD/" },
-              { "field": "target-workflow-path" }
-            ]
-          }
-        ],
-        "select": [
-          { "field": "target-organization", "as": "organization" },
-          { "field": "target-repository", "as": "repository" },
-          { "field": "target-workflow-path", "as": "workflow" },
-          { "field": "run" },
-          { "field": "opportunity-id" },
-          { "field": "opportunity-kind" },
-          { "field": "assignment-run" },
-          { "field": "experiment" },
-          { "field": "evidence-window-start" },
-          { "field": "evidence-window-end" },
-          { "field": "evidence-state" },
-          { "field": "evidence-confidence" },
-          { "field": "cost-grain" },
-          { "field": "event-timestamp", "as": "observed-at" },
-          { "field": "safe-output-url", "as": "issue-link" },
-          { "field": "payload-ref", "as": "evidence-link" },
-          { "field": "target-repository-link", "as": "repository-link" },
-          { "field": "target-workflow-link", "as": "workflow-link" },
-          { "field": "run-link" }
-        ]
-      },
-      {
         "name": "token-efficiency-interventions",
         "intent": "Project append-only token-efficiency intervention lifecycle observations from canonical events.",
         "from": "events",
