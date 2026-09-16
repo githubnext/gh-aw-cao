@@ -122,10 +122,16 @@ describe('dashboard DOM provenance', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
       'data-health-collections'
     ]);
-    const rendered = renderDashboardView({ document: authoritativeDashboardDocument, sources: {} });
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources: () => new Promise(() => {})
+    });
     const overview = rendered.querySelector('[data-page-id="overview"]');
     expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
     expect(overview?.querySelector('.dashboard-lazy-view')).toBeNull();
+    expect(overview?.querySelector('.dashboard-view-skeleton')).toBeNull();
+    disposeDashboard(rendered);
   });
 
   it('reports the paginated source shared by the runs page views', () => {

@@ -119,14 +119,20 @@ const FLOOR_SOURCE_NAMES = [
 export function renderFactoryFloorElement(context) {
   const sources = bindFactorySources(context.sources, FLOOR_SOURCE_NAMES, {
     pageId: context.pageId,
+    viewId: context.viewId,
+    viewIndex: context.viewIndex,
+    sourceNames: context.sourceNames,
     queryContext: context.queryContext
   });
   const metrics = createFactoryMetrics(sources);
-  return renderFactoryFloor(
+  const scope = createFactoryScope(metrics);
+  const rendered = renderFactoryFloor(
     sources,
     metrics,
     factoryStationLabel(context.elementConfig),
     context.elementConfig?.animate === 'number',
-    createFactoryScope(metrics)
+    scope
   );
+  scope.bind(rendered);
+  return rendered;
 }

@@ -34,7 +34,7 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
 /**
  * @param {unknown} page
  * @param {string} pageId
- * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string }} [options]
  * @returns {{ aliases: string[], queries: Array<Record<string, unknown>>, replacedSources: string[] }}
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
@@ -55,6 +55,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   const replacedSources = new Set();
 
   views.forEach((view, viewIndex) => {
+    if (options.viewId && (!isPlainObject(view) || view.id !== options.viewId)) return;
     const sources = getViewSources(view);
     if (sources.length === 0) return;
     const viewData = isPlainObject(view) && isPlainObject(view.data)

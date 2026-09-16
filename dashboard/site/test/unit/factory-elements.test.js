@@ -41,6 +41,8 @@ afterEach(resetSourceStore);
 function context(element, sources, elementConfig) {
   return {
     pageId: 'overview',
+    viewId: element === 'factory-header' ? 'overview-header' : 'overview-floor',
+    viewIndex: element === 'factory-header' ? 0 : 1,
     title: element === 'factory-header' ? 'How are we doing?' : 'Factory floor',
     sourceNames: Object.keys(sources),
     sources,
@@ -112,13 +114,13 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
 });
 
 it('renders both elements immediately and updates only widgets whose query resolves', async () => {
-  /** @type {Array<{ name: string, pageId?: string }>} */
+  /** @type {Array<{ name: string, pageId?: string, viewId?: string }>} */
   const requests = [];
   /** @type {Map<string, (value: import('../../src/presenter.js').LogicalSourceInput) => void>} */
   const resolvers = new Map();
   configureSourceLoader((name, options) => {
-    requests.push({ name, pageId: options?.pageId });
-    return new Promise((resolve) => resolvers.set(name, resolve));
+    requests.push({ name, pageId: options?.pageId, viewId: options?.viewId });
+    return new Promise((resolve) => resolvers.set(`${options?.viewId}:${name}`, resolve));
   });
 
   const header = renderUiElement('factory-header', context('factory-header', {}));
@@ -134,6 +136,8 @@ it('renders both elements immediately and updates only widgets whose query resol
     'overview-run-summary',
     'overview-factory-status',
     'overview-rhythm',
+    'overview-outcome-summary',
+    'overview-run-summary',
     'overview-dispatch-summary',
     'overview-delivery-summary',
     'overview-value-summary',
@@ -142,13 +146,15 @@ it('renders both elements immediately and updates only widgets whose query resol
   ]);
   expect(requests.every(({ pageId }) => pageId === 'overview')).toBe(true);
 
-  resolvers.get('overview-run-summary')?.(source('overview-run-summary', [{
+  const runSummary = source('overview-run-summary', [{
     'successful-runs': 3,
     'failed-runs': 1,
     'active-runs': 2,
     'active-live': 1,
     'active-review': 1
-  }]));
+  }]);
+  resolvers.get('overview-header:overview-run-summary')?.(runSummary);
+  resolvers.get('overview-floor:overview-run-summary')?.(runSummary);
   await Promise.resolve();
   await Promise.resolve();
 
@@ -156,4 +162,27 @@ it('renders both elements immediately and updates only widgets whose query resol
   expect(floor?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Successful runs31 failed');
   expect(floor?.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(false);
   expect(floor?.querySelector('.factory-station:nth-child(3)')?.classList.contains('factory-station-pending')).toBe(true);
+});
+
+it('stops updating an element after its rendered root is removed', async () => {
+  const first = renderUiElement('factory-header', context('factory-header', {
+    'overview-outcome-summary': source('overview-outcome-summary', []),
+    'overview-run-summary': source('overview-run-summary', [{ 'active-runs': 0 }]),
+    'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'First status' }]),
+    'overview-rhythm': source('overview-rhythm', [{ rhythm }])
+  }));
+  if (!first) throw new Error('Expected the factory header element.');
+  document.body.append(first);
+  first.remove();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  renderUiElement('factory-header', context('factory-header', {
+    'overview-outcome-summary': source('overview-outcome-summary', []),
+    'overview-run-summary': source('overview-run-summary', [{ 'active-runs': 1 }]),
+    'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Second status' }]),
+    'overview-rhythm': source('overview-rhythm', [{ rhythm }])
+  }));
+
+  expect(first.querySelector('h2')?.textContent).toBe('First status');
+  expect(first.querySelector('.factory-running')?.textContent).toBe('Actions activity observed');
 });

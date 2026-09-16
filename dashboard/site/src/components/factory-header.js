@@ -75,8 +75,14 @@ const HEADER_SOURCE_NAMES = [
 export function renderFactoryHeaderElement(context) {
   const sources = bindFactorySources(context.sources, HEADER_SOURCE_NAMES, {
     pageId: context.pageId,
+    viewId: context.viewId,
+    viewIndex: context.viewIndex,
+    sourceNames: context.sourceNames,
     queryContext: context.queryContext
   });
   const metrics = createFactoryMetrics(sources);
-  return renderFactoryHeader(sources, metrics, createFactoryScope(metrics));
+  const scope = createFactoryScope(metrics);
+  const rendered = renderFactoryHeader(sources, metrics, scope);
+  scope.bind(rendered);
+  return rendered;
 }

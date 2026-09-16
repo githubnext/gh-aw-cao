@@ -4,6 +4,7 @@
 
 import { batch, effect, state } from '../reactive.js';
 import { publishSource, requestSource, sourceState } from '../source-store.js';
+import { dashboardViewAliasName } from '../data/queries/view-payload-compiler.js';
 
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ rows: () => Row[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
@@ -41,19 +42,29 @@ const DEFAULT_STATION_LABELS = {
  * worker results settle and update only the widgets that consume each result.
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string[]} names
- * @param {{ pageId?: string, queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'] }} [request]
+ * @param {{ pageId?: string, viewId?: string, viewIndex?: number, sourceNames?: string[], queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'] }} [request]
  * @returns {SourceBindings}
  */
 export function bindFactorySources(sources, names, request) {
   batch(() => {
-    for (const name of names) {
+    for (const [sourceIndex, name] of names.entries()) {
       const source = sources[name];
-      if (source && Array.isArray(source.rows)) publishSource(name, source);
-      else requestSource(name, request);
+      const declaredSourceIndex = request?.sourceNames?.indexOf(name) ?? -1;
+      const effectiveSourceIndex = declaredSourceIndex >= 0 ? declaredSourceIndex : sourceIndex;
+      const bindingKey = request?.pageId && request.viewId
+        ? dashboardViewAliasName(request.pageId, { id: request.viewId }, request.viewIndex ?? 0, name, effectiveSourceIndex)
+        : name;
+      if (source && Array.isArray(source.rows)) publishSource(name, source, bindingKey);
+      else requestSource(name, { ...request, sourceIndex: effectiveSourceIndex, bindingKey });
     }
   });
   return Object.fromEntries(names.map((name) => {
-    const entryState = sourceState(name);
+    const declaredSourceIndex = request?.sourceNames?.indexOf(name) ?? -1;
+    const effectiveSourceIndex = declaredSourceIndex >= 0 ? declaredSourceIndex : names.indexOf(name);
+    const bindingKey = request?.pageId && request.viewId
+      ? dashboardViewAliasName(request.pageId, { id: request.viewId }, request.viewIndex ?? 0, name, effectiveSourceIndex)
+      : name;
+    const entryState = sourceState(bindingKey);
     return [name, {
       rows: () => entryState.get().source?.rows ?? [],
       pending: () => entryState.get().status === 'loading',
@@ -112,7 +123,26 @@ export function createFactoryScope(metrics) {
         : next
     ));
   }, { signal: lifetime.signal });
-  return { signal: lifetime.signal, motion };
+  return {
+    signal: lifetime.signal,
+    motion,
+    /** @param {HTMLElement} element */
+    bind(element) {
+      if (typeof MutationObserver !== 'function') return;
+      let wasConnected = element.isConnected;
+      const observer = new MutationObserver((records) => {
+        if (element.isConnected) {
+          wasConnected = true;
+        } else if (wasConnected || records.some((record) => (
+          [...record.addedNodes].some((node) => node === element || (node instanceof Element && node.contains(element)))
+        ))) {
+          lifetime.abort();
+        }
+      });
+      observer.observe(element.ownerDocument, { childList: true, subtree: true });
+      lifetime.signal.addEventListener('abort', () => observer.disconnect(), { once: true });
+    }
+  };
 }
 
 /**

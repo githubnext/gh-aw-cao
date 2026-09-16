@@ -38,6 +38,23 @@ it('compiles distinct aliases when two views filter the same source differently'
   expect(results[dashboardViewAliasName('operations', page.views[1], 1, 'runs')].rows).toEqual([sources.runs.rows[1]]);
 });
 
+it('compiles only the independently requested view payload', () => {
+  const page = {
+    views: [
+      { id: 'header', data: { sources: ['runs', 'outcomes'] } },
+      { id: 'floor', data: { sources: ['runs', 'dispatches'] } }
+    ]
+  };
+
+  const payload = compileDashboardViewPayloadQueries(page, 'overview', { viewId: 'floor' });
+
+  expect(payload.aliases).toEqual([
+    dashboardViewAliasName('overview', page.views[1], 1, 'runs', 0),
+    dashboardViewAliasName('overview', page.views[1], 1, 'dispatches', 1)
+  ]);
+  expect(payload.aliases.every((alias) => alias.includes(':floor:'))).toBe(true);
+});
+
 it('binds every named drill argument to a worker query predicate and fails closed when missing', () => {
   const page = {
     views: [{

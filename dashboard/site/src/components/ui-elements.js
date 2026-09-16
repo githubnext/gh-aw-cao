@@ -43,6 +43,7 @@ import { renderPanel } from './panel.js';
  *   titleLink?: Record<string, unknown>,
  *   element?: string,
  *   viewId?: string,
+ *   viewIndex?: number,
  *   elementConfig?: { body?: string, sections?: string[], section?: string, labels?: Record<string, unknown>, animate?: string },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext

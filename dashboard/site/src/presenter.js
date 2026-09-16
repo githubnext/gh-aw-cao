@@ -218,6 +218,7 @@ export function renderDashboard(input) {
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
       const resolvedPage = () => pages[pageIndex] ?? pages.find((candidate) => candidate.id === pageId);
       if (!resolvedPage()) return null;
+      const rendersBeforePageSources = pageUsesIndependentSourceElements(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => {
         const page = resolvedPage();
@@ -230,12 +231,23 @@ export function renderDashboard(input) {
             evaluatedAt
           ));
         }
-        return showInitialLoadingSkeleton
+        return showInitialLoadingSkeleton && !rendersBeforePageSources
           ? renderPageLoadingSkeleton(page)
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
       };
       if (input.loadPageSources) {
         options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
+        if (rendersBeforePageSources) {
+          const renderedPage = render(sources);
+          void input.loadPageSources(pageId, options)
+            .then((pageSources) => options.renderUpdate(render(pageSources)))
+            .catch((error) => {
+              if (!options.signal?.aborted) {
+                console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
+              }
+            });
+          return renderedPage;
+        }
         return input.loadPageSources(pageId, options).then(render);
       }
       const renderedPage = render(sources);
@@ -262,6 +274,25 @@ export function renderDashboard(input) {
     dashboardHorizon.dispose();
   });
   return root;
+}
+
+/**
+ * Pages composed entirely from independently bound elements can mount before
+ * their companion page subscription resolves.
+ * @param {PresentableBuiltInPage | PresentableCustomPage | undefined} page
+ * @param {Array<Record<string, unknown>>} reusableViews
+ */
+function pageUsesIndependentSourceElements(page, reusableViews) {
+  if (!page) return false;
+  const reusableById = new Map(reusableViews.map((view) => [view.id, view]));
+  const configuredViews = page.kind === 'built-in' ? page.definition?.views : page.views;
+  if (!Array.isArray(configuredViews) || configuredViews.length === 0) return false;
+  return configuredViews.every((configured) => {
+    const view = typeof configured === 'string' ? reusableById.get(configured) : configured;
+    return isPlainObject(view)
+      && typeof view.element === 'string'
+      && elementLoadsSourcesAsync(view.element);
+  });
 }
 
 /** @param {HTMLElement} root */
@@ -1710,6 +1741,7 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
     routeParameter,
     queryContext,
     viewId: typeof view.id === 'string' ? view.id : undefined,
+    viewIndex,
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag
   });
