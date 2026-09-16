@@ -329,7 +329,7 @@ export function validateDashboardDocument(source) {
 /**
  * Validate runtime logical-source relationships that cannot be expressed in the dashboard document.
  *
- * @param {Record<string, { rows?: unknown[] } | undefined>} sources
+ * @param {Record<string, { rows?: unknown } | undefined>} sources
  * @returns {{ ok: true, errors: [] } | { ok: false, errors: ValidationError[] }}
  */
 export function validateLogicalSources(sources) {
@@ -431,6 +431,7 @@ export function validateLogicalSources(sources) {
 
 const DETECTION_BOOLEAN_VALUES = ['true', 'false'];
 const DETECTION_TRISTATE_VALUES = [...DETECTION_BOOLEAN_VALUES, 'unknown'];
+/** @type {Record<string, number>} */
 const DETECTION_ATTENTION_PRIORITIES = {
   threat: 1,
   'tooling-failure': 2,
@@ -441,7 +442,7 @@ const DETECTION_ATTENTION_PRIORITIES = {
 };
 
 /**
- * @param {unknown[] | undefined} rows
+ * @param {unknown} rows
  * @param {ValidationError[]} errors
  */
 function validateDetectionObservationRows(rows, errors) {
@@ -494,8 +495,10 @@ function validateDetectionObservationRows(rows, errors) {
     ].includes('true');
     const state = candidate['detection-state'];
     const usableVerdictPercent = candidate['usable-verdict-percent'];
+    const normalizedWarningCount = typeof warningCount === 'number' ? warningCount : Number.NaN;
+    const validWarningCount = Number.isInteger(normalizedWarningCount) && normalizedWarningCount >= 0;
 
-    if (![0, 100].includes(usableVerdictPercent) ||
+    if ((usableVerdictPercent !== 0 && usableVerdictPercent !== 100) ||
         usableVerdictPercent !== (verdictAvailable ? 100 : 0)) {
       errors.push(createError(
         ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
@@ -510,7 +513,7 @@ function validateDetectionObservationRows(rows, errors) {
         `${path}.detection-count`
       ));
     }
-    if (!Number.isInteger(warningCount) || warningCount < 0) {
+    if (!validWarningCount) {
       errors.push(createError(
         ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
         'inspection-warning-count must be a non-negative integer.',
@@ -525,7 +528,8 @@ function validateDetectionObservationRows(rows, errors) {
         `${path}.job-duration-seconds`
       ));
     }
-    if (DETECTION_ATTENTION_PRIORITIES[state] !== candidate['attention-priority']) {
+    if (typeof state !== 'string' ||
+        DETECTION_ATTENTION_PRIORITIES[state] !== candidate['attention-priority']) {
       errors.push(createError(
         ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
         'attention-priority must match the canonical detection-state priority.',
@@ -535,14 +539,14 @@ function validateDetectionObservationRows(rows, errors) {
 
     const stateIsConsistent = (
       (state === 'threat' && verdictAvailable && threatDetected) ||
-      (state === 'degraded' && verdictAvailable && !threatDetected && Number.isInteger(warningCount) && warningCount > 0) ||
-      (state === 'clean' && verdictAvailable && !threatDetected && warningCount === 0) ||
+      (state === 'degraded' && verdictAvailable && !threatDetected && validWarningCount && normalizedWarningCount > 0) ||
+      (state === 'clean' && verdictAvailable && !threatDetected && normalizedWarningCount === 0) ||
       (state === 'tooling-failure' && !verdictAvailable) ||
       (state === 'skipped' && !verdictAvailable &&
         candidate['job-conclusion'] === 'skipped' &&
         candidate['detection-applicable'] === 'false' &&
         candidate['detection-executed'] === 'false') ||
-      (state === 'unknown' && !verdictAvailable && !threatDetected && warningCount === 0)
+      (state === 'unknown' && !verdictAvailable && !threatDetected && normalizedWarningCount === 0)
     );
     if (!stateIsConsistent || (threatDetected && state !== 'threat')) {
       errors.push(createError(
