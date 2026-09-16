@@ -2166,70 +2166,11 @@ describe('computed field vocabulary', () => {
     ])).toEqual([{ value: 'xy' }]);
   });
 
-  it('projects structured distinct values for worker-owned facet controls without changing row grain', () => {
+  it('returns structured distinct values for worker-owned facet controls', () => {
     expect(tidy([{ state: 'Done' }, { state: 'Todo' }, { state: 'Done' }], [{
-      op: 'project',
+      op: 'summarize',
       values: [{ field: 'state', as: 'states', reducer: 'distinct-values' }]
-    }])).toEqual([
-      { state: 'Done', states: ['Done', 'Todo'] },
-      { state: 'Todo', states: ['Done', 'Todo'] },
-      { state: 'Done', states: ['Done', 'Todo'] }
-    ]);
-  });
-
-  it('executes support projections as part of declared dashboard queries', () => {
-    const result = executeDashboardQuery({
-      name: 'work-items-with-options',
-      from: 'work-items',
-      project: {
-        values: [
-          { field: 'state', as: 'state-options', reducer: 'distinct-values' },
-          { field: 'id', as: 'total-count', reducer: 'count' }
-        ]
-      }
-    }, {
-      'work-items': {
-        source: 'work-items',
-        rows: [
-          { id: '1', state: 'Done' },
-          { id: '2', state: 'Todo' },
-          { id: '3', state: 'Done' }
-        ],
-        metadata: metadata('work-items')
-      }
-    });
-
-    expect(result.rows).toEqual([
-      { id: '1', state: 'Done', 'state-options': ['Done', 'Todo'], 'total-count': 3 },
-      { id: '2', state: 'Todo', 'state-options': ['Done', 'Todo'], 'total-count': 3 },
-      { id: '3', state: 'Done', 'state-options': ['Done', 'Todo'], 'total-count': 3 }
-    ]);
-  });
-
-  it('rejects malformed support projections before reading source rows', () => {
-    let reads = 0;
-    const source = {
-      source: 'work-items',
-      get rows() {
-        reads += 1;
-        return [{ id: '1', state: 'Done' }];
-      },
-      metadata: metadata('work-items')
-    };
-    const result = executeDashboardQueries([{
-      name: 'work-options',
-      from: 'work-items',
-      project: {
-        values: Array.from(
-          { length: DASHBOARD_QUERY_LIMITS['max-project-values'] + 1 },
-          (_, index) => ({ field: 'state', as: `state-options-${index}`, reducer: 'distinct-values' })
-        )
-      }
-    }], { 'work-items': source }, ['work-options'])['work-options'];
-
-    expect(result.metadata.availability).toBe('unavailable');
-    expect(result.metadata['query-diagnostic']).toContain('project values must contain between');
-    expect(reads).toBe(0);
+    }])).toEqual([{ states: ['Done', 'Todo'] }]);
   });
 
   it('executes declared queries through the data worker request handler', () => {
