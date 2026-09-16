@@ -160,6 +160,50 @@ test("CAO Evolution compiler security worker runs the full validation suite", ()
   assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-maintenance-compiler-security.md"));
 });
 
+test("CAO Evolution compiler security worker reports only target-owned actionable findings", () => {
+  const source = workflow("cao-evolution-compiler-security.md");
+  const fixtures = JSON.parse(readFileSync(
+    join(root, "tests", "fixtures", "cao-evolution-compiler-security-actionability.json"),
+    "utf8",
+  ));
+
+  assert.deepEqual(fixtures.map(({ name }) => name), [
+    "missing Grant policy only",
+    "upstream image findings only",
+    "mixed target and upstream findings",
+  ]);
+  for (const fixture of fixtures) {
+    if (fixture.evidence.grantPolicy === "missing") {
+      assert.match(source, /grantPolicyAvailable/);
+      assert.match(source, /Grant license policy: %s/);
+      assert.match(source, /absent target `\.grant\.yaml` as unavailable license-policy evidence/);
+      assert.match(source, /not authorization to add or decide repository license policy/);
+      assert.equal(fixture.expected.mayCreatePolicy, false, fixture.name);
+    }
+    if (fixture.evidence.findings.some(({ category, targetControlsPin }) => category === "container" && targetControlsPin === false)) {
+      assert.match(source, /Attribute every container finding to the component and repository that controls the vulnerable image or the editable pin/);
+      assert.match(source, /Compiler-selected or compiler-generated runtime, firewall, proxy, MCP, Node, and base images are upstream-owned/);
+    }
+    if (fixture.expected.targetIssue === false) {
+      assert.match(source, /When no target-owned actionable finding remains, call `noop`/);
+      if (fixture.expected.disposition === "noop-or-upstream-route") {
+        assert.match(source, /If the authorized safe-output configuration supports the owning upstream repository, route an upstream-owned finding there/);
+      }
+    } else {
+      assert.equal(fixture.expected.targetFindingCount, 1, fixture.name);
+      assert.equal(fixture.expected.upstreamContextCount, 1, fixture.name);
+      assert.match(source, /Create a target remediation issue only when at least one target-owned actionable finding remains/);
+      assert.match(source, /Keep upstream-owned findings only as bounded context in an issue that already contains target-owned actionable findings/);
+      assert.match(source, /Fix only the target-owned actionable gh-aw compiler and security findings identified in this issue/);
+    }
+  }
+  assert.match(source, /Do not add or change `\.grant\.yaml` unless a separately reviewed target license-policy decision already requires it/);
+  assert.match(source, /Do not rebuild, modify, or make dependency decisions for upstream images or components/);
+  assert.match(source, /rerunning the full compiler and security scan confirms that the target-owned actionable findings are resolved/);
+  assert.doesNotMatch(source, /merge only after the full compiler and security scan passes/);
+  assert.doesNotMatch(source, /Add `\.grant\.yaml`/);
+});
+
 test("CAO Evolution failures worker closes target AW failure issues as duplicates", () => {
   const source = workflow("cao-evolution-failures-investigator.md");
 

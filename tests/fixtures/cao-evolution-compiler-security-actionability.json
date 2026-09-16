@@ -1,0 +1,62 @@
+[
+  {
+    "name": "missing Grant policy only",
+    "evidence": {
+      "grantPolicy": "missing",
+      "findings": []
+    },
+    "expected": {
+      "targetIssue": false,
+      "disposition": "noop",
+      "licenseEvidence": "unavailable",
+      "mayCreatePolicy": false
+    }
+  },
+  {
+    "name": "upstream image findings only",
+    "evidence": {
+      "grantPolicy": "available",
+      "findings": [
+        {
+          "category": "container",
+          "image": "ghcr.io/github/gh-aw-firewall/squid:0.28.16",
+          "owner": "github/gh-aw-firewall",
+          "targetControlsPin": false
+        }
+      ]
+    },
+    "expected": {
+      "targetIssue": false,
+      "disposition": "noop-or-upstream-route",
+      "targetRemediation": false
+    }
+  },
+  {
+    "name": "mixed target and upstream findings",
+    "evidence": {
+      "grantPolicy": "missing",
+      "findings": [
+        {
+          "category": "actionlint",
+          "workflow": ".github/workflows/example.md",
+          "owner": "target",
+          "targetControlsSource": true
+        },
+        {
+          "category": "container",
+          "image": "ghcr.io/github/gh-aw-mcpg:v0.4.21",
+          "owner": "github/gh-aw-mcpg",
+          "targetControlsPin": false
+        }
+      ]
+    },
+    "expected": {
+      "targetIssue": true,
+      "targetFindingCount": 1,
+      "upstreamContextCount": 1,
+      "agentPromptScope": "target-owned-only",
+      "mayCreatePolicy": false,
+      "mayRebuildUpstreamImage": false
+    }
+  }
+]
