@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import YAML from "yaml";
 
 const root = new URL("../../", import.meta.url);
 
@@ -58,6 +59,12 @@ test("experimental Codebase Model skill remains repository-local", async () => {
     readFile(new URL("skills/codebase-model/SKILL.md", root), "utf8"),
     { code: "ENOENT" },
   );
+});
+
+test("Codebase Model declares the supported schema version", async () => {
+  const model = YAML.parse(await readFile(new URL("CODEBASE.yml", root), "utf8"));
+
+  assert.equal(model.spec, "cbm/v0.1");
 });
 
 test("Copilot extension uses the current Canvas provider contract", async () => {

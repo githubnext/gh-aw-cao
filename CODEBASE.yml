@@ -148,9 +148,6 @@ boundaries:
       - additional_target_discovery
       - further_work_dispatch
       - mode_widening
-  - subject: target_repository
-    must_not_grant:
-      - control_plane_authority
   - subject: dashboard_ui
     may_depend_on:
       - bounded_worker_query_payloads
@@ -165,6 +162,7 @@ invariants:
   - "Credentials remain GitHub Actions secrets and are resolved only inside a run."
   - "Missing policy, authority, credentials, access, or required evidence MUST fail closed."
   - "GitHub tools available to agents are read-only; repository changes use only workflow-declared safe outputs."
+  - "Target repository files MUST NOT grant, narrow, or revoke control-plane authority."
   - "Workers process exactly one dispatched target and MUST NOT discover targets, dispatch work, or widen mode."
   - "Dispatch envelopes include identity, mode, review destination, and provenance; they MUST NOT include credentials."
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
