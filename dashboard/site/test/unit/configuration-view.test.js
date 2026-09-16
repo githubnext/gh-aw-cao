@@ -56,27 +56,9 @@ describe('Configuration dashboard view', () => {
       .toContain('Periodic Background Sync is not supported');
   });
 
-  it('renders browser settings and local database totals on the full settings page', () => {
+  it('renders browser settings without local database queries', () => {
     localStorage.clear();
-    const rendered = renderConfigurationView({
-      ...context({ document: { version: 1 }, raw: '', diagnostics: [] }),
-      sourceNames: [
-        'configuration-policy',
-        'database-package-count',
-        'database-repository-count',
-        'database-workflow-count',
-        'database-run-count',
-        'database-event-count'
-      ],
-      sources: {
-        ...context({ document: { version: 1 }, raw: '', diagnostics: [] }).sources,
-        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
-        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
-        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
-        'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
-      }
-    });
+    const rendered = renderConfigurationView(context({ document: { version: 1 }, raw: '', diagnostics: [] }));
 
     if (!rendered) throw new Error('configuration view did not render');
     const root = document.createElement('div');
@@ -88,12 +70,8 @@ describe('Configuration dashboard view', () => {
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-theme-value="dark"]')).click();
     expect(root.dataset.theme).toBe('dark');
     expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
-    expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
-    expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
-    const transactions = rendered.querySelector('.configuration-transactions-button');
-    expect(transactions?.textContent).toContain('View retained transactions');
-    expect(transactions?.getAttribute('href')).toBe('#page-transactions');
-    expect(transactions?.getAttribute('aria-label')).toBe('View retained transactions table');
+    expect(rendered.querySelector('.configuration-database-counts')).toBeNull();
+    expect(rendered.querySelector('.reset-dashboard-trigger')).toBeNull();
     const debugSettings = rendered.querySelector('.configuration-debug-settings');
     expect(debugSettings).toBe(rendered.lastElementChild);
     const debugLink = debugSettings?.querySelector('a');
@@ -214,6 +192,7 @@ describe('Configuration dashboard view', () => {
     expect(page.views.every((/** @type {{ mark: string }} */ view) => view.mark !== 'chart')).toBe(true);
     expect(page.views).toHaveLength(1);
     expect(page.views[0].id).toBe('configuration-policy');
+    expect(page.views[0].data.sources).toEqual(['configuration-policy']);
     expect(dashboard['cli-actions']
       .filter((/** @type {{ id: string }} */ action) => ['update-repository', 'upgrade-repository'].includes(action.id))
       .every((/** @type {{ placement: string }} */ action) => action.placement === 'view')).toBe(true);
@@ -228,14 +207,7 @@ describe('Configuration dashboard view', () => {
       title: view.title,
       description: view.description,
       sourceNames: view.data.sources,
-      sources: {
-        ...context({ document: { version: 1 }, raw: '', diagnostics: [] }).sources,
-        'database-package-count': { source: 'database-package-count', rows: [{ packages: 0 }], metadata },
-        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 0 }], metadata },
-        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 0 }], metadata },
-        'database-run-count': { source: 'database-run-count', rows: [{ runs: 0 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 0 }], metadata }
-      }
+      sources: context({ document: { version: 1 }, raw: '', diagnostics: [] }).sources
     });
 
     expect(rendered?.classList.contains('configuration-view')).toBe(true);

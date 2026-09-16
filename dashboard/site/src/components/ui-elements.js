@@ -25,6 +25,7 @@ import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { renderFactoryOverview } from './factory-overview.js';
+import { renderLocalDatabaseView } from './local-database-view.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -73,7 +74,8 @@ const ELEMENT_RENDERERS = new Map([
   ['work-project-view', renderWorkProjectView],
   ['agent-marketplace-view', renderAgentMarketplaceView],
   ['insights-overview', renderInsightsOverview],
-  ['outcomes-overview', renderFactoryOverview]
+  ['outcomes-overview', renderFactoryOverview],
+  ['local-database', renderLocalDatabaseView]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
@@ -88,7 +90,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'outcomes-overview']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'outcomes-overview', 'local-database']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first

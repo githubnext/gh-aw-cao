@@ -5766,6 +5766,23 @@
         "description": "Inspect retained dashboard ingestion transactions.",
         "views": [
           {
+            "id": "transaction-local-database",
+            "title": "Local database",
+            "description": "Inspect and manage records retained in this browser.",
+            "data": {
+              "sources": [
+                "database-package-count",
+                "database-repository-count",
+                "database-workflow-count",
+                "database-run-count",
+                "database-event-count"
+              ]
+            },
+            "mark": "element",
+            "element": "local-database",
+            "layout": "full"
+          },
+          {
             "id": "transaction-ingestion-trend",
             "title": "Run ingestion coverage",
             "description": "Known factory runs compared with runs that include imported session data at each ingestion transaction.",
@@ -6478,12 +6495,7 @@
             "description": "Change policy values, then copy the updated JSON for review and commit.",
             "data": {
               "sources": [
-                "configuration-policy",
-                "database-package-count",
-                "database-repository-count",
-                "database-workflow-count",
-                "database-run-count",
-                "database-event-count"
+                "configuration-policy"
               ]
             },
             "mark": "element",
@@ -7083,6 +7095,7 @@
         "pages": [
           "workflows",
           "runs",
+          "transactions",
           "engines-models",
           "firewall",
           "mcps",

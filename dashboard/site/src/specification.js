@@ -91,6 +91,7 @@ export const VIEW_ELEMENT_VALUES = [
   'outcome-detail-section',
   'configuration-policy',
   'configuration-actions',
+  'local-database',
   'work-project-view',
   'agent-marketplace-view',
   'insights-overview',

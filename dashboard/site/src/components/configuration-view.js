@@ -4,7 +4,6 @@ import { capturedConsoleLogText } from '../console-log-capture.js';
 import { fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
-import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import { renderThemeSettings } from './theme-settings.js';
 import { renderSettingsCliActions } from './cli-actions.js';
 import {
@@ -362,54 +361,6 @@ function renderAutomaticDataUpdatesSetting() {
   return section;
 }
 
-/** @param {import('./ui-elements.js').ElementRenderContext} context */
-function renderDatabaseSetting(context) {
-  const fields = /** @type {const} */ ([
-    ['database-package-count', 'packages', 'Packages'],
-    ['database-repository-count', 'repositories', 'Repositories'],
-    ['database-workflow-count', 'workflows', 'Workflows'],
-    ['database-run-count', 'runs', 'Runs'],
-    ['database-event-count', 'events', 'Events']
-  ]);
-  const available = fields.every(([sourceName, field]) => context.sources[sourceName]?.rows?.[0]?.[field] !== undefined);
-  return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-database-heading' },
-    h('div', { className: 'configuration-browser-settings-heading' },
-      h('div', null,
-        h('h3', { id: 'configuration-database-heading' }, 'Local database'),
-        h('p', null, 'Records currently stored in this browser.')
-      )
-    ),
-    available
-      ? h('div', { className: 'configuration-database-counts' },
-        fields.map(([sourceName, field, label]) => h('span', null,
-          h('strong', null, String(context.sources[sourceName]?.rows?.[0]?.[field] ?? 0)),
-          h('small', null, label)
-        ))
-      )
-      : h('p', { className: 'configuration-browser-setting-status' }, 'Database counts unavailable.')
-  );
-}
-
-function renderLocalDataSetting() {
-  const transactions = h('a', {
-    href: '#page-transactions',
-    className: 'configuration-transactions-button',
-    'aria-label': 'View retained transactions table',
-  }, 'View retained transactions');
-  return h('section', { className: 'configuration-browser-settings configuration-danger-settings', 'aria-labelledby': 'configuration-local-data-heading' },
-    h('div', { className: 'configuration-browser-settings-heading' },
-      h('div', null,
-        h('h3', { id: 'configuration-local-data-heading' }, 'Local data'),
-        h('p', null, 'Delete cached dashboard data and browser preferences from this device.')
-      )
-    ),
-    h('div', { className: 'configuration-local-data-actions' },
-      transactions,
-      renderResetDashboardControl()
-    )
-  );
-}
-
 function renderDebuggingSettings() {
   if (dashboardInstalled()) return null;
 
@@ -462,8 +413,6 @@ export function renderConfigurationView(context) {
     renderThemeSettings(),
     renderSettingsCliActions(),
     renderAutomaticDataUpdatesSetting(),
-    renderDatabaseSetting(context),
-    renderLocalDataSetting(),
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)
       : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.'),

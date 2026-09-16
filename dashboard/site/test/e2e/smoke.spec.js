@@ -530,7 +530,7 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
-test('Transactions is a responsive full-view interactive lazy table opened from Settings', async ({ page }) => {
+test('Transactions includes local database controls and a responsive transaction table', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -557,23 +557,29 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
         freshness: 'fresh',
         availability: 'available'
       };
-      const sources = { 'transactions-table': { source: 'transactions-table', rows, metadata } };
+      const sources = {
+        'transactions-table': { source: 'transactions-table', rows, metadata },
+        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
+        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
+        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
+        'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
+        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
+      };
       window.location.hash = '#page-overview';
       document.querySelector('#root').append(renderDashboard({ document: ${JSON.stringify(documentModel)}, sources }));
     </script>
   `);
 
   const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
-  await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Settings' }).click();
-  const transactionsLink = page.getByRole('link', { name: 'View retained transactions table' });
-  await expect(transactionsLink).toBeVisible();
-  await transactionsLink.click();
+  await dataNavigation.getByRole('link', { name: 'Transactions' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="transactions"]');
   const view = transactionsPage.locator('[data-view-layout="full-view"]');
   const scroll = view.locator('.table-scroll');
+  await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toBeVisible();
+  await expect(transactionsPage.locator('.configuration-database-counts')).toContainText('13Events');
+  await expect(transactionsPage.locator('.reset-dashboard-trigger')).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
