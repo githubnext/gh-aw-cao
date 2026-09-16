@@ -489,14 +489,14 @@ describe('dashboard document validation', () => {
     ]));
   });
 
-  it('defines firewall as one full-view lazy domain table', () => {
+  it('defines firewall with a most-blocked pie chart and full-view lazy domain table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Data'
     ).pages).toContain('firewall');
     expect(firewall.sections).toBeUndefined();
-    expect(firewall.views).toHaveLength(1);
+    expect(firewall.views).toHaveLength(2);
     expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'firewall-domain-totals',
       intent: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
@@ -511,7 +511,34 @@ describe('dashboard document validation', () => {
         ]
       }
     }));
-    const [domains] = firewall.views;
+    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'firewall-most-blocked-domains',
+      intent: 'Highlight the domains with the most blocked firewall requests.',
+      from: 'firewall-domain-totals',
+      'order-by': [
+        { field: 'blocked', direction: 'desc' },
+        { field: 'domain', direction: 'asc' }
+      ],
+      limit: 10
+    }));
+    const [mostBlocked, domains] = firewall.views;
+    expect(mostBlocked).toMatchObject({
+      id: 'security-firewall-most-blocked-domains',
+      mark: 'chart',
+      chart: 'pie',
+      layout: 'full',
+      data: { source: 'firewall-most-blocked-domains' },
+      encoding: {
+        x: { field: 'domain', type: 'nominal', title: 'Domain' },
+        y: {
+          field: 'blocked',
+          type: 'quantitative',
+          aggregate: 'sum',
+          as: 'total-blocked',
+          title: 'Blocked requests'
+        }
+      }
+    });
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
       mark: 'table',

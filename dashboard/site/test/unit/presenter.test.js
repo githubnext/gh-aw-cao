@@ -341,7 +341,7 @@ describe('dashboard DOM provenance', () => {
 });
 
 describe('presenter built-in and custom pages', () => {
-  it('renders aggregated firewall domains in a full-view lazy table', async () => {
+  it('renders the most-blocked domains pie chart and aggregated domain table', async () => {
     const metadata = /** @type {const} */ ({
       'source-id': 'firewall-fixture',
       'source-kind': 'fixture',
@@ -360,12 +360,15 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        'firewall-most-blocked-domains': { source: 'firewall-most-blocked-domains', rows, metadata },
         'firewall-domain-totals': { source: 'firewall-domain-totals', rows, metadata },
         'firewall-policy-rules': { source: 'firewall-policy-rules', rows: [], metadata }
       }
     });
 
     const page = await activatePage(rendered, 'firewall');
+    expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     const text = page?.textContent ?? '';
@@ -383,6 +386,19 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        'firewall-most-blocked-domains': {
+          source: 'firewall-most-blocked-domains',
+          rows: [],
+          metadata: {
+            'source-id': 'firewall-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-05T11:00:00Z',
+            'retrieved-at': '2026-09-05T11:05:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'empty'
+          }
+        },
         'firewall-domain-totals': {
           source: 'firewall-domain-totals',
           rows: [],

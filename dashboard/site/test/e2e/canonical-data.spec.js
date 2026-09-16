@@ -645,7 +645,7 @@ test('data worker returns GitHub API events on initial and navigated requests', 
   }
 });
 
-test('data worker queries firewall domain totals on initial and navigated requests', async ({ page }) => {
+test('data worker queries firewall domain totals and most-blocked domains on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -657,18 +657,25 @@ test('data worker queries firewall domain totals on initial and navigated reques
     };
     const initial = await loadCanonicalDashboardSources(
       `${location.origin}/sources.json`,
-      ['firewall-domain-totals'],
+      ['firewall-domain-totals', 'firewall-most-blocked-domains'],
       context
     );
-    const navigated = await loadCanonicalDashboardPage(['firewall-domain-totals'], context);
+    const navigated = await loadCanonicalDashboardPage(
+      ['firewall-domain-totals', 'firewall-most-blocked-domains'],
+      context
+    );
     return { initial, navigated };
   });
 
   for (const payload of [result.initial, result.navigated]) {
-    expect(Object.keys(payload)).toEqual(['firewall-domain-totals']);
+    expect(Object.keys(payload)).toEqual(['firewall-domain-totals', 'firewall-most-blocked-domains']);
     expect(payload['firewall-domain-totals']).toMatchObject({
       rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
       metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domain-totals' }
+    });
+    expect(payload['firewall-most-blocked-domains']).toMatchObject({
+      rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'firewall-most-blocked-domains' }
     });
   }
 });

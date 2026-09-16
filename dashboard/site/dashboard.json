@@ -1176,6 +1176,17 @@
         ]
       },
       {
+        "name": "firewall-most-blocked-domains",
+        "intent": "Highlight the domains with the most blocked firewall requests.",
+        "description": "The ten domains with the highest observed blocked request totals.",
+        "from": "firewall-domain-totals",
+        "order-by": [
+          { "field": "blocked", "direction": "desc" },
+          { "field": "domain", "direction": "asc" }
+        ],
+        "limit": 10
+      },
+      {
         "name": "safe-output-usage",
         "intent": "Show every retained safe output with its identity, disposition, workflow, repository, rollout mode, timestamps, and provenance.",
         "description": "Canonical safe-output outcomes ordered from newest to oldest.",
@@ -3295,6 +3306,22 @@
         "class-name": "firewall-page",
         "description": "Observed firewall domains and aggregate request activity for agent egress.",
         "views": [
+          {
+            "id": "security-firewall-most-blocked-domains",
+            "title": "Most blocked domains",
+            "description": "The ten domains with the highest observed blocked request totals.",
+            "data": {
+              "source": "firewall-most-blocked-domains"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No blocked firewall domains are available for this selection.",
+            "encoding": {
+              "x": { "field": "domain", "type": "nominal", "title": "Domain" },
+              "y": { "field": "blocked", "type": "quantitative", "aggregate": "sum", "as": "total-blocked", "title": "Blocked requests" }
+            }
+          },
           {
             "id": "security-firewall-domains",
             "title": "Domains",
