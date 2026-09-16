@@ -2518,7 +2518,12 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   const fieldName = view.locator('thead > tr:first-child > th').first();
   const summaryCell = view.locator('.table-summary-row > th').first();
   await expect(view).toHaveCount(1);
+  await expect(siteCallout).toBeVisible();
+  await expect(warningCallout).toBeVisible();
+  await expect(summary).toBeVisible();
   await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(warningCallout).toBeHidden();
+  await expect(summary).toBeHidden();
   await expect(pageTitle).toBeVisible();
   await expect(tableFilter).toBeVisible();
   await expect(lazyList).toHaveCount(1);
