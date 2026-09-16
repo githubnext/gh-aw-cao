@@ -3353,11 +3353,11 @@
               { "left": "workflow", "right": "workflow" }
             ],
             "fields": [
-              { "field": "package" },
-              { "field": "package-name" },
-              { "field": "workflow-name" },
-              { "field": "workflow-role" },
-              { "field": "workflow-link" }
+              { "field": "package", "as": "package" },
+              { "field": "package-name", "as": "package-name" },
+              { "field": "workflow-name", "as": "workflow-name" },
+              { "field": "workflow-role", "as": "workflow-role" },
+              { "field": "workflow-link", "as": "workflow-link" }
             ]
           }
         ],
