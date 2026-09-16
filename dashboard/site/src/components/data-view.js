@@ -385,15 +385,13 @@ function renderEntityCardItems(rows, options) {
         }),
         ...(definition.metrics ?? []).flatMap((column) => {
           const rawValue = row[column.field];
-          const value = renderValue(column, rawValue, row);
-          return rawValue !== null && rawValue !== undefined
-            ? [h(
-                'li',
-                { className: 'entity-card-list-metric' },
-                h('strong', null, value),
-                h('span', null, fieldTitle(column))
-              )]
-            : [];
+          if (rawValue === null || rawValue === undefined) return [];
+          return [h(
+            'li',
+            { className: 'entity-card-list-metric' },
+            h('strong', null, renderValue(column, rawValue, row)),
+            h('span', null, fieldTitle(column))
+          )];
         })
       )
     );
@@ -804,28 +802,29 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       icon: 'table',
       title: columns[0] ?? { field: '' },
       labels: columns.slice(1).filter((column) => ['label', 'status', 'active-state', 'mode'].includes(String(column.display))),
-      details: columns.slice(1).filter((column) => (
-        !['label', 'status', 'active-state', 'mode'].includes(String(column.display))
-        && column.type !== 'quantitative'
-      )),
-      metrics: columns.slice(1).filter((column) => column.type === 'quantitative')
+      details: columns.slice(1).filter((column) => !['label', 'status', 'active-state', 'mode'].includes(String(column.display)))
     };
   const quantitativeFields = new Set(columns
     .filter((column) => column.type === 'quantitative')
     .map((column) => column.field));
-  const metricFields = new Set(definition.metrics?.map((field) => field.field));
-  for (const field of definition.details) {
-    if (quantitativeFields.has(field.field)) metricFields.add(field.field);
+  const declaredMetricFields = new Set(definition.metrics?.map((field) => field.field));
+  const visibleDetails = [];
+  const visibleMetrics = [];
+  const seenFields = new Set();
+  for (const field of [...definition.details, ...(definition.metrics ?? [])]) {
+    if (!columnFields.has(field.field) || seenFields.has(field.field)) continue;
+    seenFields.add(field.field);
+    if (quantitativeFields.has(field.field) || declaredMetricFields.has(field.field)) {
+      visibleMetrics.push(field);
+    } else {
+      visibleDetails.push(field);
+    }
   }
   const visibleDefinition = {
     ...definition,
     labels: definition.labels.filter((field) => columnFields.has(field.field)),
-    details: definition.details.filter((field) => columnFields.has(field.field) && !metricFields.has(field.field)),
-    metrics: [...definition.details, ...(definition.metrics ?? [])].filter((field, index, fields) => (
-      columnFields.has(field.field)
-      && metricFields.has(field.field)
-      && fields.findIndex((candidate) => candidate.field === field.field) === index
-    ))
+    details: visibleDetails,
+    metrics: visibleMetrics
   };
   const list = h('ul', {
     className: 'document-list issue-list entity-card-list mobile-table-card-list-items',
