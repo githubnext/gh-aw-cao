@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNotificationService } from '../../src/notification-service.js';
-import { publishWorkerNotification } from '../../src/data-worker.js';
+import { publishWorkerNotification } from '../../src/ingestion-progress.js';
 
 describe('dashboard notification service', () => {
   beforeEach(() => {

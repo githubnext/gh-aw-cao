@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { estimateRemainingTime, startIngestionProgress } from '../../src/data-worker.js';
+import { estimateRemainingTime, startIngestionProgress } from '../../src/ingestion-progress.js';
 
 afterEach(() => {
   vi.useRealTimers();
