@@ -2,24 +2,17 @@ import { injectStyleOnce } from './dom.js';
 
 const MAX_PROGRESS = 0.94;
 const INITIAL_PROGRESS = 0.08;
-const MIN_DELAY = 180;
-const DELAY_VARIANCE = 420;
-const MIN_BURST = 0.08;
-const BURST_VARIANCE = 0.22;
 const COMPLETION_DURATION = 240;
 const activeProgress = new WeakMap();
 
-/** @param {{ bar: HTMLElement, progress: number, timer: number, advancing: boolean }} target @param {{ completed: number, total: number }} state */
-function applyShardState(target, state) {
-  const total = Number(state?.total);
-  const completed = Number(state?.completed);
-  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(completed)) return;
-  window.clearTimeout(target.timer);
-  target.advancing = false;
-  target.progress = Math.max(target.progress, INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS)
-    * Math.min(1, Math.max(0, completed / total)));
-  target.bar.style.transform = `scaleX(${target.progress})`;
-}
+/**
+ * @typedef {{
+ *   id: string,
+ *   phase: 'start' | 'update' | 'complete',
+ *   completed?: number,
+ *   total?: number
+ * }} WorkerLoadingProgressState
+ */
 
 /**
  * @param {Document} document
@@ -68,88 +61,61 @@ function installStyles(document) {
 }`);
 }
 
-/**
- * Starts an indeterminate progress bar and returns its completion control.
- *
- * @param {Document} document
- * @returns {{ complete: () => void }}
- */
-export function startLoadingProgress(document) {
-  installStyles(document);
-
-  let state = activeProgress.get(document);
-  if (state && !state.bar.isConnected) {
-    window.clearTimeout(state.timer);
-    window.clearTimeout(state.completionTimer);
-    activeProgress.delete(document);
-    state = undefined;
-  }
-
-  if (!state) {
-    const bar = document.createElement('div');
-    bar.className = 'loading-progress';
-    bar.setAttribute('aria-hidden', 'true');
-    state = {
-      bar,
-      progress: INITIAL_PROGRESS,
-      timer: 0,
-      advancing: false,
-      completionTimer: 0,
-      tasks: 0,
-    };
-    activeProgress.set(document, state);
-    bar.style.transform = `scaleX(${state.progress})`;
-    document.body.prepend(bar);
-  } else if (state.tasks === 0) {
-    window.clearTimeout(state.completionTimer);
-    state.bar.classList.remove('loading-progress-complete');
-    state.progress = INITIAL_PROGRESS;
-    state.bar.style.transform = `scaleX(${state.progress})`;
-  }
-
-  state.tasks += 1;
-  let completed = false;
-
-  const advance = () => {
-    if (!state.advancing) return;
-    const burst = MIN_BURST + Math.random() * BURST_VARIANCE;
-    state.progress += (MAX_PROGRESS - state.progress) * burst;
-    state.bar.style.transform = `scaleX(${state.progress})`;
-    state.timer = window.setTimeout(advance, MIN_DELAY + Math.random() * DELAY_VARIANCE);
-  };
-
-  if (!state.advancing) {
-    state.advancing = true;
-    state.timer = window.setTimeout(advance, MIN_DELAY + Math.random() * DELAY_VARIANCE);
-  }
-
-  return {
-    complete() {
-      if (completed) return;
-      completed = true;
-      state.tasks -= 1;
-      if (state.tasks > 0) return;
-      window.clearTimeout(state.timer);
-      state.advancing = false;
-      state.timer = 0;
-      state.bar.classList.add('loading-progress-complete');
-      state.bar.style.transform = 'scaleX(1)';
-      state.completionTimer = window.setTimeout(() => {
-        if (state.tasks > 0) return;
-        state.bar.remove();
-        activeProgress.delete(document);
-      }, COMPLETION_DURATION);
-    },
-  };
+/** @param {{ bar: HTMLElement, operations: Map<string, WorkerLoadingProgressState> }} target */
+function renderActiveProgress(target) {
+  const current = [...target.operations.values()].at(-1);
+  const total = Number(current?.total);
+  const completed = Number(current?.completed);
+  const progress = Number.isFinite(total) && total > 0 && Number.isFinite(completed)
+    ? INITIAL_PROGRESS + (MAX_PROGRESS - INITIAL_PROGRESS) * Math.min(1, Math.max(0, completed / total))
+    : INITIAL_PROGRESS;
+  target.bar.style.transform = `scaleX(${progress})`;
 }
 
 /**
- * Applies data-worker progress to the currently visible top progress bar.
+ * Applies data-worker state to the existing top progress bar. The worker owns
+ * every operation's start, determinate updates, and completion.
+ *
  * @param {Document} document
- * @param {{ completed: number, total: number }} state
+ * @param {WorkerLoadingProgressState} state
  */
 export function setLoadingProgressState(document, state) {
-  const active = activeProgress.get(document);
-  if (!active || !active.bar.isConnected) return;
-  applyShardState(active, state);
+  if (!state || typeof state.id !== 'string' || !['start', 'update', 'complete'].includes(state.phase)) return;
+
+  let active = activeProgress.get(document);
+  if (state.phase === 'complete') {
+    if (!active) return;
+    active.operations.delete(state.id);
+    if (active.operations.size > 0) {
+      renderActiveProgress(active);
+      return;
+    }
+    active.bar.classList.add('loading-progress-complete');
+    active.bar.style.transform = 'scaleX(1)';
+    active.completionTimer = window.setTimeout(() => {
+      if (active.operations.size > 0) return;
+      active.bar.remove();
+      activeProgress.delete(document);
+    }, COMPLETION_DURATION);
+    return;
+  }
+
+  installStyles(document);
+  if (!active || !active.bar.isConnected) {
+    const bar = document.createElement('div');
+    bar.className = 'loading-progress';
+    bar.setAttribute('aria-hidden', 'true');
+    active = {
+      bar,
+      operations: new Map(),
+      completionTimer: 0,
+    };
+    activeProgress.set(document, active);
+    document.body.prepend(bar);
+  }
+  window.clearTimeout(active.completionTimer);
+  active.bar.classList.remove('loading-progress-complete');
+  active.operations.delete(state.id);
+  active.operations.set(state.id, state);
+  renderActiveProgress(active);
 }

@@ -1,5 +1,5 @@
       import { dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
-      import { setLoadingProgressState, startLoadingProgress } from "./loading-progress.js";
+      import { setLoadingProgressState } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
       import { processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
@@ -63,23 +63,9 @@
         mode: repository === liveRepository ? "live" : "review",
       }));
 
-      const loadingProgress = startLoadingProgress(document);
       const stopWorkerLoadingProgress = subscribeWorkerLoadingProgress((state) => {
         setLoadingProgressState(document, state);
       });
-      /**
-       * @template T
-       * @param {() => Promise<T>} task
-       * @returns {Promise<T>}
-       */
-      const runWithLoadingProgress = async (task) => {
-        const progress = startLoadingProgress(document);
-        try {
-          return await task();
-        } finally {
-          progress.complete();
-        }
-      };
       const cancelCommand = offerCancelCommand(document);
       const stopDashboardAppUpdates = startDashboardAppUpdates();
       window.addEventListener("pagehide", (event) => {
@@ -94,7 +80,6 @@
           return response.json();
         })
         .catch((error) => {
-          loadingProgress.complete();
           cancelCommand.complete();
           throw error;
         });
@@ -1072,7 +1057,6 @@
           ...fixtureProjection,
           ...await processDashboardQueries(dashboardQueries, fixtureProjection),
         });
-        loadingProgress.complete();
         cancelCommand.complete();
       } else {
         renderSources({}, "loading");
@@ -1086,7 +1070,6 @@
             preparePage: ensureDashboardPageLoaded,
             pageSourceNames: (pageId) => dashboardPageSourceNames(dashboardDocument, pageId),
             pageLazySourceNames: (pageId) => dashboardPageLazySourceNames(dashboardDocument, pageId),
-            runWithLoadingProgress,
             render: (sources, state, loadPageSources, retryRefresh) => {
               renderSources(sources, state, true, loadPageSources, retryRefresh);
             },
@@ -1097,7 +1080,6 @@
           root.textContent = failure.message;
           throw failure;
         } finally {
-          loadingProgress.complete();
           cancelCommand.complete();
         }
       }

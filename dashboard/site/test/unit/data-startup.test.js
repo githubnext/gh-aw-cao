@@ -21,13 +21,6 @@ const cachedSources = {
   runs: { source: "runs", rows: [{ run: "cached" }] },
 };
 
-/**
- * @template T
- * @param {() => Promise<T>} task
- * @returns {Promise<T>}
- */
-const runWithLoadingProgress = (task) => task();
-
 /** @param {Record<string, unknown>} [overrides] */
 function options(overrides = {}) {
   let renderedPage = false;
@@ -38,7 +31,6 @@ function options(overrides = {}) {
     dashboardContext: { pages: [], queries: [] },
     pageSourceNames: () => ["runs"],
     pageLazySourceNames: () => [],
-    runWithLoadingProgress,
     render: (
       /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
       /** @type {'ready' | 'cached' | 'stale'} */ state,

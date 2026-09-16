@@ -44,7 +44,6 @@ export function waitForDashboardUi(browserWindow) {
  *   preparePage?: (pageId: string) => Promise<void>,
  *   pageSourceNames: (pageId: string) => string[],
  *   pageLazySourceNames: (pageId: string) => string[],
- *   runWithLoadingProgress: <T>(task: () => Promise<T>) => Promise<T>,
  *   render: (sources: DashboardSources, state: 'ready' | 'cached' | 'stale', loadPageSources: PageSourceLoader, retryRefresh?: () => void) => void,
  *   settleUi?: () => Promise<void>,
  * }} options
@@ -59,7 +58,6 @@ export async function startDashboardData(options) {
     preparePage,
     pageSourceNames,
     pageLazySourceNames,
-    runWithLoadingProgress,
     render,
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
@@ -81,13 +79,11 @@ export async function startDashboardData(options) {
   const bindContinuations = (pageId, sources, sourceNames, pageOptions = {}) => bindSourceContinuations(
     sources,
     sourceNames,
-    (requested, pagination) => runWithLoadingProgress(
-      () => loadCanonicalDashboardPage(requested, dashboardContext, pagination, {
-        pageId,
-        routeParameters: pageOptions.routeParameters,
-        queryContext: pageOptions.queryContext,
-      }),
-    ),
+    (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination, {
+      pageId,
+      routeParameters: pageOptions.routeParameters,
+      queryContext: pageOptions.queryContext,
+    }),
   );
   /** @type {PageSourceLoader} */
   const loadPageSources = async (pageId, pageOptions) => {
@@ -95,7 +91,7 @@ export async function startDashboardData(options) {
     const sourceNames = pageSourceNames(pageId);
     const lazySources = pageLazySourceNames(pageId);
     const pagination = continuationRequests(lazySources);
-    return runWithLoadingProgress(() => new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       let receivedInitialSnapshot = false;
       const abort = () => reject(new DOMException("Dashboard page load was cancelled.", "AbortError"));
       pageOptions.signal.addEventListener("abort", abort, { once: true });
@@ -129,7 +125,7 @@ export async function startDashboardData(options) {
           },
         },
       );
-    }));
+    });
   };
   configureSourceLoader(async (name) => (await loadCanonicalDashboardPage([name], dashboardContext))[name]);
   const startAutomaticUpdates = () => {
@@ -169,11 +165,11 @@ export async function startDashboardData(options) {
     if (showRefreshing) {
       render({}, "cached", loadPageSources);
     }
-    void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
+    void refreshCanonicalDashboardSources(
       sourceUrl,
       [],
       dashboardContext,
-    )).then(
+    ).then(
       ({ changed }) => {
         refreshPending = false;
         emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {

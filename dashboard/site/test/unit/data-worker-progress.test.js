@@ -14,7 +14,7 @@ describe('data-worker ingestion progress', () => {
 
     vi.advanceTimersByTime(3_000);
 
-    expect(postMessage).toHaveBeenCalledWith({
+    expect(postMessage).toHaveBeenNthCalledWith(2, {
       type: 'notification',
       notification: expect.objectContaining({
         message: 'Preparing data... +3s',
@@ -37,8 +37,8 @@ describe('data-worker ingestion progress', () => {
     progress.complete();
     delayedReport();
 
-    expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith({
+    expect(postMessage).toHaveBeenCalledTimes(3);
+    expect(postMessage).toHaveBeenNthCalledWith(3, {
       type: 'notification',
       notification: expect.objectContaining({ dismiss: true })
     });
@@ -91,13 +91,13 @@ describe('data-worker ingestion progress', () => {
     progress.reportShardImportProgress(0, 4);
     progress.reportShardImportProgress(2, 4);
 
-    expect(postMessage).toHaveBeenNthCalledWith(1, {
-      type: 'loading-progress',
-      state: { completed: 0, total: 4 }
-    });
     expect(postMessage).toHaveBeenNthCalledWith(2, {
       type: 'loading-progress',
-      state: { completed: 2, total: 4 }
+      state: { id: expect.stringMatching(/^ingestion-progress-/), phase: 'update', completed: 0, total: 4 }
+    });
+    expect(postMessage).toHaveBeenNthCalledWith(3, {
+      type: 'loading-progress',
+      state: { id: expect.stringMatching(/^ingestion-progress-/), phase: 'update', completed: 2, total: 4 }
     });
     progress.complete();
   });
@@ -125,7 +125,7 @@ describe('data-worker ingestion progress', () => {
 
     progress.update({ bytesProcessed: 1_024, recordsIngested: 42, totalBytes: 2_048 });
     vi.advanceTimersByTime(2_999);
-    expect(postMessage).not.toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(1);
 
@@ -153,6 +153,6 @@ describe('data-worker ingestion progress', () => {
       notification: expect.objectContaining({ dismiss: true })
     });
     vi.advanceTimersByTime(1_000);
-    expect(postMessage).toHaveBeenCalledTimes(3);
+    expect(postMessage).toHaveBeenCalledTimes(5);
   });
 });

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { setLoadingProgressState, startLoadingProgress } from '../../src/loading-progress.js';
+import { setLoadingProgressState } from '../../src/loading-progress.js';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -9,28 +9,20 @@ afterEach(() => {
 });
 
 describe('loading progress', () => {
-  it('advances in randomized bursts without reaching the end', () => {
+  it('is created only when the worker starts an operation', () => {
     vi.useFakeTimers();
-    vi.spyOn(Math, 'random').mockReturnValue(0.5);
 
-    startLoadingProgress(document);
+    expect(document.querySelector('.loading-progress')).toBeNull();
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });
     const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));
-    const positions = [];
 
-    for (let index = 0; index < 20; index += 1) {
-      vi.advanceTimersByTime(600);
-      positions.push(Number.parseFloat(bar?.style.transform.slice(7) ?? '0'));
-    }
-
-    expect(positions[0]).toBeGreaterThan(0.08);
-    expect(positions.every((position) => position < 0.94)).toBe(true);
-    expect(positions).toEqual([...positions].sort((left, right) => left - right));
+    expect(bar?.style.transform).toBe('scaleX(0.08)');
   });
 
   it('keeps a shimmer animation running while progress waits to complete', () => {
     vi.useFakeTimers();
 
-    startLoadingProgress(document);
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });
     vi.advanceTimersByTime(60_000);
 
     const styles = document.querySelector('style[data-loading-progress-styles]')?.textContent;
@@ -41,29 +33,28 @@ describe('loading progress', () => {
 
   it('uses the worker shard state after its total becomes known', () => {
     vi.useFakeTimers();
-    startLoadingProgress(document);
 
-    setLoadingProgressState(document, { completed: 2, total: 4 });
-    setLoadingProgressState(document, { completed: 0, total: 4 });
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'update', completed: 2, total: 4 });
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'update', completed: 0, total: 4 });
     vi.advanceTimersByTime(60_000);
 
     const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));
-    expect(bar?.style.transform).toBe('scaleX(0.51)');
+    expect(bar?.style.transform).toBe('scaleX(0.08)');
   });
 
-  it('finishes once and removes the bar after its completion transition', () => {
+  it('waits for every worker operation before completing', () => {
     vi.useFakeTimers();
-    const progress = startLoadingProgress(document);
-    const secondProgress = startLoadingProgress(document);
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'start' });
+    setLoadingProgressState(document, { id: 'ingestion-2', phase: 'start' });
     const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'));
 
-    progress.complete();
-    progress.complete();
+    setLoadingProgressState(document, { id: 'ingestion-1', phase: 'complete' });
 
     expect(bar?.classList.contains('loading-progress-complete')).toBe(false);
     expect(document.querySelectorAll('.loading-progress')).toHaveLength(1);
 
-    secondProgress.complete();
+    setLoadingProgressState(document, { id: 'ingestion-2', phase: 'complete' });
 
     expect(bar?.classList.contains('loading-progress-complete')).toBe(true);
     expect(bar?.style.transform).toBe('scaleX(1)');

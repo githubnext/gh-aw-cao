@@ -60,7 +60,7 @@ export function publishWorkerNotification(notification, target = self) {
 
 /**
  * Publishes the worker-owned state for the top loading bar.
- * @param {{ completed: number, total: number }} state
+ * @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 export function publishWorkerLoadingProgress(state, target = self) {
@@ -78,6 +78,7 @@ let nextIngestionProgressId = 0;
  */
 export function startIngestionProgress(target = self) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
+  publishWorkerLoadingProgress({ id, phase: 'start' }, target);
   const clock = createElapsedStepTracker('Preparing data...', {
     historyLimit: INGESTION_PROGRESS_HISTORY_LIMIT
   });
@@ -131,13 +132,14 @@ export function startIngestionProgress(target = self) {
     },
     /** @param {number} completed @param {number} total */
     reportShardImportProgress(completed, total) {
-      publishWorkerLoadingProgress({ completed, total }, target);
+      publishWorkerLoadingProgress({ id, phase: 'update', completed, total }, target);
     },
     complete() {
       if (completed) return;
       completed = true;
       clearTimeout(delay);
       if (interval) clearInterval(interval);
+      publishWorkerLoadingProgress({ id, phase: 'complete' }, target);
       publishWorkerNotification({ id, dismiss: true }, target);
     }
   };
