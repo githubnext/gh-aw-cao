@@ -301,7 +301,7 @@ function renderListView(context) {
  *   headingTag: 'h3'|'h4',
  *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[] },
+ *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
  *   listAction: HTMLElement | null
  * }} options
  */
@@ -341,7 +341,7 @@ function renderEntityCardListView(options) {
  *   title: string,
  *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[] },
+ *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
  *   drill?: Record<string, unknown> | null,
  *   keyOffset?: number
  * }} options
@@ -377,11 +377,22 @@ function renderEntityCardItems(rows, options) {
       ),
       h(
         'ul',
-        { className: 'issue-list-labels', 'aria-label': `${titleText || 'Item'} labels` },
+        { className: 'issue-list-labels', 'aria-label': `${titleText || 'Item'} labels and metrics` },
         ...definition.labels.flatMap((column) => {
           const value = row[column.field];
           const values = Array.isArray(value) ? value : [value];
           return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
+        }),
+        ...(definition.metrics ?? []).flatMap((column) => {
+          const value = renderValue(column, row[column.field], row);
+          return toText(row[column.field])
+            ? [h(
+                'li',
+                { className: 'entity-card-list-metric' },
+                h('strong', null, value),
+                h('span', null, fieldTitle(column))
+              )]
+            : [];
         })
       )
     );
@@ -782,6 +793,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const availableRows = [...rows];
   const initialRows = availableRows.slice(0, pageSize);
   const columnFields = new Set(columns.map((column) => column.field));
+  /** @type {{ icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] }} */
   const definition = Object.values(cardTemplates)
     .filter((template) => columnFields.has(template.title.field))
     .toSorted((left, right) => (
@@ -791,12 +803,17 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       icon: 'table',
       title: columns[0] ?? { field: '' },
       labels: columns.slice(1).filter((column) => ['label', 'status', 'active-state', 'mode'].includes(String(column.display))),
-      details: columns.slice(1).filter((column) => !['label', 'status', 'active-state', 'mode'].includes(String(column.display)))
+      details: columns.slice(1).filter((column) => (
+        !['label', 'status', 'active-state', 'mode'].includes(String(column.display))
+        && column.type !== 'quantitative'
+      )),
+      metrics: columns.slice(1).filter((column) => column.type === 'quantitative')
     };
   const visibleDefinition = {
     ...definition,
     labels: definition.labels.filter((field) => columnFields.has(field.field)),
-    details: definition.details.filter((field) => columnFields.has(field.field))
+    details: definition.details.filter((field) => columnFields.has(field.field)),
+    metrics: (definition.metrics ?? []).filter((field) => columnFields.has(field.field))
   };
   const list = h('ul', {
     className: 'document-list issue-list entity-card-list mobile-table-card-list-items',

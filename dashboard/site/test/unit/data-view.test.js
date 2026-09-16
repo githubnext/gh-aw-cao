@@ -469,6 +469,42 @@ describe('data view renderer', () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
+  it('renders quantitative mobile table fields as labeled card metrics', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'packages',
+      title: 'Packages',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: {
+          columns: [
+            { field: 'package-name', type: 'nominal', title: 'Package' },
+            { field: 'workflows', type: 'quantitative', title: 'Workflows' },
+            { field: 'runs', type: 'quantitative', title: 'Runs' },
+            { field: 'registration', type: 'nominal', title: 'Registration', display: 'active-state' }
+          ]
+        }
+      },
+      sourceName: 'package-inventory',
+      rows: [{ 'package-name': 'Daily ops', workflows: 2, runs: 14, registration: 'active' }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
+    expect(card?.querySelector('.issue-list-card-meta')?.textContent).toBe('');
+    expect(card?.querySelector('.entity-card-list-metric')?.textContent).toBe('2Workflows');
+    expect(card?.querySelectorAll('.entity-card-list-metric')).toHaveLength(2);
+    expect(card?.querySelector('.issue-list-labels')?.textContent).toContain('active');
+  });
+
   it('lets a mobile card continuation retry after a load failure', async () => {
     const load = vi.fn()
       .mockRejectedValueOnce(new Error('worker unavailable'))

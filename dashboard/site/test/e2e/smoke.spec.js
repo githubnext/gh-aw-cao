@@ -4946,7 +4946,8 @@ test('phone pages toggle between chart, full-view table, and card-list modes', a
   await expect(chart).toBeHidden();
   await expect(table.locator('.table-region')).toBeHidden();
   await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
-  await expect(root).not.toHaveClass(/dashboard-full-view/);
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect(table.getByRole('heading', { name: 'Runs', level: 3 })).toBeHidden();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('card');
 });
 
@@ -5021,7 +5022,8 @@ test('phone full-view lazy tables switch between table and card-list modes', asy
   await expect(table).toBeHidden();
   await expect(cards).toBeVisible();
   await expect(cards.locator('.entity-card-list-card')).toContainText('githubnext/gh-aw-cao');
-  await expect(root).not.toHaveClass(/dashboard-full-view/);
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect(page.getByRole('heading', { name: 'Repositories', level: 3 })).toBeHidden();
 
   await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(table).toBeVisible();
