@@ -38,6 +38,7 @@ const GITHUB_ENTITY_DISPLAY_FIELDS = {
   [REPOSITORY_LINK_DISPLAY]: 'repository',
   [WORKFLOW_LINK_DISPLAY]: 'workflow'
 };
+/** @type {Record<string, { icon: string, title: TableField, labels: TableField[], details: TableField[] }>} */
 const ENTITY_CARD_DEFINITIONS = {
   issue: {
     icon: 'issue-opened',
@@ -363,7 +364,8 @@ function renderEntityCardListView(options) {
         'ul',
         { className: 'issue-list-labels', 'aria-label': `${titleText || 'Item'} labels` },
         ...definition.labels.flatMap((column) => {
-          const values = Array.isArray(row[column.field]) ? row[column.field] : [row[column.field]];
+          const value = row[column.field];
+          const values = Array.isArray(value) ? value : [value];
           return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
         })
       )

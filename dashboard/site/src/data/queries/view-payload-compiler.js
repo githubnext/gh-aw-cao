@@ -70,6 +70,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
       const predicates = [
         ...compileScopePredicates(viewData?.scope),
         ...compileViewFilterPredicates(viewData?.filters),
+        ...compileArgumentPredicates(viewData?.arguments, options.routeParameters),
         ...compileTimePredicates(viewData?.time),
         ...compileGlobalFilterPredicates(options.queryContext?.filters),
         ...compileTimePredicates(options.queryContext?.timeWindow),
@@ -325,6 +326,23 @@ function compileViewFilterPredicates(filters) {
     }
   }
   return predicates;
+}
+
+/**
+ * @param {unknown} args
+ * @param {Record<string, string> | undefined} routeParameters
+ */
+function compileArgumentPredicates(args, routeParameters) {
+  if (!Array.isArray(args)) return [];
+  return args.flatMap((argument) => {
+    if (!isPlainObject(argument) || typeof argument.name !== 'string' || typeof argument.field !== 'string') return [];
+    return [{
+      field: argument.field,
+      equals: typeof routeParameters?.[argument.name] === 'string'
+        ? routeParameters[argument.name]
+        : ''
+    }];
+  });
 }
 
 /** @param {unknown} filters */

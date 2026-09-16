@@ -38,6 +38,36 @@ it('compiles distinct aliases when two views filter the same source differently'
   expect(results[dashboardViewAliasName('operations', page.views[1], 1, 'runs')].rows).toEqual([sources.runs.rows[1]]);
 });
 
+it('binds every named drill argument to a worker query predicate and fails closed when missing', () => {
+  const page = {
+    views: [{
+      id: 'issue-events',
+      data: {
+        source: 'events',
+        arguments: [
+          { name: 'repository', field: 'repository' },
+          { name: 'issue-id', field: 'correlation-id' }
+        ]
+      }
+    }]
+  };
+  const bound = compileDashboardViewPayloadQueries(page, 'issue-events', {
+    routeParameters: { repository: 'gh-aw-cao', 'issue-id': '42' }
+  });
+  const missing = compileDashboardViewPayloadQueries(page, 'issue-events', {
+    routeParameters: { repository: 'gh-aw-cao' }
+  });
+
+  expect(/** @type {any} */ (bound.queries[0]).filter.predicates).toEqual([
+    { field: 'repository', equals: 'gh-aw-cao' },
+    { field: 'correlation-id', equals: '42' }
+  ]);
+  expect(/** @type {any} */ (missing.queries[0]).filter.predicates).toEqual([
+    { field: 'repository', equals: 'gh-aw-cao' },
+    { field: 'correlation-id', equals: '' }
+  ]);
+});
+
 it('injects route and runtime predicates before a declared aggregate executes', () => {
   const page = {
     route: { 'hash-query-parameter': 'repository' },

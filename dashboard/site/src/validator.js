@@ -95,6 +95,7 @@ import {
   BUILT_IN_PAGE_REQUIRED_FIELDS,
   TIME_UNIT_VALUES,
   VIEW_DATA_KEYS,
+  VIEW_DATA_ARGUMENT_KEYS,
   VIEW_CHART_VALUES,
   VIEW_CONTROL_VALUES,
   VIEW_LIST_CARD_VALUES,
@@ -905,6 +906,61 @@ function validateDashboard(dashboard, dashboardNode, errors) {
               `${viewPath}.list.drill.query`
             ));
           }
+          const sourceName = isPlainObject(view.data) && typeof view.data.source === 'string'
+            ? view.data.source
+            : null;
+          const fields = sourceName ? sourceFieldNames(sourceName) : null;
+          for (const [field, fieldPath] of [
+            [drill['title-field'], `${viewPath}.list.drill.title-field`],
+            ...(Array.isArray(drill.arguments)
+              ? drill.arguments.map((argument, argumentIndex) => [
+                  isPlainObject(argument) ? argument.field : undefined,
+                  `${viewPath}.list.drill.arguments[${argumentIndex}].field`
+                ])
+              : [])
+          ]) {
+            if (fields && typeof field === 'string' && !fields.includes(field)) {
+              errors.push(createError(
+                ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+                'query drill field must be declared by the current view data source.',
+                String(fieldPath)
+              ));
+            }
+          }
+          const targetPage = /** @type {unknown[]} */ (dashboard.pages)
+            .find((candidate) => isPlainObject(candidate) && candidate.id === drill.page);
+          const targetViews = isPlainObject(targetPage)
+            ? targetPage.kind === 'built-in' && isPlainObject(targetPage.definition)
+              ? targetPage.definition.views
+              : targetPage.views
+            : undefined;
+          const argumentNames = new Set(Array.isArray(drill.arguments)
+            ? drill.arguments.flatMap((argument) => (
+                isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+              ))
+            : []);
+          const destinationBindsQuery = Array.isArray(targetViews) && targetViews.some((targetView) => {
+            if (!isPlainObject(targetView) || !isPlainObject(targetView.data) || targetView.data.source !== drill.query) return false;
+            const boundNames = new Set(Array.isArray(targetView.data.arguments)
+              ? targetView.data.arguments.flatMap((argument) => (
+                  isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+                ))
+              : []);
+            return [...argumentNames].every((name) => boundNames.has(name));
+          });
+          if (
+            typeof drill.page === 'string'
+            && pageIds.has(drill.page)
+            && typeof drill.query === 'string'
+            && declaredQueries.has(drill.query)
+            && !destinationBindsQuery
+          ) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'query drill destination must bind the declared query and every drill argument.',
+              `${viewPath}.list.drill`
+            ));
+          }
         }
       });
     }
@@ -1481,6 +1537,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       ));
       continue;
     }
+    validateViewDataArguments(data.arguments, undefined, `${viewPath}.data.arguments`, data.source, errors);
 
     const coverageSources = new Set([data.source, ...(declaredQuerySources.get(data.source) ?? [])]);
     for (const coverageSource of coverageSources) {
@@ -2400,7 +2457,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
           `${path}.data.source`
         ));
       }
-      for (const key of ['limit', 'order-by', 'source-metadata', 'route-field']) {
+      for (const key of ['arguments', 'limit', 'order-by', 'source-metadata', 'route-field']) {
         if (view.data[key] !== undefined) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
@@ -2436,6 +2493,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
+      validateViewDataArguments(
+        view.data.arguments,
+        getValueNodeByKey(dataNode, 'arguments'),
+        `${path}.data.arguments`,
+        sourceName,
+        errors
+      );
     }
     validateContext(dataNode, view.data, `${path}.data`, errors);
   }
@@ -2461,6 +2525,44 @@ function validateView(view, viewNode, path, viewIds, errors) {
     `${path}.encoding.actions`,
     errors
   );
+}
+
+/**
+ * @param {unknown} args
+ * @param {unknown} argsNode
+ * @param {string} path
+ * @param {string | null} sourceName
+ * @param {ValidationError[]} errors
+ */
+function validateViewDataArguments(args, argsNode, path, sourceName, errors) {
+  if (args === undefined) return;
+  if (!Array.isArray(args) || args.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'data.arguments must be a non-empty sequence.', path));
+    return;
+  }
+  const names = new Set();
+  const fields = sourceName ? sourceFieldNames(sourceName) : null;
+  for (const [index, argument] of args.entries()) {
+    const argumentPath = `${path}[${index}]`;
+    if (!isPlainObject(argument)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'data argument must be a mapping.', argumentPath));
+      continue;
+    }
+    validateObjectKeys(getSequenceItemNode(argsNode, index), VIEW_DATA_ARGUMENT_KEYS, argumentPath, errors);
+    validateRequiredIdentifier(argument.name, `${argumentPath}.name`, 'data argument name', errors);
+    validateRequiredIdentifier(argument.field, `${argumentPath}.field`, 'data argument field', errors);
+    if (typeof argument.name === 'string' && names.has(argument.name)) {
+      errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'data argument names must be unique.', `${argumentPath}.name`));
+    }
+    names.add(argument.name);
+    if (fields && typeof argument.field === 'string' && !fields.includes(argument.field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'data argument field must be declared by data.source.',
+        `${argumentPath}.field`
+      ));
+    }
+  }
 }
 
 /**

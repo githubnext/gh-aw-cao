@@ -196,6 +196,9 @@ test('entity cards drill through declared queries without a depth limit and set 
   const result = await page.evaluate(async () => {
     const { renderDataView } = await import(`${location.origin}/src/components/data-view.js`);
     const { resolveQueryDrillPageTitle } = await import(`${location.origin}/src/presenter.js`);
+    const { compileDashboardViewPayloadQueries } = await import(`${location.origin}/src/data/queries/view-payload-compiler.js`);
+    const { executeDashboardQueries } = await import(`${location.origin}/src/data/queries/declarative.js`);
+    /** @param {string | number} id @param {string} title */
     const render = (id, title) => renderDataView('list', {
       pageId: 'issues',
       title: 'Issues',
@@ -219,24 +222,47 @@ test('entity cards drill through declared queries without a depth limit and set 
       metadata: { availability: 'available', completeness: 'complete', freshness: 'fresh' },
       contextDetails: [],
       headingTag: 'h3',
-      prepareTableRows: (rows) => rows,
+      prepareTableRows: (/** @type {Record<string, unknown>[]} */ rows) => rows,
       buildChartPoints: () => [],
       prepareChartPoints: () => [],
       toText: String
     });
     const titles = [];
-    for (const [id, title] of [[42, 'Issue 42'], [43, 'Issue 43'], [44, 'Issue 44']]) {
+    const selectedIds = [];
+    const drillLevels = /** @type {Array<[number, string]>} */ ([[42, 'Issue 42'], [43, 'Issue 43'], [44, 'Issue 44']]);
+    for (const [id, title] of drillLevels) {
       const rendered = render(id, title);
       document.body.replaceChildren(rendered);
       const link = rendered.querySelector('[data-card-drill="query"]');
       link.click();
       const parameters = new URLSearchParams(location.hash.split('?')[1] ?? '');
       titles.push(resolveQueryDrillPageTitle(parameters, new Set(['safe-output-items'])));
+      const payload = compileDashboardViewPayloadQueries({
+        views: [{
+          id: 'issue',
+          data: {
+            source: 'safe-output-items',
+            arguments: [{ name: 'issue-id', field: 'correlation-id' }]
+          }
+        }]
+      }, 'issues', {
+        queries: [{ name: 'safe-output-items', from: 'events' }],
+        routeParameters: Object.fromEntries(parameters)
+      });
+      const sources = executeDashboardQueries(payload.queries, {
+        events: {
+          source: 'events',
+          rows: drillLevels.map(([issueId]) => ({ 'correlation-id': String(issueId) })),
+          metadata: { availability: 'available', completeness: 'complete', freshness: 'fresh' }
+        }
+      }, payload.aliases);
+      selectedIds.push(sources[payload.aliases[0]].rows[0]?.['correlation-id']);
     }
-    return { hash: location.hash, titles };
+    return { hash: location.hash, selectedIds, titles };
   });
 
   expect(result.titles).toEqual(['Issue 42', 'Issue 43', 'Issue 44']);
+  expect(result.selectedIds).toEqual(['42', '43', '44']);
   expect(result.hash).toBe('#page-issues?query=safe-output-items&title=Issue+44&issue-id=44');
 });
 

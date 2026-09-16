@@ -324,6 +324,7 @@ describe('dashboard document validation', () => {
       'title-field': 'event-summary',
       arguments: [{ name: 'entity-url', field: 'entity-url' }]
     };
+    issueList.data.arguments = [{ name: 'entity-url', field: 'entity-url' }];
 
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
@@ -340,6 +341,14 @@ describe('dashboard document validation', () => {
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({ message: 'title-field is required and must be a non-empty string.' })
+      ])
+    });
+    issueList.list.drill['title-field'] = 'event-summary';
+    issueList.data.arguments[0].field = 'missing-field';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'data argument field must be declared by data.source.' })
       ])
     });
   });
