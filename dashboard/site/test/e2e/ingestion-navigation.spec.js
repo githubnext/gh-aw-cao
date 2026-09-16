@@ -126,7 +126,7 @@ test('views remain interactive while activity shards are ingested', async ({ con
   for (let cycle = 0; cycle < 4; cycle += 1) {
     for (const [, title] of pageDefinitions) {
       await page.getByRole('link', { name: title, exact: true }).click();
-      await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
+      await expect(page.locator('#page-title')).toHaveText(title);
     }
   }
 
