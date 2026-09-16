@@ -4651,7 +4651,7 @@ test('declarative tables expose report-style facets and progressive catalog disc
     const cells = table.querySelectorAll('thead tr:first-child th');
     return {
       tableWidth: table.getBoundingClientRect().width,
-      scrollWidth: scroll?.getBoundingClientRect().width,
+      scrollWidth: scroll?.getBoundingClientRect().width ?? 0,
       firstColumnWidth: cells[0]?.getBoundingClientRect().width,
       lastColumnWidth: cells[cells.length - 1]?.getBoundingClientRect().width,
       lastColumnAlignment: getComputedStyle(cells[cells.length - 1]).textAlign
