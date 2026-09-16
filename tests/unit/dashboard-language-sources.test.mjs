@@ -187,21 +187,12 @@ test("includes registered packages that have no inventory or run history", () =>
   const sources = buildInventoryDashboardSources({
     repository: "githubnext/control",
     generatedAt: "2026-09-16T00:00:00Z",
-    inventory: { bundles: [], workflows: [] },
-    controlSettings: {
-      packages: {
-        "repo-assist": {
-          mode: "review",
-          worker_policies: {
-            "repo-assist-issue-triage": {
-              worker: "issue-triage",
-              enabled: true,
-              max_mode: null,
-            },
-          },
-        },
-      },
+    inventory: {
+      bundles: [],
+      workflows: [],
+      packages: [{ id: "repo-assist", name: "Repo Assist" }],
     },
+    controlSettings: { packages: {} },
   });
 
   assert.deepEqual(sources.packages.rows.map((row) => ({
@@ -212,8 +203,8 @@ test("includes registered packages that have no inventory or run history", () =>
   })), [{
     package: "repo-assist",
     name: "Repo Assist",
-    mode: "review",
-    workers: 1,
+    mode: "unknown",
+    workers: 0,
   }]);
   assert.deepEqual(sources.workflows.rows, []);
 });
