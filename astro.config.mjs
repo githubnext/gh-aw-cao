@@ -121,15 +121,36 @@ export default defineConfig({
           ],
         },
         {
+          label: "Dashboard",
+          items: [
+            { label: "What it shows", link: "/dashboard/" },
+            { label: "Data model", link: "/dashboard-data-model/" },
+            { label: "Language", link: "/dashboard-language-specification/" },
+            {
+              label: "Views",
+              items: [
+                {
+                  label: "Overview",
+                  items: [
+                    { label: "About this view", link: "/dashboard-overview-components/" },
+                    { label: "Status header", link: "/dashboard-overview-status-header/" },
+                    { label: "Factory rhythm", link: "/dashboard-overview-factory-rhythm/" },
+                    { label: "Registered repositories", link: "/dashboard-overview-registered-repositories/" },
+                    { label: "Successful runs", link: "/dashboard-overview-successful-runs/" },
+                    { label: "Dispatches", link: "/dashboard-overview-dispatches/" },
+                    { label: "Value gains", link: "/dashboard-overview-value-gains/" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
           label: "Reference",
           items: [
             { label: "Configuration", link: "/configuration/" },
             { label: "Control plane overview", link: "/architecture/" },
             { label: "What is CAO?", link: "/architecture-at-a-glance/" },
-            { label: "Dashboard Overview", link: "/dashboard-overview/" },
-            { label: "Dashboard view catalog", link: "/dashboard-view-catalog/" },
-            { label: "Overview components", link: "/dashboard-overview-components/" },
-            { label: "Dashboard Data Model", link: "/dashboard-data-model/" },
             { label: "CAO Activity", link: "/activity/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },

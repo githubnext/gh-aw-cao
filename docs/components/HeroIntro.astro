@@ -1,0 +1,194 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+const PAGE_TITLE_ID = "_top";
+
+type HeroAction = {
+  attrs?: Omit<HTMLAttributes<"a">, "href">;
+  icon?: { name?: string; html?: string };
+  link: string;
+  text: string;
+  variant?: "primary" | "secondary" | "minimal";
+};
+type HeroData = {
+  title: string;
+  draft?: boolean;
+  hero?: {
+    title?: string;
+    tagline?: string;
+    actions?: HeroAction[];
+  };
+};
+
+const { data } = (Astro.locals as unknown as { starlightRoute: { entry: { data: HeroData } } }).starlightRoute.entry;
+const { title = data.title, tagline, actions = [] } = data.hero || {};
+---
+
+<div class="docs-hero-intro sl-flex">
+  <div class="sl-flex copy">
+    <h1 id={PAGE_TITLE_ID} data-page-title set:html={title} />
+    {data.draft && <aside class="draft-notice">This page is a draft and may contain incomplete content.</aside>}
+    {tagline && <div class="tagline" set:html={tagline} />}
+  </div>
+  {
+    actions.length > 0 && (
+      <div class="sl-flex actions">
+        {actions.map(
+          ({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
+            <a href={href} class:list={["hero-action", variant || "primary", className]} {...attrs}>
+              {text}
+              {icon?.html ? <Fragment set:html={icon.html} /> : icon?.name === "right-arrow" && <span aria-hidden="true">→</span>}
+            </a>
+          ),
+        )}
+      </div>
+    )
+  }
+</div>
+
+<style>
+  @layer starlight.core {
+    .docs-hero-intro {
+      flex-direction: column;
+      gap: clamp(1.5rem, calc(1.5rem + 1vw), 2rem);
+      text-align: center;
+      animation: hero-intro-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .copy {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .copy > * {
+      max-width: 54ch;
+    }
+
+    h1 {
+      max-width: 14ch;
+      background: var(--sl-color-text-accent);
+      background-clip: text;
+      color: transparent;
+      font-size: clamp(2.25rem, 5vw, 3.25rem) !important;
+      font-weight: 700 !important;
+      line-height: 1.1 !important;
+      letter-spacing: 0;
+      animation: none !important;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      hyphens: none !important;
+      overflow-wrap: normal !important;
+      word-break: normal !important;
+    }
+
+    .tagline {
+      color: var(--sl-color-gray-2);
+      font-size: clamp(1rem, 1.4vw, 1.125rem) !important;
+      line-height: 1.55 !important;
+    }
+
+    .draft-notice {
+      border-inline-start: 0.25rem solid var(--sl-color-orange);
+      padding-inline-start: 1rem;
+      color: var(--sl-color-gray-2);
+    }
+
+    .actions {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem 2rem;
+    }
+
+    .hero-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5em;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: var(--sl-text-sm);
+      font-weight: 600;
+      line-height: 1.1875;
+      text-decoration: none;
+      outline-offset: 0.25rem;
+    }
+
+    .hero-action :global(svg),
+    .hero-action > span {
+      width: 1rem;
+      height: 1rem;
+      flex: 0 0 auto;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .hero-action.primary {
+      border-color: var(--sl-color-text-accent);
+      background: var(--sl-color-text-accent);
+      color: var(--sl-color-black);
+    }
+
+    .hero-action.secondary {
+      border-color: currentColor;
+      color: var(--sl-color-white);
+    }
+
+    .hero-action.minimal {
+      color: var(--sl-color-white);
+    }
+
+    .hero-action.dashboard-action {
+      position: relative;
+      border-color: color-mix(in srgb, var(--sl-color-text-accent) 65%, var(--sl-color-gray-2));
+      background: color-mix(in srgb, var(--sl-color-text-accent) 10%, transparent);
+      transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .hero-action.dashboard-action:hover,
+    .hero-action.dashboard-action:focus-visible {
+      border-color: var(--sl-color-text-accent);
+      background: color-mix(in srgb, var(--sl-color-text-accent) 16%, transparent);
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--sl-color-black) 20%, transparent);
+    }
+
+    .hero-action.dashboard-action > span {
+      transform: rotate(-45deg);
+      transition: transform 160ms ease;
+    }
+
+    .hero-action.dashboard-action:hover > span,
+    .hero-action.dashboard-action:focus-visible > span {
+      transform: translate(0.1rem, -0.1rem) rotate(-45deg);
+    }
+
+    @keyframes hero-intro-enter {
+      from { opacity: 0; transform: translateY(0.75rem); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 42rem) {
+      h1 {
+        font-size: 2.125rem !important;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .docs-hero-intro {
+        animation: none;
+      }
+
+      .hero-action.dashboard-action,
+      .hero-action.dashboard-action > span {
+        transition: none;
+      }
+    }
+
+    @media (min-width: 64rem) {
+      .docs-hero-intro {
+        max-width: 54rem;
+        margin-inline: auto;
+      }
+    }
+  }
+</style>

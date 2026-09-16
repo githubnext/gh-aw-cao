@@ -4,10 +4,10 @@
 
 import { h } from './dom.js';
 import { getPrimerStyles } from './styles.js';
-import { octicon, agenticWorkflowMark } from './octicons.js';
+import { octicon } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
+import { formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -23,7 +23,10 @@ import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
-import { scopedStorageKey } from './storage-scope.js';
+import { renderDashboardNavigation, enableDashboardNavigation } from './components/dashboard-navigation.js';
+import { renderDashboardHeader } from './components/dashboard-header.js';
+import { renderDashboardFooter } from './components/dashboard-footer.js';
+import { renderDashboardFrame } from './components/dashboard-frame.js';
 import {
   dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
   dashboardPagePayload,
@@ -89,7 +92,6 @@ import {
 
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
-const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
@@ -195,15 +197,25 @@ export function renderDashboard(input) {
   const styleEl = h('style', null, getPrimerStyles());
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
-  const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation);
-  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, evaluatedAt, summarizeDataState(new Map(Object.entries(rawSources))), viewer, dashboardHorizon.element, input.commitSha);
-
-  const appShell = h(
-    'div',
-    { className: 'app-shell' },
-    sidebar,
-    mainContent
-  );
+  const sidebar = renderDashboardNavigation(pages, sidebarTitle, document.dashboard.navigation);
+  const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
+  const overviewPage = pages.find((page) => page.id === 'overview');
+  const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
+  const appShell = renderDashboardFrame({
+    navigation: sidebar,
+    header: renderDashboardHeader({
+      title: initialPage ? getPageTitle(initialPage) : '',
+      description: initialPage?.description,
+      overviewPageHref: overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref,
+      dashboardHorizon: dashboardHorizon.element,
+      githubUrlBase,
+      dashboardRepository,
+      viewer
+    }),
+    callouts: renderSiteCallouts(document.dashboard.callouts, sources),
+    pages: pages.map((page) => renderPagePlaceholder(page)),
+    footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha })
+  });
   const root = h(
     'div',
     { className: 'dashboard-root' },
@@ -214,9 +226,8 @@ export function renderDashboard(input) {
   void enableDashboardDomProvenanceWhenDebugging(root, document).catch((error) => {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });
-  enableSidebarToggle(root);
+  enableDashboardNavigation(root);
   restoreDashboardTheme(root);
-  enableMobileNavigationMenu(root);
   enableHorizonOutsideClickDismissal(root);
   root.addEventListener('dashboard-time-window-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
@@ -339,243 +350,6 @@ function inferOrganizationName(sources) {
 }
 
 /**
- * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
- * @param {string} title
- * @param {PresentableNavigationSection[] | undefined} navigation
- * @returns {HTMLElement}
- */
-function renderSidebar(pages, title, navigation) {
-  const pagesById = new Map(pages.map((page) => [page.id, page]));
-  const primaryPages = pages;
-  const configuredSections = Array.isArray(navigation) && navigation.length > 0
-    ? navigation
-      .map((section) => ({
-        label: section?.label,
-        experimental: section?.experimental === true,
-        pages: (Array.isArray(section?.pages) ? section.pages : [])
-          .map((pageId) => pagesById.get(pageId))
-          .filter((page) => page !== undefined)
-      }))
-      .filter((section) => section.pages.length > 0)
-    : [{ label: undefined, experimental: false, pages: primaryPages }];
-  const experimentalPages = configuredSections
-    .filter((section) => section.experimental)
-    .flatMap((section) => section.pages);
-  const navigationSections = [
-    ...configuredSections.filter((section) => !section.experimental),
-    ...(experimentalPages.length > 0
-      ? [{ label: 'Experimental', experimental: true, pages: experimentalPages }]
-      : [])
-  ];
-  const firstPageId = navigationSections.find((section) => !section.experimental)?.pages[0]?.id ?? pages[0]?.id;
-  const mainSectionIndex = Math.max(
-    0,
-    navigationSections.findIndex((section) => section.label?.toLowerCase() === 'main')
-  );
-  let navigationPageIndex = 0;
-  return h(
-    'aside',
-    { className: 'org-sidebar', 'aria-label': 'Central Agentic Ops navigation', dataset: { defaultPageId: firstPageId ?? '' } },
-    h(
-      'div',
-      { className: 'sidebar-header' },
-      h(
-        'button',
-        {
-          className: 'mobile-history-back',
-          type: 'button',
-          'aria-label': 'Go back',
-          title: 'Go back',
-          hidden: true
-        },
-        octicon('arrow-left')
-      ),
-      h(
-        'a',
-        { className: 'sidebar-brand', href: firstPageId ? `#page-${firstPageId}` : '#main-content', title },
-        agenticWorkflowMark(),
-        h('span', null, title)
-      ),
-      h(
-        'div',
-        { className: 'mobile-page-header' },
-        h('span', { className: 'mobile-brand-name' }, title)
-      ),
-      h(
-        'details',
-        { className: 'mobile-nav-menu' },
-        h(
-          'summary',
-          { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
-          octicon('three-bars')
-        ),
-        h(
-          'div',
-          { className: 'mobile-nav-menu-list' },
-          h('div', { className: 'mobile-nav-menu-actions', 'aria-label': 'Dashboard controls' }),
-          ...navigationSections.flatMap((section) => [
-            ...(typeof section.label === 'string' && section.label.length > 0
-              ? [h('span', {
-                  className: 'mobile-nav-section-label'
-                }, section.label)]
-              : []),
-            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId))
-          ])
-        )
-      ),
-      h(
-        'button',
-        {
-          className: 'sidebar-toggle',
-          type: 'button',
-          'aria-label': 'Collapse navigation',
-          'aria-expanded': 'true',
-          title: 'Collapse navigation'
-        },
-        octicon('sidebar-expand')
-      )
-    ),
-    h(
-      'nav',
-      { className: 'primary-nav', 'aria-label': 'Primary' },
-      ...navigationSections.flatMap((section, sectionIndex) => {
-        const items = section.pages.map((page) => {
-          const pageIndex = navigationPageIndex++;
-          return renderNavItem(
-            page,
-            page.id === firstPageId,
-            pageIndex >= 6,
-            pageIndex >= 5
-          );
-        });
-        return typeof section.label === 'string' && section.label.length > 0
-          ? [h(
-              'details',
-              {
-                className: 'nav-section',
-                open: sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? '')
-              },
-              h(
-                'summary',
-                { className: 'nav-section-toggle', title: `${section.label} menu section` },
-                h('span', { className: 'nav-section-label' }, section.label),
-                octicon('chevron-right')
-              ),
-              h('div', { className: 'nav-section-items' }, ...items)
-            )]
-          : items;
-      })
-    )
-  );
-}
-
-/**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @param {boolean} isActive
- * @param {boolean} [mobileOverflow]
- * @param {boolean} [narrowMobileOverflow]
- * @returns {HTMLElement}
- */
-function renderNavItem(page, isActive, mobileOverflow = false, narrowMobileOverflow = false) {
-  const iconName = getPageIcon(page);
-  const title = getPageNavigationTitle(page);
-
-  return h(
-    'a',
-    {
-      href: `#page-${page.id}`,
-      className: `nav-item${isActive ? ' active' : ''}${mobileOverflow ? ' mobile-nav-overflow' : ''}${narrowMobileOverflow ? ' narrow-mobile-nav-overflow' : ''}`,
-      'aria-current': isActive ? 'page' : undefined,
-      'aria-label': title,
-      title,
-      'data-nav-page-id': page.id
-    },
-    octicon(iconName),
-    h('span', { className: 'nav-label' }, title)
-  );
-}
-
-/**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @param {boolean} isActive
- * @returns {HTMLElement}
- */
-function renderMobileNavItem(page, isActive) {
-  const title = getPageNavigationTitle(page);
-  return h(
-    'a',
-    {
-      href: `#page-${page.id}`,
-      className: `mobile-nav-item${isActive ? ' active' : ''}`,
-      'aria-current': isActive ? 'page' : undefined,
-      'data-mobile-nav-page-id': page.id
-    },
-    octicon(getPageIcon(page)),
-    h('span', { className: 'mobile-nav-label' }, title)
-  );
-}
-
-/**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @returns {string}
- */
-function getPageNavigationTitle(page) {
-  return typeof page['navigation-label'] === 'string' && page['navigation-label'].length > 0
-    ? page['navigation-label']
-    : typeof page.title === 'string' && page.title.length > 0
-      ? page.title
-      : titleCase(page.id);
-}
-
-/**
- * Restores and persists the desktop sidebar display mode.
- * @param {HTMLElement} root
- */
-function enableSidebarToggle(root) {
-  const appShell = root.querySelector('.app-shell');
-  const toggle = root.querySelector('.sidebar-toggle');
-  if (!(appShell instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) return;
-
-  /** @param {boolean} collapsed */
-  const setCollapsed = (collapsed) => {
-    appShell.classList.toggle('sidebar-collapsed', collapsed);
-    const label = collapsed ? 'Expand navigation' : 'Collapse navigation';
-    toggle.setAttribute('aria-label', label);
-    toggle.setAttribute('aria-expanded', String(!collapsed));
-    toggle.setAttribute('title', label);
-    toggle.replaceChildren(octicon(collapsed ? 'sidebar-collapse' : 'sidebar-expand'));
-  };
-
-  let collapsed = false;
-  try {
-    collapsed = globalThis.window?.localStorage?.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
-  } catch {
-    // Storage can be unavailable in embedded or privacy-restricted contexts.
-  }
-  setCollapsed(collapsed);
-
-  toggle.addEventListener('click', () => {
-    collapsed = !collapsed;
-    setCollapsed(collapsed);
-    try {
-      globalThis.window?.localStorage?.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
-    } catch {
-      // The display mode still works for the current page when storage is unavailable.
-    }
-  });
-}
-
-/**
- * Closes the mobile view menu after selection or when focus moves elsewhere.
- * @param {HTMLElement} root
- */
-function enableMobileNavigationMenu(root) {
-  const menu = root.querySelector('.mobile-nav-menu');
-  if (!(menu instanceof HTMLDetailsElement)) return;
-  enableDetailsMenuDismissal(root, menu, '[data-mobile-nav-page-id]');
-}
-
-/**
  * Keeps global dashboard controls inside the mobile hamburger menu while
  * preserving the single control instances and their filter-bar event
  * relationships. On narrow viewports the page title also moves into the
@@ -609,117 +383,6 @@ function enableResponsiveReportActions(root) {
   };
   placeActions();
   media.addEventListener?.('change', placeActions);
-}
-
-/**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @returns {string}
- */
-function getPageIcon(page) {
-  return typeof page.icon === 'string' ? page.icon : 'server';
-}
-
-/**
- * @param {PresentationDocument} document
- * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
- * @param {Record<string, LogicalSourceInput>} sources
- * @param {string} githubUrlBase
- * @param {string | null} dashboardRepository
- * @param {Record<string, unknown>} dashboardDefaults
- * @param {string} evaluatedAt
- * @param {DataState} effectiveState
- * @param {LocalViewer | null} viewer
- * @param {HTMLElement} dashboardHorizon
- * @param {string | null | undefined} commitSha
- * @returns {HTMLElement}
- */
-function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, evaluatedAt, effectiveState, viewer, dashboardHorizon, commitSha) {
-  const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
-  const overviewPage = pages.find((page) => page.id === 'overview');
-  const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
-  const initialPageDescription = initialPage?.description;
-  const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
-  const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
-  return h(
-    'div',
-    { className: 'app-main' },
-    h(
-      'header',
-      { className: 'top-nav' },
-      h(
-        'div',
-        { className: 'shell' },
-        h(
-          'div',
-          { className: 'overview-header', 'aria-labelledby': 'page-title' },
-          h(
-            'nav',
-            { className: 'breadcrumb-context', 'aria-label': 'Breadcrumb' },
-            h('a', { hidden: true, 'data-breadcrumb-root': '' }),
-            h('a', { href: overviewPageHref, hidden: true, 'data-breadcrumb-dashboard': '' }, 'Overview')
-          ),
-          h(
-            'div',
-            { className: 'title-area' },
-            h('h1', { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' }, initialPageTitle),
-            h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
-            h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
-          ),
-          h(
-            'p',
-            { className: 'lede', 'data-page-description': '', hidden: !initialPageDescription },
-            initialPageDescription ?? ''
-          )
-        ),
-        h(
-          'div',
-          { className: 'report-actions' },
-          dashboardHorizon,
-          dashboardRepository
-            ? h(
-              'a',
-              {
-                className: 'repository-link',
-                href: `${githubUrlBase}/${dashboardRepository}`,
-                'aria-label': `View ${dashboardRepository} on GitHub`,
-                title: `View ${dashboardRepository} on GitHub`
-              },
-              octicon('mark-github'),
-              h('span', { className: 'sr-only action-label' }, dashboardRepository)
-            )
-            : null
-        )
-      )
-    ),
-    renderSiteCallouts(document.dashboard.callouts, sources),
-    h(
-      'main',
-      { id: 'main-content', className: 'dashboard-prototype', tabIndex: -1 },
-      h(
-        'div',
-        { className: 'report-body' },
-        h(
-          'div',
-          { className: 'dashboard-pages' },
-          pages.map((page) => renderPagePlaceholder(page))
-        )
-      )
-    ),
-    h(
-      'footer',
-      { className: 'report-footer' },
-      h(
-        'div',
-        { className: 'report-footer-status' },
-        h('span', null, 'Last updated'),
-        h('time', { dateTime: evaluatedAt }, `${formatReportDate(evaluatedAt)} UTC`),
-        h('span', { className: 'report-footer-provenance' }, '· Generated deterministically from dashboard data.')
-      ),
-      commitSha && commitSha !== 'development'
-        ? h('span', { className: 'report-footer-version', title: commitSha }, 'Version ', h('code', null, commitSha.slice(0, 7)))
-        : null
-    )
-  );
 }
 
 /**

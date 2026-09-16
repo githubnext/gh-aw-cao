@@ -1103,6 +1103,15 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')?.textContent).toContain('Settings');
     expect(rendered.querySelector('.account-menu')).toBeNull();
+    const viewerAvatar = rendered.querySelector('.viewer-avatar-image');
+    expect(viewerAvatar?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
+    expect(viewerAvatar?.getAttribute('alt')).toBe('The Octocat avatar');
+    const unsafeViewer = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      viewer: { login: 'octocat', name: 'The Octocat', avatarUrl: 'javascript:alert(1)' }
+    });
+    expect(unsafeViewer.querySelector('.viewer-avatar-image')).toBeNull();
     expect(rendered.querySelector('.appearance-settings')).toBeNull();
     expect(rendered.querySelector('.database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-control')).toBeNull();
