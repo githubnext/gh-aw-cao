@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { effect } from '../reactive.js';
 import { formatCount } from './count-formatters.js';
 import { renderFactoryStation } from './factory-station.js';
 
@@ -7,7 +8,7 @@ import { renderFactoryStation } from './factory-station.js';
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
 /** @typedef {{ total: number, registered: number, unavailable: boolean, registeredUnavailable: boolean }} Coverage */
 /** @typedef {{ successfulRuns: () => number, failedRuns: () => number, activeRuns: () => number, valueGains: () => number, coverage: () => Coverage, workers: () => number, dispatches: () => number, failedDispatches: () => number, usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} OverviewMetrics */
-/** @typedef {{ bind: (render: () => void) => void, signal: AbortSignal, motion: import('../reactive.js').State<Motion> }} FactoryFloorScope */
+/** @typedef {{ signal: AbortSignal, motion: import('../reactive.js').State<Motion> }} FactoryFloorScope */
 
 /**
  * @param {SourceBindings} sources
@@ -72,7 +73,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     };
   });
 
-  scope.bind(() => {
+  effect(() => {
     const coverage = metrics.coverage();
     const successfulRuns = metrics.successfulRuns();
     const dispatchCount = metrics.dispatches();
@@ -88,7 +89,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       'aria-label',
       `${repositoriesDescription}, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatchCount)} workflow ${label('dispatches', dispatchCount).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(gains)} grader ${gains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
     );
-  });
+  }, { signal: scope.signal });
 
   floor.append(h(
     'ol',

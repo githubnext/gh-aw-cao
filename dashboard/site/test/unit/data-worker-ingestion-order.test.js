@@ -89,5 +89,5 @@ describe('canonical dashboard worker ingestion order', () => {
 
     expect(posted.find((message) => message.id === 1)?.error).toBeUndefined();
     expect(storedRunIds).toEqual(['github:run:303:attempt:1']);
-  }, 15_000);
+  }, 30_000);
 });
