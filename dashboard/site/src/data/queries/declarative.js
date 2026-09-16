@@ -731,10 +731,12 @@ function runDashboardQuery(definition, sources, budget) {
 function queryOperatorCost(operator) {
   if (operator.op === 'summarize') {
     return 1 + operator.values.reduce(
-      (cost, value) => cost + 1 + (value.filter?.predicates ?? []).reduce(
-        (predicateCost, predicate) => predicateCost + 1 + (predicate.in?.length ?? 0),
-        0
-      ),
+      (cost, value) => value.filter
+        ? cost + 1 + value.filter.predicates.reduce(
+            (predicateCost, predicate) => predicateCost + 1 + (predicate.in?.length ?? 0),
+            0
+          )
+        : cost,
       0
     );
   }

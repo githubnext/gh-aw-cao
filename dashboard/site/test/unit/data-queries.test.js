@@ -644,6 +644,20 @@ describe('declarative dashboard queries', () => {
             filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
           },
           {
+            field: 'event',
+            as: 'firewall-events',
+            reducer: 'count',
+            filter: {
+              predicates: [{
+                field: 'event-type',
+                in: ['firewall.request.allowed', 'firewall.request.blocked']
+              }, {
+                field: 'repository',
+                equals: 'api'
+              }]
+            }
+          },
+          {
             field: 'count',
             as: 'missing-mean',
             reducer: 'mean',
@@ -666,6 +680,7 @@ describe('declarative dashboard queries', () => {
         'all-events': 2,
         'blocked-events': 1,
         'blocked-count': 2,
+        'firewall-events': 2,
         'missing-mean': null,
         'unknown-types': 0
       },
@@ -674,6 +689,7 @@ describe('declarative dashboard queries', () => {
         'all-events': 2,
         'blocked-events': 0,
         'blocked-count': 0,
+        'firewall-events': 0,
         'missing-mean': null,
         'unknown-types': 1
       }
