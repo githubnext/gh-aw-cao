@@ -489,6 +489,17 @@ describe('data view renderer', () => {
       },
       sourceName: 'package-inventory',
       rows: [{ 'package-name': 'Daily ops', workflows: 2, runs: 14, registration: 'active' }],
+      cardTemplates: {
+        package: {
+          icon: 'package',
+          title: { field: 'package-name', title: 'Package' },
+          labels: [{ field: 'registration', title: 'Registration', display: 'active-state' }],
+          details: [
+            { field: 'workflows', title: 'Workflows' },
+            { field: 'runs', title: 'Runs' }
+          ]
+        }
+      },
       metadata,
       contextDetails: [],
       headingTag: 'h3',
@@ -500,7 +511,8 @@ describe('data view renderer', () => {
 
     const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
     expect(card?.querySelector('.issue-list-card-meta')?.textContent).toBe('');
-    expect(card?.querySelector('.entity-card-list-metric')?.textContent).toBe('2Workflows');
+    expect(card?.querySelector('.entity-card-list-metric strong')?.textContent).toBe('2');
+    expect(card?.querySelector('.entity-card-list-metric span')?.textContent).toBe('Workflows');
     expect(card?.querySelectorAll('.entity-card-list-metric')).toHaveLength(2);
     expect(card?.querySelector('.issue-list-labels')?.textContent).toContain('active');
   });

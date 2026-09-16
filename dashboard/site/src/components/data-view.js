@@ -384,8 +384,9 @@ function renderEntityCardItems(rows, options) {
           return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
         }),
         ...(definition.metrics ?? []).flatMap((column) => {
-          const value = renderValue(column, row[column.field], row);
-          return toText(row[column.field])
+          const rawValue = row[column.field];
+          const value = renderValue(column, rawValue, row);
+          return rawValue !== null && rawValue !== undefined
             ? [h(
                 'li',
                 { className: 'entity-card-list-metric' },
@@ -809,11 +810,22 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       )),
       metrics: columns.slice(1).filter((column) => column.type === 'quantitative')
     };
+  const quantitativeFields = new Set(columns
+    .filter((column) => column.type === 'quantitative')
+    .map((column) => column.field));
+  const metricFields = new Set(definition.metrics?.map((field) => field.field));
+  for (const field of definition.details) {
+    if (quantitativeFields.has(field.field)) metricFields.add(field.field);
+  }
   const visibleDefinition = {
     ...definition,
     labels: definition.labels.filter((field) => columnFields.has(field.field)),
-    details: definition.details.filter((field) => columnFields.has(field.field)),
-    metrics: (definition.metrics ?? []).filter((field) => columnFields.has(field.field))
+    details: definition.details.filter((field) => columnFields.has(field.field) && !metricFields.has(field.field)),
+    metrics: [...definition.details, ...(definition.metrics ?? [])].filter((field, index, fields) => (
+      columnFields.has(field.field)
+      && metricFields.has(field.field)
+      && fields.findIndex((candidate) => candidate.field === field.field) === index
+    ))
   };
   const list = h('ul', {
     className: 'document-list issue-list entity-card-list mobile-table-card-list-items',
