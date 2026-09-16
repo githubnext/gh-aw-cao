@@ -117,6 +117,39 @@ test("grades a document and the CLI writes the same report shape", async () => {
   }
 });
 
+test("excludes views on experimentally navigated pages", () => {
+  const document = {
+    dashboard: {
+      navigation: [
+        { label: "Main", pages: ["overview"] },
+        { label: "Experimental", experimental: true, pages: ["experiments", "preview"] },
+      ],
+      pages: [
+        {
+          id: "overview",
+          views: [{ id: "summary", title: "Summary", data: { source: "summary" } }],
+        },
+        {
+          id: "experiments",
+          views: [{ id: "experiment-results", title: "Experiment results" }],
+        },
+        {
+          id: "preview",
+          kind: "built-in",
+          definition: {
+            views: [{ id: "preview-results", title: "Preview results" }],
+          },
+        },
+      ],
+    },
+  };
+
+  const report = gradeDashboardDocument(document);
+
+  assert.equal(report.summary.views, 1);
+  assert.deepEqual(report.views.map(({ view }) => view), ["summary"]);
+});
+
 test("rejects malformed inputs", () => {
   assert.throws(() => gradeDashboardView(null), /view must be an object/);
   assert.throws(() => gradeDashboardDocument({}), /dashboard\.pages must be an array/);

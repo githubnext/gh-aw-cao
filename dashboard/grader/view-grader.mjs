@@ -225,7 +225,12 @@ export function gradeDashboardDocument(document, options = {}) {
   const pages = document?.dashboard?.pages;
   if (!Array.isArray(pages)) throw new TypeError("dashboard.pages must be an array");
   const screenshots = options.screenshots || {};
-  const results = pages.flatMap((page) =>
+  const experimentalPageIds = new Set(
+    (document.dashboard.navigation || [])
+      .filter((section) => section?.experimental === true)
+      .flatMap((section) => Array.isArray(section.pages) ? section.pages : []),
+  );
+  const results = pages.filter((page) => !experimentalPageIds.has(page?.id)).flatMap((page) =>
     pageViews(page).filter((view) => textPresent(view.title)).map((view) => ({
       page: String(page.id || page.title || "unnamed-page"),
       ...gradeDashboardView(view, {
