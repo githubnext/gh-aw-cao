@@ -3832,6 +3832,48 @@ describe('presenter built-in and custom pages', () => {
     expect(pageSignal?.aborted).toBe(true);
   });
 
+  it('ignores a pending view transition after the dashboard is disposed', () => {
+    /** @type {(() => void) | undefined} */
+    let transitionUpdate;
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        transitionUpdate = callback;
+        return { finished: Promise.resolve() };
+      })
+    });
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'transition-disposal-dashboard',
+          title: 'Transition Disposal Dashboard',
+          pages: [
+            { id: 'first', kind: /** @type {'custom'} */ ('custom'), title: 'First', views: [] },
+            { id: 'second', kind: /** @type {'custom'} */ ('custom'), title: 'Second', views: [] }
+          ]
+        }
+      },
+      sources: {}
+    });
+    document.body.append(rendered);
+    try {
+      /** @type {HTMLAnchorElement | null} */ (
+        rendered.querySelector('[data-nav-page-id="second"]')
+      )?.click();
+      expect(transitionUpdate).toBeDefined();
+
+      disposeDashboard(rendered);
+      transitionUpdate?.();
+
+      expect(rendered.querySelector('[data-page-id="second"]')?.hasAttribute('data-page-pending')).toBe(true);
+    } finally {
+      rendered.remove();
+      Reflect.deleteProperty(document, 'startViewTransition');
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('removes page navigation handlers when navigation is disposed', async () => {
     /** @type {FrameRequestCallback[]} */
     const animationFrames = [];

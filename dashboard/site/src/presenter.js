@@ -942,7 +942,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    * @param {boolean} [deferPopulation]
    */
   const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
-    const revision = ++activationRevision;
+     if (navigationOwner.signal.aborted) return;
+     const revision = ++activationRevision;
     pageOwner.abort();
     pageOwner = new AbortController();
     let pagePopulated = false;
