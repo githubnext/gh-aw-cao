@@ -10,6 +10,7 @@ import {
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
 import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-compiler.js';
+import { createDashboardQueryMemoization, dashboardQueryMemoizationKey } from './data/queries/memoization.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { createElapsedStepTracker } from './elapsed-step-tracker.js';
@@ -39,6 +40,8 @@ async function* responseChunks(body) {
 
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
+let dashboardActivated = false;
+const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
  * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
  */
@@ -208,39 +211,51 @@ async function queryLiveDashboard(
   dashboard = liveDashboard
 ) {
   dashboard ??= await loadActiveDashboard();
-  const required = resolveDashboardQuerySources(context.queries, requested);
-  const canonicalPayload = await queryCanonicalViewSources(
-    indexedDB,
-    dashboard.logicalSources,
-    required
-  );
-  const page = pageId
-    ? context.pages.find((candidate) => candidate?.id === pageId)
-    : null;
-  const viewPayload = page && pageId
-    ? compileDashboardViewPayloadQueries(page, pageId, {
-        routeParameters,
-        queryContext,
-        evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
-        queries: context.queries
-      })
-    : { aliases: [], queries: [], replacedSources: [] };
-  const replacedSources = new Set(viewPayload.replacedSources);
-  const directRequests = new Set([...requested].filter((name) => !replacedSources.has(name)));
-  const querySources = {
-    ...canonicalPayload,
-    ...executeDashboardQueries(context.queries, canonicalPayload, directRequests, { signal })
-  };
-  const viewAliases = viewPayload.queries.length > 0
-    ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal, pagination })
-    : {};
-  const selected = pageScopedSources(querySources, requested);
-  const responseSources = { ...selected, ...viewAliases };
-  return paginateDashboardSources(
-    responseSources,
-    /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-    continuationRevision(context.queries, dashboard.revision)
-  );
+  if (signal?.aborted) throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
+  const key = dashboardQueryMemoizationKey([
+    [...requested].sort(),
+    context,
+    requestContext,
+    pagination,
+    pageId,
+    routeParameters,
+    queryContext
+  ]);
+  return dashboardQueryMemoization.get(dashboard.revision, key, async () => {
+    const required = resolveDashboardQuerySources(context.queries, requested);
+    const canonicalPayload = await queryCanonicalViewSources(
+      indexedDB,
+      dashboard.logicalSources,
+      required
+    );
+    const page = pageId
+      ? context.pages.find((candidate) => candidate?.id === pageId)
+      : null;
+    const viewPayload = page && pageId
+      ? compileDashboardViewPayloadQueries(page, pageId, {
+          routeParameters,
+          queryContext,
+          evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
+          queries: context.queries
+        })
+      : { aliases: [], queries: [], replacedSources: [] };
+    const replacedSources = new Set(viewPayload.replacedSources);
+    const directRequests = new Set([...requested].filter((name) => !replacedSources.has(name)));
+    const querySources = {
+      ...canonicalPayload,
+      ...executeDashboardQueries(context.queries, canonicalPayload, directRequests, { signal })
+    };
+    const viewAliases = viewPayload.queries.length > 0
+      ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal, pagination })
+      : {};
+    const selected = pageScopedSources(querySources, requested);
+    const responseSources = { ...selected, ...viewAliases };
+    return paginateDashboardSources(
+      responseSources,
+      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
+      continuationRevision(context.queries, dashboard.revision)
+    );
+  });
 }
 
 /** @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources */
@@ -565,10 +580,13 @@ export function processDataRequest(request, signal) {
             : `Dashboard ingestion committed ${ingestion.committedRecords} canonical records.`);
         }
         progress.log('Refreshing active dashboard queries.');
+        const nextRevision = (liveDashboard?.revision ?? 0)
+          + (!dashboardActivated || changed ? 1 : 0);
         liveDashboard = {
           logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-          revision: (liveDashboard?.revision ?? 0) + 1
+          revision: nextRevision
         };
+        dashboardActivated = true;
         scheduleDashboardSubscriptions();
         progress.complete();
         const projected = await queryLiveDashboard(

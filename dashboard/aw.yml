@@ -91,6 +91,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/queries/declarative.js
   - source: site/src/data/queries/index.js
     destination: .github/aw/dashboard/site/src/data/queries/index.js
+  - source: site/src/data/queries/memoization.js
+    destination: .github/aw/dashboard/site/src/data/queries/memoization.js
   - source: site/src/data/queries/view-payload-compiler.js
     destination: .github/aw/dashboard/site/src/data/queries/view-payload-compiler.js
   - source: site/src/data/queries/view-sources.js
