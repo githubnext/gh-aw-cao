@@ -19,6 +19,7 @@ project:
 structure:
   architecture_document: ARCHITECTURE.md
   codebase_model: CODEBASE.yml
+  agent_instructions: AGENTS.md
   catalog_manifest: aw.yml
   operations: <operation>/aw.yml
   activity: activity/
@@ -69,6 +70,32 @@ components:
   dashboard_data:
     path: dashboard/site/src/data/
     responsibility: normalize, persist, and declaratively query canonical browser data in a Web Worker
+  gh_aw_logs:
+    responsibility: authoritative execution-log source for Activity collection
+  activity_jsonl_shards:
+    path: activity/
+    responsibility: bounded, authoritative Activity evidence snapshots
+  sqlite_projection:
+    path: activity/
+    responsibility: rebuildable local query projection for the cao CLI and agents
+  dashboard_publisher:
+    path: dashboard/
+    responsibility: publish immutable Activity evidence cache artifacts
+  browser_data_worker:
+    path: dashboard/site/src/data/
+    responsibility: download, normalize, persist, and query browser data off the main thread
+  indexeddb_projection:
+    path: dashboard/site/src/data/
+    responsibility: rebuildable per-browser data projection
+  dashboard_language_queries:
+    path: dashboard/site/src/data/
+    responsibility: declarative query definitions executed by the browser data worker
+  dashboard_ui:
+    path: dashboard/site/
+    responsibility: render bounded Dashboard Language query payloads
+  cao_cli:
+    path: activity/cao.mjs
+    responsibility: query Activity SQLite projections for local tooling and agents
 
 dependencies:
   - catalog -> control_repository
@@ -134,25 +161,31 @@ invariants:
   - "Policy and workflow changes MUST be committed together."
 
 flows:
-  operation_execution:
-    - control_repository_schedule_or_manual_dispatch
+  operation_review:
+    - control_repository
     - policy_resolution
-    - orchestrator_selection
-    - one_worker_per_selected_repository
-    - review_repository_or_authorized_target_repository
+    - orchestrator
+    - worker
+    - review_repository
+  operation_live:
+    - control_repository
+    - policy_resolution
+    - orchestrator
+    - worker
+    - target_repository
   activity_dashboard:
     - gh_aw_logs
-    - bounded_jsonl_shards
+    - activity_jsonl_shards
     - dashboard_publisher
-    - browser_data_web_worker
+    - browser_data_worker
     - indexeddb_projection
     - dashboard_language_queries
-    - static_dashboard_ui
+    - dashboard_ui
   activity_cli:
     - gh_aw_logs
-    - bounded_jsonl_shards
+    - activity_jsonl_shards
     - sqlite_projection
-    - cao_cli_and_agents
+    - cao_cli
 
 generation:
   codebase_model:
