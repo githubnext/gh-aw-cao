@@ -3334,7 +3334,7 @@
         "description": "Observed operational value totals grouped by producing workflow.",
         "from": "operational-values",
         "aggregate": {
-          "by": ["organization", "repository", "workflow"],
+          "by": ["workflow"],
           "values": [{ "field": "operational-value", "as": "value-created", "reducer": "sum" }]
         }
       },
@@ -3347,14 +3347,12 @@
           {
             "source": "workflows",
             "type": "inner",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" }
-            ],
+            "on": [{ "left": "workflow", "right": "workflow" }],
             "fields": [
               { "field": "package", "as": "package" },
               { "field": "package-name", "as": "package-name" },
+              { "field": "organization", "as": "organization" },
+              { "field": "repository", "as": "repository" },
               { "field": "workflow-name", "as": "workflow-name" },
               { "field": "workflow-role", "as": "workflow-role" },
               { "field": "workflow-link", "as": "workflow-link" }
@@ -6932,7 +6930,6 @@
               "y": {
                 "field": "value-created",
                 "type": "quantitative",
-                "aggregate": "sum",
                 "title": "Value created",
                 "unit": "grade"
               }

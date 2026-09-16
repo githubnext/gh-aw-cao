@@ -16,7 +16,7 @@ const metadata = {
 };
 
 describe('Value dashboard view', () => {
-  it('attributes workflow operational value to packages without crossing repository boundaries', () => {
+  it('attributes workflow operational value to packages', () => {
     const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: document.dashboard.queries,
@@ -25,17 +25,17 @@ describe('Value dashboard view', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'alpha', package: 'doctor', 'package-name': 'Doctor', workflow: 'shared.md', 'workflow-name': 'Doctor worker', 'workflow-role': 'worker' },
-            { organization: 'githubnext', repository: 'beta', package: 'maintenance', 'package-name': 'Maintenance', workflow: 'shared.md', 'workflow-name': 'Maintenance worker', 'workflow-role': 'worker' }
+            { organization: 'githubnext', repository: 'alpha', package: 'doctor', 'package-name': 'Doctor', workflow: 'doctor.md', 'workflow-name': 'Doctor worker', 'workflow-role': 'worker' },
+            { organization: 'githubnext', repository: 'beta', package: 'maintenance', 'package-name': 'Maintenance', workflow: 'maintenance.md', 'workflow-name': 'Maintenance worker', 'workflow-role': 'worker' }
           ],
           metadata
         },
         'operational-values': {
           source: 'operational-values',
           rows: [
-            { organization: 'githubnext', repository: 'alpha', workflow: 'shared.md', 'operational-value': 0.8 },
-            { organization: 'githubnext', repository: 'alpha', workflow: 'shared.md', 'operational-value': 0.7 },
-            { organization: 'githubnext', repository: 'beta', workflow: 'shared.md', 'operational-value': 0.5 }
+            { organization: 'githubnext', repository: 'alpha', workflow: 'doctor.md', 'operational-value': 0.8 },
+            { organization: 'githubnext', repository: 'alpha', workflow: 'doctor.md', 'operational-value': 0.7 },
+            { organization: 'githubnext', repository: 'beta', workflow: 'maintenance.md', 'operational-value': 0.5 }
           ],
           metadata
         }

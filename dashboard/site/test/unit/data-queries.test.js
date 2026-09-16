@@ -1284,6 +1284,7 @@ describe('declarative dashboard queries', () => {
     ]);
     expect(derived['package-operational-value-totals'].rows).toEqual([{
       package: 'aw-doctor',
+      'package-name': 'AW Doctor',
       'value-created': 1
     }]);
     expect(derived['package-inventory'].rows).toEqual([{

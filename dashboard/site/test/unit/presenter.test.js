@@ -2225,7 +2225,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('img')).toBeNull();
   });
 
-  it('renders operational-value observations as one full-view lazy table', async () => {
+  it('renders operational value by package and workflow', async () => {
     const metadata = {
       'source-id': 'value-fixture',
       'source-kind': 'fixture',
@@ -2250,6 +2250,30 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        workflows: {
+          source: 'workflows',
+          rows: [
+            {
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              package: 'daily',
+              'package-name': 'Daily',
+              workflow: '.github/workflows/daily.md',
+              'workflow-name': 'Daily value',
+              'workflow-role': 'worker'
+            },
+            {
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              package: 'review',
+              'package-name': 'Review',
+              workflow: '.github/workflows/review.md',
+              'workflow-name': 'Review value',
+              'workflow-role': 'worker'
+            }
+          ],
+          metadata
+        },
         'operational-values': {
           source: 'operational-values',
           rows: [
@@ -2405,23 +2429,15 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="operational-value"] .octicon-beaker')).not.toBeNull();
     const tables = page?.querySelectorAll('.custom-table') ?? [];
     expect(tables).toHaveLength(1);
+    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('Daily');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('Review');
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(5);
-    expect(tables[0]?.querySelector('.status-success')?.textContent).toBe('pass');
-    expect(tables[0]?.querySelector('.status-attention')?.textContent).toBe('unavailable');
-    expect(tables[0]?.textContent).toContain('Mature');
-    expect(tables[0]?.textContent).toContain('Interim');
-    expect(tables[0]?.textContent).toContain('sha256:curre');
-    expect(tables[0]?.querySelector('a[aria-label="View run 103"]')?.getAttribute('href')).toContain('/actions/runs/103');
-    const graderRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
-    const graderFilter = /** @type {HTMLInputElement} */ (graderRegion?.querySelector('[data-table-filter]'));
-    expect(graderFilter.closest('label')?.textContent).toContain('Filter Operational Value Ledger');
-    graderFilter.value = 'review-value';
-    graderFilter.dispatchEvent(new Event('input'));
-    expect([...graderRegion.querySelectorAll('tbody tr')]
-      .filter((row) => row instanceof HTMLTableRowElement && !row.hidden)).toHaveLength(1);
-    expect(graderRegion.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
+    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(tables[0]?.textContent).toContain('Daily value');
+    expect(tables[0]?.textContent).toContain('Review value');
+    expect(tables[0]?.textContent).toContain('1.60');
+    expect(tables[0]?.textContent).toContain('0.40');
   });
 
   it('DLS-VIEW-018 DLS-VIEW-019 DLS-VIEW-020 progressively discloses supplemental views in source order', () => {
