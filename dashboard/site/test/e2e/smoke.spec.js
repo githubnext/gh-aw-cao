@@ -4949,3 +4949,82 @@ test('phone pages toggle between chart, full-view table, and card-list modes', a
   await expect(root).not.toHaveClass(/dashboard-full-view/);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('card');
 });
+
+test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      document.querySelector('#root').append(renderDashboard({
+        document: {
+          languageVersion: '0.1.0',
+          dashboard: {
+            id: 'phone-table-card-dashboard',
+            title: 'Phone Table Cards',
+            'card-templates': [{
+              id: 'repository',
+              icon: 'repo',
+              title: { field: 'repository-coordinate' },
+              labels: [],
+              details: [{ field: 'organization', title: 'Organization' }]
+            }],
+            pages: [{
+              id: 'repositories',
+              kind: 'custom',
+              title: 'Repositories',
+              views: [{
+                id: 'repositories-table',
+                title: 'Repositories',
+                data: { source: 'repositories' },
+                mark: 'table',
+                controls: 'interactive',
+                'lazy-list': true,
+                layout: 'full-view',
+                encoding: {
+                  columns: [
+                    { field: 'repository-coordinate', type: 'nominal', title: 'Repository' },
+                    { field: 'organization', type: 'nominal', title: 'Organization' }
+                  ]
+                }
+              }]
+            }]
+          }
+        },
+        sources: {
+          repositories: {
+            source: 'repositories',
+            rows: [{
+              'repository-coordinate': 'githubnext/gh-aw-cao',
+              organization: 'githubnext'
+            }],
+            metadata: {
+              availability: 'available',
+              completeness: 'complete',
+              freshness: 'fresh'
+            }
+          }
+        }
+      }));
+    </script>
+  `);
+
+  const root = page.locator('.dashboard-root');
+  const table = page.locator('[data-view-id="repositories-table"] .table-region');
+  const cards = page.locator('[data-mobile-card-list]');
+  await expect(table).toBeVisible();
+  await expect(cards).toBeHidden();
+  await expect(root).toHaveClass(/dashboard-full-view/);
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(table).toBeHidden();
+  await expect(cards).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card')).toContainText('githubnext/gh-aw-cao');
+  await expect(root).not.toHaveClass(/dashboard-full-view/);
+
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(table).toBeVisible();
+  await expect(cards).toBeHidden();
+  await expect(root).toHaveClass(/dashboard-full-view/);
+});
