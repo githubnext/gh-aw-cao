@@ -7,7 +7,7 @@ let nextIngestionProgressId = 0;
 
 /**
  * Publishes a user-facing notification from the data worker.
- * @param {{ id?: string, message?: string, detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], dismiss?: boolean }} notification
+ * @param {{ id?: string, message?: string, icon?: 'download', detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], dismiss?: boolean }} notification
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 export function publishWorkerNotification(notification, target = self) {
@@ -38,30 +38,32 @@ export function startIngestionProgress(target = self) {
   let processedBytes = 0;
   /** @type {number | undefined} */
   let totalBytes;
-  let statusLabel = 'Preparing data...';
   let completed = false;
-  /** @param {string} label */
-  const updateStatus = (label) => {
-    statusLabel = label;
-    if (typeof totalBytes !== 'number') {
-      status = label;
+  const updateStatus = () => {
+    if (workloadStartedAt === 0) {
+      status = 'Preparing data...';
       return;
     }
-    const byteProgress = `${formatDataSize(processedBytes)}/${formatDataSize(totalBytes)}`;
-    const elapsedMs = workloadStartedAt > 0 ? Date.now() - workloadStartedAt : 0;
-    const remainingMs = estimateRemainingTime(processedBytes, totalBytes, elapsedMs);
-    const remaining = processedBytes >= totalBytes
+    const byteProgress = typeof totalBytes === 'number'
+      ? `${formatDataSize(processedBytes)}/${formatDataSize(totalBytes)}`
+      : formatDataSize(processedBytes);
+    const elapsedMs = Date.now() - workloadStartedAt;
+    const remainingMs = typeof totalBytes === 'number'
+      ? estimateRemainingTime(processedBytes, totalBytes, elapsedMs)
+      : null;
+    const remaining = typeof totalBytes === 'number' && processedBytes >= totalBytes
       ? '0s remaining'
       : remainingMs === null ? 'Estimating time remaining' : `${formatRemainingTime(remainingMs)} remaining`;
-    status = `${label} · ${byteProgress} · ${remaining}`;
+    status = `${byteProgress} · ${remaining}`;
   };
   const report = () => {
     if (!completed) {
-      updateStatus(statusLabel);
+      updateStatus();
       const snapshot = clock.snapshot();
       publishWorkerNotification({
         id,
         message: status,
+        icon: 'download',
         detailsSubtitle: 'Downloading and processing a local copy in this browser can take several minutes. Cached shards are reused.',
         details: snapshot.history,
         tone: 'info',
@@ -82,7 +84,7 @@ export function startIngestionProgress(target = self) {
       totalBytes = typeof bytes === 'number' && Number.isFinite(bytes) && bytes >= 0 ? bytes : undefined;
       processedBytes = 0;
       workloadStartedAt = Date.now();
-      updateStatus('Preparing local copy');
+      updateStatus();
     },
     /**
      * @param {{ bytesProcessed: number, recordsIngested: number, totalBytes?: number }} progress
@@ -95,7 +97,7 @@ export function startIngestionProgress(target = self) {
       const byteProgress = typeof totalBytes === 'number' && totalBytes > 0
         ? `${formatDataSize(processedBytes)}/${formatDataSize(totalBytes)}`
         : formatDataSize(processedBytes);
-      updateStatus('Processing local copy');
+      updateStatus();
       clock.update(
         `Parsing ${recordsIngested.toLocaleString('en-US')} rec, ${byteProgress}.`,
         'parsing'
@@ -107,7 +109,7 @@ export function startIngestionProgress(target = self) {
      * @param {{ storedRecords: number, totalRecords: number }} progress
      */
     store({ storedRecords, totalRecords }) {
-      updateStatus('Saving local copy');
+      updateStatus();
       clock.update(
         `Storing ${storedRecords.toLocaleString('en-US')}/${totalRecords.toLocaleString('en-US')} rec.`,
         'storing'

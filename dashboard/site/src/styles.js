@@ -15,6 +15,9 @@ export function notificationStylesheet() {
 .dashboard-notification-error { border-left-color: var(--danger, #cf222e); }
 .dashboard-notification-enter, .dashboard-notification-exit { transform: translateY(16px); opacity: 0; }
 .dashboard-notification-content { min-width: 0; flex: 1; }
+.dashboard-notification-summary { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.dashboard-notification-icon { width: 16px; height: 16px; flex: 0 0 16px; color: var(--muted, GrayText); }
+.dashboard-notification-icon .octicon { width: 16px; height: 16px; }
 .dashboard-notification-message { min-width: 0; flex: 1; overflow-wrap: anywhere; text-align: left; }
 .dashboard-notification-toggle { width: 100%; display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .dashboard-notification-toggle:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 3px; border-radius: 3px; }
