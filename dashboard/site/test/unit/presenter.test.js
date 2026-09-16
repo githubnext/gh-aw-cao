@@ -11,7 +11,7 @@ import { SOURCE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
-import { resolveBuiltInPages } from '../../src/dashboard-chunks.js';
+import { dashboardPagePayload, resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
@@ -2796,6 +2796,10 @@ describe('presenter built-in and custom pages', () => {
     ]);
 
     for (const page of pages) {
+      const views = dashboardPagePayload(
+        page,
+        authoritativeDashboardDocument.dashboard.views
+      ).views;
       expect(page.kind).toBe('built-in');
       expect(page.id).toBe(page.page === 'overview' ? 'operations' : page.page);
       expect(typeof page.icon).toBe('string');
@@ -2804,10 +2808,11 @@ describe('presenter built-in and custom pages', () => {
       });
       expect(Array.isArray(page.definition?.views)).toBe(true);
       expect(page.definition.views.length).toBeGreaterThan(0);
-      expect(page.definition.views.every((/** @type {{ data?: { source?: unknown, sources?: unknown } }} */ view) => (
-        typeof view?.data?.source === 'string'
-        || (Array.isArray(view?.data?.sources) && view.data.sources.every((source) => typeof source === 'string'))
-      ))).toBe(true);
+      expect(views.every((view) => {
+        const configuredView = /** @type {{ data?: { source?: unknown, sources?: unknown } }} */ (view);
+        return typeof configuredView?.data?.source === 'string'
+          || (Array.isArray(configuredView?.data?.sources) && configuredView.data.sources.every((source) => typeof source === 'string'));
+      })).toBe(true);
     }
 
     const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs');
