@@ -949,7 +949,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines the Workflows run ranking as a declarative pie chart without a companion table', () => {
+  it('defines the Workflows chart and inventory table as declarative views', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'workflows'
@@ -972,9 +972,27 @@ describe('dashboard document validation', () => {
         href: { field: 'workflow-link', type: 'nominal' }
       }
     });
-    expect(page.definition.views).not.toContainEqual(
-      expect.objectContaining({ mark: 'table' })
-    );
+    expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-inventory'
+    )).toMatchObject({
+      data: { source: 'workflow-inventory' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view',
+      encoding: {
+        href: { field: 'workflow-link', type: 'nominal' }
+      }
+    });
+    const columns = page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-inventory'
+    ).encoding.columns;
+    expect(columns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'workflow-name', display: 'workflow-link' }),
+      expect.objectContaining({ field: 'repository', display: 'repository-link' }),
+      expect.objectContaining({ field: 'package-name' }),
+      expect.objectContaining({ field: 'runs', type: 'quantitative' })
+    ]));
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -1110,7 +1128,7 @@ dashboard:
     ]);
     expect(workflowsPage.definition.views.map((/** @type {{ id?: string } | string} */ view) =>
       typeof view === 'string' ? view : view.id
-    )).toEqual(['workflows-by-runs']);
+    )).toEqual(['workflows-by-runs', 'workflows-inventory']);
     expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',

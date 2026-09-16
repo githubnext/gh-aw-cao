@@ -5475,6 +5475,78 @@
                   "type": "nominal"
                 }
               }
+            },
+            {
+              "id": "workflows-inventory",
+              "title": "Workflows",
+              "description": "Declared workflows across the configured repository scope.",
+              "data": {
+                "source": "workflow-inventory"
+              },
+              "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "column-summaries": true,
+              "layout": "full-view",
+              "empty-message": "No workflows observed.",
+              "encoding": {
+                "href": {
+                  "field": "workflow-link",
+                  "type": "nominal"
+                },
+                "columns": [
+                  {
+                    "field": "workflow-name",
+                    "type": "nominal",
+                    "title": "Workflow",
+                    "display": "workflow-link"
+                  },
+                  {
+                    "field": "repository",
+                    "type": "nominal",
+                    "title": "Repository",
+                    "display": "repository-link"
+                  },
+                  {
+                    "field": "package-name",
+                    "type": "nominal",
+                    "title": "Package"
+                  },
+                  {
+                    "field": "workflow-role",
+                    "type": "nominal",
+                    "title": "Role"
+                  },
+                  {
+                    "field": "rollout-mode",
+                    "type": "nominal",
+                    "title": "Mode",
+                    "display": "mode"
+                  },
+                  {
+                    "field": "workflow-active",
+                    "type": "nominal",
+                    "title": "State",
+                    "display": "active-state"
+                  },
+                  {
+                    "field": "aic",
+                    "type": "quantitative",
+                    "title": "AIC",
+                    "unit": "aic"
+                  },
+                  {
+                    "field": "runs",
+                    "type": "quantitative",
+                    "title": "Runs"
+                  },
+                  {
+                    "field": "ingestion",
+                    "type": "nominal",
+                    "title": "Ingestion"
+                  }
+                ]
+              }
             }
           ]
         }
