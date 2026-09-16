@@ -91,9 +91,13 @@ export function startIngestionProgress(target = self) {
   let status = 'Preparing data...';
   let workloadStartedAt = 0;
   let processedBytes = 0;
+  /** @type {number | undefined} */
   let totalBytes;
+  let statusLabel = 'Preparing data...';
   let completed = false;
+  /** @param {string} label */
   const updateStatus = (label) => {
+    statusLabel = label;
     if (typeof totalBytes !== 'number') {
       status = label;
       return;
@@ -101,10 +105,14 @@ export function startIngestionProgress(target = self) {
     const byteProgress = `${formatDataSize(processedBytes)}/${formatDataSize(totalBytes)}`;
     const elapsedMs = workloadStartedAt > 0 ? Date.now() - workloadStartedAt : 0;
     const remainingMs = estimateRemainingTime(processedBytes, totalBytes, elapsedMs);
-    status = `${label} · ${byteProgress} · ${remainingMs === null ? 'Estimating time remaining' : `${formatRemainingTime(remainingMs)} remaining`}`;
+    const remaining = processedBytes >= totalBytes
+      ? '0s remaining'
+      : remainingMs === null ? 'Estimating time remaining' : `${formatRemainingTime(remainingMs)} remaining`;
+    status = `${label} · ${byteProgress} · ${remaining}`;
   };
   const report = () => {
     if (!completed) {
+      updateStatus(statusLabel);
       const snapshot = clock.snapshot();
       publishWorkerNotification({
         id,
@@ -553,6 +561,7 @@ export function processDataRequest(request, signal) {
           if (shards.length === 0) {
             throw new Error('Activity shard manifest is missing or contains no valid activity shards.');
           }
+          /** @type {Array<{ index: number, shard: { name: string, hash: string }, shardUrl: URL, current: boolean, sizeBytes: number | undefined }>} */
           const shardStates = [];
           for (const [index, shard] of shards.entries()) {
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
@@ -608,9 +617,9 @@ export function processDataRequest(request, signal) {
             {
               const contentLengthHeader = response.headers.get('content-length');
               const contentLength = contentLengthHeader === null ? Number.NaN : Number(contentLengthHeader);
-              const payloadBytes = Number.isFinite(contentLength) && contentLength >= 0
+              const payloadBytes = sizeBytes ?? (Number.isFinite(contentLength) && contentLength >= 0
                 ? contentLength
-                : sizeBytes;
+                : undefined);
               const compressed = response.headers.has('content-encoding');
               progress.log(payloadBytes === undefined
                 ? `Shard ${index + 1} received; parsing.`

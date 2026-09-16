@@ -81,7 +81,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Storing 1,000/1,000 rec. +4s'
+        message: 'Saving local copy · 750 KB/1.5 MB · 4s remaining'
       })
     });
 
@@ -152,7 +152,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Processing local copy · 2.0 KB/2.0 KB · Estimating time remaining'
+        message: 'Processing local copy · 2.0 KB/2.0 KB · 0s remaining'
       })
     });
 

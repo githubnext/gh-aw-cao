@@ -158,7 +158,12 @@ async function sendFileContent(request, response, contentType, path) {
   const headers = { "Cache-Control": "no-store", "Content-Type": contentType };
   const acceptsGzip = /(^|,)\s*gzip\s*(;|,|$)/.test(String(request.headers["accept-encoding"] ?? ""));
   if (request.method === "HEAD") {
-    response.writeHead(200, { ...headers, Vary: "Accept-Encoding" });
+    const file = await stat(path);
+    response.writeHead(200, {
+      ...headers,
+      "Content-Length": file.size,
+      Vary: "Accept-Encoding",
+    });
     response.end();
     return;
   }

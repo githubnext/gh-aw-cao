@@ -172,7 +172,7 @@ function renderNotification(initial, container, onRemove) {
       details.hidden = !expanded;
       detailsSubtitle.textContent = current.detailsSubtitle ?? '';
       detailsSubtitle.hidden = !expanded || !current.detailsSubtitle;
-      if (current.detailsSubtitle && !detailsSubtitle.isConnected) content.insertBefore(detailsSubtitle, details);
+      if (current.detailsSubtitle && !detailsSubtitle.isConnected) content.append(detailsSubtitle);
       if (!current.detailsSubtitle) detailsSubtitle.remove();
       if (!details.isConnected) content.append(details);
     } else {
@@ -202,6 +202,7 @@ function renderNotification(initial, container, onRemove) {
       `${current.message} ${expanded ? 'Show' : 'Hide'} ingestion progress history`
     );
     details.hidden = expanded;
+    detailsSubtitle.hidden = expanded || !current.detailsSubtitle;
     if (!expanded) details.scrollTop = details.scrollHeight;
   };
   details.addEventListener('wheel', (event) => {

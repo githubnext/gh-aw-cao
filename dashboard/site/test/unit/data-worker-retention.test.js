@@ -193,10 +193,11 @@ describe('canonical dashboard worker retention updates', () => {
 
     expect(firstJsonl?.data).toMatchObject({ changed: true });
     expect(repeatedJsonl?.data).toMatchObject({ changed: false });
-    expect(jsonlRequests).toHaveLength(1);
+    expect(jsonlRequests).toEqual([{ method: 'HEAD' }, undefined]);
     expect(requestUrls).toEqual([
       'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json',
+      `https://dashboard.example/${normalizedName}`,
       `https://dashboard.example/${normalizedName}`,
       'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json'
@@ -231,7 +232,7 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 5))?.data).toMatchObject({ changed: true });
-    expect(jsonlRequests[1]).toBeUndefined();
+    expect(jsonlRequests.slice(2)).toEqual([{ method: 'HEAD' }, undefined]);
     dispatch({
       id: 6,
       operation: 'load-canonical-dashboard',
@@ -241,7 +242,7 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 6))?.data).toMatchObject({ changed: false });
-    expect(jsonlRequests).toHaveLength(2);
+    expect(jsonlRequests).toHaveLength(4);
 
     globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {
       if (String(input).endsWith('/payload-hashes.json')) return new Response(null, { status: 404 });
