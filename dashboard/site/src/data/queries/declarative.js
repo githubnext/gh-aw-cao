@@ -28,7 +28,7 @@ import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }> },
  *   compute?: import('../../data-operations.js').ComputedField[],
- *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max' }> },
+ *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
  *   predict?: import('../../data-operations.js').PredictedField[],
  *   select?: Array<{ field: string, as?: string }>,
  *   ['order-by']?: Array<{ field: string, direction?: 'asc'|'desc' }>,
@@ -45,6 +45,9 @@ export const DASHBOARD_QUERY_LIMITS = {
   'max-join-rows': 200000,
   'max-output-rows': 100000,
   'max-joins': 4,
+  'max-aggregate-values': 64,
+  'max-aggregate-filter-predicates': 8,
+  'max-predicate-alternatives': 32,
   'max-operations': 5000000,
   'max-duration-ms': 60000
 };
@@ -340,6 +343,43 @@ function queryStructuralDefect(definition) {
   for (const join of joins) {
     if (!Array.isArray(join?.on) || join.on.length === 0) {
       return `join on "${String(join?.source)}" declares no equality keys`;
+    }
+  }
+  if (definition.aggregate) {
+    if (!Array.isArray(definition.aggregate.values)
+        || definition.aggregate.values.length === 0
+        || definition.aggregate.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
+      return `aggregate values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions`;
+    }
+    for (const value of definition.aggregate.values) {
+      if (!isPlainObject(value)) return 'aggregate values must be mappings';
+      if (value.filter === undefined) continue;
+      if (!isPlainObject(value.filter)
+          || Object.keys(value.filter).some((key) => key !== 'predicates')) {
+        return 'aggregate filters must be mappings containing only predicates';
+      }
+      const predicates = value.filter?.predicates;
+      if (!Array.isArray(predicates)
+          || predicates.length === 0
+          || predicates.length > DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates']) {
+        return `aggregate filter predicates must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates']} definitions`;
+      }
+      for (const predicate of predicates) {
+        const keys = Object.keys(predicate ?? {});
+        const hasEquals = Object.hasOwn(predicate ?? {}, 'equals');
+        const hasIn = Object.hasOwn(predicate ?? {}, 'in');
+        const operators = Number(hasEquals) + Number(hasIn);
+        if (typeof predicate?.field !== 'string' || operators !== 1
+            || keys.some((key) => !['field', 'equals', 'in'].includes(key))
+            || (hasEquals && !isAggregateFilterLiteral(predicate.equals))
+            || (hasIn
+              && (!Array.isArray(predicate.in)
+                || predicate.in.length === 0
+                || predicate.in.length > DASHBOARD_QUERY_LIMITS['max-predicate-alternatives']
+                || predicate.in.some((candidate) => !isAggregateFilterLiteral(candidate))))) {
+          return 'aggregate filter predicates must declare a field and exactly one bounded equals or in comparison';
+        }
+      }
     }
   }
   if (definition.predict !== undefined) {
@@ -689,6 +729,17 @@ function runDashboardQuery(definition, sources, budget) {
 
 /** @param {import('../../data-operations.js').DataOperator} operator */
 function queryOperatorCost(operator) {
+  if (operator.op === 'summarize') {
+    return 1 + operator.values.reduce(
+      (cost, value) => value.filter
+        ? cost + 1 + value.filter.predicates.reduce(
+            (predicateCost, predicate) => predicateCost + 1 + (predicate.in?.length ?? 0),
+            0
+          )
+        : cost,
+      0
+    );
+  }
   if (operator.op !== 'predict') return 1;
   return operator.values.reduce((cost, prediction) => {
     const predictors = Array.isArray(prediction.on) ? prediction.on.length : 1;
@@ -890,4 +941,10 @@ function unavailableResult(definition, metadata, reason) {
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {unknown} value */
+function isAggregateFilterLiteral(value) {
+  return ['string', 'number', 'boolean'].includes(typeof value)
+    && (typeof value !== 'number' || Number.isFinite(value));
 }

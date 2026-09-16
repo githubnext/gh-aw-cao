@@ -93,6 +93,7 @@ const sources = {
         run: '42', 'run-attempt': 2, session: 'session:run-42', event: 'event:tool-call',
         'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
         'event-summary': 'github.list_issues', 'event-status': 'requested',
+        'request-count': 7,
         'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
         'github-entity-type': 'issue', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
       },
@@ -336,11 +337,33 @@ describe('canonical view sources', () => {
         'event-type': 'tool.call',
         'event-source': 'mcp',
         'event-summary': 'github.list_issues',
+        'request-count': 7,
         'correlation-id': 'call-1',
         'safe-output-type': 'create_issue',
         'github-entity-type': 'issue'
       }),
       expect.objectContaining({ event: 'event:agent-turn', 'event-source': 'agent', 'event-type': 'agent_turn' })
+    ]);
+  });
+
+  it('projects firewall event arity with canonical event types', async () => {
+    const firewallSources = structuredClone(sources);
+    const firewallEvent = firewallSources.events.rows[0];
+    firewallEvent.event = 'event:firewall-blocked';
+    firewallEvent['event-source'] = 'firewall';
+    firewallEvent['event-type'] = 'net_blocked';
+    firewallSources.events.rows = [firewallEvent];
+    await loadCanonicalViewSources(indexedDB, firewallSources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, firewallSources, ['events']);
+
+    expect(projected.events.rows).toEqual([
+      expect.objectContaining({
+        event: 'event:firewall-blocked',
+        'event-source': 'firewall',
+        'event-type': 'firewall.request.blocked',
+        'request-count': 7
+      })
     ]);
   });
 

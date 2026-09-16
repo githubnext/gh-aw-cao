@@ -11,7 +11,7 @@ import { formatPercent } from './view-formatters.js';
  * @typedef {Record<string, unknown>} Row
  * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }} Predicate
  * @typedef {{ op: 'filter', predicates?: Predicate[], search?: { fields: string[], query: string } }} FilterOperator
- * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'calendar-week-rhythm'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
+ * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'calendar-week-rhythm'|'sum'|'mean'|'min'|'max', filter?: { predicates: Predicate[] } }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
  * @typedef {{ op: 'slice', offset?: number, limit: number }} SliceOperator
  * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
@@ -455,10 +455,21 @@ function summarize(rows, operator) {
       ...groupFields.map((field) => [field, group[0]?.[field]]),
       ...operator.values.map((summary) => [
         summary.as,
-        reduceValues(group.map((row) => row[summary.field]), summary.reducer)
+        summarizeValue(group, summary)
       ])
     ]);
   });
+}
+
+/**
+ * @param {Row[]} group
+ * @param {SummarizeOperator['values'][number]} summary
+ */
+function summarizeValue(group, summary) {
+  const contributing = summary.filter
+    ? group.filter((row) => summary.filter?.predicates.every((predicate) => matches(row, predicate)))
+    : group;
+  return reduceValues(contributing.map((row) => row[summary.field]), summary.reducer);
 }
 
 /** @param {unknown[]} input @param {SummarizeOperator['values'][number]['reducer']} reducer */

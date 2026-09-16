@@ -329,7 +329,7 @@ test("transaction logs retain a session when artifacts contain no timeline", () 
   }]);
 });
 
-test("transaction log events preserve correlation ids", () => {
+test("transaction log events preserve correlation ids and request counts", () => {
   const rows = transactionLogRows({
     generatedAt: "2026-09-09T05:00:00Z",
     securityRuns: [{
@@ -342,14 +342,17 @@ test("transaction log events preserve correlation ids", () => {
       timeline: [{
         sourceId: "event-1",
         timestamp: "2026-09-09T04:02:01Z",
-        source: "gateway",
-        type: "tool_call",
+        source: "firewall",
+        type: "net_blocked",
         correlationId: "call-305",
+        requestCount: 7,
       }],
     }],
   });
 
   assert.equal(rows.events[0]["correlation-id"], "call-305");
+  assert.equal(rows.events[0]["event-type"], "firewall.request.blocked");
+  assert.equal(rows.events[0]["request-count"], 7);
 });
 
 test("transaction log events preserve token-efficiency lifecycle fields", () => {
