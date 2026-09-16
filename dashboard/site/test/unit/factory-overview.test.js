@@ -115,6 +115,39 @@ it('animates overview counters only when selected by its JSON element configurat
   expect(counter instanceof HTMLElement && counter.style.getPropertyValue('--metric-number-target')).toBe('2');
 });
 
+it('composes reusable factory sections selected by JSON configuration', () => {
+  const rendered = renderFactoryOverview({
+    title: 'Factory floor',
+    elementConfig: { sections: ['floor'] },
+    sources: overviewSources({
+      'overview-run-summary': source('overview-run-summary', [{
+        'successful-runs': 0,
+        'failed-runs': 0,
+        'active-runs': 2,
+        'active-live': 1,
+        'active-review': 1
+      }])
+    })
+  });
+
+  expect(rendered.querySelector('.factory-intro')).toBeNull();
+  expect(rendered.querySelector('.factory-floor')).not.toBeNull();
+  expect(rendered.querySelector('.factory-floor')?.classList.contains('factory-floor-active')).toBe(true);
+  expect(rendered.getAttribute('aria-label')).toBe('Factory floor');
+  expect(rendered.hasAttribute('aria-labelledby')).toBe(false);
+});
+
+it('defensively renders each configured factory section once', () => {
+  const rendered = renderFactoryOverview({
+    elementConfig: { sections: ['header', 'header', 'floor'] },
+    sources: overviewSources()
+  });
+
+  expect(rendered.querySelectorAll('.factory-intro')).toHaveLength(1);
+  expect(rendered.querySelectorAll('#agent-factory-heading')).toHaveLength(1);
+  expect(rendered.querySelectorAll('.factory-floor')).toHaveLength(1);
+});
+
 it.each([
   ['humming', 'Your factory is humming.'],
   ['under strain', 'Your factory is under strain.'],

@@ -705,7 +705,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders the JSON-declared workflow chart without associated detail views', () => {
+  it('renders the JSON-declared workflow chart and inventory table', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -802,15 +802,13 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml');
     expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml');
-    expect([...(page?.querySelectorAll('.chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
-    expect(page?.querySelector('[data-view-layout="full-view"]')).toBeNull();
-    expect(page?.querySelector('[data-lazy-list]')).toBeNull();
-    expect(page?.querySelector('table')).toBeNull();
+    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
+    expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-rocket$/);
   });
 
-  it('does not render the former workflow detail table links', () => {
+  it('uses declared workflow identities for inventory navigation', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -892,7 +890,11 @@ describe('presenter built-in and custom pages', () => {
     const links = [...rendered.querySelectorAll('[data-page-name="workflows"] .chart-legend-pie a')]
       .map((link) => link.getAttribute('href'));
     expect(links).toHaveLength(0);
-    expect(rendered.querySelector('[data-page-name="workflows"] table')).toBeNull();
+    expect(rendered.querySelector('[data-page-name="workflows"] table')).not.toBeNull();
+    expect(rendered.querySelector('[data-page-name="workflows"] table a')?.getAttribute('href'))
+      .toMatch(/^#page-workflow-runtime\?workflow=/);
+    expect([...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
+      .every((link) => !(link.parentElement instanceof HTMLAnchorElement))).toBe(true);
   });
 
   it('DLS-LINK-006 DLS-LINK-007 renders worker-provided entity links in table columns and honours explicit link overrides', () => {
@@ -2226,7 +2228,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('img')).toBeNull();
   });
 
-  it('renders operational-value observations as one full-view lazy table', async () => {
+  it('renders package operational value as a pie chart and full-view table', async () => {
     const metadata = {
       'source-id': 'value-fixture',
       'source-kind': 'fixture',
@@ -2251,6 +2253,30 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        'package-inventory': {
+          source: 'package-inventory',
+          rows: [
+            {
+              package: 'ambient-context',
+              'package-name': 'Ambient Context',
+              'package-dashboard-link': {
+                'dashboard-href': '#page-package-insights?package=ambient-context',
+                'dashboard-label': 'View Ambient Context package dashboard'
+              },
+              'value-created': 1.6
+            },
+            {
+              package: 'aw-doctor',
+              'package-name': 'AW Doctor',
+              'package-dashboard-link': {
+                'dashboard-href': '#page-package-insights?package=aw-doctor',
+                'dashboard-label': 'View AW Doctor package dashboard'
+              },
+              'value-created': 0.4
+            }
+          ],
+          metadata
+        },
         'operational-values': {
           source: 'operational-values',
           rows: [
@@ -2400,29 +2426,32 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'operational-value');
     const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'operational-value');
-    expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Value & outcomes' });
+    expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Operational value' });
     expect(dashboardPage).not.toHaveProperty('page');
     expect(dashboardPage).not.toHaveProperty('sections');
     expect(rendered.querySelector('[data-nav-page-id="operational-value"] .octicon-beaker')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="operational-value-by-package"] [data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('Ambient Context');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('AW Doctor');
     const tables = page?.querySelectorAll('.custom-table') ?? [];
     expect(tables).toHaveLength(1);
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(5);
-    expect(tables[0]?.querySelector('.status-success')?.textContent).toBe('pass');
-    expect(tables[0]?.querySelector('.status-attention')?.textContent).toBe('unavailable');
-    expect(tables[0]?.textContent).toContain('Mature');
-    expect(tables[0]?.textContent).toContain('Interim');
-    expect(tables[0]?.textContent).toContain('sha256:curre');
-    expect(tables[0]?.querySelector('a[aria-label="View run 103"]')?.getAttribute('href')).toContain('/actions/runs/103');
-    const graderRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
-    const graderFilter = /** @type {HTMLInputElement} */ (graderRegion?.querySelector('[data-table-filter]'));
-    expect(graderFilter.closest('label')?.textContent).toContain('Filter Operational Value Ledger');
-    graderFilter.value = 'review-value';
-    graderFilter.dispatchEvent(new Event('input'));
-    expect([...graderRegion.querySelectorAll('tbody tr')]
+    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect([...tables[0]?.querySelectorAll('thead > tr:first-child > th') ?? []].map((cell) => cell.textContent)).toEqual([
+      'Package',
+      'Operational value'
+    ]);
+    expect(tables[0]?.textContent).toContain('Ambient Context');
+    expect(tables[0]?.textContent).toContain('1.6');
+    const valueRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
+    const valueFilter = /** @type {HTMLInputElement} */ (valueRegion?.querySelector('[data-table-filter]'));
+    expect(valueFilter.closest('label')?.textContent).toContain('Filter Packages');
+    valueFilter.value = 'AW Doctor';
+    valueFilter.dispatchEvent(new Event('input'));
+    expect([...valueRegion.querySelectorAll('tbody tr')]
       .filter((row) => row instanceof HTMLTableRowElement && !row.hidden)).toHaveLength(1);
-    expect(graderRegion.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
+    expect(valueRegion.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
   });
 
   it('DLS-VIEW-018 DLS-VIEW-019 DLS-VIEW-020 progressively discloses supplemental views in source order', () => {
@@ -3032,6 +3061,14 @@ describe('presenter built-in and custom pages', () => {
           y: { field: 'runs', type: 'quantitative', title: 'Runs' },
           href: { field: 'workflow-link', type: 'nominal' }
         }
+      },
+      {
+        id: 'workflows-inventory',
+        data: { source: 'workflow-inventory' },
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
       }
     ]);
   });

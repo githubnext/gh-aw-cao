@@ -845,52 +845,6 @@
         "aggregate": { "values": [{ "field": "event", "as": "events", "reducer": "count" }] }
       },
       {
-        "name": "token-efficiency-opportunities",
-        "intent": "Project stable token-efficiency opportunities from canonical events.",
-        "from": "events",
-        "filter": {
-          "predicates": [{ "field": "event-type", "equals": "token_efficiency.opportunity" }]
-        },
-        "compute": [
-          {
-            "as": "target-repository-link",
-            "function": "concat",
-            "args": [{ "value": "https://github.com/" }, { "field": "target-repo" }]
-          },
-          {
-            "as": "target-workflow-link",
-            "function": "concat",
-            "args": [
-              { "value": "https://github.com/" },
-              { "field": "target-repo" },
-              { "value": "/blob/HEAD/" },
-              { "field": "target-workflow-path" }
-            ]
-          }
-        ],
-        "select": [
-          { "field": "target-organization", "as": "organization" },
-          { "field": "target-repository", "as": "repository" },
-          { "field": "target-workflow-path", "as": "workflow" },
-          { "field": "run" },
-          { "field": "opportunity-id" },
-          { "field": "opportunity-kind" },
-          { "field": "assignment-run" },
-          { "field": "experiment" },
-          { "field": "evidence-window-start" },
-          { "field": "evidence-window-end" },
-          { "field": "evidence-state" },
-          { "field": "evidence-confidence" },
-          { "field": "cost-grain" },
-          { "field": "event-timestamp", "as": "observed-at" },
-          { "field": "safe-output-url", "as": "issue-link" },
-          { "field": "payload-ref", "as": "evidence-link" },
-          { "field": "target-repository-link", "as": "repository-link" },
-          { "field": "target-workflow-link", "as": "workflow-link" },
-          { "field": "run-link" }
-        ]
-      },
-      {
         "name": "token-efficiency-interventions",
         "intent": "Project append-only token-efficiency intervention lifecycle observations from canonical events.",
         "from": "events",
@@ -5491,6 +5445,74 @@
                   "type": "nominal"
                 }
               }
+            },
+            {
+              "id": "workflows-inventory",
+              "title": "Workflows",
+              "description": "Declared workflows across the configured repository scope.",
+              "data": {
+                "source": "workflow-inventory"
+              },
+              "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "column-summaries": true,
+              "layout": "full-view",
+              "empty-message": "No workflows observed.",
+              "encoding": {
+                "columns": [
+                  {
+                    "field": "workflow-name",
+                    "type": "nominal",
+                    "title": "Workflow",
+                    "display": "workflow-link"
+                  },
+                  {
+                    "field": "repository",
+                    "type": "nominal",
+                    "title": "Repository",
+                    "display": "repository-link"
+                  },
+                  {
+                    "field": "package-name",
+                    "type": "nominal",
+                    "title": "Package"
+                  },
+                  {
+                    "field": "workflow-role",
+                    "type": "nominal",
+                    "title": "Role"
+                  },
+                  {
+                    "field": "rollout-mode",
+                    "type": "nominal",
+                    "title": "Mode",
+                    "display": "mode"
+                  },
+                  {
+                    "field": "workflow-active",
+                    "type": "nominal",
+                    "title": "State",
+                    "display": "active-state"
+                  },
+                  {
+                    "field": "aic",
+                    "type": "quantitative",
+                    "title": "AIC",
+                    "unit": "aic"
+                  },
+                  {
+                    "field": "runs",
+                    "type": "quantitative",
+                    "title": "Runs"
+                  },
+                  {
+                    "field": "ingestion",
+                    "type": "nominal",
+                    "title": "Ingestion"
+                  }
+                ]
+              }
             }
           ]
         }
@@ -6880,72 +6902,67 @@
       {
         "id": "operational-value",
         "kind": "custom",
-        "title": "Value & outcomes",
+        "title": "Operational value",
         "navigation-label": "Value",
         "icon": "beaker",
         "class-name": "value-page",
-        "description": "Outcome, grader, maturity, AI Credit, and experiment-readiness evidence for the configured repositories.",
+        "description": "Operational value created by centrally managed packages.",
         "views": [
           {
-            "id": "operational-value-ledger",
+            "id": "operational-value-by-package",
+            "title": "Operational value by package",
+            "description": "The share of observed operational value created by each centrally managed package.",
             "data": {
-              "source": "grader-observations"
+              "source": "package-inventory"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "horizontal",
+            "empty-message": "No package operational value was observed in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "package-name",
+                "type": "nominal",
+                "title": "Package"
+              },
+              "y": {
+                "field": "value-created",
+                "type": "quantitative",
+                "aggregate": "mean",
+                "as": "total-value-created",
+                "title": "Operational value",
+                "unit": "grade"
+              }
+            }
+          },
+          {
+            "id": "operational-value-packages",
+            "title": "Packages",
+            "description": "Observed operational value created by each centrally managed package.",
+            "data": {
+              "source": "package-inventory"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No operational-value grader records were retained.",
+            "lazy-list": true,
+            "column-summaries": true,
             "layout": "full-view",
+            "empty-message": "No package operational value was observed in the selected horizon.",
             "encoding": {
               "columns": [
                 {
-                  "field": "grader",
+                  "field": "package-name",
                   "type": "nominal",
-                  "title": "Workflow"
+                  "title": "Package"
                 },
                 {
-                  "field": "status",
-                  "type": "nominal",
-                  "display": "grader-status",
-                  "title": "Status"
-                },
-                {
-                  "field": "maturity-status",
-                  "type": "nominal",
-                  "display": "label",
-                  "title": "Maturity"
-                },
-                {
-                  "field": "value",
+                  "field": "value-created",
                   "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Value"
-                },
-                {
-                  "field": "baseline-value",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Baseline"
-                },
-                {
-                  "field": "delta-from-baseline",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Delta"
-                },
-                {
-                  "field": "evaluator-digest",
-                  "type": "nominal",
-                  "display": "digest",
-                  "title": "Evaluator"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
+                  "title": "Operational value",
+                  "unit": "grade"
                 }
               ]
-            },
-            "lazy-list": true
+            }
           }
         ]
       },
@@ -7589,6 +7606,7 @@
             "element": "outcomes-overview",
             "config": {
               "animate": "number",
+              "sections": ["header", "floor"],
               "labels": {
                 "repositories": {
                   "singular": "Repository registered",

@@ -10,6 +10,9 @@ const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'gene
 const dashboardQueries = JSON.parse(
   readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
 ).dashboard.queries;
+const optimizationDashboardQueries = JSON.parse(
+  readFileSync(`${process.cwd()}/../../optimization/dashboard.json`, 'utf8')
+).dashboard.queries;
 const sources = {
   packages: {
     rows: [{
@@ -547,7 +550,7 @@ describe('canonical view sources', () => {
       ['events']
     );
     const projected = executeDashboardQueries(
-      dashboardQueries,
+      optimizationDashboardQueries,
       canonical,
       ['token-efficiency-opportunities', 'token-efficiency-interventions']
     );

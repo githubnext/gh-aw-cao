@@ -514,8 +514,8 @@ describe('dashboard document validation', () => {
 
   it('defines every other editable experimental page as one full-view lazy table', () => {
     // Pages that intentionally compose more than one editable view, asserted separately below
-    // or by their own focused suites: safe-outputs, maintenance, entity cards, cost, and audit.
-    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'sessions', 'cost', 'audit']);
+    // or by their own focused suites: safe-outputs, maintenance, entity cards, operational value, cost, and audit.
+    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'sessions', 'operational-value', 'cost', 'audit']);
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -975,7 +975,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines the Workflows run ranking as a declarative pie chart without a companion table', () => {
+  it('defines the Workflows chart and inventory table as declarative views', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'workflows'
@@ -998,9 +998,24 @@ describe('dashboard document validation', () => {
         href: { field: 'workflow-link', type: 'nominal' }
       }
     });
-    expect(page.definition.views).not.toContainEqual(
-      expect.objectContaining({ mark: 'table' })
-    );
+    expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-inventory'
+    )).toMatchObject({
+      data: { source: 'workflow-inventory' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view'
+    });
+    const columns = page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-inventory'
+    ).encoding.columns;
+    expect(columns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'workflow-name', display: 'workflow-link' }),
+      expect.objectContaining({ field: 'repository', display: 'repository-link' }),
+      expect.objectContaining({ field: 'package-name' }),
+      expect.objectContaining({ field: 'runs', type: 'quantitative' })
+    ]));
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -1025,6 +1040,7 @@ describe('dashboard document validation', () => {
       ]) },
       mark: 'element',
       element: 'outcomes-overview',
+      config: expect.objectContaining({ sections: ['header', 'floor'] }),
       layout: 'full'
     })]);
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
@@ -1069,12 +1085,15 @@ dashboard:
   it('defines core data pages as declarative full-view lazy tables', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
+    const operationalValuePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operational-value');
     const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
     const packageDetailPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'package-detail');
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
     const transactionsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'transactions');
 
     const packagesChart = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-value-created');
+    const operationalValueChart = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-by-package');
+    const operationalValueTable = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-packages');
     const packagesView = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-inventory');
     const packageWorkflowsView = packageDetailPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-workflow-table');
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
@@ -1098,6 +1117,27 @@ dashboard:
         y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Value created', unit: 'grade' }
       }
     });
+    expect(operationalValueChart).toMatchObject({
+      data: { source: 'package-inventory' },
+      mark: 'chart',
+      chart: 'pie',
+      encoding: {
+        x: { field: 'package-name', type: 'nominal', title: 'Package' },
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'mean', title: 'Operational value', unit: 'grade' }
+      }
+    });
+    expect(operationalValueTable).toMatchObject({
+      data: { source: 'package-inventory' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      'column-summaries': true,
+      layout: 'full-view'
+    });
+    expect(operationalValueTable.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
+      'Package',
+      'Operational value'
+    ]);
     expect(packagesView.encoding.href).toEqual({ field: 'package-dashboard-link', type: 'nominal' });
     expect(packagesView.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
       'Package',
@@ -1136,7 +1176,7 @@ dashboard:
     ]);
     expect(workflowsPage.definition.views.map((/** @type {{ id?: string } | string} */ view) =>
       typeof view === 'string' ? view : view.id
-    )).toEqual(['workflows-by-runs']);
+    )).toEqual(['workflows-by-runs', 'workflows-inventory']);
     expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
@@ -1461,6 +1501,77 @@ dashboard:
       expect(incompleteText.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E005',
         path: '$.dashboard.pages[0].views[0].config.labels.Repositories'
+      }));
+    }
+  });
+
+  it('accepts declarative factory overview sections and rejects unknown sections', () => {
+    const accepted = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, floor]
+`);
+    expect(accepted.ok).toBe(true);
+
+    const invalid = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [status]
+`);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].config.sections[0]'
+      }));
+    }
+
+    const duplicate = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, header]
+`);
+    expect(duplicate.ok).toBe(false);
+    if (!duplicate.ok) {
+      expect(duplicate.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
+        path: '$.dashboard.pages[0].views[0].config.sections[1]'
       }));
     }
   });

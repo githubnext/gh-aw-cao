@@ -12,6 +12,7 @@ export {
   WORKFLOW_ROUTE_BODY_VALUES,
   WORKFLOW_ROUTE_PAGE_BODY_VALUES
 } from './components/route-body-specification.js';
+export { FACTORY_OVERVIEW_SECTION_VALUES } from './components/factory-overview-sections.js';
 
 export const LANGUAGE_VERSION = '0.1.0';
 
