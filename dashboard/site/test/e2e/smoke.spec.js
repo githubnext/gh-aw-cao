@@ -1720,7 +1720,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
   await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
-  await overviewPage.getByRole('link', { name: '0', exact: true }).click();
+  await overviewPage.locator('.factory-station').nth(3).locator('strong a').click();
   await expect(page).toHaveURL(/#page-operational-value$/);
   await expect(page.getByRole('heading', { name: 'Value & outcomes', exact: true, level: 1 })).toBeVisible();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
