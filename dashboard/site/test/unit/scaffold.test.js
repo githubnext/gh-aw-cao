@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { primerStylesheet } from '../../src/styles.js';
 
 describe('DLS-CONF-004 scaffold gates', () => {
   it('DLS-CONF-004 initializes the presenter workspace tooling', () => {
@@ -128,9 +129,23 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('uses the Primer body font size on mobile', () => {
-    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const style = document.createElement('style');
+    style.textContent = primerStylesheet();
+    document.head.append(style);
+    const stylesheet = style.sheet;
+    expect(stylesheet).not.toBeNull();
+    let mobileBodyRule;
+    for (const rule of stylesheet?.cssRules ?? []) {
+      const mediaRule = /** @type {CSSMediaRule} */ (rule);
+      if (mediaRule.conditionText !== '(max-width: 700px)') continue;
+      mobileBodyRule = [...mediaRule.cssRules]
+        .map((nestedRule) => /** @type {CSSStyleRule} */ (nestedRule))
+        .find((nestedRule) => nestedRule.selectorText === 'body, .dashboard-root');
+      if (mobileBodyRule) break;
+    }
 
-    expect(styles).toContain('@media (max-width: 700px) {\n  body, .dashboard-root { font-size: 1rem; }');
+    expect(mobileBodyRule?.style.getPropertyValue('font-size')).toBe('1rem');
+    style.remove();
   });
 
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
