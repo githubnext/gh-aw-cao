@@ -79,7 +79,7 @@ describe('canonical source ingestion and queries', () => {
   it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
     const payload = {
       schemaVersion: 8,
-      ingestionVersion: 1,
+      ingestionVersion: 2,
       sourceRecords: 1,
       batch: {
         packages: [],
@@ -141,7 +141,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })
     ]);
@@ -447,7 +447,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-jsonl',
-        ingestionVersion: 2,
+        ingestionVersion: 3,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })

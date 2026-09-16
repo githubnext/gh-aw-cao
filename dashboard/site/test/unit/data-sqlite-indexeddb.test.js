@@ -231,7 +231,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     });
     expect(JSON.parse(readFileSync(join(normalizedDirectory, normalizedName), 'utf8'))).toMatchObject({
       schemaVersion: 8,
-      ingestionVersion: 1,
+      ingestionVersion: 2,
       sourceRecords: 3,
       batch: {
         repositories: expect.any(Array),
