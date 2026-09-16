@@ -50,6 +50,21 @@ architecture:
   authority: >
     A run's authority is the intersection of reviewed policy, dispatch request,
     worker ceilings, credential reach, and gh-aw-compiled capabilities.
+  concepts:
+    reviewed_workflow_revision: workflow revision from which policy is resolved
+    credentials: GitHub Actions secrets resolved only inside a run
+    resolved_policy: effective CAO authority and rollout envelope
+    target_repository_mutation: direct target repository modification by an orchestrator
+    targets_outside_resolved_policy: repositories not admitted by the effective envelope
+    dispatched_target: single repository identity carried by a worker envelope
+    declared_safe_output_capabilities: compiled gh-aw repository-write capabilities
+    additional_target_discovery: worker discovery beyond its dispatched target
+    further_work_dispatch: worker dispatch of additional work
+    mode_widening: promotion beyond the envelope or worker mode ceiling
+    control_plane_authority: authority to authorize control-plane execution
+    bounded_worker_query_payloads: bounded query results sent from the data worker
+    source_data_queries: direct source-data queries from UI code
+    business_relationship_reconstruction: UI derivation of source-data relationships
 
 components:
   policy_resolution:
@@ -71,6 +86,7 @@ components:
     path: dashboard/site/src/data/
     responsibility: normalize, persist, and declaratively query canonical browser data in a Web Worker
   gh_aw_logs:
+    external: true
     responsibility: authoritative execution-log source for Activity collection
   activity_jsonl_shards:
     path: activity/
@@ -109,7 +125,7 @@ dependencies:
   - activity_jsonl_shards -> dashboard_publisher
   - dashboard_publisher -> browser_data_worker
   - browser_data_worker -> indexeddb_projection
-  - dashboard_language_queries -> browser_data_worker
+  - browser_data_worker -> dashboard_language_queries
   - dashboard_language_queries -> dashboard_ui
 
 boundaries:
