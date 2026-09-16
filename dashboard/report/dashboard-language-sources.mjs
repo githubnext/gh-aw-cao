@@ -887,6 +887,7 @@ function collectedLogRuns(usage) {
 }
 
 const TRANSACTION_EVENT_FIELDS = {
+  requestCount: "request-count",
   safeOutputType: "safe-output-type",
   githubEntityType: "github-entity-type",
   targetRepo: "target-repo",

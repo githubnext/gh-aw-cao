@@ -437,16 +437,16 @@ An aggregate value may declare a `filter` containing `predicates`. This filter s
 
 ```yaml
 queries:
-  - name: event-counts
-    intent: Count all events and firewall-blocked events by repository.
+  - name: event-and-blocked-request-counts
+    intent: Count all events and sum firewall-blocked requests by repository.
     from: events
     aggregate:
       by: [organization, repository]
       values:
         - { field: event, as: all-events, reducer: count }
-        - field: event
-          as: blocked-events
-          reducer: count
+        - field: request-count
+          as: blocked-requests
+          reducer: sum
           filter:
             predicates:
               - { field: event-type, equals: firewall.request.blocked }
@@ -457,6 +457,8 @@ queries:
             predicates:
               - { field: event-type, in: [firewall.request.allowed, firewall.request.blocked] }
 ```
+
+Firewall event arity is the numeric `request-count` field. Counting matching event records is not equivalent to summing blocked requests when one event represents multiple requests.
 
 Query-level filtering and computation execute first. Group tuples are then formed from every remaining row. For each group and aggregate value independently, its aggregate-local filter is applied to the group's pre-aggregation rows and the reducer consumes only matching measure values. Aggregate-local filters do not remove a group, filter another aggregate, read an aggregate output, or imply event ordering, adjacency, windows, correlation, or any other sequence semantics.
 

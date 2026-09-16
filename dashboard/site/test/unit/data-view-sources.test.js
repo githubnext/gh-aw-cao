@@ -93,6 +93,7 @@ const sources = {
         run: '42', 'run-attempt': 2, session: 'session:run-42', event: 'event:tool-call',
         'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
         'event-summary': 'github.list_issues', 'event-status': 'requested',
+        'request-count': 7,
         'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
         'github-entity-type': 'issue', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
       },
@@ -336,6 +337,7 @@ describe('canonical view sources', () => {
         'event-type': 'tool.call',
         'event-source': 'mcp',
         'event-summary': 'github.list_issues',
+        'request-count': 7,
         'correlation-id': 'call-1',
         'safe-output-type': 'create_issue',
         'github-entity-type': 'issue'

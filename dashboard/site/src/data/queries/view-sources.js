@@ -317,6 +317,7 @@ function eventsSource(events, sessionsById, runsById, sources) {
           'event-type': event.type,
           'event-summary': event.summary,
           'event-status': event.status,
+          'request-count': event.requestCount,
           'correlation-id': event.correlationId,
           'payload-ref': event.payloadRef,
           'mcp-server': event.mcpServer,

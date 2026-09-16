@@ -616,11 +616,11 @@ describe('declarative dashboard queries', () => {
     const events = {
       source: 'events',
       rows: [
-        { repository: 'api', event: '1', 'event-type': 'firewall.request.blocked', count: 2 },
-        { repository: 'api', event: '2', 'event-type': 'firewall.request.allowed', count: 0 },
-        { repository: 'api', event: null, 'event-type': 'firewall.request.blocked', count: null },
-        { repository: 'web', event: '3', 'event-type': 'gateway.request', count: 4 },
-        { repository: 'web', event: '4', 'event-type': null, count: 3 }
+        { repository: 'api', event: '1', 'event-type': 'firewall.request.blocked', 'request-count': 2 },
+        { repository: 'api', event: '2', 'event-type': 'firewall.request.allowed', 'request-count': 0 },
+        { repository: 'api', event: null, 'event-type': 'firewall.request.blocked', 'request-count': null },
+        { repository: 'web', event: '3', 'event-type': 'gateway.request', 'request-count': 4 },
+        { repository: 'web', event: '4', 'event-type': null, 'request-count': 3 }
       ],
       metadata: metadata('events')
     };
@@ -633,13 +633,13 @@ describe('declarative dashboard queries', () => {
           { field: 'event', as: 'all-events', reducer: 'count' },
           {
             field: 'event',
-            as: 'blocked-events',
+            as: 'matched-blocked-records',
             reducer: 'count',
             filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
           },
           {
-            field: 'count',
-            as: 'blocked-count',
+            field: 'request-count',
+            as: 'blocked-requests',
             reducer: 'sum',
             filter: { predicates: [{ field: 'event-type', equals: 'firewall.request.blocked' }] }
           },
@@ -658,7 +658,7 @@ describe('declarative dashboard queries', () => {
             }
           },
           {
-            field: 'count',
+            field: 'request-count',
             as: 'missing-mean',
             reducer: 'mean',
             filter: { predicates: [{ field: 'event-type', equals: 'not-observed' }] }
@@ -678,8 +678,8 @@ describe('declarative dashboard queries', () => {
       {
         repository: 'api',
         'all-events': 2,
-        'blocked-events': 1,
-        'blocked-count': 2,
+        'matched-blocked-records': 1,
+        'blocked-requests': 2,
         'firewall-events': 2,
         'missing-mean': null,
         'unknown-types': 0
@@ -687,8 +687,8 @@ describe('declarative dashboard queries', () => {
       {
         repository: 'web',
         'all-events': 2,
-        'blocked-events': 0,
-        'blocked-count': 0,
+        'matched-blocked-records': 0,
+        'blocked-requests': 0,
         'firewall-events': 0,
         'missing-mean': null,
         'unknown-types': 1

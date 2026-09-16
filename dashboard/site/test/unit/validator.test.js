@@ -5439,9 +5439,9 @@ describe('declarative query validation', () => {
       aggregate: {
         by: ['workflow'],
         values: [{
-          field: 'event',
-          as: 'blocked-events',
-          reducer: 'count',
+          field: 'request-count',
+          as: 'blocked-requests',
+          reducer: 'sum',
           filter: {
             predicates: [
               { field: 'event-type', equals: 'firewall.request.blocked' },
