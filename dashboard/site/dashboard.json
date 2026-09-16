@@ -1507,10 +1507,7 @@
         "name": "mcp-tool-calls",
         "intent": "Prepare MCP tool calls for aggregation while excluding calls to the safe outputs server.",
         "description": "Observed MCP tool calls labeled with whether they belong to the internal safe outputs server.",
-        "from": "events",
-        "filter": {
-          "predicates": [{ "field": "event-type", "equals": "tool.call" }, { "field": "event-source", "equals": "mcp" }]
-        },
+        "from": "mcp-calls",
         "compute": [
           {
             "as": "safe-output-server",
@@ -1519,8 +1516,8 @@
           },
           {
             "as": "mcp-tool-label",
-            "function": "coalesce",
-            "args": [{ "field": "event-summary" }, { "value": "unknown/unknown" }]
+            "function": "concat",
+            "args": [{ "field": "mcp-server" }, { "value": "/" }, { "field": "mcp-tool" }]
           }
         ]
       },
@@ -1532,7 +1529,7 @@
         "filter": { "predicates": [{ "field": "safe-output-server", "equals": false }] },
         "aggregate": {
           "by": ["mcp-tool-label"],
-          "values": [{ "field": "event", "as": "calls", "reducer": "count" }]
+          "values": [{ "field": "mcp-observation", "as": "calls", "reducer": "count" }]
         },
         "select": [{ "field": "mcp-tool-label", "as": "mcp-tool" }, { "field": "calls" }],
         "order-by": [{ "field": "calls", "direction": "desc" }, { "field": "mcp-tool", "direction": "asc" }]

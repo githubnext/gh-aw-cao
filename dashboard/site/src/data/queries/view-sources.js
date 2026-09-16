@@ -380,6 +380,38 @@ function eventsSource(events, sessionsById, runsById, sources) {
 }
 
 /**
+ * Projects retained canonical MCP call events when no published MCP source is available.
+ *
+ * @param {Record<string, unknown>[]} events
+ * @param {Map<unknown, Record<string, unknown>>} sessionsById
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ * @param {Record<string, unknown>} sources
+ */
+function mcpCallsSource(events, sessionsById, runsById, sources) {
+  return {
+    source: 'mcp-calls',
+    rows: events.flatMap((event) => {
+      if (event.source !== 'mcp' || event.type !== 'tool.call') return [];
+      const session = sessionsById.get(event.sessionId) ?? {};
+      const run = runsById.get(session.runId) ?? {};
+      return [definedFields({
+        organization: run.owner,
+        repository: run.repository,
+        workflow: run.workflowPath,
+        run: run.githubRunId === undefined ? undefined : String(run.githubRunId),
+        'mcp-observation': event.id,
+        'mcp-server': event.mcpServer,
+        'mcp-tool': event.mcpTool,
+        'mcp-status': event.status,
+        'observed-at': event.observedAt,
+        'run-link': run.runLink
+      })];
+    }),
+    metadata: projectionMetadata(sources, 'mcp-calls', 'events', true)
+  };
+}
+
+/**
  * Projects canonical sessions with their run and repository context so
  * ingestion-rate queries (imported runs per workflow/repository) can group
  * sessions by organization, repository, workflow, and run.
@@ -686,8 +718,9 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const queries = createCanonicalQueries(indexedDB);
   const needsFirewall = requested.has('firewall-observations');
   const needsGraders = requested.has('grader-observations') || requested.has('operational-values');
-  const needsSessions = requested.has('sessions') || needsFirewall || needsGraders;
-  const needsEvents = requested.has('events') || needsFirewall || needsGraders;
+  const needsMcpCalls = requested.has('mcp-calls') && !sourceRows(logicalSources['mcp-calls']).length;
+  const needsSessions = requested.has('sessions') || needsFirewall || needsGraders || needsMcpCalls;
+  const needsEvents = requested.has('events') || needsFirewall || needsGraders || needsMcpCalls;
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
@@ -721,6 +754,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('sessions')) projected.sessions = sessionsSource(sessions, runsById, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
+  if (needsMcpCalls) projected['mcp-calls'] = mcpCallsSource(events, sessionsById, runsById, sources);
   if (requested.has('grader-observations')) {
     projected['grader-observations'] = graderObservationsSource(
       graders.map(({ __event, ...grader }) => grader),

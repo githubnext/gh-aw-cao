@@ -610,9 +610,19 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
       context
     );
     const navigated = await loadCanonicalDashboardPage(['mcp-tool-totals', 'mcp-top-tools'], context);
-    return { initial, navigated };
+    const base = await loadCanonicalDashboardPage(['mcp-calls'], context);
+    const { executeDashboardQueries } = await import(`${location.origin}/src/data/queries/declarative.js`);
+    const direct = executeDashboardQueries(dashboard.dashboard.queries, base, ['mcp-tool-calls', 'mcp-tool-totals']);
+    return { initial, navigated, base, direct };
   });
 
+  expect(result.base['mcp-calls'].rows).toHaveLength(3);
+  expect(result.base['mcp-calls'].rows[0]).toMatchObject({
+    'mcp-server': 'github',
+    'mcp-tool': 'search_issues'
+  });
+  expect(result.direct['mcp-tool-calls'].rows).toHaveLength(3);
+  expect(result.direct['mcp-tool-totals'].rows).toHaveLength(1);
   for (const payload of [result.initial, result.navigated]) {
     expect(Object.keys(payload)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
     expect(payload['mcp-tool-totals']).toMatchObject({

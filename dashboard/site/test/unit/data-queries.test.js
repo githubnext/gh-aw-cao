@@ -719,29 +719,25 @@ describe('declarative dashboard queries', () => {
 
   it('groups MCP activity by tool and excludes the safe outputs server', () => {
       const mcpCalls = {
-        source: 'events',
+        source: 'mcp-calls',
         rows: [
           {
-            event: 'call-1', 'event-source': 'mcp', 'event-type': 'tool.call',
-            'event-summary': 'github/search_issues', 'mcp-server': 'github'
+            'mcp-observation': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
           },
           {
-            event: 'call-2', 'event-source': 'mcp', 'event-type': 'tool.call',
-            'event-summary': 'github/search_issues', 'mcp-server': 'github'
+            'mcp-observation': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
           },
           {
-            event: 'call-3', 'event-source': 'mcp', 'event-type': 'tool.call',
-            'event-summary': 'github/create_issue', 'mcp-server': 'github'
+            'mcp-observation': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue'
           },
           {
-            event: 'call-4', 'event-source': 'mcp', 'event-type': 'tool.call',
-            'event-summary': 'safe_outputs/create_issue', 'mcp-server': 'safe_outputs'
+            'mcp-observation': 'call-4', 'mcp-server': 'safe_outputs', 'mcp-tool': 'create_issue'
           }
         ],
-        metadata: metadata('events')
+        metadata: metadata('mcp-calls')
       };
 
-      const derived = executeDashboardQueries(dashboardQueries, { events: mcpCalls }, ['mcp-tool-totals', 'mcp-top-tools']);
+      const derived = executeDashboardQueries(dashboardQueries, { 'mcp-calls': mcpCalls }, ['mcp-tool-totals', 'mcp-top-tools']);
 
       expect(Object.keys(derived)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
       expect(derived['mcp-tool-totals']).toMatchObject({
