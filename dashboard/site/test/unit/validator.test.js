@@ -265,6 +265,32 @@ describe('dashboard document validation', () => {
       presentation: 'cli-action',
       context: ['package']
     });
+    expect(maintenancePage.views[0].encoding.actions.slice(1)).toEqual([
+      expect.objectContaining({
+        action: 'set-package-live',
+        presentation: 'cli-action',
+        context: ['package'],
+        when: { field: 'package-mode', equals: 'review' }
+      }),
+      expect.objectContaining({
+        action: 'set-package-preview',
+        presentation: 'cli-action',
+        context: ['package'],
+        when: { field: 'package-mode', equals: 'live' }
+      })
+    ]);
+    expect(document.dashboard['cli-actions']).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'set-package-live',
+        command: './.github/aw/cao.sh mode live {{package}}',
+        placement: 'row'
+      }),
+      expect.objectContaining({
+        id: 'set-package-preview',
+        command: './.github/aw/cao.sh mode preview {{package}}',
+        placement: 'row'
+      })
+    ]));
   });
 
   it('validates declarative card lists and their view actions', () => {

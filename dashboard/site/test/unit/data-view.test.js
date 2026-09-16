@@ -124,6 +124,20 @@ describe('data view renderer', () => {
         icon: 'sync',
         command: 'gh aw update {{package}}',
         placement: 'row'
+      },
+      {
+        id: 'set-package-live',
+        label: 'Switch to live',
+        icon: 'play',
+        command: './.github/aw/cao.sh mode live {{package}}',
+        placement: 'row'
+      },
+      {
+        id: 'set-package-preview',
+        label: 'Switch to preview',
+        icon: 'eye',
+        command: './.github/aw/cao.sh mode preview {{package}}',
+        placement: 'row'
       }
     ], { canExecute: false });
 
@@ -140,14 +154,32 @@ describe('data view renderer', () => {
             { field: 'package-version', title: 'Installed' },
             { field: 'package-current-version', title: 'Latest' }
           ],
-          actions: [{
-            action: 'update-package',
-            presentation: 'cli-action',
-            icon: 'sync',
-            label: 'Update',
-            context: ['package'],
-            when: { field: 'package-update-state', equals: 'update-available' }
-          }]
+          actions: [
+            {
+              action: 'update-package',
+              presentation: 'cli-action',
+              icon: 'sync',
+              label: 'Update',
+              context: ['package'],
+              when: { field: 'package-update-state', equals: 'update-available' }
+            },
+            {
+              action: 'set-package-live',
+              presentation: 'cli-action',
+              icon: 'play',
+              label: 'Switch to live',
+              context: ['package'],
+              when: { field: 'package-mode', equals: 'review' }
+            },
+            {
+              action: 'set-package-preview',
+              presentation: 'cli-action',
+              icon: 'eye',
+              label: 'Switch to preview',
+              context: ['package'],
+              when: { field: 'package-mode', equals: 'live' }
+            }
+          ]
         }
       },
       sourceName: 'packages',
@@ -157,14 +189,16 @@ describe('data view renderer', () => {
           'package-name': 'Remote agent',
           'package-version': 'v1',
           'package-current-version': 'v2',
-          'package-update-state': 'update-available'
+          'package-update-state': 'update-available',
+          'package-mode': 'review'
         },
         {
           package: 'ci-doctor',
           'package-name': 'CI doctor',
           'package-version': 'v2',
           'package-current-version': 'v2',
-          'package-update-state': 'current'
+          'package-update-state': 'current',
+          'package-mode': 'live'
         }
       ],
       metadata,
@@ -178,7 +212,9 @@ describe('data view renderer', () => {
 
     expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2);
     expect(rendered?.querySelector('.document-list-header .declared-cli-action')?.textContent).toContain('Update all');
-    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(1);
+    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(3);
+    expect(rendered?.textContent).toContain('Switch to live');
+    expect(rendered?.textContent).toContain('Switch to preview');
     expect(rendered?.textContent).not.toContain('update-available');
   });
 
