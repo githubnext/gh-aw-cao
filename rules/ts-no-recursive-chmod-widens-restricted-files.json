@@ -58,7 +58,16 @@
   "likely_false_positives": "Recursive chmod on directories that are guaranteed never to contain restricted-mode files (e.g. purely public build-output directories) is safe; the rule should allow an explicit exclusion/allowlist comment or a narrower non-recursive alternative to suppress.",
   "autofix_safe": false,
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
-  "status": "candidate",
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/35035445052",
+  "status": "needs-work",
+  "evaluation": {
+    "target_repo": "github/gh-aw-firewall",
+    "target_commit": "42cf8f65ee3a3cc6387cd23c2ac20dcc84f458b0",
+    "true_positive_count": 2,
+    "false_positive_count": 4,
+    "false_negative_count": 1,
+    "reason": "Confirmed false positives on real repository code (agent-session-state, squid preserved-dir, and both diagnostics-dir chmod sites in src/artifact-preservation.ts) alongside a confirmed false negative (the docker-exec shell-string 'chmod -R a+rwX /fix' in src/artifact-permissions.ts, which touches the same 0o600-bearing auditDir but isn't matched by the current execa-array-argument-only AST pattern). Needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
+    "txn_id": "refiner-35042552901-1"
+  },
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/35042552901",
   "last_updated_target_repo": "github/gh-aw-firewall"
 }
