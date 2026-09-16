@@ -232,6 +232,30 @@ test("inventory configuration policy source stays empty when no policy was colle
   assert.deepEqual(sources["configuration-policy"].rows, []);
 });
 
+test("inventory configuration policy source distinguishes collected unvalidated policy", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: {
+      policy_document: null,
+      policy_source: "",
+    },
+  });
+
+  assert.deepEqual(sources["configuration-policy"].rows, [{
+    path: ".github/workflows/cao.json",
+    document: null,
+    raw: "",
+    diagnostics: [{
+      severity: "warning",
+      path: ".github/workflows/cao.json",
+      title: "Policy validation status unavailable",
+      detail: "The control policy was collected but not validated.",
+    }],
+  }]);
+});
+
 test("transaction logs retain a session when artifacts contain no timeline", () => {
   const rows = transactionLogRows({
     generatedAt: "2026-09-09T05:00:00Z",

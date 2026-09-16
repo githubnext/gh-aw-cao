@@ -332,20 +332,28 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
 
 function configurationPolicyRows(controlSettings) {
   const resolution = controlSettings.policy_resolution ?? {};
-  if (!controlSettings.policy_document && !controlSettings.policy_source && !controlSettings.policy_resolution) {
+  const hasDocument = Object.hasOwn(controlSettings, "policy_document");
+  const hasSource = Object.hasOwn(controlSettings, "policy_source");
+  const hasResolution = Object.hasOwn(controlSettings, "policy_resolution");
+  if (!hasDocument && !hasSource && !hasResolution) {
     return [];
   }
+  const status = resolution.status;
+  const available = status === "available";
+  const unavailable = status === "unavailable";
   return [{
     path: POLICY_PATH,
     document: controlSettings.policy_document ?? null,
     raw: controlSettings.policy_source || "",
     diagnostics: [{
-      severity: resolution.status === "available" ? "valid" : "error",
+      severity: available ? "valid" : unavailable ? "error" : "warning",
       path: POLICY_PATH,
-      title: resolution.status === "available" ? "Policy is valid" : "Policy validation failed",
-      detail: resolution.status === "available"
+      title: available ? "Policy is valid" : unavailable ? "Policy validation failed" : "Policy validation status unavailable",
+      detail: available
         ? "The runtime policy resolver accepted this revision."
-        : resolution.reason || "The control policy could not be resolved.",
+        : resolution.reason || (unavailable
+          ? "The control policy could not be resolved."
+          : "The control policy was collected but not validated."),
     }],
   }];
 }
