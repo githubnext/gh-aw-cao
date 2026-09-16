@@ -4,10 +4,12 @@ import { render } from '../reactive.js';
 import { createAnimatedNumber } from './animated-number.js';
 import { formatCount } from './count-formatters.js';
 
+/** @typedef {{ text: string, href?: string }} StationDetail */
+
 /**
  * @param {string} icon
  * @param {{ animate?: boolean, final?: boolean, href?: string, signal: AbortSignal }} options
- * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail: string | HTMLElement }) => void }}
+ * @returns {{ element: HTMLElement, bind: (read: () => { pending: boolean, unavailable?: boolean, label: string, value: number, detail?: StationDetail }) => void }}
  */
 export function renderFactoryStation(icon, options) {
   const element = h('li', { className: 'factory-station' });
@@ -28,11 +30,16 @@ export function renderFactoryStation(icon, options) {
           target: !station.pending && !station.unavailable ? station.value : undefined,
           href: options.href && !station.pending && !station.unavailable ? options.href : undefined
         });
+        const detail = station.pending || !station.detail
+          ? ''
+          : station.detail.href
+            ? h('a', { href: station.detail.href }, station.detail.text)
+            : station.detail.text;
         return [
           h('span', { className: 'factory-station-icon', 'aria-hidden': 'true' }, octicon(icon)),
           h('span', {}, station.label),
           value.element,
-          h('small', {}, station.pending ? '' : station.detail)
+          h('small', {}, detail)
         ];
       }, { signal: options.signal });
     }
