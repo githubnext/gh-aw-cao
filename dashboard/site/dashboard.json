@@ -5643,7 +5643,6 @@
             "availability": true
           },
           "views": [
-            "entity-runs",
             {
               "id": "runs-last-week",
               "title": "Runs in the last week",

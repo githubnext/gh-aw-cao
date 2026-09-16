@@ -4,9 +4,15 @@ import { describe, expect, it } from 'vitest';
 
 const document = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
 const dashboard = document.dashboard;
-const templates = Object.fromEntries(dashboard['card-templates'].map((template) => [template.id, template]));
-const views = Object.fromEntries(dashboard.views.map((view) => [view.id, view]));
-const pages = Object.fromEntries(dashboard.pages.map((page) => [page.id, page]));
+const templates = Object.fromEntries(dashboard['card-templates'].map(
+  (/** @type {Record<string, any>} */ template) => [template.id, template]
+));
+const views = Object.fromEntries(dashboard.views.map(
+  (/** @type {Record<string, any>} */ view) => [view.id, view]
+));
+const pages = Object.fromEntries(dashboard.pages.map(
+  (/** @type {Record<string, any>} */ page) => [page.id, page]
+));
 
 describe('entity card templates', () => {
   it('declares cards for every navigable canonical entity', () => {
