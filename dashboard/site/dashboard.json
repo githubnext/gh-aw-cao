@@ -3319,7 +3319,7 @@
             "empty-message": "No blocked firewall domains are available for this selection.",
             "encoding": {
               "x": { "field": "domain", "type": "nominal", "title": "Domain" },
-              "y": { "field": "blocked", "type": "quantitative", "aggregate": "sum", "as": "total-blocked", "title": "Blocked requests" }
+              "y": { "field": "blocked", "type": "quantitative", "title": "Blocked requests" }
             }
           },
           {

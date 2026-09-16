@@ -533,8 +533,6 @@ describe('dashboard document validation', () => {
         y: {
           field: 'blocked',
           type: 'quantitative',
-          aggregate: 'sum',
-          as: 'total-blocked',
           title: 'Blocked requests'
         }
       }
