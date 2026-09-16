@@ -132,20 +132,23 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const style = document.createElement('style');
     style.textContent = primerStylesheet();
     document.head.append(style);
-    const stylesheet = style.sheet;
-    expect(stylesheet).not.toBeNull();
-    let mobileBodyRule;
-    for (const rule of stylesheet?.cssRules ?? []) {
-      const mediaRule = /** @type {CSSMediaRule} */ (rule);
-      if (mediaRule.conditionText !== '(max-width: 700px)') continue;
-      mobileBodyRule = [...mediaRule.cssRules]
-        .map((nestedRule) => /** @type {CSSStyleRule} */ (nestedRule))
-        .find((nestedRule) => nestedRule.selectorText === 'body, .dashboard-root');
-      if (mobileBodyRule) break;
-    }
+    try {
+      const stylesheet = style.sheet;
+      expect(stylesheet).not.toBeNull();
+      let mobileBodyRule;
+      for (const rule of stylesheet?.cssRules ?? []) {
+        const mediaRule = /** @type {CSSMediaRule} */ (rule);
+        if (mediaRule.conditionText !== '(max-width: 700px)') continue;
+        mobileBodyRule = [...mediaRule.cssRules]
+          .map((nestedRule) => /** @type {CSSStyleRule} */ (nestedRule))
+          .find((nestedRule) => nestedRule.selectorText === 'body, .dashboard-root');
+        if (mobileBodyRule) break;
+      }
 
-    expect(mobileBodyRule?.style.getPropertyValue('font-size')).toBe('1rem');
-    style.remove();
+      expect(mobileBodyRule?.style.getPropertyValue('font-size')).toBe('1rem');
+    } finally {
+      style.remove();
+    }
   });
 
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
