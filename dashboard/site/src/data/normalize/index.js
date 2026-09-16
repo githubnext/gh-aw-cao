@@ -93,7 +93,7 @@ export function orderEvents(events) {
         return String(left.timestamp).localeCompare(String(right.timestamp))
           || String(left.id).localeCompare(String(right.id));
       })
-      .map((event, sequence) => ({ ...event, sequence })));
+      .map((event, sequence) => event.sequence === sequence ? event : { ...event, sequence }));
 }
 
 /**

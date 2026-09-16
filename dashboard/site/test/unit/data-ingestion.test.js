@@ -490,11 +490,17 @@ describe('canonical source ingestion and queries', () => {
     const progress = [];
 
     await expect(ingestCachedGhAwJsonl(indexedDB, chunks(), {
+      payloadIdentity: 'published-shard-identity',
       onProgress: (update) => progress.push(update)
     })).resolves.toMatchObject({
       updated: true,
       records: 1,
-      agenticRuns: 1
+      agenticRuns: 1,
+      timings: {
+        parsingMs: expect.any(Number),
+        normalizationMs: expect.any(Number),
+        storageMs: expect.any(Number)
+      }
     });
     expect(progress.at(-1)).toEqual({
       bytesProcessed: content.byteLength,
@@ -503,7 +509,8 @@ describe('canonical source ingestion and queries', () => {
     });
     await expect(ingestCachedGhAwJsonl(
       indexedDB,
-      new TextDecoder().decode(content)
+      new TextDecoder().decode(content),
+      { payloadIdentity: 'published-shard-identity' }
     )).resolves.toMatchObject({
       updated: false,
       skipped: true

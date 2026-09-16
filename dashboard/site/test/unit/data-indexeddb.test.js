@@ -183,6 +183,17 @@ describe('canonical IndexedDB', () => {
     expect(await readCollection(indexedDB, 'repositories')).toEqual(canonicalBatch.repositories);
   });
 
+  it('evicts records omitted from a supplied previous snapshot', async () => {
+    const canonicalBatch = batch();
+    await upsertCanonicalBatch(indexedDB, canonicalBatch);
+
+    await replaceCanonicalBatch(indexedDB, normalize([]), {
+      previousBatch: canonicalBatch
+    });
+
+    expect(await readCollection(indexedDB, 'repositories')).toEqual([]);
+  });
+
   it('validates relationships before changing stored records', async () => {
     await upsertCanonicalBatch(indexedDB, batch());
     const invalid = normalize([]);
