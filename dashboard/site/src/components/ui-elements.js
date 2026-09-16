@@ -27,6 +27,7 @@ import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLocalDatabaseView } from './local-database-view.js';
+import { renderPanel } from './panel.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -78,11 +79,12 @@ const ELEMENT_RENDERERS = new Map([
   ['insights-overview', renderInsightsOverview],
   ['factory-header', renderFactoryHeaderElement],
   ['factory-floor', renderFactoryFloorElement],
+  ['outcomes-overview', renderLegacyFactoryOverview],
   ['local-database', renderLocalDatabaseView]
 ]);
 
 /** Elements that load declared sources independently of the active page subscription. */
-const ASYNC_SOURCE_ELEMENTS = new Set();
+const ASYNC_SOURCE_ELEMENTS = new Set(['factory-header', 'factory-floor', 'outcomes-overview']);
 
 /**
  * Reports whether an element loads its declared sources on its own.
@@ -93,7 +95,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'factory-header', 'factory-floor', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'factory-header', 'factory-floor', 'outcomes-overview', 'local-database']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
@@ -185,6 +187,29 @@ export async function renderUiElementAsync(name, context) {
   const lazyRenderer = LAZY_ELEMENT_RENDERERS.get(`${name}-lazy`);
   if (lazyRenderer) return lazyRenderer({ ...context, element: name });
   return renderUiElement(name, context);
+}
+
+/**
+ * Preserves the version 0.1.0 outcomes-overview contract for existing documents
+ * while new dashboards compose the two factory elements as independent views.
+ * @param {ElementRenderContext} context
+ */
+function renderLegacyFactoryOverview(context) {
+  const configured = Array.isArray(context.elementConfig?.sections)
+    ? context.elementConfig.sections
+    : ['header', 'floor'];
+  const sections = configured.filter((section, index) => (
+    (section === 'header' || section === 'floor') && configured.indexOf(section) === index
+  ));
+  const selected = sections.length > 0 ? sections : ['header', 'floor'];
+  return renderPanel({
+    className: 'agent-factory',
+    labelledBy: selected.includes('header') ? 'agent-factory-heading' : undefined,
+    label: context.title || 'Factory overview',
+    children: selected.map((section) => section === 'header'
+      ? renderFactoryHeaderElement(context)
+      : renderFactoryFloorElement(context))
+  });
 }
 
 /**

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it } from 'vitest';
 import { renderUiElement } from '../../src/components/ui-elements.js';
+import { configureSourceLoader, resetSourceStore } from '../../src/source-store.js';
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -27,6 +28,9 @@ const rhythm = {
     reached: index < 3
   }))
 };
+
+beforeEach(resetSourceStore);
+afterEach(resetSourceStore);
 
 /**
  * @param {'factory-header'|'factory-floor'} element
@@ -105,4 +109,34 @@ it('keeps unavailable registered repository evidence distinct from zero', () => 
   expect(rendered?.querySelector('.factory-station')?.textContent).toBe('Repositories registeredUnavailable');
   expect(rendered?.querySelector('.factory-station:first-child strong a')).toBeNull();
   expect(rendered?.getAttribute('aria-label')).toContain('Registered repositories unavailable');
+});
+
+it('renders both elements immediately while each declared query resolves independently', () => {
+  /** @type {Array<{ name: string, pageId?: string }>} */
+  const requests = [];
+  configureSourceLoader((name, options) => {
+    requests.push({ name, pageId: options?.pageId });
+    return new Promise(() => {});
+  });
+
+  const header = renderUiElement('factory-header', context('factory-header', {}));
+  const floor = renderUiElement('factory-floor', context('factory-floor', {}));
+
+  expect(header?.classList.contains('factory-intro')).toBe(true);
+  expect(header?.querySelector('.factory-heading-pending')).not.toBeNull();
+  expect(header?.querySelector('.factory-rhythm-pending')).not.toBeNull();
+  expect(floor?.classList.contains('factory-floor')).toBe(true);
+  expect(floor?.querySelectorAll('.factory-station-pending')).toHaveLength(4);
+  expect(requests.map(({ name }) => name)).toEqual([
+    'overview-outcome-summary',
+    'overview-run-summary',
+    'overview-factory-status',
+    'overview-rhythm',
+    'overview-dispatch-summary',
+    'overview-delivery-summary',
+    'overview-value-summary',
+    'overview-registered-repository-summary',
+    'overview-worker-summary'
+  ]);
+  expect(requests.every(({ pageId }) => pageId === 'overview')).toBe(true);
 });

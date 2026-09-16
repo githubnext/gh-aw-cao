@@ -47,6 +47,30 @@ it('loads each requested source once and notifies bound effects', async () => {
   handle.stop();
 });
 
+it('forwards query context and reloads a source when that context changes', async () => {
+  /** @type {Array<{ pageId?: string, query?: string }>} */
+  const requests = [];
+  configureSourceLoader((name, options) => {
+    requests.push({
+      pageId: options?.pageId,
+      query: options?.queryContext?.search?.query
+    });
+    return Promise.resolve({ source: name, rows: [], metadata });
+  });
+
+  requestSource('runs', { pageId: 'overview', queryContext: { search: { fields: ['workflow'], query: 'first' } } });
+  await Promise.resolve();
+  await Promise.resolve();
+  requestSource('runs', { pageId: 'overview', queryContext: { search: { fields: ['workflow'], query: 'second' } } });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(requests).toEqual([
+    { pageId: 'overview', query: 'first' },
+    { pageId: 'overview', query: 'second' }
+  ]);
+});
+
 it('marks a source failed when its query rejects', async () => {
   configureSourceLoader(() => Promise.reject(new Error('query unavailable')));
 

@@ -118,7 +118,10 @@ const FLOOR_SOURCE_NAMES = [
  * @param {import('./ui-elements.js').ElementRenderContext} context
  */
 export function renderFactoryFloorElement(context) {
-  const sources = bindFactorySources(context.sources, FLOOR_SOURCE_NAMES);
+  const sources = bindFactorySources(context.sources, FLOOR_SOURCE_NAMES, {
+    pageId: context.pageId,
+    queryContext: context.queryContext
+  });
   const metrics = createFactoryMetrics(sources);
   const lifetime = new AbortController();
   return renderFactoryFloor(

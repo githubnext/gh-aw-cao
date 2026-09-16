@@ -36,7 +36,8 @@ describe('dashboard query architecture', () => {
     expect(startup).toMatch(/loadCanonicalDashboardPage\(requested, dashboardContext, pagination, \{[\s\S]{0,220}pageId,[\s\S]{0,220}routeParameters: pageOptions\.routeParameters,[\s\S]{0,220}queryContext: pageOptions\.queryContext/);
     expect(presenter).not.toMatch(/filterDashboardSources|filterRowsForView|deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
     expect(factoryElements).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
-    expect(factoryElements).not.toMatch(/requestSource|publishSource|indexedDB/);
+    expect(factoryElements).toMatch(/requestSource|publishSource/);
+    expect(factoryElements).not.toMatch(/indexedDB/);
     expect(workProject).not.toMatch(/normalizeState|actorForLifecycle|compareWorkItems|orchestratedPackageNames/);
     expect(read('src/components/ui-elements.js')).not.toContain('filterRows');
     expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");

@@ -21,26 +21,34 @@ export function renderFactoryHeader(sources, metrics, scope) {
   const summary = h('p', {});
 
   effect(() => {
+    const pending = sources['overview-run-summary']?.pending() ?? false;
     const motion = scope.motion.get();
-    running.className = `factory-running${motion.operations > 0 ? ' factory-running-active' : ''}`;
+    running.className = `factory-running${pending ? ' factory-running-pending' : ''}${motion.operations > 0 ? ' factory-running-active' : ''}`;
+    running.toggleAttribute('aria-busy', pending);
     running.replaceChildren(
-      motion.operations > 0 ? h('span', {}, 'Work in motion') : 'Actions activity observed'
+      pending ? '' : motion.operations > 0 ? h('span', {}, 'Work in motion') : 'Actions activity observed'
     );
   }, { signal: scope.signal });
 
   effect(() => {
     const status = sources['overview-factory-status'];
+    const pending = status.pending();
     const candidate = status.rows()[0]?.['factory-heading'];
-    heading.textContent = !status.unavailable() && typeof candidate === 'string' && candidate
+    heading.classList.toggle('factory-heading-pending', pending);
+    heading.toggleAttribute('aria-busy', pending);
+    heading.textContent = pending
+      ? ''
+      : !status.unavailable() && typeof candidate === 'string' && candidate
       ? candidate
       : 'Your factory status is unavailable.';
   }, { signal: scope.signal });
 
   effect(() => {
+    const pending = sources['overview-outcome-summary']?.pending() ?? false;
     const usefulOutputs = metrics.usefulOutputs();
     const deliveredRepositories = metrics.deliveredRepositories();
-    summary.hidden = usefulOutputs === 0;
-    summary.textContent = usefulOutputs > 0
+    summary.hidden = pending || usefulOutputs === 0;
+    summary.textContent = !pending && usefulOutputs > 0
       ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
       : '';
   }, { signal: scope.signal });
@@ -65,7 +73,10 @@ const HEADER_SOURCE_NAMES = [
  * @param {import('./ui-elements.js').ElementRenderContext} context
  */
 export function renderFactoryHeaderElement(context) {
-  const sources = bindFactorySources(context.sources, HEADER_SOURCE_NAMES);
+  const sources = bindFactorySources(context.sources, HEADER_SOURCE_NAMES, {
+    pageId: context.pageId,
+    queryContext: context.queryContext
+  });
   const metrics = createFactoryMetrics(sources);
   const lifetime = new AbortController();
   return renderFactoryHeader(sources, metrics, {

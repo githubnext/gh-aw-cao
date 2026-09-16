@@ -118,19 +118,14 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
-  it('loads the factory overview through one page-scoped worker subscription', () => {
+  it('leaves factory queries to independently bound reactive elements', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
-      'overview-outcome-summary',
-      'overview-run-summary',
-      'overview-factory-status',
-      'overview-rhythm',
-      'overview-dispatch-summary',
-      'overview-delivery-summary',
-      'overview-value-summary',
-      'overview-registered-repository-summary',
-      'overview-worker-summary',
       'data-health-collections'
     ]);
+    const rendered = renderDashboardView({ document: authoritativeDashboardDocument, sources: {} });
+    const overview = rendered.querySelector('[data-page-id="overview"]');
+    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(overview?.querySelector('.dashboard-lazy-view')).toBeNull();
   });
 
   it('reports the paginated source shared by the runs page views', () => {

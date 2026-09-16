@@ -25,15 +25,21 @@ const IDLE_ENTRY = { status: 'idle', origin: 'query', source: null };
 
 /** @type {Map<string, import('./reactive.js').State<SourceEntry>>} */
 const entries = new Map();
+/** @typedef {{ pageId?: string, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} SourceRequestOptions */
+
 /** @type {Set<string>} */
 const requested = new Set();
+/** @type {Map<string, SourceRequestOptions>} */
+const requestOptions = new Map();
+/** @type {Map<string, string>} */
+const requestKeys = new Map();
 /**
  * Generation of the newest load started per source, so stale results are
  * dropped when queries resolve out of order.
  * @type {Map<string, number>}
  */
 const generations = new Map();
-/** @type {((name: string) => Promise<LogicalSourceInput | undefined>) | null} */
+/** @type {((name: string, options?: SourceRequestOptions) => Promise<LogicalSourceInput | undefined>) | null} */
 let loadSource = null;
 
 /**
@@ -62,7 +68,7 @@ export function publishSource(name, source) {
 /**
  * Registers the loader used to resolve one named query at a time. Each source
  * is requested on its own so a slow query never delays a fast one.
- * @param {((name: string) => Promise<LogicalSourceInput | undefined>) | null} loader
+ * @param {((name: string, options?: SourceRequestOptions) => Promise<LogicalSourceInput | undefined>) | null} loader
  */
 export function configureSourceLoader(loader) {
   loadSource = loader;
@@ -72,10 +78,15 @@ export function configureSourceLoader(loader) {
  * Requests one source asynchronously when a loader is configured. Repeated
  * requests for the same source reuse the first in-flight query.
  * @param {string} name
+ * @param {SourceRequestOptions} [options]
  */
-export function requestSource(name) {
-  if (!loadSource || requested.has(name)) return;
+export function requestSource(name, options = {}) {
+  if (!loadSource) return;
+  const key = JSON.stringify(options);
+  if (requested.has(name) && requestKeys.get(name) === key) return;
   requested.add(name);
+  requestOptions.set(name, options);
+  requestKeys.set(name, key);
   void loadRequestedSource(name);
 }
 
@@ -107,7 +118,7 @@ async function loadRequestedSource(name) {
     entry.set({ status: 'loading', origin: 'query', source: null });
   }
   try {
-    const source = await loader(name);
+    const source = await loader(name, requestOptions.get(name));
     // A later load already started, so this result is stale.
     if (generations.get(name) !== generation) return;
     entry.set(source
@@ -130,6 +141,8 @@ export function clearSources(names) {
   for (const name of names) {
     entries.delete(name);
     requested.delete(name);
+    requestOptions.delete(name);
+    requestKeys.delete(name);
     generations.delete(name);
   }
 }
@@ -138,6 +151,8 @@ export function clearSources(names) {
 export function resetSourceStore() {
   entries.clear();
   requested.clear();
+  requestOptions.clear();
+  requestKeys.clear();
   generations.clear();
   loadSource = null;
 }

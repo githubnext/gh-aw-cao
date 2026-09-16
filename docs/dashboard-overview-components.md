@@ -32,6 +32,10 @@ as separate views in `dashboard.json`:
 The default dashboard declares `factory-header` followed by `factory-floor`.
 Each view selects only the query outputs it consumes, and their declared order
 reconstructs the complete factory layout without page-specific composition code.
+Each declared source binds independently to the reactive tree, so the page and
+both element roots appear immediately. Pending state is shown only by the status,
+rhythm, or metric station waiting on that query rather than by a page-sized view
+skeleton.
 
 ## Responsive by design
 

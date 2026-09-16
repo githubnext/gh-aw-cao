@@ -1566,6 +1566,33 @@ dashboard:
     }
   });
 
+  it('keeps the version 0.1.0 outcomes overview element valid as a compatibility alias', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: legacy-overview
+  title: Legacy overview
+  pages:
+    - id: overview
+      kind: custom
+      title: Overview
+      views:
+        - id: outcomes
+          data:
+            sources: [runs, outcomes]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, floor]
+            animate: number
+            labels:
+              repositories:
+                singular: Repository
+                plural: Repositories
+`);
+
+    expect(result.ok).toBe(true);
+  });
+
   it('defines work-project-view composition through canonical body values', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const pages = new Map(document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [page.id, page]));

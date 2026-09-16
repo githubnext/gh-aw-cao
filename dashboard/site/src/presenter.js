@@ -10,7 +10,7 @@ import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, renderUiElement } from './components/ui-elements.js';
+import { elementHandlesEmptyRows, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -599,7 +599,11 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       }
       return rendered;
     };
-    const rendered = isRouteView || index === 0 || (isPlainObject(view) && view.mark === 'callout')
+    const rendered = isRouteView
+      || index === 0
+      || (isPlainObject(view) && (view.mark === 'callout' || (
+        typeof view.element === 'string' && elementLoadsSourcesAsync(view.element)
+      )))
       ? render()
       : renderLazyView({
         label: getViewTitle(view, index),

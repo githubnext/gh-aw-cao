@@ -68,15 +68,13 @@ test.beforeEach(async ({ page, context }) => {
 test('declarative Overview views preserve desktop and mobile behavior', async ({ page }) => {
   /** @param {Record<string, unknown>} pageDefinition */
   const render = async (pageDefinition) => {
-    await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl, lazyViewModuleUrl }) => {
+    await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
       const { renderDashboard } = await import(presenterModuleUrl);
-      const { enableLazyViews } = await import(lazyViewModuleUrl);
       const rendered = renderDashboard({
         document: documentModel,
         sources: sourceData
       });
       document.querySelector('#root')?.replaceChildren(rendered);
-      enableLazyViews(rendered);
     }, {
       documentModel: {
         'language-version': dashboardDocument['language-version'],
@@ -87,8 +85,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
         }
       },
       sourceData: sources,
-      presenterModuleUrl: 'http://dashboard.test/src/presenter.js',
-      lazyViewModuleUrl: 'http://dashboard.test/src/components/lazy-view.js'
+      presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
     });
     return page.locator('[data-page-id="overview"] > .custom-view-grid');
   };
@@ -101,6 +98,7 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     const factory = await render(overviewPage);
 
     await expect(factory).toBeVisible();
+    await expect(factory.locator('.dashboard-lazy-view')).toHaveCount(0);
     await expect(factory.locator(':scope > [data-view-id="overview-header"]')).toHaveClass(/factory-intro/);
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);

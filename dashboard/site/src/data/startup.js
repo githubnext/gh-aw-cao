@@ -127,7 +127,15 @@ export async function startDashboardData(options) {
       );
     });
   };
-  configureSourceLoader(async (name) => (await loadCanonicalDashboardPage([name], dashboardContext))[name]);
+  configureSourceLoader(async (name, options) => (await loadCanonicalDashboardPage(
+    [name],
+    dashboardContext,
+    undefined,
+    {
+      pageId: options?.pageId,
+      queryContext: options?.queryContext,
+    },
+  ))[name]);
   const startAutomaticUpdates = () => {
     stopAutomaticDataUpdates = startAutomaticDashboardDataUpdates([
       new URL("./payload-hashes.json", sourceUrl).href,

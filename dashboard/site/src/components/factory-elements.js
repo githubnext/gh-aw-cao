@@ -2,6 +2,9 @@
  * Shared data adapters for the declaratively composed factory elements.
  */
 
+import { batch } from '../reactive.js';
+import { publishSource, requestSource, sourceState } from '../source-store.js';
+
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {{ rows: () => Row[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
@@ -34,19 +37,30 @@ const DEFAULT_STATION_LABELS = {
 };
 
 /**
- * Adapts page-scoped query payloads to the reactive component boundary.
- * Page subscriptions replace the element when a fresh worker result arrives.
+ * Binds each declared query independently so the element can render before all
+ * worker results settle and update only the widgets that consume each result.
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string[]} names
+ * @param {{ pageId?: string, queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'] }} [request]
  * @returns {SourceBindings}
  */
-export function bindFactorySources(sources, names) {
+export function bindFactorySources(sources, names, request) {
+  batch(() => {
+    for (const name of names) {
+      const source = sources[name];
+      if (source && Array.isArray(source.rows)) publishSource(name, source);
+      else requestSource(name, request);
+    }
+  });
   return Object.fromEntries(names.map((name) => {
-    const source = sources[name];
+    const entryState = sourceState(name);
     return [name, {
-      rows: () => Array.isArray(source?.rows) ? source.rows : [],
-      pending: () => false,
-      unavailable: () => !source || source.metadata?.availability === 'unavailable'
+      rows: () => entryState.get().source?.rows ?? [],
+      pending: () => entryState.get().status === 'loading',
+      unavailable: () => {
+        const entry = entryState.get();
+        return entry.status === 'failed' || entry.source?.metadata?.availability === 'unavailable';
+      }
     }];
   }));
 }
