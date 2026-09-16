@@ -20,6 +20,7 @@ import { loadDashboardSources } from './source-loader.js';
 import { createDebug } from './debug.js';
 
 const debugIngestion = createDebug('data:ingestion');
+const workerScope = typeof self !== 'undefined' && 'postMessage' in self ? self : null;
 
 /** @param {ReadableStream<Uint8Array>} body */
 async function* responseChunks(body) {
@@ -45,7 +46,7 @@ let liveDashboard = null;
 let dashboardActivated = false;
 const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -58,6 +59,10 @@ let subscriptionFlushRunning = false;
 let dashboardIngestionCount = 0;
 
 const INGESTION_LOCK_WAIT_MESSAGE = 'Waiting for another dashboard ingestion to finish.';
+
+function hasUnrenderedDashboardSubscription() {
+  return [...dirtyDashboardSubscriptions].some((id) => dashboardSubscriptions.get(id)?.emitted === false);
+}
 
 async function loadActiveDashboard() {
   if (liveDashboard) return liveDashboard;
@@ -181,16 +186,21 @@ function scheduleDashboardSubscriptions(ids = dashboardSubscriptions.keys()) {
   for (const id of ids) {
     if (dashboardSubscriptions.has(id)) dirtyDashboardSubscriptions.add(id);
   }
-  if (subscriptionFlushRunning || dashboardIngestionCount > 0 || dirtyDashboardSubscriptions.size === 0) return;
+  const hasUnrenderedSubscription = hasUnrenderedDashboardSubscription();
+  if (subscriptionFlushRunning
+      || dirtyDashboardSubscriptions.size === 0
+      || (dashboardIngestionCount > 0 && !hasUnrenderedSubscription)) return;
   if (subscriptionFlushTimer !== null) clearTimeout(subscriptionFlushTimer);
+  const delay = hasUnrenderedSubscription && dashboardIngestionCount === 0 ? 0 : SUBSCRIPTION_FLUSH_DELAY_MS;
   subscriptionFlushTimer = setTimeout(() => {
     subscriptionFlushTimer = null;
     void flushDashboardSubscriptions();
-  }, SUBSCRIPTION_FLUSH_DELAY_MS);
+  }, delay);
 }
 
 async function flushDashboardSubscriptions() {
-  if (subscriptionFlushRunning || dashboardIngestionCount > 0) return;
+  if (subscriptionFlushRunning
+      || (dashboardIngestionCount > 0 && !hasUnrenderedDashboardSubscription())) return;
   subscriptionFlushRunning = true;
   try {
     while (dirtyDashboardSubscriptions.size > 0) {
@@ -220,13 +230,14 @@ async function flushDashboardSubscriptions() {
             dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
+            subscription.emitted = true;
             subscription.revision = dashboard.revision;
             subscription.pagination = pagination;
-            self.postMessage({ subscriptionId: id, data });
+            workerScope?.postMessage({ subscriptionId: id, data });
           }
         } catch (error) {
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
-            self.postMessage({
+            workerScope?.postMessage({
               subscriptionId: id,
               error: error instanceof Error ? error.message : String(error)
             });
@@ -636,8 +647,8 @@ function cancelInFlight(ids) {
   return targets.length;
 }
 
-if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessage' in self) {
-  self.addEventListener('message', (event) => {
+if (typeof document === 'undefined' && workerScope) {
+  workerScope.addEventListener('message', (event) => {
     const id = event.data?.id;
     if (event.data?.operation === 'subscribe-canonical-dashboard') {
       const subscriptionId = event.data.subscriptionId;
@@ -651,7 +662,8 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
         pageId: typeof event.data.pageId === 'string' ? event.data.pageId : undefined,
         routeParameters: routeParameters(event.data.routeParameters),
         queryContext: queryContext(event.data.queryContext),
-        revision: liveDashboard?.revision ?? null
+        revision: liveDashboard?.revision ?? null,
+        emitted: false
       });
       if (liveDashboard && event.data.emitCurrent !== false) {
         scheduleDashboardSubscriptions([subscriptionId]);
@@ -661,11 +673,15 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
     if (event.data?.operation === 'unsubscribe-canonical-dashboard') {
       dashboardSubscriptions.delete(event.data.subscriptionId);
       dirtyDashboardSubscriptions.delete(event.data.subscriptionId);
+      if (dirtyDashboardSubscriptions.size === 0 && subscriptionFlushTimer !== null) {
+        clearTimeout(subscriptionFlushTimer);
+        subscriptionFlushTimer = null;
+      }
       return;
     }
     if (event.data?.operation === 'cancel-data-processing') {
       const cancelled = cancelInFlight(event.data.ids);
-      self.postMessage({ id, data: { cancelled } });
+      workerScope.postMessage({ id, data: { cancelled } });
       return;
     }
     const controller = new AbortController();
@@ -678,9 +694,9 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
     const settle = (/** @type {Record<string, unknown>} */ message) => {
       inFlight.delete(id);
       try {
-        self.postMessage({ id, ...message });
+        workerScope.postMessage({ id, ...message });
       } catch (error) {
-        self.postMessage({ id, ...failure(error) });
+        workerScope.postMessage({ id, ...failure(error) });
       }
     };
     try {
