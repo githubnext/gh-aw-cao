@@ -22,7 +22,7 @@ it('defers and coalesces subscription queries while ingestion owns the database'
     },
     postMessage: (/** @type {Record<string, unknown>} */ message) => posted.push(structuredClone(message))
   }));
-  await import(`../../src/data-worker.js?subscription-contention=${Date.now()}`);
+  await import('../../src/data-worker.js?subscription-contention');
   const dispatch = (data) => listeners.get('message')?.({ data });
   const waitForMessage = (predicate) => new Promise((resolve, reject) => {
     const started = Date.now();
