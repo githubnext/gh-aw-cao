@@ -82,7 +82,9 @@ describe('dashboard notification service', () => {
       details: ['Parsing complete.', 'Refreshing queries.']
     });
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(toggle.querySelector('.dashboard-notification-icon')?.hidden).toBe(true);
+    expect(/** @type {HTMLElement | null} */ (
+      toggle.querySelector('.dashboard-notification-icon')
+    )?.hidden).toBe(true);
     expect(details.hidden).toBe(false);
     expect(details.textContent).toContain('Refreshing queries.');
     expect(subtitle.textContent).toBe('Cached shards are reused.');

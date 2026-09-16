@@ -48,7 +48,9 @@ export function startIngestionProgress(target = self) {
       ? `${formatDataSize(processedBytes)}/${formatDataSize(totalBytes)}`
       : formatDataSize(processedBytes);
     const elapsedMs = Date.now() - workloadStartedAt;
-    const remainingMs = estimateRemainingTime(processedBytes, totalBytes, elapsedMs);
+    const remainingMs = typeof totalBytes === 'number'
+      ? estimateRemainingTime(processedBytes, totalBytes, elapsedMs)
+      : null;
     const remaining = typeof totalBytes === 'number' && processedBytes >= totalBytes
       ? '0s remaining'
       : remainingMs === null ? 'Estimating time remaining' : `${formatRemainingTime(remainingMs)} remaining`;
