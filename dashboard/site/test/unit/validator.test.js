@@ -939,6 +939,31 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
+  it('defines the Workflows run ranking as a declarative pie chart', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
+      candidate.id === 'workflows'
+    );
+
+    expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-by-runs'
+    )).toMatchObject({
+      data: {
+        source: 'workflow-inventory',
+        'order-by': [{ field: 'runs', direction: 'desc' }]
+      },
+      mark: 'chart',
+      chart: 'pie',
+      layout: 'horizontal',
+      encoding: {
+        x: { field: 'workflow-name', type: 'nominal' },
+        y: { field: 'runs', type: 'quantitative' },
+        href: { field: 'workflow-link', type: 'nominal' }
+      }
+    });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('defines Overview as one evidence-backed outcomes element', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>

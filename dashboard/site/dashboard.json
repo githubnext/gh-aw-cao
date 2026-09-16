@@ -4787,6 +4787,40 @@
           },
           "views": [
             {
+              "id": "workflows-by-runs",
+              "title": "Workflows by runs",
+              "description": "Declared workflows ranked by the number of observed runs.",
+              "data": {
+                "source": "workflow-inventory",
+                "order-by": [
+                  {
+                    "field": "runs",
+                    "direction": "desc"
+                  }
+                ]
+              },
+              "mark": "chart",
+              "chart": "pie",
+              "layout": "horizontal",
+              "empty-message": "No workflow runs observed.",
+              "encoding": {
+                "x": {
+                  "field": "workflow-name",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                "y": {
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Runs"
+                },
+                "href": {
+                  "field": "workflow-link",
+                  "type": "nominal"
+                }
+              }
+            },
+            {
               "id": "workflows-inventory",
               "title": "Workflows",
               "description": "Central package and repository-owned workflow inventory with observed execution totals.",

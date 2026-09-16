@@ -2858,6 +2858,21 @@ describe('presenter built-in and custom pages', () => {
     const workflowsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'workflows');
     expect(workflowsPage?.definition.views).toMatchObject([
       {
+        id: 'workflows-by-runs',
+        data: {
+          source: 'workflow-inventory',
+          'order-by': [{ field: 'runs', direction: 'desc' }]
+        },
+        mark: 'chart',
+        chart: 'pie',
+        layout: 'horizontal',
+        encoding: {
+          x: { field: 'workflow-name', type: 'nominal', title: 'Workflow' },
+          y: { field: 'runs', type: 'quantitative', title: 'Runs' },
+          href: { field: 'workflow-link', type: 'nominal' }
+        }
+      },
+      {
         id: 'workflows-inventory',
         data: { source: 'workflow-inventory' },
         encoding: {
