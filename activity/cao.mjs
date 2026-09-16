@@ -11,7 +11,12 @@ import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
-import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
+import {
+  ingestCachedGhAwJsonl,
+  ingestGhAwLogs,
+  isCachedGhAwJsonlCurrent,
+  NORMALIZED_JSON_INGESTION_VERSION
+} from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
 import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
@@ -887,7 +892,7 @@ async function hashActivityPayloads({ databasePath, shardDirectory, normalizedDi
     const inventorySource = inventoryPath ? await readFile(inventoryPath, 'utf8') : '{}';
     const workflowHints = workflowHintsFromInventory(JSON.parse(inventorySource));
     const normalizationContext = createHash('sha256')
-      .update(`${CANONICAL_SCHEMA_VERSION}\0${JSON.stringify(workflowHints)}`)
+      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSON_INGESTION_VERSION}\0${JSON.stringify(workflowHints)}`)
       .digest('hex')
       .slice(0, 16);
     const retainedNormalized = new Set();
@@ -910,6 +915,7 @@ async function hashActivityPayloads({ databasePath, shardDirectory, normalizedDi
         });
         const payload = {
           schemaVersion: CANONICAL_SCHEMA_VERSION,
+          ingestionVersion: NORMALIZED_JSON_INGESTION_VERSION,
           sourceRecords: adapted.records,
           batch: normalize(adapted.observations)
         };

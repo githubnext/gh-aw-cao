@@ -29,7 +29,7 @@ const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 3;
 const GH_AW_JSONL_INGESTION_VERSION = 2;
-const NORMALIZED_JSON_INGESTION_VERSION = 1;
+export const NORMALIZED_JSON_INGESTION_VERSION = 1;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
@@ -322,9 +322,12 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       if (!input || typeof input !== 'object' || Array.isArray(input)) {
         throw new TypeError('Normalized activity payload must be an object');
       }
-      const payload = /** @type {{ schemaVersion?: unknown, sourceRecords?: unknown, batch?: unknown }} */ (input);
+      const payload = /** @type {{ schemaVersion?: unknown, ingestionVersion?: unknown, sourceRecords?: unknown, batch?: unknown }} */ (input);
       if (payload.schemaVersion !== CANONICAL_SCHEMA_VERSION) {
         throw new TypeError(`Unsupported normalized activity schema: ${String(payload.schemaVersion)}`);
+      }
+      if (payload.ingestionVersion !== NORMALIZED_JSON_INGESTION_VERSION) {
+        throw new TypeError(`Unsupported normalized activity ingestion version: ${String(payload.ingestionVersion)}`);
       }
       if (!payload.batch || typeof payload.batch !== 'object' || Array.isArray(payload.batch)) {
         throw new TypeError('Normalized activity payload must include a canonical batch');
