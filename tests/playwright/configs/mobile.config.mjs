@@ -15,9 +15,9 @@ const chromiumArgs = ["--no-sandbox", "--disable-dev-shm-usage", "--enable-preci
 if (memoryMb > 0) chromiumArgs.push(`--js-flags=--max-old-space-size=${memoryMb}`);
 
 export default defineConfig({
-  testDir: "./tests/e2e",
+  testDir: "../../e2e",
   testMatch: ["**/dashboard-mobile-live.spec.mjs"],
-  outputDir: `test-results/${browserName}-${profileName}`,
+  outputDir: `../../../test-results/${browserName}-${profileName}`,
   timeout: 600_000,
   workers: 1,
   preserveOutput: "always",

@@ -5,9 +5,9 @@ const chromiumExecutable = existsSync("/usr/bin/chromium") ? "/usr/bin/chromium"
 const memoryMb = Number(process.env.DASHBOARD_STRESS_BROWSER_MEMORY_MB ?? 256);
 
 export default defineConfig({
-  testDir: "./tests/e2e",
+  testDir: "../../e2e",
   testMatch: ["**/dashboard-massive-scale.spec.mjs"],
-  outputDir: "test-results/playwright-dashboard-massive-scale",
+  outputDir: "../../../test-results/playwright-dashboard-massive-scale",
   timeout: 1_800_000,
   workers: 1,
   preserveOutput: "always",

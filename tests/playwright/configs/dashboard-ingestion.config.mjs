@@ -4,10 +4,10 @@ import { defineConfig } from "@playwright/test";
 const chromiumExecutable = existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined;
 
 export default defineConfig({
-  testDir: "./tests/e2e",
-  testMatch: ["**/dashboard-views-live.spec.mjs"],
-  outputDir: "test-results/playwright-dashboard-views",
-  timeout: 180_000,
+  testDir: "../../e2e",
+  testMatch: ["**/dashboard-ingestion-scale.spec.mjs"],
+  outputDir: "../../../test-results/playwright-dashboard-ingestion",
+  timeout: 900_000,
   workers: 1,
   preserveOutput: "always",
   use: {

@@ -7,14 +7,14 @@ on:
       - "docs/assets/**/*.svg"
       - "public/assets/**/*.svg"
       - "scripts/check-svg-contrast.spec.js"
-      - "playwright.svg-contrast.config.js"
+      - "tests/playwright/configs/svg-contrast.config.js"
       - ".github/workflows/svg-contrast-check.yml"
   pull_request:
     paths:
       - "docs/assets/**/*.svg"
       - "public/assets/**/*.svg"
       - "scripts/check-svg-contrast.spec.js"
-      - "playwright.svg-contrast.config.js"
+      - "tests/playwright/configs/svg-contrast.config.js"
       - ".github/workflows/svg-contrast-check.yml"
 
 permissions:
@@ -86,7 +86,7 @@ jobs:
           SVG_FILES: ${{ steps.changed.outputs.files }}
         run: |
           set -o pipefail
-          npx playwright test --config=playwright.svg-contrast.config.js 2>&1 | tee /tmp/contrast-output.txt
+          npx playwright test --config=tests/playwright/configs/svg-contrast.config.js 2>&1 | tee /tmp/contrast-output.txt
 
       - name: File issue for contrast failures on main
         if: >

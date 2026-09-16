@@ -12,12 +12,12 @@
  * 3:1 baseline until they are migrated to the visual metadata contract.
  *
  * Run directly:
- *   npx playwright test --config=playwright.svg-contrast.config.js
+ *   npx playwright test --config=tests/playwright/configs/svg-contrast.config.js
  *
  * To check a specific subset of files, set the SVG_FILES environment variable
  * to a whitespace- or newline-separated list of paths relative to the repo root:
  *   SVG_FILES="docs/assets/foo.svg public/assets/bar.svg" \
- *     npx playwright test --config=playwright.svg-contrast.config.js
+ *     npx playwright test --config=tests/playwright/configs/svg-contrast.config.js
  */
 
 const { test, expect } = require("@playwright/test");

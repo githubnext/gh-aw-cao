@@ -118,7 +118,7 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
     }
     if (
       path === ".github/workflows/dashboard-views.yml"
-      || path === "playwright.dashboard-views.config.mjs"
+      || path === "tests/playwright/configs/dashboard-views.config.mjs"
       || path === "tests/e2e/dashboard-view-data.mjs"
       || path === "tests/e2e/dashboard-view-sources.mjs"
       || path === "tests/e2e/dashboard-views-live.spec.mjs"

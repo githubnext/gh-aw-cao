@@ -5,7 +5,7 @@ on:
     paths:
       - .github/workflows/cid.yml
       - dashboard/site/**
-      - playwright.dashboard-ingestion.config.mjs
+      - tests/playwright/configs/dashboard-ingestion.config.mjs
       - tests/e2e/dashboard-ingestion-scale.spec.mjs
       - tests/helpers/synthetic-gh-aw-logs.mjs
   push:
@@ -13,7 +13,7 @@ on:
     paths:
       - .github/workflows/cid.yml
       - dashboard/site/**
-      - playwright.dashboard-ingestion.config.mjs
+      - tests/playwright/configs/dashboard-ingestion.config.mjs
       - tests/e2e/dashboard-ingestion-scale.spec.mjs
       - tests/helpers/synthetic-gh-aw-logs.mjs
 

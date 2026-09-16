@@ -452,13 +452,13 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /no visible targets/);
   assert.match(workflow, /existsSync\('mobile-analysis'\)/);
   assert.match(workflow, /width min.*height min/);
-  const playwrightConfig = readFileSync(join(root, "playwright.mobile.config.mjs"), "utf8");
+  const playwrightConfig = readFileSync(join(root, "tests", "playwright", "configs", "mobile.config.mjs"), "utf8");
   assert.match(playwrightConfig, /preserveOutput: "always"/);
   assert.match(playwrightConfig, /--max-old-space-size=\$\{memoryMb\}/);
   assert.match(packageDocument.scripts["dashboard:local:mobile"], /DASHBOARD_DATA_URL=https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/payload-hashes\.json/);
   assert.match(packageDocument.scripts["dashboard:local:mobile"], /MOBILE_DEVICE='Pixel 7'/);
   assert.match(packageDocument.scripts["dashboard:local:mobile"], /MOBILE_MEMORY_MB=256/);
-  assert.match(packageDocument.scripts["dashboard:local:mobile"], /playwright\.mobile\.config\.mjs/);
+  assert.match(packageDocument.scripts["dashboard:local:mobile"], /tests\/playwright\/configs\/mobile\.config\.mjs/);
   const mobileTest = readFileSync(join(root, "tests", "e2e", "dashboard-mobile-live.spec.mjs"), "utf8");
   assert.match(mobileTest, /Network\.emulateNetworkConditions/);
   assert.match(mobileTest, /Performance\.getMetrics/);

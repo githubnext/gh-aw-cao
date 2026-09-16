@@ -4,9 +4,9 @@ import { defineConfig } from "@playwright/test";
 const chromiumExecutable = existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined;
 
 export default defineConfig({
-  testDir: "./tests/e2e",
+  testDir: "../../e2e",
   testMatch: ["**/dashboard-deployed-refresh.spec.mjs"],
-  outputDir: "test-results/dashboard-deployed/playwright",
+  outputDir: "../../../test-results/dashboard-deployed/playwright",
   timeout: 600_000,
   workers: 1,
   preserveOutput: "always",

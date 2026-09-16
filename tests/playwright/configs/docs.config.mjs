@@ -1,17 +1,19 @@
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "@playwright/test";
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   || (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined);
+const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
 export default defineConfig({
-  testDir: "./tests/e2e",
-  testMatch: ["**/local-server-headers.spec.mjs"],
+  testDir: "../../e2e",
+  testMatch: ["**/docs-narrow-viewport.spec.mjs"],
+  outputDir: "../../../test-results",
   timeout: 30_000,
-  fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: "http://127.0.0.1:4321/gh-aw-cao/",
     headless: true,
     launchOptions: {
       args: ["--no-sandbox"],
@@ -19,8 +21,9 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "node dashboard/local-server.mjs",
-    url: "http://127.0.0.1:4173/",
+    command: "npx astro preview --host 127.0.0.1 --port 4321",
+    cwd: repositoryRoot,
+    url: "http://127.0.0.1:4321/gh-aw-cao/",
     reuseExistingServer: !process.env.CI,
     timeout: 15_000,
   },
