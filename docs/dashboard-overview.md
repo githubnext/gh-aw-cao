@@ -17,6 +17,11 @@ runs bounded work, checks safe outputs, and retains evidence of outcomes. The
 visual sequence is not a conversion funnel: a successful run can correctly
 produce no safe output, and an output can remain pending while evidence matures.
 
+<div class="docs-theme-diagram">
+	<img class="docs-theme-diagram-light" alt="Overview page composition with Header, Rhythm, Floor, and four Station components" src="./assets/dashboard-overview-desktop-light.svg">
+	<img class="docs-theme-diagram-dark" alt="Overview page composition with Header, Rhythm, Floor, and four Station components" src="./assets/dashboard-overview-desktop-dark.svg">
+</div>
+
 | Surface | Population rule |
 | --- | --- |
 | **Repositories in scope** | Counts retained canonical `repositories` rows. Review and live counts appear only when `rollout-mode` is explicitly observed. |

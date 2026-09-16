@@ -8,6 +8,24 @@
   -webkit-text-fill-color: var(--sl-color-white) !important;
 }
 
+.docs-theme-diagram img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.docs-theme-diagram-light {
+  display: none !important;
+}
+
+:root[data-theme="light"] .docs-theme-diagram-light {
+  display: block !important;
+}
+
+:root[data-theme="light"] .docs-theme-diagram-dark {
+  display: none !important;
+}
+
 @media (max-width: 22rem) {
   .site-title {
     gap: 0.5rem;
