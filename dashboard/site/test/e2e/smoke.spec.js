@@ -836,12 +836,12 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   const facetControlBox = await facetControl.boundingBox();
   const scrolledSummaryBox = await summaryRow.boundingBox();
   assert(facetControlBox);
   assert(scrolledSummaryBox);
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(swimlane).toBeVisible();
