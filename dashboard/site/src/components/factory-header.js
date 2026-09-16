@@ -6,7 +6,7 @@ import { renderFactoryRhythm } from './factory-rhythm.js';
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
 /** @typedef {{ rows: () => Record<string, unknown>[], pending: () => boolean, unavailable: () => boolean }} SourceBinding */
 /** @typedef {Record<string, SourceBinding>} SourceBindings */
-/** @typedef {{ usefulOutputs: () => number, deliveredRepositories: () => number, motion: () => Motion }} HeaderMetrics */
+/** @typedef {{ usefulOutputs: () => number, deliveredRepositories: () => number }} HeaderMetrics */
 /** @typedef {{ signal: AbortSignal, motion: import('../reactive.js').State<Motion> }} HeaderScope */
 
 /**
@@ -18,11 +18,6 @@ export function renderFactoryHeader(sources, metrics, scope) {
   const running = h('p', { className: 'factory-running' });
   const heading = h('h2', { id: 'agent-factory-heading' });
   const summary = h('p', {});
-
-  effect(() => {
-    const motion = metrics.motion();
-    scope.motion.set((current) => (sameMotion(current, motion) ? current : motion));
-  }, { signal: scope.signal });
 
   effect(() => {
     const motion = scope.motion.get();
@@ -55,11 +50,4 @@ export function renderFactoryHeader(sources, metrics, scope) {
     h('div', { className: 'factory-intro-copy' }, running, heading, summary),
     renderFactoryRhythm(sources['overview-rhythm'], scope)
   );
-}
-
-/** @param {Motion} current @param {Motion} next */
-function sameMotion(current, next) {
-  return current.operations === next.operations
-    && current.live === next.live
-    && current.review === next.review;
 }

@@ -119,11 +119,20 @@ it('composes reusable factory sections selected by JSON configuration', () => {
   const rendered = renderFactoryOverview({
     title: 'Factory floor',
     elementConfig: { sections: ['floor'] },
-    sources: overviewSources()
+    sources: overviewSources({
+      'overview-run-summary': source('overview-run-summary', [{
+        'successful-runs': 0,
+        'failed-runs': 0,
+        'active-runs': 2,
+        'active-live': 1,
+        'active-review': 1
+      }])
+    })
   });
 
   expect(rendered.querySelector('.factory-intro')).toBeNull();
   expect(rendered.querySelector('.factory-floor')).not.toBeNull();
+  expect(rendered.querySelector('.factory-floor')?.classList.contains('factory-floor-active')).toBe(true);
   expect(rendered.getAttribute('aria-label')).toBe('Factory floor');
   expect(rendered.hasAttribute('aria-labelledby')).toBe(false);
 });

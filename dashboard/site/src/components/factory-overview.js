@@ -1,4 +1,4 @@
-import { batch, derived, state } from '../reactive.js';
+import { batch, derived, effect, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { renderFactoryFloor } from './factory-floor.js';
 import { renderFactoryHeader } from './factory-header.js';
@@ -141,6 +141,14 @@ export function renderFactoryOverview(context) {
   const metrics = createOverviewMetrics(sources);
   const sections = factoryOverviewSections(context.elementConfig);
   const scope = { signal: overviewLifetime.signal, motion: factoryMotionState };
+  effect(() => {
+    const next = metrics.motion();
+    factoryMotionState.set((current) => (
+      current.operations === next.operations && current.live === next.live && current.review === next.review
+        ? current
+        : next
+    ));
+  }, { signal: overviewLifetime.signal });
   /** @type {Record<string, () => HTMLElement>} */
   const sectionRenderers = {
     header: () => renderFactoryHeader(sources, metrics, scope),
