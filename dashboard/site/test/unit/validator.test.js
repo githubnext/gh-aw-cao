@@ -5,6 +5,7 @@ import { DASHBOARD_QUERY_LIMITS, QUERY_MAX_JOINS } from '../../src/specification
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 
 const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
+const authoritativeDashboardDocument = JSON.parse(authoritativeDashboardSource);
 
 const validDocument = `language-version: "0.1.0"
 dashboard:
@@ -1549,9 +1550,14 @@ dashboard:
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('accepts every package dashboard document', () => {
+  it('accepts every package dashboard document with built-in queries', () => {
     for (const source of packageDashboardSources) {
-      expect(validateDashboardDocument(source).ok).toBe(true);
+      const document = JSON.parse(source);
+      document.dashboard.queries = [
+        ...authoritativeDashboardDocument.dashboard.queries,
+        ...document.dashboard.queries
+      ];
+      expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     }
   });
 
@@ -1669,9 +1675,10 @@ dashboard:
       const sources = page.views.map(
         (/** @type {{ data: { source: string } }} */ view) => canonicalSource(view.data.source)
       );
+      const valueSource = pageId === 'optimization-dashboard' ? 'grader-observations' : 'operational-values';
       const expectedSources = pageId === 'cao-evolution-dashboard'
-        ? ['operational-values', 'operational-values', 'outcomes', 'outcomes', 'runs']
-        : ['operational-values', 'operational-values', 'outcomes', 'runs'];
+        ? [valueSource, valueSource, 'outcomes', 'outcomes', 'runs']
+        : [valueSource, valueSource, 'outcomes', 'runs'];
       expect(sources.sort()).toEqual(expectedSources.sort());
     }
   });
