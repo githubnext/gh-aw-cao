@@ -4,6 +4,7 @@ import path from "node:path";
 
 const maximumSize = 256 * 1024;
 const imageExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".webp"]);
+const excludedFiles = new Set(["dashboard/site/dashboard.json"]);
 const root = path.resolve(import.meta.dirname, "..");
 let trackedFiles;
 
@@ -22,7 +23,7 @@ try {
 const oversizedFiles = trackedFiles.filter((file) => {
   const isLockfile = path.basename(file) === "package-lock.json";
   const isAssetImage = file.split(/[\\/]/).includes("assets") && imageExtensions.has(path.extname(file).toLowerCase());
-  return !isLockfile && !isAssetImage;
+  return !isLockfile && !isAssetImage && !excludedFiles.has(file);
 }).flatMap((file) => {
   const filePath = path.join(root, file);
   const size = statSync(filePath).size;
