@@ -1669,10 +1669,11 @@ dashboard:
       const sources = page.views.map(
         (/** @type {{ data: { source: string } }} */ view) => canonicalSource(view.data.source)
       );
-      const valueSource = pageId === 'optimization-dashboard' ? 'grader-observations' : 'operational-values';
       const expectedSources = pageId === 'cao-evolution-dashboard'
-        ? [valueSource, valueSource, 'outcomes', 'outcomes', 'runs']
-        : [valueSource, valueSource, 'outcomes', 'runs'];
+        ? ['operational-values', 'operational-values', 'outcomes', 'outcomes', 'runs']
+        : pageId === 'optimization-dashboard'
+          ? ['grader-observations', 'grader-observations', 'outcomes', 'runs']
+          : ['operational-values', 'operational-values', 'outcomes', 'runs'];
       expect(sources.sort()).toEqual(expectedSources.sort());
     }
   });
