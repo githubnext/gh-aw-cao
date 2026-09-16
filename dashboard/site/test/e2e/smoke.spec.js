@@ -4865,3 +4865,81 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await expect(historyBack).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
+
+test('phone pages toggle between chart and full-view lazy table modes', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      document.querySelector('#root').append(renderDashboard({
+        document: {
+          languageVersion: '0.1.0',
+          dashboard: {
+            id: 'phone-view-mode-dashboard',
+            title: 'Phone View Mode',
+            pages: [{
+              id: 'runs',
+              kind: 'custom',
+              title: 'Runs',
+              views: [
+                {
+                  id: 'runs-chart',
+                  title: 'Run trend',
+                  data: { source: 'runs' },
+                  mark: 'chart',
+                  chart: 'line',
+                  encoding: {
+                    x: { field: 'started-at', type: 'temporal' },
+                    y: { field: 'run-count', type: 'quantitative' }
+                  }
+                },
+                {
+                  id: 'runs-table',
+                  title: 'Runs',
+                  data: { source: 'runs' },
+                  mark: 'table',
+                  controls: 'interactive',
+                  'lazy-list': true,
+                  layout: 'full-view',
+                  encoding: { columns: [{ field: 'run', title: 'Run' }] }
+                }
+              ]
+            }]
+          }
+        },
+        sources: {
+          runs: {
+            source: 'runs',
+            rows: [{ run: '1', 'run-count': 1, 'started-at': '2026-09-16T10:00:00Z' }],
+            metadata: {
+              availability: 'available',
+              completeness: 'complete',
+              freshness: 'fresh'
+            }
+          }
+        }
+      }));
+    </script>
+  `);
+
+  const root = page.locator('.dashboard-root');
+  const chart = page.locator('[data-view-id="runs-chart"]');
+  const table = page.locator('[data-view-id="runs-table"]');
+  const toggle = page.getByRole('button', { name: 'Show table view' });
+  await expect(toggle).toBeVisible();
+  await expect(toggle.locator('.octicon-table')).toBeVisible();
+  await expect(chart).toBeVisible();
+  await expect(table).toBeHidden();
+  await expect(root).not.toHaveClass(/dashboard-full-view/);
+
+  await toggle.click();
+
+  await expect(page.getByRole('button', { name: 'Show chart view' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show chart view' }).locator('.octicon-graph')).toBeVisible();
+  await expect(chart).toBeHidden();
+  await expect(table).toBeVisible();
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('table');
+});

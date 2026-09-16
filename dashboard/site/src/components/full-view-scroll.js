@@ -21,7 +21,15 @@ export function syncFullViewMode(root, page) {
   const siblings = fullView?.parentElement
     ? [...fullView.parentElement.querySelectorAll(':scope > .custom-view')].filter((view) => view !== fullView)
     : [];
-  const canPin = Boolean(fullView) && siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR));
+  const modeSelectionPage = page?.hasAttribute('data-mobile-view-mode-page') === true;
+  const mobileTableMode = root.dataset.mobileViewMode === 'table'
+    && modeSelectionPage
+    && root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.matches === true;
+  const canPin = Boolean(fullView) && (
+    modeSelectionPage
+      ? mobileTableMode
+      : siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
+  );
   root.classList.toggle('dashboard-full-view', canPin);
   if (!canPin) root.classList.remove('dashboard-full-view-scrolled');
 }

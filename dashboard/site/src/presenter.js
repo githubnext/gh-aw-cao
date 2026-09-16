@@ -90,6 +90,7 @@ import {
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
 const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
+const MOBILE_VIEW_MODE_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.mobile-view-mode');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
@@ -400,6 +401,18 @@ function renderSidebar(pages, title, navigation) {
         'div',
         { className: 'mobile-page-header' },
         h('span', { className: 'mobile-brand-name' }, title)
+      ),
+      h(
+        'button',
+        {
+          className: 'mobile-view-mode-toggle',
+          type: 'button',
+          'aria-label': 'Show table view',
+          'aria-pressed': 'false',
+          title: 'Show table view',
+          hidden: true
+        },
+        octicon('table')
       ),
       h(
         'details',
@@ -940,6 +953,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
+    if (isPlainObject(view) && view['lazy-list'] === true) {
+      rendered.setAttribute('data-view-lazy-list', '');
+    }
     if (disclosure === 'essential') {
       return rendered;
     }
@@ -1123,8 +1139,59 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageMode = root.querySelector('[data-page-mode]');
   const reportActions = root.querySelector('.report-actions');
   const pageScroller = root.querySelector('main.dashboard-prototype');
+  const mobileViewModeToggle = root.querySelector('.mobile-view-mode-toggle');
+  /** @type {'chart'|'table'} */
+  let mobileViewMode = 'chart';
+  try {
+    mobileViewMode = globalThis.window?.localStorage?.getItem(MOBILE_VIEW_MODE_STORAGE_KEY) === 'table' ? 'table' : 'chart';
+  } catch {
+    // Storage can be unavailable in embedded or privacy-restricted contexts.
+  }
+  root.dataset.mobileViewMode = mobileViewMode;
   /** @param {HTMLElement | undefined} page */
-  const syncFullViewMode = (page) => syncFullViewModeForPage(root, page);
+  const syncFullViewMode = (page) => {
+    const views = page
+      ? [...page.querySelectorAll('.custom-view')].filter((view) => view instanceof HTMLElement)
+      : [];
+    const tableView = views.find((view) => (
+      view.dataset.viewLayout === 'full-view'
+      && (view.hasAttribute('data-view-lazy-list') || view.querySelector('[data-lazy-list]'))
+    ));
+    const supportsModeSelection = Boolean(tableView) && views.some((view) => view !== tableView);
+    page?.toggleAttribute('data-mobile-view-mode-page', supportsModeSelection);
+    for (const view of views) {
+      if (supportsModeSelection) {
+        view.dataset.mobileViewMode = view === tableView ? 'table' : 'chart';
+      } else {
+        delete view.dataset.mobileViewMode;
+      }
+    }
+    if (mobileViewModeToggle instanceof HTMLButtonElement) {
+      mobileViewModeToggle.hidden = !supportsModeSelection;
+      const showTable = mobileViewMode === 'chart';
+      const label = showTable ? 'Show table view' : 'Show chart view';
+      mobileViewModeToggle.setAttribute('aria-label', label);
+      mobileViewModeToggle.setAttribute('aria-pressed', String(!showTable));
+      mobileViewModeToggle.setAttribute('title', label);
+      mobileViewModeToggle.replaceChildren(octicon(showTable ? 'table' : 'graph'));
+    }
+    syncFullViewModeForPage(root, page);
+  };
+  if (mobileViewModeToggle instanceof HTMLButtonElement) {
+    mobileViewModeToggle.addEventListener('click', () => {
+      mobileViewMode = mobileViewMode === 'chart' ? 'table' : 'chart';
+      root.dataset.mobileViewMode = mobileViewMode;
+      try {
+        globalThis.window?.localStorage?.setItem(MOBILE_VIEW_MODE_STORAGE_KEY, mobileViewMode);
+      } catch {
+        // The display mode still works for the current page when storage is unavailable.
+      }
+      syncFullViewMode(pages.find((candidate) => candidate.dataset.pageId === activePageId));
+    });
+    root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.addEventListener?.('change', () => {
+      syncFullViewMode(pages.find((candidate) => candidate.dataset.pageId === activePageId));
+    });
+  }
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
     href: link instanceof HTMLAnchorElement ? link.getAttribute('href') ?? '' : '',

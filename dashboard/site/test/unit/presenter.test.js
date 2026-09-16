@@ -1467,6 +1467,90 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('persists one chart or table mode across eligible dashboard pages', () => {
+    window.localStorage.clear();
+    const document = {
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'mobile-view-mode-dashboard',
+        title: 'Mobile View Mode',
+        pages: [{
+          id: 'runs',
+          kind: /** @type {'custom'} */ ('custom'),
+          title: 'Runs',
+          views: [
+            {
+              id: 'runs-chart',
+              title: 'Run trend',
+              data: { source: 'runs' },
+              mark: 'chart',
+              chart: 'line',
+              encoding: {
+                x: { field: 'started-at', type: 'temporal' },
+                y: { field: 'run-count', type: 'quantitative' }
+              }
+            },
+            {
+              id: 'runs-table',
+              title: 'Runs',
+              data: { source: 'runs' },
+              mark: 'table',
+              controls: 'interactive',
+              'lazy-list': true,
+              layout: 'full-view',
+              encoding: {
+                columns: [{ field: 'run' }]
+              }
+            }
+          ]
+        }]
+      }
+    };
+    const sources = /** @type {Parameters<typeof renderDashboard>[0]['sources']} */ ({
+      runs: {
+        source: 'runs',
+        rows: [{ run: '1', 'run-count': 1, 'started-at': '2026-09-16T10:00:00Z' }],
+        metadata: {
+          'source-id': 'runs-fixture',
+          'source-kind': 'fixture',
+          'as-of': '2026-09-16T10:00:00Z',
+          'retrieved-at': '2026-09-16T10:00:00Z',
+          availability: 'available',
+          completeness: 'complete',
+          freshness: 'fresh'
+        }
+      }
+    });
+
+    try {
+      const rendered = renderDashboard({ document, sources });
+      const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-view-mode-toggle'));
+      const page = rendered.querySelector('[data-page-id="runs"]');
+
+      expect(rendered.dataset.mobileViewMode).toBe('chart');
+      expect(page?.hasAttribute('data-mobile-view-mode-page')).toBe(true);
+      expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-mobile-view-mode')).toBe('chart');
+      expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-mobile-view-mode')).toBe('table');
+      expect(toggle?.hidden).toBe(false);
+      expect(toggle?.getAttribute('aria-label')).toBe('Show table view');
+      expect(toggle?.querySelector('.octicon-table')).not.toBeNull();
+
+      toggle?.click();
+
+      expect(rendered.dataset.mobileViewMode).toBe('table');
+      expect(toggle?.getAttribute('aria-label')).toBe('Show chart view');
+      expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+      expect(toggle?.querySelector('.octicon-graph')).not.toBeNull();
+      expect(window.localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode')).toBe('table');
+
+      const restored = renderDashboard({ document, sources });
+      expect(restored.dataset.mobileViewMode).toBe('table');
+      expect(restored.querySelector('.mobile-view-mode-toggle')?.getAttribute('aria-label')).toBe('Show chart view');
+    } finally {
+      window.localStorage.clear();
+    }
+  });
+
   it('renders a mobile view menu with full labels and closes it after selection', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
