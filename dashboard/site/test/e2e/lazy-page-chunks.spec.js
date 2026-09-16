@@ -228,8 +228,9 @@ test('deep links and redirect routes fetch only the requested initial page chunk
 });
 
 test('Settings remains useful when its delayed policy source is unavailable', async ({ context, page }) => {
-  const inventoryWithoutPolicy = { ...inventory };
-  delete inventoryWithoutPolicy['configuration-policy'];
+  const inventoryWithoutPolicy = Object.fromEntries(
+    Object.entries(inventory).filter(([name]) => name !== 'configuration-policy')
+  );
   await context.route(`${origin}/inventory-sources.json`, (route) => route.fulfill({
     contentType: 'application/json',
     body: JSON.stringify(inventoryWithoutPolicy),
