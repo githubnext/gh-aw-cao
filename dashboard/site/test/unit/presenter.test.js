@@ -800,8 +800,8 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
     expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml');
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml (githubnext/gh-aw-cao)');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml (github/target-service)');
     expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
     expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
@@ -3057,7 +3057,7 @@ describe('presenter built-in and custom pages', () => {
         chart: 'pie',
         layout: 'horizontal',
         encoding: {
-          x: { field: 'workflow-label', type: 'nominal', title: 'Workflow' },
+          x: { field: 'workflow-label', type: 'nominal', format: 'workflow-identity-label', title: 'Workflow' },
           y: { field: 'runs', type: 'quantitative', title: 'Runs' },
           href: { field: 'workflow-link', type: 'nominal' }
         }

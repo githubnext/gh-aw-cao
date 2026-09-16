@@ -5417,6 +5417,7 @@
                 "x": {
                   "field": "workflow-label",
                   "type": "nominal",
+                  "format": "workflow-identity-label",
                   "title": "Workflow"
                 },
                 "y": {
