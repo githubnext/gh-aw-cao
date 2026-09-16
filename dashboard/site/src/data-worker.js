@@ -17,7 +17,7 @@ import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
-import { createDebug } from './debug.js';
+import { createDebug, debugShardLimit } from './debug.js';
 import { withRetries } from './retry.js';
 
 const debugIngestion = createDebug('data:ingestion');
@@ -381,12 +381,15 @@ export function processDataRequest(request, signal) {
             ? await payloadHashesResponse.json().catch(() => null)
             : null;
           const normalizedShards = publishedNormalizedShards(payloadHashes);
-          const shards = normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
+          const publishedShards = normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
+          const shardLimit = debugShardLimit();
+          const shards = shardLimit === undefined ? publishedShards : publishedShards.slice(0, shardLimit);
           const normalized = normalizedShards.length > 0;
           const shardCount = shards.length;
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
             shardCount,
+            shardLimit,
             manifestAvailable: payloadHashesResponse?.ok === true
           });
           if (shardCount > 0) {

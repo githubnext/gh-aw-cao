@@ -448,6 +448,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /refs\/heads\/main' && '[^']*Pixel 7[^']*' \|\| '\[\{"browser":"webkit","device":"iPhone 15"\}\]'/);
   assert.match(workflow, /name: Test deployed dashboard data ingestion\n\s+run: node --test tests\/integration\/dashboard-deployed-data\.test\.mjs/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/payload-hashes\.json/);
+  assert.match(workflow, /MOBILE_DEBUG_SHARD_LIMIT: 10/);
   assert.match(workflow, /Test mobile dashboard with restricted memory[\s\S]*?MOBILE_MEMORY_MB: 256/);
   assert.match(workflow, /Test mobile dashboard with throttled network[\s\S]*?MOBILE_NETWORK_DOWNLOAD_KBPS: 1600/);
   assert.match(workflow, /Test mobile dashboard with restricted memory and network[\s\S]*?MOBILE_MEMORY_MB: 256[\s\S]*?MOBILE_NETWORK_LATENCY_MS: 150/);
@@ -474,7 +475,9 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /payload-hashes\.json/);
   assert.match(mobileTest, /gh-aw-logs-shards\\\/\[A-Za-z0-9\._-\]\+\\\.jsonl/);
   assert.match(mobileTest, /inventory-sources\.json/);
-  assert.match(mobileTest, /for \(const \[name\] of shards\)[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
+  assert.match(mobileTest, /shards\.slice\(0, optionalPositiveInteger\("MOBILE_DEBUG_SHARD_LIMIT"\)\)/);
+  assert.match(mobileTest, /for \(const \[name\] of selectedShards\)[\s\S]*?pipeline\(response\.body, createWriteStream\(shardPath\)\)/);
+  assert.match(mobileTest, /parameters\.set\("debug-shard-limit", String\(shardLimit\)\)/);
   assert.doesNotMatch(mobileTest, /fetch\(dataUrl\)/);
   assert.doesNotMatch(mobileTest, /logsResponse\.text\(\)/);
   assert.match(mobileTest, /mobile-dashboard\.png/);
