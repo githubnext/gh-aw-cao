@@ -7,11 +7,16 @@
 import { formatCount, titleCase } from './components/count-formatters.js';
 import { formatPercent } from './view-formatters.js';
 
+export const DATA_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'distinct-values', 'calendar-week-rhythm', 'sum', 'mean', 'min', 'max'];
+
 /**
  * @typedef {Record<string, unknown>} Row
  * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }} Predicate
  * @typedef {{ op: 'filter', predicates?: Predicate[], search?: { fields: string[], query: string } }} FilterOperator
- * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'calendar-week-rhythm'|'sum'|'mean'|'min'|'max', filter?: { predicates: Predicate[] } }> }} SummarizeOperator
+ * @typedef {typeof DATA_REDUCER_VALUES[number]} Reducer
+ * @typedef {{ field: string, as: string, reducer: Reducer }} ProjectedValue
+ * @typedef {{ op: 'project', values: ProjectedValue[] }} ProjectOperator
+ * @typedef {{ op: 'summarize', by?: string[], values: Array<ProjectedValue & { filter?: { predicates: Predicate[] } }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
  * @typedef {{ op: 'slice', offset?: number, limit: number }} SliceOperator
  * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
@@ -21,7 +26,7 @@ import { formatPercent } from './view-formatters.js';
  * @typedef {{ field: string, on: string|string[], method?: PredictionMethod, order?: number, groupby?: string[], as: string }} PredictedField
  * @typedef {{ op: 'predict', values: PredictedField[] }} PredictOperator
  * @typedef {{ op: 'select', fields: Array<{ field: string, as?: string }> }} SelectOperator
- * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|SelectOperator} DataOperator
+ * @typedef {FilterOperator|ProjectOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|SelectOperator} DataOperator
  */
 
 /**
@@ -75,6 +80,7 @@ export function tidy(rows, operators) {
 /** @param {Row[]} rows @param {DataOperator} operator */
 function applyOperator(rows, operator) {
   if (operator.op === 'filter') return filter(rows, operator);
+  if (operator.op === 'project') return project(rows, operator);
   if (operator.op === 'summarize') return summarize(rows, operator);
   if (operator.op === 'arrange') return arrange(rows, operator);
   if (operator.op === 'compute') return compute(rows, operator);
@@ -83,6 +89,21 @@ function applyOperator(rows, operator) {
   if (operator.op === 'slice') {
     const offset = Number.isInteger(operator.offset) ? Math.max(0, Number(operator.offset)) : 0;
     return rows.slice(offset, offset + Math.max(0, operator.limit));
+  }
+
+  /**
+   * Appends query-level support values to every row without changing row grain.
+   * This is used for worker-owned controls such as filter option lists that must
+   * be derived from the same query scope as the rendered rows.
+   * @param {Row[]} rows @param {ProjectOperator} operator
+   */
+  function project(rows, operator) {
+    if (rows.length === 0) return [];
+    const projected = Object.fromEntries(operator.values.map((value) => [
+      value.as,
+      reduceValues(rows.map((row) => row[value.field]), value.reducer)
+    ]));
+    return rows.map((row) => ({ ...row, ...projected }));
   }
   throw new TypeError(`Unsupported data operator: ${String(/** @type {{ op?: unknown }} */ (operator).op)}`);
 }
@@ -485,7 +506,8 @@ function reduceValues(input, reducer) {
   if (values.length === 0) return null;
   if (reducer === 'mean') return values.reduce((total, value) => total + value, 0) / values.length;
   if (reducer === 'min') return Math.min(...values);
-  return Math.max(...values);
+  if (reducer === 'max') return Math.max(...values);
+  throw new TypeError(`Unsupported reducer: ${String(reducer)}`);
 }
 
 /** @param {unknown[]} input */

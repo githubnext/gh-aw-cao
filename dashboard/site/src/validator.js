@@ -25,6 +25,8 @@ import {
   QUERY_MAX_JOINS,
   QUERY_PREDICATE_KEYS,
   QUERY_PREDICT_KEYS,
+  QUERY_PROJECT_KEYS,
+  QUERY_PROJECT_VALUE_KEYS,
   QUERY_REDUCER_VALUES,
   QUERY_NUMERIC_REDUCER_VALUES,
   QUERY_SELECT_KEYS,
@@ -3416,6 +3418,57 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           }
         }
         declareField(computed.as, `${computePath}.as`);
+      }
+    }
+  }
+
+  if (query.project !== undefined) {
+    const projectPath = `${path}.project`;
+    const projectNode = getValueNodeByKey(queryNode, 'project');
+    if (!isPlainObject(query.project)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'project must be a mapping.', projectPath));
+    } else {
+      validateObjectKeys(projectNode, QUERY_PROJECT_KEYS, projectPath, errors);
+      if (!Array.isArray(query.project.values)
+          || query.project.values.length === 0
+          || query.project.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          `project values must be a sequence of 1 to ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions.`,
+          `${projectPath}.values`
+        ));
+      } else {
+        for (const [index, value] of query.project.values.entries()) {
+          const valuePath = `${projectPath}.values[${index}]`;
+          if (!isPlainObject(value)) {
+            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'project value must be a mapping.', valuePath));
+            continue;
+          }
+          validateObjectKeys(
+            getSequenceItemNode(getValueNodeByKey(projectNode, 'values'), index),
+            QUERY_PROJECT_VALUE_KEYS,
+            valuePath,
+            errors
+          );
+          validateStringField(value.field, `${valuePath}.field`, true, errors);
+          validateStringField(value.as, `${valuePath}.as`, true, errors);
+          requireField(value.field, `${valuePath}.field`);
+          requireSchemaType(
+            value.field,
+            `${valuePath}.field`,
+            typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer)
+              ? 'numeric'
+              : 'scalar'
+          );
+          if (typeof value.reducer !== 'string' || !QUERY_REDUCER_VALUES.includes(value.reducer)) {
+            errors.push(createError(
+              ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+              `project reducer must be one of ${QUERY_REDUCER_VALUES.join(', ')}.`,
+              `${valuePath}.reducer`
+            ));
+          }
+          declareField(value.as, `${valuePath}.as`);
+        }
       }
     }
   }

@@ -29,7 +29,7 @@ export const MAX_CLI_ACTIONS = 20;
 export const MAX_CLI_ACTION_ARGUMENTS = 10;
 export const MAX_CLI_ACTION_COMMAND_LENGTH = 1000;
 
-export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'time', 'joins', 'filter', 'compute', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
+export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'time', 'joins', 'filter', 'compute', 'project', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
 export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
 export const QUERY_JOIN_ON_KEYS = ['left', 'right'];
@@ -40,6 +40,8 @@ export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
 export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value', 'context'];
 export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
 export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer', 'filter'];
+export const QUERY_PROJECT_KEYS = ['values'];
+export const QUERY_PROJECT_VALUE_KEYS = ['field', 'as', 'reducer'];
 export const QUERY_AGGREGATE_FILTER_PREDICATE_KEYS = ['field', 'equals', 'in'];
 export const QUERY_PREDICT_KEYS = ['field', 'on', 'method', 'order', 'groupby', 'as'];
 export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'distinct-values', 'calendar-week-rhythm', 'sum', 'mean', 'min', 'max'];

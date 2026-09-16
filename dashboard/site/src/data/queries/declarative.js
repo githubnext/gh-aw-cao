@@ -7,11 +7,11 @@
  * `data-operations.js` so the whole pipeline runs inside the data Web Worker.
  *
  * Clause execution order is fixed and deterministic:
- * `from` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `predict` ->
- * `select` -> `order-by` -> `limit`.
+ * `from` -> `joins` -> `filter` -> `compute` -> `project` -> `aggregate` ->
+ * `predict` -> `select` -> `order-by` -> `limit`.
  */
 
-import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
+import { DATA_REDUCER_VALUES, PREDICTION_METHODS, tidy } from '../../data-operations.js';
 
 /**
  * @typedef {Record<string, unknown>} Row
@@ -28,7 +28,8 @@ import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }> },
  *   compute?: import('../../data-operations.js').ComputedField[],
- *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
+ *   project?: { values: import('../../data-operations.js').ProjectedValue[] },
+ *   aggregate?: { by?: string[], values: Array<import('../../data-operations.js').ProjectedValue & { filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
  *   predict?: import('../../data-operations.js').PredictedField[],
  *   select?: Array<{ field: string, as?: string }>,
  *   ['order-by']?: Array<{ field: string, direction?: 'asc'|'desc' }>,
@@ -351,8 +352,27 @@ function queryStructuralDefect(definition) {
         || definition.aggregate.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
       return `aggregate values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions`;
     }
+    if (definition.project) {
+      if (!Array.isArray(definition.project.values)
+          || definition.project.values.length === 0
+          || definition.project.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
+        return `project values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions`;
+      }
+      for (const value of definition.project.values) {
+        if (!isPlainObject(value)) return 'project values must be mappings';
+        if (typeof value.field !== 'string' || typeof value.as !== 'string') {
+          return 'project values require field, as, and reducer';
+        }
+        if (typeof value.reducer !== 'string' || !DATA_REDUCER_VALUES.includes(value.reducer)) {
+          return `project reducer must be one of ${DATA_REDUCER_VALUES.join(', ')}`;
+        }
+      }
+    }
     for (const value of definition.aggregate.values) {
       if (!isPlainObject(value)) return 'aggregate values must be mappings';
+      if (typeof value.reducer !== 'string' || !DATA_REDUCER_VALUES.includes(value.reducer)) {
+        return `aggregate reducer must be one of ${DATA_REDUCER_VALUES.join(', ')}`;
+      }
       if (value.filter === undefined) continue;
       if (!isPlainObject(value.filter)
           || Object.keys(value.filter).some((key) => key !== 'predicates')) {
@@ -493,6 +513,7 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
     for (const field of join.fields ?? []) fields.push(field.as);
   }
   for (const computed of definition.compute ?? []) fields.push(computed.as);
+  for (const projected of definition.project?.values ?? []) fields.push(projected.as);
   if (definition.aggregate) {
     fields = [...(definition.aggregate.by ?? []), ...definition.aggregate.values.map((value) => value.as)];
   }
@@ -787,6 +808,7 @@ export function compileRowOperators(definition) {
     operators.push({ op: 'filter', predicates: definition.filter.predicates });
   }
   if (definition.compute?.length) operators.push({ op: 'compute', values: definition.compute });
+  if (definition.project?.values?.length) operators.push({ op: 'project', values: definition.project.values });
   if (definition.aggregate) {
     operators.push({ op: 'summarize', by: definition.aggregate.by ?? [], values: definition.aggregate.values });
   }

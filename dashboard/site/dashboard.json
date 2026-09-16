@@ -1562,8 +1562,7 @@
             "as": "work-search",
             "function": "concat",
             "args": [{ "field": "work-search-base" }, { "value": " " }, { "field": "work-state-label" }]
-          },
-          { "as": "work-facet-key", "function": "concat", "args": [{ "value": "work" }, { "value": "" }] }
+          }
         ]
       },
       {
@@ -1587,11 +1586,10 @@
         }
       },
       {
-        "name": "work-project-facets",
-        "intent": "Produce structured Work filter options once in the data worker.",
+        "name": "work-project-items",
+        "intent": "Return project-ready delegated work with projected worker-owned facets for the active Work view.",
         "from": "work-project-base",
-        "aggregate": {
-          "by": ["work-facet-key"],
+        "project": {
           "values": [
             { "field": "work-state-label", "as": "work-state-options", "reducer": "distinct-values" },
             { "field": "work-repository", "as": "work-repository-options", "reducer": "distinct-values" },
@@ -1599,25 +1597,8 @@
             { "field": "work-package", "as": "work-package-options", "reducer": "distinct-values" },
             { "field": "work-item-id", "as": "work-total-count", "reducer": "count" }
           ]
-        }
-      },
-      {
-        "name": "work-project-items",
-        "intent": "Return project-ready delegated work with worker-owned facets for the active Work view.",
-        "from": "work-project-base",
+        },
         "joins": [
-          {
-            "source": "work-project-facets",
-            "type": "left",
-            "on": [{ "left": "work-facet-key", "right": "work-facet-key" }],
-            "fields": [
-              { "field": "work-state-options", "as": "work-state-options" },
-              { "field": "work-repository-options", "as": "work-repository-options" },
-              { "field": "work-owner-options", "as": "work-owner-options" },
-              { "field": "work-package-options", "as": "work-package-options" },
-              { "field": "work-total-count", "as": "work-total-count" }
-            ]
-          },
           {
             "source": "work-project-orchestrator-packages",
             "type": "left",
