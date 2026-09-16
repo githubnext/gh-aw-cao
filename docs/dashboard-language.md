@@ -7,6 +7,10 @@ Dashboard Language lets you describe the question a view should answer and how
 the answer should appear. Queries are structured YAML: there is no SQL,
 JavaScript, or browser-side data processing to maintain.
 
+Use this guide to learn the language and write common queries. Use the
+[Dashboard Language Specification](dashboard-language-specification.md) when
+you need the complete vocabulary, validation rules, or conformance requirements.
+
 ## What you can ask
 
 Start with a declared source such as repositories, workflows, runs, sessions,
@@ -16,7 +20,7 @@ needs:
 | Query operation | Use it to |
 | --- | --- |
 | `from` | Choose the source records. |
-| `filters` | Keep records that match known field values. |
+| `filter` | Keep records that match known field values. |
 | `aggregate` | Group records and calculate counts, sums, minima, maxima, or averages. |
 | `joins` | Connect compatible declared sources using explicit equality keys. |
 | `compute` | Add fields using the language's safe, deterministic functions. |
@@ -56,7 +60,7 @@ data changes, keeping selection and calculation out of UI components.
 
 ## Query building blocks
 
-Use `filters` for direct field matching. Use `aggregate` when the answer is a
+Use `filter` for direct field matching. Use `aggregate` when the answer is a
 summary by repository, workflow, state, model, or time period. Use `joins` only
 when the answer spans declared sources, and use `compute` for small typed
 operations such as `coalesce`, `concat`, comparisons, date grouping, and number
@@ -64,7 +68,8 @@ formatting.
 
 Queries are deliberately constrained. They cannot run scripts, arbitrary SQL,
 templates, callbacks, or network requests. This keeps results deterministic,
-reviewable, and executable in the dashboard data worker.
+reviewable, and executable in the dashboard data worker. It also keeps data
+selection and business calculations out of UI components.
 
 ## Present the result
 

@@ -19,3 +19,9 @@ value.
 The component does not estimate money or time saved, and it does not derive a
 value claim from run volume alone. When grader evidence is absent or pending,
 follow the Operational value view before drawing a conclusion.
+
+## When to investigate
+
+Open Operational value when the count is absent, changes unexpectedly, or
+conflicts with observed outcomes. Review the operation-specific grader, value
+contract, evidence maturity, and accepted threshold together.

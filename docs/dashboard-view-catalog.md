@@ -3,7 +3,13 @@ title: Dashboard view catalog
 description: Find every standardized CAO dashboard experience, Dashboard Language page, view mark, chart, and named UI element.
 ---
 
-This catalog is the human-readable index of standardized dashboard views. The executable vocabulary remains authoritative in `dashboard/site/src/specification.js`; named element implementations are registered in `dashboard/site/src/components/ui-elements.js`.
+This catalog helps dashboard builders choose an existing page, mark, chart, or
+named UI element before creating something new. It describes the available
+presentation vocabulary and the purpose of each option.
+
+The executable vocabulary remains authoritative in
+`dashboard/site/src/specification.js`; named element implementations are
+registered in `dashboard/site/src/components/ui-elements.js`.
 
 For a concrete ownership and responsive-layout example, see the [Overview component model](dashboard-overview-components.md).
 

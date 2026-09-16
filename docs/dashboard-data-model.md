@@ -3,7 +3,11 @@ title: Data model
 description: Understand the canonical entities, relationships, identities, and lifecycle of Central Agentic Ops dashboard data.
 ---
 
-The dashboard converts source observations into canonical entities with stable identities and explicit relationships. Views query this source-neutral model instead of interpreting upstream formats directly.
+The data model gives every retained repository, workflow, run, job, session,
+and event a stable identity and explicit relationships. Read this page when you
+need to understand what a dashboard record represents or how records connect.
+Views query this source-neutral model instead of interpreting upstream formats
+directly.
 
 See [Data ingestion](/gh-aw-cao/dashboard-data-ingestion/) for collection, JSONL publication, retention, browser updates, and SQLite projections.
 
@@ -50,7 +54,7 @@ The activity collector requests the compact gh-aw `usage` artifact with audit ge
 
 SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Database owners map their schema to the contract and export static JSON before deployment. Local and deployed environments use the same contract, validator, adapter, and canonical queries; the static dashboard never opens a database connection.
 
-## Browser database updates
+## Update and retain browser data
 
 Observations can arrive at different times and enrich an existing entity. Explicit source precedence and observation time resolve conflicting fields; arrival order alone never decides the result.
 
@@ -82,85 +86,13 @@ Ingestion diagnostics use stable categories such as `NORMALIZATION_FAILED`, `TRA
 
 IndexedDB stores this canonical data as disposable derived state. Clearing browser storage triggers reconstruction from authorized published inputs; it does not delete authoritative information.
 
-## Local SQLite database
+## Query the model locally
 
-Node.js 24 can run the same ingestion and query layer against a persistent SQLite file. The local adapter implements only the IndexedDB operations used by the canonical dashboard store; the browser continues to use native IndexedDB.
+Node.js 24 can apply the same ingestion and query layer to a persistent SQLite
+file. The database remains local, disposable derived state and does not change
+the static dashboard's deployment boundary.
 
-Ingest an extracted gh-aw log directory with its run context:
-
-```bash
-cao ingest \
-  --database /tmp/cao-dashboard.sqlite \
-  --context dashboard/site/test/fixtures/gh-aw-logs/context.json \
-  --logs dashboard/site/test/fixtures/gh-aw-logs/run-303
-```
-
-Alternatively, ingest the schema-v2 JSONL produced by `gh aw logs`:
-
-```bash
-cao ingest-jsonl \
-  --database /tmp/cao-dashboard.sqlite \
-  --input-dir .cao/gh-aw-logs-shards
-```
-
-Pass `--context CONTEXT_JSON` when the JSONL's `github_api_rate_limit`
-records should become canonical Events. The context supplies the owning
-collection Repository, Workflow, and Run; without it, those unowned records
-remain unmapped.
-
-Download the JSONL and SQLite projection currently published by the deployed
-CAO Pages site:
-
-```bash
-cao download
-```
-
-This writes `.cao/payload-hashes.json`, `.cao/gh-aw-logs-shards/`, and
-`.cao/gh-aw-logs.sqlite` by default. Set `DASHBOARD_DATA_URL` or pass `--url URL`
-to use another deployment, and pass `--output DIRECTORY` to select another
-destination. Both files are downloaded unchanged; this command does not run
-ingestion locally.
-
-Query a canonical collection, optionally selecting an ID, filtering fields, or limiting output:
-
-```bash
-cao query \
-  --collection runs \
-  --where conclusion=failure \
-  --limit 20
-```
-
-Use the gh-like query surface when an agent needs familiar GitHub CLI-shaped
-commands for runs and safe-output-created issues or pull requests:
-
-```bash
-cao gh runs --repo OWNER/REPOSITORY --workflow WORKFLOW --status failure --since 2026-09-01 --until 2026-09-15
-cao gh issues --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
-cao gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
-```
-
-`-R`, `-w`, `-s`, and `-L` are aliases for `--repo`, `--workflow`, `--status`,
-and `--limit`. For runs, `--status` matches either the workflow status or
-conclusion. The default limit is 30. Date-only `--until` values include the entire date.
-Issue and pull request results come from canonical `safe_output.created` events;
-their repository filter refers to the output target repository.
-
-Diagnose and repair the local database:
-
-```bash
-cao doctor \
-  --database /tmp/cao-dashboard.sqlite
-```
-
-The doctor reports SQLite integrity, foreign-key and schema health, table and
-transaction counts, malformed records, and canonical relationship errors. It
-applies the canonical 30-day retention window, removes malformed and orphaned
-derived records, rebuilds damaged IndexedDB metadata, and runs SQLite
-reindexing, optimization, and compaction when repairs are required. Before
-changing data, it creates a timestamped `.doctor-backup-*.sqlite` backup next
-to the database. Use `--ttl-days DAYS` to select a different positive retention
-window.
-
-Run `cao help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
+See [Data ingestion](dashboard-data-ingestion.md#use-local-sqlite) for download,
+ingestion, query, and repair commands.
 
 For normative requirements, failure behavior, and implementation phases, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).

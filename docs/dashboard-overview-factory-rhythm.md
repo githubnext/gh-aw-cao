@@ -3,8 +3,8 @@ title: Factory rhythm
 description: Understand the seven-day successful-run comparison in Overview.
 ---
 
-Factory rhythm helps you see whether successful Actions activity is continuing
-through the week without reducing recent activity to one total.
+Factory rhythm shows whether successful Actions activity is continuing through
+the week without reducing recent activity to a single total.
 
 ## How to read it
 
@@ -23,3 +23,9 @@ calendar-week points and counts successful conclusions.
 
 Malformed or unavailable rhythm data renders a stable seven-day empty state
 instead of changing the component's shape.
+
+## When to investigate
+
+Open Runs when the current cadence differs unexpectedly from the previous week.
+Check failures, queued work, and rollout mode before treating a quiet period as
+an operational problem.
