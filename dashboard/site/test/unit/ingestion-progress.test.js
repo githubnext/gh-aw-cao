@@ -24,6 +24,7 @@ describe('data-worker ingestion progress', () => {
       type: 'notification',
       notification: expect.objectContaining({
         message: 'Preparing data...',
+        icon: 'download',
         detailsSubtitle: expect.stringContaining('local copy'),
         details: ['Preparing data... +3s'],
         duration: 0
@@ -65,7 +66,8 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Saving local copy · 750 KB/1.5 MB · 3s remaining',
+        message: '750 KB/1.5 MB · 3s remaining',
+        icon: 'download',
         details: [
           'Preparing data... +0s',
           'Parsing 1,000 rec, 750 KB/1.5 MB. +0s',
@@ -81,7 +83,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Saving local copy · 750 KB/1.5 MB · 4s remaining'
+        message: '750 KB/1.5 MB · 4s remaining'
       })
     });
 
@@ -142,7 +144,8 @@ describe('data-worker ingestion progress', () => {
       type: 'notification',
       notification: expect.objectContaining({
         id: expect.stringMatching(/^ingestion-progress-/),
-        message: 'Processing local copy · 1.0 KB/2.0 KB · 3s remaining',
+        message: '1.0 KB/2.0 KB · 3s remaining',
+        icon: 'download',
         duration: 0
       })
     });
@@ -152,7 +155,7 @@ describe('data-worker ingestion progress', () => {
     expect(postMessage).toHaveBeenLastCalledWith({
       type: 'notification',
       notification: expect.objectContaining({
-        message: 'Processing local copy · 2.0 KB/2.0 KB · 0s remaining'
+        message: '2.0 KB/2.0 KB · 0s remaining'
       })
     });
 
