@@ -39,6 +39,7 @@ export function createDashboardQueryMemoization(options = {}) {
       }
 
       const value = await compute();
+      if (revision !== databaseRevision) return value;
       entries.set(key, { value, expiresAt: now() + ttlMs });
       while (entries.size > maxEntries) {
         const oldest = entries.keys().next().value;

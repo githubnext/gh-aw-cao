@@ -42,6 +42,23 @@ describe('dashboard query memoization', () => {
     expect(compute).toHaveBeenCalledTimes(4);
   });
 
+  it('does not insert an older result after a newer database revision starts', async () => {
+    const memoization = createDashboardQueryMemoization();
+    /** @type {(value: { revision: number }) => void} */
+    let resolveOlder;
+    const older = memoization.get(1, 'overview', () => new Promise((resolve) => {
+      resolveOlder = resolve;
+    }));
+
+    await memoization.get(2, 'overview', async () => ({ revision: 2 }));
+    resolveOlder?.({ revision: 1 });
+    await older;
+    const recompute = vi.fn(async () => ({ revision: 2 }));
+
+    await expect(memoization.get(2, 'overview', recompute)).resolves.toEqual({ revision: 2 });
+    expect(recompute).not.toHaveBeenCalled();
+  });
+
   it('evicts the least recently used result when bounded capacity is reached', async () => {
     const memoization = createDashboardQueryMemoization({ maxEntries: 2 });
     const compute = vi.fn(async () => compute.mock.calls.length);
