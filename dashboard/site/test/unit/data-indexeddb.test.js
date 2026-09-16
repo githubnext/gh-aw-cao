@@ -301,6 +301,26 @@ describe('canonical IndexedDB', () => {
     })).rejects.toMatchObject({ name: 'CanonicalIngestionLockTimeoutError' });
   });
 
+  it('reports waiting while a leased ingestion lock is still active', async () => {
+    let waiting = 0;
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'active-tab',
+      expiresAt: Date.now() + 30_000
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'unreachable', {
+      locks: null,
+      acquireTimeoutMs: 60,
+      retryDelayMs: 1,
+      waitingNoticeDelayMs: 1,
+      onWaiting: () => { waiting += 1; }
+    })).rejects.toMatchObject({ name: 'CanonicalIngestionLockTimeoutError' });
+    expect(waiting).toBe(1);
+  });
+
   it('ignores a lease abandoned by a terminated tab when Web Locks are available', async () => {
     await writeTransactionRecord({
       id: 'lock:canonical-ingestion',

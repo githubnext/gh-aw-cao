@@ -74,7 +74,11 @@ function createLockManager() {
       } catch (error) {
         stopWatchingAbort();
         const pending = waiters.indexOf(grant);
-        if (pending > 0) waiters.splice(pending, 1);
+        if (pending >= 0) {
+          waiters.splice(pending, 1);
+          if (pending === 0) waiters[0]?.();
+        }
+        if (waiters.length === 0) queues.delete(name);
         throw error;
       }
       stopWatchingAbort();

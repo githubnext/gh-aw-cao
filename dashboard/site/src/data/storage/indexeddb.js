@@ -497,6 +497,11 @@ async function withWebIngestionLock(locks, task, options) {
 
 /**
  * Serializes canonical ingestion across tabs and workers.
+ *
+ * `locks` selects how ingestion is serialized: omitting it uses the Web Locks
+ * API when the environment provides it, and passing `null` forces the leased
+ * lock record kept in the transactions store.
+ *
  * @template T
  * @param {IDBFactory} indexedDB
  * @param {() => Promise<T>} task
@@ -511,6 +516,7 @@ export async function withCanonicalIngestionLock(indexedDB, task, options = {}) 
   const startedAt = Date.now();
   const acquireTimeoutMs = options.acquireTimeoutMs ?? INGESTION_LOCK_ACQUIRE_TIMEOUT_MS;
   const retryDelayMs = options.retryDelayMs ?? INGESTION_LOCK_RETRY_DELAY_MS;
+  const waitingNoticeDelayMs = options.waitingNoticeDelayMs ?? INGESTION_LOCK_WAITING_NOTICE_DELAY_MS;
   let notified = false;
   for (;;) {
     const waitedMs = Date.now() - startedAt;
@@ -546,7 +552,7 @@ export async function withCanonicalIngestionLock(indexedDB, task, options = {}) 
           expiresInMs: Number(existing?.expiresAt ?? 0) - now,
           waitedMs: now - startedAt
         });
-        if (!notified) {
+        if (!notified && now - startedAt >= waitingNoticeDelayMs) {
           notified = true;
           options.onWaiting?.();
         }
