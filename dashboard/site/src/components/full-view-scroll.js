@@ -23,10 +23,12 @@ export function syncFullViewMode(root, page) {
     : [];
   const modeSelectionPage = page?.hasAttribute('data-mobile-view-mode-page') === true;
   const mobileViewport = root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.matches === true;
-  const mobileTableMode = root.dataset.mobileViewMode === 'table' && modeSelectionPage && mobileViewport;
+  const mobileFullViewMode = ['table', 'card'].includes(root.dataset.mobileViewMode ?? '')
+    && modeSelectionPage
+    && mobileViewport;
   const canPin = Boolean(fullView) && (
     modeSelectionPage && mobileViewport
-      ? mobileTableMode
+      ? mobileFullViewMode
       : siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
   );
   root.classList.toggle('dashboard-full-view', canPin);
