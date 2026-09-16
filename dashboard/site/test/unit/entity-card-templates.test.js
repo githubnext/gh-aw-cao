@@ -43,7 +43,7 @@ describe('entity card templates', () => {
       { name: 'repository', field: 'repository' }
     ]);
     expect(views['repository-workflows'].list.drill).toMatchObject({
-      page: 'workflow-runs',
+      page: 'workflow-run-cards',
       query: 'entity-runs'
     });
     expect(views['workflow-runs-cards'].list.drill).toMatchObject({

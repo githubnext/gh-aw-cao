@@ -143,7 +143,7 @@
           "icon": "workflow",
           "drill": {
             "type": "query",
-            "page": "workflow-runs",
+            "page": "workflow-run-cards",
             "query": "entity-runs",
             "title-field": "workflow",
             "arguments": [
@@ -185,7 +185,7 @@
           "icon": "workflow",
           "drill": {
             "type": "query",
-            "page": "workflow-runs",
+            "page": "workflow-run-cards",
             "query": "entity-runs",
             "title-field": "workflow",
             "arguments": [
@@ -2395,7 +2395,7 @@
         "intent": "List retained GitHub pull request safe outputs.",
         "description": "Pull-request-only projection of retained safe-output items.",
         "from": "safe-output-items",
-        "filter": { "predicates": [{ "field": "github-entity-type", "equals": "pull-request" }] },
+        "filter": { "predicates": [{ "field": "github-entity-type", "equals": "pull_request" }] },
         "select": [
           { "field": "observed-at" },
           { "field": "github-entity-type" },
@@ -4462,7 +4462,6 @@
           "hash-query-parameter": "workflow"
         },
         "views": [
-          "workflow-runs-cards",
           {
             "id": "workflow-run-health",
             "title": "Run health trend",
@@ -4645,6 +4644,18 @@
             "layout": "full"
           }
         ]
+      },
+      {
+        "id": "workflow-run-cards",
+        "kind": "custom",
+        "title": "Workflow runs",
+        "description": "Observed runs for the selected workflow.",
+        "icon": "play",
+        "route": {
+          "hash-query-parameter": "workflow",
+          "navigation-page": "workflows"
+        },
+        "views": ["workflow-runs-cards"]
       },
       {
         "id": "workflow-runtime",

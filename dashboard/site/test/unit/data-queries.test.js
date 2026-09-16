@@ -825,7 +825,7 @@ describe('declarative dashboard queries', () => {
       metadata: metadata('runs')
     };
 
-    const derived = executeDashboardQueries(dashboardQueries, { events, runs }, ['safe-output-items']);
+    const derived = executeDashboardQueries(dashboardQueries, { events, runs }, ['safe-output-items', 'pull-requests']);
 
     expect(derived['safe-output-items'].rows).toEqual([{
       'observed-at': '2026-09-02T00:00:00Z',
@@ -839,6 +839,7 @@ describe('declarative dashboard queries', () => {
       run: '1',
       'run-link': { href: 'run-1' }
     }]);
+    expect(derived['pull-requests'].rows).toEqual(derived['safe-output-items'].rows);
   });
 
   it('caps event inspection at the query output limit instead of becoming unavailable', () => {
