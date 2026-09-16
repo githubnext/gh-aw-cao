@@ -1,4 +1,7 @@
-/** @param {unknown} id Converts a kebab-case package identifier to a display name; blank input remains blank. */
+/**
+ * @param {unknown} id Kebab-case package identifier.
+ * @returns {string} The title-cased display name, or an empty string for blank input.
+ */
 export function packageName(id) {
   return String(id ?? "")
     .split("-")
