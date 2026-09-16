@@ -5043,6 +5043,66 @@ test('phone pages toggle between chart, full-view table, and card-list modes', a
   await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('card');
 });
 
+test('phone Workflows page cycles through chart, table, and card-list views', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const workflowsPage = builtInPage('workflows');
+  await page.evaluate(async ({ presenterModuleUrl, workflowsPage }) => {
+    window.location.hash = '#page-workflows';
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'workflows-view-mode-dashboard',
+          title: 'Workflows View Mode',
+          pages: [workflowsPage]
+        }
+      },
+      sources: {
+        'workflow-inventory': {
+          source: 'workflow-inventory',
+          rows: [{
+            'package-name': 'Maintenance',
+            repository: 'githubnext/gh-aw-cao',
+            workflow: '.github/workflows/aw-maintenance.md',
+            'workflow-name': 'AW Maintenance',
+            'workflow-label': 'githubnext/gh-aw-cao:.github/workflows/aw-maintenance.md',
+            'workflow-role': 'orchestrator',
+            'rollout-mode': 'review',
+            'workflow-active': 'active',
+            aic: 12,
+            runs: 4,
+            ingestion: '100%',
+            'workflow-link': { relation: 'workflow', href: '#page-workflow-runtime', label: 'View AW Maintenance' },
+            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-aw-cao' }
+          }],
+          metadata: {
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    }));
+  }, { presenterModuleUrl: buildPresenterModuleUrl(), workflowsPage });
+
+  const chart = page.locator('[data-view-id="workflows-by-runs"]');
+  const table = page.locator('[data-view-id="workflows-inventory"]');
+  await expect(chart).toBeVisible();
+  await expect(table).toBeHidden();
+
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(chart).toBeHidden();
+  await expect(table.locator('.table-region')).toBeVisible();
+  await expect(table.locator('tbody')).toContainText('AW Maintenance');
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(table.locator('.table-region')).toBeHidden();
+  await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
+  await expect(table.locator('[data-mobile-card-list]')).toContainText('AW Maintenance');
+  await expect(page.getByRole('button', { name: 'Show chart view' })).toBeVisible();
+});
+
 test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 390, height: 844 });

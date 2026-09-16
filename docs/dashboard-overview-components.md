@@ -19,6 +19,21 @@ keeps the interface consistent without hiding business logic in page code.
 	<img class="docs-theme-diagram-dark" alt="Color-coded map of the Overview page component boundaries" src="/gh-aw-cao/assets/dashboard-overview-desktop-dark.svg">
 </div>
 
+## Declarative composition
+
+Dashboard Language exposes the factory as the `outcomes-overview` element. Its
+`config.sections` list composes two reusable presentation boundaries in declared
+order:
+
+- `header` owns status, retained-output context, work-in-motion state, and
+  Factory rhythm.
+- `floor` owns the four linked metric stations and their aggregate accessible
+  summary.
+
+Omitting `config.sections` selects both sections in this canonical order. The
+default dashboard declares `header` followed by `floor`, preserving the complete
+factory layout while making its composition explicit in `dashboard.json`.
+
 ## Responsive by design
 
 Every view has a deliberate mobile experience. Components keep the

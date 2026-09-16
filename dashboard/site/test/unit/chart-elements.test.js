@@ -134,6 +134,17 @@ describe('chart element helpers', () => {
     expect(semantic.querySelector('li:nth-child(3) i')?.classList.contains('chart-series-semantic-failure')).toBe(true);
   });
 
+  it('formats unitless pie counters for quick scanning', () => {
+    /** @type {Array<[string, number]>} */
+    const entries = [['blocked.example', 3_177_281]];
+    const legend = renderPieLegend(entries, 3_177_281);
+    const chart = renderChartWidget('pie', [], [], { entries, total: 3_177_281 });
+
+    expect(legend.querySelector('strong')?.textContent).toBe('3,177,281');
+    expect(chart.querySelector('.pie-chart-total-value')?.textContent).toBe('3,177,281');
+    expect(chart.querySelector('svg')?.getAttribute('aria-label')).toContain('blocked.example 3,177,281');
+  });
+
   it('toggles the pie table when the chart is tapped', () => {
     const chart = renderChartWidget('pie', [], [], {
       entries: [['first', 2], ['largest', 5]],

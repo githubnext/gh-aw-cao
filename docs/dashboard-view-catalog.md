@@ -105,7 +105,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `work-project-view` | Presents delegated work in board, task, and roadmap modes. |
 | `agent-marketplace-view` | Presents policy-scoped packages and agent capabilities. |
 | `insights-overview` | Composes the primary cross-domain Insights experience. |
-| `outcomes-overview` | Composes the primary Overview factory experience. |
+| `outcomes-overview` | Composes the primary Overview factory experience from configurable `header` and `floor` sections. |
 
 ## Testing standard
 

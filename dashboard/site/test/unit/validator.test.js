@@ -949,7 +949,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines the Workflows run ranking as a declarative pie chart without a companion table', () => {
+  it('defines the Workflows chart and inventory table as declarative views', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'workflows'
@@ -972,9 +972,24 @@ describe('dashboard document validation', () => {
         href: { field: 'workflow-link', type: 'nominal' }
       }
     });
-    expect(page.definition.views).not.toContainEqual(
-      expect.objectContaining({ mark: 'table' })
-    );
+    expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-inventory'
+    )).toMatchObject({
+      data: { source: 'workflow-inventory' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view'
+    });
+    const columns = page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-inventory'
+    ).encoding.columns;
+    expect(columns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'workflow-name', display: 'workflow-link' }),
+      expect.objectContaining({ field: 'repository', display: 'repository-link' }),
+      expect.objectContaining({ field: 'package-name' }),
+      expect.objectContaining({ field: 'runs', type: 'quantitative' })
+    ]));
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -999,6 +1014,7 @@ describe('dashboard document validation', () => {
       ]) },
       mark: 'element',
       element: 'outcomes-overview',
+      config: expect.objectContaining({ sections: ['header', 'floor'] }),
       layout: 'full'
     })]);
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
@@ -1110,7 +1126,7 @@ dashboard:
     ]);
     expect(workflowsPage.definition.views.map((/** @type {{ id?: string } | string} */ view) =>
       typeof view === 'string' ? view : view.id
-    )).toEqual(['workflows-by-runs']);
+    )).toEqual(['workflows-by-runs', 'workflows-inventory']);
     expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
@@ -1439,6 +1455,77 @@ dashboard:
     }
   });
 
+  it('accepts declarative factory overview sections and rejects unknown sections', () => {
+    const accepted = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, floor]
+`);
+    expect(accepted.ok).toBe(true);
+
+    const invalid = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [status]
+`);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].config.sections[0]'
+      }));
+    }
+
+    const duplicate = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, header]
+`);
+    expect(duplicate.ok).toBe(false);
+    if (!duplicate.ok) {
+      expect(duplicate.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
+        path: '$.dashboard.pages[0].views[0].config.sections[1]'
+      }));
+    }
+  });
+
   it('defines work-project-view composition through canonical body values', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const pages = new Map(document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [page.id, page]));
@@ -1597,12 +1684,11 @@ dashboard:
       const sources = page.views.map(
         (/** @type {{ data: { source: string } }} */ view) => canonicalSource(view.data.source)
       );
-      const attainmentSource = pageId === 'optimization-dashboard'
-        ? 'grader-observations'
-        : 'operational-values';
       const expectedSources = pageId === 'cao-evolution-dashboard'
-        ? [attainmentSource, attainmentSource, 'outcomes', 'outcomes', 'runs']
-        : [attainmentSource, attainmentSource, 'outcomes', 'runs'];
+        ? ['operational-values', 'operational-values', 'outcomes', 'outcomes', 'runs']
+        : pageId === 'optimization-dashboard'
+          ? ['grader-observations', 'grader-observations', 'outcomes', 'runs']
+          : ['operational-values', 'operational-values', 'outcomes', 'runs'];
       expect(sources.sort()).toEqual(expectedSources.sort());
     }
   });

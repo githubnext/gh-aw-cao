@@ -155,17 +155,16 @@ describe('Overview component boundaries', () => {
     controller.abort();
   });
 
-  it('header owns motion, heading priority, outcome summary, and rhythm composition', () => {
+  it('header presents motion, heading priority, outcome summary, and rhythm composition', () => {
     const controller = new AbortController();
     const motion = state({ operations: 0, live: 0, review: 0 });
-    const metricMotion = state({ operations: 0, live: 0, review: 0 });
     const sources = {
       'overview-factory-status': binding({ rows: [{ 'factory-heading': 'Your factory is delivering value.' }] }),
       'overview-rhythm': binding({ rows: rhythmRows() })
     };
     const rendered = renderFactoryHeader(
       sources,
-      { ...metrics(), motion: metricMotion.get },
+      metrics(),
       { signal: controller.signal, motion }
     );
 
@@ -174,10 +173,10 @@ describe('Overview component boundaries', () => {
     expect(rendered.querySelector('.factory-intro-copy > p:last-child')?.textContent).toBe('5 retained issue and pull request outputs are backed by Actions evidence across 4 repositories.');
     expect(rendered.querySelector('.factory-rhythm')).not.toBeNull();
 
-    metricMotion.set({ operations: 2, live: 1, review: 1 });
+    motion.set({ operations: 2, live: 1, review: 1 });
     expect(rendered.querySelector('.factory-running')?.classList.contains('factory-running-active')).toBe(true);
     controller.abort();
-    metricMotion.set({ operations: 0, live: 0, review: 0 });
+    motion.set({ operations: 0, live: 0, review: 0 });
     expect(rendered.querySelector('.factory-running')?.classList.contains('factory-running-active')).toBe(true);
   });
 });
