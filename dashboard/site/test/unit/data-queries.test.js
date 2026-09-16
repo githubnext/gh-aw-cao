@@ -2206,6 +2206,32 @@ describe('computed field vocabulary', () => {
     ]);
   });
 
+  it('rejects malformed support projections before reading source rows', () => {
+    let reads = 0;
+    const source = {
+      source: 'work-items',
+      get rows() {
+        reads += 1;
+        return [{ id: '1', state: 'Done' }];
+      },
+      metadata: metadata('work-items')
+    };
+    const result = executeDashboardQueries([{
+      name: 'work-options',
+      from: 'work-items',
+      project: {
+        values: Array.from(
+          { length: DASHBOARD_QUERY_LIMITS['max-project-values'] + 1 },
+          (_, index) => ({ field: 'state', as: `state-options-${index}`, reducer: 'distinct-values' })
+        )
+      }
+    }], { 'work-items': source }, ['work-options'])['work-options'];
+
+    expect(result.metadata.availability).toBe('unavailable');
+    expect(result.metadata['query-diagnostic']).toContain('project values must contain between');
+    expect(reads).toBe(0);
+  });
+
   it('executes declared queries through the data worker request handler', () => {
     const response = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',

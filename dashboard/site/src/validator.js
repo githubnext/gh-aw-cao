@@ -3431,10 +3431,10 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
       validateObjectKeys(projectNode, QUERY_PROJECT_KEYS, projectPath, errors);
       if (!Array.isArray(query.project.values)
           || query.project.values.length === 0
-          || query.project.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
+          || query.project.values.length > DASHBOARD_QUERY_LIMITS['max-project-values']) {
         errors.push(createError(
           ERROR_CODES.missingOrInvalidRequiredField,
-          `project values must be a sequence of 1 to ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions.`,
+          `project values must be a sequence of 1 to ${DASHBOARD_QUERY_LIMITS['max-project-values']} definitions.`,
           `${projectPath}.values`
         ));
       } else {

@@ -46,6 +46,7 @@ export const DASHBOARD_QUERY_LIMITS = {
   'max-join-rows': 200000,
   'max-output-rows': 100000,
   'max-joins': 4,
+  'max-project-values': 64,
   'max-aggregate-values': 64,
   'max-aggregate-filter-predicates': 8,
   'max-predicate-alternatives': 32,
@@ -349,8 +350,8 @@ function queryStructuralDefect(definition) {
   if (definition.project) {
     if (!Array.isArray(definition.project.values)
         || definition.project.values.length === 0
-        || definition.project.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
-      return `project values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions`;
+        || definition.project.values.length > DASHBOARD_QUERY_LIMITS['max-project-values']) {
+      return `project values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-project-values']} definitions`;
     }
     for (const value of definition.project.values) {
       if (!isPlainObject(value)) return 'project values must be mappings';
