@@ -21,7 +21,6 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
     "create-cao-package",
     "analyze-cao",
     "cao-cli",
-    "codebase-model",
   ]) {
     const skill = await readFile(
       new URL(`skills/${skillName}/SKILL.md`, root),
@@ -44,6 +43,20 @@ test("add-cao-package requires discovery, consent, and review-safe installation"
   assert.match(skill, /cao\.mjs add githubnext\/gh-aw-cao\/<package-slug>@<catalog-commit>/);
   assert.match(skill, /must remain in review/);
   assert.match(skill, /did not broaden or change/);
+});
+
+test("experimental Codebase Model skill remains repository-local", async () => {
+  const skill = await readFile(
+    new URL(".github/skills/codebase-model/SKILL.md", root),
+    "utf8",
+  );
+
+  assert.match(skill, /^---\nname: codebase-model\n/);
+  assert.match(skill, /ARCHITECTURE\.md/);
+  await assert.rejects(
+    readFile(new URL("skills/codebase-model/SKILL.md", root), "utf8"),
+    { code: "ENOENT" },
+  );
 });
 
 test("Copilot extension uses the current Canvas provider contract", async () => {

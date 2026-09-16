@@ -158,6 +158,7 @@ generation:
   codebase_model:
     path: CODEBASE.yml
     source: ARCHITECTURE.md
+    compilation_skill: .github/skills/codebase-model/SKILL.md
   new_operation:
     path: <operation>/aw.yml
   workflow_source:
@@ -203,13 +204,15 @@ commands:
       corpus_validation: npm run validate:corpus
 
 validation:
-  command_refs:
+  default_command_refs:
     - repository_root.entries.full_validation
   dashboard_site_command_refs:
     - dashboard_site.entries.tests
     - dashboard_site.entries.e2e_tests
+    - dashboard_site.entries.performance_tests
     - dashboard_site.entries.lint
     - dashboard_site.entries.typecheck
+    - dashboard_site.entries.corpus_validation
   workflow_source_command_refs:
     - repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
