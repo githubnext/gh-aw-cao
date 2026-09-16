@@ -979,10 +979,7 @@ describe('dashboard document validation', () => {
       mark: 'table',
       controls: 'interactive',
       'lazy-list': true,
-      layout: 'full-view',
-      encoding: {
-        href: { field: 'workflow-link', type: 'nominal' }
-      }
+      layout: 'full-view'
     });
     const columns = page.definition.views.find((/** @type {{ id: string }} */ view) =>
       view.id === 'workflows-inventory'

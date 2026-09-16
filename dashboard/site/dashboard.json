@@ -5490,10 +5490,6 @@
               "layout": "full-view",
               "empty-message": "No workflows observed.",
               "encoding": {
-                "href": {
-                  "field": "workflow-link",
-                  "type": "nominal"
-                },
                 "columns": [
                   {
                     "field": "workflow-name",

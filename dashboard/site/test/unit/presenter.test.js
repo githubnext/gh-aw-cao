@@ -807,7 +807,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-rocket$/);
   });
 
-  it('does not invent workflow links for chart or inventory rows', () => {
+  it('uses declared workflow identities for inventory navigation', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -890,7 +890,10 @@ describe('presenter built-in and custom pages', () => {
       .map((link) => link.getAttribute('href'));
     expect(links).toHaveLength(0);
     expect(rendered.querySelector('[data-page-name="workflows"] table')).not.toBeNull();
-    expect(rendered.querySelector('[data-page-name="workflows"] table a')).toBeNull();
+    expect(rendered.querySelector('[data-page-name="workflows"] table a')?.getAttribute('href'))
+      .toMatch(/^#page-workflow-runtime\?workflow=/);
+    expect([...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
+      .every((link) => !(link.parentElement instanceof HTMLAnchorElement))).toBe(true);
   });
 
   it('DLS-LINK-006 DLS-LINK-007 renders worker-provided entity links in table columns and honours explicit link overrides', () => {
@@ -3030,6 +3033,14 @@ describe('presenter built-in and custom pages', () => {
           y: { field: 'runs', type: 'quantitative', title: 'Runs' },
           href: { field: 'workflow-link', type: 'nominal' }
         }
+      },
+      {
+        id: 'workflows-inventory',
+        data: { source: 'workflow-inventory' },
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
       }
     ]);
   });
