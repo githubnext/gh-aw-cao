@@ -101,7 +101,7 @@ const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
 /**
- * @param {PresentableBuiltInPage} page
+ * @param {PresentableBuiltInPage | PresentableCustomPage} page
  * @param {Array<Record<string, unknown>>} [reusableViews]
  * @returns {PresentableCustomPage}
  */
@@ -498,13 +498,8 @@ function renderPageSkeleton() {
  */
 function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext) {
   const title = getPageTitle(page);
-
-  if (page.kind === 'built-in') {
-    const payload = getBuiltInPagePayload(page, reusableViews);
-    return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext);
-  }
-
-  return renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext);
+  const payload = getBuiltInPagePayload(page, reusableViews);
+  return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext);
 }
 
 /**

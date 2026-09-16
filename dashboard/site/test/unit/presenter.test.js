@@ -341,6 +341,53 @@ describe('dashboard DOM provenance', () => {
 });
 
 describe('presenter built-in and custom pages', () => {
+  it('resolves reusable view IDs referenced by custom pages', () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'reusable-view-dashboard',
+          title: 'Reusable view dashboard',
+          views: [{
+            id: 'reusable-total',
+            title: 'Reusable total',
+            mark: 'metric',
+            data: { source: 'summary' },
+            encoding: {
+              value: { field: 'value', aggregate: 'sum' }
+            }
+          }],
+          pages: [{
+            id: 'custom',
+            kind: 'custom',
+            title: 'Custom',
+            views: ['reusable-total']
+          }]
+        }
+      },
+      sources: {
+        summary: {
+          source: 'summary',
+          rows: [{ value: 7 }],
+          metadata: {
+            'source-id': 'summary-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T18:00:00Z',
+            'retrieved-at': '2026-09-16T18:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      }
+    });
+
+    const view = rendered.querySelector('[data-view-id="reusable-total"]');
+    expect(view?.textContent).toContain('Reusable total');
+    expect(view?.querySelector('[data-metric-value="value"]')?.textContent).toBe('7');
+    expect(view?.textContent).not.toContain('Invalid custom view definition.');
+  });
+
   it('renders the most-blocked domains pie chart and aggregated domain table', async () => {
     const metadata = /** @type {const} */ ({
       'source-id': 'firewall-fixture',
@@ -534,7 +581,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
   });
 
-  it('renders event inspection as one full-view lazy table', async () => {
+  it('renders the reusable event view and full-view lazy inspection table', async () => {
     const metadata = {
       'source-id': 'event-inspection-fixture',
       'source-kind': 'fixture',
@@ -564,7 +611,9 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'events');
-    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(2);
+    expect(page?.querySelector('[data-view-id="entity-events"]')).not.toBeNull();
+    expect(page?.textContent).not.toContain('Invalid custom view definition.');
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.textContent).toContain('Produced a review');
     expect(page?.textContent).toContain('assistant_message');
