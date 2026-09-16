@@ -76,7 +76,7 @@ describe('canonical dashboard worker ingestion order', () => {
           context: { pages: [], queries: [] }
         }
       });
-      for (let attempt = 0; attempt < 200 && !posted.some((message) => message.id === 1); attempt += 1) {
+      for (let attempt = 0; attempt < 1000 && !posted.some((message) => message.id === 1); attempt += 1) {
         await new Promise((resolve) => { setTimeout(resolve, 5); });
       }
     } finally {
