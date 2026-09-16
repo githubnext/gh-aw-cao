@@ -2342,7 +2342,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .work-task-scroll { min-width: 0; max-height: none; overflow: visible; }
   .work-task-table-header { display: none; }
   .work-task-list { width: 100%; min-width: 0; display: grid; gap: 10px; padding-top: 10px; }
-  .work-task-row { width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 1px 0 var(--border-muted); }
+  .work-task-row { width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 0; box-shadow: 0 1px 0 var(--border-muted); }
   .work-task-row::before { display: none; }
   .work-task-row > * { padding: 0; border: 0; }
   .work-task-main { grid-column: 1 / -1; }
