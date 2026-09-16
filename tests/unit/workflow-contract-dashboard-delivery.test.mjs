@@ -504,6 +504,11 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
     });
     const inventory = JSON.parse(readFileSync(outputPath, "utf8"));
     const dependabotBundle = inventory.bundles.find((bundle) => bundle.id === "dependabot");
+    const registeredPackageIds = Object.keys(
+      JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"))["control-plane"].packages,
+    ).sort();
+    assert.deepEqual(inventory.packages.map((entry) => entry.id), registeredPackageIds);
+    assert.equal(inventory.packages.find((entry) => entry.id === "repo-assist")?.name, "Repo Assist");
     assert.equal(dependabotBundle.readmePath, "dependabot/README.md");
     assert.match(dependabotBundle.readme, /^# Dependabot Package\n/);
     assert.match(dependabotBundle.readme, /## Safety Boundaries/);

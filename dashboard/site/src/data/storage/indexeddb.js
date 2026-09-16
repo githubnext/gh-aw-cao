@@ -81,6 +81,7 @@ const INGESTION_LOCK_ID = 'lock:canonical-ingestion';
 const INGESTION_LOCK_LEASE_MS = 5 * 60 * 1000;
 const INGESTION_LOCK_ACQUIRE_TIMEOUT_MS = INGESTION_LOCK_LEASE_MS + 30_000;
 const INGESTION_LOCK_RETRY_DELAY_MS = 25;
+const INGESTION_LOCK_WAITING_NOTICE_DELAY_MS = 500;
 
 /**
  * @template T
@@ -438,25 +439,88 @@ export async function readTransaction(indexedDB, id) {
   }
 }
 
+/** @returns {Error} */
+function ingestionLockTimeoutError() {
+  const error = new Error('Timed out waiting for canonical ingestion lock');
+  error.name = 'CanonicalIngestionLockTimeoutError';
+  return error;
+}
+
+/**
+ * Serializes canonical ingestion with the Web Locks API, which the browser
+ * releases as soon as the holding tab or worker goes away. A leased record
+ * cannot do that: a tab terminated mid-ingestion leaves its lease behind, and
+ * every later ingestion then stalls until that lease expires.
+ *
+ * @template T
+ * @param {LockManager} locks
+ * @param {() => Promise<T>} task
+ * @param {{ acquireTimeoutMs?: number, waitingNoticeDelayMs?: number, onWaiting?: () => void }} options
+ */
+async function withWebIngestionLock(locks, task, options) {
+  const name = `canonical-ingestion:${canonicalDatabaseName()}`;
+  const startedAt = Date.now();
+  const acquireTimeoutMs = options.acquireTimeoutMs ?? INGESTION_LOCK_ACQUIRE_TIMEOUT_MS;
+  const controller = new AbortController();
+  let acquired = false;
+  // Aborting only cancels a request that is still pending, so a granted lock
+  // keeps the ingestion running for as long as it needs.
+  const timeout = setTimeout(() => controller.abort(), acquireTimeoutMs);
+  const notice = setTimeout(() => {
+    if (!acquired) options.onWaiting?.();
+  }, options.waitingNoticeDelayMs ?? INGESTION_LOCK_WAITING_NOTICE_DELAY_MS);
+  try {
+    return await locks.request(name, { mode: 'exclusive', signal: controller.signal }, async () => {
+      acquired = true;
+      clearTimeout(timeout);
+      clearTimeout(notice);
+      debug('acquired canonical ingestion lock', { name, waitedMs: Date.now() - startedAt });
+      try {
+        return await task();
+      } finally {
+        debug('released canonical ingestion lock', { name });
+      }
+    });
+  } catch (error) {
+    if (!acquired
+        && controller.signal.aborted
+        && /** @type {{ name?: unknown }} */ (error)?.name === 'AbortError') {
+      debug('timed out waiting for canonical ingestion lock', { name, waitedMs: Date.now() - startedAt });
+      throw ingestionLockTimeoutError();
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    clearTimeout(notice);
+  }
+}
+
 /**
  * Serializes canonical ingestion across tabs and workers.
+ *
+ * `locks` selects how ingestion is serialized: omitting it uses the Web Locks
+ * API when the environment provides it, and passing `null` forces the leased
+ * lock record kept in the transactions store.
+ *
  * @template T
  * @param {IDBFactory} indexedDB
  * @param {() => Promise<T>} task
- * @param {{ acquireTimeoutMs?: number, retryDelayMs?: number }} [options]
+ * @param {{ acquireTimeoutMs?: number, retryDelayMs?: number, waitingNoticeDelayMs?: number, onWaiting?: () => void, locks?: LockManager | null }} [options]
  */
 export async function withCanonicalIngestionLock(indexedDB, task, options = {}) {
+  const locks = options.locks === undefined ? globalThis.navigator?.locks : options.locks;
+  if (locks && typeof locks.request === 'function') {
+    return await withWebIngestionLock(locks, task, options);
+  }
   const owner = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}:${Math.random()}`;
   const startedAt = Date.now();
   const acquireTimeoutMs = options.acquireTimeoutMs ?? INGESTION_LOCK_ACQUIRE_TIMEOUT_MS;
   const retryDelayMs = options.retryDelayMs ?? INGESTION_LOCK_RETRY_DELAY_MS;
+  const waitingNoticeDelayMs = options.waitingNoticeDelayMs ?? INGESTION_LOCK_WAITING_NOTICE_DELAY_MS;
+  let notified = false;
   for (;;) {
     const waitedMs = Date.now() - startedAt;
-    if (waitedMs > acquireTimeoutMs) {
-      const error = new Error('Timed out waiting for canonical ingestion lock');
-      error.name = 'CanonicalIngestionLockTimeoutError';
-      throw error;
-    }
+    if (waitedMs > acquireTimeoutMs) throw ingestionLockTimeoutError();
     const database = await openCanonicalDatabase(indexedDB);
     let acquired;
     try {
@@ -488,6 +552,10 @@ export async function withCanonicalIngestionLock(indexedDB, task, options = {}) 
           expiresInMs: Number(existing?.expiresAt ?? 0) - now,
           waitedMs: now - startedAt
         });
+        if (!notified && now - startedAt >= waitingNoticeDelayMs) {
+          notified = true;
+          options.onWaiting?.();
+        }
       }
       await done;
     } finally {

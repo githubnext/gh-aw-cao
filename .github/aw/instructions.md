@@ -2,7 +2,7 @@
 
 ## Package categories
 
-Treat top-level Central Agentic Ops packages as operational packages by default. They contain an orchestrator and at least one independently dispatchable worker, use `shared/control.md`, and follow `skills/create-ops-package/SKILL.md`.
+Treat top-level Central Agentic Ops packages as operational packages by default. They contain an orchestrator and at least one independently dispatchable worker, use `shared/control.md`, and follow `skills/create-cao-package/SKILL.md`.
 
 The `dashboard/` package is the deterministic exception. It contains conventional GitHub Actions workflows, data producers, and the Dashboard Language renderer under `dashboard/site/`, not an orchestrator or workers. Install it from root `aw.yml` by default while retaining `dashboard/aw.yml` for focused dashboard-only installations; never fold it into an operational package.
 
@@ -18,7 +18,7 @@ Orchestrators select and dispatch within the resolved rollout envelope; they do 
 
 ## Workflow authoring
 
-For an operational package, apply `skills/create-ops-package/SKILL.md`. It defines the CAO orchestrator/worker topology, rollout boundary, and required `.github/workflows/shared/control.md` imports.
+For an operational package, apply `skills/create-cao-package/SKILL.md`. It defines the CAO orchestrator/worker topology, rollout boundary, and required `.github/workflows/shared/control.md` imports.
 
 ## Deterministic core packages
 

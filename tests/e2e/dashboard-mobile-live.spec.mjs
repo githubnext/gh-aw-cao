@@ -12,9 +12,26 @@ import {
 } from "./dashboard-tree-analysis.mjs";
 
 const maximumDomNodes = 6_000;
+const transientDownloadStatuses = new Set([408, 429, 500, 502, 503, 504]);
 let preview;
 let sourcePayload;
 let expectedActivityShardPaths;
+
+async function fetchDeployedData(url) {
+  const maximumAttempts = 4;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      if (response.ok || !transientDownloadStatuses.has(response.status) || attempt === maximumAttempts) {
+        return response;
+      }
+      await response.body?.cancel();
+    } catch (error) {
+      if (attempt === maximumAttempts) throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000 * 2 ** (attempt - 1)));
+  }
+}
 
 function metricValues(metrics) {
   return Object.fromEntries(metrics.map(({ name, value }) => [name, value]));
@@ -181,8 +198,8 @@ test.beforeAll(async () => {
       const inventoryUrl = new URL("inventory-sources.json", dataUrl);
       const payloadHashesUrl = new URL("payload-hashes.json", dataUrl);
       const [payloadHashesResponse, inventoryResponse] = await Promise.all([
-        fetch(payloadHashesUrl),
-        fetch(inventoryUrl),
+        fetchDeployedData(payloadHashesUrl),
+        fetchDeployedData(inventoryUrl),
       ]);
       if (!payloadHashesResponse.ok) {
         throw new Error(`Unable to download deployed dashboard manifest: HTTP ${payloadHashesResponse.status}.`);
@@ -202,7 +219,7 @@ test.beforeAll(async () => {
       await pipeline(inventoryResponse.body, createWriteStream(inventoryPath));
       let activityBytes = 0;
       for (const [name] of shards) {
-        const response = await fetch(new URL(name, dataUrl));
+        const response = await fetchDeployedData(new URL(name, dataUrl));
         if (!response.ok) throw new Error(`Unable to download deployed dashboard shard ${name}: HTTP ${response.status}.`);
         if (!response.body) throw new Error(`Deployed dashboard shard ${name} has no body.`);
         const shardPath = join(destination, name);

@@ -8,7 +8,7 @@ import { root, workflow, workflowsDirectory } from "./workflow-contract.helpers.
 // Safe-output reporting, issue, and pull request contracts.
 
 test("operations creation guidance scopes detection and omits worker evals", () => {
-  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
 
   assert.match(packageSkill, /safe-outputs\.threat-detection: false/);
   assert.match(packageSkill, /default new dispatchers to `hourly`/);
@@ -148,7 +148,7 @@ test("workers with title prefixes provide unprefixed safe-output titles", () => 
 });
 
 test("workers inherit human-first progressive report disclosure", () => {
-  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
   const sharedControl = workflow("shared/control.md");
   const workers = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md"))

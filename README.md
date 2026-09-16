@@ -4,7 +4,7 @@
 > **Research prototype:** Features and interfaces may change as the project evolves.
 
 > [!TIP]
-> **Agent setup router:** When asked to create, bootstrap, initialize, or set up a Central Agentic Ops control plane, load and follow [the setup skill](.github/skills/setup-central-agentic-ops/SKILL.md). Use a separate control repository by default; any repository may explicitly run workflows it maintains in-tree as a source-managed control plane, including a catalog dogfooding its own workflows.
+> **Agent setup router:** When asked to create, bootstrap, initialize, or set up a Central Agentic Ops control plane, load and follow [the setup skill](.github/skills/setup-cao/SKILL.md). Use a separate control repository by default; any repository may explicitly run workflows it maintains in-tree as a source-managed control plane, including a catalog dogfooding its own workflows.
 
 Run trusted agentic operations across your repository fleet from one central control plane.
 
@@ -16,7 +16,7 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The installer adds gh-aw and the core CAO package, creates the minimal control policy, and makes no CAO changes when rerun after installation.
+The installer adds gh-aw and the core CAO package, installs CAO project skills under `.github/skills/`, creates the minimal control policy, and makes no CAO changes when rerun after installation.
 
 Central Agentic Ops packages reusable orchestrators and focused workers so platform teams can automate repository operations without copying workflows into every repository.
 
@@ -40,9 +40,9 @@ Ready to explore? [See the docs](https://githubnext.github.io/gh-aw-cao/).
 
 ## Agent plugin and Requirements
 
-This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-central-agentic-ops`, `create-ops-package`, `analyze-agentic-ops`, and `cao-cli` skills.
+This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-cao`, `create-cao-package`, `analyze-cao`, and `cao-cli` skills.
 
-Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `setup-central-agentic-ops` to create a control plane from scratch, `create-ops-package` with an operational strategy and target-repository description, `analyze-agentic-ops` to download and query CAO activity data with the `cao` CLI, or `cao-cli` for a general reference on using `cao` in local development and inside agentic workflow runs.
+Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `setup-cao` to create a control plane from scratch, `create-cao-package` with an operational strategy and target-repository description, `analyze-cao` to download and query CAO activity data with the `cao` CLI, or `cao-cli` for a general reference on using `cao` in local development and inside agentic workflow runs.
 
 In Copilot CLI, the plugin also provides a **Central Agentic Ops** Canvas. Open it to start the repository's local dashboard preview, optionally for a specified `OWNER/REPOSITORY`. The extension gives the agent tools to execute declarative queries with the canonical dashboard query engine and read bounded sections of the dashboard data architecture specification.
 

@@ -13,6 +13,7 @@ export async function main(actions = {}) {
 const root = path.resolve(process.env.REPORT_ROOT || ".");
 const outputPath = path.resolve(process.env.REPORT_INVENTORY || "_inventory/control-plane.json");
 const workflowDirectory = path.join(root, ".github/workflows");
+const policyPath = path.join(workflowDirectory, "cao.json");
 
 function unquote(value = "") {
   const trimmed = value.trim();
@@ -137,12 +138,23 @@ function discoverInventory() {
     workers: orchestrator.workers.map((workerId) => workflowById.get(workerId)).filter(Boolean),
     missingWorkers: orchestrator.workers.filter((workerId) => !workflowById.has(workerId)),
   }));
+  const packageNames = new Map(bundles.map((bundle) => [bundle.controlPackage || bundle.id, bundle.name]));
+  let policy = {};
+  try {
+    policy = JSON.parse(readFileSync(policyPath, "utf8"));
+  } catch {
+    policy = {};
+  }
+  const packages = Object.keys(policy["control-plane"]?.packages || {}).sort().map((id) => ({
+    id,
+    name: packageNames.get(id) || id,
+  }));
   const standalone = workflows.filter((workflow) => workflow.role === "standalone" && !assignedWorkers.has(workflow.id));
   const lockOnly = readdirSync(workflowDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".lock.yml"))
     .map((entry) => entry.name.slice(0, -9))
     .filter((stem) => !workflowById.has(stem));
-  return { schemaVersion: 1, generatedAt: new Date().toISOString(), manifests, workflows, bundles, standalone, lockOnly };
+  return { schemaVersion: 1, generatedAt: new Date().toISOString(), manifests, workflows, bundles, packages, standalone, lockOnly };
 }
 
 const inventory = discoverInventory();
