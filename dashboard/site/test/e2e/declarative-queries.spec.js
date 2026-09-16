@@ -219,6 +219,14 @@ test('entity cards drill through declared queries without a depth limit and set 
       },
       sourceName: 'safe-output-items',
       rows: [{ 'event-summary': title, 'issue-id': id }],
+      cardTemplates: {
+        issue: {
+          icon: 'issue-opened',
+          title: { field: 'event-summary', title: 'Issue' },
+          labels: [],
+          details: [{ field: 'issue-id', title: 'Issue ID' }]
+        }
+      },
       metadata: { availability: 'available', completeness: 'complete', freshness: 'fresh' },
       contextDetails: [],
       headingTag: 'h3',

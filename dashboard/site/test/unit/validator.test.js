@@ -328,6 +328,24 @@ describe('dashboard document validation', () => {
 
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
+    issueList.list.card = 'missing-template';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'list.card must reference a declared dashboard card template.' })
+      ])
+    });
+    issueList.list.card = 'issue';
+
+    document.dashboard['card-templates'].push({ ...document.dashboard['card-templates'][0] });
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'card template id must be unique.' })
+      ])
+    });
+    document.dashboard['card-templates'].pop();
+
     issueList.list.drill.query = 'missing-query';
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,

@@ -38,32 +38,6 @@ const GITHUB_ENTITY_DISPLAY_FIELDS = {
   [REPOSITORY_LINK_DISPLAY]: 'repository',
   [WORKFLOW_LINK_DISPLAY]: 'workflow'
 };
-/** @type {Record<string, { icon: string, title: TableField, labels: TableField[], details: TableField[] }>} */
-const ENTITY_CARD_DEFINITIONS = {
-  issue: {
-    icon: 'issue-opened',
-    title: { field: 'event-summary', title: 'Issue' },
-    labels: [{ field: 'safe-output-type', title: 'Safe output', display: 'label' }],
-    details: [
-      { field: 'repository', title: 'Repository' },
-      { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
-      { field: 'run', title: 'Run', display: 'run-link' },
-      { field: 'observed-at', title: 'Opened', format: 'human-friendly-timestamp' }
-    ]
-  },
-  'pull-request': {
-    icon: 'git-pull-request',
-    title: { field: 'event-summary', title: 'Pull request' },
-    labels: [{ field: 'safe-output-type', title: 'Safe output', display: 'label' }],
-    details: [
-      { field: 'repository', title: 'Repository' },
-      { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
-      { field: 'run', title: 'Run', display: 'run-link' },
-      { field: 'observed-at', title: 'Opened', format: 'human-friendly-timestamp' }
-    ]
-  }
-};
-
 /**
  * @param {Record<string, unknown>} row
  * @param {'repository-link' | 'workflow-link'} field
@@ -121,6 +95,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
  *   toText: (value: unknown) => string,
+ *   cardTemplates?: Record<string, { icon: string, title: TableField, labels: TableField[], details: TableField[] }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
  * }} DataViewContext
  */
@@ -246,7 +221,7 @@ function renderListView(context) {
     });
   }
   if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
-    const definition = ENTITY_CARD_DEFINITIONS[view.list.card];
+    const definition = context.cardTemplates?.[view.list.card];
     if (definition) {
       return renderEntityCardListView({
         pageId,

@@ -4,6 +4,7 @@ import {
   AGGREGATE_VALUES,
   BUILT_IN_PAGE_KEYS,
   BUILT_IN_PAGE_VALUES,
+  CARD_TEMPLATE_KEYS,
   CUSTOM_PAGE_KEYS,
   DASHBOARD_KEYS,
   DASHBOARD_HORIZON_KEYS,
@@ -98,7 +99,6 @@ import {
   VIEW_DATA_ARGUMENT_KEYS,
   VIEW_CHART_VALUES,
   VIEW_CONTROL_VALUES,
-  VIEW_LIST_CARD_VALUES,
   VIEW_LIST_DRILL_ARGUMENT_KEYS,
   VIEW_LIST_DRILL_KEYS,
   VIEW_LIST_DRILL_TYPE_VALUES,
@@ -251,6 +251,8 @@ function validWorkflowDispatchArguments(args) {
  * @type {Map<string, string[] | undefined>}
  */
 let declaredQueries = new Map();
+/** @type {Set<string>} */
+let declaredCardTemplates = new Set();
 
 /** @type {Map<string, Set<string>>} */
 let declaredQuerySources = new Map();
@@ -302,6 +304,7 @@ export function validateDashboardDocument(source) {
     validateDashboard(dashboard, getValueNodeByKey(document.contents, 'dashboard'), errors);
   } finally {
     declaredQueries = new Map();
+    declaredCardTemplates = new Set();
     declaredQuerySources = new Map();
     declaredCliActions = new Map();
   }
@@ -529,6 +532,75 @@ function validateLanguageVersion(value, errors) {
 }
 
 /**
+ * @param {unknown} templates
+ * @param {unknown} templatesNode
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplates(templates, templatesNode, errors) {
+  const ids = new Set();
+  if (templates === undefined) return ids;
+  if (!Array.isArray(templates) || templates.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card-templates must be a non-empty sequence.', '$.dashboard.card-templates'));
+    return ids;
+  }
+  templates.forEach((template, index) => {
+    const path = `$.dashboard.card-templates[${index}]`;
+    const templateNode = getSequenceItemNode(templatesNode, index);
+    if (!isPlainObject(template)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template must be a mapping.', path));
+      return;
+    }
+    validateObjectKeys(templateNode, CARD_TEMPLATE_KEYS, path, errors);
+    validateRequiredIdentifier(template.id, `${path}.id`, 'card template id', errors);
+    validateStringField(template.icon, `${path}.icon`, true, errors);
+    if (typeof template.icon === 'string' && !PAGE_ICON_VALUES.includes(template.icon)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template icon must use one canonical Octicon name.', `${path}.icon`));
+    }
+    if (typeof template.id === 'string') {
+      if (ids.has(template.id)) errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'card template id must be unique.', `${path}.id`));
+      ids.add(template.id);
+    }
+    validateCardTemplateField(template.title, getValueNodeByKey(templateNode, 'title'), `${path}.title`, errors);
+    for (const key of ['labels', 'details']) {
+      const fields = template[key];
+      if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `card template ${key} must be ${key === 'details' ? 'a non-empty' : 'an'} sequence.`, `${path}.${key}`));
+        continue;
+      }
+      fields.forEach((field, fieldIndex) => validateCardTemplateField(
+        field,
+        getSequenceItemNode(getValueNodeByKey(templateNode, key), fieldIndex),
+        `${path}.${key}[${fieldIndex}]`,
+        errors
+      ));
+    }
+  });
+  return ids;
+}
+
+/**
+ * @param {unknown} field
+ * @param {unknown} fieldNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplateField(field, fieldNode, path, errors) {
+  if (!isPlainObject(field)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template field must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(fieldNode, FIELD_DEFINITION_KEYS, path, errors);
+  validateRequiredIdentifier(field.field, `${path}.field`, 'card template field', errors);
+  validateOptionalStringField(field.title, `${path}.title`, errors);
+  if (field.display !== undefined && (typeof field.display !== 'string' || !FIELD_DISPLAY_VALUES.includes(field.display))) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template field display must use one canonical display value.', `${path}.display`));
+  }
+  if (field.format !== undefined && (typeof field.format !== 'string' || !FIELD_FORMAT_VALUES.includes(field.format))) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template field format must use one canonical format value.', `${path}.format`));
+  }
+}
+
+/**
  * @param {Record<string, unknown>} dashboard
  * @param {unknown} dashboardNode
  * @param {ValidationError[]} errors
@@ -562,6 +634,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         errors
       );
     }
+
   }
 
   if (dashboard['github-url-base'] !== undefined && !isSafeGithubUrlBase(dashboard['github-url-base'])) {
@@ -600,6 +673,11 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   }
 
   declaredQueries = validateQueries(dashboard.queries, getValueNodeByKey(dashboardNode, 'queries'), errors);
+  declaredCardTemplates = validateCardTemplates(
+    dashboard['card-templates'],
+    getValueNodeByKey(dashboardNode, 'card-templates'),
+    errors
+  );
   const unitIds = validateUnits(dashboard.units, getValueNodeByKey(dashboardNode, 'units'), errors);
   validateSiteCallouts(dashboard.callouts, getValueNodeByKey(dashboardNode, 'callouts'), errors);
   validateCliActions(dashboard['cli-actions'], getValueNodeByKey(dashboardNode, 'cli-actions'), errors);
@@ -1457,10 +1535,10 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
 
     const viewPath = `${path}.definition.views[${index}]`;
     if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
-      if (typeof view.list.card !== 'string' || !VIEW_LIST_CARD_VALUES.includes(view.list.card)) {
+      if (typeof view.list.card !== 'string' || !declaredCardTemplates.has(view.list.card)) {
         errors.push(createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          `list.card must be one of ${VIEW_LIST_CARD_VALUES.join(', ')}.`,
+          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+          'list.card must reference a declared dashboard card template.',
           `${viewPath}.list.card`
         ));
       }
@@ -2315,8 +2393,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
       }
       if (view.list.card !== undefined) {
         validateStringField(view.list.card, `${listPath}.card`, true, errors);
-        if (typeof view.list.card === 'string' && !VIEW_LIST_CARD_VALUES.includes(view.list.card)) {
-          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.card must be one of ${VIEW_LIST_CARD_VALUES.join(', ')}.`, `${listPath}.card`));
+        if (typeof view.list.card === 'string' && !declaredCardTemplates.has(view.list.card)) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.card must reference a declared dashboard card template.', `${listPath}.card`));
         }
       }
       if (view.list.style === 'entity-cards' && view.list.card === undefined) {

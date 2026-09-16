@@ -5,6 +5,32 @@
     "title": "Central Agentic Ops Dashboard",
     "description": "Authoritative declarative dashboard document for built-in and custom pages in the presenter prototype.",
     "repository": "githubnext/gh-aw-cao",
+    "card-templates": [
+      {
+        "id": "issue",
+        "icon": "issue-opened",
+        "title": { "field": "event-summary", "title": "Issue" },
+        "labels": [{ "field": "safe-output-type", "title": "Safe output", "display": "label" }],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Opened", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "pull-request",
+        "icon": "git-pull-request",
+        "title": { "field": "event-summary", "title": "Pull request" },
+        "labels": [{ "field": "safe-output-type", "title": "Safe output", "display": "label" }],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Opened", "format": "human-friendly-timestamp" }
+        ]
+      }
+    ],
     "cli-actions": [
       {
         "id": "update-repository",

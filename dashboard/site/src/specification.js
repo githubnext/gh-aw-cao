@@ -18,7 +18,8 @@ export const LANGUAGE_VERSION = '0.1.0';
 export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
-export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
+export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
+export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'title', 'labels', 'details'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
 export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'view', 'row'];
@@ -105,7 +106,6 @@ export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'revie
 export const VIEW_METRIC_ANIMATION_VALUES = ['number'];
 export const VIEW_LIST_KEYS = ['style', 'icon', 'action', 'card', 'drill'];
 export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues', 'entity-cards'];
-export const VIEW_LIST_CARD_VALUES = ['issue', 'pull-request'];
 export const VIEW_LIST_DRILL_KEYS = ['type', 'field', 'page', 'query', 'title-field', 'arguments'];
 export const VIEW_LIST_DRILL_TYPE_VALUES = ['external', 'query'];
 export const VIEW_LIST_DRILL_ARGUMENT_KEYS = ['name', 'field'];

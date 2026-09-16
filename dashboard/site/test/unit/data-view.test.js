@@ -247,6 +247,14 @@ describe('data view renderer', () => {
         'observed-at': '2026-09-14T22:00:00Z',
         'issue-id': 42
       }],
+      cardTemplates: {
+        issue: {
+          icon: 'issue-opened',
+          title: { field: 'event-summary', title: 'Issue' },
+          labels: [{ field: 'safe-output-type', title: 'Safe output', display: 'label' }],
+          details: [{ field: 'repository', title: 'Repository' }]
+        }
+      },
       metadata,
       contextDetails: [],
       headingTag: /** @type {'h3'} */ ('h3'),

@@ -64,7 +64,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, title: string, description?: string, defaults?: Record<string, unknown>, units?: Record<string, { name: string, symbol: string, significant: number }>, queries?: Array<Record<string, unknown>>, callouts?: Array<{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }>, ['cli-actions']?: Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>, pages: Array<PresentableBuiltInPage | PresentableCustomPage>, ['github-url-base']?: string, repository?: string, navigation?: PresentableNavigationSection[], horizon?: { label: string, tooltip: { label: string, description: string, icon?: string } } }} PresentableDashboard
+ * @typedef {{ id: string, title: string, description?: string, defaults?: Record<string, unknown>, units?: Record<string, { name: string, symbol: string, significant: number }>, queries?: Array<Record<string, unknown>>, ['card-templates']?: Array<{ id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>, callouts?: Array<{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }>, ['cli-actions']?: Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>, pages: Array<PresentableBuiltInPage | PresentableCustomPage>, ['github-url-base']?: string, repository?: string, navigation?: PresentableNavigationSection[], horizon?: { label: string, tooltip: { label: string, description: string, icon?: string } } }} PresentableDashboard
  */
 
 /**
@@ -168,6 +168,7 @@ export function dashboardTableSourceNames(document) {
 export function renderDashboard(input) {
   const { document, sources: rawSources, viewer = null } = input;
   const pages = document.dashboard.pages;
+  const cardTemplates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
   const showInitialLoadingSkeleton = input.loading === true && !hasData;
@@ -248,7 +249,7 @@ export function renderDashboard(input) {
         }
         return showInitialLoadingSkeleton
           ? renderPageLoadingSkeleton(page)
-          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, options.queryContext);
+          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, options.queryContext);
       };
       if (input.loadPageSources) {
         options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
@@ -853,18 +854,19 @@ function renderPageSkeleton() {
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
+ * @param {Record<string, { id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderPage(page, sources, units, dashboardDefaults, queryContext) {
+function renderPage(page, sources, units, dashboardDefaults, cardTemplates, queryContext) {
   const title = getPageTitle(page);
 
   if (page.kind === 'built-in') {
     const payload = getBuiltInPagePayload(page);
-    return renderCustomPage(payload, title, sources, units, dashboardDefaults, true, queryContext);
+    return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext);
   }
 
-  return renderCustomPage(page, title, sources, units, dashboardDefaults, true, queryContext);
+  return renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext);
 }
 
 /**
@@ -873,11 +875,12 @@ function renderPage(page, sources, units, dashboardDefaults, queryContext) {
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
+ * @param {Record<string, { id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {boolean} [withFilterBar]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderCustomPage(page, title, sources, units, dashboardDefaults, withFilterBar = true, queryContext) {
+function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext) {
   const effectiveDashboardDefaults = inventoryPage(page.id)
     ? { ...dashboardDefaults, time: undefined }
     : dashboardDefaults;
@@ -921,7 +924,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       )
     );
     const render = () => {
-      const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter, queryContext);
+      const rendered = renderCustomView(page.id, view, index, sources, units, cardTemplates, headingTag, routeParameter, queryContext);
       suppressSupplementalTableHeading(rendered, view, index);
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
@@ -1729,12 +1732,13 @@ function summarizeDataState(pageSources) {
  * @param {number} index
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
+ * @param {Record<string, { id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {'h3'|'h4'} [headingTag]
  * @param {string} [routeParameter]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3', routeParameter, queryContext) {
+function renderCustomView(pageId, view, index, sources, units, cardTemplates, headingTag = 'h3', routeParameter, queryContext) {
   const fallbackTitle = `View ${index + 1}`;
   if (!isPlainObject(view)) {
     return renderCustomViewState(pageId, fallbackTitle, null, 'unavailable', ['Invalid custom view definition.'], headingTag);
@@ -1804,6 +1808,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     contextDetails,
     headingTag,
     units,
+    cardTemplates,
     prepareTableRows,
     buildChartPoints,
     prepareChartPoints,
