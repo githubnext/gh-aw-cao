@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { h } from '../../src/dom.js';
 import { state } from '../../src/reactive.js';
-import { renderGraphWidget } from '../../src/components/graph-widget.js';
+import { renderReactiveGraphWidget } from '../../src/components/graph-widget.js';
 import { renderPanel } from '../../src/components/panel.js';
 import { renderReactiveGrid } from '../../src/components/reactive-grid.js';
 
@@ -62,7 +62,7 @@ describe('reusable layout components', () => {
       { id: 'mon', label: 'Monday', value: 2 },
       { id: 'tue', label: 'Tuesday', value: 4 }
     ]);
-    const graph = renderGraphWidget({
+    const graph = renderReactiveGraphWidget({
       className: 'example-graph',
       title: 'Weekly activity',
       ariaLabel: 'Weekly activity graph',

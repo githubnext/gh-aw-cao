@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { formatCount } from './count-formatters.js';
-import { renderGraphWidget } from './graph-widget.js';
+import { renderReactiveGraphWidget } from './graph-widget.js';
 
 /** @typedef {{ label: string, date: string, count: number, previous: number, reached: boolean }} RhythmDay */
 /** @typedef {{ rows: () => Record<string, unknown>[] }} RhythmSource */
@@ -11,7 +11,7 @@ import { renderGraphWidget } from './graph-widget.js';
  * @param {ReactiveScope} scope
  */
 export function renderFactoryRhythm(source, scope) {
-  return renderGraphWidget({
+  return renderReactiveGraphWidget({
     className: 'factory-rhythm',
     headingClassName: 'factory-rhythm-heading',
     legendClassName: 'factory-rhythm-legend',

@@ -21,7 +21,7 @@ import { effect } from '../reactive.js';
  * }} options
  * @returns {HTMLElement}
  */
-export function renderGraphWidget(options) {
+export function renderReactiveGraphWidget(options) {
   /** @type {Map<string, HTMLElement>} */
   const elements = new Map();
   const itemList = keyed(
