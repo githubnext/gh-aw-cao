@@ -346,6 +346,27 @@ describe('canonical view sources', () => {
     ]);
   });
 
+  it('projects firewall event arity with canonical event types', async () => {
+    const firewallSources = structuredClone(sources);
+    const firewallEvent = firewallSources.events.rows[0];
+    firewallEvent.event = 'event:firewall-blocked';
+    firewallEvent['event-source'] = 'firewall';
+    firewallEvent['event-type'] = 'net_blocked';
+    firewallSources.events.rows = [firewallEvent];
+    await loadCanonicalViewSources(indexedDB, firewallSources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, firewallSources, ['events']);
+
+    expect(projected.events.rows).toEqual([
+      expect.objectContaining({
+        event: 'event:firewall-blocked',
+        'event-source': 'firewall',
+        'event-type': 'firewall.request.blocked',
+        'request-count': 7
+      })
+    ]);
+  });
+
   it('projects current gh-aw grader summaries without treating zero as missing', async () => {
     const content = JSON.stringify({
       schema_version: 2,

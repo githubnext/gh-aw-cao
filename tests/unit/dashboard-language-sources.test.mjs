@@ -343,7 +343,7 @@ test("transaction log events preserve correlation ids and request counts", () =>
         sourceId: "event-1",
         timestamp: "2026-09-09T04:02:01Z",
         source: "firewall",
-        type: "firewall.request.blocked",
+        type: "net_blocked",
         correlationId: "call-305",
         requestCount: 7,
       }],
@@ -351,6 +351,7 @@ test("transaction log events preserve correlation ids and request counts", () =>
   });
 
   assert.equal(rows.events[0]["correlation-id"], "call-305");
+  assert.equal(rows.events[0]["event-type"], "firewall.request.blocked");
   assert.equal(rows.events[0]["request-count"], 7);
 });
 
