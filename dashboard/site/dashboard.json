@@ -614,6 +614,22 @@
         "icon": "sync",
         "command": "./.github/aw/cao.sh add {{package}}",
         "placement": "row"
+      },
+      {
+        "id": "set-package-live",
+        "label": "Switch to live",
+        "description": "Switch this package's workflows to live mode.",
+        "icon": "play",
+        "command": "./.github/aw/cao.sh mode live {{package}}",
+        "placement": "row"
+      },
+      {
+        "id": "set-package-preview",
+        "label": "Switch to preview",
+        "description": "Switch this package's workflows to preview mode.",
+        "icon": "eye",
+        "command": "./.github/aw/cao.sh mode preview {{package}}",
+        "placement": "row"
       }
     ],
     "callouts": [
@@ -7256,6 +7272,12 @@
                   "field": "package-current-version",
                   "type": "nominal",
                   "title": "Latest"
+                },
+                {
+                  "field": "package-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "status"
                 }
               ],
               "actions": [
@@ -7270,6 +7292,32 @@
                   "when": {
                     "field": "package-update-state",
                     "equals": "update-available"
+                  }
+                },
+                {
+                  "action": "set-package-live",
+                  "presentation": "cli-action",
+                  "icon": "play",
+                  "label": "Switch to live",
+                  "context": [
+                    "package"
+                  ],
+                  "when": {
+                    "field": "package-mode",
+                    "equals": "review"
+                  }
+                },
+                {
+                  "action": "set-package-preview",
+                  "presentation": "cli-action",
+                  "icon": "eye",
+                  "label": "Switch to preview",
+                  "context": [
+                    "package"
+                  ],
+                  "when": {
+                    "field": "package-mode",
+                    "equals": "live"
                   }
                 }
               ]

@@ -7,6 +7,7 @@ import {
   addCaoPackage,
   ensureGhAwMinimumVersion,
   initializeCaoPolicy,
+  setCaoPackageMode,
   updateCaoPackages,
 } from "../../activity/cao.mjs";
 
@@ -51,6 +52,69 @@ test("cao init does not overwrite an existing policy", async () => {
       /cao\.json already exists/,
     );
     assert.equal(await readFile(policyPath, "utf8"), '{"version":1}\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao mode changes configured packages between live and preview atomically", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-"));
+  const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  try {
+    await mkdir(path.dirname(policyPath), { recursive: true });
+    await writeFile(policyPath, `${JSON.stringify({
+      version: 1,
+      "gh-aw-version": "v0.89.15",
+      "control-plane": {
+        packages: {
+          dependabot: { mode: "review", icon: "dependabot" },
+          "repo-assist": { mode: "review", "max-repositories": 1 },
+        },
+      },
+    }, null, 2)}\n`);
+
+    const live = await setCaoPackageMode("live", ["dependabot", "repo-assist"], { policyPath });
+    let policy = JSON.parse(await readFile(policyPath, "utf8"));
+    assert.equal(policy["control-plane"].packages.dependabot.mode, "live");
+    assert.equal(policy["control-plane"].packages.dependabot.icon, "dependabot");
+    assert.equal(policy["control-plane"].packages["repo-assist"].mode, "live");
+    assert.deepEqual(live.packages, ["dependabot", "repo-assist"]);
+
+    const preview = await setCaoPackageMode("preview", ["dependabot"], { policyPath });
+    policy = JSON.parse(await readFile(policyPath, "utf8"));
+    assert.equal(policy["control-plane"].packages.dependabot.mode, "review");
+    assert.equal(policy["control-plane"].packages["repo-assist"].mode, "live");
+    assert.equal(preview.mode, "preview");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao mode validates every package before changing the policy", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-invalid-"));
+  const policyPath = path.join(root, "cao.json");
+  const original = '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"packages":{"dependabot":{"mode":"review"}}}}\n';
+  try {
+    await writeFile(policyPath, original);
+    await assert.rejects(
+      setCaoPackageMode("live", ["dependabot", "missing-package"], { policyPath }),
+      /Unknown CAO package: missing-package/,
+    );
+    assert.equal(await readFile(policyPath, "utf8"), original);
+
+    await assert.rejects(
+      setCaoPackageMode("live", ["Not-A-Package"], { policyPath }),
+      /Invalid CAO package name: Not-A-Package/,
+    );
+    await assert.rejects(
+      setCaoPackageMode("review", ["dependabot"], { policyPath }),
+      /cao mode requires live or preview/,
+    );
+    await assert.rejects(
+      setCaoPackageMode("preview", [], { policyPath }),
+      /requires at least one package/,
+    );
+    assert.equal(await readFile(policyPath, "utf8"), original);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

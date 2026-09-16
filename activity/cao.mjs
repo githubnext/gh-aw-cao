@@ -50,12 +50,13 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 const USAGE = `Usage:
   cao init
   cao add PACKAGE [GH_AW_ADD_OPTIONS...]
   cao update [GH_AW_UPDATE_OPTIONS...]
+  cao mode (live|preview) PACKAGE...
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
@@ -226,11 +227,11 @@ function validateGlobalPolicy(document, source) {
   return document;
 }
 
-async function readCaoPolicy(policyPath) {
+async function readCaoPolicy(policyPath, command = 'update') {
   try {
     return validateGlobalPolicy(JSON.parse(await readFile(path.resolve(policyPath), 'utf8')), policyPath);
   } catch (error) {
-    if (error?.code === 'ENOENT') throw new Error(`${policyPath} is required for cao update`);
+    if (error?.code === 'ENOENT') throw new Error(`${policyPath} is required for cao ${command}`);
     if (error instanceof SyntaxError) throw new Error(`${policyPath} contains invalid JSON: ${error.message}`);
     throw error;
   }
@@ -438,6 +439,47 @@ export async function updateCaoPackages(ghAwOptions = [], {
     'gh-aw': ghAw,
     packages: updatedPackages,
     declarations: mergedDeclarations
+  };
+}
+
+export async function setCaoPackageMode(mode, packageNames, {
+  policyPath = DEFAULT_POLICY_PATH
+} = {}) {
+  if (mode !== 'live' && mode !== 'preview') {
+    throw new Error('cao mode requires live or preview');
+  }
+  if (!Array.isArray(packageNames) || packageNames.length === 0) {
+    throw new Error(`cao mode ${mode} requires at least one package`);
+  }
+
+  const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const invalidPackage = packageNames.find((packageName) => typeof packageName !== 'string' || !slug.test(packageName));
+  if (invalidPackage !== undefined) {
+    throw new Error(`Invalid CAO package name: ${invalidPackage}`);
+  }
+
+  const policy = await readCaoPolicy(policyPath, 'mode');
+  const packages = policy['control-plane']?.packages ?? {};
+  const unknownPackages = [...new Set(packageNames)].filter((packageName) => !Object.hasOwn(packages, packageName));
+  if (unknownPackages.length > 0) {
+    throw new Error(`Unknown CAO package${unknownPackages.length === 1 ? '' : 's'}: ${unknownPackages.join(', ')}`);
+  }
+  for (const packageName of packageNames) {
+    if (!isMapping(packages[packageName])) {
+      throw new Error(`${policyPath} control-plane package ${packageName} must be an object`);
+    }
+  }
+
+  const policyMode = mode === 'preview' ? 'review' : 'live';
+  for (const packageName of new Set(packageNames)) {
+    packages[packageName] = { ...packages[packageName], mode: policyMode };
+  }
+  await writeJsonAtomically(path.resolve(policyPath), policy);
+  return {
+    command: 'mode',
+    mode,
+    packages: [...new Set(packageNames)],
+    policy: policyPath
   };
 }
 
@@ -1325,6 +1367,9 @@ export async function runCli(arguments_, input = process.stdin) {
   }
   if (command === 'update') {
     return updateCaoPackages(optionArguments);
+  }
+  if (command === 'mode') {
+    return setCaoPackageMode(optionArguments[0], optionArguments.slice(1));
   }
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
