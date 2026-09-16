@@ -2867,7 +2867,7 @@ describe('presenter built-in and custom pages', () => {
         chart: 'pie',
         layout: 'horizontal',
         encoding: {
-          x: { field: 'workflow-name', type: 'nominal', title: 'Workflow' },
+          x: { field: 'workflow-label', type: 'nominal', title: 'Workflow' },
           y: { field: 'runs', type: 'quantitative', title: 'Runs' },
           href: { field: 'workflow-link', type: 'nominal' }
         }

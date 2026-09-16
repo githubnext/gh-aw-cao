@@ -956,7 +956,7 @@ describe('dashboard document validation', () => {
       chart: 'pie',
       layout: 'horizontal',
       encoding: {
-        x: { field: 'workflow-name', type: 'nominal' },
+        x: { field: 'workflow-label', type: 'nominal' },
         y: { field: 'runs', type: 'quantitative' },
         href: { field: 'workflow-link', type: 'nominal' }
       }
