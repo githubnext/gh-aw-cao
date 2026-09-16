@@ -139,7 +139,12 @@ function discoverInventory() {
     missingWorkers: orchestrator.workers.filter((workerId) => !workflowById.has(workerId)),
   }));
   const packageNames = new Map(bundles.map((bundle) => [bundle.controlPackage || bundle.id, bundle.name]));
-  const policy = existsSync(policyPath) ? JSON.parse(readFileSync(policyPath, "utf8")) : {};
+  let policy = {};
+  try {
+    policy = JSON.parse(readFileSync(policyPath, "utf8"));
+  } catch {
+    policy = {};
+  }
   const packages = Object.keys(policy["control-plane"]?.packages || {}).sort().map((id) => ({
     id,
     name: packageNames.get(id) || id,
