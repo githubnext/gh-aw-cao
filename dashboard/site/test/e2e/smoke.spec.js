@@ -4646,6 +4646,20 @@ test('declarative tables expose report-style facets and progressive catalog disc
   await expect(tableRows).toHaveCount(30);
   await expect(visibleRows).toHaveCount(25);
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 25 of 30 results');
+  const tableLayout = await page.locator('.custom-table').evaluate((table) => {
+    const scroll = table.closest('.table-scroll');
+    const cells = table.querySelectorAll('thead tr:first-child th');
+    return {
+      tableWidth: table.getBoundingClientRect().width,
+      scrollWidth: scroll?.getBoundingClientRect().width,
+      firstColumnWidth: cells[0]?.getBoundingClientRect().width,
+      lastColumnWidth: cells[cells.length - 1]?.getBoundingClientRect().width,
+      lastColumnAlignment: getComputedStyle(cells[cells.length - 1]).textAlign
+    };
+  });
+  expect(tableLayout.tableWidth).toBeCloseTo(tableLayout.scrollWidth, 0);
+  expect(tableLayout.lastColumnWidth).toBeGreaterThan(tableLayout.firstColumnWidth);
+  expect(tableLayout.lastColumnAlignment).toBe('left');
   await expect(page.locator('thead th').filter({ has: page.locator('[data-table-facet="rollout-mode"]') })).toHaveCount(1);
   const modeFilter = page.getByRole('combobox', { name: 'Filter by Mode' });
   await expect(modeFilter).toHaveValue('');
