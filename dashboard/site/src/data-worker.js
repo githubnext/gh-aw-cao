@@ -70,6 +70,7 @@ export function publishWorkerLoadingProgress(state, target = self) {
   target.postMessage({ type: 'loading-progress', state });
 }
 
+const INGESTION_LOCK_WAIT_MESSAGE = 'Waiting for another dashboard ingestion to finish.';
 const INGESTION_PROGRESS_DELAY_MS = 3_000;
 const INGESTION_PROGRESS_INTERVAL_MS = 1_000;
 const INGESTION_PROGRESS_HISTORY_LIMIT = 100;
@@ -535,7 +536,7 @@ export function processDataRequest(request, signal) {
                   totalBytes: undefined
                 }),
                 onWriteProgress: (written) => progress.store(written),
-                onLockWait: () => progress.log('Waiting for another dashboard ingestion to finish.'),
+                onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
                 payloadIdentity: shard.hash,
                 payloadScope: shardUrl.href,
                 context: collectionContext
@@ -563,7 +564,7 @@ export function processDataRequest(request, signal) {
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               payloadScope: inventoryUrl.href,
               onWriteProgress: (written) => progress.store(written),
-              onLockWait: () => progress.log('Waiting for another dashboard ingestion to finish.')
+              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE)
             });
             changed ||= inventoryIngestion.updated;
             progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
@@ -577,7 +578,7 @@ export function processDataRequest(request, signal) {
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
             payloadScope: sourceUrl.href,
             onWriteProgress: (written) => progress.store(written),
-            onLockWait: () => progress.log('Waiting for another dashboard ingestion to finish.')
+            onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE)
           });
           changed ||= ingestion.updated;
           progress.log('skipped' in ingestion && ingestion.skipped
