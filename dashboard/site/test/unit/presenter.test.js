@@ -2436,13 +2436,12 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect([...tables[0]?.querySelectorAll('thead th') ?? []].map((cell) => cell.textContent)).toEqual([
+    expect([...tables[0]?.querySelectorAll('thead > tr:first-child > th') ?? []].map((cell) => cell.textContent)).toEqual([
       'Package',
       'Operational value'
     ]);
     expect(tables[0]?.textContent).toContain('Ambient Context');
     expect(tables[0]?.textContent).toContain('1.6');
-    expect(tables[0]?.querySelector('a[aria-label="View Ambient Context package dashboard"]')?.getAttribute('href')).toBe('#page-package-insights?package=ambient-context');
     const valueRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
     const valueFilter = /** @type {HTMLInputElement} */ (valueRegion?.querySelector('[data-table-filter]'));
     expect(valueFilter.closest('label')?.textContent).toContain('Filter Packages');

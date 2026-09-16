@@ -6890,14 +6890,10 @@
               "y": {
                 "field": "value-created",
                 "type": "quantitative",
-                "aggregate": "sum",
+                "aggregate": "mean",
                 "as": "total-value-created",
                 "title": "Operational value",
                 "unit": "grade"
-              },
-              "href": {
-                "field": "package-dashboard-link",
-                "type": "nominal"
               }
             }
           },
@@ -6915,10 +6911,6 @@
             "layout": "full-view",
             "empty-message": "No package operational value was observed in the selected horizon.",
             "encoding": {
-              "href": {
-                "field": "package-dashboard-link",
-                "type": "nominal"
-              },
               "columns": [
                 {
                   "field": "package-name",

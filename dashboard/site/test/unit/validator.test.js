@@ -488,8 +488,8 @@ describe('dashboard document validation', () => {
 
   it('defines every other editable experimental page as one full-view lazy table', () => {
     // Pages that intentionally compose more than one editable view, asserted separately below
-    // or by their own focused suites: safe-outputs, maintenance, entity cards, cost, and audit.
-    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'sessions', 'cost', 'audit']);
+    // or by their own focused suites: safe-outputs, maintenance, entity cards, operational value, cost, and audit.
+    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'sessions', 'operational-value', 'cost', 'audit']);
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -1081,7 +1081,7 @@ dashboard:
       chart: 'pie',
       encoding: {
         x: { field: 'package-name', type: 'nominal', title: 'Package' },
-        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Operational value', unit: 'grade' }
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'mean', title: 'Operational value', unit: 'grade' }
       }
     });
     expect(operationalValueTable).toMatchObject({
