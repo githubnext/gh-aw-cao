@@ -92,11 +92,22 @@ for (const { name, viewport, scene } of [
 }
 
 for (const colorScheme of ["light", "dark"]) {
-  test(`dashboard system diagram loads its ${colorScheme} SVG`, async ({ page }) => {
+  test(`dashboard view diagram loads its ${colorScheme} SVG`, async ({ page }) => {
     await page.emulateMedia({ colorScheme });
     expect((await page.goto("dashboard/"))?.ok()).toBe(true);
 
-    const diagram = page.locator('img[alt^="Evidence from Actions runs"]');
+    const diagram = page.locator('img[alt^="Language queries the shared data model"]');
+    await expect(diagram).toHaveJSProperty("complete", true);
+    expect(await diagram.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
+    expect(await diagram.evaluate((image) => image.naturalHeight)).toBeGreaterThan(0);
+    expect(await diagram.evaluate((image) => image.currentSrc)).toContain(`-${colorScheme}.svg`);
+  });
+
+  test(`dashboard data flow diagram loads its ${colorScheme} SVG`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    expect((await page.goto("dashboard-data-model/"))?.ok()).toBe(true);
+
+    const diagram = page.locator('img[alt^="Agentic workflow logs are collected by Activity"]');
     await expect(diagram).toHaveJSProperty("complete", true);
     expect(await diagram.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
     expect(await diagram.evaluate((image) => image.naturalHeight)).toBeGreaterThan(0);

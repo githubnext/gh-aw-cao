@@ -16,16 +16,16 @@ A high count, a quiet period, or a warning tells you where to look next; it does
 not explain the cause by itself.
 
 <picture>
-	<source media="(prefers-color-scheme: dark)" srcset="/gh-aw-cao/assets/dashboard-system-dark.svg">
-	<source media="(prefers-color-scheme: light)" srcset="/gh-aw-cao/assets/dashboard-system-light.svg">
-	<img alt="Evidence from Actions runs enters the data model, Language queries it, and reusable components present the results in a view" src="/gh-aw-cao/assets/dashboard-system-light.svg">
+	<source media="(prefers-color-scheme: dark)" srcset="/gh-aw-cao/assets/dashboard-view-system-dark.svg">
+	<source media="(prefers-color-scheme: light)" srcset="/gh-aw-cao/assets/dashboard-view-system-light.svg">
+	<img alt="Language queries the shared data model and supplies results to the selected view beside view navigation inside the dashboard shell" src="/gh-aw-cao/assets/dashboard-view-system-light.svg">
 </picture>
 
-The dashboard is not a live feed. CAO Activity publishes evidence snapshots,
-which your browser downloads into a shared [data model](dashboard-data-model.md).
+The dashboard is not a live feed. It reads the latest snapshot collected by the
+Activity workflow; the [Data model](dashboard-data-model.md) explains that flow.
 Each view uses the dashboard's [Language](dashboard-language-specification.md)
-to query that model. While a view is open, it updates when newly downloaded
-evidence changes the local data.
+to query the shared model. While a view is open, it updates when newly
+downloaded evidence changes the local data.
 
 Before acting, check the availability, completeness, and freshness shown with
 the result:

@@ -7,41 +7,20 @@ The dashboard converts GitHub, gh-aw, activity, log, SQL, and published JSON obs
 
 ## Data flow
 
-Data is collected once and converted for two different users. SQLite supports
-agents and command-line tools. IndexedDB supports the browser dashboard.
+Data is collected once into authoritative JSONL. Consumers apply the shared
+model and build two separate projections: SQLite supports agents and
+command-line tools, while IndexedDB supports the browser dashboard.
 
-```mermaid
-flowchart LR
-  logs["gh aw logs"] --> source["JSONL<br/>authoritative input"]
-  source --> sqlite["SQLite"]
-  sqlite --> agents["Agents"]
-  sqlite --> cli["CLI"]
-  source --> indexeddb["IndexedDB<br/>browser"]
-  indexeddb --> dashboard["Dashboard"]
-```
+<picture>
+	<source media="(prefers-color-scheme: dark)" srcset="/gh-aw-cao/assets/dashboard-data-flow-dark.svg">
+	<source media="(prefers-color-scheme: light)" srcset="/gh-aw-cao/assets/dashboard-data-flow-light.svg">
+  <img alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-aw-cao/assets/dashboard-data-flow-light.svg">
+</picture>
 
 SQLite and IndexedDB are rebuildable copies. Neither is the source for the
 other. Both use the same conversion rules. Both keep all run summaries available
 in the published JSONL. Detailed jobs, sessions, and events remain bounded to 30
 days unless a separate full-detail SQLite archive is requested.
-
-## Collection sequence
-
-```mermaid
-sequenceDiagram
-  participant Activity
-  participant JSONL as JSONL source
-  participant SQLite
-  participant Browser
-  participant IDB as IndexedDB
-  participant Dashboard
-
-  Activity->>JSONL: Collect logs
-  Activity->>SQLite: Build agent copy
-  Browser->>JSONL: Download logs
-  Browser->>IDB: Build browser copy
-  Dashboard->>IDB: Query data
-```
 
 ## Completeness and duplicates
 
