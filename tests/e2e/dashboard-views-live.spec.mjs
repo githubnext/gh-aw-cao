@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { isExpectedPageCloseAbort } from "./dashboard-view-assessment.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
 const outputDirectory = resolve(
@@ -60,6 +61,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       const errors = [];
       const failedRequests = [];
       let crashed = false;
+      let closing = false;
 
       page.on("crash", () => {
         crashed = true;
@@ -69,7 +71,9 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       });
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("requestfailed", (request) => {
-        failedRequests.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText || "failed"}`);
+        const errorText = request.failure()?.errorText || "failed";
+        if (isExpectedPageCloseAbort(errorText, closing)) return;
+        failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
       });
       page.on("response", (response) => {
         if (response.status() >= 400) {
@@ -142,6 +146,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         result.status = "failed";
       } finally {
         summary.results.push(result);
+        closing = true;
         await page.close();
       }
       if (summary.results.filter((entry) => entry.status !== "passed").length >= maximumFailedViews) {
