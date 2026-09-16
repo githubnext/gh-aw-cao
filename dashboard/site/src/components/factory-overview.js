@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { batch, derived, effect, state } from '../reactive.js';
+import { batch, derived, state } from '../reactive.js';
 import { clearSources, publishSource, requestSource, sourceState } from '../source-store.js';
 import { renderFactoryFloor } from './factory-floor.js';
 import { renderFactoryHeader } from './factory-header.js';
@@ -65,15 +65,6 @@ function releaseFactoryOverviewEffects() {
  */
 function memo(compute) {
   return derived(compute, { signal: overviewLifetime.signal }).get;
-}
-
-/**
- * Binds one effect to the elements it renders and keeps it alive until the
- * overview is rendered again.
- * @param {() => void} render
- */
-function bind(render) {
-  effect(render, { signal: overviewLifetime.signal });
 }
 
 /** @type {Record<string, PluralText>} */
@@ -150,13 +141,13 @@ export function renderFactoryOverview(context) {
   return h(
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
-    renderFactoryHeader(sources, metrics, { bind, memo, motion: factoryMotionState }),
+    renderFactoryHeader(sources, metrics, { signal: overviewLifetime.signal, motion: factoryMotionState }),
     renderFactoryFloor(
       sources,
       metrics,
       pluralLabelResolver(context.elementConfig),
       context.elementConfig?.animate === 'number',
-      { bind, signal: overviewLifetime.signal, motion: factoryMotionState }
+      { signal: overviewLifetime.signal, motion: factoryMotionState }
     )
   );
 }
@@ -208,4 +199,3 @@ function numberField(row, field) {
   const value = Number(row[field]);
   return Number.isFinite(value) ? value : 0;
 }
-

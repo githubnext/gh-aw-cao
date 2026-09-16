@@ -195,6 +195,7 @@ export function renderDashboard(input) {
     skipLink,
     appShell
   );
+  const dashboardOwner = new AbortController();
   void enableDashboardDomProvenanceWhenDebugging(root, document).catch((error) => {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });
@@ -204,12 +205,12 @@ export function renderDashboard(input) {
   root.addEventListener('dashboard-time-window-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
     setTimeWindowFilter(event.detail?.start, event.detail?.end, root);
-  });
+  }, { signal: dashboardOwner.signal });
   root.addEventListener('dashboard-time-window-range-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
     setTimeWindowRange(event.detail?.range, root);
-  });
-  enableResponsiveReportActions(root);
+  }, { signal: dashboardOwner.signal });
+  enableResponsiveReportActions(root, dashboardOwner.signal);
   const disposeNavigation = enableDashboardPageNavigation(
     root,
     document.dashboard.title,
@@ -256,6 +257,7 @@ export function renderDashboard(input) {
     )))
   );
   dashboardDisposals.set(root, () => {
+    dashboardOwner.abort();
     disposeNavigation();
     dashboardHorizon.dispose();
   });
@@ -332,8 +334,9 @@ function inferOrganizationName(sources) {
  * matching the title bar used by the GitHub mobile app. The factory name stays
  * visible as a secondary line below that page title.
  * @param {HTMLElement} root
+ * @param {AbortSignal} signal
  */
-function enableResponsiveReportActions(root) {
+function enableResponsiveReportActions(root, signal) {
   const actions = root.querySelector('.report-actions');
   const mobileSlot = root.querySelector('.mobile-nav-menu-actions');
   const desktopSlot = actions?.parentElement;
@@ -356,7 +359,7 @@ function enableResponsiveReportActions(root) {
     }
   };
   placeActions();
-  media.addEventListener?.('change', placeActions);
+  media.addEventListener?.('change', placeActions, { signal });
 }
 
 /**
@@ -766,6 +769,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   let activePageId = '';
   let activationRevision = 0;
   let pageOwner = new AbortController();
+  const navigationOwner = new AbortController();
+  const disposeNavigation = () => {
+    activationRevision += 1;
+    navigationOwner.abort();
+    pageOwner.abort();
+  };
   /** @type {Map<string, { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } }>} */
   const pageQueryContext = new Map();
   const overviewPage = pages.find((page) => page.dataset.pageId === 'overview');
@@ -838,10 +847,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     mobileViewModeToggle.addEventListener('click', () => {
       const page = pages.find((candidate) => candidate.dataset.pageId === activePageId);
       setMobileViewMode(mobileViewMode === 'chart' ? 'table' : 'chart', page);
-    });
+    }, { signal: navigationOwner.signal });
     root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.addEventListener?.('change', () => {
       syncFullViewMode(pages.find((candidate) => candidate.dataset.pageId === activePageId));
-    });
+    }, { signal: navigationOwner.signal });
   }
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
@@ -849,7 +858,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     hidden: link instanceof HTMLElement ? link.hidden : false
   }));
   if (pages.length === 0 || links.length === 0) {
-    return () => pageOwner.abort();
+    return disposeNavigation;
   }
 
   root.addEventListener('dashboard-route-allocation', (event) => {
@@ -891,7 +900,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (navigationPage && availableIds.has(navigationPage)) {
       updateNavigationLinks(links, navigationPage);
     }
-  });
+  }, { signal: navigationOwner.signal });
 
   const availableIds = new Set(pages.map((page) => page.dataset.pageId));
   const routeFromHash = () => {
@@ -933,7 +942,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    * @param {boolean} [deferPopulation]
    */
   const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
-    const revision = ++activationRevision;
+     if (navigationOwner.signal.aborted) return;
+     const revision = ++activationRevision;
     pageOwner.abort();
     pageOwner = new AbortController();
     let pagePopulated = false;
@@ -1175,7 +1185,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     );
   }
   syncHistoryBack();
-  historyBack?.addEventListener('click', () => defaultView?.history.back());
+  historyBack?.addEventListener('click', () => defaultView?.history.back(), { signal: navigationOwner.signal });
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
@@ -1190,7 +1200,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     syncHistoryBack();
     updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true), 'forward');
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
-  });
+  }, { signal: navigationOwner.signal });
   root.addEventListener('dashboard-query-context-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
     const detail = isPlainObject(event.detail) ? event.detail : {};
@@ -1204,9 +1214,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     else pageQueryContext.delete(pageId);
     const route = routeFromHash();
     activate(route?.pageId ?? pageId, route?.parameters ?? new URLSearchParams(), true);
-  });
+  }, { signal: navigationOwner.signal });
 
-  enableFullViewScrollForwarding(root, defaultView);
+  const disposeFullViewScrollForwarding = enableFullViewScrollForwarding(root, defaultView);
   /** @param {PopStateEvent} event */
   const onPopState = (event) => {
     if (!root.isConnected) {
@@ -1247,10 +1257,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     ), navigationDirection);
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   };
-  browserNavigation?.addEventListener('currententrychange', syncHistoryBack);
-  defaultView?.addEventListener('popstate', onPopState);
-  defaultView?.addEventListener('hashchange', onHashChange);
-  return () => pageOwner.abort();
+  browserNavigation?.addEventListener('currententrychange', syncHistoryBack, { signal: navigationOwner.signal });
+  defaultView?.addEventListener('popstate', onPopState, { signal: navigationOwner.signal });
+  defaultView?.addEventListener('hashchange', onHashChange, { signal: navigationOwner.signal });
+  return () => {
+    disposeFullViewScrollForwarding();
+    disposeNavigation();
+  };
 }
 
 /**

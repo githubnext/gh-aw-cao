@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard as renderDashboardView, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
+import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { deriveDataHealthSources } from '../../src/data-health.js';
@@ -3794,6 +3794,132 @@ describe('presenter built-in and custom pages', () => {
       expect(page.getAttribute('aria-busy')).toBeNull();
       expect(page.querySelector('.empty')?.getAttribute('role')).toBe('alert');
     } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('aborts the active page subscription when the dashboard is disposed', async () => {
+    /** @type {AbortSignal | undefined} */
+    let pageSignal;
+    const loadPageSources = vi.fn(async (_pageId, options) => {
+      pageSignal = options.signal;
+      return {};
+    });
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'disposable-dashboard',
+          title: 'Disposable Dashboard',
+          pages: [{
+            id: 'overview',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Overview',
+            views: []
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+
+    await vi.waitFor(() => expect(pageSignal).toBeDefined());
+    expect(pageSignal?.aborted).toBe(false);
+
+    disposeDashboard(rendered);
+
+    expect(pageSignal?.aborted).toBe(true);
+  });
+
+  it('ignores a pending view transition after the dashboard is disposed', () => {
+    /** @type {(() => void) | undefined} */
+    let transitionUpdate;
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        transitionUpdate = callback;
+        return { finished: Promise.resolve() };
+      })
+    });
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'transition-disposal-dashboard',
+          title: 'Transition Disposal Dashboard',
+          pages: [
+            { id: 'first', kind: /** @type {'custom'} */ ('custom'), title: 'First', views: [] },
+            { id: 'second', kind: /** @type {'custom'} */ ('custom'), title: 'Second', views: [] }
+          ]
+        }
+      },
+      sources: {}
+    });
+    document.body.append(rendered);
+    try {
+      /** @type {HTMLAnchorElement | null} */ (
+        rendered.querySelector('[data-nav-page-id="second"]')
+      )?.click();
+      expect(transitionUpdate).toBeDefined();
+
+      disposeDashboard(rendered);
+      transitionUpdate?.();
+
+      expect(rendered.querySelector('[data-page-id="second"]')?.hasAttribute('data-page-pending')).toBe(true);
+    } finally {
+      rendered.remove();
+      Reflect.deleteProperty(document, 'startViewTransition');
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('removes page navigation handlers when navigation is disposed', async () => {
+    /** @type {FrameRequestCallback[]} */
+    const animationFrames = [];
+    const requestAnimationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first">First</a>
+      <a data-nav-page-id="second" href="#page-second">Second</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first" data-page-pending></section>
+        <section class="dashboard-page" id="page-second" data-page-id="second" data-page-pending></section>
+      </main>
+    `;
+    document.body.append(root);
+    const renderPage = vi.fn((pageId) => {
+      const page = document.createElement('section');
+      page.className = 'dashboard-page';
+      page.id = `page-${pageId}`;
+      page.dataset.pageId = pageId;
+      return page;
+    });
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      expect(renderPage).toHaveBeenCalledOnce();
+
+      root.querySelector('[data-nav-page-id="second"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
+      expect(animationFrames).toHaveLength(1);
+      disposeNavigation();
+      while (animationFrames.length > 0) {
+        animationFrames.shift()?.(0);
+      }
+      window.history.replaceState(null, '', '/#page-second');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      root.querySelector('[data-nav-page-id="second"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 0));
+
+      expect(renderPage).toHaveBeenCalledOnce();
+    } finally {
+      requestAnimationFrame.mockRestore();
       root.remove();
       window.history.replaceState(null, '', '/');
     }

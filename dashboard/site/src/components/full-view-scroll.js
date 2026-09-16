@@ -38,6 +38,7 @@ export function syncFullViewMode(root, page) {
  * scroll surface. Forwarding and hiding only engage while `dashboard-full-view` is active.
  * @param {HTMLElement} root
  * @param {(Window & typeof globalThis) | null | undefined} defaultView
+ * @returns {() => void}
  */
 export function enableFullViewScrollForwarding(root, defaultView) {
   // Hiding the app chrome while a full-view table scrolls resizes the scroll container.
@@ -50,9 +51,10 @@ export function enableFullViewScrollForwarding(root, defaultView) {
   const fullViewCompactMedia = typeof defaultView?.matchMedia === 'function'
     ? defaultView.matchMedia(FULL_VIEW_COMPACT_MEDIA)
     : null;
-  fullViewCompactMedia?.addEventListener('change', () => {
-    if (fullViewCompactMedia.matches) root.classList.remove('dashboard-full-view-scrolled');
-  });
+  const onCompactViewChange = () => {
+    if (fullViewCompactMedia?.matches) root.classList.remove('dashboard-full-view-scrolled');
+  };
+  fullViewCompactMedia?.addEventListener('change', onCompactViewChange);
   let fullViewScrollFrame = 0;
   /**
    * Finds the scroll surface of a pinned full-view table following the event target's view.
@@ -74,32 +76,39 @@ export function enableFullViewScrollForwarding(root, defaultView) {
     scroll.scrollTop += deltaY;
     return scroll.scrollTop !== previousScrollTop;
   };
-  root.addEventListener('wheel', (event) => {
+  /** @param {WheelEvent} event */
+  const onWheel = (event) => {
     const scroll = trailingFullViewScrollTarget(event.target);
     if (!scroll) return;
     const deltaY = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroll.clientHeight : 1);
     if (scrollTrailingFullView(scroll, deltaY)) event.preventDefault();
-  }, { capture: true, passive: false });
+  };
+  root.addEventListener('wheel', onWheel, { capture: true, passive: false });
   /** @type {{ scroll: HTMLElement, clientY: number } | null} */
   let trailingFullViewTouch = null;
-  root.addEventListener('touchstart', (event) => {
+  /** @param {TouchEvent} event */
+  const onTouchStart = (event) => {
     const scroll = trailingFullViewScrollTarget(event.target);
     const touch = event.touches[0];
     trailingFullViewTouch = scroll && touch ? { scroll, clientY: touch.clientY } : null;
-  }, { capture: true, passive: true });
-  root.addEventListener('touchmove', (event) => {
+  };
+  root.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
+  /** @param {TouchEvent} event */
+  const onTouchMove = (event) => {
     const touch = event.touches[0];
     if (!trailingFullViewTouch || !touch) return;
     const deltaY = trailingFullViewTouch.clientY - touch.clientY;
     trailingFullViewTouch.clientY = touch.clientY;
     if (scrollTrailingFullView(trailingFullViewTouch.scroll, deltaY)) event.preventDefault();
-  }, { capture: true, passive: false });
+  };
+  root.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
   const endTrailingFullViewTouch = () => {
     trailingFullViewTouch = null;
   };
   root.addEventListener('touchend', endTrailingFullViewTouch, true);
   root.addEventListener('touchcancel', endTrailingFullViewTouch, true);
-  root.addEventListener('scroll', (event) => {
+  /** @param {Event} event */
+  const onScroll = (event) => {
     if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
     const scroll = event.target.closest(`${FULL_VIEW_SELECTOR} .table-scroll`);
     if (scroll !== event.target) return;
@@ -125,5 +134,18 @@ export function enableFullViewScrollForwarding(root, defaultView) {
     } else {
       queueMicrotask(syncScrolledState);
     }
-  }, true);
+  };
+  root.addEventListener('scroll', onScroll, true);
+  return () => {
+    fullViewCompactMedia?.removeEventListener('change', onCompactViewChange);
+    root.removeEventListener('wheel', onWheel, true);
+    root.removeEventListener('touchstart', onTouchStart, true);
+    root.removeEventListener('touchmove', onTouchMove, true);
+    root.removeEventListener('touchend', endTrailingFullViewTouch, true);
+    root.removeEventListener('touchcancel', endTrailingFullViewTouch, true);
+    root.removeEventListener('scroll', onScroll, true);
+    if (fullViewScrollFrame && defaultView?.cancelAnimationFrame) {
+      defaultView.cancelAnimationFrame(fullViewScrollFrame);
+    }
+  };
 }
