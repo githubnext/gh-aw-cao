@@ -5430,6 +5430,79 @@ describe('declarative query validation', () => {
     expect(validateDashboardDocument(queryDocument([aicQuery, validQuery])).ok).toBe(true);
   });
 
+  it('accepts bounded aggregate-local filters over pre-aggregation scalar fields', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'events',
+      aggregate: {
+        by: ['workflow'],
+        values: [{
+          field: 'event',
+          as: 'blocked-events',
+          reducer: 'count',
+          filter: {
+            predicates: [
+              { field: 'event-type', equals: 'firewall.request.blocked' },
+              { field: 'event-source', in: ['firewall', 'gateway'] }
+            ]
+          }
+        }]
+      }
+    }]));
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects invalid aggregate-local filter shapes, fields, and literals', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'events',
+      aggregate: {
+        values: [
+          {
+            field: 'event',
+            as: 'bad-operator',
+            reducer: 'count',
+            filter: { predicates: [{ field: 'event-type', equals: 'blocked', in: ['blocked'] }] }
+          },
+          {
+            field: 'event',
+            as: 'bad-field',
+            reducer: 'count',
+            filter: { predicates: [{ field: 'run-link', equals: 'run' }] }
+          },
+          {
+            field: 'event',
+            as: 'bad-literal',
+            reducer: 'count',
+            filter: { predicates: [{ field: 'event-type', equals: null }] }
+          },
+          {
+            field: 'event',
+            as: 'too-many',
+            reducer: 'count',
+            filter: {
+              predicates: Array.from(
+                { length: DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates'] + 1 },
+                () => ({ field: 'event-type', equals: 'blocked' })
+              )
+            }
+          }
+        ]
+      }
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values[0].filter.predicates[0]' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[0].aggregate.values[1].filter.predicates[0].field' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values[2].filter.predicates[0].equals' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].aggregate.values[3].filter.predicates' })
+      ]));
+    }
+  });
+
   it('accepts built-in grouped prediction methods and their output fields', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',
