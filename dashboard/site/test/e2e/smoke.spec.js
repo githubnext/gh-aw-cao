@@ -693,7 +693,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
           ]
         }
       };
-      for (let run = 3; run <= 50; run += 1) {
+      for (let run = 3; run <= 100; run += 1) {
         const template = sources['runs-table'].rows[run % 2];
         sources['runs-table'].rows.push({
           ...template,
@@ -726,7 +726,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
   await expect(view).toHaveCount(1);
   await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
-  await expect(swimlane.locator('.swimlane-summary')).toContainText('50 runs');
+  await expect(swimlane.locator('.swimlane-summary')).toContainText('100 runs');
   const swimlaneHeadingBox = await swimlane.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
   const swimlaneSummaryBox = await swimlane.locator('.swimlane-summary').boundingBox();
   const swimlaneChartBox = await swimlane.locator('[data-chart-widget="swimlane"] svg').boundingBox();
@@ -741,6 +741,12 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
   await expect(table).toBeVisible();
+  await expect(table.locator('tbody > tr')).toHaveCount(25);
+  const more = table.locator('[data-table-more]');
+  for (let pageIndex = 0; pageIndex < 3; pageIndex += 1) {
+    await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
+  }
+  await expect(table.locator('tbody > tr')).toHaveCount(50);
   await expect(view.locator('[data-table-filter]')).toBeVisible();
   const summaryRow = view.locator('.table-summary-row');
   const summaryToggle = summaryRow.getByRole('button', { name: 'Collapse column summaries' });
