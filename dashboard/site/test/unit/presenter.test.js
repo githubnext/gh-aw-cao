@@ -401,7 +401,7 @@ describe('presenter built-in and custom pages', () => {
     const rows = [
       { domain: 'api.github.com', run: 4, accepted: 12, blocked: 1 },
       { domain: 'new.example', run: 2, accepted: 3, blocked: 0 },
-      { domain: 'blocked.example', run: 1, accepted: 0, blocked: 7 },
+      { domain: 'blocked.example', run: 1, accepted: 0, blocked: 3_177_281 },
       { domain: 'changed.example', run: 2, accepted: 1, blocked: 2 }
     ];
     const rendered = renderDashboard({
@@ -416,6 +416,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'firewall');
     expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     const text = page?.textContent ?? '';
