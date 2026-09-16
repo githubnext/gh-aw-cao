@@ -203,6 +203,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/dashboard-header.js
   - source: site/src/components/dashboard-navigation.js
     destination: .github/aw/dashboard/site/src/components/dashboard-navigation.js
+  - source: site/src/components/dashboard-frame.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-frame.js
   - source: site/src/components/cli-actions.js
     destination: .github/aw/dashboard/site/src/components/cli-actions.js
   - source: site/src/components/chart-elements.js
