@@ -108,7 +108,7 @@ view payloads.
 | `skills/` | Portable Agent Plugin skills exposed by this repository. |
 | `specs/` | Normative control, Activity, dashboard, and data contracts. |
 | `docs/` | Explanatory and operator-facing documentation site. |
-| `adr/` | Focused architectural decision records. |
+| `adr/` | Durable architectural decision history; normative contracts remain in `specs/` and specification-style documentation. |
 | `tests/` | Unit, integration, load, and workflow-contract tests. |
 | `scripts/` | Repository validation and maintenance utilities. |
 
@@ -189,5 +189,6 @@ defined by manifests rather than by directory proximity.
 - `AGENTS.md` records repository conventions and focused validation commands.
 
 Update this file when a top-level subsystem, dependency direction, authority
-boundary, or source-of-truth location changes. Record narrower design choices
-in `adr/` or the relevant normative specification.
+boundary, or source-of-truth location changes. Record narrower design rationale
+in `adr/`, but put current requirements and conformance rules in the relevant
+normative specification.

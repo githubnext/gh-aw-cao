@@ -276,12 +276,12 @@ steps:
         COMMIT_RANGE="refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG"
         git diff --name-only --diff-filter=AMR \
           "refs/tags/$PREVIOUS_TAG..refs/tags/$RELEASE_TAG" \
-          -- 'adr/*.md' 'docs/adr/*.md' \
+          -- 'adr/*.md' \
           > /tmp/gh-aw/agent/release-data/adr_paths.txt
       else
         git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null
         COMMIT_RANGE="refs/tags/$RELEASE_TAG"
-        git ls-files -- 'adr/*.md' 'docs/adr/*.md' \
+        git ls-files -- 'adr/*.md' \
           > /tmp/gh-aw/agent/release-data/adr_paths.txt
       fi
 
@@ -313,11 +313,11 @@ steps:
       WORKSPACE_ROOT=$(realpath -- "$GITHUB_WORKSPACE")
       while IFS= read -r adr_path; do
           case "$adr_path" in
-            adr/*.md|docs/adr/*.md)
+            adr/*.md)
               RESOLVED_ADR=$(realpath -- "$adr_path" 2>/dev/null || true)
               if [ -f "$adr_path" ] && [ ! -L "$adr_path" ]; then
                 case "$RESOLVED_ADR" in
-                  "$WORKSPACE_ROOT"/adr/*.md|"$WORKSPACE_ROOT"/docs/adr/*.md) ;;
+                  "$WORKSPACE_ROOT"/adr/*.md) ;;
                   *) continue ;;
                 esac
                 printf '\n## %s\n\n' "$adr_path" >> /tmp/gh-aw/agent/release-data/release_adrs.md

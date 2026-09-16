@@ -7,7 +7,7 @@ description: Record the local dashboard server's WebSocket Copilot protocol and 
 
 ## Status
 
-Draft
+Accepted
 
 ## Context
 
