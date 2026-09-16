@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cancelDataProcessing,
   processDashboardQueries,
-  subscribeCanonicalDashboardView
+  subscribeCanonicalDashboardView,
+  subscribeWorkerLoadingProgress
 } from '../../src/data-processor.js';
 import { effect, state } from '../../src/reactive.js';
 
@@ -247,6 +248,8 @@ describe('canonical dashboard view subscriptions', () => {
   it('terminates subscriptions with an error when their worker fails', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     const onError = vi.fn();
+    const onProgress = vi.fn();
+    const stopProgress = subscribeWorkerLoadingProgress(onProgress);
     const unsubscribe = subscribeCanonicalDashboardView(
       'worker-failure',
       ['runs'],
@@ -258,11 +261,17 @@ describe('canonical dashboard view subscriptions', () => {
     const failedWorker = SubscriptionWorker.current;
     expect(failedWorker).toBeDefined();
     if (!failedWorker) throw new Error('Subscription worker was not created.');
+    failedWorker.emit({
+      type: 'loading-progress',
+      state: { id: 'ingestion-1', phase: 'start' }
+    });
 
     failedWorker.emitError('Worker crashed');
 
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'Worker crashed' }));
+    expect(onProgress).toHaveBeenLastCalledWith({ id: 'ingestion-1', phase: 'complete' });
     expect(failedWorker.terminated).toBe(true);
+    stopProgress();
     unsubscribe();
   });
 
