@@ -64,7 +64,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, title: string, description?: string, defaults?: Record<string, unknown>, units?: Record<string, { name: string, symbol: string, significant: number }>, queries?: Array<Record<string, unknown>>, ['card-templates']?: Array<{ id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>, callouts?: Array<{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }>, ['cli-actions']?: Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>, pages: Array<PresentableBuiltInPage | PresentableCustomPage>, ['github-url-base']?: string, repository?: string, navigation?: PresentableNavigationSection[], horizon?: { label: string, tooltip: { label: string, description: string, icon?: string } } }} PresentableDashboard
+ * @typedef {{ id: string, title: string, description?: string, defaults?: Record<string, unknown>, units?: Record<string, { name: string, symbol: string, significant: number }>, queries?: Array<Record<string, unknown>>, views?: Array<Record<string, unknown>>, ['card-templates']?: Array<{ id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>, callouts?: Array<{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }>, ['cli-actions']?: Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>, pages: Array<PresentableBuiltInPage | PresentableCustomPage>, ['github-url-base']?: string, repository?: string, navigation?: PresentableNavigationSection[], horizon?: { label: string, tooltip: { label: string, description: string, icon?: string } } }} PresentableDashboard
  */
 
 /**
@@ -131,10 +131,11 @@ export function updateWithViewTransition(document, update, direction) {
 
 /**
  * @param {PresentableBuiltInPage} page
+ * @param {Array<Record<string, unknown>>} [reusableViews]
  * @returns {PresentableCustomPage}
  */
-function getBuiltInPagePayload(page) {
-  return /** @type {PresentableCustomPage} */ (dashboardPagePayload(page));
+function getBuiltInPagePayload(page, reusableViews = []) {
+  return /** @type {PresentableCustomPage} */ (dashboardPagePayload(page, reusableViews));
 }
 
 /**
@@ -169,6 +170,7 @@ export function renderDashboard(input) {
   const { document, sources: rawSources, viewer = null } = input;
   const pages = document.dashboard.pages;
   const cardTemplates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
+  const reusableViews = document.dashboard.views ?? [];
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
   const showInitialLoadingSkeleton = input.loading === true && !hasData;
@@ -249,7 +251,7 @@ export function renderDashboard(input) {
         }
         return showInitialLoadingSkeleton
           ? renderPageLoadingSkeleton(page)
-          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, options.queryContext);
+          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
       };
       if (input.loadPageSources) {
         options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
@@ -855,14 +857,15 @@ function renderPageSkeleton() {
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
  * @param {Record<string, { id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
+ * @param {Array<Record<string, unknown>>} reusableViews
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderPage(page, sources, units, dashboardDefaults, cardTemplates, queryContext) {
+function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext) {
   const title = getPageTitle(page);
 
   if (page.kind === 'built-in') {
-    const payload = getBuiltInPagePayload(page);
+    const payload = getBuiltInPagePayload(page, reusableViews);
     return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext);
   }
 

@@ -42,7 +42,6 @@ describe('safe-output items dashboard', () => {
     const query = dashboard.dashboard.queries.find(
       (/** @type {{ name?: string }} */ candidate) => candidate.name === 'safe-output-items'
     );
-
     expect(dashboard.dashboard.navigation.find(
       (/** @type {{ label?: string }} */ section) => section.label === 'Explore'
     )).toMatchObject({ experimental: true, pages: expect.arrayContaining(['safe-output-items']) });
@@ -69,7 +68,10 @@ describe('safe-output items dashboard', () => {
         (/** @type {{ id?: string }} */ candidate) => candidate.id === 'issues'
       );
       const query = dashboard.dashboard.queries.find(
-        (/** @type {{ name?: string }} */ candidate) => candidate.name === 'safe-output-items'
+        (/** @type {{ name?: string }} */ candidate) => candidate.name === 'issues'
+      );
+      const view = dashboard.dashboard.views.find(
+        (/** @type {{ id?: string }} */ candidate) => candidate.id === 'issues'
       );
 
       expect(dashboard.dashboard.navigation.find(
@@ -79,25 +81,25 @@ describe('safe-output items dashboard', () => {
         kind: 'built-in',
         page: 'issues',
         definition: {
-          views: [{
-            id: 'issue-list',
-            mark: 'list',
-            list: {
-              style: 'entity-cards',
-              card: 'issue',
-              drill: { type: 'external', field: 'entity-url' }
-            },
-            layout: 'full-view',
-            data: {
-              source: 'safe-output-items',
-              filters: { 'github-entity-type': ['issue'] }
-            }
-          }]
+          views: ['issues']
+        }
+      });
+      expect(view).toMatchObject({
+        id: 'issues',
+        title: 'Issues',
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          card: 'issue',
+          drill: { type: 'external', field: 'entity-url' }
+        },
+        data: {
+          source: 'issues'
         }
       });
       expect(query).toMatchObject({
-        from: 'events',
-        filter: { predicates: [{ field: 'event-type', equals: 'safe_output.created' }] }
+        from: 'safe-output-items',
+        filter: { predicates: [{ field: 'github-entity-type', equals: 'issue' }] }
       });
     });
 
@@ -105,8 +107,8 @@ describe('safe-output items dashboard', () => {
       const rendered = renderDashboard({
         document: dashboard,
         sources: {
-          'safe-output-items': {
-            source: 'safe-output-items',
+          issues: {
+            source: 'issues',
             metadata,
             rows: [{
               'observed-at': '2026-09-14T22:00:00Z',

@@ -18,7 +18,7 @@ export const LANGUAGE_VERSION = '0.1.0';
 export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
-export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
+export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'views', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
 export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'title', 'labels', 'details'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
@@ -272,7 +272,7 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   'engines-models': ['model-usage-summary', 'engine-usage-summary', 'run-aggregate-summary'],
   'operational-value': ['operational-values'],
   findings: ['findings'],
-  issues: ['safe-output-items']
+  issues: ['issues']
 };
 
 export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
@@ -329,7 +329,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     findings: ['finding-summary', 'finding-severity', 'finding-status', 'organization', 'repository', 'workflow', 'observed-at', 'issue-link', 'pull-request-link', 'run-link']
   },
   issues: {
-    'safe-output-items': ['github-entity-type', 'safe-output-type', 'event-summary', 'entity-url', 'repository', 'workflow', 'run', 'run-link', 'observed-at']
+    issues: ['github-entity-type', 'safe-output-type', 'event-summary', 'entity-url', 'repository', 'workflow', 'run', 'run-link', 'observed-at']
   }
 };
 

@@ -104,18 +104,20 @@
       logTableCapacityDecision(tableCapacityDecision);
       /** @type {DashboardQueryDefinition[]} */
       const dashboardQueries = [];
-      /** @type {{ githubUrlBase?: string, dashboardRepository: string | null, pages: import('./presenter.js').PresentationDocument['dashboard']['pages'], queries: DashboardQueryDefinition[] }} */
+      /** @type {{ githubUrlBase?: string, dashboardRepository: string | null, pages: import('./presenter.js').PresentationDocument['dashboard']['pages'], queries: DashboardQueryDefinition[], views: unknown[] }} */
       const dashboardContext = {
         githubUrlBase: undefined,
         dashboardRepository: null,
         pages: /** @type {import('./presenter.js').PresentationDocument['dashboard']['pages']} */ ([]),
         queries: dashboardQueries,
+        views: [],
       };
       const syncDashboardContext = () => {
         dashboardContext.githubUrlBase = dashboardDocument.dashboard["github-url-base"];
         dashboardContext.dashboardRepository = dashboardDocument.dashboard.repository ?? null;
         dashboardContext.pages = dashboardDocument.dashboard.pages;
         dashboardContext.queries = dashboardQueries;
+        dashboardContext.views = dashboardDocument.dashboard.views ?? [];
       };
       /**
        * @param {DashboardQueryDefinition[]} queries

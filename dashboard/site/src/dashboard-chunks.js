@@ -52,12 +52,19 @@ export function dashboardPageChunkPath(page) {
 
 /**
  * @param {DashboardPage} page
+ * @param {unknown} [reusableViews]
  */
-export function dashboardPagePayload(page) {
+export function dashboardPagePayload(page, reusableViews = []) {
   const definition = isPlainObject(page.definition) ? page.definition : null;
-  const views = page.kind === 'built-in'
+  const configuredViews = page.kind === 'built-in'
     ? Array.isArray(definition?.views) ? definition.views : []
     : Array.isArray(page.views) ? page.views : [];
+  const viewsById = new Map((Array.isArray(reusableViews) ? reusableViews : [])
+    .filter(isPlainObject)
+    .map((view) => [view.id, view]));
+  const views = configuredViews.map((view) => (
+    typeof view === 'string' ? viewsById.get(view) ?? view : view
+  ));
   const sections = page.kind === 'built-in'
     ? Array.isArray(definition?.sections) ? definition.sections : undefined
     : Array.isArray(page.sections) ? page.sections : undefined;
@@ -111,7 +118,7 @@ export function dashboardPageSourceNames(document, pageId) {
   if (!page) return [];
   const indexed = stringList(page['source-names']);
   if (indexed.length > 0) return indexed;
-  const payload = dashboardPagePayload(page);
+  const payload = dashboardPagePayload(page, document.dashboard.views);
   const names = new Set();
   for (const view of payload.views ?? []) {
     if (isAsyncElementView(view)) continue;
@@ -143,7 +150,7 @@ export function dashboardPageLazySourceNames(document, pageId) {
   if (!page) return [];
   const indexed = stringList(page['lazy-source-names']);
   if (indexed.length > 0) return indexed;
-  const payload = dashboardPagePayload(page);
+  const payload = dashboardPagePayload(page, document.dashboard.views);
   return [...new Set((payload.views ?? []).flatMap((view) =>
     isPlainObject(view) && view['lazy-list'] === true ? getViewSources(view) : []
   ))];
@@ -160,7 +167,7 @@ export function dashboardTableSourceNames(document, pageId) {
     if (!page) return [];
     const indexed = stringList(page['table-source-names']);
     if (indexed.length > 0) return indexed;
-    const payload = dashboardPagePayload(page);
+    const payload = dashboardPagePayload(page, document.dashboard.views);
     return [...new Set((payload.views ?? []).flatMap((view) =>
       isPlainObject(view) && view.mark === 'table' ? getViewSources(view) : []
     ))];

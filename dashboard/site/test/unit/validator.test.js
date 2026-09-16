@@ -316,17 +316,28 @@ describe('dashboard document validation', () => {
     const issuesPage = document.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'issues'
     );
-    const issueList = issuesPage.definition.views[0];
+    const issueList = document.dashboard.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === issuesPage.definition.views[0]
+    );
     issueList.list.drill = {
       type: 'query',
       page: 'issues',
-      query: 'safe-output-items',
+      query: 'issues',
       'title-field': 'event-summary',
       arguments: [{ name: 'entity-url', field: 'entity-url' }]
     };
     issueList.data.arguments = [{ name: 'entity-url', field: 'entity-url' }];
 
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    issuesPage.definition.views[0] = 'missing-view';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'page view must reference a declared reusable dashboard view.' })
+      ])
+    });
+    issuesPage.definition.views[0] = 'issues';
 
     issueList.list.card = 'missing-template';
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
@@ -353,7 +364,7 @@ describe('dashboard document validation', () => {
         expect.objectContaining({ message: 'query drill query must reference a declared dashboard query.' })
       ])
     });
-    issueList.list.drill.query = 'safe-output-items';
+    issueList.list.drill.query = 'issues';
     delete issueList.list.drill['title-field'];
     expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
       ok: false,

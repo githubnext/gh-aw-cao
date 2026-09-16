@@ -241,7 +241,8 @@ async function queryLiveDashboard(
           routeParameters,
           queryContext,
           evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
-          queries: context.queries
+          queries: context.queries,
+          views: context.views
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
@@ -360,18 +361,22 @@ function dashboardContext(value) {
     throw new TypeError('Canonical dashboard queries require a dashboard context.');
   }
 
-  const context = /** @type {{ githubUrlBase?: unknown, pages?: unknown, queries?: unknown }} */ (value);
+  const context = /** @type {{ githubUrlBase?: unknown, pages?: unknown, queries?: unknown, views?: unknown }} */ (value);
   if (!Array.isArray(context.pages)) {
     throw new TypeError('Canonical dashboard context requires pages.');
   }
   if (context.queries !== undefined && !Array.isArray(context.queries)) {
     throw new TypeError('Canonical dashboard queries must be an array.');
   }
+  if (context.views !== undefined && !Array.isArray(context.views)) {
+    throw new TypeError('Canonical dashboard views must be an array.');
+  }
   return {
     githubUrlBase: typeof context.githubUrlBase === 'string' && context.githubUrlBase
       ? context.githubUrlBase : 'https://github.com',
     pages: /** @type {Array<{ id: string, kind: 'built-in' | 'custom', route?: { ['hash-query-parameter']?: string } }>} */ (context.pages),
-    queries: /** @type {unknown[]} */ (context.queries ?? [])
+    queries: /** @type {unknown[]} */ (context.queries ?? []),
+    views: /** @type {unknown[]} */ (context.views ?? [])
   };
 }
 

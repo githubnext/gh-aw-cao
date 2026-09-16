@@ -34,11 +34,11 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
 /**
  * @param {unknown} page
  * @param {string} pageId
- * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown }} [options]
  * @returns {{ aliases: string[], queries: Array<Record<string, unknown>>, replacedSources: string[] }}
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
-  const payload = pagePayload(page);
+  const payload = pagePayload(page, options.views);
   const views = Array.isArray(payload.views) ? payload.views : [];
   const routeParameterName = typeof payload.route?.['hash-query-parameter'] === 'string'
     ? payload.route['hash-query-parameter']
@@ -407,15 +407,21 @@ function asStringList(value) {
   return [...new Set(value.filter((item) => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim()))];
 }
 
-/** @param {unknown} page */
-function pagePayload(page) {
+/** @param {unknown} page @param {unknown} reusableViews */
+function pagePayload(page, reusableViews) {
   if (!isPlainObject(page)) return {};
   const configured = /** @type {Record<string, unknown>} */ (page);
   const builtInDefinition = configured.kind === 'built-in' && isPlainObject(configured.definition)
     ? /** @type {Record<string, unknown>} */ (configured.definition)
     : null;
+  const viewsById = new Map((Array.isArray(reusableViews) ? reusableViews : [])
+    .filter(isPlainObject)
+    .map((view) => [view.id, view]));
+  const views = /** @type {unknown[]} */ (
+    builtInDefinition?.views ?? (Array.isArray(configured.views) ? configured.views : [])
+  );
   return {
-    views: builtInDefinition?.views ?? (Array.isArray(configured.views) ? configured.views : []),
+    views: views.map((view) => typeof view === 'string' ? viewsById.get(view) ?? view : view),
     route: isPlainObject(configured.route) ? configured.route : null
   };
 }

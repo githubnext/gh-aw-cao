@@ -253,6 +253,8 @@ function validWorkflowDispatchArguments(args) {
 let declaredQueries = new Map();
 /** @type {Set<string>} */
 let declaredCardTemplates = new Set();
+/** @type {Map<string, Record<string, unknown>>} */
+let declaredViews = new Map();
 
 /** @type {Map<string, Set<string>>} */
 let declaredQuerySources = new Map();
@@ -589,15 +591,54 @@ function validateCardTemplateField(field, fieldNode, path, errors) {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template field must be a mapping.', path));
     return;
   }
+
   validateObjectKeys(fieldNode, FIELD_DEFINITION_KEYS, path, errors);
   validateRequiredIdentifier(field.field, `${path}.field`, 'card template field', errors);
   validateOptionalStringField(field.title, `${path}.title`, errors);
   if (field.display !== undefined && (typeof field.display !== 'string' || !FIELD_DISPLAY_VALUES.includes(field.display))) {
     errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template field display must use one canonical display value.', `${path}.display`));
   }
+
   if (field.format !== undefined && (typeof field.format !== 'string' || !FIELD_FORMAT_VALUES.includes(field.format))) {
     errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template field format must use one canonical format value.', `${path}.format`));
   }
+}
+
+/**
+ * @param {unknown} views
+ * @param {unknown} viewsNode
+ * @param {ValidationError[]} errors
+ */
+function validateReusableViews(views, viewsNode, errors) {
+  const definitions = new Map();
+  if (views === undefined) return definitions;
+  if (!Array.isArray(views) || views.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'views must be a non-empty sequence.', '$.dashboard.views'));
+    return definitions;
+  }
+  const ids = new Set();
+  views.forEach((view, index) => {
+    const path = `$.dashboard.views[${index}]`;
+    validateView(view, getSequenceItemNode(viewsNode, index), path, ids, errors);
+    if (isPlainObject(view) && typeof view.id === 'string' && !definitions.has(view.id)) {
+      definitions.set(view.id, view);
+    }
+  });
+  return definitions;
+}
+
+/** @param {unknown} page */
+function resolveReusablePageViews(page) {
+  if (!isPlainObject(page)) return page;
+  const definition = page.kind === 'built-in' && isPlainObject(page.definition)
+    ? page.definition
+    : null;
+  const views = definition?.views ?? page.views;
+  if (!Array.isArray(views)) return page;
+  const resolvedViews = views.map((view) => typeof view === 'string' ? declaredViews.get(view) ?? view : view);
+  return definition
+    ? { ...page, definition: { ...definition, views: resolvedViews } }
+    : { ...page, views: resolvedViews };
 }
 
 /**
@@ -676,6 +717,11 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   declaredCardTemplates = validateCardTemplates(
     dashboard['card-templates'],
     getValueNodeByKey(dashboardNode, 'card-templates'),
+    errors
+  );
+  declaredViews = validateReusableViews(
+    dashboard.views,
+    getValueNodeByKey(dashboardNode, 'views'),
     errors
   );
   const unitIds = validateUnits(dashboard.units, getValueNodeByKey(dashboardNode, 'units'), errors);
@@ -926,9 +972,26 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   /** @type {Set<string>} */
   const pageIds = new Set();
   dashboard.pages.forEach((page, index) => {
-    validatePage(page, getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors);
+    if (isPlainObject(page)) {
+      const configuredViews = page.kind === 'built-in' && isPlainObject(page.definition)
+        ? page.definition.views
+        : page.views;
+      if (Array.isArray(configuredViews)) {
+        configuredViews.forEach((view, viewIndex) => {
+          if (typeof view === 'string' && !declaredViews.has(view)) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'page view must reference a declared reusable dashboard view.',
+              `$.dashboard.pages[${index}]${page.kind === 'built-in' ? '.definition' : ''}.views[${viewIndex}]`
+            ));
+          }
+        });
+      }
+    }
+    validatePage(resolveReusablePageViews(page), getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors);
   });
   dashboard.pages.forEach((page, index) => {
+    page = resolveReusablePageViews(page);
     if (!isPlainObject(page)) return;
     if (isPlainObject(page.route) && typeof page.route['navigation-page'] === 'string') {
       const navigationPage = page.route['navigation-page'];
@@ -1005,8 +1068,8 @@ function validateDashboard(dashboard, dashboardNode, errors) {
               ));
             }
           }
-          const targetPage = /** @type {unknown[]} */ (dashboard.pages)
-            .find((candidate) => isPlainObject(candidate) && candidate.id === drill.page);
+          const targetPage = resolveReusablePageViews(/** @type {unknown[]} */ (dashboard.pages)
+            .find((candidate) => isPlainObject(candidate) && candidate.id === drill.page));
           const targetViews = isPlainObject(targetPage)
             ? targetPage.kind === 'built-in' && isPlainObject(targetPage.definition)
               ? targetPage.definition.views
