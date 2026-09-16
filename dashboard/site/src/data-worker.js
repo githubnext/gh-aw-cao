@@ -5,7 +5,9 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import {
   ingestCachedGhAwJsonl,
   ingestDashboardSources,
-  isCachedGhAwJsonlCurrent
+  ingestNormalizedJson,
+  isCachedGhAwJsonlCurrent,
+  isNormalizedJsonCurrent
 } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
@@ -383,6 +385,17 @@ export function publishedJsonlShards(hashes) {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+/** @param {unknown} hashes */
+export function publishedNormalizedShards(hashes) {
+  if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
+  return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
+    .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash))
+    .map(([name, hash]) => ({ name, hash: /** @type {string} */ (hash).toLowerCase() }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
 /**
  * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
@@ -437,7 +450,9 @@ export function processDataRequest(request, signal) {
           const payloadHashes = payloadHashesResponse?.ok
             ? await payloadHashesResponse.json().catch(() => null)
             : null;
-          const shards = publishedJsonlShards(payloadHashes);
+          const normalizedShards = publishedNormalizedShards(payloadHashes);
+          const shards = normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
+          const normalized = normalizedShards.length > 0;
           const shardCount = shards.length;
           progress.reportShardImportProgress(0, shardCount);
           debugIngestion('loaded activity manifest', {
@@ -484,18 +499,23 @@ export function processDataRequest(request, signal) {
             ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
             : undefined;
           if (shards.length === 0) {
-            throw new Error('Activity shard manifest is missing or contains no valid JSONL shards.');
+            throw new Error('Activity shard manifest is missing or contains no valid activity shards.');
           }
           let processedBytes = 0;
           let processedRecords = 0;
           for (const [index, shard] of shards.entries()) {
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
-            const current = await isCachedGhAwJsonlCurrent(indexedDB, {
-              payloadIdentity: shard.hash,
-              payloadScope: shardUrl.href,
-              context: collectionContext,
-              workflowHints
-            });
+            const current = normalized
+              ? await isNormalizedJsonCurrent(indexedDB, {
+                  payloadIdentity: shard.hash,
+                  payloadScope: shardUrl.href
+                })
+              : await isCachedGhAwJsonlCurrent(indexedDB, {
+                  payloadIdentity: shard.hash,
+                  payloadScope: shardUrl.href,
+                  context: collectionContext,
+                  workflowHints
+                });
             if (current) {
               debugIngestion('skipping current activity shard', {
                 shard: shard.name,
@@ -513,7 +533,7 @@ export function processDataRequest(request, signal) {
             });
             const response = await fetch(shardUrl);
             if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
-            if (!response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
+            if (!normalized && !response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
             {
               const contentLengthHeader = response.headers.get('content-length');
               const contentLength = contentLengthHeader === null ? Number.NaN : Number(contentLengthHeader);
@@ -525,20 +545,25 @@ export function processDataRequest(request, signal) {
                 ? `Shard ${index + 1} received; parsing.`
                 : `Shard ${index + 1} received (${formatDataSize(payloadBytes)}`
                   + `${compressed ? ' compressed' : ''}); parsing.`);
-              const ingestion = await ingestCachedGhAwJsonl(indexedDB, responseChunks(response.body), {
+              const ingestionOptions = {
                 storage: globalThis.navigator?.storage,
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
-                workflowHints,
-                onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
-                  bytesProcessed: processedBytes + bytesProcessed,
-                  recordsIngested: processedRecords + recordsIngested,
-                  totalBytes: undefined
-                }),
-                onWriteProgress: (written) => progress.store(written),
+                onWriteProgress: (/** @type {{ storedRecords: number, totalRecords: number }} */ written) => progress.store(written),
                 payloadIdentity: shard.hash,
-                payloadScope: shardUrl.href,
-                context: collectionContext
-              });
+                payloadScope: shardUrl.href
+              };
+              const ingestion = normalized
+                ? await ingestNormalizedJson(indexedDB, await response.json(), ingestionOptions)
+                : await ingestCachedGhAwJsonl(indexedDB, responseChunks(/** @type {ReadableStream<Uint8Array>} */ (response.body)), {
+                    ...ingestionOptions,
+                    workflowHints,
+                    onProgress: ({ bytesProcessed, recordsIngested }) => progress.update({
+                      bytesProcessed: processedBytes + bytesProcessed,
+                      recordsIngested: processedRecords + recordsIngested,
+                      totalBytes: undefined
+                    }),
+                    context: collectionContext
+                  });
               processedBytes += payloadBytes ?? 0;
               const sourceRecords = 'records' in ingestion ? ingestion.records : 0;
               processedRecords += sourceRecords;

@@ -58,6 +58,7 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -183,6 +184,7 @@ jobs:
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_GH_AW_LOGS_NORMALIZED: ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
         run: |
           if [[ -f activity/cao.mjs ]]; then
             ingestion_script=activity/cao.mjs
@@ -220,6 +222,8 @@ jobs:
           node "$ingestion_script" hash-payloads \
             --database "$ACTIVITY_DATABASE" \
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --normalized-dir "$REPORT_GH_AW_LOGS_NORMALIZED" \
+            --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json" \
             --output "$RUNNER_TEMP/cao-activity/payload-hashes.json"
 
       - name: Upload activity snapshot
@@ -231,6 +235,7 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -253,6 +258,7 @@ jobs:
         run: |
           snapshot_root="$RUNNER_TEMP/cao-activity"
           mkdir -p "$snapshot_root/gh-aw-logs-shards"
+          mkdir -p "$snapshot_root/gh-aw-logs-normalized"
           missing=0
           for file in gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json drain3_weights.json; do
             if [[ ! -s "$snapshot_root/$file" ]]; then
@@ -262,6 +268,10 @@ jobs:
           done
           if ! find "$snapshot_root/gh-aw-logs-shards" -maxdepth 1 -type f -name '*.jsonl' -print -quit | grep -q .; then
             echo "Activity snapshot contains no JSONL shards" >&2
+            missing=1
+          fi
+          if ! find "$snapshot_root/gh-aw-logs-normalized" -maxdepth 1 -type f -name '*.json' -print -quit | grep -q .; then
+            echo "Activity snapshot contains no normalized shards" >&2
             missing=1
           fi
           if [[ "$missing" -ne 0 ]]; then
@@ -277,6 +287,7 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json

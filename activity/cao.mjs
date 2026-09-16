@@ -13,6 +13,7 @@ import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
+import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
@@ -56,7 +57,7 @@ const USAGE = `Usage:
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
-  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
+  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--inventory FILE] [--output FILE]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
   cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
@@ -845,7 +846,27 @@ async function ingestJsonlFile(indexedDB, inputPath, options = {}) {
  * absent shard directory yields no shard entries) so this can run
  * immediately after ingestion in the same workflow step.
  */
-async function hashActivityPayloads({ databasePath, shardDirectory }) {
+function workflowHintsFromInventory(input) {
+  const rows = input?.workflows?.rows;
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((candidate) => (
+    candidate
+      && typeof candidate === 'object'
+      && typeof candidate.organization === 'string'
+      && typeof candidate.repository === 'string'
+      && typeof candidate['workflow-name'] === 'string'
+      && typeof candidate.workflow === 'string'
+      ? [{
+          owner: candidate.organization,
+          repository: candidate.repository,
+          name: candidate['workflow-name'],
+          path: candidate.workflow
+        }]
+      : []
+  ));
+}
+
+async function hashActivityPayloads({ databasePath, shardDirectory, normalizedDirectory, inventoryPath }) {
   const hashFile = async (filePath) => {
     const hash = createHash('sha256');
     for await (const chunk of createReadStream(filePath)) hash.update(chunk);
@@ -863,8 +884,44 @@ async function hashActivityPayloads({ databasePath, shardDirectory }) {
       if (!(error && error.code === 'ENOENT')) throw error;
     }
     debugHash('hashing %d shard(s) in %s', shardNames.length, shardDirectory);
+    const inventorySource = inventoryPath ? await readFile(inventoryPath, 'utf8') : '{}';
+    const workflowHints = workflowHintsFromInventory(JSON.parse(inventorySource));
+    const normalizationContext = createHash('sha256')
+      .update(`${CANONICAL_SCHEMA_VERSION}\0${inventorySource}`)
+      .digest('hex')
+      .slice(0, 16);
+    const retainedNormalized = new Set();
+    if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
     for (const name of shardNames) {
-      hashes[`${path.basename(shardDirectory)}/${name}`] = await hashFile(path.join(shardDirectory, name));
+      const shardPath = path.join(shardDirectory, name);
+      const rawHash = await hashFile(shardPath);
+      hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
+      if (!normalizedDirectory) continue;
+      const normalizedName = `${rawHash}-${normalizationContext}.json`;
+      const normalizedPath = path.join(normalizedDirectory, normalizedName);
+      retainedNormalized.add(normalizedName);
+      try {
+        await stat(normalizedPath);
+      } catch (error) {
+        if (!(error && error.code === 'ENOENT')) throw error;
+        const adapted = await adaptCachedGhAwJsonlStream(createReadStream(shardPath), { workflowHints });
+        const payload = {
+          schemaVersion: CANONICAL_SCHEMA_VERSION,
+          sourceRecords: adapted.records,
+          batch: normalize(adapted.observations)
+        };
+        const temporaryPath = `${normalizedPath}.${process.pid}.tmp`;
+        await writeFile(temporaryPath, JSON.stringify(payload));
+        await rename(temporaryPath, normalizedPath);
+      }
+      hashes[`${path.basename(normalizedDirectory)}/${normalizedName}`] = await hashFile(normalizedPath);
+    }
+    if (normalizedDirectory) {
+      for (const name of await readdir(normalizedDirectory)) {
+        if (name.endsWith('.json') && !retainedNormalized.has(name)) {
+          await rm(path.join(normalizedDirectory, name), { force: true });
+        }
+      }
     }
   }
   return hashes;
@@ -1279,10 +1336,14 @@ export async function runCli(arguments_, input = process.stdin) {
     return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
   }
   if (command === 'hash-payloads') {
-    rejectUnknownOptions(options, ['database', 'shard-dir', 'output']);
+    rejectUnknownOptions(options, ['database', 'shard-dir', 'normalized-dir', 'inventory', 'output']);
     const hashes = await hashActivityPayloads({
       databasePath: option(options, 'database', false) ? path.resolve(option(options, 'database', false)) : undefined,
-      shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined
+      shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined,
+      normalizedDirectory: option(options, 'normalized-dir', false)
+        ? path.resolve(option(options, 'normalized-dir', false))
+        : undefined,
+      inventoryPath: option(options, 'inventory', false) ? path.resolve(option(options, 'inventory', false)) : undefined
     });
     const outputPath = option(options, 'output', false);
     if (outputPath) {

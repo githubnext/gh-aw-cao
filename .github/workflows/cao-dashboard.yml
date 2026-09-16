@@ -98,6 +98,7 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -253,11 +254,13 @@ jobs:
               )
               core.info(`Copied ${fileName} (${fs.statSync(destination).size} bytes)`)
             }
-            fs.cpSync(
-              path.join(process.env.RUNNER_TEMP, 'cao-activity', 'gh-aw-logs-shards'),
-              path.join(process.env.REPORT_OUTPUT, 'gh-aw-logs-shards'),
-              { recursive: true },
-            )
+            for (const directory of ['gh-aw-logs-shards', 'gh-aw-logs-normalized']) {
+              fs.cpSync(
+                path.join(process.env.RUNNER_TEMP, 'cao-activity', directory),
+                path.join(process.env.REPORT_OUTPUT, directory),
+                { recursive: true },
+              )
+            }
             core.info(`Dashboard artifact assembly completed (${collectedFiles.length} collected data files)`)
 
       - name: Upload dashboard artifact

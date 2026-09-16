@@ -8,6 +8,8 @@ const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
 const DEBUG_PREFIX = 'cao';
+const JSONL_SHARD_PATH = /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/;
+const NORMALIZED_SHARD_PATH = /\/gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
 
 /**
  * Extracts the raw `debug` query parameter from a location search string
@@ -62,7 +64,8 @@ function isDashboardDataUrl(value) {
     const url = new URL(value, self.location.href);
     return url.origin === self.location.origin
       && (DATA_FILES.has(url.pathname.split('/').at(-1))
-        || /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(url.pathname));
+        || JSONL_SHARD_PATH.test(url.pathname)
+        || NORMALIZED_SHARD_PATH.test(url.pathname));
   } catch {
     return false;
   }
@@ -134,10 +137,15 @@ async function downloadData(urls) {
         ? undefined
         : cache.put(url, response.clone())
   )));
-  const shardEntries = Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
+  const normalizedEntries = Object.entries(currentHashes)
+    .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
+    .sort(([left], [right]) => left.localeCompare(right));
+  const shardEntries = (normalizedEntries.length > 0 ? normalizedEntries : Object.entries(currentHashes)
+    .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash)))
     .sort(([left], [right]) => left.localeCompare(right));
   if (shardEntries.length === 0) throw new Error('Dashboard activity shard manifest is empty.');
   debugLog('data:ingestion:sw', 'published activity manifest', { shardCount: shardEntries.length });
@@ -160,7 +168,8 @@ async function downloadData(urls) {
     debugLog('data:ingestion:sw', 'cached shard', { name, index: index + 1, shardCount: shardEntries.length });
   }
   for (const request of await cache.keys()) {
-    if (/\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(new URL(request.url).pathname)
+    if ((JSONL_SHARD_PATH.test(new URL(request.url).pathname)
+          || NORMALIZED_SHARD_PATH.test(new URL(request.url).pathname))
         && !currentShardUrls.has(request.url)) {
       await cache.delete(request);
     }

@@ -6,6 +6,7 @@ import {
   cachedJsonlPayloadIdentity
 } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
+import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
 import { normalize } from '../normalize/index.js';
 import {
   readCanonicalBatch,
@@ -28,6 +29,7 @@ const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 3;
 const GH_AW_JSONL_INGESTION_VERSION = 2;
+const NORMALIZED_JSON_INGESTION_VERSION = 1;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
@@ -105,6 +107,20 @@ export async function isCachedGhAwJsonlCurrent(indexedDB, options) {
   return current?.payloadHash === options.payloadIdentity
     && current.adaptationContext === adaptationContext
     && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION;
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {{ payloadIdentity: string, payloadScope: string }} options
+ */
+export async function isNormalizedJsonCurrent(indexedDB, options) {
+  return previouslyIngested(
+    indexedDB,
+    'ingest-normalized-json',
+    options.payloadScope,
+    options.payloadIdentity,
+    NORMALIZED_JSON_INGESTION_VERSION
+  );
 }
 
 /**
@@ -289,6 +305,64 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
   }
+}
+
+/**
+ * Imports a build-time normalized activity shard without browser-side
+ * adaptation or normalization.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {unknown} input
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, payloadIdentity: string, payloadScope: string }} options
+ */
+export function ingestNormalizedJson(indexedDB, input, options) {
+  return serializeIngestion(indexedDB, async () => {
+    let phase = 'adapting';
+    try {
+      if (!input || typeof input !== 'object' || Array.isArray(input)) {
+        throw new TypeError('Normalized activity payload must be an object');
+      }
+      const payload = /** @type {{ schemaVersion?: unknown, sourceRecords?: unknown, batch?: unknown }} */ (input);
+      if (payload.schemaVersion !== CANONICAL_SCHEMA_VERSION) {
+        throw new TypeError(`Unsupported normalized activity schema: ${String(payload.schemaVersion)}`);
+      }
+      if (!payload.batch || typeof payload.batch !== 'object' || Array.isArray(payload.batch)) {
+        throw new TypeError('Normalized activity payload must include a canonical batch');
+      }
+      const batch = /** @type {import('../model/schema.js').CanonicalBatch} */ (payload.batch);
+      for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'jobs', 'sessions', 'events']) {
+        if (!Array.isArray(batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)])) {
+          throw new TypeError(`Normalized activity payload is missing ${collection}`);
+        }
+      }
+      if (await isNormalizedJsonCurrent(indexedDB, options)) {
+        return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+      }
+      phase = 'writing';
+      const storageStartedAt = monotonicNow();
+      const result = await ingestCanonicalBatch(indexedDB, batch, {
+        ...options,
+        preserveWorkflowPackageMappings: true,
+        preserveRepositoryRecords: true
+      });
+      const timings = { parsingMs: 0, normalizationMs: 0, storageMs: monotonicNow() - storageStartedAt };
+      await recordTransaction(indexedDB, {
+        id: await transactionId('ingest-normalized-json', options.payloadScope),
+        kind: 'ingest-normalized-json',
+        createdAt: new Date(options.now ?? Date.now()).toISOString(),
+        payloadScope: options.payloadScope,
+        payloadHash: options.payloadIdentity,
+        ingestionVersion: NORMALIZED_JSON_INGESTION_VERSION,
+        records: Number(payload.sourceRecords ?? 0),
+        committedRecords: result.committedRecords,
+        timings
+      });
+      return { ...result, records: Number(payload.sourceRecords ?? 0), timings };
+    } catch (error) {
+      if (error instanceof CanonicalIngestionError) throw error;
+      throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
+    }
+  });
 }
 
 /**
