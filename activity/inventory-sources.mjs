@@ -332,6 +332,9 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
 
 function configurationPolicyRows(controlSettings) {
   const resolution = controlSettings.policy_resolution ?? {};
+  // No collected policy fields produces an empty Settings source. When any
+  // policy field is present, the resolver status distinguishes "available" and
+  // "unavailable"; any other status means collected but not validated.
   const hasDocument = Object.hasOwn(controlSettings, "policy_document");
   const hasSource = Object.hasOwn(controlSettings, "policy_source");
   const hasResolution = Object.hasOwn(controlSettings, "policy_resolution");
@@ -339,9 +342,6 @@ function configurationPolicyRows(controlSettings) {
     return [];
   }
   const status = resolution.status;
-  // No collected policy fields produces an empty Settings source. When any
-  // policy field is present, the resolver status distinguishes "available" and
-  // "unavailable"; any other status means collected but not validated.
   let diagnostic;
   if (status === "available") {
     diagnostic = {
