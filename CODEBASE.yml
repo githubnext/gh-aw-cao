@@ -190,10 +190,10 @@ commands:
   dashboard_site_typecheck: "cd dashboard/site && npm run typecheck"
 
 validation:
-  commands:
-    - npm run check
-  workflow_sources:
-    - npm run compile
+  command_refs:
+    - full_validation
+  workflow_source_command_refs:
+    - workflow_compile
   architecture:
     - "Verify package contents against root and package aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."
