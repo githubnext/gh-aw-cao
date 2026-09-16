@@ -5452,7 +5452,8 @@
                     "field": "runs",
                     "direction": "desc"
                   }
-                ]
+                ],
+                "limit": 10
               },
               "mark": "chart",
               "chart": "pie",

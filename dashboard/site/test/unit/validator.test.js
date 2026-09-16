@@ -960,7 +960,8 @@ describe('dashboard document validation', () => {
     )).toMatchObject({
       data: {
         source: 'workflow-inventory',
-        'order-by': [{ field: 'runs', direction: 'desc' }]
+        'order-by': [{ field: 'runs', direction: 'desc' }],
+        limit: 10
       },
       mark: 'chart',
       chart: 'pie',
