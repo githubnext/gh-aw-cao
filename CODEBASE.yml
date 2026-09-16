@@ -109,13 +109,13 @@ dependencies:
   - activity_jsonl_shards -> dashboard_publisher
   - dashboard_publisher -> browser_data_worker
   - browser_data_worker -> indexeddb_projection
-  - indexeddb_projection -> dashboard_language_queries
+  - dashboard_language_queries -> browser_data_worker
   - dashboard_language_queries -> dashboard_ui
 
 boundaries:
   - subject: policy_resolution
     may_depend_on:
-      - reviewed workflow revision
+      - reviewed_workflow_revision
     must_not_depend_on:
       - credentials
   - subject: orchestrator
@@ -250,6 +250,11 @@ validation:
     - commands.repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
     - commands.repository_root.entries.workflow_compile_locks
+  package_lifecycle_command_refs:
+    - commands.repository_root.entries.package_lifecycle_tests
+    - commands.repository_root.entries.package_root_tests
+  load_command_refs:
+    - commands.repository_root.entries.load_tests
   control_source_command_refs:
     - commands.repository_root.entries.control_typecheck
     - commands.repository_root.entries.tests
