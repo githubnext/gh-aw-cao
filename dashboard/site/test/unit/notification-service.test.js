@@ -46,6 +46,7 @@ describe('dashboard notification service', () => {
     const service = createNotificationService(document);
     const handle = service.publish({
       message: 'Storing data...',
+      icon: 'download',
       detailsSubtitle: 'A local copy is being downloaded in this browser.',
       duration: 0,
       details: Array.from({ length: 105 }, (_, index) => `Step ${index + 1}`)
@@ -58,6 +59,7 @@ describe('dashboard notification service', () => {
     );
 
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.querySelector('.octicon-download')).not.toBeNull();
     expect(details.hidden).toBe(true);
     expect(details.children).toHaveLength(100);
     expect(details.firstElementChild?.textContent).toBe('Step 6');
@@ -80,6 +82,9 @@ describe('dashboard notification service', () => {
       details: ['Parsing complete.', 'Refreshing queries.']
     });
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(/** @type {HTMLElement | null} */ (
+      toggle.querySelector('.dashboard-notification-icon')
+    )?.hidden).toBe(true);
     expect(details.hidden).toBe(false);
     expect(details.textContent).toContain('Refreshing queries.');
     expect(subtitle.textContent).toBe('Cached shards are reused.');

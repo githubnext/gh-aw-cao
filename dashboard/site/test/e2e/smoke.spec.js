@@ -125,7 +125,8 @@ test('ingestion notifications reveal scrollable progress history on click', asyn
     <script type="module">
       import { publishNotification } from 'http://dashboard.test/src/notification-service.js';
       const ingestionNotification = publishNotification({
-        message: 'Storing data...',
+        message: '750 KB/1.5 MB · 3s remaining',
+        icon: 'download',
         duration: 0,
         details: Array.from({ length: 40 }, (_, index) => 'Activity event ' + (index + 1))
       });
@@ -135,11 +136,12 @@ test('ingestion notifications reveal scrollable progress history on click', asyn
     </script>
   `);
 
-  const toggle = page.getByRole('button', { name: /Storing data.*Show ingestion progress history/ });
+  const toggle = page.getByRole('button', { name: /750 KB\/1.5 MB.*Show ingestion progress history/ });
   const details = page.locator('.dashboard-notification-details');
+  await expect(toggle.locator('.octicon-download')).toBeVisible();
   await expect(details).toBeHidden();
   await toggle.click();
-  const collapse = page.getByRole('button', { name: /Storing data.*Hide ingestion progress history/ });
+  const collapse = page.getByRole('button', { name: /750 KB\/1.5 MB.*Hide ingestion progress history/ });
   await expect(collapse).toHaveAttribute('aria-expanded', 'true');
   await expect(details).toBeVisible();
   await expect(details.getByRole('listitem')).toHaveCount(40);
