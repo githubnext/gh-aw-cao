@@ -56,7 +56,7 @@ const USAGE = `Usage:
   cao init
   cao add PACKAGE [GH_AW_ADD_OPTIONS...]
   cao update [GH_AW_UPDATE_OPTIONS...]
-  cao mode (live|preview) PACKAGE...
+  cao mode (live|preview|enabled|disabled) PACKAGE...
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
@@ -443,10 +443,11 @@ export async function updateCaoPackages(ghAwOptions = [], {
 }
 
 export async function setCaoPackageMode(mode, packageNames, {
-  policyPath = DEFAULT_POLICY_PATH
+  policyPath = DEFAULT_POLICY_PATH,
+  execute = spawnSync
 } = {}) {
-  if (mode !== 'live' && mode !== 'preview') {
-    throw new Error('cao mode requires live or preview');
+  if (!['live', 'preview', 'enabled', 'disabled'].includes(mode)) {
+    throw new Error('cao mode requires live, preview, enabled, or disabled');
   }
   if (!Array.isArray(packageNames) || packageNames.length === 0) {
     throw new Error(`cao mode ${mode} requires at least one package`);
@@ -470,15 +471,45 @@ export async function setCaoPackageMode(mode, packageNames, {
     }
   }
 
+  const uniquePackages = [...new Set(packageNames)];
+  if (mode === 'enabled' || mode === 'disabled') {
+    const declarations = [];
+    for (const packageName of uniquePackages) {
+      const declaration = await readInstalledCaoDeclaration(packageName);
+      if (!declaration) {
+        throw new Error(`Package ${packageName} is missing .github/aw/${packageName}/cao.json`);
+      }
+      declarations.push(declaration);
+    }
+    const workflows = [...new Set(declarations.flatMap((declaration) => [
+      declaration.orchestrator,
+      ...Object.values(declaration.workers)
+    ]))];
+    const ghAwCommand = mode === 'enabled' ? 'enable' : 'disable';
+    const result = execute('gh', ['aw', ghAwCommand, ...workflows], {
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024
+    });
+    if (result.error || result.status !== 0) {
+      throw new Error(`gh aw ${ghAwCommand} failed: ${commandFailureMessage(result, 'unknown error')}`);
+    }
+    return {
+      command: 'mode',
+      mode,
+      packages: uniquePackages,
+      workflows
+    };
+  }
+
   const policyMode = mode === 'preview' ? 'review' : 'live';
-  for (const packageName of new Set(packageNames)) {
+  for (const packageName of uniquePackages) {
     packages[packageName] = { ...packages[packageName], mode: policyMode };
   }
   await writeJsonAtomically(path.resolve(policyPath), policy);
   return {
     command: 'mode',
     mode,
-    packages: [...new Set(packageNames)],
+    packages: uniquePackages,
     policy: policyPath
   };
 }

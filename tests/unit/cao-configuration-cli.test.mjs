@@ -90,6 +90,94 @@ test("cao mode changes configured packages between live and preview atomically",
   }
 });
 
+test("cao mode enables and disables every workflow declared by a package", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-enabled-"));
+  const previousDirectory = process.cwd();
+  const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  const declarationDirectory = path.join(root, ".github", "aw", "dependabot");
+  const calls = [];
+  try {
+    await mkdir(declarationDirectory, { recursive: true });
+    await writeFile(path.join(declarationDirectory, "cao.json"), JSON.stringify({
+      package: "dependabot",
+      orchestrator: "dependabot",
+      workers: {
+        "release-train-updater": "dependabot-release-train-updater",
+        "security-auditor": "dependabot-security-auditor",
+      },
+    }));
+    await mkdir(path.dirname(policyPath), { recursive: true });
+    await writeFile(policyPath, '{"version":1,"control-plane":{"packages":{"dependabot":{"mode":"review"}}}}\n');
+    process.chdir(root);
+    const execute = (command, arguments_) => {
+      calls.push([command, arguments_]);
+      return { status: 0, stdout: "", stderr: "" };
+    };
+
+    const enabled = await setCaoPackageMode("enabled", ["dependabot"], { policyPath, execute });
+    const disabled = await setCaoPackageMode("disabled", ["dependabot"], { policyPath, execute });
+
+    assert.deepEqual(calls, [
+      ["gh", ["aw", "enable", "dependabot", "dependabot-release-train-updater", "dependabot-security-auditor"]],
+      ["gh", ["aw", "disable", "dependabot", "dependabot-release-train-updater", "dependabot-security-auditor"]],
+    ]);
+    assert.deepEqual(enabled.workflows, [
+      "dependabot",
+      "dependabot-release-train-updater",
+      "dependabot-security-auditor",
+    ]);
+    assert.equal(disabled.mode, "disabled");
+    assert.equal(
+      await readFile(policyPath, "utf8"),
+      '{"version":1,"control-plane":{"packages":{"dependabot":{"mode":"review"}}}}\n',
+    );
+  } finally {
+    process.chdir(previousDirectory);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("cao mode validates workflow declarations before invoking gh aw", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-declarations-"));
+  const previousDirectory = process.cwd();
+  const policyPath = path.join(root, ".github", "workflows", "cao.json");
+  let calls = 0;
+  try {
+    await mkdir(path.dirname(policyPath), { recursive: true });
+    await writeFile(policyPath, '{"version":1,"control-plane":{"packages":{"dependabot":{},"repo-assist":{}}}}\n');
+    await mkdir(path.join(root, ".github", "aw", "dependabot"), { recursive: true });
+    await writeFile(path.join(root, ".github", "aw", "dependabot", "cao.json"), JSON.stringify({
+      package: "dependabot",
+      orchestrator: "dependabot",
+      workers: { worker: "dependabot-worker" },
+    }));
+    process.chdir(root);
+
+    await assert.rejects(
+      setCaoPackageMode("enabled", ["dependabot", "repo-assist"], {
+        policyPath,
+        execute() {
+          calls += 1;
+          return { status: 0, stdout: "", stderr: "" };
+        },
+      }),
+      /Package repo-assist is missing .*cao\.json/,
+    );
+    assert.equal(calls, 0);
+
+    await assert.rejects(
+      setCaoPackageMode("disabled", ["dependabot"], {
+        policyPath,
+        execute: () => ({ status: 1, stdout: "", stderr: "disable failed" }),
+      }),
+      /gh aw disable failed: disable failed/,
+    );
+  } finally {
+    process.chdir(previousDirectory);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("cao mode validates every package before changing the policy", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-invalid-"));
   const policyPath = path.join(root, "cao.json");
@@ -108,7 +196,7 @@ test("cao mode validates every package before changing the policy", async () => 
     );
     await assert.rejects(
       setCaoPackageMode("review", ["dependabot"], { policyPath }),
-      /cao mode requires live or preview/,
+      /cao mode requires live, preview, enabled, or disabled/,
     );
     await assert.rejects(
       setCaoPackageMode("preview", [], { policyPath }),
