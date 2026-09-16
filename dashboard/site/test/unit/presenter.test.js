@@ -3833,6 +3833,12 @@ describe('presenter built-in and custom pages', () => {
   });
 
   it('removes page navigation handlers when navigation is disposed', async () => {
+    /** @type {FrameRequestCallback[]} */
+    const animationFrames = [];
+    const requestAnimationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
     const root = document.createElement('div');
     root.innerHTML = `
       <a data-nav-page-id="first" href="#page-first">First</a>
@@ -3854,7 +3860,14 @@ describe('presenter built-in and custom pages', () => {
       const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
       expect(renderPage).toHaveBeenCalledOnce();
 
+      root.querySelector('[data-nav-page-id="second"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
+      expect(animationFrames).toHaveLength(1);
       disposeNavigation();
+      while (animationFrames.length > 0) {
+        animationFrames.shift()?.(0);
+      }
       window.history.replaceState(null, '', '/#page-second');
       window.dispatchEvent(new HashChangeEvent('hashchange'));
       root.querySelector('[data-nav-page-id="second"]')?.dispatchEvent(
@@ -3864,6 +3877,7 @@ describe('presenter built-in and custom pages', () => {
 
       expect(renderPage).toHaveBeenCalledOnce();
     } finally {
+      requestAnimationFrame.mockRestore();
       root.remove();
       window.history.replaceState(null, '', '/');
     }

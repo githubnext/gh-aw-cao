@@ -771,6 +771,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   let pageOwner = new AbortController();
   const navigationOwner = new AbortController();
   const disposeNavigation = () => {
+    activationRevision += 1;
     navigationOwner.abort();
     pageOwner.abort();
   };
