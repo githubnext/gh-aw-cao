@@ -1956,11 +1956,6 @@
             "function": "concat",
             "args": [{ "field": "repository-slug" }, { "value": ":" }, { "field": "workflow" }]
           },
-          {
-            "as": "workflow-ranking-label",
-            "function": "concat",
-            "args": [{ "field": "repository-slug" }, { "value": " · " }, { "field": "workflow-display-name" }]
-          },
           { "as": "encoded-workflow", "function": "url-encode", "args": [{ "field": "workflow-identity" }] },
           {
             "as": "workflow-dashboard-href",
@@ -1990,7 +1985,7 @@
           { "field": "repository-slug", "as": "repository" },
           { "field": "workflow" },
           { "field": "workflow-display-name", "as": "workflow-name" },
-          { "field": "workflow-ranking-label", "as": "workflow-label" },
+          { "field": "workflow-identity", "as": "workflow-label" },
           { "field": "declared-role", "as": "workflow-role" },
           { "field": "declared-mode", "as": "rollout-mode" },
           { "field": "declared-registration", "as": "workflow-active" },
