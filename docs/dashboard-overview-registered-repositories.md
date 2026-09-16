@@ -1,9 +1,9 @@
 ---
-title: Registered repositories
+title: Repositories registered
 description: Understand the repository-scope count in Overview.
 ---
 
-Registered repositories shows how many distinct repositories are represented
+Repositories registered shows how many distinct repositories are represented
 in the dashboard's retained control-plane scope. It describes scope, not how
 many repositories received work during the selected period.
 
@@ -20,3 +20,9 @@ inventory to count registered target repositories that received a delivery.
 
 When repository evidence is unavailable, the component reports that state
 instead of presenting the missing scope as zero.
+
+## When to investigate
+
+Open Repositories when the count changes unexpectedly or does not match the
+reviewed rollout policy. Compare the inventory with delivery evidence before
+concluding that every registered repository received work.

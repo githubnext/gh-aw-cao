@@ -1,16 +1,16 @@
 ---
-title: Overview
-description: Learn what each part of Overview tells you and which dashboard data it uses.
+title: Overview component model
+description: Understand the component boundaries, responsive behavior, and data queries behind Overview.
 ---
 
-The Overview view brings the current state of your operation into one place.
-Each part answers a focused question using results declared in Dashboard
-Language.
+This page explains how the Overview view is composed. Start with the
+[operator guide](dashboard-overview.md) if you want to interpret the metrics;
+use this page when you are building, reviewing, or testing the interface.
 
 ## Built from focused components
 
-We break views into focused components so each part can be understood, managed,
-and tested independently. Components own presentation and interaction while
+Overview uses focused components so each part can be understood, maintained,
+and tested independently. Components own presentation and interaction, while
 Dashboard Language owns filtering, joins, and operational calculations. This
 keeps the interface consistent without hiding business logic in page code.
 
@@ -21,7 +21,7 @@ keeps the interface consistent without hiding business logic in page code.
 
 ## Responsive by design
 
-We aim to give every view a deliberate mobile experience. Components keep the
+Every view has a deliberate mobile experience. Components keep the
 same meaning, data, and reading order, but their layout may differ when a narrow
 screen needs a better way to scan or compare information. Mobile does not have
 to reproduce the desktop arrangement or simply stack every block.
@@ -45,5 +45,5 @@ is removed.
 - [Value gains](dashboard-overview-value-gains.md) explains the grader evidence
 	associated with operational value.
 
-Each guide describes what the component is for, how to interpret it, and which
-Dashboard Language query supplies its data.
+Each guide follows the same structure: what the component shows, how to read
+it, which Dashboard Language query supplies its data, and when to investigate.

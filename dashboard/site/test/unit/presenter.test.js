@@ -1492,8 +1492,23 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('persists one chart or table mode across eligible dashboard pages', () => {
+  it('persists the selected view mode and paints a skeleton before hydrating a revealed table', async () => {
     window.localStorage.clear();
+    const observerDescriptor = Object.getOwnPropertyDescriptor(window, 'IntersectionObserver');
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    });
+    /** @type {FrameRequestCallback[]} */
+    const animationFrames = [];
+    const requestAnimationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -1563,15 +1578,31 @@ describe('presenter built-in and custom pages', () => {
       toggle?.click();
 
       expect(rendered.dataset.mobileViewMode).toBe('table');
+      expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).not.toBeNull();
       expect(toggle?.getAttribute('aria-label')).toBe('Show chart view');
       expect(toggle?.getAttribute('aria-pressed')).toBe('true');
       expect(toggle?.querySelector('.octicon-graph')).not.toBeNull();
       expect(window.localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode')).toBe('table');
 
+      await vi.waitFor(() => expect(animationFrames).toHaveLength(1));
+      animationFrames.shift()?.(0);
+      expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).not.toBeNull();
+      expect(animationFrames).toHaveLength(1);
+      animationFrames.shift()?.(0);
+      await vi.waitFor(() => {
+        expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).toBeNull();
+      });
+
       const restored = renderDashboard({ document, sources });
       expect(restored.dataset.mobileViewMode).toBe('table');
       expect(restored.querySelector('.mobile-view-mode-toggle')?.getAttribute('aria-label')).toBe('Show chart view');
     } finally {
+      requestAnimationFrame.mockRestore();
+      if (observerDescriptor) {
+        Object.defineProperty(window, 'IntersectionObserver', observerDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'IntersectionObserver');
+      }
       window.localStorage.clear();
     }
   });

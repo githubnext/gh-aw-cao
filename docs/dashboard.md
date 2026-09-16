@@ -3,9 +3,9 @@ title: At a glance
 description: See what is moving, what needs attention, and whether the evidence is ready for follow-up.
 ---
 
-The dashboard gives you an at-a-glance view of activity across your enrolled
-repositories. It organizes that activity into views, with each view answering a
-different operational question. Open one to see:
+The dashboard is the operational view of your Central Agentic Ops control
+plane. It turns retained activity evidence into focused views, each designed to
+answer a specific question:
 
 - What work is moving now?
 - What has reached the repositories in scope?
@@ -17,16 +17,16 @@ different operational question. Open one to see:
 	<img class="docs-theme-diagram-dark" alt="The selected dashboard view sends a Dashboard Language query to structured data and receives results" src="/gh-aw-cao/assets/dashboard-view-system-dark.svg">
 </div>
 
-Behind each view, the flow stays simple:
+## How it works
 
-1. **Choose a view.** The Dashboard keeps navigation on the left and opens the
-	selected View on the right.
-2. **The view requests its data.** Its UI components send a declarative query,
-	written in [Dashboard Language](dashboard-language-specification.md), to the
-	shared canonical Data.
-3. **Read the results.** Matching repository, workflow, and run records return
-	to the open view. When newly downloaded evidence changes the local data, the
-	view refreshes its result.
+Every view follows the same data flow:
+
+1. **Activity collects evidence.** The Activity workflow publishes a bounded
+	snapshot of workflow activity.
+2. **The dashboard prepares the data.** A Web Worker normalizes the snapshot
+	into a consistent data model and runs declarative queries.
+3. **The active view presents the result.** When the local data changes, the
+	query runs again and the view updates.
 
 The dashboard is not a live feed. It reads the latest snapshot collected by the
 Activity workflow. [Data ingestion](dashboard-data-ingestion.md) follows that
@@ -47,6 +47,9 @@ following up, check the availability, completeness, and freshness shown with it:
 
 These distinctions keep missing information from looking like a healthy zero.
 
+See the [Glossary](glossary.md) for definitions of Dashboard terms such as
+rollout mode, safe output, outcome, and operational value.
+
 ## Know the boundary
 
 The dashboard helps you observe and investigate operations. It does not start
@@ -56,7 +59,12 @@ its reviewed workflows and policy.
 
 ## Continue reading
 
-- **Views → Overview** identifies what each part of the default view tells you.
-- **Data ingestion** follows evidence from GitHub Actions into the dashboard.
-- **Data model** explains the records, relationships, and evidence states behind
-	each result.
+- Start with [Overview](dashboard-overview.md) to understand the default
+	operational view.
+- Read [Data ingestion](dashboard-data-ingestion.md) to follow evidence from
+	GitHub Actions into the browser.
+- Use the [Data model](dashboard-data-model.md) to understand entities,
+	relationships, identities, and retention.
+- Build views with the [Dashboard Language guide](dashboard-language.md), then
+	consult the [language specification](dashboard-language-specification.md) and
+	[view catalog](dashboard-view-catalog.md) for complete reference material.

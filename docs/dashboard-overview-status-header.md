@@ -26,3 +26,9 @@ into the relevant run, output, or value view before deciding what happened.
 
 If status evidence is unavailable, the header says so instead of inferring a
 healthy state.
+
+## When to investigate
+
+Investigate when the heading reports strain, needs attention, or is unavailable.
+Start with failed or active Runs, then check retained outputs and Operational
+value when run evidence does not explain the status.

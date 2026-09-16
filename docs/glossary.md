@@ -26,6 +26,10 @@ An evidence-backed warning that a workflow may be harder to control, secure, ope
 
 A general description for work performed with limited manual intervention. Automation is not a distinct CAO entity or workflow role. Prefer the specific term **operation**, **coordinator**, **worker**, or **run** when naming something in the product or documentation.
 
+## Canonical data
+
+The consistent entities, identities, and relationships produced by applying the dashboard data model to published activity evidence. Canonical data is source-neutral derived state, not a new source of authority.
+
 ## Coordinator
 
 The CAO operator-facing name for the workflow that selects and dispatches work for an operation. The canonical gh-aw term is [Orchestrator Workflow](https://github.github.com/gh-aw/reference/glossary/#orchestrator-workflow). Workflow source, policy, package manifests, and other technical contracts use the role name `orchestrator`.
@@ -33,6 +37,10 @@ The CAO operator-facing name for the workflow that selects and dispatches work f
 ## Control plane
 
 The repository that hosts CAO workflows and policy. It coordinates work across explicitly enrolled target repositories. This is CAO's implementation of the gh-aw [Central Control Plane](https://github.github.com/gh-aw/reference/glossary/#central-control-plane) pattern.
+
+## Dashboard Language
+
+The declarative YAML vocabulary used to define dashboard queries, pages, views, and presentation. It keeps data selection and operational calculations in the dashboard data worker rather than in UI components. See the [Dashboard Language guide](dashboard-language.md) and [specification](dashboard-language-specification.md).
 
 ## Declarative query
 
@@ -62,6 +70,14 @@ A person who configures, supervises, pauses, reviews, or evaluates operations. D
 
 The technical workflow role that discovers, filters, ranks, selects, and dispatches work within resolved policy. An orchestrator does not mutate target repositories directly. In operator-facing interfaces, call this workflow the **coordinator**. See the canonical gh-aw definition of [Orchestrator Workflow](https://github.github.com/gh-aw/reference/glossary/#orchestrator-workflow).
 
+## Outcome
+
+A later repository-state observation of what happened to a safe output, such as accepted, rejected, ignored, pending, or closed. An outcome is distinct from the status or conclusion of the workflow run that produced the output.
+
+## Operational value
+
+Evidence-backed attainment for a specific operation and value contract. Operational value is not inferred from run volume, safe-output count, or activity alone.
+
 ## Package
 
 A distributable collection of an operation's workflows, shared dependencies, and manifest.
@@ -69,6 +85,10 @@ A distributable collection of an operation's workflows, shared dependencies, and
 ## Run
 
 One execution of a coordinator, worker, or standalone workflow. A coordinator run may produce many dispatches; each dispatch starts a separate worker run. A run records activity and evidence, but successful completion alone does not prove operational value. Do not use **session** as a synonym for run; see **Session** for the distinct canonical entity.
+
+## Rollout mode
+
+The effective mode in which an operation runs for an admitted target: `review`, `live`, or `unknown` when retained evidence does not identify the mode. Review mode directs safe outputs to a review destination; live mode requires explicit authority in the control repository's reviewed policy.
 
 ## Safe output
 

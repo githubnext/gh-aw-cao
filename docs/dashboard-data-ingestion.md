@@ -3,7 +3,10 @@ title: Data ingestion
 description: Understand how Central Agentic Ops collects, normalizes, retains, and projects dashboard data.
 ---
 
-The dashboard collects operational observations into authoritative JSONL, applies the shared data model, and builds disposable projections for browser and local use.
+Data ingestion moves operational evidence from GitHub Actions into the browser
+dashboard and local tools. Read this page to understand collection boundaries,
+retention, failure behavior, and the available `cao` commands. For entity
+identities and relationships, use the [Data model](dashboard-data-model.md).
 
 ## Data flow
 
@@ -40,7 +43,7 @@ cao audit-jsonl
 
 The report separates raw observations, unique raw runs, enriched observations, unique enriched runs, repeated observations, unenriched runs, and the canonical record counts that ingestion will produce.
 
-## Historical archives
+## Create a historical archive
 
 For a full-detail local archive, collect into `_activity/gh-aw-history.jsonl`, then audit and ingest it with unbounded retention:
 
@@ -60,7 +63,7 @@ cao doctor \
 
 "Full" means all run summaries discoverable in the selected range plus every artifact still available from GitHub. Expired artifacts remain visible as unenriched runs rather than being silently counted as complete.
 
-## Browser ingestion
+## Browser data pipeline
 
 The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic agentic Sessions and Events. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
@@ -92,7 +95,7 @@ IndexedDB is disposable derived state. Clearing browser storage reconstructs it 
 
 SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Database owners map their schema to the contract and export static JSON before deployment. Local and deployed environments use the same contract, validator, adapter, and canonical queries; the static dashboard never opens a database connection.
 
-## Local SQLite
+## Use local SQLite
 
 Node.js 24 can run the same ingestion and query layer against a persistent SQLite file. The local adapter implements only the IndexedDB operations used by the canonical dashboard store; the browser continues to use native IndexedDB.
 

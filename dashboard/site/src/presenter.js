@@ -16,7 +16,7 @@ import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilte
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
-import { disconnectLazyViews, enableLazyViews, renderLazyView } from './components/lazy-view.js';
+import { cancelLazyViewHydration, disconnectLazyViews, enableLazyViews, hydrateLazyViewAfterPaint, renderLazyView } from './components/lazy-view.js';
 import { enableFullViewScrollForwarding, syncFullViewMode as syncFullViewModeForPage } from './components/full-view-scroll.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
@@ -789,6 +789,22 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     // Storage can be unavailable in embedded or privacy-restricted contexts.
   }
   root.dataset.mobileViewMode = mobileViewMode;
+  /** @param {'chart'|'table'} mode @param {HTMLElement | undefined} page */
+  const setMobileViewMode = (mode, page) => {
+    const pendingTable = page?.querySelector('[data-mobile-view-mode="table"][data-lazy-view]');
+    if (pendingTable instanceof HTMLElement) {
+      if (mode === 'table') void hydrateLazyViewAfterPaint(pendingTable);
+      else cancelLazyViewHydration(pendingTable);
+    }
+    mobileViewMode = mode;
+    root.dataset.mobileViewMode = mode;
+    try {
+      globalThis.window?.localStorage?.setItem(MOBILE_VIEW_MODE_STORAGE_KEY, mode);
+    } catch {
+      // The display mode still works for the current page when storage is unavailable.
+    }
+    syncFullViewMode(page);
+  };
   /** @param {HTMLElement | undefined} page */
   const syncFullViewMode = (page) => {
     const views = page
@@ -820,14 +836,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   };
   if (mobileViewModeToggle instanceof HTMLButtonElement) {
     mobileViewModeToggle.addEventListener('click', () => {
-      mobileViewMode = mobileViewMode === 'chart' ? 'table' : 'chart';
-      root.dataset.mobileViewMode = mobileViewMode;
-      try {
-        globalThis.window?.localStorage?.setItem(MOBILE_VIEW_MODE_STORAGE_KEY, mobileViewMode);
-      } catch {
-        // The display mode still works for the current page when storage is unavailable.
-      }
-      syncFullViewMode(pages.find((candidate) => candidate.dataset.pageId === activePageId));
+      const page = pages.find((candidate) => candidate.dataset.pageId === activePageId);
+      setMobileViewMode(mobileViewMode === 'chart' ? 'table' : 'chart', page);
     });
     root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.addEventListener?.('change', () => {
       syncFullViewMode(pages.find((candidate) => candidate.dataset.pageId === activePageId));

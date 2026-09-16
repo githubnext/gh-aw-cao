@@ -127,10 +127,13 @@ export default defineConfig({
             { label: "Data ingestion", link: "/dashboard-data-ingestion/" },
             { label: "Data model", link: "/dashboard-data-model/" },
             { label: "Language", link: "/dashboard-language/" },
+            { label: "Language specification", link: "/dashboard-language-specification/" },
+            { label: "View catalog", link: "/dashboard-view-catalog/" },
             {
               label: "Views",
               items: [
                 { label: "Overview", link: "/dashboard-overview/" },
+                { label: "Overview components", link: "/dashboard-overview-components/" },
               ],
             },
           ],

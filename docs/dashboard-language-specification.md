@@ -5,8 +5,6 @@ sidebar:
   order: 1362
 ---
 
-# Dashboard Language Specification
-
 **Version:** 0.1.0
 **Status:** Working Draft
 **Editor:** GitHub Agentic Workflows Team
@@ -20,6 +18,11 @@ This specification defines a small, declarative, YAML-based language for describ
 ## Status of This Document
 
 This document is a Working Draft and may be updated, replaced, or made obsolete. It is intended for review and implementation feedback and is not a final recommendation.
+
+For an introduction and a small query example, start with the
+[Dashboard Language guide](dashboard-language.md). Use this specification when
+implementing a validator or presenter, authoring advanced dashboard documents,
+or checking conformance requirements.
 
 The GitHub Agentic Workflows Team maintains this document. Version numbers follow Semantic Versioning. Working Draft publication does not imply endorsement by any standards body.
 
