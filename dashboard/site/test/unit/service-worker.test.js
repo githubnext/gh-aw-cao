@@ -89,6 +89,31 @@ async function dispatchExtendedEvent(listener, event) {
 }
 
 describe('dashboard service worker', () => {
+  it('prefers normalized activity shards and reuses their published hashes', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
+    const payloadHashes = JSON.stringify({
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
+      [normalizedName]: 'd'.repeat(64)
+    });
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.json') ? payloadHashes : '[]'
+    ));
+    const completed = vi.fn();
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'DOWNLOAD_DATA',
+        urls: ['https://example.test/dashboard/payload-hashes.json']
+      },
+      ports: [{ postMessage: completed }]
+    });
+
+    expect(completed).toHaveBeenCalledWith(expect.objectContaining({ type: 'DOWNLOAD_COMPLETE' }));
+    expect(entries.has(`https://example.test/dashboard/${normalizedName}`)).toBe(true);
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/logs-1.jsonl'))).toBe(false);
+  });
+
   it('downloads configured dashboard data during periodic background sync with no page open', async () => {
     const { listeners, worker, fetch, entries } = serviceWorkerHarness();
     const payloadHashes = JSON.stringify({

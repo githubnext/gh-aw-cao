@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -208,6 +208,35 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
         workflows: 1,
         runs: 1,
         sessions: 2
+      }
+    });
+
+    const normalizedDirectory = join(filename, '..', 'normalized');
+    const manifestPath = join(filename, '..', 'payload-hashes.json');
+    const hashes = JSON.parse(execFileSync(process.execPath, [
+      script,
+      'hash-payloads',
+      '--database', filename,
+      '--shard-dir', shardDirectory,
+      '--normalized-dir', normalizedDirectory,
+      '--output', manifestPath
+    ], { encoding: 'utf8' }));
+    const normalizedName = readdirSync(normalizedDirectory).find((name) => name.endsWith('.json'));
+    expect(normalizedName).toMatch(/^[a-f0-9]{64}-[a-f0-9]{16}\.json$/);
+    expect(hashes).toMatchObject({
+      'dashboard.sqlite': expect.stringMatching(/^[a-f0-9]{64}$/),
+      'shards/cached-v2.jsonl': expect.stringMatching(/^[a-f0-9]{64}$/),
+      [`normalized/${normalizedName}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
+    });
+    expect(JSON.parse(readFileSync(join(normalizedDirectory, normalizedName), 'utf8'))).toMatchObject({
+      schemaVersion: 8,
+      sourceRecords: 3,
+      batch: {
+        repositories: expect.any(Array),
+        workflows: expect.any(Array),
+        runs: expect.any(Array),
+        sessions: expect.any(Array),
+        events: expect.any(Array)
       }
     });
 

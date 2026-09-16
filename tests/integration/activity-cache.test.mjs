@@ -5,13 +5,14 @@ import test from "node:test";
 const cachePaths = [
   "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
+  "${{ runner.temp }}/cao-activity/gh-aw-logs-normalized",
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
   "${{ runner.temp }}/cao-activity/drain3_weights.json",
 ];
 
-function assertCachePathSets(workflow, expectedCount) {
+function assertCachePathSets(workflow, expectedCount, expectedPaths = cachePaths) {
   const pathSets = [
     ...workflow.matchAll(
       /uses: actions\/cache\/(?:restore|save)@[^\n]+\n\s+with:\n\s+path: \|\n((?:\s+\$\{\{ runner\.temp \}\}\/[^\n]+\n)+)/g,
@@ -20,7 +21,7 @@ function assertCachePathSets(workflow, expectedCount) {
 
   assert.equal(pathSets.length, expectedCount);
   for (const pathSet of pathSets) {
-    assert.deepEqual(pathSet, cachePaths);
+    assert.deepEqual(pathSet, expectedPaths);
   }
 }
 
@@ -100,5 +101,5 @@ test("activity cache consumers use the producer cache version paths", async () =
   ]);
 
   assertCachePathSets(dashboardWorkflow, 1);
-  assertCachePathSets(sharedCache, 2);
+  assertCachePathSets(sharedCache, 2, cachePaths.filter((path) => !path.endsWith("/gh-aw-logs-normalized")));
 });

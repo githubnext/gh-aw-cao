@@ -2,7 +2,13 @@ import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ingestCachedGhAwJsonl, ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
+import {
+  ingestCachedGhAwJsonl,
+  ingestDashboardSources,
+  ingestGhAwLogs,
+  ingestNormalizedJson,
+  ingestSqlExport
+} from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
 import {
   DATABASE_NAME,
@@ -70,6 +76,41 @@ beforeEach(async () => {
 });
 
 describe('canonical source ingestion and queries', () => {
+  it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
+    const payload = {
+      schemaVersion: 8,
+      sourceRecords: 1,
+      batch: {
+        packages: [],
+        repositories: [{
+          id: 'repository:normalized',
+          observedAt: metadata['as-of'],
+          provenance: { source: 'test', sourceId: 'normalized', observedAt: metadata['as-of'] }
+        }],
+        workflows: [],
+        runs: [],
+        jobs: [],
+        sessions: [],
+        events: []
+      }
+    };
+    const options = {
+      payloadIdentity: 'a'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-normalized/shard.json'
+    };
+
+    await expect(ingestNormalizedJson(indexedDB, payload, options)).resolves.toMatchObject({
+      updated: true,
+      records: 1,
+      timings: { parsingMs: 0, normalizationMs: 0, storageMs: expect.any(Number) }
+    });
+    await expect(ingestNormalizedJson(indexedDB, payload, options)).resolves.toMatchObject({
+      updated: false,
+      skipped: true
+    });
+    expect((await readCanonicalBatch(indexedDB)).repositories).toEqual(payload.batch.repositories);
+  });
+
   it('upserts current sources for immediate canonical queries', async () => {
     await expect(ingestDashboardSources(indexedDB, sources)).resolves.toMatchObject({
       updated: true

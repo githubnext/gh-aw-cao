@@ -313,8 +313,13 @@ prefix in the shared shard directory. Repeated collection SHALL reuse known
 shards, and canonical ingestion SHALL skip a shard whose content hash already
 exists in the Transaction ledger. Repository collection MAY be serial to bound
 concurrent GitHub API pressure and reuse shared analysis state. The consolidated
-The `gh-aw-logs-shards/` directory SHALL be the publication transport of retained
-shards, not an additional authoritative source.
+The `gh-aw-logs-shards/` directory SHALL retain the authoritative collection
+transport. Dashboard publication SHOULD additionally provide
+`gh-aw-logs-normalized/` JSON payloads containing content-addressed canonical
+batches generated from those shards. Browsers SHALL prefer those payloads to
+avoid source adaptation and normalization, use their `payload-hashes.json`
+identities to skip unchanged downloads and imports, and fall back to the source
+JSONL shards when normalized payloads are unavailable.
 
 ## 5.4 Canonical join contract
 

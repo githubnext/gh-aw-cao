@@ -145,16 +145,31 @@ describe('canonical dashboard worker retention updates', () => {
     const jsonlRequests = [];
     /** @type {string[]} */
     const requestUrls = [];
+    const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
+    const normalizedPayload = {
+      schemaVersion: 8,
+      sourceRecords: 0,
+      batch: {
+        packages: [],
+        repositories: [],
+        workflows: [],
+        runs: [],
+        jobs: [],
+        sessions: [],
+        events: []
+      }
+    };
     const payloadHashes = {
       'gh-aw-logs.sqlite': 'b'.repeat(64),
-      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64)
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
+      [normalizedName]: 'd'.repeat(64)
     };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       requestUrls.push(String(input));
       if (String(input).endsWith('/payload-hashes.json')) return Response.json(payloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
-      return new Response('', { headers: { etag: '"generation-b"' } });
+      return Response.json(normalizedPayload, { headers: { etag: '"generation-b"' } });
     });
     dispatch({
       id: 3,
@@ -181,16 +196,16 @@ describe('canonical dashboard worker retention updates', () => {
     expect(requestUrls).toEqual([
       'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json',
-      'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
+      `https://dashboard.example/${normalizedName}`,
       'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json'
     ]);
     expect((await readTransactions(indexedDB))
-      .filter((transaction) => transaction.kind === 'ingest-jsonl'))
+      .filter((transaction) => transaction.kind === 'ingest-normalized-json'))
       .toEqual([
         expect.objectContaining({
-          payloadScope: 'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
-          payloadHash: payloadHashes['gh-aw-logs-shards/logs-1.jsonl'],
+          payloadScope: `https://dashboard.example/${normalizedName}`,
+          payloadHash: payloadHashes[normalizedName],
           committedRecords: expect.any(Number)
         })
       ]);
@@ -198,13 +213,13 @@ describe('canonical dashboard worker retention updates', () => {
     const updatedPayloadHashes = {
       ...payloadHashes,
 
-      'gh-aw-logs-shards/logs-1.jsonl': 'e'.repeat(64)
+      [normalizedName]: 'e'.repeat(64)
     };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       if (String(input).endsWith('/payload-hashes.json')) return Response.json(updatedPayloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
-      return new Response('', { headers: { etag: '"generation-c"' } });
+      return Response.json(normalizedPayload, { headers: { etag: '"generation-c"' } });
     });
     dispatch({
       id: 5,

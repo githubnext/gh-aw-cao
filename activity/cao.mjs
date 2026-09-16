@@ -887,7 +887,7 @@ async function hashActivityPayloads({ databasePath, shardDirectory, normalizedDi
     const inventorySource = inventoryPath ? await readFile(inventoryPath, 'utf8') : '{}';
     const workflowHints = workflowHintsFromInventory(JSON.parse(inventorySource));
     const normalizationContext = createHash('sha256')
-      .update(`${CANONICAL_SCHEMA_VERSION}\0${inventorySource}`)
+      .update(`${CANONICAL_SCHEMA_VERSION}\0${JSON.stringify(workflowHints)}`)
       .digest('hex')
       .slice(0, 16);
     const retainedNormalized = new Set();
@@ -904,7 +904,10 @@ async function hashActivityPayloads({ databasePath, shardDirectory, normalizedDi
         await stat(normalizedPath);
       } catch (error) {
         if (!(error && error.code === 'ENOENT')) throw error;
-        const adapted = await adaptCachedGhAwJsonlStream(createReadStream(shardPath), { workflowHints });
+        const adapted = await adaptCachedGhAwJsonlStream(createReadStream(shardPath), {
+          workflowHints,
+          payloadIdentity: rawHash
+        });
         const payload = {
           schemaVersion: CANONICAL_SCHEMA_VERSION,
           sourceRecords: adapted.records,
