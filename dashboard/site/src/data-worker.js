@@ -51,8 +51,11 @@ const dashboardQueryMemoization = createDashboardQueryMemoization();
 const dashboardSubscriptions = new Map();
 /** @type {Set<string>} */
 const dirtyDashboardSubscriptions = new Set();
-let subscriptionFlushScheduled = false;
+const SUBSCRIPTION_FLUSH_DELAY_MS = 50;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let subscriptionFlushTimer = null;
 let subscriptionFlushRunning = false;
+let dashboardIngestionCount = 0;
 
 const INGESTION_LOCK_WAIT_MESSAGE = 'Waiting for another dashboard ingestion to finish.';
 
@@ -178,16 +181,16 @@ function scheduleDashboardSubscriptions(ids = dashboardSubscriptions.keys()) {
   for (const id of ids) {
     if (dashboardSubscriptions.has(id)) dirtyDashboardSubscriptions.add(id);
   }
-  if (subscriptionFlushScheduled || subscriptionFlushRunning || dirtyDashboardSubscriptions.size === 0) return;
-  subscriptionFlushScheduled = true;
-  queueMicrotask(() => {
-    subscriptionFlushScheduled = false;
+  if (subscriptionFlushRunning || dashboardIngestionCount > 0 || dirtyDashboardSubscriptions.size === 0) return;
+  if (subscriptionFlushTimer !== null) clearTimeout(subscriptionFlushTimer);
+  subscriptionFlushTimer = setTimeout(() => {
+    subscriptionFlushTimer = null;
     void flushDashboardSubscriptions();
-  });
+  }, SUBSCRIPTION_FLUSH_DELAY_MS);
 }
 
 async function flushDashboardSubscriptions() {
-  if (subscriptionFlushRunning) return;
+  if (subscriptionFlushRunning || dashboardIngestionCount > 0) return;
   subscriptionFlushRunning = true;
   try {
     while (dirtyDashboardSubscriptions.size > 0) {
@@ -198,9 +201,9 @@ async function flushDashboardSubscriptions() {
         for (const id of ids) dirtyDashboardSubscriptions.add(id);
         break;
       }
-      await Promise.all(ids.map(async (id) => {
+      for (const id of ids) {
         const subscription = dashboardSubscriptions.get(id);
-        if (!subscription) return;
+        if (!subscription) continue;
         try {
           const pagination = subscription.revision === dashboard.revision
             ? subscription.pagination
@@ -230,7 +233,7 @@ async function flushDashboardSubscriptions() {
           }
         }
 
-      }));
+      }
     }
 
     /** @param {Record<string, { limit: number, continuationToken?: string }>} pagination */
@@ -329,6 +332,7 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
+      dashboardIngestionCount += 1;
       const progress = startIngestionProgress();
       const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       if (!activity) progress.start();
@@ -561,6 +565,8 @@ export function processDataRequest(request, signal) {
           : projected;
       } finally {
         progress.complete();
+        dashboardIngestionCount = Math.max(0, dashboardIngestionCount - 1);
+        if (dashboardIngestionCount === 0) scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
       }
     })();
   }
