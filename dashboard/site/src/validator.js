@@ -52,6 +52,7 @@ import {
   FIELD_DISPLAY_VALUES,
   FIELD_FORMAT_VALUES,
   FIELD_TYPE_VALUES,
+  FACTORY_OVERVIEW_SECTION_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
   FINDING_SEVERITY_VALUES,
@@ -2371,7 +2372,12 @@ function validateView(view, viewNode, path, viewIds, errors) {
          `${path}.config.body`
        ));
       }
-      if (view.element === 'work-project-view' && view.config.sections !== undefined) {
+      const allowedSections = view.element === 'work-project-view'
+        ? WORK_VIEW_BODY_VALUES
+        : view.element === 'outcomes-overview'
+          ? FACTORY_OVERVIEW_SECTION_VALUES
+          : null;
+      if (allowedSections && view.config.sections !== undefined) {
        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
          errors.push(createError(
            ERROR_CODES.missingOrInvalidRequiredField,
@@ -2379,10 +2385,18 @@ function validateView(view, viewNode, path, viewIds, errors) {
            `${path}.config.sections`
          ));
        } else {
+         const seenSections = new Set();
          for (let index = 0; index < view.config.sections.length; index += 1) {
            const section = view.config.sections[index];
            validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
-           const allowedSections = WORK_VIEW_BODY_VALUES;
+           if (seenSections.has(section)) {
+             errors.push(createError(
+               ERROR_CODES.unknownOrDuplicateKey,
+               `${view.element} config.sections values must be unique.`,
+               `${path}.config.sections[${index}]`
+             ));
+           }
+           seenSections.add(section);
            if (typeof section === 'string' && !allowedSections.includes(section)) {
              errors.push(createError(
                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2395,7 +2409,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.sections !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the work-project-view element.',
+         'config.sections is supported only for the work-project-view and outcomes-overview elements.',
          `${path}.config.sections`
        ));
       }
