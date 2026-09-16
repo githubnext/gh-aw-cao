@@ -217,8 +217,13 @@ test.beforeEach(async ({ context, page }) => {
       sources.packages.rows.push({
         package: 'repo-assist',
         'package-name': 'Repo Assist',
+        'package-description': 'Review-first repository assistance.',
+        'package-icon': 'gear',
         'package-mode': 'review',
-        'package-registration': 'true',
+        'package-enabled': true,
+        'package-worker-count': 4,
+        'package-min-version': 'v0.89.15',
+        'package-experimental': true,
         'observed-at': '2026-09-09T05:00:00Z'
       });
       await route.fulfill({
