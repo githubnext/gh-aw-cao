@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import {
   dashboardPageIds,
+  eventsPerformanceJourney,
   lighthouseArguments,
   profiles,
   routeUrl
@@ -52,6 +53,32 @@ async function configureProfile(context, page, profile) {
   }
 }
 
+async function waitForPageReady(page, pageId) {
+  const activePage = page.locator(`[data-page-id="${pageId}"]`);
+  await activePage.waitFor({ state: 'visible', timeout: 30_000 });
+  await page.waitForFunction((expectedPageId) => {
+    const active = document.querySelector(`[data-page-id="${expectedPageId}"]`);
+    return active instanceof HTMLElement
+      && !active.hidden
+      && active.getAttribute('aria-busy') !== 'true'
+      && !active.querySelector('[aria-busy="true"]');
+  }, pageId, { timeout: 30_000 });
+}
+
+async function swapPage(page, fromPageId, pageId) {
+  const startedAt = performance.now();
+  await page.locator(`[data-nav-page-id="${pageId}"]`).evaluate((link) => {
+    if (!(link instanceof HTMLAnchorElement)) throw new Error('Dashboard navigation target is not a link');
+    link.click();
+  });
+  await waitForPageReady(page, pageId);
+  return {
+    from: fromPageId,
+    to: pageId,
+    durationMs: Math.round(performance.now() - startedAt)
+  };
+}
+
 async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
   const context = await browser.newContext({
     viewport: profile.viewport,
@@ -60,6 +87,7 @@ async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
   const page = await context.newPage();
   const errors = [];
   const visitedViews = [];
+  const pageSwaps = [];
 
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push({ type: 'console', message: message.text() });
@@ -108,12 +136,31 @@ async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
       }
       window.scrollTo(0, root.scrollHeight);
     });
-    return { pageId, url, visitedViews, errors, status: 'complete' };
+    if (pageId === eventsPerformanceJourney.pageId) {
+      let currentPageId = pageId;
+      for (const nextPageId of eventsPerformanceJourney.routes) {
+        const swap = await swapPage(page, currentPageId, nextPageId);
+        pageSwaps.push(swap);
+        currentPageId = nextPageId;
+      }
+      const slowEventsReturns = pageSwaps.filter(({ to, durationMs }) => (
+        to === eventsPerformanceJourney.pageId
+        && durationMs > eventsPerformanceJourney.maxEventsReturnMs
+      ));
+      if (slowEventsReturns.length > 0) {
+        throw new Error(
+          `Events page return exceeded ${eventsPerformanceJourney.maxEventsReturnMs}ms: `
+          + slowEventsReturns.map(({ durationMs }) => `${durationMs}ms`).join(', ')
+        );
+      }
+    }
+    return { pageId, url, visitedViews, pageSwaps, errors, status: 'complete' };
   } catch (error) {
     return {
       pageId,
       url: routeUrl(siteUrl, pageId),
       visitedViews,
+      pageSwaps,
       errors,
       status: 'incomplete',
       blocker: errorText(error)
@@ -210,6 +257,7 @@ async function main() {
     declaredPages: pageIds,
     declaredViews,
     methodology: 'Every declared page and rendered view scrolled with Playwright; cold Lighthouse performance audit per page and profile',
+    eventsPerformanceJourney,
     profiles: results
   };
   await writeFile(join(outputRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);

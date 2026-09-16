@@ -677,7 +677,7 @@ test('Transactions includes local database controls and a responsive transaction
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
 
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await page.getByRole('button', { name: 'Show chart view' }).click();
