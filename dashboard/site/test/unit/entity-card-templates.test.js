@@ -68,7 +68,7 @@ describe('entity card templates', () => {
       },
       list: {
         card: 'event',
-        drill: { type: 'external', field: 'safe-output-url' }
+        drill: { type: 'external', field: 'event-url' }
       }
     });
     expect(views.issues.list).toMatchObject({

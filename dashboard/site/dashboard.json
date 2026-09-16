@@ -375,7 +375,7 @@
           "style": "entity-cards",
           "card": "event",
           "icon": "pulse",
-          "drill": { "type": "external", "field": "safe-output-url" }
+          "drill": { "type": "external", "field": "event-url" }
         },
         "empty-message": "No workflow events were observed in the current run window.",
         "layout": "full-view",
@@ -387,7 +387,7 @@
             { "field": "event-source", "type": "nominal", "title": "Source" },
             { "field": "session", "type": "nominal", "title": "Session" },
             { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
-            { "field": "safe-output-url", "type": "nominal", "title": "External URL" }
+            { "field": "event-url", "type": "nominal", "title": "External URL" }
           ]
         }
       },
@@ -410,7 +410,7 @@
           "style": "entity-cards",
           "card": "event",
           "icon": "pulse",
-          "drill": { "type": "external", "field": "safe-output-url" }
+          "drill": { "type": "external", "field": "event-url" }
         },
         "empty-message": "No events were retained for this run.",
         "layout": "full",
@@ -422,7 +422,7 @@
             { "field": "event-source", "type": "nominal", "title": "Source" },
             { "field": "session", "type": "nominal", "title": "Session" },
             { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
-            { "field": "safe-output-url", "type": "nominal", "title": "External URL" }
+            { "field": "event-url", "type": "nominal", "title": "External URL" }
           ]
         }
       },
@@ -439,7 +439,7 @@
           "style": "entity-cards",
           "card": "event",
           "icon": "pulse",
-          "drill": { "type": "external", "field": "safe-output-url" }
+          "drill": { "type": "external", "field": "event-url" }
         },
         "empty-message": "No events were retained for this session.",
         "layout": "full-view",
@@ -451,7 +451,7 @@
             { "field": "event-source", "type": "nominal", "title": "Source" },
             { "field": "session", "type": "nominal", "title": "Session" },
             { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
-            { "field": "safe-output-url", "type": "nominal", "title": "External URL" }
+            { "field": "event-url", "type": "nominal", "title": "External URL" }
           ]
         }
       },
@@ -764,6 +764,17 @@
         "name": "entity-events",
         "intent": "Project event entities for reusable event cards and run or session drill-down.",
         "from": "events",
+        "compute": [
+          {
+            "as": "event-url",
+            "function": "coalesce",
+            "args": [
+              { "field": "safe-output-url" },
+              { "field": "correlation-id" },
+              { "field": "implementation-pull-request-url" }
+            ]
+          }
+        ],
         "select": [
           { "field": "organization" },
           { "field": "repository" },
@@ -778,7 +789,7 @@
           { "field": "event-status" },
           { "field": "github-entity-type" },
           { "field": "safe-output-type" },
-          { "field": "safe-output-url" },
+          { "field": "event-url" },
           { "field": "event-timestamp", "as": "observed-at" },
           { "field": "run-link" }
         ],

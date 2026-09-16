@@ -825,7 +825,11 @@ describe('declarative dashboard queries', () => {
       metadata: metadata('runs')
     };
 
-    const derived = executeDashboardQueries(dashboardQueries, { events, runs }, ['safe-output-items', 'pull-requests']);
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { events, runs },
+      ['safe-output-items', 'pull-requests', 'entity-events']
+    );
 
     expect(derived['safe-output-items'].rows).toEqual([{
       'observed-at': '2026-09-02T00:00:00Z',
@@ -840,6 +844,10 @@ describe('declarative dashboard queries', () => {
       'run-link': { href: 'run-1' }
     }]);
     expect(derived['pull-requests'].rows).toEqual(derived['safe-output-items'].rows);
+    expect(derived['entity-events'].rows[0]).toMatchObject({
+      event: 'safe-output-1',
+      'event-url': 'https://github.com/githubnext/gh-aw-cao/pull/43'
+    });
   });
 
   it('caps event inspection at the query output limit instead of becoming unavailable', () => {
