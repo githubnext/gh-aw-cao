@@ -6,6 +6,10 @@ import { actionsLog as log } from "./actions-log.mjs";
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
 const POLICY_PATH = ".github/workflows/cao.json";
 
+function objectRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 function rolloutMode(value) {
   return ["review", "live"].includes(value) ? value : "unknown";
 }
@@ -331,13 +335,14 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
 }
 
 function configurationPolicyRows(controlSettings) {
-  const resolution = controlSettings.policy_resolution ?? {};
+  const settings = objectRecord(controlSettings);
+  const resolution = objectRecord(settings.policy_resolution);
   // No collected policy fields produces an empty Settings source. When any
   // policy field is present, the resolver status distinguishes "available" and
   // "unavailable"; any other status means collected but not validated.
-  const hasDocument = Object.hasOwn(controlSettings, "policy_document");
-  const hasSource = Object.hasOwn(controlSettings, "policy_source");
-  const hasResolution = Object.hasOwn(controlSettings, "policy_resolution");
+  const hasDocument = Object.hasOwn(settings, "policy_document");
+  const hasSource = Object.hasOwn(settings, "policy_source");
+  const hasResolution = Object.hasOwn(settings, "policy_resolution");
   if (!hasDocument && !hasSource && !hasResolution) {
     return [];
   }
@@ -364,8 +369,8 @@ function configurationPolicyRows(controlSettings) {
   }
   return [{
     path: POLICY_PATH,
-    document: controlSettings.policy_document ?? null,
-    raw: controlSettings.policy_source || "",
+    document: settings.policy_document ?? null,
+    raw: settings.policy_source || "",
     diagnostics: [{
       severity: diagnostic.severity,
       path: POLICY_PATH,
@@ -382,7 +387,7 @@ export function buildInventoryDashboardSources({
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
-  const settings = controlSettings ?? {};
+  const settings = objectRecord(controlSettings);
   return {
     packages: source("packages", packageRows(inventory, settings, generatedAt), generatedAt),
     repositories: source("repositories", repositoryRows(discoveredRepositories, repository, generatedAt), generatedAt),
