@@ -8040,7 +8040,6 @@
         "pages": [
           "workflows",
           "runs",
-          "sessions",
           "engines-models",
           "firewall",
           "mcps",
@@ -8051,6 +8050,7 @@
         "label": "Investigate",
         "experimental": true,
         "pages": [
+          "sessions",
           "runtime",
           "performance",
           "security",
