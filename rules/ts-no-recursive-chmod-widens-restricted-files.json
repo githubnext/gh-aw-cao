@@ -41,9 +41,20 @@
         "src/container-stop.ts",
         "src/artifact-preservation.ts"
       ]
+    },
+    {
+      "type": "merged_pull_request",
+      "repo": "github/gh-aw-firewall",
+      "number": 8624,
+      "title": "Fix Squid log permission repair across topology restarts",
+      "detail": "Squid startup preflight repair kept scoped to explicit top-level log files (access.log, audit.jsonl, cache.log) instead of a recursive chown/chmod pass, because /var/log/squid can be the same host directory tree as restricted-mode API-proxy audit files; PR body and code comment both restate the non-recursive invariant as the fix rationale.",
+      "files": [
+        "src/services/squid-service.ts",
+        "src/container-stop.ts"
+      ]
     }
   ],
-  "occurrence_count": 3,
+  "occurrence_count": 4,
   "affected_paths": [
     "src/artifact-preservation.ts",
     "src/container-stop.ts",
@@ -68,6 +79,6 @@
     "reason": "Confirmed false positives on real repository code (agent-session-state, squid preserved-dir, and both diagnostics-dir chmod sites in src/artifact-preservation.ts) alongside a confirmed false negative (the docker-exec shell-string 'chmod -R a+rwX /fix' in src/artifact-permissions.ts, which touches the same 0o600-bearing auditDir but isn't matched by the current execa-array-argument-only AST pattern). Needs directory-provenance narrowing plus a shell-string chmod matcher before adoption.",
     "txn_id": "refiner-35042552901-1"
   },
-  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/35042552901",
+  "last_updated_by_run": "https://github.com/githubnext/gh-aw-cao/actions/runs/35147540393",
   "last_updated_target_repo": "github/gh-aw-firewall"
 }
