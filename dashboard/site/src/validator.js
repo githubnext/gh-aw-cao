@@ -97,6 +97,10 @@ import {
   VIEW_DATA_KEYS,
   VIEW_CHART_VALUES,
   VIEW_CONTROL_VALUES,
+  VIEW_LIST_CARD_VALUES,
+  VIEW_LIST_DRILL_ARGUMENT_KEYS,
+  VIEW_LIST_DRILL_KEYS,
+  VIEW_LIST_DRILL_TYPE_VALUES,
   VIEW_DISCLOSURE_VALUES,
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
@@ -2220,10 +2224,23 @@ function validateView(view, viewNode, path, viewIds, errors) {
           errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
         }
       }
+      if (view.list.card !== undefined) {
+        validateStringField(view.list.card, `${listPath}.card`, true, errors);
+        if (typeof view.list.card === 'string' && !VIEW_LIST_CARD_VALUES.includes(view.list.card)) {
+          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.card must be one of ${VIEW_LIST_CARD_VALUES.join(', ')}.`, `${listPath}.card`));
+        }
+      }
+      if (view.list.style === 'entity-cards' && view.list.card === undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'entity-cards lists must declare a reusable card definition.', `${listPath}.card`));
+      } else if (view.list.style !== 'entity-cards' && view.list.card !== undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.card is supported only for entity-cards lists.', `${listPath}.card`));
+      }
+      validateListDrill(view.list.drill, getValueNodeByKey(getValueNodeByKey(viewNode, 'list'), 'drill'), listPath, view.list.style, errors);
     }
     if (view.mark !== 'list') {
       errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list is allowed only when mark is "list".', listPath));
     }
+
   } else if (view.mark === 'list') {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list views must declare a list widget mapping.', `${path}.list`));
   }
@@ -2301,6 +2318,65 @@ function validateView(view, viewNode, path, viewIds, errors) {
           'metric navigation page',
           errors
         );
+      }
+
+      /**
+       * @param {unknown} drill
+       * @param {unknown} drillNode
+       * @param {string} listPath
+       * @param {unknown} style
+       * @param {ValidationError[]} errors
+       */
+      function validateListDrill(drill, drillNode, listPath, style, errors) {
+        const path = `${listPath}.drill`;
+        if (drill === undefined) {
+          if (style === 'entity-cards') {
+            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'entity-cards lists must declare drill behavior.', path));
+          }
+          return;
+        }
+        if (style !== 'entity-cards') {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill is supported only for entity-cards lists.', path));
+          return;
+        }
+        if (!isPlainObject(drill)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill must be a mapping.', path));
+          return;
+        }
+        validateObjectKeys(drillNode, VIEW_LIST_DRILL_KEYS, path, errors);
+        validateStringField(drill.type, `${path}.type`, true, errors);
+        if (typeof drill.type === 'string' && !VIEW_LIST_DRILL_TYPE_VALUES.includes(drill.type)) {
+          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.drill.type must be one of ${VIEW_LIST_DRILL_TYPE_VALUES.join(', ')}.`, `${path}.type`));
+        }
+        if (drill.type === 'external') {
+          validateRequiredIdentifier(drill.field, `${path}.field`, 'external drill field', errors);
+          if (drill.page !== undefined || drill.arguments !== undefined) {
+            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'external drill behavior supports only field.', path));
+          }
+          return;
+        }
+        if (drill.type !== 'query') return;
+        validateRequiredIdentifier(drill.page, `${path}.page`, 'query drill page', errors);
+        if (!Array.isArray(drill.arguments) || drill.arguments.length === 0) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query drill behavior requires non-empty arguments.', `${path}.arguments`));
+          return;
+        }
+        const names = new Set();
+        const argumentsNode = getValueNodeByKey(drillNode, 'arguments');
+        for (const [index, argument] of drill.arguments.entries()) {
+          const argumentPath = `${path}.arguments[${index}]`;
+          if (!isPlainObject(argument)) {
+            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query drill argument must be a mapping.', argumentPath));
+            continue;
+          }
+          validateObjectKeys(getSequenceItemNode(argumentsNode, index), VIEW_LIST_DRILL_ARGUMENT_KEYS, argumentPath, errors);
+          validateRequiredIdentifier(argument.name, `${argumentPath}.name`, 'query drill argument name', errors);
+          validateRequiredIdentifier(argument.field, `${argumentPath}.field`, 'query drill argument field', errors);
+          if (typeof argument.name === 'string' && names.has(argument.name)) {
+            errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'query drill argument names must be unique.', `${argumentPath}.name`));
+          }
+          names.add(argument.name);
+        }
       }
       if (view.mark !== 'metric') {
         errors.push(createError(

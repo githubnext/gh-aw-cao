@@ -38,6 +38,30 @@ const GITHUB_ENTITY_DISPLAY_FIELDS = {
   [REPOSITORY_LINK_DISPLAY]: 'repository',
   [WORKFLOW_LINK_DISPLAY]: 'workflow'
 };
+const ENTITY_CARD_DEFINITIONS = {
+  issue: {
+    icon: 'issue-opened',
+    title: { field: 'event-summary', title: 'Issue' },
+    labels: [{ field: 'safe-output-type', title: 'Safe output', display: 'label' }],
+    details: [
+      { field: 'repository', title: 'Repository' },
+      { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
+      { field: 'run', title: 'Run', display: 'run-link' },
+      { field: 'observed-at', title: 'Opened', format: 'human-friendly-timestamp' }
+    ]
+  },
+  'pull-request': {
+    icon: 'git-pull-request',
+    title: { field: 'event-summary', title: 'Pull request' },
+    labels: [{ field: 'safe-output-type', title: 'Safe output', display: 'label' }],
+    details: [
+      { field: 'repository', title: 'Repository' },
+      { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
+      { field: 'run', title: 'Run', display: 'run-link' },
+      { field: 'observed-at', title: 'Opened', format: 'human-friendly-timestamp' }
+    ]
+  }
+};
 
 /**
  * @param {Record<string, unknown>} row
@@ -220,6 +244,24 @@ function renderListView(context) {
       listAction
     });
   }
+  if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
+    const definition = ENTITY_CARD_DEFINITIONS[view.list.card];
+    if (definition) {
+      return renderEntityCardListView({
+        pageId,
+        title,
+        view,
+        rows: preparedRows,
+        metadata,
+        contextDetails,
+        headingTag,
+        renderValue,
+        toText,
+        definition,
+        listAction
+      });
+    }
+  }
   const cards = preparedRows.map((row, index) => {
     const titleColumn = columns[0];
     const titleField = typeof titleColumn?.as === 'string' ? titleColumn.as : titleColumn?.field;
@@ -270,6 +312,109 @@ function renderListView(context) {
     ],
     headingTag
   );
+}
+
+/**
+ * @param {{
+ *   pageId: string,
+ *   title: string,
+ *   view: Record<string, any>,
+ *   rows: Array<Record<string, unknown>>,
+ *   metadata: import('../presenter.js').SourceMetadata,
+ *   contextDetails: string[],
+ *   headingTag: 'h3'|'h4',
+ *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
+ *   toText: (value: unknown) => string,
+ *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[] },
+ *   listAction: HTMLElement | null
+ * }} options
+ */
+function renderEntityCardListView(options) {
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag, renderValue, toText, definition, listAction } = options;
+  const drill = isPlainObject(view.list) && isPlainObject(view.list.drill) ? view.list.drill : null;
+  const cards = rows.map((row, index) => {
+    const titleText = toText(row[definition.title.field]);
+    const target = resolveEntityCardDrill(row, drill, titleText);
+    const titleContent = target?.external
+      ? renderExternalLink(target.link)
+      : target
+        ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
+        : titleText;
+    return h(
+      'li',
+      { className: 'issue-list-card entity-card-list-card', 'data-custom-row-key': `${pageId}-${title}-${index}` },
+      h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(definition.icon)),
+      h(
+        'div',
+        { className: 'issue-list-card-content' },
+        h('div', { className: 'issue-list-card-title entity-card-list-title' }, titleContent),
+        h(
+          'dl',
+          { className: 'issue-list-card-meta', 'aria-label': `${titleText || 'Item'} metadata` },
+          ...definition.details.map((column) => {
+            const value = column.field === RUN_FIELD || column.display === 'run-link'
+              ? renderWorkflowRunLink(row, toText(row[column.field]))
+              : renderValue(column, row[column.field], row);
+            return h('div', null, h('dt', null, fieldTitle(column)), h('dd', null, value));
+          })
+        )
+      ),
+      h(
+        'ul',
+        { className: 'issue-list-labels', 'aria-label': `${titleText || 'Item'} labels` },
+        ...definition.labels.flatMap((column) => {
+          const values = Array.isArray(row[column.field]) ? row[column.field] : [row[column.field]];
+          return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
+        })
+      )
+    );
+  });
+  const emptyMessage = metadata.availability === 'unavailable'
+    ? 'Data is unavailable for this view.'
+    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  return renderPageSection(
+    pageId,
+    title,
+    [
+      ...renderViewSectionChrome(metadata, contextDetails),
+      h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
+      cards.length > 0
+        ? h('ul', { className: 'document-list issue-list entity-card-list', 'data-custom-view-mark': 'list' }, cards)
+        : h('p', { className: 'document-list-empty' }, emptyMessage)
+    ],
+    headingTag,
+    view.description
+  );
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {Record<string, unknown> | null} drill
+ * @param {string} title
+ * @returns {{ external: boolean, link: { href: string, label: string } } | null}
+ */
+function resolveEntityCardDrill(row, drill, title) {
+  if (!drill || typeof drill.type !== 'string') return null;
+  if (drill.type === 'external' && typeof drill.field === 'string') {
+    const link = resolveCardLink(row, drill.field, title);
+    return link ? { external: true, link: { ...link, label: title || link.label } } : null;
+  }
+  if (drill.type !== 'query' || typeof drill.page !== 'string' || !Array.isArray(drill.arguments)) return null;
+  const parameters = new URLSearchParams();
+  for (const argument of drill.arguments) {
+    if (!isPlainObject(argument) || typeof argument.name !== 'string' || typeof argument.field !== 'string') return null;
+    const value = row[argument.field];
+    if (!['string', 'number', 'boolean'].includes(typeof value) || String(value).length === 0) return null;
+    parameters.set(argument.name, String(value));
+  }
+  const suffix = parameters.size > 0 ? `?${parameters.toString()}` : '';
+  return {
+    external: false,
+    link: {
+      href: `#page-${encodeURIComponent(drill.page)}${suffix}`,
+      label: title
+    }
+  };
 }
 
 /**

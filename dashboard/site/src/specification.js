@@ -102,8 +102,12 @@ export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'an
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];
 export const VIEW_METRIC_ANIMATION_VALUES = ['number'];
-export const VIEW_LIST_KEYS = ['style', 'icon', 'action'];
-export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues'];
+export const VIEW_LIST_KEYS = ['style', 'icon', 'action', 'card', 'drill'];
+export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues', 'entity-cards'];
+export const VIEW_LIST_CARD_VALUES = ['issue', 'pull-request'];
+export const VIEW_LIST_DRILL_KEYS = ['type', 'field', 'page', 'arguments'];
+export const VIEW_LIST_DRILL_TYPE_VALUES = ['external', 'query'];
+export const VIEW_LIST_DRILL_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third', 'horizontal'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
 export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
@@ -243,7 +247,8 @@ export const BUILT_IN_PAGE_VALUES = [
   'usage',
   'engines-models',
   'operational-value',
-  'findings'
+  'findings',
+  'issues'
 ];
 
 export const BUILT_IN_PAGE_DEFINITION_KEYS = ['views', 'sections', 'data-state'];
@@ -265,7 +270,8 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   usage: ['usage'],
   'engines-models': ['model-usage-summary', 'engine-usage-summary', 'run-aggregate-summary'],
   'operational-value': ['operational-values'],
-  findings: ['findings']
+  findings: ['findings'],
+  issues: ['safe-output-items']
 };
 
 export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
@@ -320,6 +326,9 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
   },
   findings: {
     findings: ['finding-summary', 'finding-severity', 'finding-status', 'organization', 'repository', 'workflow', 'observed-at', 'issue-link', 'pull-request-link', 'run-link']
+  },
+  issues: {
+    'safe-output-items': ['github-entity-type', 'safe-output-type', 'event-summary', 'entity-url', 'repository', 'workflow', 'run', 'run-link', 'observed-at']
   }
 };
 
