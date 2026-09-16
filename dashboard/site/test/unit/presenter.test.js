@@ -704,7 +704,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders the JSON-declared workflow chart without associated detail views', () => {
+  it('renders the JSON-declared workflow chart and inventory table', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -801,15 +801,13 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml');
     expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml');
-    expect([...(page?.querySelectorAll('.chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
-    expect(page?.querySelector('[data-view-layout="full-view"]')).toBeNull();
-    expect(page?.querySelector('[data-lazy-list]')).toBeNull();
-    expect(page?.querySelector('table')).toBeNull();
+    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
+    expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-rocket$/);
   });
 
-  it('does not render the former workflow detail table links', () => {
+  it('does not invent workflow links for chart or inventory rows', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -891,7 +889,8 @@ describe('presenter built-in and custom pages', () => {
     const links = [...rendered.querySelectorAll('[data-page-name="workflows"] .chart-legend-pie a')]
       .map((link) => link.getAttribute('href'));
     expect(links).toHaveLength(0);
-    expect(rendered.querySelector('[data-page-name="workflows"] table')).toBeNull();
+    expect(rendered.querySelector('[data-page-name="workflows"] table')).not.toBeNull();
+    expect(rendered.querySelector('[data-page-name="workflows"] table a')).toBeNull();
   });
 
   it('DLS-LINK-006 DLS-LINK-007 renders worker-provided entity links in table columns and honours explicit link overrides', () => {
