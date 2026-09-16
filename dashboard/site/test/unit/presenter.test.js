@@ -1581,9 +1581,9 @@ describe('presenter built-in and custom pages', () => {
 
       expect(rendered.dataset.mobileViewMode).toBe('table');
       expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).not.toBeNull();
-      expect(toggle?.getAttribute('aria-label')).toBe('Show chart view');
+      expect(toggle?.getAttribute('aria-label')).toBe('Show card list view');
       expect(toggle?.getAttribute('aria-pressed')).toBe('true');
-      expect(toggle?.querySelector('.octicon-graph')).not.toBeNull();
+      expect(toggle?.querySelector('.octicon-stack')).not.toBeNull();
       expect(window.localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode')).toBe('table');
 
       await vi.waitFor(() => expect(animationFrames).toHaveLength(1));
@@ -1594,9 +1594,16 @@ describe('presenter built-in and custom pages', () => {
       await vi.waitFor(() => {
         expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).toBeNull();
       });
+      expect(page?.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('1');
+
+      toggle?.click();
+      expect(rendered.dataset.mobileViewMode).toBe('card');
+      expect(toggle?.getAttribute('aria-label')).toBe('Show chart view');
+      expect(toggle?.querySelector('.octicon-graph')).not.toBeNull();
+      expect(window.localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode')).toBe('card');
 
       const restored = renderDashboard({ document, sources });
-      expect(restored.dataset.mobileViewMode).toBe('table');
+      expect(restored.dataset.mobileViewMode).toBe('card');
       expect(restored.querySelector('.mobile-view-mode-toggle')?.getAttribute('aria-label')).toBe('Show chart view');
     } finally {
       requestAnimationFrame.mockRestore();
@@ -1607,6 +1614,77 @@ describe('presenter built-in and custom pages', () => {
       }
       window.localStorage.clear();
     }
+  });
+
+  it('switches a standalone full-view lazy table between table and card-list modes', () => {
+    window.localStorage.clear();
+    const document = {
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'mobile-table-card-dashboard',
+        title: 'Mobile Table Cards',
+        pages: [{
+          id: 'repositories',
+          kind: /** @type {'custom'} */ ('custom'),
+          title: 'Repositories',
+          views: [{
+            id: 'repositories-table',
+            title: 'Repositories',
+            data: { source: 'repositories' },
+            mark: 'table',
+            controls: 'interactive',
+            'lazy-list': true,
+            layout: 'full-view',
+            encoding: {
+              columns: [
+                { field: 'repository-coordinate', type: 'nominal' },
+                { field: 'organization', type: 'nominal' }
+              ]
+            }
+          }]
+        }],
+        'card-templates': [{
+          id: 'repository',
+          icon: 'repo',
+          title: { field: 'repository-coordinate' },
+          labels: [],
+          details: [{ field: 'organization' }]
+        }]
+      }
+    };
+    const rendered = renderDashboard({
+      document,
+      sources: {
+        repositories: {
+          source: 'repositories',
+          rows: [{ 'repository-coordinate': 'githubnext/gh-aw-cao', organization: 'githubnext' }],
+          metadata: {
+            'source-id': 'repositories-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+    const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-view-mode-toggle'));
+
+    expect(rendered.dataset.mobileViewMode).toBe('table');
+    expect(toggle?.hidden).toBe(false);
+    expect(toggle?.getAttribute('aria-label')).toBe('Show card list view');
+    expect(rendered.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('githubnext/gh-aw-cao');
+
+    toggle?.click();
+    expect(rendered.dataset.mobileViewMode).toBe('card');
+    expect(toggle?.getAttribute('aria-label')).toBe('Show table view');
+    expect(toggle?.querySelector('.octicon-table')).not.toBeNull();
+
+    toggle?.click();
+    expect(rendered.dataset.mobileViewMode).toBe('table');
+    window.localStorage.clear();
   });
 
   it('renders a mobile view menu with full labels and closes it after selection', () => {

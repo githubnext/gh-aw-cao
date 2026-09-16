@@ -760,9 +760,9 @@ function renderTableView(context) {
     ? renderMobileTableCardList(context, columns, tableRows, renderCellValue, effectiveRowLimit)
     : null;
   return renderPageSection(pageId, title, [
-    ...renderViewSectionChrome(metadata, contextDetails),
+    ...renderViewSectionChrome(metadata, contextDetails).filter((node) => node instanceof HTMLElement),
     tableRegion,
-    mobileCardList
+    ...(mobileCardList ? [mobileCardList] : [])
   ], headingTag, view.description);
 }
 
@@ -778,6 +778,9 @@ function renderTableView(context) {
  */
 function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit) {
   const { pageId, title, view, toText, cardTemplates = {}, prepareTableRows } = context;
+  const pageSize = 25;
+  const availableRows = [...rows];
+  const initialRows = availableRows.slice(0, pageSize);
   const columnFields = new Set(columns.map((column) => column.field));
   const definition = Object.values(cardTemplates)
     .filter((template) => columnFields.has(template.title.field))
@@ -798,11 +801,11 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const list = h('ul', {
     className: 'document-list issue-list entity-card-list mobile-table-card-list-items',
     'data-custom-view-mark': 'list'
-  }, ...renderEntityCardItems(rows, { pageId, title, renderValue, toText, definition: visibleDefinition }));
-  const empty = rows.length === 0
+  }, ...renderEntityCardItems(initialRows, { pageId, title, renderValue, toText, definition: visibleDefinition }));
+  const empty = availableRows.length === 0
     ? h('p', { className: 'document-list-empty' }, typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.')
     : null;
-  const more = context.continuation && rows.length < rowLimit
+  const more = (availableRows.length > initialRows.length || context.continuation) && initialRows.length < rowLimit
     ? h('button', { className: 'table-filter-more', type: 'button', 'data-card-list-more': '' }, 'Load more cards')
     : null;
   const region = h('div', {
@@ -811,17 +814,23 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
     role: 'region',
     'aria-label': `${title}: card list`
   }, list, empty, more);
-  if (!(more instanceof HTMLButtonElement) || !context.continuation) return region;
+  if (!(more instanceof HTMLButtonElement)) return region;
 
-  let token = context.continuation.token;
-  let renderedCount = rows.length;
+  const continuation = context.continuation;
+  let token = continuation?.token ?? '';
+  let renderedCount = initialRows.length;
   let loading = false;
   const loadMore = async () => {
-    if (loading || !token || renderedCount >= rowLimit) return;
+    if (loading || renderedCount >= rowLimit || (renderedCount >= availableRows.length && !token)) return;
     loading = true;
     more.disabled = true;
-    const next = await context.continuation?.load(token);
-    const nextRows = prepareTableRows(next?.rows ?? [], columns, view.data).slice(0, rowLimit - renderedCount);
+    let nextToken = token;
+    if (renderedCount >= availableRows.length && token && continuation) {
+      const next = await continuation.load(token);
+      availableRows.push(...prepareTableRows(next.rows, columns, view.data));
+      nextToken = next.continuationToken ?? '';
+    }
+    const nextRows = availableRows.slice(renderedCount, Math.min(renderedCount + pageSize, rowLimit));
     list.append(...renderEntityCardItems(nextRows, {
       pageId,
       title,
@@ -831,10 +840,10 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       keyOffset: renderedCount
     }));
     renderedCount += nextRows.length;
-    token = renderedCount < rowLimit ? next?.continuationToken ?? '' : '';
+    token = renderedCount < rowLimit ? nextToken : '';
     loading = false;
     more.disabled = false;
-    more.hidden = !token;
+    more.hidden = renderedCount >= availableRows.length && !token;
   };
   more.addEventListener('click', () => void loadMore());
   observeLoadMoreBoundary(globalThis.IntersectionObserver, more, () => void loadMore(), { rootMargin: '200px' });

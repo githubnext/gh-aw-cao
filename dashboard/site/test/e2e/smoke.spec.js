@@ -809,7 +809,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
-test('a mobile page combining a chart with a full-view table switches between the two layouts', async ({ page }) => {
+test('a mobile page combining a chart with a full-view table switches between chart, table, and card layouts', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -895,6 +895,14 @@ test('a mobile page combining a chart with a full-view table switches between th
   await expect(scroll).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(chart).toBeHidden();
+  await expect(scroll).toBeHidden();
+  await expect(page.locator('[data-mobile-card-list]')).toBeVisible();
+  await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toBeVisible();
+  await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toContainText('copilot / model-1');
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
 
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(chart).toBeVisible();
