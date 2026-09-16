@@ -112,6 +112,7 @@ boundaries:
     must_not_depend_on:
       - source_data_queries
       - business_relationship_reconstruction
+
 invariants:
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
   - "No authority input can widen another."
