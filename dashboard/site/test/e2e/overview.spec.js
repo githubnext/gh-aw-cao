@@ -68,6 +68,7 @@ test.beforeEach(async ({ page, context }) => {
 test('explicit Overview composition preserves default desktop and mobile behavior', async ({ page }) => {
   const explicitPage = structuredClone(overviewPage);
   const defaultPage = structuredClone(overviewPage);
+  explicitPage.views[0].config.sections = ['header', 'floor'];
   delete defaultPage.views[0].config.sections;
 
   /** @param {Record<string, unknown>} pageDefinition */
