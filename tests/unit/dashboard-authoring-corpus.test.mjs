@@ -53,6 +53,9 @@ test("every production dashboard page starts with an executive summary or prescr
         && views.every((view) => view.mark === "list" && view.list?.style === "cards")
         && summary.id === "starter-updates"
         && views[1].id === "compiler-upgrades";
+      const isTransactionsDatabase = page.id === "transactions"
+        && summary.mark === "element"
+        && summary.element === "local-database";
       const isOverviewDrillDown = page.route?.["navigation-page"] === "overview"
         && summary.mark === "table";
       const isFullViewTable = views.length === 1
@@ -102,6 +105,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isWorkProjectView
           || isInsightsOverview
           || isMaintenanceView
+          || isTransactionsDatabase
           || isFullViewTable
           || isFullViewIssueList
           || isOverviewDrillDown
