@@ -489,7 +489,7 @@ describe('dashboard document validation', () => {
   it('defines every other editable experimental page as one full-view lazy table', () => {
     // Pages that intentionally compose more than one editable view, asserted separately below
     // or by their own focused suites: safe-outputs, maintenance, entity cards, cost, and audit.
-    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'cost', 'audit']);
+    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'sessions', 'cost', 'audit']);
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -949,7 +949,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines the Workflows run ranking as a declarative pie chart', () => {
+  it('defines the Workflows run ranking as a declarative pie chart without a companion table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'workflows'
@@ -960,7 +960,8 @@ describe('dashboard document validation', () => {
     )).toMatchObject({
       data: {
         source: 'workflow-inventory',
-        'order-by': [{ field: 'runs', direction: 'desc' }]
+        'order-by': [{ field: 'runs', direction: 'desc' }],
+        limit: 10
       },
       mark: 'chart',
       chart: 'pie',
@@ -971,6 +972,9 @@ describe('dashboard document validation', () => {
         href: { field: 'workflow-link', type: 'nominal' }
       }
     });
+    expect(page.definition.views).not.toContainEqual(
+      expect.objectContaining({ mark: 'table' })
+    );
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -1047,11 +1051,10 @@ dashboard:
 
     const packagesChart = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-value-created');
     const packagesView = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-inventory');
-    const workflowsView = workflowsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflows-inventory');
     const packageWorkflowsView = packageDetailPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-workflow-table');
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
     const transactionsView = transactionsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'transaction-entries');
-    for (const view of [packagesView, workflowsView, runsView]) {
+    for (const view of [packagesView, runsView]) {
       expect(view).toMatchObject({
         mark: 'table',
         controls: 'interactive',
@@ -1084,10 +1087,9 @@ dashboard:
     ]);
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'registration')?.display).toBe('active-state');
-    for (const view of [packagesView, packageWorkflowsView, workflowsView]) {
+    for (const view of [packagesView, packageWorkflowsView]) {
       expect(view.encoding.columns.at(-1)?.title).toBe('Registration');
     }
-    expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs-table');
     expect(runsView.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).not.toContain('organization');
     expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'run')?.display).toBe('run-link');
@@ -1109,7 +1111,7 @@ dashboard:
     ]);
     expect(workflowsPage.definition.views.map((/** @type {{ id?: string } | string} */ view) =>
       typeof view === 'string' ? view : view.id
-    )).toEqual(['workflows-by-runs', 'workflows-inventory', 'entity-workflows']);
+    )).toEqual(['workflows-by-runs']);
     expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
@@ -1120,12 +1122,17 @@ dashboard:
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
       'workflows',
       'runs',
-      'sessions',
       'engines-models',
       'firewall',
       'mcps',
       'events'
     ]);
+    expect(document.dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ section) => section.label === 'Investigate'
+    )).toMatchObject({
+      experimental: true,
+      pages: expect.arrayContaining(['sessions'])
+    });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 

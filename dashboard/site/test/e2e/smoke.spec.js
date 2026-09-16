@@ -119,6 +119,40 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
+test('issue card labels stay compact with centered text and balanced padding', async ({ page }) => {
+  await page.setContent(`
+    <style id="dashboard-styles"></style>
+    <ul class="issue-list-labels" style="width: 240px; height: 80px">
+      <li>unknown</li>
+    </ul>
+    <script type="module">
+      import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
+      document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
+    </script>
+  `);
+
+  const label = page.locator('.issue-list-labels li');
+  await expect(label).toHaveCSS('height', '20px');
+  await expect(label).toHaveCSS('padding-left', '9px');
+  await expect(label).toHaveCSS('padding-right', '9px');
+  await expect(label).toHaveCSS('text-align', 'center');
+
+  const centers = await label.evaluate((element) => {
+    const labelBounds = element.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const textBounds = range.getBoundingClientRect();
+    return {
+      labelX: labelBounds.x + labelBounds.width / 2,
+      labelY: labelBounds.y + labelBounds.height / 2,
+      textX: textBounds.x + textBounds.width / 2,
+      textY: textBounds.y + textBounds.height / 2,
+    };
+  });
+  expect(Math.abs(centers.textX - centers.labelX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(centers.textY - centers.labelY)).toBeLessThanOrEqual(1);
+});
+
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {
   await page.setContent(`
     <main style="height: 2000px"></main>
@@ -617,6 +651,7 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with session data');
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
@@ -639,7 +674,10 @@ test('Transactions includes local database controls and a responsive transaction
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
@@ -747,6 +785,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   const scroll = view.locator('.table-scroll');
   const swimlane = runsPage.locator('[data-view-id="runs-last-week"]');
   const columnHeaders = view.locator('thead > tr:first-child > th');
+  const facetControl = columnHeaders.locator('.filter-select-control').first();
   const expectAlignedColumnHeaders = async () => {
     const headerTops = await columnHeaders.evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().top));
     expect(Math.max(...headerTops) - Math.min(...headerTops)).toBeLessThanOrEqual(1);
@@ -770,6 +809,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(table).toBeVisible();
   await expect(table.locator('tbody > tr')).toHaveCount(25);
   const more = table.locator('[data-table-more]');
@@ -796,7 +836,14 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  const facetControlBox = await facetControl.boundingBox();
+  const scrolledSummaryBox = await summaryRow.boundingBox();
+  assert(facetControlBox);
+  assert(scrolledSummaryBox);
+  expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(swimlane).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -811,8 +858,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
-test('a mobile page combining a chart with a full-view table switches between chart, table, and card layouts', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('a page combining a chart with a full-view table fills and scrolls in table and card layouts', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -886,7 +933,10 @@ test('a mobile page combining a chart with a full-view table switches between ch
 
   const dashboardRoot = page.locator('.dashboard-root');
   const chart = page.locator('[data-view-id="engines-models-distribution"]');
-  const scroll = page.locator('[data-view-id="engines-models-usage"] .table-scroll');
+  const view = page.locator('[data-view-id="engines-models-usage"]');
+  const scroll = view.locator('.table-scroll');
+  const cards = view.locator('[data-mobile-card-list]');
+  const cardScroll = cards.locator('.mobile-table-card-list-items');
   await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(scroll).toBeHidden();
@@ -897,15 +947,29 @@ test('a mobile page combining a chart with a full-view table switches between ch
   await expect(scroll).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => ({
+    fillsView: Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1,
+    scrollable: element.scrollHeight > element.clientHeight
+  }))).toEqual({ fillsView: true, scrollable: true });
+  await scroll.evaluate((element) => { element.scrollTop = 100; });
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await expect(chart).toBeHidden();
   await expect(scroll).toBeHidden();
-  await expect(page.locator('[data-mobile-card-list]')).toBeVisible();
-  await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toBeVisible();
-  await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toContainText('copilot / model-1');
+  await expect(cards).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card').first()).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card').first()).toContainText('copilot / model-1');
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Engines and models', level: 3 })).toBeHidden();
+  await expect.poll(async () => cards.evaluate((element) =>
+    Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1
+  )).toBe(true);
+  await expect.poll(async () => cardScroll.evaluate((element) =>
+    element.scrollHeight > element.clientHeight
+  )).toBe(true);
+  await cardScroll.evaluate((element) => { element.scrollTop = 100; });
+  await expect.poll(async () => cardScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(chart).toBeVisible();
@@ -987,10 +1051,11 @@ test('Runs renders the worker-projected table for an active time window', async 
   const horizonFilter = page.getByLabel('Dashboard filters');
   const select = horizonFilter.locator('[aria-label="Time window"]');
 
+  await expect(select).toHaveValue('custom');
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('2');
   await expect(rows.locator('a').first()).toBeVisible();
-  await expect(select).toHaveValue('custom');
 });
 
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
@@ -1629,7 +1694,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Sessions', 'Models & Agents', 'Firewall', 'MCPs', 'Events']);
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Models & Agents', 'Firewall', 'MCPs', 'Events']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
@@ -2514,6 +2579,9 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(siteCallout).toBeVisible();
   await expect(warningCallout).toBeVisible();
   await expect(summary).toBeVisible();
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(warningCallout).toBeHidden();
+  await expect(summary).toBeHidden();
   await expect(pageTitle).toBeVisible();
   await expect(tableFilter).toBeVisible();
   await expect(lazyList).toHaveCount(1);
@@ -2569,9 +2637,6 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-    await expect(siteCallout).toBeVisible();
-    await expect(warningCallout).toBeVisible();
-    await expect(summary).toBeVisible();
     await expect(pageTitle).toBeVisible();
     await expect(tableFilter).toBeVisible();
     await expect(summaryCell).toHaveCSS('opacity', '1');
@@ -2583,6 +2648,8 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     }
   }
 
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
@@ -3179,14 +3246,15 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   `);
 
   await expect(page.getByRole('heading', { name: 'Packages', level: 1 })).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
   const valueChart = page.locator('[data-view-id="packages-value-created"]');
   await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
   const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
   await expect(packageRows).toHaveCount(2);
   await expect(page.locator('[data-page-id="packages"] .custom-table thead tr').first().locator('th')).toHaveText([
@@ -4635,6 +4703,20 @@ test('declarative tables expose report-style facets and progressive catalog disc
   await expect(tableRows).toHaveCount(30);
   await expect(visibleRows).toHaveCount(25);
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 25 of 30 results');
+  const tableLayout = await page.locator('.custom-table').evaluate((table) => {
+    const scroll = table.closest('.table-scroll');
+    const cells = table.querySelectorAll('thead tr:first-child th');
+    return {
+      tableWidth: table.getBoundingClientRect().width,
+      scrollWidth: scroll?.getBoundingClientRect().width ?? 0,
+      firstColumnWidth: cells[0]?.getBoundingClientRect().width,
+      lastColumnWidth: cells[cells.length - 1]?.getBoundingClientRect().width,
+      lastColumnAlignment: getComputedStyle(cells[cells.length - 1]).textAlign
+    };
+  });
+  expect(tableLayout.tableWidth).toBeCloseTo(tableLayout.scrollWidth, 0);
+  expect(tableLayout.lastColumnWidth).toBeGreaterThan(tableLayout.firstColumnWidth);
+  expect(tableLayout.lastColumnAlignment).toBe('left');
   await expect(page.locator('thead th').filter({ has: page.locator('[data-table-facet="rollout-mode"]') })).toHaveCount(1);
   const modeFilter = page.getByRole('combobox', { name: 'Filter by Mode' });
   await expect(modeFilter).toHaveValue('');

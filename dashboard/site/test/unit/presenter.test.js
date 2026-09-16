@@ -341,6 +341,53 @@ describe('dashboard DOM provenance', () => {
 });
 
 describe('presenter built-in and custom pages', () => {
+  it('resolves reusable view IDs referenced by custom pages', () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'reusable-view-dashboard',
+          title: 'Reusable view dashboard',
+          views: [{
+            id: 'reusable-total',
+            title: 'Reusable total',
+            mark: 'metric',
+            data: { source: 'summary' },
+            encoding: {
+              value: { field: 'value', aggregate: 'sum' }
+            }
+          }],
+          pages: [{
+            id: 'custom',
+            kind: 'custom',
+            title: 'Custom',
+            views: ['reusable-total']
+          }]
+        }
+      },
+      sources: {
+        summary: {
+          source: 'summary',
+          rows: [{ value: 7 }],
+          metadata: {
+            'source-id': 'summary-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T18:00:00Z',
+            'retrieved-at': '2026-09-16T18:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      }
+    });
+
+    const view = rendered.querySelector('[data-view-id="reusable-total"]');
+    expect(view?.textContent).toContain('Reusable total');
+    expect(view?.querySelector('[data-metric-value="value"]')?.textContent).toBe('7');
+    expect(view?.textContent).not.toContain('Invalid custom view definition.');
+  });
+
   it('renders the most-blocked domains pie chart and aggregated domain table', async () => {
     const metadata = /** @type {const} */ ({
       'source-id': 'firewall-fixture',
@@ -534,7 +581,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
   });
 
-  it('renders event inspection as one full-view lazy table', async () => {
+  it('renders the reusable event view and full-view lazy inspection table', async () => {
     const metadata = {
       'source-id': 'event-inspection-fixture',
       'source-kind': 'fixture',
@@ -564,7 +611,9 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'events');
-    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(2);
+    expect(page?.querySelector('[data-view-id="entity-events"]')).not.toBeNull();
+    expect(page?.textContent).not.toContain('Invalid custom view definition.');
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.textContent).toContain('Produced a review');
     expect(page?.textContent).toContain('assistant_message');
@@ -655,7 +704,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders a JSON-declared full-view workflow inventory', () => {
+  it('renders the JSON-declared workflow chart without associated detail views', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -749,21 +798,18 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
-    expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelector('[data-table-filter]')).not.toBeNull();
-    const rows = [...(page?.querySelectorAll('tbody tr') ?? [])];
-    expect(rows).toHaveLength(3);
-    expect(rows.find((row) => row.textContent?.includes('dependabot.yml'))?.textContent).toContain('30');
-    expect(rows.find((row) => row.textContent?.includes('ci.yml'))?.textContent).toContain('5');
-    expect(page?.querySelector('.mode-review')).not.toBeNull();
-    expect(page?.querySelector('.mode-live')).not.toBeNull();
-    expect(page?.querySelector('.status-success')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml');
+    expect([...(page?.querySelectorAll('.chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
+    expect(page?.querySelector('[data-view-layout="full-view"]')).toBeNull();
+    expect(page?.querySelector('[data-lazy-list]')).toBeNull();
+    expect(page?.querySelector('table')).toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-rocket$/);
   });
 
-  it('DLS-LINK-006 DLS-LINK-007 derives organization, repository, and workflow links from raw identity fields in the topology view', () => {
+  it('does not render the former workflow detail table links', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -842,12 +888,10 @@ describe('presenter built-in and custom pages', () => {
       })
     });
 
-    const links = [...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
+    const links = [...rendered.querySelectorAll('[data-page-name="workflows"] .chart-legend-pie a')]
       .map((link) => link.getAttribute('href'));
-    expect(links).toContain('#page-package-insights?package=dependabot');
-    expect(links).toContain('#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdependabot.yml');
-    expect(links).toContain('#page-workflow-runtime?workflow=github%2Ftarget-service%3A.github%2Fworkflows%2Fci.yml');
-    expect(links).toContain('#page-repository-detail?repository=github%2Ftarget-service');
+    expect(links).toHaveLength(0);
+    expect(rendered.querySelector('[data-page-name="workflows"] table')).toBeNull();
   });
 
   it('DLS-LINK-006 DLS-LINK-007 renders worker-provided entity links in table columns and honours explicit link overrides', () => {
@@ -1147,7 +1191,6 @@ describe('presenter built-in and custom pages', () => {
       'Settings',
       'Workflows',
       'Runs',
-      'Sessions',
       'Models & Agents',
       'Firewall',
       'MCPs',
@@ -1156,6 +1199,7 @@ describe('presenter built-in and custom pages', () => {
       'Operations',
       'Insights',
       'Operational health',
+      'Sessions',
       'Runtime',
       'Performance',
       'Security',
@@ -1705,7 +1749,6 @@ describe('presenter built-in and custom pages', () => {
       'Settings',
       'Workflows',
       'Runs',
-      'Sessions',
       'Models & Agents',
       'Firewall',
       'MCPs',
@@ -1714,6 +1757,7 @@ describe('presenter built-in and custom pages', () => {
       'Operations',
       'Insights',
       'Operational health',
+      'Sessions',
       'Runtime',
       'Performance',
       'Security',
@@ -2976,7 +3020,8 @@ describe('presenter built-in and custom pages', () => {
         id: 'workflows-by-runs',
         data: {
           source: 'workflow-inventory',
-          'order-by': [{ field: 'runs', direction: 'desc' }]
+          'order-by': [{ field: 'runs', direction: 'desc' }],
+          limit: 10
         },
         mark: 'chart',
         chart: 'pie',
@@ -2986,25 +3031,7 @@ describe('presenter built-in and custom pages', () => {
           y: { field: 'runs', type: 'quantitative', title: 'Runs' },
           href: { field: 'workflow-link', type: 'nominal' }
         }
-      },
-      {
-        id: 'workflows-inventory',
-        data: { source: 'workflow-inventory' },
-        encoding: {
-          columns: [
-            { field: 'package-name', type: 'nominal', title: 'Package' },
-            { field: 'repository', type: 'nominal', title: 'Control repository' },
-            { field: 'workflow', type: 'nominal', format: 'workflow-relative-path', title: 'Workflow' },
-            { field: 'workflow-role', type: 'nominal', title: 'Role' },
-            { field: 'rollout-mode', type: 'nominal', title: 'Mode', display: 'mode' },
-            { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
-            { field: 'runs', type: 'quantitative', title: 'Runs' },
-            { field: 'ingestion', type: 'nominal', title: 'Ingestion %' },
-            { field: 'workflow-active', type: 'nominal', title: 'Registration', display: 'active-state' }
-          ]
-        }
-      },
-      'entity-workflows'
+      }
     ]);
   });
 

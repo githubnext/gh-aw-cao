@@ -19,7 +19,8 @@
                 ".github/workflows/optimization-ai-credit-auditor.md",
                 ".github/workflows/optimization-ai-credit-optimizer.md",
                 ".github/workflows/optimization-agents-md-curator.md",
-                ".github/workflows/optimization-skills-curator.md"
+                ".github/workflows/optimization-skills-curator.md",
+                ".github/workflows/optimization-token-efficiency-verifier.md"
               ]
             }
           ]
@@ -52,8 +53,8 @@
       },
       {
         "name": "optimization-attainment-observations",
-        "intent": "Show matured accuracy and efficiency observations for graded AW Optimization workers while preserving each evaluator definition.",
-        "from": "operational-values",
+        "intent": "Query included, matured canonical grader observations for AW Optimization workers while preserving each grader identity and result.",
+        "from": "grader-observations",
         "filter": {
           "predicates": [
             {
@@ -61,8 +62,17 @@
               "in": [
                 ".github/workflows/optimization-ai-credit-auditor.md",
                 ".github/workflows/optimization-ai-credit-optimizer.md",
-                ".github/workflows/optimization-agents-md-curator.md"
+                ".github/workflows/optimization-agents-md-curator.md",
+                ".github/workflows/optimization-token-efficiency-verifier.md"
               ]
+            },
+            {
+              "field": "included",
+              "equals": true
+            },
+            {
+              "field": "maturity-status",
+              "equals": "matured"
             }
           ]
         },
@@ -70,6 +80,1072 @@
           {
             "field": "observed-at",
             "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "token-efficiency-run-cost-candidates",
+        "intent": "Normalize observed Run-level AI Credit so missing or invalid cost evidence can fail closed.",
+        "from": "usage",
+        "compute": [
+          {
+            "as": "normalized-aic",
+            "function": "number",
+            "args": [
+              {
+                "field": "aic"
+              }
+            ]
+          },
+          {
+            "as": "bounded-aic",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "normalized-aic"
+              },
+              {
+                "value": -1
+              }
+            ]
+          },
+          {
+            "as": "aic-present",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "bounded-aic"
+              },
+              {
+                "value": -1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "token-efficiency-run-costs",
+        "intent": "Aggregate valid observed AI Credit for each target workflow Run without synthesizing total tokens.",
+        "from": "token-efficiency-run-cost-candidates",
+        "filter": {
+          "predicates": [
+            {
+              "field": "aic-present",
+              "equals": true
+            }
+          ]
+        },
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow",
+            "run"
+          ],
+          "values": [
+            {
+              "field": "normalized-aic",
+              "as": "run-aic",
+              "reducer": "sum"
+            }
+          ]
+        }
+      },
+      {
+        "name": "token-efficiency-mature-grader-candidates",
+        "intent": "Retain included mature accepted outcomes and declaratively test evaluator and measurement completeness.",
+        "from": "grader-observations",
+        "filter": {
+          "predicates": [
+            {
+              "field": "included",
+              "equals": true
+            },
+            {
+              "field": "status",
+              "equals": "pass"
+            },
+            {
+              "field": "maturity-status",
+              "equals": "matured"
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "normalized-evaluator",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "evaluator-digest"
+              },
+              {
+                "value": "__missing_evaluator__"
+              }
+            ]
+          },
+          {
+            "as": "evaluator-missing",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "normalized-evaluator"
+              },
+              {
+                "value": "__missing_evaluator__"
+              }
+            ]
+          },
+          {
+            "as": "normalized-grade",
+            "function": "number",
+            "args": [
+              {
+                "field": "value"
+              }
+            ]
+          },
+          {
+            "as": "bounded-grade",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "normalized-grade"
+              },
+              {
+                "value": -1e+308
+              }
+            ]
+          },
+          {
+            "as": "value-missing",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "bounded-grade"
+              },
+              {
+                "value": -1e+308
+              }
+            ]
+          },
+          {
+            "as": "direction-supported",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "direction"
+              },
+              {
+                "value": "higher_is_better"
+              },
+              {
+                "value": "lower_is_better"
+              }
+            ]
+          },
+          {
+            "as": "evaluator-ready-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "evaluator-missing"
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              }
+            ]
+          },
+          {
+            "as": "value-ready-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "value-missing"
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              }
+            ]
+          },
+          {
+            "as": "direction-ready-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "direction-supported"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "grader-readiness",
+            "function": "sum",
+            "args": [
+              {
+                "field": "evaluator-ready-score"
+              },
+              {
+                "field": "value-ready-score"
+              },
+              {
+                "field": "direction-ready-score"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "token-efficiency-mature-graders",
+        "intent": "Fail closed to mature accepted outcomes with a present evaluator, finite value, and supported direction.",
+        "from": "token-efficiency-mature-grader-candidates",
+        "filter": {
+          "predicates": [
+            {
+              "field": "grader-readiness",
+              "equals": 3
+            }
+          ]
+        }
+      },
+      {
+        "name": "token-efficiency-accepted-run-outcomes",
+        "intent": "Count mature accepted outcomes at Run, experiment, variant, evaluator, and direction grain.",
+        "from": "token-efficiency-mature-graders",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow",
+            "run",
+            "experiment",
+            "variant",
+            "evaluator-digest",
+            "direction"
+          ],
+          "values": [
+            {
+              "field": "grader",
+              "as": "accepted-outcomes",
+              "reducer": "count"
+            },
+            {
+              "field": "value",
+              "as": "mean-grade",
+              "reducer": "mean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "token-efficiency-assignment-runs",
+        "intent": "Join included experiment assignments to exact Run cost, reliability, and mature accepted-outcome evidence.",
+        "from": "runs",
+        "joins": [
+          {
+            "source": "experiment-assignments",
+            "type": "inner",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              }
+            ],
+            "fields": [
+              {
+                "field": "experiment",
+                "as": "experiment"
+              },
+              {
+                "field": "variant",
+                "as": "variant"
+              },
+              {
+                "field": "included",
+                "as": "assignment-included"
+              }
+            ]
+          },
+          {
+            "source": "token-efficiency-run-costs",
+            "type": "inner",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              }
+            ],
+            "fields": [
+              {
+                "field": "run-aic",
+                "as": "observed-run-aic"
+              }
+            ]
+          },
+          {
+            "source": "token-efficiency-accepted-run-outcomes",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              },
+              {
+                "left": "experiment",
+                "right": "experiment"
+              },
+              {
+                "left": "variant",
+                "right": "variant"
+              }
+            ],
+            "fields": [
+              {
+                "field": "accepted-outcomes",
+                "as": "observed-accepted-outcomes"
+              },
+              {
+                "field": "mean-grade",
+                "as": "observed-mean-grade"
+              },
+              {
+                "field": "evaluator-digest",
+                "as": "observed-evaluator-digest"
+              },
+              {
+                "field": "direction",
+                "as": "observed-grader-direction"
+              }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            {
+              "field": "assignment-included",
+              "equals": true
+            },
+            {
+              "field": "run-conclusion",
+              "in": [
+                "success",
+                "failure",
+                "cancelled",
+                "timed-out",
+                "action-required",
+                "neutral",
+                "skipped",
+                "stale",
+                "startup-failure"
+              ]
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "run-failed",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "run-conclusion"
+              },
+              {
+                "value": "failure"
+              },
+              {
+                "value": "timed-out"
+              },
+              {
+                "value": "action-required"
+              },
+              {
+                "value": "startup-failure"
+              }
+            ]
+          },
+          {
+            "as": "failure-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "run-failed"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "accepted-outcome-count",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-accepted-outcomes"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "token-efficiency-variant-candidates",
+        "intent": "Aggregate cost, accepted outcomes, reliability, quality, evaluator identity, and sample size per experiment variant.",
+        "from": "token-efficiency-assignment-runs",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow",
+            "experiment",
+            "variant"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "sample-count",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "observed-run-aic",
+              "as": "total-aic",
+              "reducer": "sum"
+            },
+            {
+              "field": "accepted-outcome-count",
+              "as": "accepted-outcomes",
+              "reducer": "sum"
+            },
+            {
+              "field": "failure-score",
+              "as": "failure-rate",
+              "reducer": "mean"
+            },
+            {
+              "field": "observed-evaluator-digest",
+              "as": "evaluator-count",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "observed-evaluator-digest",
+              "as": "evaluator-digest",
+              "reducer": "distinct-list"
+            },
+            {
+              "field": "observed-grader-direction",
+              "as": "direction-count",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "observed-grader-direction",
+              "as": "grader-direction",
+              "reducer": "distinct-list"
+            },
+            {
+              "field": "observed-mean-grade",
+              "as": "mean-grade",
+              "reducer": "mean"
+            }
+          ]
+        }
+      },
+      {
+        "name": "token-efficiency-variant-readiness",
+        "intent": "Evaluate minimum exact Run and accepted-outcome sample sizes before comparison.",
+        "from": "token-efficiency-variant-candidates",
+        "compute": [
+          {
+            "as": "sample-minimum-met",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "sample-count"
+              },
+              {
+                "value": 1
+              }
+            ]
+          },
+          {
+            "as": "accepted-minimum-met",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "accepted-outcomes"
+              },
+              {
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "token-efficiency-variant-samples",
+        "intent": "Fail closed to variants with at least two exact Runs and accepted outcomes under one evaluator and direction.",
+        "from": "token-efficiency-variant-readiness",
+        "filter": {
+          "predicates": [
+            {
+              "field": "sample-minimum-met",
+              "equals": true
+            },
+            {
+              "field": "accepted-minimum-met",
+              "equals": true
+            },
+            {
+              "field": "evaluator-count",
+              "equals": 1
+            },
+            {
+              "field": "direction-count",
+              "equals": 1
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "aic-per-accepted-outcome",
+            "function": "quotient",
+            "args": [
+              {
+                "field": "total-aic"
+              },
+              {
+                "field": "accepted-outcomes"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "token-efficiency-applied-intervention-candidates",
+        "intent": "Collapse complete applied intervention observations to one bounded experiment and control-variant grain.",
+        "from": "token-efficiency-interventions",
+        "filter": {
+          "predicates": [
+            {
+              "field": "recommendation-disposition",
+              "equals": "applied"
+            },
+            {
+              "field": "evidence-state",
+              "equals": "complete"
+            }
+          ]
+        },
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow",
+            "experiment",
+            "control-variant"
+          ],
+          "values": [
+            {
+              "field": "optimized-variant",
+              "as": "optimized-variant-count",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "optimized-variant",
+              "as": "optimized-variant",
+              "reducer": "distinct-list"
+            },
+            {
+              "field": "intervention-id",
+              "as": "intervention-count",
+              "reducer": "distinct-count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "token-efficiency-applied-interventions",
+        "intent": "Fail closed to applied experiment cohorts with exactly one optimized variant.",
+        "from": "token-efficiency-applied-intervention-candidates",
+        "filter": {
+          "predicates": [
+            {
+              "field": "optimized-variant-count",
+              "equals": 1
+            }
+          ]
+        }
+      },
+      {
+        "name": "token-efficiency-comparison-candidates",
+        "intent": "Compare complete applied interventions only when control and optimized samples share one evaluator and grading direction.",
+        "from": "token-efficiency-variant-samples",
+        "joins": [
+          {
+            "source": "token-efficiency-applied-interventions",
+            "type": "inner",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "experiment",
+                "right": "experiment"
+              },
+              {
+                "left": "variant",
+                "right": "control-variant"
+              }
+            ],
+            "fields": [
+              {
+                "field": "optimized-variant",
+                "as": "comparison-optimized-variant"
+              },
+              {
+                "field": "intervention-count",
+                "as": "comparison-intervention-count"
+              }
+            ]
+          },
+          {
+            "source": "token-efficiency-variant-samples",
+            "type": "inner",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "experiment",
+                "right": "experiment"
+              },
+              {
+                "left": "comparison-optimized-variant",
+                "right": "variant"
+              }
+            ],
+            "fields": [
+              {
+                "field": "sample-count",
+                "as": "optimized-sample-count"
+              },
+              {
+                "field": "accepted-outcomes",
+                "as": "optimized-accepted-outcomes"
+              },
+              {
+                "field": "aic-per-accepted-outcome",
+                "as": "optimized-aic-per-accepted-outcome"
+              },
+              {
+                "field": "failure-rate",
+                "as": "optimized-failure-rate"
+              },
+              {
+                "field": "mean-grade",
+                "as": "optimized-mean-grade"
+              },
+              {
+                "field": "evaluator-digest",
+                "as": "optimized-evaluator-digest"
+              },
+              {
+                "field": "grader-direction",
+                "as": "optimized-grader-direction"
+              }
+            ]
+          }
+        ],
+        "compute": [
+          {
+            "as": "evaluator-match",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "evaluator-digest"
+              },
+              {
+                "field": "optimized-evaluator-digest"
+              }
+            ]
+          },
+          {
+            "as": "direction-match",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "grader-direction"
+              },
+              {
+                "field": "optimized-grader-direction"
+              }
+            ]
+          },
+          {
+            "as": "aic-improvement",
+            "function": "difference",
+            "args": [
+              {
+                "field": "aic-per-accepted-outcome"
+              },
+              {
+                "field": "optimized-aic-per-accepted-outcome"
+              }
+            ]
+          },
+          {
+            "as": "cost-improved",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "aic-per-accepted-outcome"
+              },
+              {
+                "field": "optimized-aic-per-accepted-outcome"
+              }
+            ]
+          },
+          {
+            "as": "cost-regressed",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "optimized-aic-per-accepted-outcome"
+              },
+              {
+                "field": "aic-per-accepted-outcome"
+              }
+            ]
+          },
+          {
+            "as": "reliability-regressed",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "optimized-failure-rate"
+              },
+              {
+                "field": "failure-rate"
+              }
+            ]
+          },
+          {
+            "as": "lower-is-better",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "grader-direction"
+              },
+              {
+                "value": "lower_is_better"
+              }
+            ]
+          },
+          {
+            "as": "quality-direction",
+            "function": "if",
+            "args": [
+              {
+                "field": "lower-is-better"
+              },
+              {
+                "value": -1
+              },
+              {
+                "value": 1
+              }
+            ]
+          },
+          {
+            "as": "quality-change",
+            "function": "difference",
+            "args": [
+              {
+                "field": "optimized-mean-grade"
+              },
+              {
+                "field": "mean-grade"
+              }
+            ]
+          },
+          {
+            "as": "normalized-quality-change",
+            "function": "product",
+            "args": [
+              {
+                "field": "quality-change"
+              },
+              {
+                "field": "quality-direction"
+              }
+            ]
+          },
+          {
+            "as": "quality-regressed",
+            "function": "greater-than",
+            "args": [
+              {
+                "value": 0
+              },
+              {
+                "field": "normalized-quality-change"
+              }
+            ]
+          },
+          {
+            "as": "cost-improved-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "cost-improved"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "cost-regression-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "cost-regressed"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "reliability-regression-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "reliability-regressed"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "quality-regression-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "quality-regressed"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "regression-score",
+            "function": "sum",
+            "args": [
+              {
+                "field": "cost-regression-score"
+              },
+              {
+                "field": "reliability-regression-score"
+              },
+              {
+                "field": "quality-regression-score"
+              }
+            ]
+          },
+          {
+            "as": "regression",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "regression-score"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "progress-score",
+            "function": "difference",
+            "args": [
+              {
+                "field": "cost-improved-score"
+              },
+              {
+                "field": "regression-score"
+              }
+            ]
+          },
+          {
+            "as": "progress",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "progress-score"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "non-regression-status",
+            "function": "if",
+            "args": [
+              {
+                "field": "progress"
+              },
+              {
+                "value": "progress"
+              },
+              {
+                "value": "no-change"
+              }
+            ]
+          },
+          {
+            "as": "comparison-status",
+            "function": "if",
+            "args": [
+              {
+                "field": "regression"
+              },
+              {
+                "value": "regression"
+              },
+              {
+                "field": "non-regression-status"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "token-efficiency-comparisons",
+        "intent": "Fail closed to evaluator-compatible control and optimized samples, then expose their declarative progress or regression classification.",
+        "from": "token-efficiency-comparison-candidates",
+        "filter": {
+          "predicates": [
+            {
+              "field": "evaluator-match",
+              "equals": true
+            },
+            {
+              "field": "direction-match",
+              "equals": true
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "experiment",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
+        "name": "token-efficiency-progress-summary",
+        "intent": "Count distinct applied interventions by declaratively derived progress or regression status.",
+        "from": "token-efficiency-comparisons",
+        "aggregate": {
+          "by": [
+            "comparison-status"
+          ],
+          "values": [
+            {
+              "field": "comparison-intervention-count",
+              "as": "interventions",
+              "reducer": "sum"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "comparison-status",
+            "direction": "asc"
           }
         ]
       }
@@ -83,36 +1159,27 @@
         "icon": "meter",
         "views": [
           {
-            "id": "optimization-runs",
-            "title": "AW Optimization runs by conclusion",
+            "id": "token-efficiency-progress",
+            "title": "Mature token-efficiency progress and regression",
+            "description": "Applied interventions appear only when both variants have at least two exact Run samples and mature accepted outcomes under the same evaluator and direction. Progress requires lower AI Credit per accepted outcome without reliability or quality regression.",
             "disclosure": "essential",
             "data": {
-              "source": "optimization-run-observations",
-              "time": {
-                "range": "30d"
-              },
-              "filters": {
-                "workflow": [
-                  ".github/workflows/optimization.md",
-                  ".github/workflows/optimization-ai-credit-auditor.md",
-                  ".github/workflows/optimization-ai-credit-optimizer.md",
-                  ".github/workflows/optimization-agents-md-curator.md",
-                  ".github/workflows/optimization-skills-curator.md"
-                ]
-              }
+              "source": "token-efficiency-progress-summary"
             },
             "mark": "chart",
             "chart": "pie",
             "layout": "half",
+            "empty-message": "No evaluator-compatible mature token-efficiency comparison is available.",
             "encoding": {
               "x": {
-                "field": "run-conclusion",
-                "type": "nominal"
+                "field": "comparison-status",
+                "type": "nominal",
+                "title": "Result"
               },
               "y": {
-                "field": "run",
+                "field": "interventions",
                 "type": "quantitative",
-                "aggregate": "count"
+                "title": "Interventions"
               }
             }
           },
@@ -193,7 +1260,8 @@
                 "workflow": [
                   ".github/workflows/optimization-ai-credit-auditor.md",
                   ".github/workflows/optimization-ai-credit-optimizer.md",
-                  ".github/workflows/optimization-agents-md-curator.md"
+                  ".github/workflows/optimization-agents-md-curator.md",
+                  ".github/workflows/optimization-token-efficiency-verifier.md"
                 ]
               },
               "limit": 50
@@ -214,19 +1282,25 @@
                   "type": "nominal"
                 },
                 {
-                  "field": "operational-value-definition",
+                  "field": "grader",
                   "type": "nominal",
-                  "title": "Evaluator"
+                  "title": "Grader"
                 },
                 {
-                  "field": "operational-case",
+                  "field": "experiment",
                   "type": "nominal",
-                  "title": "Opportunity"
+                  "title": "Experiment"
                 },
                 {
-                  "field": "operational-value",
+                  "field": "value",
                   "type": "quantitative",
-                  "title": "Attainment"
+                  "title": "Grader value"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Result",
+                  "display": "status"
                 },
                 {
                   "field": "maturity-status",
@@ -235,18 +1309,18 @@
                   "display": "status"
                 },
                 {
-                  "field": "evidence-cutoff",
+                  "field": "observed-at",
                   "type": "temporal",
                   "format": "human-friendly-timestamp",
-                  "title": "Evidence cutoff"
+                  "title": "Observed"
                 }
               ]
             }
           },
           {
             "id": "optimization-value-trend",
-            "title": "Operational-value trend",
-            "description": "AI Credit and ambient context attainment remain separate evaluator series and are not inferred from activity totals alone.",
+            "title": "Grader-value trend",
+            "description": "Mature AI Credit and ambient context grader values remain separate grader series and are not inferred from activity totals.",
             "disclosure": "essential",
             "data": {
               "source": "optimization-attainment-observations",
@@ -257,7 +1331,8 @@
                 "workflow": [
                   ".github/workflows/optimization-ai-credit-auditor.md",
                   ".github/workflows/optimization-ai-credit-optimizer.md",
-                  ".github/workflows/optimization-agents-md-curator.md"
+                  ".github/workflows/optimization-agents-md-curator.md",
+                  ".github/workflows/optimization-token-efficiency-verifier.md"
                 ]
               }
             },
@@ -272,12 +1347,12 @@
                 "time-unit": "day"
               },
               "y": {
-                "field": "operational-value",
+                "field": "value",
                 "type": "quantitative",
                 "aggregate": "mean"
               },
               "color": {
-                "field": "operational-value-definition",
+                "field": "grader",
                 "type": "nominal"
               }
             }
