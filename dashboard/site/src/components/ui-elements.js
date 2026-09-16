@@ -24,7 +24,8 @@ import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
-import { renderFactoryOverview } from './factory-overview.js';
+import { renderFactoryFloorElement } from './factory-floor.js';
+import { renderFactoryHeaderElement } from './factory-header.js';
 import { renderLocalDatabaseView } from './local-database-view.js';
 /**
  * @typedef {{
@@ -41,10 +42,11 @@ import { renderLocalDatabaseView } from './local-database-view.js';
  *   titleLink?: Record<string, unknown>,
  *   element?: string,
  *   viewId?: string,
- *   elementConfig?: { body?: string, sections?: string[], section?: string },
+ *   elementConfig?: { body?: string, sections?: string[], section?: string, labels?: Record<string, unknown>, animate?: string },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */
+export {};
 
 /** @type {Map<string, (context: ElementRenderContext) => HTMLElement | null>} */
 const ELEMENT_RENDERERS = new Map([
@@ -74,7 +76,8 @@ const ELEMENT_RENDERERS = new Map([
   ['work-project-view', renderWorkProjectView],
   ['agent-marketplace-view', renderAgentMarketplaceView],
   ['insights-overview', renderInsightsOverview],
-  ['outcomes-overview', renderFactoryOverview],
+  ['factory-header', renderFactoryHeaderElement],
+  ['factory-floor', renderFactoryFloorElement],
   ['local-database', renderLocalDatabaseView]
 ]);
 
@@ -90,7 +93,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'factory-header', 'factory-floor', 'local-database']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first

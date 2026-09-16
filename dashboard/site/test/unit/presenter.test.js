@@ -122,13 +122,13 @@ describe('dashboard DOM provenance', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
       'overview-outcome-summary',
       'overview-run-summary',
+      'overview-factory-status',
+      'overview-rhythm',
       'overview-dispatch-summary',
       'overview-delivery-summary',
       'overview-value-summary',
-      'overview-factory-status',
       'overview-registered-repository-summary',
       'overview-worker-summary',
-      'overview-rhythm',
       'data-health-collections'
     ]);
   });
@@ -1315,7 +1315,8 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const page = await activatePage(rendered, 'overview');
-    expect(page?.querySelector('.agent-factory')).not.toBeNull();
+    expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();

@@ -21,18 +21,17 @@ keeps the interface consistent without hiding business logic in page code.
 
 ## Declarative composition
 
-Dashboard Language exposes the factory as the `outcomes-overview` element. Its
-`config.sections` list composes two reusable presentation boundaries in declared
-order:
+Dashboard Language exposes the factory as two reusable named elements declared
+as separate views in `dashboard.json`:
 
 - `header` owns status, retained-output context, work-in-motion state, and
   Factory rhythm.
 - `floor` owns the four linked metric stations and their aggregate accessible
   summary.
 
-Omitting `config.sections` selects both sections in this canonical order. The
-default dashboard declares `header` followed by `floor`, preserving the complete
-factory layout while making its composition explicit in `dashboard.json`.
+The default dashboard declares `factory-header` followed by `factory-floor`.
+Each view selects only the query outputs it consumes, and their declared order
+reconstructs the complete factory layout without page-specific composition code.
 
 ## Responsive by design
 

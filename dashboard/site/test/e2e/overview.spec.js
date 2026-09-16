@@ -65,20 +65,18 @@ test.beforeEach(async ({ page, context }) => {
   await page.goto('http://dashboard.test/#page-overview');
 });
 
-test('explicit Overview composition preserves default desktop and mobile behavior', async ({ page }) => {
-  const explicitPage = structuredClone(overviewPage);
-  const defaultPage = structuredClone(overviewPage);
-  explicitPage.views[0].config.sections = ['header', 'floor'];
-  delete defaultPage.views[0].config.sections;
-
+test('declarative Overview views preserve desktop and mobile behavior', async ({ page }) => {
   /** @param {Record<string, unknown>} pageDefinition */
   const render = async (pageDefinition) => {
-    await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
+    await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl, lazyViewModuleUrl }) => {
       const { renderDashboard } = await import(presenterModuleUrl);
-      document.querySelector('#root')?.replaceChildren(renderDashboard({
+      const { enableLazyViews } = await import(lazyViewModuleUrl);
+      const rendered = renderDashboard({
         document: documentModel,
         sources: sourceData
-      }));
+      });
+      document.querySelector('#root')?.replaceChildren(rendered);
+      enableLazyViews(rendered);
     }, {
       documentModel: {
         'language-version': dashboardDocument['language-version'],
@@ -89,9 +87,10 @@ test('explicit Overview composition preserves default desktop and mobile behavio
         }
       },
       sourceData: sources,
-      presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
+      presenterModuleUrl: 'http://dashboard.test/src/presenter.js',
+      lazyViewModuleUrl: 'http://dashboard.test/src/components/lazy-view.js'
     });
-    return page.locator('[data-page-id="overview"] .agent-factory');
+    return page.locator('[data-page-id="overview"] > .custom-view-grid');
   };
 
   for (const viewport of [
@@ -99,13 +98,11 @@ test('explicit Overview composition preserves default desktop and mobile behavio
     { width: 390, height: 844, introColumns: 1, stationColumns: 2 }
   ]) {
     await page.setViewportSize(viewport);
-    const defaultFactory = await render(defaultPage);
-    const defaultMarkup = await defaultFactory.evaluate((element) => element.outerHTML);
-    const defaultBox = await defaultFactory.boundingBox();
-    const factory = await render(explicitPage);
+    const factory = await render(overviewPage);
 
     await expect(factory).toBeVisible();
-    await expect(factory).toHaveAttribute('aria-labelledby', 'agent-factory-heading');
+    await expect(factory.locator(':scope > [data-view-id="overview-header"]')).toHaveClass(/factory-intro/);
+    await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
     await expect(factory.locator('.factory-running-active')).toBeVisible();
@@ -118,8 +115,6 @@ test('explicit Overview composition preserves default desktop and mobile behavio
     expect(await page.locator('.factory-stations').evaluate((element) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
     )).toBe(viewport.stationColumns);
-    expect(await factory.evaluate((element) => element.outerHTML)).toBe(defaultMarkup);
-    expect(await factory.boundingBox()).toEqual(defaultBox);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
 });

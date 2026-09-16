@@ -407,7 +407,7 @@ test('mobile shell shows large overview actions and moves other views into the h
   const primaryNav = page.locator('.primary-nav');
   const overviewAction = page.locator('[data-nav-page-id="overview"]');
   const dashboardMain = page.locator('main.dashboard-prototype');
-  const factoryOverview = page.locator('[data-page-id="overview"] .agent-factory');
+  const factoryOverview = page.locator('[data-page-id="overview"] > .custom-view-grid');
   await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toHaveCSS('display', 'flex');
   await expect(overviewAction).toHaveCSS('min-height', '52px');
@@ -1781,7 +1781,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
-  await expect(overviewPage.locator('.agent-factory')).toBeVisible();
+  await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running-active > span')).toHaveText('Work in motion');
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
@@ -1879,14 +1879,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
-  await expect(overviewPage.locator('.agent-factory')).toBeVisible();
+  await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
-  await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
+  await expect(overviewPage.locator('.custom-view')).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 

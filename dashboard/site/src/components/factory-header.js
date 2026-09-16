@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
-import { effect } from '../reactive.js';
+import { effect, state } from '../reactive.js';
 import { formatCount } from './count-formatters.js';
+import { bindFactorySources, createFactoryMetrics } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
@@ -50,4 +51,25 @@ export function renderFactoryHeader(sources, metrics, scope) {
     h('div', { className: 'factory-intro-copy' }, running, heading, summary),
     renderFactoryRhythm(sources['overview-rhythm'], scope)
   );
+}
+
+const HEADER_SOURCE_NAMES = [
+  'overview-outcome-summary',
+  'overview-run-summary',
+  'overview-factory-status',
+  'overview-rhythm'
+];
+
+/**
+ * Renders the JSON-selected factory header from its declared query payloads.
+ * @param {import('./ui-elements.js').ElementRenderContext} context
+ */
+export function renderFactoryHeaderElement(context) {
+  const sources = bindFactorySources(context.sources, HEADER_SOURCE_NAMES);
+  const metrics = createFactoryMetrics(sources);
+  const lifetime = new AbortController();
+  return renderFactoryHeader(sources, metrics, {
+    signal: lifetime.signal,
+    motion: state(metrics.motion())
+  });
 }

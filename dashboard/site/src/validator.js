@@ -52,7 +52,6 @@ import {
   FIELD_DISPLAY_VALUES,
   FIELD_FORMAT_VALUES,
   FIELD_TYPE_VALUES,
-  FACTORY_OVERVIEW_SECTION_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
   FINDING_SEVERITY_VALUES,
@@ -2372,11 +2371,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
          `${path}.config.body`
        ));
       }
-      const allowedSections = view.element === 'work-project-view'
-        ? WORK_VIEW_BODY_VALUES
-        : view.element === 'outcomes-overview'
-          ? FACTORY_OVERVIEW_SECTION_VALUES
-          : null;
+      const allowedSections = view.element === 'work-project-view' ? WORK_VIEW_BODY_VALUES : null;
       if (allowedSections && view.config.sections !== undefined) {
        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
          errors.push(createError(
@@ -2409,7 +2404,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.sections !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the work-project-view and outcomes-overview elements.',
+         'config.sections is supported only for the work-project-view element.',
          `${path}.config.sections`
        ));
       }
@@ -2425,10 +2420,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
       }
       if (view.config.animate !== undefined) {
-        if (view.element !== 'outcomes-overview') {
+        if (view.element !== 'factory-floor') {
           errors.push(createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-            'config.animate is supported only for the outcomes-overview element.',
+            'config.animate is supported only for the factory-floor element.',
             `${path}.config.animate`
           ));
         }

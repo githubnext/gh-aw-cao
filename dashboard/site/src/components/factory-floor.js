@@ -1,4 +1,6 @@
 import { formatCount } from './count-formatters.js';
+import { state } from '../reactive.js';
+import { bindFactorySources, createFactoryMetrics, factoryStationLabel } from './factory-elements.js';
 import { renderFactoryStation } from './factory-station.js';
 import { renderReactiveGrid } from './reactive-grid.js';
 
@@ -99,4 +101,31 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
     },
     signal: scope.signal
   });
+}
+
+const FLOOR_SOURCE_NAMES = [
+  'overview-outcome-summary',
+  'overview-run-summary',
+  'overview-dispatch-summary',
+  'overview-delivery-summary',
+  'overview-value-summary',
+  'overview-registered-repository-summary',
+  'overview-worker-summary'
+];
+
+/**
+ * Renders the JSON-selected factory floor from its declared query payloads.
+ * @param {import('./ui-elements.js').ElementRenderContext} context
+ */
+export function renderFactoryFloorElement(context) {
+  const sources = bindFactorySources(context.sources, FLOOR_SOURCE_NAMES);
+  const metrics = createFactoryMetrics(sources);
+  const lifetime = new AbortController();
+  return renderFactoryFloor(
+    sources,
+    metrics,
+    factoryStationLabel(context.elementConfig),
+    context.elementConfig?.animate === 'number',
+    { signal: lifetime.signal, motion: state(metrics.motion()) }
+  );
 }
