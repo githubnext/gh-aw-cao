@@ -196,6 +196,42 @@ test("excludes internal packages from user-facing package inventory", () => {
   assert.deepEqual(sources.packages.rows, []);
 });
 
+test("inventory configuration policy source reports unavailable control policy resolution", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: {
+      policy_resolution: { status: "unavailable", reason: "policy file is invalid JSON" },
+      policy_document: null,
+      policy_source: "{",
+    },
+  });
+
+  assert.deepEqual(sources["configuration-policy"].rows, [{
+    path: ".github/workflows/cao.json",
+    document: null,
+    raw: "{",
+    diagnostics: [{
+      severity: "error",
+      path: ".github/workflows/cao.json",
+      title: "Policy validation failed",
+      detail: "policy file is invalid JSON",
+    }],
+  }]);
+});
+
+test("inventory configuration policy source stays empty when no policy was collected", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: {},
+  });
+
+  assert.deepEqual(sources["configuration-policy"].rows, []);
+});
+
 test("transaction logs retain a session when artifacts contain no timeline", () => {
   const rows = transactionLogRows({
     generatedAt: "2026-09-09T05:00:00Z",

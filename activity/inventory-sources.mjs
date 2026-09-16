@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "./actions-log.mjs";
 
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
+const POLICY_PATH = ".github/workflows/cao.json";
 
 function rolloutMode(value) {
   return ["review", "live"].includes(value) ? value : "unknown";
@@ -331,13 +332,16 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
 
 function configurationPolicyRows(controlSettings) {
   const resolution = controlSettings.policy_resolution ?? {};
+  if (!controlSettings.policy_document && !controlSettings.policy_source && !controlSettings.policy_resolution) {
+    return [];
+  }
   return [{
-    path: ".github/workflows/cao.json",
+    path: POLICY_PATH,
     document: controlSettings.policy_document ?? null,
     raw: controlSettings.policy_source || "",
     diagnostics: [{
       severity: resolution.status === "available" ? "valid" : "error",
-      path: ".github/workflows/cao.json",
+      path: POLICY_PATH,
       title: resolution.status === "available" ? "Policy is valid" : "Policy validation failed",
       detail: resolution.status === "available"
         ? "The runtime policy resolver accepted this revision."
