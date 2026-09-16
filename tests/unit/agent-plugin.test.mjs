@@ -15,13 +15,28 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
   assert.match(manifest.description, /analyze activity data/);
   assert.match(manifest.description, /local CAO dashboard previews/);
   assert.deepEqual(manifest.extensions, { "com.github.copilot": {} });
-  for (const skillName of ["setup-cao", "create-cao-package", "analyze-cao", "cao-cli"]) {
+  for (const skillName of ["setup-cao", "add-cao-package", "create-cao-package", "analyze-cao", "cao-cli"]) {
     const skill = await readFile(
       new URL(`skills/${skillName}/SKILL.md`, root),
       "utf8",
     );
     assert.match(skill, new RegExp(`^---\\nname: ${skillName}\\n`));
   }
+});
+
+test("add-cao-package requires discovery, consent, and review-safe installation", async () => {
+  const skill = await readFile(
+    new URL("skills/add-cao-package/SKILL.md", root),
+    "utf8",
+  );
+
+  assert.match(skill, /same commit/);
+  assert.match(skill, /Exclude packages with `private: true`/);
+  assert.match(skill, /no more than three installable packages/);
+  assert.match(skill, /explicit approval/);
+  assert.match(skill, /cao\.mjs add githubnext\/gh-aw-cao\/<package-slug>@<catalog-commit>/);
+  assert.match(skill, /must remain in review/);
+  assert.match(skill, /did not broaden or change/);
 });
 
 test("Copilot extension uses the current Canvas provider contract", async () => {

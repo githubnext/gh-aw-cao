@@ -22,6 +22,7 @@ const controlRuntimeFiles = [
   ".github/workflows/shared/setup-github-apps.mjs",
 ];
 const controlPlaneSkillFiles = [
+  ".github/skills/add-cao-package/SKILL.md",
   ".github/skills/analyze-cao/SKILL.md",
   ".github/skills/cao-cli/SKILL.md",
   ".github/skills/create-cao-package/SKILL.md",

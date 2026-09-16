@@ -90,7 +90,7 @@ The root package installs:
 3. the `cao` CLI runtime under `.github/aw/activity/`; and
 4. CAO project skills under `.github/skills/` for Copilot discovery in the control repository.
 
-Install Dependabot through CAO so its package declaration is merged automatically:
+Use the `add-cao-package` skill to discover and compare catalog operations when you do not already know which package fits. After explicit selection, it installs through CAO so the package declaration is merged automatically. For example, install Dependabot with:
 
 ```bash
 node .github/aw/activity/cao.mjs add githubnext/gh-aw-cao/dependabot

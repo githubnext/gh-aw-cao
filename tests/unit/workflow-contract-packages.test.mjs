@@ -181,7 +181,7 @@ test("root package provides default control-repository agent context", () => {
 
   assert.match(rootManifestSource, /source: AGENTS\.md\n\s+destination: \.github\/aw\/default-AGENTS\.md/);
   assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
-  for (const skill of ["setup-cao", "create-cao-package", "analyze-cao", "cao-cli"]) {
+  for (const skill of ["setup-cao", "add-cao-package", "create-cao-package", "analyze-cao", "cao-cli"]) {
     assert.equal(readlinkSync(join(root, "skills", skill)), `../.github/skills/${skill}`);
     assert.match(
       readFileSync(join(root, ".github", "skills", skill, "SKILL.md"), "utf8"),
