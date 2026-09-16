@@ -235,7 +235,6 @@ test("CAO Evolution failures worker fails closed on evidence-free failures", () 
 
 test("slower package orchestrators run hourly", () => {
   for (const name of [
-    "dependabot.md",
     "eslint-rules.md",
     "eu-cra-compliance.md",
     "optimization.md",
