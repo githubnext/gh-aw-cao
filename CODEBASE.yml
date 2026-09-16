@@ -179,12 +179,14 @@ commands:
   tests: npm test
   unit_tests: npm run test:unit
   integration_tests: npm run test:integration
+  package_lifecycle_tests: npm run test:package-lifecycle
+  package_root_tests: npm run test:package-root
   load_tests: npm run test:load
   svg_check: npm run check:svg
   workflow_compile: npm run compile
   workflow_compile_locks: npm run compile:locks
   docs_build: npm run docs:build
-  dashboard_local: npm run dashboard:local -- --repo OWNER/REPOSITORY
+  dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
   dashboard_site:
     working_directory: dashboard/site/
     tests: npm test
@@ -196,6 +198,7 @@ commands:
 validation:
   commands:
     - npm run check
+  workflow_sources:
     - npm run compile
   architecture:
     - "Verify package contents against root and package aw.yml manifests."
