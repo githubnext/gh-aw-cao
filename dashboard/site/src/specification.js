@@ -4,6 +4,7 @@
 
 import octiconNames from './octicon-names.json' with { type: 'json' };
 import { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
+import { DATA_REDUCER_VALUES } from './data-operations.js';
 export {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   PACKAGE_ROUTE_BODY_VALUES,
@@ -44,11 +45,11 @@ export const QUERY_PROJECT_KEYS = ['values'];
 export const QUERY_PROJECT_VALUE_KEYS = ['field', 'as', 'reducer'];
 export const QUERY_AGGREGATE_FILTER_PREDICATE_KEYS = ['field', 'equals', 'in'];
 export const QUERY_PREDICT_KEYS = ['field', 'on', 'method', 'order', 'groupby', 'as'];
-export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'distinct-values', 'calendar-week-rhythm', 'sum', 'mean', 'min', 'max'];
+export const QUERY_REDUCER_VALUES = DATA_REDUCER_VALUES;
 export const QUERY_SELECT_KEYS = ['field', 'as'];
 export const QUERY_NUMERIC_REDUCER_VALUES = ['sum', 'mean', 'min', 'max'];
 export const INFERRED_FIELD_NAMES = ['package-link'];
-export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, PREDICTION_METHODS, TEXT_COMPUTE_FUNCTIONS } from './data-operations.js';
+export { COMPUTE_FUNCTION_ARITY, DATA_REDUCER_VALUES, NUMERIC_COMPUTE_FUNCTIONS, PREDICTION_METHODS, TEXT_COMPUTE_FUNCTIONS } from './data-operations.js';
 export { DASHBOARD_QUERY_LIMITS };
 export const QUERY_MAX_JOINS = DASHBOARD_QUERY_LIMITS['max-joins'];
 export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when'];

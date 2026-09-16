@@ -346,27 +346,27 @@ function queryStructuralDefect(definition) {
       return `join on "${String(join?.source)}" declares no equality keys`;
     }
   }
+  if (definition.project) {
+    if (!Array.isArray(definition.project.values)
+        || definition.project.values.length === 0
+        || definition.project.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
+      return `project values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions`;
+    }
+    for (const value of definition.project.values) {
+      if (!isPlainObject(value)) return 'project values must be mappings';
+      if (typeof value.field !== 'string' || typeof value.as !== 'string') {
+        return 'project values require field, as, and reducer';
+      }
+      if (typeof value.reducer !== 'string' || !DATA_REDUCER_VALUES.includes(value.reducer)) {
+        return `project reducer must be one of ${DATA_REDUCER_VALUES.join(', ')}`;
+      }
+    }
+  }
   if (definition.aggregate) {
     if (!Array.isArray(definition.aggregate.values)
         || definition.aggregate.values.length === 0
         || definition.aggregate.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
       return `aggregate values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions`;
-    }
-    if (definition.project) {
-      if (!Array.isArray(definition.project.values)
-          || definition.project.values.length === 0
-          || definition.project.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
-        return `project values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions`;
-      }
-      for (const value of definition.project.values) {
-        if (!isPlainObject(value)) return 'project values must be mappings';
-        if (typeof value.field !== 'string' || typeof value.as !== 'string') {
-          return 'project values require field, as, and reducer';
-        }
-        if (typeof value.reducer !== 'string' || !DATA_REDUCER_VALUES.includes(value.reducer)) {
-          return `project reducer must be one of ${DATA_REDUCER_VALUES.join(', ')}`;
-        }
-      }
     }
     for (const value of definition.aggregate.values) {
       if (!isPlainObject(value)) return 'aggregate values must be mappings';

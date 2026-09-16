@@ -351,6 +351,11 @@ function renderEntityCardItems(rows, options) {
   return rows.map((row, index) => {
     const titleText = toText(row[definition.title.field]);
     const target = resolveEntityCardDrill(row, drill, titleText);
+    const labelItems = definition.labels.flatMap((column) => {
+      const value = row[column.field];
+      const values = Array.isArray(value) ? value : [value];
+      return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
+    });
     const titleContent = target?.external
       ? renderExternalLink(target.link)
       : target
@@ -377,12 +382,11 @@ function renderEntityCardItems(rows, options) {
       ),
       h(
         'ul',
-        { className: 'issue-list-labels', 'aria-label': `${titleText || 'Item'} labels` },
-        ...definition.labels.flatMap((column) => {
-          const value = row[column.field];
-          const values = Array.isArray(value) ? value : [value];
-          return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
-        })
+        {
+          className: 'issue-list-labels',
+          ...(labelItems.length > 0 ? { 'aria-label': `${titleText || 'Item'} labels` } : {})
+        },
+        ...labelItems
       )
     );
   });

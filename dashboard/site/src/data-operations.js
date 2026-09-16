@@ -90,22 +90,22 @@ function applyOperator(rows, operator) {
     const offset = Number.isInteger(operator.offset) ? Math.max(0, Number(operator.offset)) : 0;
     return rows.slice(offset, offset + Math.max(0, operator.limit));
   }
-
-  /**
-   * Appends query-level support values to every row without changing row grain.
-   * This is used for worker-owned controls such as filter option lists that must
-   * be derived from the same query scope as the rendered rows.
-   * @param {Row[]} rows @param {ProjectOperator} operator
-   */
-  function project(rows, operator) {
-    if (rows.length === 0) return [];
-    const projected = Object.fromEntries(operator.values.map((value) => [
-      value.as,
-      reduceValues(rows.map((row) => row[value.field]), value.reducer)
-    ]));
-    return rows.map((row) => ({ ...row, ...projected }));
-  }
   throw new TypeError(`Unsupported data operator: ${String(/** @type {{ op?: unknown }} */ (operator).op)}`);
+}
+
+/**
+ * Appends query-level support values to every row without changing row grain.
+ * This is used for worker-owned controls such as filter option lists that must
+ * be derived from the same query scope as the rendered rows.
+ * @param {Row[]} rows @param {ProjectOperator} operator
+ */
+function project(rows, operator) {
+  if (rows.length === 0) return [];
+  const projected = Object.fromEntries(operator.values.map((value) => [
+    value.as,
+    reduceValues(rows.map((row) => row[value.field]), value.reducer)
+  ]));
+  return rows.map((row) => ({ ...row, ...projected }));
 }
 
 /**
