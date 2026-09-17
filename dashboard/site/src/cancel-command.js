@@ -1,8 +1,11 @@
 import { cancelDataProcessing } from './data-processor.js';
 import { publishNotification } from './notification-service.js';
+import { createDebug } from './debug.js';
 
 /** Milliseconds of uninterrupted work before the cancel command is offered. */
 const REVEAL_DELAY = 5000;
+
+const debug = createDebug('cancel-command');
 
 /**
  * Offers a dashboard command that cancels a runaway data computation.
@@ -26,6 +29,7 @@ export function offerCancelCommand(document, options = {}) {
   let notification;
   const timer = setTimeout(() => {
     if (finished) return;
+    debug('revealed', { delay });
     notification = publishNotification({
       message: 'Preparing dashboard data is taking longer than expected.',
       duration: 0,
@@ -36,6 +40,7 @@ export function offerCancelCommand(document, options = {}) {
   const complete = () => {
     if (finished) return;
     finished = true;
+    debug('completed', { revealed: Boolean(notification) });
     clearTimeout(timer);
     document.removeEventListener('keydown', onKeydown);
     notification?.dismiss();
@@ -43,6 +48,7 @@ export function offerCancelCommand(document, options = {}) {
 
   const requestCancel = () => {
     if (finished || !notification) return;
+    debug('cancel requested');
     notification.update({ message: 'Cancelling…', duration: 0 });
     cancel();
   };
