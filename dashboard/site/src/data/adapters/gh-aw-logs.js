@@ -255,6 +255,7 @@ function runAggregates(run) {
     .map((value) => /** @type {Record<string, unknown>} */ (value));
   const hasPriorityAggregate = ['key_findings', 'observability_insights', 'recommendations']
     .some((field) => Array.isArray(audit[field]));
+  /** @param {string} priority */
   const priorityCount = (priority) => auditItems.filter((item) =>
     optionalString(item.severity ?? item.priority)?.toLowerCase() === priority).length;
   const startedAt = timestamp(run.started_at ?? run.created_at);

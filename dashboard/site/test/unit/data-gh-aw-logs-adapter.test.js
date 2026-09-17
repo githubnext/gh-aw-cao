@@ -487,4 +487,48 @@ describe('gh-aw logs adapter', () => {
       });
     }
   });
+
+  it('precomputes immutable run aggregates and gives every event a run identity', () => {
+    const content = `${JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 303,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow_name: 'Activity',
+        workflow_path: '.github/workflows/cao-activity.yml',
+        status: 'completed',
+        created_at: '2026-09-17T00:00:00Z',
+        started_at: '2026-09-17T00:00:01Z',
+        updated_at: '2026-09-17T00:00:11Z',
+        agent_id: 'copilot',
+        model_id: 'gpt-5.4',
+        graders: { results: [{ id: 'operational-value', value: 0.8 }] },
+        audit: {
+          firewall_analysis: { requests_by_domain: { 'api.github.com:443': { allowed: 4, blocked: 2 } } },
+          mcp_tool_usage: { tool_calls: [{ output_size: 128 }, { output_size: 64 }] },
+          key_findings: [{ severity: 'high' }],
+          recommendations: [{ priority: 'medium' }]
+        }
+      }
+    })}\n`;
+    const batch = normalize(adaptCachedGhAwJsonl(content).observations);
+
+    expect(batch.runs[0]).toMatchObject({
+      agentId: 'copilot',
+      modelId: 'gpt-5.4',
+      agenticDurationSeconds: 10,
+      firewallAllowedCalls: 4,
+      firewallBlockedCalls: 2,
+      mcpToolCalls: 2,
+      mcpResponseBytes: 192,
+      operationalValue: 0.8,
+      highPriorityAuditItems: 1,
+      mediumPriorityAuditItems: 1
+    });
+    expect(batch.events.length).toBeGreaterThan(0);
+    expect(batch.events.every((event) => event.runId === batch.runs[0].id)).toBe(true);
+  });
 });

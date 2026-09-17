@@ -182,10 +182,31 @@ jobs:
             exit "$collection_exit_code"
           fi
 
+      - name: Generate phased activity shards
+        env:
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+        run: |
+          if [[ -f activity/cao.mjs ]]; then
+            ingestion_script=activity/cao.mjs
+          elif [[ -f .github/aw/activity/cao.mjs ]]; then
+            ingestion_script=.github/aw/activity/cao.mjs
+          else
+            echo "Activity shard generator is unavailable" >&2
+            exit 1
+          fi
+          node "$ingestion_script" hash-payloads \
+            --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
+            --events-dir "$REPORT_GH_AW_LOGS_EVENTS" \
+            --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
+
       - name: Ingest activity database
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
         run: |
           if [[ -f activity/cao.mjs ]]; then
             ingestion_script=activity/cao.mjs
@@ -195,13 +216,12 @@ jobs:
             echo "Activity SQLite ingestion pipeline is unavailable" >&2
             exit 1
           fi
-          # Every shard is carried forward in the activity cache. The
-          # ingestion layer consumes each shard one by one and skips shards
-          # whose content hash is already recorded in the transactions
-          # table, so only genuinely new or changed shards are reprocessed.
+          # Compact run information is injected before detailed event data so
+          # clients and projections can expose run properties immediately.
           node "$ingestion_script" ingest-jsonl \
             --database "$ACTIVITY_DATABASE" \
-            --input-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
+            --events-dir "$REPORT_GH_AW_LOGS_EVENTS" \
             --run-retention-days all
           node "$ingestion_script" doctor \
             --database "$ACTIVITY_DATABASE" \

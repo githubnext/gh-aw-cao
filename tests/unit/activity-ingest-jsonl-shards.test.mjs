@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, cp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, cp, readFile, readdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -117,4 +117,44 @@ test('ingest-jsonl --input ingests a single JSONL file', async () => {
   assert.equal(transactions.length, 1);
   assert.equal(transactions[0].kind, 'ingest-jsonl');
   assert.equal(transactions[0].payloadScope, 'gh-aw-jsonl');
+});
+
+test('ingest-jsonl injects every run shard before event shards', async () => {
+  const { root, shardDirectory, databasePath } = await fixture();
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+  await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'hash-payloads',
+    '--shard-dir',
+    shardDirectory,
+    '--runs-dir',
+    runsDirectory,
+    '--events-dir',
+    eventsDirectory,
+  ]);
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'ingest-jsonl',
+    '--database',
+    databasePath,
+    '--runs-dir',
+    runsDirectory,
+    '--events-dir',
+    eventsDirectory,
+  ]);
+  const result = JSON.parse(stdout).result;
+
+  assert.deepEqual(result.shards.map((shard) => shard.phase), ['runs', 'events']);
+  const transactions = await queryTransactions(databasePath);
+  const runShard = (await readdir(runsDirectory))[0];
+  const eventShard = (await readdir(eventsDirectory))[0];
+  assert.deepEqual(
+    transactions.map((transaction) => transaction.payloadScope).sort(),
+    [
+      `gh-aw-events:${eventShard}`,
+      `gh-aw-runs:${runShard}`,
+    ].sort(),
+  );
 });

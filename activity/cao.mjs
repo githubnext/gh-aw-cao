@@ -14,6 +14,7 @@ import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../d
 import {
   ingestCachedGhAwJsonl,
   ingestGhAwLogs,
+  ingestNormalizedJson,
   isCachedGhAwJsonlCurrent,
   NORMALIZED_JSON_INGESTION_VERSION
 } from '../dashboard/site/src/data/ingest/coordinator.js';
@@ -58,7 +59,7 @@ const USAGE = `Usage:
   cao update [GH_AW_UPDATE_OPTIONS...]
   cao mode (live|preview) PACKAGE...
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --events-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
@@ -882,6 +883,33 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
   return { ...totals, updated, committedRecords, shards };
 }
 
+async function ingestNormalizedShardDirectories(indexedDB, directories, options = {}) {
+  const shards = [];
+  let updated = false;
+  let committedRecords = 0;
+  for (const [phase, directory] of directories) {
+    const names = (await readdir(directory)).filter((name) => name.endsWith('.json')).sort();
+    for (const name of names) {
+      const shardPath = path.join(directory, name);
+      const content = await readFile(shardPath);
+      const payloadIdentity = createHash('sha256').update(content).digest('hex');
+      const result = await ingestNormalizedJson(
+        indexedDB,
+        JSON.parse(content.toString('utf8')),
+        {
+          ...options,
+          payloadScope: `gh-aw-${phase}:${name}`,
+          payloadIdentity
+        }
+      );
+      updated ||= result.updated;
+      committedRecords += result.committedRecords ?? 0;
+      shards.push({ phase, shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
+    }
+  }
+  return { updated, committedRecords, shards };
+}
+
 async function ingestJsonlFile(indexedDB, inputPath, options = {}) {
   return ingestCachedGhAwJsonl(indexedDB, createReadStream(inputPath), options);
 }
@@ -1494,7 +1522,7 @@ export async function runCli(arguments_, input = process.stdin) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
+    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'runs-dir', 'events-dir', 'context', 'retention-days', 'run-retention-days']);
     const inputPath = option(options, 'input', false);
     const inputDirectory = option(options, 'input-dir', false);
     if (inputPath && inputDirectory) throw new Error('Options --input and --input-dir cannot be combined');
@@ -1507,9 +1535,22 @@ export async function runCli(arguments_, input = process.stdin) {
       retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
       context
     };
-    const result = inputPath
-      ? await ingestJsonlFile(indexedDB, path.resolve(inputPath), ingestOptions)
-      : await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory || DEFAULT_SHARDS_PATH), ingestOptions);
+    const runsDirectory = option(options, 'runs-dir', false);
+    const eventsDirectory = option(options, 'events-dir', false);
+    if (Boolean(runsDirectory) !== Boolean(eventsDirectory)) {
+      throw new Error('--runs-dir and --events-dir must be provided together');
+    }
+    if ((inputPath || inputDirectory) && runsDirectory) {
+      throw new Error('Phased shard directories cannot be combined with --input or --input-dir');
+    }
+    const result = runsDirectory && eventsDirectory
+      ? await ingestNormalizedShardDirectories(indexedDB, [
+          ['runs', path.resolve(runsDirectory)],
+          ['events', path.resolve(eventsDirectory)]
+        ], ingestOptions)
+      : inputPath
+        ? await ingestJsonlFile(indexedDB, path.resolve(inputPath), ingestOptions)
+        : await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory || DEFAULT_SHARDS_PATH), ingestOptions);
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'query') {

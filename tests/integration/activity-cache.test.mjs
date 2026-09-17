@@ -5,7 +5,8 @@ import test from "node:test";
 const cachePaths = [
   "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
-  "${{ runner.temp }}/cao-activity/gh-aw-logs-normalized",
+  "${{ runner.temp }}/cao-activity/gh-aw-logs-runs",
+  "${{ runner.temp }}/cao-activity/gh-aw-logs-events",
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
@@ -64,15 +65,15 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(collector, /--cached-logs "\$\{shard_prefix\}\*"/);
   assert.match(
     workflow,
-    /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--input-dir "\$REPORT_GH_AW_LOGS_SHARDS"/,
+    /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"/,
   );
   assert.match(
     workflow,
-    /ingest-jsonl[\s\S]*?--input-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
+    /ingest-jsonl[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
   );
   assert.match(
     workflow,
-    /Hash activity payloads[\s\S]*?REPORT_GH_AW_LOGS_NORMALIZED: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-normalized[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--normalized-dir "\$REPORT_GH_AW_LOGS_NORMALIZED"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
+    /Hash activity payloads[\s\S]*?REPORT_GH_AW_LOGS_RUNS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-runs[\s\S]*?REPORT_GH_AW_LOGS_EVENTS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-events[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
   );
   assert.match(
     cacheJob,
@@ -105,5 +106,5 @@ test("activity cache consumers use the producer cache version paths", async () =
   ]);
 
   assertCachePathSets(dashboardWorkflow, 1);
-  assertCachePathSets(sharedCache, 2, cachePaths.filter((path) => !path.endsWith("/gh-aw-logs-normalized")));
+  assertCachePathSets(sharedCache, 2);
 });
