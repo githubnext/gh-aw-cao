@@ -94,3 +94,25 @@ test("selects every page when a referenced component was deleted", () => {
     baseRef: "unused",
   }), ["deleted-consumer", "other"]);
 });
+
+test("never selects ignored dashboard pages", () => {
+  const dashboardWithIgnoredPages = {
+    dashboard: {
+      pages: [
+        { id: "operations", views: [{ element: "configuration-actions" }] },
+        { id: "readiness", views: [{ mark: "table" }] },
+        { id: "cost", views: [{ mark: "table" }] },
+      ],
+    },
+  };
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard: dashboardWithIgnoredPages,
+    changedFiles: ["dashboard/site/src/presenter.js"],
+    baseRef: "unused",
+  }), ["cost"]);
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard: dashboardWithIgnoredPages,
+    changedFiles: ["dashboard/site/src/components/configuration-actions.js"],
+    baseRef: "unused",
+  }), []);
+});

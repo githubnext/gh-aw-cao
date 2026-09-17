@@ -7587,9 +7587,25 @@
         "class-name": "dashboard-overview-page",
         "views": [
           {
-            "id": "overview-outcomes",
+            "id": "overview-header",
             "title": "How are we doing?",
             "description": "Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.",
+            "data": {
+              "sources": [
+                "overview-outcome-summary",
+                "overview-run-summary",
+                "overview-factory-status",
+                "overview-rhythm"
+              ]
+            },
+            "mark": "element",
+            "element": "factory-header",
+            "layout": "full"
+          },
+          {
+            "id": "overview-floor",
+            "title": "Factory floor",
+            "intent": "Compare registered repositories, successful runs, dispatches, and value gains while preserving their investigation routes.",
             "data": {
               "sources": [
                 "overview-outcome-summary",
@@ -7597,17 +7613,14 @@
                 "overview-dispatch-summary",
                 "overview-delivery-summary",
                 "overview-value-summary",
-                "overview-factory-status",
                 "overview-registered-repository-summary",
-                "overview-worker-summary",
-                "overview-rhythm"
+                "overview-worker-summary"
               ]
             },
             "mark": "element",
-            "element": "outcomes-overview",
+            "element": "factory-floor",
             "config": {
               "animate": "number",
-              "sections": ["header", "floor"],
               "labels": {
                 "repositories": {
                   "singular": "Repository registered",

@@ -38,6 +38,42 @@ it('compiles distinct aliases when two views filter the same source differently'
   expect(results[dashboardViewAliasName('operations', page.views[1], 1, 'runs')].rows).toEqual([sources.runs.rows[1]]);
 });
 
+it('compiles only the independently requested view payload', () => {
+  const page = {
+    views: [
+      { id: 'header', data: { sources: ['runs', 'outcomes'] } },
+      { id: 'floor', data: { sources: ['runs', 'dispatches'] } }
+    ]
+  };
+
+  const payload = compileDashboardViewPayloadQueries(page, 'overview', { viewId: 'floor' });
+
+  expect(payload.aliases).toEqual([
+    dashboardViewAliasName('overview', page.views[1], 1, 'runs', 0),
+    dashboardViewAliasName('overview', page.views[1], 1, 'dispatches', 1)
+  ]);
+  expect(payload.aliases.every((alias) => alias.includes(':floor:'))).toBe(true);
+});
+
+it('omits view aliases whose sources are not requested by a page subscription', () => {
+  const page = {
+    views: [
+      { id: 'independent-header', data: { sources: ['outcomes', 'runs'] } },
+      { id: 'page-health', data: { source: 'health' } }
+    ]
+  };
+
+  const payload = compileDashboardViewPayloadQueries(page, 'overview', {
+    sourceNames: new Set(['health'])
+  });
+
+  expect(payload.aliases).toEqual([
+    dashboardViewAliasName('overview', page.views[1], 1, 'health')
+  ]);
+  expect(payload.queries).toHaveLength(1);
+  expect(payload.queries[0].from).toBe('health');
+});
+
 it('binds every named drill argument to a worker query predicate and fails closed when missing', () => {
   const page = {
     views: [{

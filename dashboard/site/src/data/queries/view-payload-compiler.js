@@ -34,7 +34,7 @@ export function dashboardViewAliasName(pageId, view, viewIndex, sourceName, sour
 /**
  * @param {unknown} page
  * @param {string} pageId
- * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown }} [options]
+ * @param {{ routeParameters?: Record<string, string>, queryContext?: GlobalQueryContext, evaluatedAt?: string, queries?: unknown, views?: unknown, viewId?: string, sourceNames?: Iterable<string> }} [options]
  * @returns {{ aliases: string[], queries: Array<Record<string, unknown>>, replacedSources: string[] }}
  */
 export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
@@ -53,8 +53,10 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   /** @type {Array<Record<string, unknown>>} */
   const queries = [];
   const replacedSources = new Set();
+  const requestedSources = options.sourceNames ? new Set(options.sourceNames) : null;
 
   views.forEach((view, viewIndex) => {
+    if (options.viewId && (!isPlainObject(view) || view.id !== options.viewId)) return;
     const sources = getViewSources(view);
     if (sources.length === 0) return;
     const viewData = isPlainObject(view) && isPlainObject(view.data)
@@ -65,6 +67,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
       : '';
 
     sources.forEach((sourceName, sourceIndex) => {
+      if (requestedSources && !requestedSources.has(sourceName)) return;
       const alias = dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex);
       aliases.push(alias);
       const predicates = [

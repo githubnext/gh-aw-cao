@@ -1,9 +1,10 @@
 import { h } from '../dom.js';
 import { formatCount } from './count-formatters.js';
+import { effect } from '../reactive.js';
 import { renderReactiveGraphWidget } from './graph-widget.js';
 
 /** @typedef {{ label: string, date: string, count: number, previous: number, reached: boolean }} RhythmDay */
-/** @typedef {{ rows: () => Record<string, unknown>[] }} RhythmSource */
+/** @typedef {{ rows: () => Record<string, unknown>[], pending?: () => boolean }} RhythmSource */
 /** @typedef {{ signal: AbortSignal }} ReactiveScope */
 
 /**
@@ -11,7 +12,7 @@ import { renderReactiveGraphWidget } from './graph-widget.js';
  * @param {ReactiveScope} scope
  */
 export function renderFactoryRhythm(source, scope) {
-  return renderReactiveGraphWidget({
+  const rendered = renderReactiveGraphWidget({
     className: 'factory-rhythm',
     headingClassName: 'factory-rhythm-heading',
     legendClassName: 'factory-rhythm-legend',
@@ -53,6 +54,12 @@ export function renderFactoryRhythm(source, scope) {
     },
     signal: scope.signal
   });
+  effect(() => {
+    const pending = source.pending?.() ?? false;
+    rendered.classList.toggle('factory-rhythm-pending', pending);
+    rendered.toggleAttribute('aria-busy', pending);
+  }, { signal: scope.signal });
+  return rendered;
 }
 
 /** @param {RhythmDay} day */
