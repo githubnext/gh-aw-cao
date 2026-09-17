@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createDebug, debugShardLimit, fullDebugUrl, isDebugEnabled, withDebugParameter } from '../../src/debug.js';
+import * as debugMjs from '../../src/debug.mjs';
 
 describe('dashboard debug logging', () => {
+  it('re-exports the debug.mjs implementation from the legacy debug.js path', () => {
+    expect(createDebug).toBe(debugMjs.createDebug);
+    expect(isDebugEnabled).toBe(debugMjs.isDebugEnabled);
+  });
+
   it('builds a full-debug reload URL without losing the current route', () => {
     expect(fullDebugUrl('https://example.test/dashboard?local-preview=1#page-settings'))
       .toBe('https://example.test/dashboard?local-preview=1&debug=1#page-settings');
