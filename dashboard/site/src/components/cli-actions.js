@@ -2,6 +2,9 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderCliActionCommand } from '../cli-action-template.js';
 import { createCopyControl, createModalDialog, renderCloseButton } from './ui-primitives.js';
+import { createDebug } from '../debug.mjs';
+
+const debugCliActions = createDebug('cli-actions');
 
 const endpoint = './__cli_action';
 /** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
@@ -170,6 +173,8 @@ function renderCliActionControl(action, options = {}) {
         status.textContent = 'Running…';
         output.textContent = '';
         output.hidden = false;
+        const startedAt = Date.now();
+        debugCliActions({ event: 'run-started', actionId: action.id });
         try {
           const result = await executeAction(action.id, argumentValues, templateValues, ({ data }) => {
             output.textContent += data;
@@ -178,8 +183,10 @@ function renderCliActionControl(action, options = {}) {
           status.textContent = result.ok ? 'Completed' : (result.error || 'Action failed');
           if (!output.textContent) output.textContent = resultText(result);
           confirm.textContent = 'Run again';
+          debugCliActions({ event: 'run-completed', actionId: action.id, ok: result.ok, durationMs: Date.now() - startedAt });
         } catch (error) {
           status.textContent = error instanceof Error ? error.message : 'Action failed.';
+          debugCliActions({ event: 'run-failed', actionId: action.id, errorName: error instanceof Error ? error.name : 'Error', durationMs: Date.now() - startedAt });
         } finally {
           confirm.disabled = false;
           cancel.disabled = false;

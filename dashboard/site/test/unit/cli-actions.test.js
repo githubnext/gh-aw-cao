@@ -245,4 +245,101 @@ describe('CLI actions', () => {
       .toBe('gh aw update --repo octo/example');
     expect(rendered.querySelector('.table-cli-action-button .octicon-sync')).not.toBeNull();
   });
+
+  it('logs only scalar run metadata under its predictable category when enabled', async () => {
+    const streamingBody = () => {
+      const encoder = new TextEncoder();
+      return new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('{"type":"complete","result":{"ok":true,"exitCode":0,"stdout":"done","stderr":""}}\n'));
+          controller.close();
+        }
+      });
+    };
+    const fetch = vi.fn().mockResolvedValue({ ok: true, body: streamingBody() });
+    vi.stubGlobal('fetch', fetch);
+
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.mjs', async () => {
+      const actual = /** @type {typeof import('../../src/debug.mjs')} */ (
+        await vi.importActual('../../src/debug.mjs')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=cli-actions', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCliActions: renderCliActionsWithDebug } = await import('../../src/components/cli-actions.js');
+
+    const rendered = renderCliActionsWithDebug([{
+      id: 'compile-workflows',
+      label: 'Compile workflows',
+      icon: 'play',
+      command: 'gh aw compile --strict'
+    }]);
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+    /** @type {HTMLButtonElement} */ (rendered?.querySelector('.cli-action-trigger'))?.click();
+    /** @type {HTMLButtonElement} */ (rendered?.querySelector('.cli-action-confirm'))?.click();
+
+    await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith(
+      '[cao:cli-actions]',
+      { event: 'run-started', actionId: 'compile-workflows' }
+    ));
+    await vi.waitFor(() => expect(output.debug.mock.calls.some((call) => call[1].event === 'run-completed')).toBe(true));
+
+    const completedCall = output.debug.mock.calls.find((call) => call[1].event === 'run-completed');
+    expect(completedCall?.[1]).toMatchObject({ actionId: 'compile-workflows', ok: true });
+    expect(typeof completedCall?.[1].durationMs).toBe('number');
+
+    for (const call of output.debug.mock.calls) {
+      expect(Object.values(call[1]).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.mjs');
+    vi.resetModules();
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const streamingBody = () => {
+      const encoder = new TextEncoder();
+      return new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('{"type":"complete","result":{"ok":true,"exitCode":0,"stdout":"done","stderr":""}}\n'));
+          controller.close();
+        }
+      });
+    };
+    const fetch = vi.fn().mockResolvedValue({ ok: true, body: streamingBody() });
+    vi.stubGlobal('fetch', fetch);
+
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.mjs', async () => {
+      const actual = /** @type {typeof import('../../src/debug.mjs')} */ (
+        await vi.importActual('../../src/debug.mjs')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCliActions: renderCliActionsWithoutDebug } = await import('../../src/components/cli-actions.js');
+
+    const rendered = renderCliActionsWithoutDebug([{
+      id: 'compile-workflows',
+      label: 'Compile workflows',
+      icon: 'play',
+      command: 'gh aw compile --strict'
+    }]);
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+    /** @type {HTMLButtonElement} */ (rendered?.querySelector('.cli-action-trigger'))?.click();
+    /** @type {HTMLButtonElement} */ (rendered?.querySelector('.cli-action-confirm'))?.click();
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.mjs');
+    vi.resetModules();
+  });
 });
