@@ -389,7 +389,15 @@ In the `Evidence` block, include the revalidated target HEAD commit SHA and a br
 
 ## Work issue contract
 
-Create one work issue per actionable atomic group. Its canonical unprefixed subject is `Dependency update: <atomic group summary> in <owner>/<repository>`. Build `<atomic group summary>` deterministically as the ecosystem name followed by the alphabetically sorted package or action names in the group, separated by `, `, and never include versions, counts, severities, dates, or run identifiers. List at most the first three sorted names and append ` and <remaining count> more` when the group is larger, so the subject stays short enough that GitHub never truncates it. The same group therefore produces the same subject on every run so `deduplicate-by-title` prevents duplicates.
+Create one work issue per actionable atomic group. Its canonical unprefixed subject is `Dependency update: <atomic group summary> in <owner>/<repository>`. Build `<atomic group summary>` deterministically as the ecosystem name followed by the alphabetically sorted package or action names in the group, separated by `, `, and never include versions, counts, severities, dates, or run identifiers. List at most the first three sorted names so the subject stays short enough that GitHub never truncates it, and never append a count of the remaining names, because a count changes when group membership changes. The same group therefore produces the same subject on every run so `deduplicate-by-title` prevents duplicates.
+
+Begin every work issue body with a stable group marker:
+
+```html
+<!-- dependabot-work-group:repository=<owner>/<repository>;ecosystem=<ecosystem>;group=<first sorted package or action name> -->
+```
+
+When group membership changes the subject, match the existing open work issue by that marker rather than by subject, keep using it, and never create a second work issue for the same group.
 
 Every work issue body must contain, in order:
 
@@ -426,7 +434,7 @@ Derive the memory filename by replacing `/` with `__` in `SAFE_OUTPUT_REPO` and 
 
 Read that memory file first. When it contains the expected repository pair and a positive integer issue number, call `issue_read` for that exact issue; never search for it. Accept it only when it is an open issue whose canonical title or `dependabot-update-plan:repository` marker matches the target repository.
 
-When memory is missing, malformed, or stale, bootstrap once with `list_issues` in `SAFE_OUTPUT_REPO`. List open issues in `SAFE_OUTPUT_REPO` without requiring labels because not all live targets allow this workflow to create missing labels. Match by the exact canonical title or repository marker, choose the oldest canonical issue if duplicates exist, and write its number and repository pair to the memory file. Use the same bounded listing to recognize existing work issues by their canonical subjects so completed or in-progress work is not duplicated. This label-free bootstrap preserves issues created under the former `dependabot:release-train-updater` worker label and issues created without labels. Do not call `search_issues`, semantic issue search, code search, or repository search. Do not treat a Dependabot pull request as the plan issue.
+When memory is missing, malformed, or stale, bootstrap once with `list_issues` in `SAFE_OUTPUT_REPO`. List open issues in `SAFE_OUTPUT_REPO` without requiring labels because not all live targets allow this workflow to create missing labels. Match by the exact canonical title or repository marker, choose the oldest canonical issue if duplicates exist, and write its number and repository pair to the memory file. Use the same bounded listing to recognize existing work issues by their canonical subjects and `dependabot-work-group` markers so completed or in-progress work is not duplicated. This label-free bootstrap preserves issues created under the former `dependabot:release-train-updater` worker label and issues created without labels. Do not call `search_issues`, semantic issue search, code search, or repository search. Do not treat a Dependabot pull request as the plan issue.
 
 After identifying an existing canonical issue, ensure its current number is stored in the memory file before finishing. A newly created issue number is not available until safe-output processing completes; on the next run, perform the bounded `list_issues` bootstrap once and persist the resulting number. Never guess an issue number.
 
@@ -447,6 +455,8 @@ At the end of every run, produce exactly one of these terminal outcome sequences
 - `update_issue` followed by `add_comment` for an existing umbrella issue with remaining work, whether it came from memory or from the bounded `list_issues` bootstrap, plus one `create_issue` per actionable atomic group that has no open work issue;
 - `update_issue` with a completed description followed by `add_comment`, and no work issues, for an existing umbrella issue when no work remains;
 - `noop` when Dependabot identifies no current work and no plan issue exists.
+
+Work issues may be created in the same run only when the umbrella issue number is already known, either from the memory file or from the bounded `list_issues` bootstrap.
 
 Every `create_issue` call in a run shares one budget: the umbrella issue and all work issues together must never exceed the configured `create_issue` maximum, because outputs beyond that maximum are dropped.
 

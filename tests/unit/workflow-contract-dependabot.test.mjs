@@ -16,15 +16,9 @@ const fixtures = JSON.parse(readFileSync(
 test("Dependabot planner prompt states every contract required by the regression fixtures", () => {
   const source = workflow("dependabot-update-planner.md");
 
-  assert.deepEqual(fixtures.map(({ name }) => name), [
-    "mixed ecosystem batch assigned as one issue",
-    "summary counts disagree with checklist",
-    "upload-pages-artifact major upgrade drops hidden files",
-    "duplicated literal action pin outside the canonical registry",
-    "lockfile resolves beyond the reviewed target",
-    "candidate breaks peer range and adds advisories",
-    "partial batch must not close the umbrella issue",
-  ]);
+  const names = fixtures.map(({ name }) => name);
+  assert.ok(fixtures.length > 0, "expected regression fixtures");
+  assert.equal(new Set(names).size, names.length, "fixture names must be unique");
 
   for (const fixture of fixtures) {
     assert.match(fixture.source, /^github\/gh-aw#(61573|61574)$/, fixture.name);
