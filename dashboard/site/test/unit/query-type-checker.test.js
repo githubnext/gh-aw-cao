@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileDashboardQueryTypes } from '../../src/query-type-checker.js';
 
+/** @param {Record<string, unknown>} value */
 const query = (value) => ({ intent: 'Exercise static query reference checking.', ...value });
 
 describe('dashboard query type checker', () => {
@@ -43,7 +44,7 @@ describe('dashboard query type checker', () => {
     expect(result.errors).toEqual([]);
     expect(result.queryFields.get('usage-by-workflow')).toEqual(['workflow', 'total-aic']);
     expect(result.queryFields.get('active-workflow-costs')).toEqual(['workflow-name', 'predicted-aic']);
-    expect([...result.querySources.get('active-workflow-costs')].sort()).toEqual(['usage', 'workflows']);
+    expect([...(result.querySources.get('active-workflow-costs') ?? [])].sort()).toEqual(['usage', 'workflows']);
   });
 
   it('rejects unknown tables, forward references, self references, and dependency cycles', () => {
@@ -63,6 +64,25 @@ describe('dashboard query type checker', () => {
       expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[1].from' }),
       expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[2].from' })
     ]));
+  });
+
+  it('preserves permissive typing for canonical sources without a declared schema', () => {
+    const result = compileDashboardQueryTypes([
+      query({
+        name: 'overview-query',
+        from: 'overview-status',
+        select: [{ field: 'runtime-provided-field' }]
+      }),
+      query({
+        name: 'overview-consumer',
+        from: 'overview-query',
+        filter: { predicates: [{ field: 'another-runtime-field', equals: true }] }
+      })
+    ]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.queryFields.get('overview-query')).toBeUndefined();
+    expect([...result.querySources.get('overview-consumer') ?? []]).toEqual(['overview-status']);
   });
 
   it('rejects duplicate query symbols and canonical table shadowing', () => {

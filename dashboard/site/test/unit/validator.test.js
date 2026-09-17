@@ -6087,6 +6087,33 @@ describe('declarative query validation', () => {
     }
   });
 
+  it('preserves field types through query aliases', () => {
+    const result = validateDashboardDocument(queryDocument([
+      {
+        name: 'run-starts',
+        from: 'runs',
+        select: [{ field: 'started-at', as: 'start' }]
+      },
+      {
+        name: 'workflow-costs',
+        from: 'run-starts',
+        compute: [{ as: 'start-number', function: 'number', args: [{ field: 'start' }] }]
+      }
+    ]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E011',
+        path: '$.dashboard.queries[1].compute[0].args[0].field'
+      }));
+      expect(result.errors.filter(error => (
+        error.code === 'DLS-E011'
+        && error.path === '$.dashboard.queries[1].compute[0].args[0].field'
+      ))).toHaveLength(1);
+    }
+  });
+
   it('rejects fields that only exist after post-query link inference', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',

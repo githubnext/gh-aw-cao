@@ -14,7 +14,7 @@ import {
 /**
  * @typedef {'scalar'|'numeric'|'temporal'|'link'|'unknown'} FieldType
  * @typedef {{ code: string, message: string, path: string }} ValidationError
- * @typedef {{ fields: Map<string, FieldType>, sources: Set<string> }} QueryType
+ * @typedef {{ fields: Map<string, FieldType> | undefined, sources: Set<string> }} QueryType
  */
 
 /**
@@ -131,10 +131,10 @@ export function compileDashboardQueryTypes(definitions) {
   }
 
   return {
-    queryFields: new Map([...symbols.keys()].map((name) => [
-      name,
-      compiled.get(name) ? [.../** @type {QueryType} */ (compiled.get(name)).fields.keys()] : undefined
-    ])),
+    queryFields: new Map([...symbols.keys()].map((name) => {
+      const fields = compiled.get(name)?.fields;
+      return [name, fields ? [...fields.keys()] : undefined];
+    })),
     querySources: new Map([...symbols.keys()].map((name) => [
       name,
       new Set(compiled.get(name)?.sources ?? [])
@@ -332,7 +332,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
     });
   }
 
-  return fields ? { fields, sources } : undefined;
+  return { fields, sources };
 }
 
 /**
@@ -346,7 +346,7 @@ function resolveSource(source, symbols, compiled) {
   if (SOURCE_VALUES.includes(source)) {
     const names = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)];
     return {
-      fields: new Map((names ?? []).map((name) => [name, intrinsicType(name)])),
+      fields: names ? new Map(names.map((name) => [name, intrinsicType(name)])) : undefined,
       sources: new Set([source])
     };
   }
