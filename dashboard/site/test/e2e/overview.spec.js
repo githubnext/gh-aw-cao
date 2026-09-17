@@ -116,3 +116,42 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
 });
+
+test('renders the factory structure immediately with only unresolved widgets pending', async ({ page }) => {
+  await page.evaluate(async ({ documentModel, presenterModuleUrl, sourceStoreModuleUrl }) => {
+    const [{ renderDashboard }, { configureSourceLoader }] = await Promise.all([
+      import(presenterModuleUrl),
+      import(sourceStoreModuleUrl)
+    ]);
+    configureSourceLoader(() => new Promise(() => {}));
+    const rendered = renderDashboard({
+      document: documentModel,
+      sources: {},
+      loadPageSources: () => new Promise(() => {})
+    });
+    document.querySelector('#root')?.replaceChildren(rendered);
+  }, {
+    documentModel: {
+      'language-version': dashboardDocument['language-version'],
+      dashboard: {
+        id: 'overview-loading',
+        title: 'Overview loading',
+        pages: [overviewPage]
+      }
+    },
+    presenterModuleUrl: 'http://dashboard.test/src/presenter.js',
+    sourceStoreModuleUrl: 'http://dashboard.test/src/source-store.js'
+  });
+
+  const overview = page.locator('[data-page-id="overview"]');
+  await expect(overview.locator(':scope > .custom-view-grid > .factory-intro')).toBeVisible();
+  await expect(overview.locator(':scope > .custom-view-grid > .factory-floor')).toBeVisible();
+  await expect(overview.locator('.dashboard-view-skeleton')).toHaveCount(0);
+  await expect(overview).not.toHaveAttribute('aria-busy', 'true');
+  await expect(overview.locator('.factory-running-pending')).toHaveCount(1);
+  await expect(overview.locator('.factory-heading-pending')).toHaveCount(1);
+  await expect(overview.locator('.factory-rhythm-pending')).toHaveCount(1);
+  await expect(overview.locator('.factory-station-pending')).toHaveCount(4);
+  await expect(overview.locator('.factory-intro')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(overview.locator('.factory-floor')).not.toHaveAttribute('aria-busy', 'true');
+});
