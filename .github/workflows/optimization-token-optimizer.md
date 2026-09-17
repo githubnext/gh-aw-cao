@@ -71,6 +71,9 @@ on:
       cost_grain:
         required: true
         type: string
+      measured_aic:
+        required: true
+        type: string
       proposed_savings_aic:
         required: false
         type: string
@@ -115,6 +118,7 @@ jobs:
           EVIDENCE_PROVENANCE_JSON: ${{ inputs.evidence_provenance_json }}
           ATTRIBUTABLE_RUN_IDS_JSON: ${{ inputs.attributable_run_ids_json }}
           COST_GRAIN: ${{ inputs.cost_grain }}
+          MEASURED_AIC: ${{ inputs.measured_aic }}
           PROPOSED_SAVINGS_AIC: ${{ inputs.proposed_savings_aic }}
           SUPERSEDES_INTERVENTION_ID: ${{ inputs.supersedes_intervention_id }}
         run: |
@@ -146,6 +150,7 @@ jobs:
             --arg evidenceProvenance "$EVIDENCE_PROVENANCE_JSON" \
             --arg attributableRunIds "$ATTRIBUTABLE_RUN_IDS_JSON" \
             --arg costGrain "$COST_GRAIN" \
+            --arg measuredAic "$MEASURED_AIC" \
             --arg proposedSavingsAic "$PROPOSED_SAVINGS_AIC" \
             --arg supersedesInterventionId "$SUPERSEDES_INTERVENTION_ID" \
             '{
@@ -175,7 +180,8 @@ jobs:
                 else (($proposedSavingsAic | tonumber?) // "__invalid_number__")
                 end
               ),
-              costGrain: $costGrain
+              costGrain: $costGrain,
+              measuredAic: (($measuredAic | tonumber?) // "__invalid_number__")
             }
             + (if $supersedesInterventionId != ""
               then {supersedesInterventionId: $supersedesInterventionId}
@@ -234,8 +240,10 @@ jobs:
                 and (.runId | type == "string" and test("^[0-9]+$"))
                 and .costGrain == $assignment.costGrain
               ))
-              and (.costGrain | IN("invocation", "run-aggregate"))
-              and (.attributableRunIds | type == "array" and length > 0)
+              and .costGrain == "run-aggregate"
+              and (.measuredAic | type == "number" and . > 0)
+              and (.attributableRunIds | type == "array" and length == 1)
+              and .attributableRunIds[0] == .assignmentRunId
               and (all(.attributableRunIds[]; type == "string" and test("^[0-9]+$")))
             ' <<<"$assignment" >/dev/null; then
             reason=invalid-assignment
@@ -263,6 +271,12 @@ jobs:
               --where type=workflow_run_grader \
               --limit 100000 2>/dev/null)"
             grader_events_status=$?
+            usage_events="$(node "$cao_script" query \
+              --database "$db" \
+              --collection events \
+              --where type=workflow_run_usage \
+              --limit 100000 2>/dev/null)"
+            usage_events_status=$?
             events="$(node "$cao_script" query \
               --database "$db" \
               --collection events \
@@ -273,14 +287,19 @@ jobs:
             if [ "$runs_status" -ne 0 ] || ! jq -e 'type == "array" and length > 0' <<<"$runs" >/dev/null; then
               reason=assigned-runs-unavailable
             elif [ "$sessions_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$sessions" >/dev/null \
-                || [ "$grader_events_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$grader_events" >/dev/null; then
-              reason=grader-evidence-unavailable
-            elif ! jq -e --argjson assignment "$assignment" --argjson sessions "$sessions" --argjson graders "$grader_events" '
+                || [ "$grader_events_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$grader_events" >/dev/null \
+                || [ "$usage_events_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$usage_events" >/dev/null; then
+              reason=grader-or-usage-evidence-unavailable
+            elif ! jq -e --argjson assignment "$assignment" --argjson sessions "$sessions" --argjson graders "$grader_events" --argjson usage "$usage_events" '
                 (reduce $sessions[] as $session ({}; .[$session.id] = $session.runId)) as $sessionRun
                 | (reduce $graders[] as $event ({};
                     ($sessionRun[$event.sessionId] // "") as $runId
                     | if $runId == "" then . else .[$runId] += [$event] end
                   )) as $gradersByRun
+                | (reduce $usage[] as $event ({};
+                    ($sessionRun[$event.sessionId] // "") as $runId
+                    | if $runId == "" then . else .[$runId] += [$event] end
+                  )) as $usageByRun
                 | [
                     .[]
                     | {
@@ -288,7 +307,8 @@ jobs:
                         canonicalId: (.id // ""),
                         startedAt: (.startedAt // .createdAt // ""),
                         completedAt: (.completedAt // .updatedAt // ""),
-                        graders: ($gradersByRun[(.id // "")] // [])
+                        graders: ($gradersByRun[(.id // "")] // []),
+                        usage: ($usageByRun[(.id // "")] // [])
                       }
                 ] as $runs
                 | ($runs | map(.id)) as $runIds
@@ -296,6 +316,12 @@ jobs:
                 and all($assignment.attributableRunIds[]; ($runIds | index(.)) != null)
                 and any($runs[];
                   .id == $assignment.assignmentRunId
+                  and (.usage
+                    | map(select((.aic | type == "number") or ((.tokenUsage.total_aic? // .tokenUsage.totalAic?) | type == "number")))
+                    | unique_by(.id // .sourceId // .sessionId) as $usageRows
+                    | ($usageRows | length) == 1
+                    and (($usageRows | map(.aic // .tokenUsage.total_aic // .tokenUsage.totalAic) | add) == $assignment.measuredAic)
+                  )
                   and (.startedAt | fromdateiso8601? != null)
                   and (.completedAt | fromdateiso8601? != null)
                   and ((.startedAt | fromdateiso8601) >= ($assignment.evidenceWindowStart | fromdateiso8601))

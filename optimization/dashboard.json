@@ -592,7 +592,7 @@
           "predicates": [
             {
               "field": "outcome-state",
-              "equals": "accepted"
+              "equals": "lifecycle-close"
             }
           ]
         },
@@ -1856,7 +1856,7 @@
             "function": "concat",
             "args": [
               {
-                "value": "invocation"
+                "value": "run-aggregate"
               },
               {
                 "value": ""
@@ -2358,10 +2358,10 @@
             "function": "equals-any",
             "args": [
               {
-                "field": "priced-invocation-count"
+                "field": "observed-priced-invocations"
               },
               {
-                "field": "invocation-count"
+                "field": "observed-invocations"
               }
             ]
           },
@@ -2382,7 +2382,7 @@
             "function": "greater-than",
             "args": [
               {
-                "field": "invocation-count"
+                "field": "observed-invocations"
               },
               {
                 "value": 0

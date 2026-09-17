@@ -116,12 +116,13 @@ jobs:
                 and ($candidate["observation-cutoff"] | fromdateiso8601? != null)
                 and (($candidate["evidence-window-start"] | fromdateiso8601) < ($candidate["evidence-window-end"] | fromdateiso8601))
                 and (($candidate["evidence-window-end"] | fromdateiso8601) <= ($candidate["observation-cutoff"] | fromdateiso8601))
-                and $candidate["cost-grain"] == "invocation"
+                and $candidate["cost-grain"] == "run-aggregate"
                 and ($candidate["run-identities"] | test("^[0-9]+$"))
+                and $candidate["run-identities"] == $candidate["assignment-run"]
                 and ($candidate["distinct-runs"] | type == "number")
                 and $candidate["distinct-runs"] == 1
                 and ($candidate["invocation-count"] | type == "number")
-                and $candidate["invocation-count"] >= $candidate["distinct-runs"]
+                and $candidate["invocation-count"] == 1
                 and ($candidate["priced-invocation-count"] | type == "number")
                 and $candidate["priced-invocation-count"] == $candidate["invocation-count"]
                 and ($candidate["measured-aic"] | type == "number")
@@ -281,11 +282,11 @@ jobs:
                           | (($run.startedAt // $run.createdAt // "") == $candidate["evidence-window-start"])
                           and (($run.completedAt // $run.updatedAt // "") == $candidate["evidence-window-end"])
                           and ($run.usage
-                               | map(select(.aic != null and (.aic | type == "number")))
-                               | unique_by(.id // .sessionId)
+                               | map(select((.aic | type == "number") or ((.tokenUsage.total_aic? // .tokenUsage.totalAic?) | type == "number")))
+                               | unique_by(.id // .sourceId // .sessionId)
                                as $usageRows
-                             | ($usageRows | length) > 0
-                             and (($usageRows | map(.aic) | add) == $candidate["measured-aic"])
+                             | ($usageRows | length) == 1
+                             and (($usageRows | map(.aic // .tokenUsage.total_aic // .tokenUsage.totalAic) | add) == $candidate["measured-aic"])
                            )
                           and any($run.graders[]?;
                             .grader == "operational-value"
