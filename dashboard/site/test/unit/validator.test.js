@@ -1777,6 +1777,18 @@ dashboard:
         expect.objectContaining({ path: expect.stringContaining('.encoding.x.type') })
       ]));
     }
+
+    horizontalBar.data.limit = 100;
+    horizontalBar.data.source = 'usage';
+    horizontalBar.encoding.x = /** @type {any} */ ({ field: 'aic' });
+    horizontalBar.encoding.y = { field: 'output-tokens', type: 'quantitative', aggregate: 'sum' };
+    const inferredQuantitativeAxis = validateDashboardDocument(JSON.stringify(document));
+    expect(inferredQuantitativeAxis.ok).toBe(false);
+    if (!inferredQuantitativeAxis.ok) {
+      expect(inferredQuantitativeAxis.errors).toContainEqual(expect.objectContaining({
+        path: expect.stringContaining('.encoding.x.type')
+      }));
+    }
   });
 
   it('keeps one focused custom dashboard for every operation package', () => {

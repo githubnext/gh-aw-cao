@@ -4417,12 +4417,24 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
       `${viewPath}.encoding.x.type`
     ));
   }
-  if (chart === 'horizontal-bar' && isPlainObject(encoding.x) && encoding.x.type !== undefined && !['nominal', 'ordinal'].includes(String(encoding.x.type))) {
-    errors.push(createError(
-      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-      'horizontal-bar chart x encoding must be nominal or ordinal when explicitly typed.',
-      `${viewPath}.encoding.x.type`
-    ));
+  if (chart === 'horizontal-bar' && isPlainObject(encoding.x)) {
+    const xField = typeof encoding.x.field === 'string' ? encoding.x.field : null;
+    const xType = encoding.x.type;
+    const hasNonCategoricalIntrinsicType = xField !== null && (
+      TEMPORAL_FIELD_NAMES.includes(xField)
+      || ADDITIVE_MEASURE_FIELDS.includes(xField)
+      || NON_ADDITIVE_MEASURE_FIELDS.includes(xField)
+    );
+    if (
+      (xType !== undefined && !['nominal', 'ordinal'].includes(String(xType)))
+      || (xType === undefined && hasNonCategoricalIntrinsicType)
+    ) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'horizontal-bar chart x encoding must be nominal or ordinal.',
+        `${viewPath}.encoding.x.type`
+      ));
+    }
   }
   if (chart === 'histogram') {
     for (const channel of ['color', 'href']) {

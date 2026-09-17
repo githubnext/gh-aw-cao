@@ -582,13 +582,14 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
     return renderChartWidgetShell(
       chartType,
-      { role: 'img', 'aria-label': `Horizontal bar chart with ${points.length} bars` },
+      null,
       h(
         'ul',
-        { className: 'horizontal-bar-chart-list' },
+        { className: 'horizontal-bar-chart-list', 'aria-label': `Horizontal bar chart with ${points.length} bars` },
         ...points.map((point, index) => {
           const numericValue = toNumber(point.y);
-          const value = Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0;
+          const value = Number.isFinite(numericValue) ? numericValue : 0;
+          const barSize = Math.max(0, value);
           const label = chartPointLabel(point, unit);
           return h(
             'li',
@@ -599,7 +600,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               { className: 'horizontal-bar-chart-track', 'aria-hidden': 'true' },
               h('span', {
                 className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
-                style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(value / maximum) * 100}%`
+                style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`
               })
             ),
             h('span', {

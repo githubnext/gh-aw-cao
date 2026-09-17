@@ -643,7 +643,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .horizontal-bar-chart-row { min-width: 0; display: grid; grid-template-columns: minmax(80px, 32%) minmax(80px, 1fr) auto; align-items: center; gap: 8px; }
 .horizontal-bar-chart-label { overflow: hidden; color: var(--fg); font-size: .75rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .horizontal-bar-chart-track { height: 14px; overflow: hidden; border-radius: 3px; background: var(--canvas-subtle); }
-.horizontal-bar-chart-bar { display: block; width: var(--horizontal-bar-size); height: 100%; transform-origin: left center; background: var(--accent); animation-name: horizontal-bar-chart-entry; }
+.horizontal-bar-chart-bar { display: block; width: var(--horizontal-bar-size); height: 100%; transform-origin: left center; background: var(--accent); }
 .horizontal-bar-chart-value { min-width: 4ch; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; }
 .chart-series-1 { stroke: var(--success); }
 .chart-series-2 { stroke: var(--attention); }
@@ -679,6 +679,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .line-chart-series.line-chart-context { animation-name: line-chart-context-entry; }
 .line-chart-point, .dot-chart-point, .scatter-chart-point { transform-box: fill-box; transform-origin: center; animation: line-chart-point-entry 280ms ease-out both; animation-delay: calc(180ms + var(--chart-entry-index, 0) * 35ms); }
 .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect { transform-box: fill-box; transform-origin: center bottom; animation: histogram-chart-entry 360ms ease-out both; animation-delay: calc(var(--chart-entry-index, 0) * 35ms); }
+.bar-chart-bar.horizontal-bar-chart-bar { transform-origin: left center; animation-name: horizontal-bar-chart-entry; }
 .pie-chart-segment { transition: opacity 120ms ease, filter 120ms ease; }
 .pie-chart-mark:hover .pie-chart-segment, .pie-chart-mark:focus-visible .pie-chart-segment { filter: brightness(1.08); opacity: .82; }
 .point-tooltip { opacity: 0; pointer-events: none; transition: opacity 80ms linear; }
