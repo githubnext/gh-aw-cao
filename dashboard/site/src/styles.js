@@ -1981,7 +1981,7 @@ thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75
 .table-summary-boolean .chart-legend i.chart-series-semantic-failure { border-color: var(--danger); color: var(--danger); }
 .table-summary-count { font-weight: 400; }
 .table-summary-quantitative { display: grid; gap: 6px; }
-.table-summary-histogram { width: 100%; height: 32px; overflow: visible; }
+.table-summary-histogram { width: 100%; max-width: 120px; height: 32px; overflow: visible; } /* cap at the SVG's natural viewBox width (histogram.js) so wide columns don't stretch the bars */
 .table-summary-histogram rect { fill: var(--accent); opacity: .75; }
 .table-output-evidence { display: block; max-width: 80ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tree-table-cell { display: block; padding-inline-start: calc(var(--tree-depth) * 1.25rem); }
