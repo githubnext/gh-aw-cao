@@ -3337,6 +3337,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(mobilePackageLinks).toHaveCount(7);
   await expect(mobilePackageLinks.first().locator('.tab-trailing-icon')).toBeVisible();
   expect(await mobilePackageLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
+  await mobilePackageLinks.first().focus();
+  await expect(mobilePackageLinks.first()).toHaveCSS('outline-offset', '-3px');
   const mobileLinkBoxes = await mobilePackageLinks.evaluateAll((links) => links.map((link) => {
     const box = link.getBoundingClientRect();
     return { height: box.height, top: box.top };

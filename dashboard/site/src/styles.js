@@ -2076,6 +2076,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .package-tabs a { min-height: 44px; padding: 10px 12px; border-radius: 0; background: transparent; font-size: .875rem; }
   .package-tabs a + a { border-top: 1px solid var(--border-muted); }
   .package-tabs a:hover { background: var(--neutral-muted); }
+  .package-tabs a:focus { outline-offset: -3px; }
   .package-tabs a[aria-current="page"] { background: var(--canvas-subtle); color: var(--fg); font-weight: 600; }
   .package-tabs a[aria-current="page"] > .octicon:first-child { color: var(--accent); }
   .package-tabs a[aria-current="page"]::after { display: none; }
