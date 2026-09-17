@@ -46,7 +46,6 @@ export function waitForDashboardUi(browserWindow) {
  *   pageSourceNames: (pageId: string) => string[],
  *   pageLazySourceNames: (pageId: string) => string[],
  *   render: (sources: DashboardSources, state: 'ready' | 'cached' | 'stale', loadPageSources: PageSourceLoader, retryRefresh?: () => void) => void,
- *   updateState: (state: 'ready' | 'cached' | 'stale', retryRefresh?: () => void) => void,
  *   settleUi?: () => Promise<void>,
  * }} options
  * @returns {Promise<() => void>}
@@ -61,7 +60,6 @@ export async function startDashboardData(options) {
     pageSourceNames,
     pageLazySourceNames,
     render,
-    updateState,
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
   const cleanup = new AbortController();
@@ -176,7 +174,7 @@ export async function startDashboardData(options) {
       status: "failed",
       message,
     });
-    updateState("stale", refreshSources);
+    render({}, "stale", loadPageSources, refreshSources);
   };
   const refreshSources = (showRefreshing = true) => {
     if (refreshPending || cleanup.signal.aborted) return;
@@ -187,7 +185,7 @@ export async function startDashboardData(options) {
       status: "started",
     });
     if (showRefreshing) {
-      updateState("cached");
+      render({}, "cached", loadPageSources);
     }
     void refreshCanonicalDashboardSources(
       sourceUrl,
@@ -202,7 +200,7 @@ export async function startDashboardData(options) {
           changed,
         });
         refreshBoundSources();
-        updateState("ready");
+        render({}, "ready", loadPageSources);
       },
       showStaleSources,
     );

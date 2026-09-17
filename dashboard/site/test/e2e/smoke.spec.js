@@ -3443,7 +3443,8 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   `);
 
   const filterBar = page.getByLabel('Dashboard filters');
-  await expect(page.locator('.dashboard-horizon-skeleton')).toBeVisible();
+  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
+  await expect(page.locator('.horizon-toggle')).toHaveAccessibleName(/1 week/);
   await page.evaluate(() => /** @type {{ publishHorizonSources: () => void }} */ (
     /** @type {unknown} */ (window)
   ).publishHorizonSources());

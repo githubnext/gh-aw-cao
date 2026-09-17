@@ -356,8 +356,14 @@
             skeleton.append(block);
           }
           dashboard.querySelector(".report-body")?.prepend(skeleton);
-        } else {
-          updateDashboardState(dashboard, state, retryRefresh);
+        } else if (state === "cached") {
+          dashboard.classList.add("dashboard-refreshing");
+          dashboard.setAttribute("aria-busy", "true");
+        } else if (state === "stale") {
+          dashboard.classList.add("dashboard-stale");
+          if (retryRefresh) {
+            dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh));
+          }
         }
         attachCopilotPanel(dashboard);
         attachCliActions(dashboard, dashboardDocument.dashboard["cli-actions"] ?? [], {
@@ -368,23 +374,6 @@
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);
         return dashboard;
-      };
-      /**
-       * Updates refresh chrome without replacing the mounted dashboard, preserving
-       * controls and active page subscriptions while source data refreshes.
-       * @param {HTMLElement} dashboard
-       * @param {'ready' | 'cached' | 'stale'} state
-       * @param {() => void} [retryRefresh]
-       */
-      const updateDashboardState = (dashboard, state, retryRefresh) => {
-        dashboard.classList.toggle("dashboard-refreshing", state === "cached");
-        dashboard.classList.toggle("dashboard-stale", state === "stale");
-        if (state === "cached") dashboard.setAttribute("aria-busy", "true");
-        else dashboard.removeAttribute("aria-busy");
-        dashboard.querySelector(".source-refresh-error")?.remove();
-        if (state === "stale" && retryRefresh) {
-          dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh));
-        }
       };
       window.addEventListener("dashboard-preview-update", (event) => {
         const previewEvent = /** @type {CustomEvent<{ dashboard: { 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }, traceId?: string }>} */ (event);
@@ -1085,10 +1074,6 @@
             pageLazySourceNames: (pageId) => dashboardPageLazySourceNames(dashboardDocument, pageId),
             render: (sources, state, loadPageSources, retryRefresh) => {
               renderSources(sources, state, true, loadPageSources, retryRefresh);
-            },
-            updateState: (state, retryRefresh) => {
-              const dashboard = root.firstElementChild;
-              if (dashboard instanceof HTMLElement) updateDashboardState(dashboard, state, retryRefresh);
             },
           });
         } catch (error) {

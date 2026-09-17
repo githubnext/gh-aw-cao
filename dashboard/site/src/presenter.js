@@ -422,8 +422,6 @@ function enableResponsiveReportActions(root, signal) {
  * @returns {{ available: boolean, evaluatedAt: string, duration: string, start: string, end: string }}
  */
 function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRange, fallbackEvaluatedAt) {
-  const available = Object.values(sources)
-    .some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
   const dataHorizon = resolveDataHorizon(sources);
   const evaluatedAt = dataHorizon?.end ?? latestRetrievedAt(sources) ?? fallbackEvaluatedAt;
   const duration = dataHorizon
@@ -435,7 +433,7 @@ function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRan
   const end = dataHorizon?.end ?? (isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.end === 'string'
     ? dashboardDefaults.time.end
     : evaluatedAt);
-  return { available, evaluatedAt, duration, start, end };
+  return { available: true, evaluatedAt, duration, start, end };
 }
 
 /**
