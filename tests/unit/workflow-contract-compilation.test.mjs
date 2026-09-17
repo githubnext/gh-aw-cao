@@ -82,6 +82,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "eu-cra-compliance.lock.yml",
       "optimization-ai-credit-auditor.lock.yml",
       "optimization-ai-credit-optimizer.lock.yml",
+      "optimization-token-efficiency-auditor.lock.yml",
       "optimization-token-efficiency-verifier.lock.yml",
       "optimization-token-optimizer.lock.yml",
       "optimization.lock.yml",
