@@ -15,6 +15,7 @@ import { compileDashboardViewPayloadQueries } from './data/queries/view-payload-
 import { createDashboardQueryMemoization, dashboardQueryMemoizationKey } from './data/queries/memoization.js';
 import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { deriveDataHealthCalloutSources } from './data-health.js';
 import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
 import { createDebug, debugShardLimit } from './debug.js';
@@ -152,6 +153,11 @@ async function queryLiveDashboard(
       dashboard.logicalSources,
       required
     );
+    const healthPayload = required.some((name) => (
+      name === 'data-health-collections' || name === 'data-health-coverage'
+    ))
+      ? deriveDataHealthCalloutSources(canonicalPayload)
+      : {};
     const page = pageId
       ? context.pages.find((candidate) => candidate?.id === pageId)
       : null;
@@ -170,7 +176,13 @@ async function queryLiveDashboard(
     const directRequests = new Set([...requested].filter((name) => !replacedSources.has(name)));
     const querySources = {
       ...canonicalPayload,
-      ...executeDashboardQueries(context.queries, canonicalPayload, directRequests, { signal })
+      ...healthPayload,
+      ...executeDashboardQueries(
+        context.queries,
+        { ...canonicalPayload, ...healthPayload },
+        directRequests,
+        { signal }
+      )
     };
     const viewAliases = viewPayload.queries.length > 0
       ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal })

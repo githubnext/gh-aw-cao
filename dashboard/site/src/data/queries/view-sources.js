@@ -29,6 +29,42 @@ function projectionMetadata(sources, sourceName, projectionName, available) {
   });
 }
 
+/**
+ * @param {Record<string, unknown>} sources
+ * @param {string} sourceName
+ * @param {string} projectionName
+ * @param {number} rowCount
+ * @returns {import('../../presenter.js').SourceMetadata}
+ */
+function canonicalProjectionMetadata(sources, sourceName, projectionName, rowCount) {
+  const metadata = projectionMetadata(sources, sourceName, projectionName, true);
+  return {
+    ...metadata,
+    availability: rowCount > 0 ? 'available' : 'empty',
+    completeness: metadata.completeness === 'unknown' ? 'complete' : metadata.completeness
+  };
+}
+
+/**
+ * @param {string} sourceName
+ * @param {Record<string, unknown>} sources
+ * @param {string} reason
+ * @returns {import('../../presenter.js').LogicalSourceInput}
+ */
+function emptyCanonicalSource(sourceName, sources, reason) {
+  return {
+    source: sourceName,
+    rows: [],
+    metadata: /** @type {import('../../presenter.js').SourceMetadata} */ ({
+      ...canonicalProjectionMetadata(sources, sourceName, sourceName, 0),
+      completeness: 'unknown',
+      freshness: 'unknown',
+      'collection-state': 'not-collected',
+      'collection-reason': reason
+    })
+  };
+}
+
 /** @param {Record<string, unknown>[]} runs @param {Record<string, unknown>} sources */
 function failedRunsSource(runs, sources) {
   return {
@@ -402,26 +438,27 @@ function eventsSource(events, sessionsById, runsById, sources) {
  * @param {Record<string, unknown>} sources
  */
 function mcpCallsSource(events, sessionsById, runsById, sources) {
+  const rows = events.flatMap((event) => {
+    if (event.source !== 'mcp' || event.type !== 'tool.call') return [];
+    const session = sessionsById.get(event.sessionId) ?? {};
+    const run = runsById.get(session.runId) ?? {};
+    return [definedFields({
+      organization: run.owner,
+      repository: run.repository,
+      workflow: run.workflowPath,
+      run: run.githubRunId === undefined ? undefined : String(run.githubRunId),
+      'mcp-observation': event.id,
+      'mcp-server': event.mcpServer,
+      'mcp-tool': event.mcpTool,
+      'mcp-status': event.status,
+      'observed-at': event.observedAt,
+      'run-link': run.runLink
+    })];
+  });
   return {
     source: 'mcp-calls',
-    rows: events.flatMap((event) => {
-      if (event.source !== 'mcp' || event.type !== 'tool.call') return [];
-      const session = sessionsById.get(event.sessionId) ?? {};
-      const run = runsById.get(session.runId) ?? {};
-      return [definedFields({
-        organization: run.owner,
-        repository: run.repository,
-        workflow: run.workflowPath,
-        run: run.githubRunId === undefined ? undefined : String(run.githubRunId),
-        'mcp-observation': event.id,
-        'mcp-server': event.mcpServer,
-        'mcp-tool': event.mcpTool,
-        'mcp-status': event.status,
-        'observed-at': event.observedAt,
-        'run-link': run.runLink
-      })];
-    }),
-    metadata: projectionMetadata(sources, 'mcp-calls', 'events', true)
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'events', 'mcp-calls', rows.length)
   };
 }
 
@@ -455,7 +492,7 @@ function sessionsSource(sessions, runsById, sources) {
   return {
     source: 'sessions',
     rows,
-    metadata: projectionMetadata(sources, 'sessions', 'sessions', rows.length > 0)
+    metadata: canonicalProjectionMetadata(sources, 'sessions', 'sessions', rows.length)
   };
 }
 
@@ -485,6 +522,9 @@ function graderRows(events, sessionsById, runsById) {
       run: String(run.githubRunId ?? ''),
       'run-attempt': run.attempt,
       grader: event.grader,
+      'grader-name': event.graderName,
+      'grader-source': event.graderSource,
+      experiment: observation.experiment ?? event.experimentId,
       value: event.value,
       status: event.status ?? 'unavailable',
       included: Number.isFinite(event.value),
@@ -493,6 +533,10 @@ function graderRows(events, sessionsById, runsById) {
       direction: event.direction,
       unit: event.unit,
       'rollout-mode': run.rolloutMode,
+      engine: run.engine,
+      'engine-version': run.engineVersion,
+      'requested-model': run.requestedModel ?? run.modelId,
+      'resolved-model': run.resolvedModel ?? run.modelId,
       'maturity-status': Object.keys(observation).length === 0
         ? 'unavailable'
         : observation.mature === true ? 'matured' : 'interim',
@@ -511,7 +555,7 @@ function graderObservationsSource(graders, sources) {
   return {
     source: 'grader-observations',
     rows: graders,
-    metadata: projectionMetadata(sources, 'events', 'grader-observations', graders.length > 0)
+    metadata: canonicalProjectionMetadata(sources, 'events', 'grader-observations', graders.length)
   };
 }
 
@@ -561,7 +605,423 @@ function operationalValuesSource(graders, sources) {
   return {
     source: 'operational-values',
     rows,
-    metadata: projectionMetadata(sources, 'events', 'operational-values', graders.length > 0)
+    metadata: canonicalProjectionMetadata(sources, 'events', 'operational-values', rows.length)
+  };
+}
+
+/** @param {unknown} value */
+function finiteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+/** @param {unknown} value */
+function tokenSummary(value) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? /** @type {Record<string, unknown>} */ (value)
+    : {};
+}
+
+/** @param {Record<string, unknown>} summary @param {string[]} fields */
+function firstFinite(summary, fields) {
+  for (const field of fields) {
+    const value = finiteNumber(summary[field]);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+/** @param {Record<string, unknown>[]} runs @param {Record<string, unknown>} sources */
+function usageSource(runs, sources) {
+  const rows = runs.flatMap((run) => {
+    const summary = tokenSummary(run.tokenUsage);
+    const aic = finiteNumber(run.aicTotal ?? run.aic ?? summary.total_aic);
+    if (aic === null && Object.keys(summary).length === 0) return [];
+    return [definedFields({
+      organization: run.owner,
+      repository: run.repository,
+      workflow: run.workflowPath,
+      run: String(run.githubRunId ?? ''),
+      invocation: run.id,
+      engine: run.engine ?? 'unknown',
+      'engine-version': run.engineVersion ?? 'unknown',
+      'requested-model': run.requestedModel ?? run.modelId ?? 'unknown',
+      'resolved-model': run.resolvedModel ?? run.modelId ?? 'unknown',
+      'rollout-mode': run.rolloutMode ?? 'unknown',
+      'input-tokens': firstFinite(summary, ['inputTokens', 'input_tokens', 'total_input_tokens']),
+      'output-tokens': firstFinite(summary, ['outputTokens', 'output_tokens', 'total_output_tokens']),
+      'cache-read-tokens': firstFinite(summary, ['cacheReadTokens', 'cache_read_tokens', 'total_cache_read_tokens']),
+      'cache-write-tokens': firstFinite(summary, ['cacheWriteTokens', 'cache_write_tokens', 'total_cache_write_tokens']),
+      'reasoning-tokens': firstFinite(summary, ['reasoningTokens', 'reasoning_tokens', 'total_reasoning_tokens']),
+      aic,
+      'estimated-usd': aic === null ? null : aic * 0.01,
+      'observed-at': run.observedAt ?? run.completedAt ?? run.startedAt,
+      'run-link': run.runLink
+    })];
+  });
+  return {
+    source: 'usage',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'runs', 'usage', rows.length)
+  };
+}
+
+/** @param {unknown} value */
+function githubOutputCategory(value) {
+  const normalized = String(value ?? '').toLowerCase().replaceAll('-', '_');
+  if (normalized.includes('pull_request')) return 'pull-request';
+  if (normalized.includes('issue')) return 'issue';
+  if (normalized.includes('discussion')) return 'discussion';
+  return normalized || 'unknown';
+}
+
+/** @param {unknown} value */
+function httpsLink(value) {
+  return typeof value === 'string' && value.startsWith('https://') ? value : undefined;
+}
+
+/** @param {unknown} value */
+function linkNumber(value) {
+  const match = String(value ?? '').match(/\/(?:issues|pull)\/(\d+)(?:\/|$)/);
+  return match ? Number(match[1]) : null;
+}
+
+/**
+ * @param {Record<string, unknown>[]} events
+ * @param {Map<unknown, Record<string, unknown>>} sessionsById
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ * @param {Map<unknown, Record<string, unknown>>} workflowsById
+ * @param {Record<string, unknown>} sources
+ */
+function outcomesSource(events, sessionsById, runsById, workflowsById, sources) {
+  const rows = events.flatMap((event) => {
+    if (event.type !== 'safe_output.created') return [];
+    const session = sessionsById.get(event.sessionId) ?? {};
+    const run = runsById.get(session.runId ?? event.runId) ?? {};
+    const workflow = workflowsById.get(run.workflowId) ?? {};
+    const externalLink = httpsLink(event.correlationId) ?? httpsLink(run.runLink);
+    const category = githubOutputCategory(event.githubEntityType ?? event.safeOutputType);
+    const target = typeof run.targetRepository === 'string' && run.targetRepository.includes('/')
+      ? run.targetRepository.split('/')
+      : [run.owner, run.repository];
+    return [definedFields({
+      organization: target[0] ?? run.owner,
+      repository: target[1] ?? run.repository,
+      package: workflow.package,
+      'runtime-repository': [run.owner, run.repository].filter(Boolean).join('/'),
+      workflow: run.workflowPath ?? workflow.path,
+      'workflow-name': workflow.name ?? run.workflowPath,
+      run: String(run.githubRunId ?? ''),
+      'run-conclusion': run.conclusion,
+      'safe-output': event.id,
+      'safe-output-kind': event.safeOutputType ?? category,
+      'outcome-number': linkNumber(externalLink),
+      'outcome-title': event.summary || `${category} output`,
+      'outcome-summary': event.summary || '',
+      'outcome-body-html': '',
+      'outcome-category': category,
+      'outcome-status': event.status ?? 'created',
+      'outcome-state': 'pending',
+      'outcome-warning': 'None',
+      'evidence-strength': externalLink ? 'durable' : 'proposal',
+      'rollout-mode': run.rolloutMode ?? workflow.rolloutMode,
+      engine: run.engine,
+      'engine-version': run.engineVersion,
+      'requested-model': run.requestedModel ?? run.modelId,
+      'resolved-model': run.resolvedModel ?? run.modelId,
+      'published-at': event.timestamp,
+      'observed-at': event.observedAt ?? event.timestamp,
+      'issue-link': category === 'issue' ? externalLink : undefined,
+      'pull-request-link': category === 'pull-request' ? externalLink : undefined,
+      'run-link': run.runLink,
+      'external-link': externalLink ?? run.runLink
+    })];
+  });
+  return {
+    source: 'outcomes',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'events', 'outcomes', rows.length)
+  };
+}
+
+/**
+ * @param {Record<string, unknown>[]} events
+ * @param {Map<unknown, Record<string, unknown>>} sessionsById
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ * @param {Record<string, unknown>} sources
+ */
+function findingsSource(events, sessionsById, runsById, sources) {
+  const rows = events.flatMap((event) => {
+    if (event.type !== 'audit.finding') return [];
+    const session = sessionsById.get(event.sessionId) ?? {};
+    const run = runsById.get(session.runId ?? event.runId) ?? {};
+    return [definedFields({
+      organization: run.owner,
+      repository: run.repository,
+      workflow: run.workflowPath,
+      run: String(run.githubRunId ?? ''),
+      'safe-output': event.id,
+      finding: event.id,
+      'finding-kind': 'audit-finding',
+      'finding-severity': event.status ?? 'unknown',
+      'finding-status': 'observed',
+      'finding-summary': event.summary,
+      'observed-at': event.observedAt ?? event.timestamp,
+      engine: run.engine,
+      'engine-version': run.engineVersion,
+      'requested-model': run.requestedModel ?? run.modelId,
+      'resolved-model': run.resolvedModel ?? run.modelId,
+      'run-link': run.runLink,
+      'external-link': run.runLink
+    })];
+  });
+  return {
+    source: 'findings',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'events', 'findings', rows.length)
+  };
+}
+
+/** @param {Record<string, unknown>[]} findings @param {Record<string, unknown>} sources */
+function securityFindingsSource(findings, sources) {
+  const rows = findings
+    .filter((finding) => (
+      ['critical', 'high'].includes(String(finding['finding-severity']).toLowerCase())
+      && /prompt|injection|secret|malicious|threat/i.test(String(finding['finding-summary'] ?? ''))
+    ))
+    .map((finding) => ({
+      ...finding,
+      'smell-observation-id': finding.finding,
+      'smell-id': `audit-${String(finding.finding)}`,
+      'smell-name': finding['finding-summary'] ?? 'Security finding',
+      'smell-category': 'trust-and-security',
+      'smell-severity': finding['finding-severity'],
+      'smell-summary': finding['finding-summary'],
+      'smell-evidence': finding['finding-summary']
+    }));
+  return {
+    source: 'security-findings',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'events', 'security-findings', rows.length)
+  };
+}
+
+/** @param {Record<string, unknown>[]} securityFindings @param {Record<string, unknown>} sources */
+function detectionObservationsSource(securityFindings, sources) {
+  const rows = securityFindings.map((finding) => ({
+    organization: finding.organization,
+    repository: finding.repository,
+    workflow: finding.workflow,
+    run: finding.run,
+    'observed-at': finding['observed-at'],
+    'run-link': finding['run-link'],
+    'detection-expected': 'yes',
+    'detection-applicable': 'yes',
+    'detection-executed': 'yes',
+    'verdict-available': 'yes',
+    'detection-state': 'threat',
+    'detection-state-label': 'Threat detected',
+    'detection-count': 1,
+    'detection-signal': finding['smell-summary'],
+    'attention-priority': 'high'
+  }));
+  return {
+    source: 'detection-observations',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'events', 'detection-observations', rows.length)
+  };
+}
+
+/** @param {Record<string, unknown>[]} outcomes @param {Record<string, unknown>} sources */
+function safeOutputPerformanceSource(outcomes, sources) {
+  const rows = outcomes.map((outcome) => ({
+    organization: outcome.organization,
+    repository: outcome.repository,
+    workflow: outcome.workflow,
+    run: outcome.run,
+    'run-conclusion': outcome['run-conclusion'],
+    'rollout-mode': outcome['rollout-mode'],
+    'safe-output-kind': outcome['safe-output-kind'],
+    'safe-output-label': outcome['outcome-title'],
+    'safe-output-status': outcome['outcome-status'],
+    'safe-output-count': 1,
+    'observed-at': outcome['observed-at'],
+    'run-link': outcome['run-link']
+  }));
+  return {
+    source: 'safe-output-performance',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'events', 'safe-output-performance', rows.length)
+  };
+}
+
+/** @param {unknown} value */
+function workItemKey(value) {
+  return String(value ?? '').toLowerCase();
+}
+
+/**
+ * @param {Record<string, unknown>[]} workflows
+ * @param {Record<string, unknown>[]} runs
+ * @param {Record<string, unknown>[]} outcomes
+ * @param {Record<string, unknown>} sources
+ */
+function workItemsSource(workflows, runs, outcomes, sources) {
+  const latestRuns = new Map();
+  for (const run of runs) {
+    const key = workItemKey(`${run.organization}/${run.repository}:${run.workflow}`);
+    const current = latestRuns.get(key);
+    if (!current || String(run['started-at'] ?? '').localeCompare(String(current['started-at'] ?? '')) > 0) {
+      latestRuns.set(key, run);
+    }
+  }
+  const latestOutcomes = new Map();
+  for (const outcome of outcomes) {
+    const runtimeRepository = outcome['runtime-repository'] || `${outcome.organization}/${outcome.repository}`;
+    const key = workItemKey(`${runtimeRepository}:${outcome.workflow}`);
+    const current = latestOutcomes.get(key);
+    if (!current || String(outcome['observed-at'] ?? '').localeCompare(String(current['observed-at'] ?? '')) > 0) {
+      latestOutcomes.set(key, outcome);
+    }
+  }
+  const rows = workflows.map((workflow) => {
+    const key = workItemKey(`${workflow.organization}/${workflow.repository}:${workflow.workflow}`);
+    const run = latestRuns.get(key);
+    const outcome = latestOutcomes.get(key);
+    const lifecycle = ['failure', 'timed-out', 'startup-failure', 'action-required'].includes(run?.['run-conclusion'])
+      ? 'blocked'
+      : run?.['run-status'] === 'queued' ? 'waiting'
+        : run?.['run-status'] === 'in-progress' ? 'active'
+          : outcome ? 'review'
+            : run ? 'completed' : 'unknown';
+    return definedFields({
+      'work-item-id': key,
+      name: run ? `${workflow['workflow-name'] ?? workflow.workflow} · ${run['run-title'] ?? run.run}` : workflow['workflow-name'] ?? workflow.workflow,
+      objective: workflow['workflow-name'] ?? workflow.workflow,
+      organization: workflow.organization,
+      repository: workflow.repository,
+      workflow: workflow.workflow,
+      run: run?.run ?? '',
+      'workflow-name': workflow['workflow-name'] ?? workflow.workflow,
+      'workflow-icon': workflow['package-icon'] ?? 'workflow',
+      package: workflow.package ?? 'standalone',
+      scope: `${workflow.organization}/${workflow.repository}`,
+      domain: workflow['package-name'] ?? workflow.package ?? 'standalone',
+      'work-type': workflow['workflow-role'] ?? 'unknown',
+      'lifecycle-state': lifecycle,
+      phase: run?.['run-status'] ?? 'unknown',
+      reason: run?.['failure-detail'] ?? (lifecycle === 'review' ? 'Produced outcome awaits review or user consent' : 'No blocking condition observed'),
+      'next-action': lifecycle === 'blocked' ? 'Resolve the run failure blocking this work'
+        : lifecycle === 'waiting' ? 'Await the next scheduled run'
+          : lifecycle === 'active' ? 'Monitor the in-progress run'
+            : lifecycle === 'review' ? 'Review the produced outcome' : 'Review the latest run evidence',
+      'next-actor': lifecycle === 'active' ? 'agent' : lifecycle === 'waiting' ? 'scheduler' : 'maintainer',
+      'safe-output-kind': outcome?.['safe-output-kind'] ?? 'workflow-output',
+      'waiting-on': lifecycle === 'review' ? 'reviewer decision' : '',
+      'waiting-since': run?.['started-at'] ?? outcome?.['observed-at'] ?? '',
+      owner: workflow['package-name'] ?? workflow.organization,
+      'consequence-tier': workflow['workflow-role'] === 'orchestrator' ? 'high'
+        : workflow['workflow-role'] === 'worker' ? 'medium' : 'low',
+      'verification-state': outcome ? 'pending' : 'unverified',
+      'outcome-state': outcome?.['outcome-state'] ?? 'pending',
+      'started-at': run?.['started-at'] ?? '',
+      'ended-at': run?.['ended-at'] ?? '',
+      'observed-at': run?.['started-at'] ?? workflow['observed-at'],
+      'evidence-link': outcome?.['external-link'] ?? run?.['run-link'],
+      'run-link': run?.['run-link']
+    });
+  });
+  return {
+    source: 'work-items',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'workflows', 'work-items', rows.length)
+  };
+}
+
+/** @param {Record<string, unknown>[]} graders @param {Record<string, unknown>} sources */
+function gradersSource(graders, sources) {
+  const rows = [...new Map(graders.map((grader) => [String(grader.grader), definedFields({
+    grader: grader.grader,
+    'grader-name': grader['grader-name'] ?? grader.grader,
+    role: grader.role,
+    direction: grader.direction,
+    unit: grader.unit,
+    'observed-at': grader['observed-at']
+  })])).values()];
+  return {
+    source: 'graders',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'events', 'graders', rows.length)
+  };
+}
+
+/** @param {Record<string, unknown>[]} graders @param {Record<string, unknown>} sources */
+function experimentsSource(graders, sources) {
+  const rows = [...new Map(graders.flatMap((grader) => {
+    if (!grader.experiment) return [];
+    return [[String(grader.experiment), definedFields({
+      organization: grader.organization,
+      repository: grader.repository,
+      workflow: grader.workflow,
+      experiment: grader.experiment,
+      'experiment-name': grader.experiment,
+      state: 'observed',
+      readiness: 'observed',
+      decision: 'pending',
+      'last-observation': grader.value,
+      'observed-at': grader['observed-at']
+    })]];
+  })).values()];
+  return {
+    source: 'experiments',
+    rows,
+    metadata: canonicalProjectionMetadata(sources, 'events', 'experiments', rows.length)
+  };
+}
+
+/** @param {Record<string, unknown>[]} graders @param {Record<string, unknown>} sources */
+function evalSources(graders, sources) {
+  const observations = graders.filter((grader) => (
+    String(grader['grader-source'] ?? '').toLowerCase() === 'eval'
+    || String(grader.grader ?? '').toLowerCase().startsWith('eval')
+  )).map((grader) => definedFields({
+    organization: grader.organization,
+    repository: grader.repository,
+    workflow: grader.workflow,
+    run: grader.run,
+    experiment: grader.experiment,
+    eval: grader.grader,
+    'eval-result': grader.value,
+    status: grader.status,
+    included: grader.included,
+    'exclusion-reason': grader['exclusion-reason'],
+    role: 'eval',
+    direction: grader.direction,
+    'requested-model': grader['requested-model'],
+    'resolved-model': grader['resolved-model'],
+    'rollout-mode': grader['rollout-mode'],
+    'observed-at': grader['observed-at'],
+    'evidence-link': grader['evidence-link']
+  }));
+  const definitions = [...new Map(observations.map((observation) => [String(observation.eval), definedFields({
+    eval: observation.eval,
+    'eval-name': observation.eval,
+    'eval-question': observation.eval,
+    role: 'eval',
+    direction: observation.direction,
+    'observed-at': observation['observed-at']
+  })])).values()];
+  return {
+    evals: {
+      source: 'evals',
+      rows: definitions,
+      metadata: canonicalProjectionMetadata(sources, 'events', 'evals', definitions.length)
+    },
+    observations: {
+      source: 'eval-observations',
+      rows: observations,
+      metadata: canonicalProjectionMetadata(sources, 'events', 'eval-observations', observations.length)
+    }
   };
 }
 
@@ -610,7 +1070,7 @@ function firewallObservationsSource(events, sessionsById, runsById, sources) {
   return {
     source: 'firewall-observations',
     rows,
-    metadata: projectionMetadata(sources, 'firewall-observations', 'firewall-observations', rows.length > 0)
+    metadata: canonicalProjectionMetadata(sources, 'events', 'firewall-observations', rows.length)
   };
 }
 
@@ -736,23 +1196,57 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     throw new TypeError('Canonical view source names must be an array of strings.');
   }
   const requested = new Set(sourceNames);
+  const projectedNames = new Set(requested);
+  const healthRequested = requested.has('data-health-collections') || requested.has('data-health-coverage');
+  if (healthRequested) {
+    for (const sourceName of [
+      'repositories',
+      'workflows',
+      'runs',
+      'usage',
+      'detection-observations',
+      'firewall-observations',
+      'safe-output-performance',
+      'outcomes'
+    ]) projectedNames.add(sourceName);
+  }
+  const needed = new Set(projectedNames);
+  if (needed.has('work-items')) {
+    needed.add('workflows');
+    needed.add('runs');
+    needed.add('outcomes');
+  }
+  if (needed.has('safe-output-performance')) needed.add('outcomes');
+  if (needed.has('security-findings') || needed.has('detection-observations')) needed.add('findings');
   const queries = createCanonicalQueries(indexedDB);
-  const needsFirewall = requested.has('firewall-observations');
-  const needsGraders = requested.has('grader-observations') || requested.has('operational-values');
-  const needsMcpCalls = requested.has('mcp-calls') && !sourceRows(logicalSources['mcp-calls']).length;
-  const needsSessions = requested.has('sessions') || needsFirewall || needsGraders || needsMcpCalls;
-  const needsEvents = requested.has('events') || needsFirewall || needsGraders || needsMcpCalls;
+  const needsFirewall = needed.has('firewall-observations');
+  const needsGraders = [
+    'grader-observations',
+    'operational-values',
+    'graders',
+    'experiments',
+    'evals',
+    'eval-observations'
+  ].some((name) => needed.has(name));
+  const needsMcpCalls = needed.has('mcp-calls') && !sourceRows(logicalSources['mcp-calls']).length;
+  const needsOutcomeEvents = ['outcomes', 'findings', 'security-findings', 'detection-observations']
+    .some((name) => needed.has(name));
+  const needsSessions = needed.has('sessions') || needsFirewall || needsGraders || needsMcpCalls || needsOutcomeEvents;
+  const needsEvents = needed.has('events') || needsFirewall || needsGraders || needsMcpCalls || needsOutcomeEvents;
+  const needsRuns = needed.has('runs') || needed.has('usage') || needed.has('job-performance')
+    || needsSessions || needsEvents;
+  const needsWorkflows = needed.has('workflows') || needsRuns || needed.has('outcomes') || needed.has('work-items');
+  const needsRepositories = needed.has('repositories') || needsWorkflows;
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
-    requested.has('packages') ? queries.packages.list() : [],
-    requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
-    requested.has('workflows') || requested.has('runs') ? queries.workflows.list() : [],
-    requested.has('runs') || requested.has('job-performance') || needsSessions || needsEvents
-      ? queries.runs.list() : [],
-    requested.has('job-performance') ? queries.jobs.list() : [],
-    requested.has('failed-runs') ? queries.runs.recentFailures() : [],
+    needed.has('packages') ? queries.packages.list() : [],
+    needsRepositories ? queries.repositories.list() : [],
+    needsWorkflows ? queries.workflows.list() : [],
+    needsRuns ? queries.runs.list() : [],
+    needed.has('job-performance') ? queries.jobs.list() : [],
+    needed.has('failed-runs') ? queries.runs.recentFailures() : [],
     needsSessions || needsEvents ? queries.sessions.list() : [],
     needsEvents ? queries.events.list() : [],
-    requested.has('transactions') ? queries.transactions.list() : []
+    needed.has('transactions') ? queries.transactions.list() : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
@@ -760,30 +1254,112 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const sessionsById = new Map(sessions.map((session) => [session.id, session]));
   const graders = needsGraders ? graderRows(events, sessionsById, runsById) : [];
   const sources = namedLogicalSources(logicalSources);
+  const projectedWorkflows = workflowsSource(workflows, repositoriesById, sources).rows;
+  const projectedRuns = runsSource(runs, workflowsById, sources).rows;
+  const publishedOutcomes = sourceRows(sources.outcomes);
+  const outcomes = needed.has('outcomes')
+    ? publishedOutcomes.length > 0
+      ? /** @type {import('../../presenter.js').LogicalSourceInput} */ (sources.outcomes)
+      : outcomesSource(events, sessionsById, runsById, workflowsById, sources)
+    : null;
+  const publishedFindings = sourceRows(sources.findings);
+  const findings = needed.has('findings')
+    ? publishedFindings.length > 0
+      ? /** @type {import('../../presenter.js').LogicalSourceInput} */ (sources.findings)
+      : findingsSource(events, sessionsById, runsById, sources)
+    : null;
+  const publishedSecurityFindings = sourceRows(sources['security-findings']);
+  const securityFindings = needed.has('security-findings') || needed.has('detection-observations')
+    ? publishedSecurityFindings.length > 0
+      ? /** @type {import('../../presenter.js').LogicalSourceInput} */ (sources['security-findings'])
+      : securityFindingsSource(sourceRows(findings), sources)
+    : null;
+  const evalTelemetry = needed.has('evals') || needed.has('eval-observations')
+    ? evalSources(graders, sources)
+    : null;
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const projected = {};
-  for (const sourceName of requested) {
+  for (const sourceName of projectedNames) {
     const source = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources[sourceName]);
     if (source) projected[sourceName] = source;
   }
-  if (requested.has('source-metadata')) projected['source-metadata'] = sourceMetadataSource(logicalSources);
-  if (requested.has('packages')) projected.packages = packagesSource(packages, sources);
-  if (requested.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
-  if (requested.has('workflows')) projected.workflows = workflowsSource(workflows, repositoriesById, sources);
-  if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);
-  if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
-  if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
-  if (requested.has('sessions')) projected.sessions = sessionsSource(sessions, runsById, sources);
-  if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
+  if (projectedNames.has('source-metadata')) projected['source-metadata'] = sourceMetadataSource(logicalSources);
+  if (projectedNames.has('packages')) projected.packages = packagesSource(packages, sources);
+  if (projectedNames.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
+  if (projectedNames.has('workflows')) {
+    projected.workflows = {
+      source: 'workflows',
+      rows: projectedWorkflows,
+      metadata: canonicalProjectionMetadata(sources, 'workflows', 'workflows', projectedWorkflows.length)
+    };
+  }
+  if (projectedNames.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);
+  if (projectedNames.has('runs')) {
+    projected.runs = {
+      source: 'runs',
+      rows: projectedRuns,
+      metadata: canonicalProjectionMetadata(sources, 'runs', 'runs', projectedRuns.length)
+    };
+  }
+  if (projectedNames.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
+  if (projectedNames.has('sessions')) projected.sessions = sessionsSource(sessions, runsById, sources);
+  if (projectedNames.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
   if (needsMcpCalls) projected['mcp-calls'] = mcpCallsSource(events, sessionsById, runsById, sources);
-  if (requested.has('grader-observations')) {
+  if (projectedNames.has('usage') && sourceRows(sources.usage).length === 0) {
+    projected.usage = usageSource(runs, sources);
+  }
+  if (projectedNames.has('outcomes') && outcomes) projected.outcomes = outcomes;
+  if (projectedNames.has('findings') && findings) projected.findings = findings;
+  if (projectedNames.has('security-findings') && securityFindings) {
+    projected['security-findings'] = securityFindings;
+  }
+  if (projectedNames.has('detection-observations')
+      && sourceRows(sources['detection-observations']).length === 0
+      && securityFindings) {
+    projected['detection-observations'] = detectionObservationsSource(
+      sourceRows(securityFindings),
+      sources
+    );
+  }
+  if (projectedNames.has('safe-output-performance')
+      && sourceRows(sources['safe-output-performance']).length === 0
+      && outcomes) {
+    projected['safe-output-performance'] = safeOutputPerformanceSource(sourceRows(outcomes), sources);
+  }
+  if (projectedNames.has('work-items')
+      && sourceRows(sources['work-items']).length === 0
+      && outcomes) {
+    projected['work-items'] = workItemsSource(projectedWorkflows, projectedRuns, sourceRows(outcomes), sources);
+  }
+  if (projectedNames.has('admissions') && sourceRows(sources.admissions).length === 0) {
+    projected.admissions = emptyCanonicalSource(
+      'admissions',
+      sources,
+      'Structured admission artifacts are not present in the canonical activity snapshot.'
+    );
+  }
+  if (projectedNames.has('grader-observations')) {
     projected['grader-observations'] = graderObservationsSource(
       graders.map(({ __event, ...grader }) => grader),
       sources
     );
   }
-  if (requested.has('operational-values')) projected['operational-values'] = operationalValuesSource(graders, sources);
-  if (requested.has('transactions')) {
+  if (projectedNames.has('operational-values')) projected['operational-values'] = operationalValuesSource(graders, sources);
+  if (projectedNames.has('graders') && sourceRows(sources.graders).length === 0) {
+    projected.graders = gradersSource(graders, sources);
+  }
+  if (projectedNames.has('experiments') && sourceRows(sources.experiments).length === 0) {
+    projected.experiments = experimentsSource(graders, sources);
+  }
+  if (projectedNames.has('evals') && sourceRows(sources.evals).length === 0 && evalTelemetry) {
+    projected.evals = evalTelemetry.evals;
+  }
+  if (projectedNames.has('eval-observations')
+      && sourceRows(sources['eval-observations']).length === 0
+      && evalTelemetry) {
+    projected['eval-observations'] = evalTelemetry.observations;
+  }
+  if (projectedNames.has('transactions')) {
     projected.transactions = {
       source: 'transactions',
       rows: transactions,
