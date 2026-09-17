@@ -10,6 +10,8 @@ const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
 const DEBUG_PREFIX = 'cao';
 const JSONL_SHARD_PATH = /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/;
 const NORMALIZED_SHARD_PATH = /\/gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
+const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
+const EVENT_SHARD_PATH = /\/gh-aw-logs-events\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
 
 /**
  * Extracts the raw `debug` query parameter from a location search string
@@ -65,7 +67,9 @@ function isDashboardDataUrl(value) {
     return url.origin === self.location.origin
       && (DATA_FILES.has(url.pathname.split('/').at(-1))
         || JSONL_SHARD_PATH.test(url.pathname)
-        || NORMALIZED_SHARD_PATH.test(url.pathname));
+        || NORMALIZED_SHARD_PATH.test(url.pathname)
+        || RUN_SHARD_PATH.test(url.pathname)
+        || EVENT_SHARD_PATH.test(url.pathname));
   } catch {
     return false;
   }
@@ -137,16 +141,34 @@ async function downloadData(urls) {
         ? undefined
         : cache.put(url, response.clone())
   )));
+  const runEntries = Object.entries(currentHashes)
+    .filter(([name, hash]) => /^gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash))
+    .sort(([left], [right]) => left.localeCompare(right));
+  const eventEntries = Object.entries(currentHashes)
+    .filter(([name, hash]) => /^gh-aw-logs-events\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash))
+    .sort(([left], [right]) => left.localeCompare(right));
+  const fileName = ([name]) => name.slice(name.lastIndexOf('/') + 1);
+  const phasedEntries = runEntries.length > 0
+    && runEntries.length === eventEntries.length
+    && runEntries.every((entry, index) => fileName(entry) === fileName(eventEntries[index]))
+    ? [...runEntries, ...eventEntries]
+    : [];
   const normalizedEntries = Object.entries(currentHashes)
     .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
-  const shardEntries = (normalizedEntries.length > 0 ? normalizedEntries : Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
-      && typeof hash === 'string'
-      && /^[a-f0-9]{64}$/i.test(hash)))
-    .sort(([left], [right]) => left.localeCompare(right));
+  const shardEntries = phasedEntries.length > 0
+    ? phasedEntries
+    : (normalizedEntries.length > 0 ? normalizedEntries : Object.entries(currentHashes)
+      .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
+        && typeof hash === 'string'
+        && /^[a-f0-9]{64}$/i.test(hash)))
+      .sort(([left], [right]) => left.localeCompare(right));
   if (shardEntries.length === 0) throw new Error('Dashboard activity shard manifest is empty.');
   debugLog('data:ingestion:sw', 'published activity manifest', { shardCount: shardEntries.length });
   const currentShardUrls = new Set();
@@ -169,7 +191,9 @@ async function downloadData(urls) {
   }
   for (const request of await cache.keys()) {
     if ((JSONL_SHARD_PATH.test(new URL(request.url).pathname)
-          || NORMALIZED_SHARD_PATH.test(new URL(request.url).pathname))
+          || NORMALIZED_SHARD_PATH.test(new URL(request.url).pathname)
+          || RUN_SHARD_PATH.test(new URL(request.url).pathname)
+          || EVENT_SHARD_PATH.test(new URL(request.url).pathname))
         && !currentShardUrls.has(request.url)) {
       await cache.delete(request);
     }

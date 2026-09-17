@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   dashboardPageIds,
+  eventsPerformanceJourney,
   lighthouseArguments,
   profiles,
   routeUrl
@@ -28,6 +29,14 @@ describe('Pages health collector', () => {
     expect(profiles.map(({ id }) => id)).toEqual(['desktop', 'mobile', 'low-bandwidth']);
     expect(lowBandwidth.lighthouse).toContain('--throttling.throughputKbps=400');
     expect(desktop.lighthouse).toContain('--preset=desktop');
+  });
+
+  it('returns to the deployed Events page twice within a warm-navigation budget', () => {
+    expect(eventsPerformanceJourney).toEqual({
+      pageId: 'events',
+      routes: ['runs', 'events', 'sessions', 'events'],
+      maxEventsReturnMs: 1500
+    });
   });
 
   it('limits Lighthouse to performance and writes JSON evidence', () => {

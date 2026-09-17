@@ -124,6 +124,20 @@ describe('data view renderer', () => {
         icon: 'sync',
         command: 'gh aw update {{package}}',
         placement: 'row'
+      },
+      {
+        id: 'set-package-live',
+        label: 'Switch to live',
+        icon: 'play',
+        command: './.github/aw/cao.sh mode live {{package}}',
+        placement: 'row'
+      },
+      {
+        id: 'set-package-preview',
+        label: 'Switch to preview',
+        icon: 'eye',
+        command: './.github/aw/cao.sh mode preview {{package}}',
+        placement: 'row'
       }
     ], { canExecute: false });
 
@@ -140,14 +154,32 @@ describe('data view renderer', () => {
             { field: 'package-version', title: 'Installed' },
             { field: 'package-current-version', title: 'Latest' }
           ],
-          actions: [{
-            action: 'update-package',
-            presentation: 'cli-action',
-            icon: 'sync',
-            label: 'Update',
-            context: ['package'],
-            when: { field: 'package-update-state', equals: 'update-available' }
-          }]
+          actions: [
+            {
+              action: 'update-package',
+              presentation: 'cli-action',
+              icon: 'sync',
+              label: 'Update',
+              context: ['package'],
+              when: { field: 'package-update-state', equals: 'update-available' }
+            },
+            {
+              action: 'set-package-live',
+              presentation: 'cli-action',
+              icon: 'play',
+              label: 'Switch to live',
+              context: ['package'],
+              when: { field: 'package-mode', equals: 'review' }
+            },
+            {
+              action: 'set-package-preview',
+              presentation: 'cli-action',
+              icon: 'eye',
+              label: 'Switch to preview',
+              context: ['package'],
+              when: { field: 'package-mode', equals: 'live' }
+            }
+          ]
         }
       },
       sourceName: 'packages',
@@ -157,14 +189,16 @@ describe('data view renderer', () => {
           'package-name': 'Remote agent',
           'package-version': 'v1',
           'package-current-version': 'v2',
-          'package-update-state': 'update-available'
+          'package-update-state': 'update-available',
+          'package-mode': 'review'
         },
         {
           package: 'ci-doctor',
           'package-name': 'CI doctor',
           'package-version': 'v2',
           'package-current-version': 'v2',
-          'package-update-state': 'current'
+          'package-update-state': 'current',
+          'package-mode': 'live'
         }
       ],
       metadata,
@@ -178,7 +212,9 @@ describe('data view renderer', () => {
 
     expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2);
     expect(rendered?.querySelector('.document-list-header .declared-cli-action')?.textContent).toContain('Update all');
-    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(1);
+    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(3);
+    expect(rendered?.textContent).toContain('Switch to live');
+    expect(rendered?.textContent).toContain('Switch to preview');
     expect(rendered?.textContent).not.toContain('update-available');
   });
 
@@ -230,6 +266,76 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).toContain('gh-aw-cao');
     expect(rendered?.querySelector('.issue-list-card-meta a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/303');
+  });
+
+  it('presents run entity cards with status icon, branch ref, and timing rail', () => {
+    const runCard = {
+      icon: 'play',
+      status: { field: 'run-conclusion', 'fallback-field': 'run-status', title: 'Status' },
+      title: { field: 'run-title', title: 'Run' },
+      labels: [{ field: 'branch', title: 'Branch', display: 'ref' }],
+      details: [
+        { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
+        { field: 'event', title: 'Event' }
+      ],
+      timing: [
+        { field: 'started-at', title: 'Started', icon: 'calendar', type: 'temporal', format: 'human-friendly-timestamp' },
+        { field: 'duration', title: 'Duration', icon: 'stopwatch' }
+      ]
+    };
+    const render = (/** @type {Record<string, unknown>} */ row) => renderDataView('list', {
+      pageId: 'runs',
+      title: 'Runs',
+      sourceName: 'entity-runs',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'run', drill: { type: 'external', field: 'run-link' } },
+        encoding: { columns: [{ field: 'run-title' }] }
+      },
+      rows: [row],
+      cardTemplates: { run: runCard },
+      metadata,
+      contextDetails: [],
+      headingTag: /** @type {'h3'} */ ('h3'),
+      prepareTableRows: (/** @type {Record<string, unknown>[]} */ rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const completed = render({
+      'run-title': '[optimization:skills-curator] Layer AGENTS.md',
+      'run-status': 'completed',
+      'run-conclusion': 'success',
+      workflow: '.github/workflows/optimization.md',
+      event: 'issue_comment',
+      branch: 'copilot/add-desktop-tabs',
+      'started-at': '2026-09-14T22:00:00Z',
+      duration: '31s'
+    });
+    const running = render({
+      'run-title': 'Running Copilot cloud agent',
+      'run-status': 'in-progress',
+      'run-conclusion': null,
+      workflow: '.github/workflows/optimization.md',
+      event: 'workflow_dispatch',
+      branch: 'copilot/update-firewall',
+      'started-at': '2026-09-14T22:00:00Z'
+    });
+
+    expect(completed?.querySelector('.entity-card-list-status-success .octicon-check-circle-fill')).not.toBeNull();
+    expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('data-card-status')).toBe('success');
+    expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('title')).toBe('Success');
+    expect(running?.querySelector('.entity-card-list-status .sr-only')?.textContent).toBe('Status: In Progress');
+    expect(completed?.querySelector('.entity-card-list-ref')?.textContent).toBe('copilot/add-desktop-tabs');
+    const timing = completed?.querySelectorAll('.entity-card-list-timing-item') ?? [];
+    expect(timing).toHaveLength(2);
+    expect(timing[1]?.textContent).toContain('31s');
+    expect(timing[0]?.querySelector('.octicon-calendar')).not.toBeNull();
+    expect(completed?.querySelector('.issue-list-card-meta')?.textContent).toContain('issue_comment');
+
+    expect(running?.querySelector('.entity-card-list-status-attention .octicon-dot-fill')).not.toBeNull();
+    expect(running?.querySelectorAll('.entity-card-list-timing-item')).toHaveLength(1);
   });
 
   it('renders reusable entity cards with external and query drill behavior', () => {
@@ -517,6 +623,56 @@ describe('data view renderer', () => {
     const labels = card?.querySelector('.issue-list-labels');
     expect(labels?.textContent).toContain('active');
     expect(labels?.getAttribute('aria-label')).toBe('Daily ops labels and metrics');
+  });
+
+  it('renders a declared card subtitle beneath the card title', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'mcps',
+      title: 'MCP tools',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: {
+          columns: [
+            { field: 'mcp-tool', type: 'nominal', title: 'MCP tool' },
+            { field: 'mcp-server', type: 'nominal', title: 'MCP server' },
+            { field: 'calls', type: 'quantitative', title: 'Calls' },
+            { field: 'workflows', type: 'quantitative', title: 'Workflows' }
+          ]
+        }
+      },
+      sourceName: 'mcp-tool-totals',
+      rows: [{ 'mcp-tool': 'issue_read', 'mcp-server': 'github', calls: 4778, workflows: 12 }],
+      cardTemplates: {
+        'mcp-tool': {
+          icon: 'mcp',
+          title: { field: 'mcp-tool', title: 'MCP tool' },
+          subtitle: { field: 'mcp-server', title: 'MCP server' },
+          labels: [],
+          details: [
+            { field: 'calls', title: 'Calls' },
+            { field: 'workflows', title: 'Workflows' }
+          ]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('issue_read');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('github');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.getAttribute('aria-label')).toBe('MCP server: github');
+    const metrics = [...card?.querySelectorAll('.entity-card-list-metric') ?? []]
+      .map((metric) => metric.textContent);
+    expect(metrics).toEqual(['4778Calls', '12Workflows']);
   });
 
   it('lets a mobile card continuation retry after a load failure', async () => {

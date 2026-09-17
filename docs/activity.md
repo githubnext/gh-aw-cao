@@ -53,7 +53,8 @@ The cache holds:
 ```text
 $RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
-$RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
+$RUNNER_TEMP/cao-activity/gh-aw-logs-runs/
+$RUNNER_TEMP/cao-activity/gh-aw-logs-events/
 $RUNNER_TEMP/cao-activity/payload-hashes.json
 $RUNNER_TEMP/cao-activity/control-settings.json
 $RUNNER_TEMP/cao-activity/inventory-sources.json
@@ -61,13 +62,20 @@ $RUNNER_TEMP/cao-activity/drain3_weights.json
 ```
 
 `payload-hashes.json` maps the current JSONL source and SQLite projection
-filenames, plus each retained `gh-aw-logs-shards/<shard>.jsonl` wildcard shard,
-to their SHA-256 checksums. The dashboard publishes this small file beside
-both payloads so clients can detect unchanged data without downloading either
-payload.
+filenames, plus each retained source, run-information, and event shard, to
+their SHA-256 checksums. Run and event shards use matching filename stems; an
+unpaired phase set is incomplete and consumers fall back to a complete
+compatible transport. The dashboard publishes this small file beside the
+payloads so clients can detect unchanged data before downloading them.
 Dashboard ingestion checks the sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is
 usable.
+
+Run-information shards are intentionally small and become queryable before
+event ingestion completes. This improves time to first useful render, but does
+not reduce the bytes needed for a complete refresh. Until the event phase
+finishes, event-dependent views remain partial; background refresh is skipped
+on metered or data-saver connections.
 
 Its immutable key is
 `cao-activity-v3-${github.run_id}-${github.run_attempt}`; its restore prefix is

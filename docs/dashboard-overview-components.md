@@ -19,6 +19,24 @@ keeps the interface consistent without hiding business logic in page code.
 	<img class="docs-theme-diagram-dark" alt="Color-coded map of the Overview page component boundaries" src="/gh-aw-cao/assets/dashboard-overview-desktop-dark.svg">
 </div>
 
+## Declarative composition
+
+Dashboard Language exposes the factory as two reusable named elements declared
+as separate views in `dashboard.json`:
+
+- `header` owns status, retained-output context, work-in-motion state, and
+  Factory rhythm.
+- `floor` owns the four linked metric stations and their aggregate accessible
+  summary.
+
+The default dashboard declares `factory-header` followed by `factory-floor`.
+Each view selects only the query outputs it consumes, and their declared order
+reconstructs the complete factory layout without page-specific composition code.
+Each declared source binds independently to the reactive tree, so the page and
+both element roots appear immediately. Pending state is shown only by the status,
+rhythm, or metric station waiting on that query rather than by a page-sized view
+skeleton.
+
 ## Responsive by design
 
 Every view has a deliberate mobile experience. Components keep the

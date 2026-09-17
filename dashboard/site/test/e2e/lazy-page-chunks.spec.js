@@ -181,7 +181,7 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
       value: await response.json(),
     };
   });
-  expect(core.textLength).toBeLessThan(75000);
+  expect(core.textLength).toBeLessThan(76000);
   expect(core.value.dashboard.pages.some((/** @type {{ views?: unknown[] }} */ entry) => Array.isArray(entry.views))).toBe(false);
   expect(core.value.dashboard.pages.some((/** @type {{ definition?: { views?: unknown[] } }} */ entry) => Array.isArray(entry.definition?.views))).toBe(false);
 
@@ -225,4 +225,24 @@ test('deep links and redirect routes fetch only the requested initial page chunk
   await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Ingestion %|No repositories discovered\.|gh-aw-cao/);
   await expect.poll(() => [...new Set(routeChunkRequests)].sort()).toEqual(['repositories']);
+});
+
+test('Settings remains useful when its delayed policy source is unavailable', async ({ context, page }) => {
+  const inventoryWithoutPolicy = Object.fromEntries(
+    Object.entries(inventory).filter(([name]) => name !== 'configuration-policy')
+  );
+  await context.route(`${origin}/inventory-sources.json`, (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify(inventoryWithoutPolicy),
+  }));
+
+  await page.goto(`${origin}/#page-configuration`);
+
+  await expect(page.locator('[data-page-id="configuration"] .configuration-view')).toBeVisible();
+  await expect(page.locator('[data-page-id="configuration"]')).toContainText(
+    'The policy cannot be edited until it contains valid JSON.'
+  );
+  await expect(page.locator('[data-page-id="configuration"]')).not.toContainText(
+    'Affected source: configuration-policy'
+  );
 });

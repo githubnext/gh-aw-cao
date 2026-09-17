@@ -10,7 +10,7 @@ import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, renderUiElement } from './components/ui-elements.js';
+import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -71,7 +71,7 @@ import {
  */
 
 /**
- * @typedef {{ id: string, title: string, description?: string, defaults?: Record<string, unknown>, units?: Record<string, { name: string, symbol: string, significant: number }>, queries?: Array<Record<string, unknown>>, views?: Array<Record<string, unknown>>, ['card-templates']?: Array<{ id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>, callouts?: Array<{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }>, ['cli-actions']?: Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>, pages: Array<PresentableBuiltInPage | PresentableCustomPage>, ['github-url-base']?: string, repository?: string, navigation?: PresentableNavigationSection[], horizon?: { label: string, tooltip: { label: string, description: string, icon?: string } } }} PresentableDashboard
+ * @typedef {{ id: string, title: string, description?: string, defaults?: Record<string, unknown>, units?: Record<string, { name: string, symbol: string, significant: number }>, queries?: Array<Record<string, unknown>>, views?: Array<Record<string, unknown>>, ['card-templates']?: Array<{ id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>, callouts?: Array<{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }>, ['cli-actions']?: Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>, pages: Array<PresentableBuiltInPage | PresentableCustomPage>, ['github-url-base']?: string, repository?: string, navigation?: PresentableNavigationSection[], horizon?: { label: string, tooltip: { label: string, description: string, icon?: string } } }} PresentableDashboard
  */
 
 /**
@@ -218,6 +218,7 @@ export function renderDashboard(input) {
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
       const resolvedPage = () => pages[pageIndex] ?? pages.find((candidate) => candidate.id === pageId);
       if (!resolvedPage()) return null;
+      const rendersBeforePageSources = pageUsesIndependentSourceElements(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => {
         const page = resolvedPage();
@@ -230,12 +231,23 @@ export function renderDashboard(input) {
             evaluatedAt
           ));
         }
-        return showInitialLoadingSkeleton
+        return showInitialLoadingSkeleton && !rendersBeforePageSources
           ? renderPageLoadingSkeleton(page)
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
       };
       if (input.loadPageSources) {
         options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
+        if (rendersBeforePageSources) {
+          const renderedPage = render(sources);
+          void input.loadPageSources(pageId, options)
+            .then((pageSources) => options.renderUpdate(render(pageSources)))
+            .catch((error) => {
+              if (!options.signal?.aborted) {
+                console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
+              }
+            });
+          return renderedPage;
+        }
         return input.loadPageSources(pageId, options).then(render);
       }
       const renderedPage = render(sources);
@@ -262,6 +274,25 @@ export function renderDashboard(input) {
     dashboardHorizon.dispose();
   });
   return root;
+}
+
+/**
+ * Pages composed entirely from independently bound elements can mount before
+ * their companion page subscription resolves.
+ * @param {PresentableBuiltInPage | PresentableCustomPage | undefined} page
+ * @param {Array<Record<string, unknown>>} reusableViews
+ */
+function pageUsesIndependentSourceElements(page, reusableViews) {
+  if (!page) return false;
+  const reusableById = new Map(reusableViews.map((view) => [view.id, view]));
+  const configuredViews = page.kind === 'built-in' ? page.definition?.views : page.views;
+  if (!Array.isArray(configuredViews) || configuredViews.length === 0) return false;
+  return configuredViews.every((configured) => {
+    const view = typeof configured === 'string' ? reusableById.get(configured) : configured;
+    return isPlainObject(view)
+      && typeof view.element === 'string'
+      && elementLoadsSourcesAsync(view.element);
+  });
 }
 
 /** @param {HTMLElement} root */
@@ -343,6 +374,10 @@ function enableResponsiveReportActions(root, signal) {
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');
   const headerDesktopSlot = overviewHeader?.parentElement;
+  const viewModeToggle = root.querySelector('.mobile-view-mode-toggle');
+  const mobileToggleSlot = viewModeToggle?.parentElement;
+  const mobileToggleAnchor = root.querySelector('.mobile-nav-menu');
+  const desktopToggleSlot = overviewHeader?.querySelector('.title-area');
   const view = root.ownerDocument.defaultView;
   const media = view?.matchMedia?.('(max-width: 700px)');
   if (!(actions instanceof HTMLElement) || !(mobileSlot instanceof HTMLElement) || !desktopSlot || !media) return;
@@ -357,9 +392,26 @@ function enableResponsiveReportActions(root, signal) {
         headerDesktopSlot.prepend(overviewHeader);
       }
     }
+    if (
+      viewModeToggle instanceof HTMLElement
+      && mobileToggleSlot
+      && mobileToggleAnchor instanceof HTMLElement
+      && desktopToggleSlot instanceof HTMLElement
+    ) {
+      if (media.matches || root.classList.contains('dashboard-full-view-scrolled')) {
+        if (viewModeToggle.parentElement !== mobileToggleSlot) {
+          mobileToggleSlot.insertBefore(viewModeToggle, mobileToggleAnchor);
+        }
+      } else if (viewModeToggle.parentElement !== desktopToggleSlot) {
+        desktopToggleSlot.append(viewModeToggle);
+      }
+    }
   };
   placeActions();
   media.addEventListener?.('change', placeActions, { signal });
+  const observer = new MutationObserver(placeActions);
+  observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+  signal.addEventListener('abort', () => observer.disconnect(), { once: true });
 }
 
 /**
@@ -491,7 +543,7 @@ function renderPageSkeleton() {
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
- * @param {Record<string, { id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
+ * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {Array<Record<string, unknown>>} reusableViews
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
@@ -508,7 +560,7 @@ function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reus
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
- * @param {Record<string, { id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
+ * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {boolean} [withFilterBar]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
@@ -578,7 +630,11 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       }
       return rendered;
     };
-    const rendered = isRouteView || index === 0 || (isPlainObject(view) && view.mark === 'callout')
+    const rendered = isRouteView
+      || index === 0
+      || (isPlainObject(view) && (view.mark === 'callout' || (
+        typeof view.element === 'string' && elementLoadsSourcesAsync(view.element)
+      )))
       ? render()
       : renderLazyView({
         label: getViewTitle(view, index),
@@ -1464,7 +1520,7 @@ function summarizeDataState(pageSources) {
  * @param {number} index
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
- * @param {Record<string, { id: string, icon: string, title: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
+ * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {'h3'|'h4'} [headingTag]
  * @param {string} [routeParameter]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
@@ -1660,14 +1716,16 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
   if (sourceNames.length === 1) {
     const sourceName = sourceNames[0];
     const source = selectedSources[sourceName];
-    if (!source) {
+    if (!source && !elementHandlesUnavailableSource(elementName)) {
       return renderCustomViewState(pageId, title, sourceName, 'unavailable', contextDetails, headingTag);
     }
-    const state = source.metadata?.availability ?? inferAvailability(source.rows);
-    if (state !== 'available' && !(state === 'empty' && elementHandlesEmptyRows(elementName))) {
+    const state = source?.metadata?.availability ?? (source ? inferAvailability(source.rows) : 'unavailable');
+    if (state !== 'available'
+        && !(state === 'empty' && elementHandlesEmptyRows(elementName))
+        && !(state === 'unavailable' && elementHandlesUnavailableSource(elementName))) {
       return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag);
     }
-    if (source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
+    if (source && source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
       return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag);
     }
   }
@@ -1685,6 +1743,7 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
     routeParameter,
     queryContext,
     viewId: typeof view.id === 'string' ? view.id : undefined,
+    viewIndex,
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag
   });

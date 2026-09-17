@@ -10,7 +10,8 @@ import { octicon } from '../octicons.js';
  *   label: string,
  *   icon: string,
  *   href: string,
- *   current?: boolean
+ *   current?: boolean,
+ *   trailingIcon?: string
  * }} LinkTab
  */
 
@@ -35,11 +36,12 @@ export function renderLinkTabs({ className, ariaLabel, tabs }) {
   return h(
     'nav',
     { className, 'aria-label': ariaLabel },
-    ...tabs.map(({ label, icon, href, current }) => h(
+    ...tabs.map(({ label, icon, href, current, trailingIcon }) => h(
       'a',
       { href, 'aria-current': current ? 'page' : undefined },
       octicon(icon),
-      h('span', null, label)
+      h('span', null, label),
+      trailingIcon ? octicon(trailingIcon, 'tab-trailing-icon') : null
     ))
   );
 }

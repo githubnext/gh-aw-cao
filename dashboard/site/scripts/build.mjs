@@ -55,7 +55,7 @@ export async function buildDashboardSite({
     languageVersion: dashboard["language-version"],
     dashboard: dashboard.dashboard,
   });
-  await writeFile(dashboardPath, `${JSON.stringify(splitDashboard.core, null, 2)}\n`);
+  await writeFile(dashboardPath, `${JSON.stringify(splitDashboard.core)}\n`);
   await writeDashboardPageChunks(destinationPath, splitDashboard.pageChunks);
   await bundleSiteJavascript(destinationPath);
   await cacheBustSiteImports(destinationPath);

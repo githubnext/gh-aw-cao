@@ -58,6 +58,23 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+            ${{ runner.temp }}/cao-activity/payload-hashes.json
+            ${{ runner.temp }}/cao-activity/control-settings.json
+            ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/drain3_weights.json
+          key: ${{ steps.activity-cache-key.outputs.value }}
+          restore-keys: |
+            cao-activity-v3-
+
+      - name: Restore legacy activity cache layout
+        if: steps.activity-cache.outputs.cache-matched-key == ''
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
@@ -181,11 +198,31 @@ jobs:
             exit "$collection_exit_code"
           fi
 
+      - name: Generate phased activity shards
+        env:
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+        run: |
+          if [[ -f activity/cao.mjs ]]; then
+            ingestion_script=activity/cao.mjs
+          elif [[ -f .github/aw/activity/cao.mjs ]]; then
+            ingestion_script=.github/aw/activity/cao.mjs
+          else
+            echo "Activity shard generator is unavailable" >&2
+            exit 1
+          fi
+          node "$ingestion_script" hash-payloads \
+            --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
+            --events-dir "$REPORT_GH_AW_LOGS_EVENTS" \
+            --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
+
       - name: Ingest activity database
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
-          REPORT_GH_AW_LOGS_NORMALIZED: ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
+          REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
         run: |
           if [[ -f activity/cao.mjs ]]; then
             ingestion_script=activity/cao.mjs
@@ -195,13 +232,12 @@ jobs:
             echo "Activity SQLite ingestion pipeline is unavailable" >&2
             exit 1
           fi
-          # Every shard is carried forward in the activity cache. The
-          # ingestion layer consumes each shard one by one and skips shards
-          # whose content hash is already recorded in the transactions
-          # table, so only genuinely new or changed shards are reprocessed.
+          # Compact run information is injected before detailed event data so
+          # clients and projections can expose run properties immediately.
           node "$ingestion_script" ingest-jsonl \
             --database "$ACTIVITY_DATABASE" \
-            --input-dir "$REPORT_GH_AW_LOGS_SHARDS" \
+            --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
+            --events-dir "$REPORT_GH_AW_LOGS_EVENTS" \
             --run-retention-days all
           node "$ingestion_script" doctor \
             --database "$ACTIVITY_DATABASE" \
@@ -211,7 +247,8 @@ jobs:
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
-          REPORT_GH_AW_LOGS_NORMALIZED: ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
+          REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
         run: |
           if [[ -f activity/cao.mjs ]]; then
             ingestion_script=activity/cao.mjs
@@ -224,7 +261,8 @@ jobs:
           node "$ingestion_script" hash-payloads \
             --database "$ACTIVITY_DATABASE" \
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
-            --normalized-dir "$REPORT_GH_AW_LOGS_NORMALIZED" \
+            --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
+            --events-dir "$REPORT_GH_AW_LOGS_EVENTS" \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json" \
             --output "$RUNNER_TEMP/cao-activity/payload-hashes.json"
 
@@ -237,7 +275,8 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -260,7 +299,8 @@ jobs:
         run: |
           snapshot_root="$RUNNER_TEMP/cao-activity"
           mkdir -p "$snapshot_root/gh-aw-logs-shards"
-          mkdir -p "$snapshot_root/gh-aw-logs-normalized"
+          mkdir -p "$snapshot_root/gh-aw-logs-runs"
+          mkdir -p "$snapshot_root/gh-aw-logs-events"
           missing=0
           for file in gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json drain3_weights.json; do
             if [[ ! -s "$snapshot_root/$file" ]]; then
@@ -272,10 +312,21 @@ jobs:
             echo "Activity snapshot contains no JSONL shards" >&2
             missing=1
           fi
-          if ! find "$snapshot_root/gh-aw-logs-normalized" -maxdepth 1 -type f -name '*.json' -print -quit | grep -q .; then
-            echo "Activity snapshot contains no normalized shards" >&2
+          for phase in runs events; do
+            if ! find "$snapshot_root/gh-aw-logs-$phase" -maxdepth 1 -type f -name '*.json' -print -quit | grep -q .; then
+              echo "Activity snapshot contains no $phase shards" >&2
+              missing=1
+            fi
+          done
+          run_shards="$(mktemp)"
+          event_shards="$(mktemp)"
+          find "$snapshot_root/gh-aw-logs-runs" -maxdepth 1 -type f -name '*.json' -printf '%f\n' | sort > "$run_shards"
+          find "$snapshot_root/gh-aw-logs-events" -maxdepth 1 -type f -name '*.json' -printf '%f\n' | sort > "$event_shards"
+          if ! cmp -s "$run_shards" "$event_shards"; then
+            echo "Activity run and event shard sets do not match" >&2
             missing=1
           fi
+          rm -f "$run_shards" "$event_shards"
           if [[ "$missing" -ne 0 ]]; then
             echo "Extracted activity snapshot contents:" >&2
             ls -l "$snapshot_root" >&2 || true
@@ -289,7 +340,8 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json

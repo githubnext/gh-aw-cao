@@ -7,6 +7,7 @@ import { octicon } from '../octicons.js';
 import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js';
 import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
+import { resolveCardStatus } from './card-status.js';
 import { listChartSeries, pieChartEntries, renderChartLegend, renderPieChartLayout, renderPieLegend, renderChartWidget } from './chart-elements.js';
 import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderOutcomeLink, renderWorkflowRunLink } from './link-content.js';
 import { createEntityAwareCellRenderer } from './linked-text.js';
@@ -95,7 +96,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
  *   toText: (value: unknown) => string,
- *   cardTemplates?: Record<string, { icon: string, title: TableField, labels: TableField[], details: TableField[] }>,
+ *   cardTemplates?: Record<string, { icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
  * }} DataViewContext
  */
@@ -301,7 +302,7 @@ function renderListView(context) {
  *   headingTag: 'h3'|'h4',
  *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
+ *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
  *   listAction: HTMLElement | null
  * }} options
  */
@@ -341,7 +342,7 @@ function renderEntityCardListView(options) {
  *   title: string,
  *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
+ *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
  *   drill?: Record<string, unknown> | null,
  *   keyOffset?: number
  * }} options
@@ -350,16 +351,38 @@ function renderEntityCardItems(rows, options) {
   const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0 } = options;
   return rows.map((row, index) => {
     const titleText = toText(row[definition.title.field]);
+    const subtitle = definition.subtitle;
+    const subtitleText = subtitle ? toText(row[subtitle.field]) : '';
     const target = resolveEntityCardDrill(row, drill, titleText);
     const titleContent = target?.external
       ? renderExternalLink(target.link)
       : target
         ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
         : titleText;
+    const status = definition.status
+      ? resolveCardStatus(row[definition.status.field])
+        ?? (typeof definition.status['fallback-field'] === 'string'
+          ? resolveCardStatus(row[definition.status['fallback-field']])
+          : null)
+      : null;
     const labels = definition.labels.flatMap((column) => {
       const value = row[column.field];
       const values = Array.isArray(value) ? value : [value];
-      return values.map((label) => toText(label)).filter(Boolean).map((label) => h('li', null, label));
+      return values.map((label) => toText(label)).filter(Boolean).map((label) => h(
+        'li',
+        column.display === 'ref' ? { className: 'entity-card-list-ref' } : null,
+        label
+      ));
+    });
+    const timing = (definition.timing ?? []).flatMap((column) => {
+      const value = row[column.field];
+      if (value === null || value === undefined || value === '') return [];
+      return [h(
+        'li',
+        { className: 'entity-card-list-timing-item' },
+        h('span', { className: 'entity-card-list-timing-icon', 'aria-hidden': 'true' }, octicon(column.icon)),
+        h('span', { className: 'entity-card-list-timing-value' }, renderValue(column, value, row))
+      )];
     });
     const metrics = (definition.metrics ?? []).flatMap((column) => {
       const rawValue = row[column.field];
@@ -378,11 +401,32 @@ function renderEntityCardItems(rows, options) {
     return h(
       'li',
       { className: 'issue-list-card entity-card-list-card', 'data-custom-row-key': `${pageId}-${title}-${keyOffset + index}` },
-      h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(definition.icon)),
+      status
+        ? h(
+          'span',
+          {
+            className: `issue-list-card-icon entity-card-list-status entity-card-list-status-${status.tone}`,
+            title: titleCase(status.text),
+            'data-card-status': status.text
+          },
+          octicon(status.icon),
+          h('span', { className: 'sr-only' }, `${fieldTitle(definition.status ?? { field: 'status' })}: ${titleCase(status.text)}`)
+        )
+        : h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(definition.icon)),
       h(
         'div',
         { className: 'issue-list-card-content' },
         h('div', { className: 'issue-list-card-title entity-card-list-title' }, titleContent),
+        subtitle && subtitleText
+          ? h(
+            'div',
+            {
+              className: 'issue-list-card-subtitle entity-card-list-subtitle',
+              'aria-label': `${fieldTitle(subtitle)}: ${subtitleText}`
+            },
+            subtitleText
+          )
+          : null,
         h(
           'dl',
           { className: 'issue-list-card-meta', 'aria-label': `${titleText || 'Item'} metadata` },
@@ -399,7 +443,14 @@ function renderEntityCardItems(rows, options) {
         { className: 'issue-list-labels', 'aria-label': labelsDescription ? `${titleText || 'Item'} ${labelsDescription}` : undefined },
         ...labels,
         ...metrics
-      )
+      ),
+      timing.length > 0
+        ? h(
+          'ul',
+          { className: 'entity-card-list-timing', 'aria-label': `${titleText || 'Item'} timing` },
+          ...timing
+        )
+        : null
     );
   });
 }
@@ -798,7 +849,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const availableRows = [...rows];
   const initialRows = availableRows.slice(0, pageSize);
   const columnFields = new Set(columns.map((column) => column.field));
-  /** @type {{ icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] }} */
+  /** @type {{ icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] }} */
   const definition = Object.values(cardTemplates)
     .filter((template) => columnFields.has(template.title.field))
     .toSorted((left, right) => (
@@ -832,6 +883,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   }
   const visibleDefinition = {
     ...definition,
+    subtitle: definition.subtitle && columnFields.has(definition.subtitle.field) ? definition.subtitle : undefined,
     labels: definition.labels.filter((field) => columnFields.has(field.field)),
     details: visibleDetails,
     metrics: visibleMetrics

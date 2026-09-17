@@ -220,6 +220,19 @@ test("CAO Evolution failures worker closes target AW failure issues as duplicate
   assert.match(source, /legacy `\[aw-doctor:failures-investigator\]` tracking issues/);
 });
 
+test("CAO Evolution failures worker fails closed on evidence-free failures", () => {
+  const source = workflow("cao-evolution-failures-investigator.md");
+
+  assert.match(source, /function summarizeFailureEvidence/);
+  assert.match(source, /const completedRuns = listCompletedAgenticRuns\(windowStart\)/);
+  assert.match(source, /const laterRuns = laterRunsFor\(run, completedRuns\)/);
+  assert.match(source, /diagnostic_evidence: incomplete/);
+  assert.match(source, /Do not infer credentials, secrets, runners, images, quotas, branch policy, workflow source/);
+  assert.match(source, /A later successful run disproves that the earlier evidence-free failure is a current P0 or P1/);
+  assert.match(source, /classification_constraints\.may_create_focused_fix_issue: false/);
+  assert.match(source, /P2: N, needs evidence: N/);
+});
+
 test("slower package orchestrators run hourly", () => {
   for (const name of [
     "dependabot.md",

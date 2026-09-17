@@ -1,0 +1,22 @@
+{
+  "default": { "icon": "dot-fill", "tone": "muted" },
+  "values": {
+    "success": { "icon": "check-circle-fill", "tone": "success" },
+    "completed": { "icon": "check-circle-fill", "tone": "success" },
+    "neutral": { "icon": "check-circle-fill", "tone": "muted" },
+    "failure": { "icon": "x-circle-fill", "tone": "danger" },
+    "failed": { "icon": "x-circle-fill", "tone": "danger" },
+    "startup-failure": { "icon": "x-circle-fill", "tone": "danger" },
+    "timed-out": { "icon": "x-circle-fill", "tone": "danger" },
+    "cancelled": { "icon": "stop", "tone": "muted" },
+    "skipped": { "icon": "skip", "tone": "muted" },
+    "stale": { "icon": "skip", "tone": "muted" },
+    "in-progress": { "icon": "dot-fill", "tone": "attention" },
+    "running": { "icon": "dot-fill", "tone": "attention" },
+    "queued": { "icon": "dot-fill", "tone": "attention" },
+    "requested": { "icon": "dot-fill", "tone": "attention" },
+    "waiting": { "icon": "dot-fill", "tone": "attention" },
+    "pending": { "icon": "dot-fill", "tone": "attention" },
+    "action-required": { "icon": "alert-fill", "tone": "attention" }
+  }
+}

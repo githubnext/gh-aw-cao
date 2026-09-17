@@ -407,7 +407,7 @@ test('mobile shell shows large overview actions and moves other views into the h
   const primaryNav = page.locator('.primary-nav');
   const overviewAction = page.locator('[data-nav-page-id="overview"]');
   const dashboardMain = page.locator('main.dashboard-prototype');
-  const factoryOverview = page.locator('[data-page-id="overview"] .agent-factory');
+  const factoryOverview = page.locator('[data-page-id="overview"] > .custom-view-grid');
   await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toHaveCSS('display', 'flex');
   await expect(overviewAction).toHaveCSS('min-height', '52px');
@@ -651,6 +651,9 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with session data');
+  expect(await page.getByRole('button', { name: 'Show table view' }).evaluate(
+    (toggle) => toggle.parentElement?.classList.contains('title-area')
+  )).toBe(true);
   await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
@@ -674,13 +677,14 @@ test('Transactions includes local database controls and a responsive transaction
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
 
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect(page.locator('.sidebar-header > .mobile-view-mode-toggle')).toBeVisible();
   await expect(view).toBeHidden();
   await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(view).toBeVisible();
@@ -836,12 +840,12 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   const facetControlBox = await facetControl.boundingBox();
   const scrolledSummaryBox = await summaryRow.boundingBox();
   assert(facetControlBox);
   assert(scrolledSummaryBox);
   expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(swimlane).toBeVisible();
@@ -858,8 +862,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls l
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
-test('a mobile page combining a chart with a full-view table switches between chart, table, and card layouts', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('a page combining a chart with a full-view table fills and scrolls in table and card layouts', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -933,7 +937,10 @@ test('a mobile page combining a chart with a full-view table switches between ch
 
   const dashboardRoot = page.locator('.dashboard-root');
   const chart = page.locator('[data-view-id="engines-models-distribution"]');
-  const scroll = page.locator('[data-view-id="engines-models-usage"] .table-scroll');
+  const view = page.locator('[data-view-id="engines-models-usage"]');
+  const scroll = view.locator('.table-scroll');
+  const cards = view.locator('[data-mobile-card-list]');
+  const cardScroll = cards.locator('.mobile-table-card-list-items');
   await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(scroll).toBeHidden();
@@ -944,15 +951,29 @@ test('a mobile page combining a chart with a full-view table switches between ch
   await expect(scroll).toBeVisible();
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => ({
+    fillsView: Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1,
+    scrollable: element.scrollHeight > element.clientHeight
+  }))).toEqual({ fillsView: true, scrollable: true });
+  await scroll.evaluate((element) => { element.scrollTop = 100; });
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'Show card list view' }).click();
   await expect(chart).toBeHidden();
   await expect(scroll).toBeHidden();
-  await expect(page.locator('[data-mobile-card-list]')).toBeVisible();
-  await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toBeVisible();
-  await expect(page.locator('[data-mobile-card-list] .entity-card-list-card').first()).toContainText('copilot / model-1');
+  await expect(cards).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card').first()).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card').first()).toContainText('copilot / model-1');
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Engines and models', level: 3 })).toBeHidden();
+  await expect.poll(async () => cards.evaluate((element) =>
+    Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1
+  )).toBe(true);
+  await expect.poll(async () => cardScroll.evaluate((element) =>
+    element.scrollHeight > element.clientHeight
+  )).toBe(true);
+  await cardScroll.evaluate((element) => { element.scrollTop = 100; });
+  await expect.poll(async () => cardScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(chart).toBeVisible();
@@ -1760,7 +1781,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
-  await expect(overviewPage.locator('.agent-factory')).toBeVisible();
+  await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running-active > span')).toHaveText('Work in motion');
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
@@ -1795,7 +1816,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   await overviewPage.locator('.factory-station').nth(3).locator('strong a').click();
   await expect(page).toHaveURL(/#page-operational-value$/);
-  await expect(page.getByRole('heading', { name: 'Value & outcomes', exact: true, level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Operational value', exact: true, level: 1 })).toBeVisible();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
   const failedRunsPage = page.locator('[data-page-id="overview-failed-runs"]');
   await expect(failedRunsPage).toBeVisible();
@@ -1858,14 +1879,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
-  await expect(overviewPage.locator('.agent-factory')).toBeVisible();
+  await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
-  await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
+  await expect(overviewPage.locator('.custom-view')).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 
@@ -2940,6 +2961,10 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
 test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory, and package activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
+  const operationalValuePage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value'
+  );
+  assert(operationalValuePage, 'Missing operational value page');
 
   await page.setContent(`
     <div id="root"></div>
@@ -2982,12 +3007,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
               title: 'Packages',
               description: 'Activity from centrally managed packages.',
             }))},
-            {
-              id: 'operational-value',
-              kind: 'custom',
-              title: 'Value & outcomes',
-              views: []
-            },
+            ${JSON.stringify(operationalValuePage)},
             {
               id: 'package-insights',
               kind: 'custom',
@@ -3006,6 +3026,22 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
             },
             {
               id: 'package-detail',
+              kind: 'custom',
+              title: 'Package',
+              route: { 'hash-query-parameter': 'package' },
+              views: [
+                {
+                  id: 'package-workflow-navigation',
+                  title: 'Package workflows',
+                  data: { sources: ['workflows'] },
+                  mark: 'element',
+                  element: 'package-route',
+                  config: { body: 'overview' }
+                }
+              ]
+            },
+            {
+              id: 'package-workflows',
               kind: 'custom',
               title: 'Package',
               route: { 'hash-query-parameter': 'package' },
@@ -3039,18 +3075,18 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
               ]
             },
             {
-              id: 'package-dispatches',
+              id: 'package-runs',
               kind: 'custom',
               title: 'Package',
               route: { 'hash-query-parameter': 'package' },
               views: [
                 {
-                  id: 'package-dispatch-navigation',
-                  title: 'Package dispatches',
+                  id: 'package-run-navigation',
+                  title: 'Package workflow runs',
                   data: { sources: ['workflows'] },
                   mark: 'element',
                   element: 'package-route',
-                  config: { body: 'dispatches' }
+                  config: { body: 'runs' }
                 },
                 {
                   id: 'package-failure-reason-distribution',
@@ -3152,8 +3188,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
         packages: {
           source: 'packages',
           rows: [
-            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', 'package-link': { 'dashboard-href': '#page-package-insights?package=ambient-context', 'dashboard-label': 'View Ambient Context package dashboard' } },
-            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', 'package-link': { 'dashboard-href': '#page-package-insights?package=aw-doctor', 'dashboard-label': 'View AW Doctor package dashboard' } }
+            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', 'package-link': { 'dashboard-href': '#page-package-detail?package=ambient-context', 'dashboard-label': 'View Ambient Context package dashboard' } },
+            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', 'package-link': { 'dashboard-href': '#page-package-detail?package=aw-doctor', 'dashboard-label': 'View AW Doctor package dashboard' } }
           ],
           metadata
         },
@@ -3248,7 +3284,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
     'Runs',
     'Dispatches',
     'AIC',
-    'Value created',
+    'Ops Value',
     'Registration'
   ]);
   const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
@@ -3256,20 +3292,49 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(awDoctorSummary).toContainText('23.9');
   await expect(awDoctorSummary.locator('[data-field="value-created"]')).toHaveText('0.25');
   await expect(awDoctorSummary.getByRole('button', { name: 'Update package' })).toHaveCount(0);
-  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-insights?package=aw-doctor');
+  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
+  await page.evaluate(() => {
+    window.location.hash = '#page-operational-value';
+  });
+  const operationalValue = page.locator('[data-page-id="operational-value"]');
+  await expect(page.getByRole('heading', { name: 'Operational value', level: 1 })).toBeVisible();
+  await expect(operationalValue.locator('[data-view-id="operational-value-by-package"] [data-chart-widget="pie"]')).toBeAttached();
+  await expect(operationalValue.locator('.chart-legend-pie')).toContainText('Ambient Context');
+  await expect(operationalValue.locator('.chart-legend-pie')).toContainText('AW Doctor');
+  await expect(operationalValue.locator('.custom-table tbody tr')).toHaveCount(2);
+  await expect(operationalValue.locator('.custom-table thead tr').first().locator('th')).toHaveText([
+    'Package',
+    'Operational value'
+  ]);
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });
   await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
   await expect(page.locator('[data-nav-page-id="packages"]')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('navigation', { name: 'Ambient Context views' })).toContainText('InsightsWorkflowsDispatchesReports');
+  const packageNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
+  await expect(packageNavigation).toContainText('OverviewWorkflowsRuns');
+  await expect(packageNavigation).toHaveCSS('display', 'flex');
+  await expect(packageNavigation).toHaveCSS('border-bottom-style', 'solid');
+  const currentPackageLink = packageNavigation.getByRole('link', { name: 'Overview' });
+  await expect(currentPackageLink).toHaveAttribute('aria-current', 'page');
+  expect(await currentPackageLink.evaluate((link) => {
+    const token = document.createElement('span');
+    token.style.color = 'var(--accent)';
+    link.append(token);
+    const colors = [getComputedStyle(link, '::after').backgroundColor, getComputedStyle(token).color];
+    token.remove();
+    return colors[0] === colors[1];
+  })).toBe(true);
+  await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
+  await packageNavigation.getByRole('link', { name: 'Workflows' }).click();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
-  const packageWorkflowRows = page.locator('[data-page-id="package-detail"] .custom-table tbody tr');
+  await expect(packageNavigation.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
+  const packageWorkflowRows = page.locator('[data-page-id="package-workflows"] .custom-table tbody tr');
   await expect(packageWorkflowRows).toHaveCount(2);
-  await expect(page.locator('[data-page-id="package-detail"] .custom-table thead tr').first().locator('th')).toHaveText([
+  await expect(page.locator('[data-page-id="package-workflows"] .custom-table thead tr').first().locator('th')).toHaveText([
     'Role',
     'Workflow',
     'Definition',
@@ -3282,6 +3347,23 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(packageWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
   await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
   await expect(packageWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(packageNavigation).toHaveCSS('display', 'grid');
+  await expect(packageNavigation).toHaveCSS('gap', '0px');
+  await expect(packageNavigation).toHaveCSS('overflow', 'hidden');
+  const mobilePackageLinks = packageNavigation.locator('a');
+  await expect(mobilePackageLinks).toHaveCount(3);
+  await expect(mobilePackageLinks.first().locator('.tab-trailing-icon')).toBeVisible();
+  expect(await mobilePackageLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
+  await mobilePackageLinks.first().focus();
+  await expect(mobilePackageLinks.first()).toHaveCSS('outline-offset', '-3px');
+  const mobileLinkBoxes = await mobilePackageLinks.evaluateAll((links) => links.map((link) => {
+    const box = link.getBoundingClientRect();
+    return { height: box.height, top: box.top };
+  }));
+  expect(mobileLinkBoxes.every((box) => box.height >= 44)).toBe(true);
+  expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
 });
 
@@ -5024,6 +5106,66 @@ test('phone pages toggle between chart, full-view table, and card-list modes', a
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(table.getByRole('heading', { name: 'Runs', level: 3 })).toBeHidden();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('card');
+});
+
+test('phone Workflows page cycles through chart, table, and card-list views', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const workflowsPage = builtInPage('workflows');
+  await page.evaluate(async ({ presenterModuleUrl, workflowsPage }) => {
+    window.location.hash = '#page-workflows';
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'workflows-view-mode-dashboard',
+          title: 'Workflows View Mode',
+          pages: [workflowsPage]
+        }
+      },
+      sources: {
+        'workflow-inventory': {
+          source: 'workflow-inventory',
+          rows: [{
+            'package-name': 'Maintenance',
+            repository: 'githubnext/gh-aw-cao',
+            workflow: '.github/workflows/aw-maintenance.md',
+            'workflow-name': 'AW Maintenance',
+            'workflow-label': 'githubnext/gh-aw-cao:.github/workflows/aw-maintenance.md',
+            'workflow-role': 'orchestrator',
+            'rollout-mode': 'review',
+            'workflow-active': 'active',
+            aic: 12,
+            runs: 4,
+            ingestion: '100%',
+            'workflow-link': { relation: 'workflow', href: '#page-workflow-runtime', label: 'View AW Maintenance' },
+            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-aw-cao' }
+          }],
+          metadata: {
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    }));
+  }, { presenterModuleUrl: buildPresenterModuleUrl(), workflowsPage });
+
+  const chart = page.locator('[data-view-id="workflows-by-runs"]');
+  const table = page.locator('[data-view-id="workflows-inventory"]');
+  await expect(chart).toBeVisible();
+  await expect(table).toBeHidden();
+
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(chart).toBeHidden();
+  await expect(table.locator('.table-region')).toBeVisible();
+  await expect(table.locator('tbody')).toContainText('AW Maintenance');
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(table.locator('.table-region')).toBeHidden();
+  await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
+  await expect(table.locator('[data-mobile-card-list]')).toContainText('AW Maintenance');
+  await expect(page.getByRole('button', { name: 'Show chart view' })).toBeVisible();
 });
 
 test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {

@@ -147,7 +147,7 @@ describe('canonical dashboard worker retention updates', () => {
     const requestUrls = [];
     const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
     const normalizedPayload = {
-      schemaVersion: 8,
+      schemaVersion: 9,
       ingestionVersion: 2,
       sourceRecords: 0,
       batch: {
@@ -197,14 +197,17 @@ describe('canonical dashboard worker retention updates', () => {
     expect(posted.slice(repeatedStart).filter(({ type }) => (
       type === 'notification' || type === 'loading-progress'
     ))).toEqual([]);
-    expect(jsonlRequests).toEqual([{ method: 'HEAD' }, undefined]);
+    expect(jsonlRequests).toEqual([
+      expect.objectContaining({ method: 'HEAD', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    ]);
     expect(requestUrls).toEqual([
-      'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json',
-      `https://dashboard.example/${normalizedName}`,
-      `https://dashboard.example/${normalizedName}`,
       'https://dashboard.example/payload-hashes.json',
-      'https://dashboard.example/inventory-sources.json'
+      `https://dashboard.example/${normalizedName}`,
+      `https://dashboard.example/${normalizedName}`,
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/payload-hashes.json'
     ]);
     expect((await readTransactions(indexedDB))
       .filter((transaction) => transaction.kind === 'ingest-normalized-json'))
@@ -236,7 +239,10 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 5))?.data).toMatchObject({ changed: true });
-    expect(jsonlRequests.slice(2)).toEqual([{ method: 'HEAD' }, undefined]);
+    expect(jsonlRequests.slice(2)).toEqual([
+      expect.objectContaining({ method: 'HEAD', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    ]);
     dispatch({
       id: 6,
       operation: 'load-canonical-dashboard',

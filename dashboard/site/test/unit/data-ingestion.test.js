@@ -78,7 +78,7 @@ beforeEach(async () => {
 describe('canonical source ingestion and queries', () => {
   it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
     const payload = {
-      schemaVersion: 8,
+      schemaVersion: 9,
       ingestionVersion: 2,
       sourceRecords: 1,
       batch: {
@@ -110,6 +110,34 @@ describe('canonical source ingestion and queries', () => {
       skipped: true
     });
     expect((await readCanonicalBatch(indexedDB)).repositories).toEqual(payload.batch.repositories);
+  });
+
+  it('rejects mislabeled or mixed phased payloads', async () => {
+    const payload = {
+      schemaVersion: 9,
+      ingestionVersion: 2,
+      sourceRecords: 1,
+      phase: 'events',
+      batch: {
+        packages: [],
+        repositories: [],
+        workflows: [],
+        runs: [{ id: 'run:unexpected' }],
+        jobs: [],
+        sessions: [],
+        events: []
+      }
+    };
+    const options = {
+      payloadIdentity: 'b'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-events/shard.json',
+      expectedPhase: /** @type {const} */ ('events')
+    };
+
+    await expect(ingestNormalizedJson(indexedDB, payload, options))
+      .rejects.toThrow('Normalized events payload must not include runs');
+    await expect(ingestNormalizedJson(indexedDB, { ...payload, phase: 'runs' }, options))
+      .rejects.toThrow('Normalized activity payload phase must be events');
   });
 
   it('upserts current sources for immediate canonical queries', async () => {

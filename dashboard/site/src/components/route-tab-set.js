@@ -5,7 +5,7 @@
 import { renderLinkTabs } from './tab-nav.js';
 
 /**
- * @typedef {{ id: string, label: string, icon: string, href: string }} RouteTab
+ * @typedef {{ id: string, label: string, icon: string, href: string, trailingIcon?: string }} RouteTab
  */
 
 /**
@@ -25,6 +25,7 @@ export function renderRouteTabSet(options) {
       label: tab.label,
       icon: tab.icon,
       href: tab.href,
+      trailingIcon: tab.trailingIcon,
       current: tab.id === options.currentTab
     }))
   });

@@ -25,15 +25,23 @@ const IDLE_ENTRY = { status: 'idle', origin: 'query', source: null };
 
 /** @type {Map<string, import('./reactive.js').State<SourceEntry>>} */
 const entries = new Map();
+/** @typedef {{ pageId?: string, viewId?: string, sourceIndex?: number, bindingKey?: string, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} SourceRequestOptions */
+
 /** @type {Set<string>} */
 const requested = new Set();
+/** @type {Map<string, SourceRequestOptions>} */
+const requestOptions = new Map();
+/** @type {Map<string, string>} */
+const requestKeys = new Map();
+/** @type {Map<string, string>} */
+const requestNames = new Map();
 /**
  * Generation of the newest load started per source, so stale results are
  * dropped when queries resolve out of order.
  * @type {Map<string, number>}
  */
 const generations = new Map();
-/** @type {((name: string) => Promise<LogicalSourceInput | undefined>) | null} */
+/** @type {((name: string, options?: SourceRequestOptions) => Promise<LogicalSourceInput | undefined>) | null} */
 let loadSource = null;
 
 /**
@@ -54,15 +62,16 @@ export function sourceState(name) {
  * without waiting for a query round trip.
  * @param {string} name
  * @param {LogicalSourceInput} source
+ * @param {string} [bindingKey]
  */
-export function publishSource(name, source) {
-  sourceState(name).set({ status: 'ready', origin: 'view', source });
+export function publishSource(name, source, bindingKey = name) {
+  sourceState(bindingKey).set({ status: 'ready', origin: 'view', source });
 }
 
 /**
  * Registers the loader used to resolve one named query at a time. Each source
  * is requested on its own so a slow query never delays a fast one.
- * @param {((name: string) => Promise<LogicalSourceInput | undefined>) | null} loader
+ * @param {((name: string, options?: SourceRequestOptions) => Promise<LogicalSourceInput | undefined>) | null} loader
  */
 export function configureSourceLoader(loader) {
   loadSource = loader;
@@ -72,11 +81,18 @@ export function configureSourceLoader(loader) {
  * Requests one source asynchronously when a loader is configured. Repeated
  * requests for the same source reuse the first in-flight query.
  * @param {string} name
+ * @param {SourceRequestOptions} [options]
  */
-export function requestSource(name) {
-  if (!loadSource || requested.has(name)) return;
-  requested.add(name);
-  void loadRequestedSource(name);
+export function requestSource(name, options = {}) {
+  if (!loadSource) return;
+  const bindingKey = options.bindingKey ?? name;
+  const key = JSON.stringify(options);
+  if (requested.has(bindingKey) && requestKeys.get(bindingKey) === key) return;
+  requested.add(bindingKey);
+  requestNames.set(bindingKey, name);
+  requestOptions.set(bindingKey, options);
+  requestKeys.set(bindingKey, key);
+  void loadRequestedSource(bindingKey);
 }
 
 /** Re-runs every previously requested query, for example after live data changes. */
@@ -90,32 +106,33 @@ export function refreshSources() {
   });
 }
 
-/** @param {string} name */
-async function loadRequestedSource(name) {
+/** @param {string} bindingKey */
+async function loadRequestedSource(bindingKey) {
   const loader = loadSource;
   if (!loader) return;
-  const entry = sourceState(name);
+  const name = requestNames.get(bindingKey) ?? bindingKey;
+  const entry = sourceState(bindingKey);
   // Rows handed over by a rendered view are refreshed by the next render, so a
   // query result must not silently replace them with unfiltered rows.
   const current = untracked(() => entry.get());
   if (current.origin === 'view' && current.status === 'ready') return;
-  const generation = (generations.get(name) ?? 0) + 1;
-  generations.set(name, generation);
+  const generation = (generations.get(bindingKey) ?? 0) + 1;
+  generations.set(bindingKey, generation);
   // Ready rows stay on screen while they reload, and a source already loading
   // is left alone so bound elements are not woken for an unchanged state.
   if (current.status !== 'ready' && current.status !== 'loading') {
     entry.set({ status: 'loading', origin: 'query', source: null });
   }
   try {
-    const source = await loader(name);
+    const source = await loader(name, requestOptions.get(bindingKey));
     // A later load already started, so this result is stale.
-    if (generations.get(name) !== generation) return;
+    if (generations.get(bindingKey) !== generation) return;
     entry.set(source
       ? { status: 'ready', origin: 'query', source }
       : { status: 'missing', origin: 'query', source: null });
     debug('resolved', { source: name, rows: source?.rows?.length ?? 0 });
   } catch (error) {
-    if (generations.get(name) !== generation) return;
+    if (generations.get(bindingKey) !== generation) return;
     entry.set({ status: 'failed', origin: 'query', source: null });
     debug('failed', { source: name, message: error instanceof Error ? error.message : String(error) });
   }
@@ -130,6 +147,9 @@ export function clearSources(names) {
   for (const name of names) {
     entries.delete(name);
     requested.delete(name);
+    requestOptions.delete(name);
+    requestKeys.delete(name);
+    requestNames.delete(name);
     generations.delete(name);
   }
 }
@@ -138,6 +158,9 @@ export function clearSources(names) {
 export function resetSourceStore() {
   entries.clear();
   requested.clear();
+  requestOptions.clear();
+  requestKeys.clear();
+  requestNames.clear();
   generations.clear();
   loadSource = null;
 }

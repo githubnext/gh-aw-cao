@@ -1,0 +1,12 @@
+{
+  "default": "overview",
+  "tabs": [
+    { "id": "overview", "label": "Overview", "icon": "package", "page": "package-detail" },
+    { "id": "workflows", "label": "Workflows", "icon": "workflow", "page": "package-workflows" },
+    { "id": "runs", "label": "Runs", "icon": "play", "page": "package-runs" }
+  ],
+  "additional-bodies": ["issues", "pull-requests", "repositories", "insights", "reports"],
+  "aliases": {
+    "dispatches": "runs"
+  }
+}

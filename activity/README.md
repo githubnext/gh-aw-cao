@@ -70,18 +70,32 @@ The cache contains:
 ```text
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 $RUNNER_TEMP/cao-activity/gh-aw-logs-shards/
+$RUNNER_TEMP/cao-activity/gh-aw-logs-runs/
+$RUNNER_TEMP/cao-activity/gh-aw-logs-events/
 $RUNNER_TEMP/cao-activity/payload-hashes.json
 $RUNNER_TEMP/cao-activity/control-settings.json
 $RUNNER_TEMP/cao-activity/inventory-sources.json
 $RUNNER_TEMP/cao-activity/drain3_weights.json
 ```
 
-`payload-hashes.json` maps the JSONL source and SQLite projection filenames,
-plus each retained `gh-aw-logs-shards/<shard>.jsonl` wildcard shard, to their
-SHA-256 checksums. The dashboard publishes it beside both payloads so
-clients can detect unchanged data without downloading either complete payload.
+`payload-hashes.json` maps the SQLite projection, retained source JSONL,
+`gh-aw-logs-runs/` run-information shards, and `gh-aw-logs-events/` event
+shards to their SHA-256 checksums. Run-information shards contain immutable
+agent/model identity and duration, firewall, MCP, operational-value, and audit
+priority aggregates. Every event includes its owning run identity. The
+run and event directories contain exactly matching filename stems. The
+dashboard validates that pairing and imports all run-information shards before
+event shards so clients can query runs while detailed ingestion continues.
+Each phase filename retains the source shard's sortable prefix before its
+content and normalization hashes, preserving observation precedence across
+repeated records.
 Dashboard ingestion checks this sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is usable.
+
+The split improves time to first useful Run query rather than reducing the
+total transfer required for a complete refresh. Run results exposed between
+phases are partial snapshot state; event-dependent results become current only
+after the event phase succeeds.
 
 `activity/cao.mjs` logs shard skip/ingest decisions and per-file hash results
 through Node's built-in `util.debuglog` (see `activity/debug.mjs`), scoped
@@ -94,7 +108,10 @@ Snapshots use the immutable key
 `cao-activity-v3-`. Dispatching consumers wait for the exact Activity run and
 reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
-cache version. The cache is an evictable transport optimization, not durable
+cache version. When the current layout misses, Activity restores the preceding
+layout containing `gh-aw-logs-normalized/`; `hash-payloads` processes its
+retained JSONL shard directory to generate the new paired run and event shards.
+The cache is an evictable transport optimization, not durable
 historical authority.
 
 The Drain3 weights are restored outside the `gh aw logs` output directory and

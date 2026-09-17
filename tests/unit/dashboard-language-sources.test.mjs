@@ -57,7 +57,7 @@ test("builds deployable package and workflow inventory sources", () => {
           role: "orchestrator",
           sourcePath: ".github/workflows/daily-ops.md",
           compiled: true,
-          controlPackage: "daily-ops",
+          controlPackage: "daily-operations",
           maxAiCredits: 100,
         },
         {
@@ -66,13 +66,13 @@ test("builds deployable package and workflow inventory sources", () => {
           role: "worker",
           sourcePath: ".github/workflows/daily-worker.md",
           compiled: true,
-          controlPackage: "daily-ops",
+          controlPackage: "daily-operations",
           maxAiCredits: 200,
         },
       ],
       bundles: [{
         id: "daily-ops",
-        controlPackage: "daily-ops",
+        controlPackage: "daily-operations",
         name: "Daily Operations",
         description: "Daily operational checks.",
         workflow: ".github/workflows/daily-ops.md",
@@ -90,7 +90,7 @@ test("builds deployable package and workflow inventory sources", () => {
     controlSettings: {
       allowed_repositories: ["githubnext/control"],
       packages: {
-        "daily-ops": {
+        "daily-operations": {
           icon: "clock",
           mode: "review",
           "rollout-percent": 25,
@@ -110,7 +110,7 @@ test("builds deployable package and workflow inventory sources", () => {
 
   assert.equal(sources.packages.rows.length, 1);
   assert.deepEqual(sources.packages.rows[0], {
-    package: "daily-ops",
+    package: "daily-operations",
     "package-name": "Daily Operations",
     "package-description": "Daily operational checks.",
     "package-icon": "clock",
@@ -138,8 +138,8 @@ test("builds deployable package and workflow inventory sources", () => {
       role: workflow["workflow-role"],
     })),
     [
-      { workflow: ".github/workflows/daily-ops.md", package: "daily-ops", role: "orchestrator" },
-      { workflow: ".github/workflows/daily-worker.md", package: "daily-ops", role: "worker" },
+      { workflow: ".github/workflows/daily-ops.md", package: "daily-operations", role: "orchestrator" },
+      { workflow: ".github/workflows/daily-worker.md", package: "daily-operations", role: "worker" },
     ],
   );
   assert.deepEqual(
@@ -147,7 +147,7 @@ test("builds deployable package and workflow inventory sources", () => {
     {
       organization: "githubnext",
       repository: "control",
-      package: "daily-ops",
+      package: "daily-operations",
       "package-name": "Daily Operations",
       "package-icon": "clock",
       "package-aic-allowance": 300,

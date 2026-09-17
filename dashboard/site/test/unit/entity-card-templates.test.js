@@ -25,6 +25,35 @@ describe('entity card templates', () => {
     ]));
   });
 
+  it('presents runs like a GitHub Actions run row', () => {
+    expect(templates.run).toMatchObject({
+      status: { field: 'run-conclusion', 'fallback-field': 'run-status' },
+      title: { field: 'run-title' },
+      labels: [{ field: 'branch', display: 'ref' }],
+      timing: [
+        { field: 'started-at', icon: 'calendar' },
+        { field: 'duration', icon: 'stopwatch' }
+      ]
+    });
+    const runQuery = dashboard.queries.find((/** @type {Record<string, any>} */ query) => query.name === 'entity-runs');
+    const selected = runQuery.select.map((/** @type {Record<string, any>} */ field) => field.field);
+    expect(selected).toEqual(expect.arrayContaining(['run-title', 'branch', 'event', 'duration', 'started-at']));
+  });
+
+  it('declares a firewall domain card with allowed and blocked metrics', () => {
+    expect(templates['firewall-domain']).toEqual({
+      id: 'firewall-domain',
+      icon: 'globe',
+      title: { field: 'domain', title: 'Domain' },
+      labels: [],
+      details: [
+        { field: 'accepted', title: 'Allowed' },
+        { field: 'blocked', title: 'Blocked' },
+        { field: 'run', title: 'Runs' }
+      ]
+    });
+  });
+
   it('drills from repositories through workflows and runs to events', () => {
     expect(views['entity-repositories'].list).toMatchObject({
       card: 'repository',

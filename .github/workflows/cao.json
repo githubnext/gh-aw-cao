@@ -63,7 +63,7 @@
       },
       "dependabot": {
         "icon": "dependabot",
-        "mode": "live",
+        "mode": "review",
         "workers": {
           "release-train-updater": {
             "workflow": "dependabot-release-train-updater"

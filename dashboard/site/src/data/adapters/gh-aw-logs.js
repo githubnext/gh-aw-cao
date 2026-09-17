@@ -199,6 +199,83 @@ function runMetadata(run) {
   };
 }
 
+/** @param {Record<string, unknown>} run */
+function runAggregates(run) {
+  const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
+    ? /** @type {Record<string, unknown>} */ (run.audit)
+    : {};
+  const firewallValue = Object.hasOwn(run, 'firewall_analysis')
+    ? run.firewall_analysis
+    : audit.firewall_analysis;
+  const firewall = firewallValue && typeof firewallValue === 'object' && !Array.isArray(firewallValue)
+    ? /** @type {Record<string, unknown>} */ (firewallValue)
+    : {};
+  const requestsByDomain = firewall.requests_by_domain
+    && typeof firewall.requests_by_domain === 'object'
+    && !Array.isArray(firewall.requests_by_domain)
+    ? /** @type {Record<string, unknown>} */ (firewall.requests_by_domain)
+    : {};
+  const hasFirewallAggregate = firewallValue !== null && typeof firewallValue === 'object'
+    && !Array.isArray(firewallValue);
+  let firewallAllowedCalls = 0;
+  let firewallBlockedCalls = 0;
+  for (const value of Object.values(requestsByDomain)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+    const counts = /** @type {Record<string, unknown>} */ (value);
+    firewallAllowedCalls += Math.max(0, finiteNumber(counts.allowed) ?? 0);
+    firewallBlockedCalls += Math.max(0, finiteNumber(counts.blocked) ?? 0);
+  }
+
+  const mcpValue = Object.hasOwn(run, 'mcp_tool_usage')
+    ? run.mcp_tool_usage
+    : audit.mcp_tool_usage;
+  const mcp = mcpValue && typeof mcpValue === 'object' && !Array.isArray(mcpValue)
+    ? /** @type {Record<string, unknown>} */ (mcpValue)
+    : {};
+  const toolCalls = Array.isArray(mcp.tool_calls) ? mcp.tool_calls : [];
+  const hasMcpAggregate = mcpValue !== null && typeof mcpValue === 'object'
+    && !Array.isArray(mcpValue);
+  const mcpResponseBytes = toolCalls.reduce((total, value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return total;
+    return total + Math.max(0, finiteNumber(/** @type {Record<string, unknown>} */ (value).output_size) ?? 0);
+  }, 0);
+
+  const graders = run.graders && typeof run.graders === 'object' && !Array.isArray(run.graders)
+    ? /** @type {Record<string, unknown>} */ (run.graders)
+    : {};
+  const operationalValueResults = (Array.isArray(graders.results) ? graders.results : [])
+    .filter((value) => value && typeof value === 'object' && !Array.isArray(value))
+    .map((value) => /** @type {Record<string, unknown>} */ (value))
+    .filter((value) => value.id === 'operational-value' || value.source === 'operational-value')
+    .map((value) => finiteNumber(value.value))
+    .filter((value) => value !== null);
+
+  const auditItems = ['key_findings', 'observability_insights', 'recommendations']
+    .flatMap((field) => Array.isArray(audit[field]) ? audit[field] : [])
+    .filter((value) => value && typeof value === 'object' && !Array.isArray(value))
+    .map((value) => /** @type {Record<string, unknown>} */ (value));
+  const hasPriorityAggregate = ['key_findings', 'observability_insights', 'recommendations']
+    .some((field) => Array.isArray(audit[field]));
+  /** @param {string} priority */
+  const priorityCount = (priority) => auditItems.filter((item) =>
+    optionalString(item.severity ?? item.priority)?.toLowerCase() === priority).length;
+  const startedAt = timestamp(run.started_at ?? run.created_at);
+  const completedAt = run.status === 'completed' ? timestamp(run.completed_at ?? run.updated_at) : null;
+
+  return {
+    agenticDurationSeconds: startedAt && completedAt
+      ? Math.max(0, (Date.parse(completedAt) - Date.parse(startedAt)) / 1000)
+      : null,
+    firewallAllowedCalls: hasFirewallAggregate ? firewallAllowedCalls : null,
+    firewallBlockedCalls: hasFirewallAggregate ? firewallBlockedCalls : null,
+    mcpToolCalls: hasMcpAggregate ? toolCalls.length : null,
+    mcpResponseBytes: hasMcpAggregate ? mcpResponseBytes : null,
+    operationalValue: operationalValueResults.length === 1 ? operationalValueResults[0] : null,
+    highPriorityAuditItems: hasPriorityAggregate ? priorityCount('high') : null,
+    mediumPriorityAuditItems: hasPriorityAggregate ? priorityCount('medium') : null
+  };
+}
+
 /** @param {string} content @param {string} filePath */
 function parseJsonl(content, filePath) {
   return content.split(/\r?\n/).flatMap((line, index) => {
@@ -985,6 +1062,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       `${id}.attempt`
     );
     const metadata = runMetadata(enrichedValue);
+    const aggregates = runAggregates(enrichedValue);
     const title = optionalString(rawValue.displayTitle)
       ?? optionalString(enrichedValue.display_title)
       ?? `Run ${githubRunId}`;
@@ -1043,6 +1121,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         agentId: metadata.agentId ?? null,
         agentVersion: metadata.agentVersion ?? null,
         modelId: metadata.modelId ?? null,
+        ...aggregates,
         ghAwVersion: metadata.ghAwVersion ?? null,
         engine: metadata.engine ?? 'unknown',
         engineId: metadata.engineId,

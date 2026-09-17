@@ -38,7 +38,7 @@ relationships.
 | **Run** | `github:run:<run-id>:attempt:<attempt>` | Repository and Workflow | Distinguishes every attempt of a GitHub Actions run. |
 | **Job** | `github:job:<github-id>` | Run | Represents one execution job within a run. |
 | **Session** | Stable source ID or deterministic source coordinate | Run; optionally Job | Groups one coherent operational execution context. |
-| **Event** | Stable source ID or deterministic source coordinate | Session | Records messages, tools, network, policy, safe-output, API, and runtime activity. |
+| **Event** | Stable source ID or deterministic source coordinate | Run and Session | Records messages, tools, network, policy, safe-output, API, and runtime activity. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
@@ -58,13 +58,22 @@ SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Da
 
 Observations can arrive at different times and enrich an existing entity. Explicit source precedence and observation time resolve conflicting fields; arrival order alone never decides the result.
 
-The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic agentic Sessions and Events. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
+The activity shard manifest is the dashboard's published operational input. The worker accepts phased ingestion only when every run-information shard has one event shard with the same filename stem. It imports every compact run-information shard before downloading the larger event shards. Run records include immutable agent, model, duration, firewall, MCP, operational-value, and audit-priority aggregates; every Event includes its owning `runId` in addition to `sessionId`. Run queries may refresh between phases, but that intermediate state is not a complete snapshot and event-dependent queries remain stale until event ingestion succeeds. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
 The canonical database is `gh-aw-cao-dashboard-data`, schema version 10. It has stores for `packages`, `repositories`, `workflows`, `runs`, `jobs`, `sessions`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs; version 10 resets source-scoped Repository and Workflow identities to canonical coordinates.
 
-For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection: it deletes records absent from the retained batch and puts every retained record. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
+For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
+
+Browser storage remains disposable derived state rather than a generation-atomic
+authority. Writes use bounded transactions, so interruption can leave a
+partially updated database; transaction identities cause the missing shards to
+retry, and event-dependent subscriptions remain on their prior result until a
+complete event phase succeeds. Storage capping drops complete run subtrees,
+including event detail whose owning run was evicted. Removing a published shard
+does not itself tombstone an indefinitely retained Run; source retractions need
+an explicit deletion contract or a schema rebuild.
 
 Every merged batch must satisfy these mandatory relationships:
 
@@ -72,7 +81,7 @@ Every merged batch must satisfy these mandatory relationships:
 - Run → Repository and Workflow
 - Job → Run
 - Session → Run and, when present, Job
-- Event → Session
+- Event → Run and Session
 
 Work items and findings are represented by Events rather than separate canonical tables. Independent domains, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them.
 

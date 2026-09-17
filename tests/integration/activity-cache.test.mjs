@@ -5,6 +5,17 @@ import test from "node:test";
 const cachePaths = [
   "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
+  "${{ runner.temp }}/cao-activity/gh-aw-logs-runs",
+  "${{ runner.temp }}/cao-activity/gh-aw-logs-events",
+  "${{ runner.temp }}/cao-activity/payload-hashes.json",
+  "${{ runner.temp }}/cao-activity/control-settings.json",
+  "${{ runner.temp }}/cao-activity/inventory-sources.json",
+  "${{ runner.temp }}/cao-activity/drain3_weights.json",
+];
+
+const legacyCachePaths = [
+  "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
+  "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-normalized",
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
@@ -20,8 +31,11 @@ function assertCachePathSets(workflow, expectedCount, expectedPaths = cachePaths
   ].map((match) => match[1].trim().split("\n").map((line) => line.trim()));
 
   assert.equal(pathSets.length, expectedCount);
-  for (const pathSet of pathSets) {
-    assert.deepEqual(pathSet, expectedPaths);
+  const expectedPathSets = Array.isArray(expectedPaths[0])
+    ? expectedPaths
+    : Array.from({ length: expectedCount }, () => expectedPaths);
+  for (const [index, pathSet] of pathSets.entries()) {
+    assert.deepEqual(pathSet, expectedPathSets[index]);
   }
 }
 
@@ -49,6 +63,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     cacheJob,
     /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
   );
+  assert.match(
+    cacheJob,
+    /find "\$snapshot_root\/gh-aw-logs-runs"[\s\S]*?find "\$snapshot_root\/gh-aw-logs-events"[\s\S]*?cmp -s "\$run_shards" "\$event_shards"[\s\S]*?Activity run and event shard sets do not match/,
+  );
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,
@@ -64,15 +82,15 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(collector, /--cached-logs "\$\{shard_prefix\}\*"/);
   assert.match(
     workflow,
-    /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--input-dir "\$REPORT_GH_AW_LOGS_SHARDS"/,
+    /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"/,
   );
   assert.match(
     workflow,
-    /ingest-jsonl[\s\S]*?--input-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
+    /ingest-jsonl[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
   );
   assert.match(
     workflow,
-    /Hash activity payloads[\s\S]*?REPORT_GH_AW_LOGS_NORMALIZED: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-normalized[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--normalized-dir "\$REPORT_GH_AW_LOGS_NORMALIZED"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
+    /Hash activity payloads[\s\S]*?REPORT_GH_AW_LOGS_RUNS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-runs[\s\S]*?REPORT_GH_AW_LOGS_EVENTS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-events[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
   );
   assert.match(
     cacheJob,
@@ -80,8 +98,9 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /Restore activity cache[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?Download agentic workflow logs[\s\S]*?REPORT_DRAIN3_WEIGHTS: \$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?bash "\$collector"/,
+    /Restore legacy activity cache layout[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?Download agentic workflow logs[\s\S]*?REPORT_DRAIN3_WEIGHTS: \$\{\{ runner\.temp \}\}\/cao-activity\/drain3_weights\.json[\s\S]*?bash "\$collector"/,
   );
+  assert.match(workflow, /Restore legacy activity cache layout\n\s+if: steps\.activity-cache\.outputs\.cache-matched-key == ''/);
   assert.match(collector, /if \[\[ -n "\$drain3_weights_path" && -f "\$drain3_weights_path" \]\]/);
   assert.match(collector, /drain3_args=\(--drain3-weights "\$drain3_weights_path"\)/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
@@ -95,7 +114,15 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /github-script|run-activity\.mjs|REPORT_GH_AW_LOGS_STATE|REPORT_DEPLOYED_WORKFLOWS|REPORT_RECORDS/,
   );
-  assertCachePathSets(workflow, 2);
+  assertCachePathSets(workflow, 3, [cachePaths, legacyCachePaths, cachePaths]);
+  const legacyPathBlock = workflow.match(
+    /Restore legacy activity cache layout[\s\S]*?path: \|\n((?:\s+\$\{\{ runner\.temp \}\}\/[^\n]+\n)+)/,
+  )?.[1];
+  assert.ok(legacyPathBlock);
+  assert.deepEqual(
+    legacyPathBlock.trim().split("\n").map((line) => line.trim()),
+    legacyCachePaths,
+  );
 });
 
 test("activity cache consumers use the producer cache version paths", async () => {
@@ -105,5 +132,5 @@ test("activity cache consumers use the producer cache version paths", async () =
   ]);
 
   assertCachePathSets(dashboardWorkflow, 1);
-  assertCachePathSets(sharedCache, 2, cachePaths.filter((path) => !path.endsWith("/gh-aw-logs-normalized")));
+  assertCachePathSets(sharedCache, 2);
 });

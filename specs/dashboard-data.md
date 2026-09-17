@@ -323,6 +323,24 @@ JSONL shards when normalized payloads are unavailable.
 
 ## 5.4 Canonical join contract
 
+### 5.4.1 Package resource navigation projections
+
+Package resource pages SHALL resolve one package slug from the active route and
+apply it as an equality predicate inside the dashboard query worker. Generated
+issue and pull-request views SHALL select retained Outcome observations by
+`outcome-category`; workflow-run views SHALL join canonical Run and Workflow
+records through Workflow identity; repository views SHALL group the canonical
+Repositories reached through package-classified Workflows. Missing package
+relationships MUST produce an honest empty or unavailable result and MUST NOT
+fall back to unscoped records.
+
+The local SQLite projection and browser IndexedDB projection SHALL expose
+equivalent Package-to-Workflow, Workflow-to-Run, and Workflow-to-Repository
+relationships to these queries. Package resource navigation is presentation
+configuration, not canonical operational evidence, and MUST NOT be persisted as
+mutable browser state. Both projections remain disposable and reconstructable;
+no schema migration is required for navigation-only changes.
+
 The cached JSONL source does not expose immutable Repository and Workflow IDs
 for every envelope. Until it does, Repository identity SHALL use normalized
 `OWNER/REPOSITORY`; Workflow identity SHALL be scoped to that Repository and
@@ -337,6 +355,7 @@ Run.repositoryId      -> Repository.id
 Run.workflowId        -> Workflow.id
 Job.runId             -> Run.id
 Session.runId         -> Run.id
+Event.runId           -> Run.id
 Event.sessionId       -> Session.id
 ```
 
@@ -792,6 +811,7 @@ erDiagram
   }
   EVENT {
     string id PK "deterministic semantic ID"
+    string runId FK "required owning run"
     string sessionId FK "required owning session"
     number sequence
     string timestamp
@@ -812,7 +832,7 @@ falls back to `(repositoryId, path)` or a source-namespaced
 values are encoded into the canonical string `id`; the individual components
 are not independently unique.
 
-Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. A Session MUST reference a Run and MAY reference a Job. Every Event MUST reference exactly one Session. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
+Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. A Session MUST reference a Run and MAY reference a Job. Every Event MUST reference exactly one Run and one Session. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
 
 ---
 
@@ -906,6 +926,17 @@ Example:
   startedAt: "...",
   completedAt: "...",
 
+  agentId: "copilot",
+  modelId: "gpt-5.4",
+  agenticDurationSeconds: 10,
+  firewallAllowedCalls: 4,
+  firewallBlockedCalls: 2,
+  mcpToolCalls: 2,
+  mcpResponseBytes: 192,
+  operationalValue: 0.8,
+  highPriorityAuditItems: 1,
+  mediumPriorityAuditItems: 2,
+
   headSha: "...",
   headBranch: "main",
 
@@ -920,6 +951,16 @@ Example:
 **RUN-002** — Canonical identity SHOULD incorporate run ID and attempt.
 
 **RUN-003** — Later observations MAY enrich incomplete Run records.
+
+**RUN-004** — A completed Run SHOULD retain immutable `agentId`, `modelId`,
+`agenticDurationSeconds`, `firewallAllowedCalls`, `firewallBlockedCalls`,
+`mcpToolCalls`, `mcpResponseBytes`, `operationalValue`,
+`highPriorityAuditItems`, and `mediumPriorityAuditItems` values when the
+corresponding source evidence is available at import time.
+
+**RUN-005** — An unavailable aggregate MUST remain `null`. An observed evidence
+class with no matching calls or audit items SHALL produce zero. Duration is
+measured in seconds, and MCP response size is measured in bytes.
 
 ---
 
@@ -1025,6 +1066,8 @@ Events MUST NOT be stored as one ever-growing array inside the Session record.
 ## 12.1 Unified Transaction Log
 
 Every operational occurrence associated with a Session SHOULD become an Event.
+Every Event MUST reference both its owning Run and Session, and the referenced
+Session MUST belong to that same Run.
 
 Safe-output Events SHALL preserve the safe-output action and, when the affected
 entity is hosted by GitHub, its canonical GitHub entity type. The SQLite
@@ -1040,6 +1083,7 @@ Example:
 {
   id: "event:01J...",
 
+  runId: "github:run:123456789:attempt:1",
   sessionId: "session:abc123",
 
   sequence: 17,

@@ -4,7 +4,9 @@ import {
   AGGREGATE_VALUES,
   BUILT_IN_PAGE_KEYS,
   BUILT_IN_PAGE_VALUES,
+  CARD_STATUS_KEYS,
   CARD_TEMPLATE_KEYS,
+  CARD_TIMING_FIELD_KEYS,
   CUSTOM_PAGE_KEYS,
   DASHBOARD_KEYS,
   DASHBOARD_HORIZON_KEYS,
@@ -52,6 +54,7 @@ import {
   FIELD_DISPLAY_VALUES,
   FIELD_FORMAT_VALUES,
   FIELD_TYPE_VALUES,
+  FACTORY_OVERVIEW_SECTION_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
   FINDING_SEVERITY_VALUES,
@@ -564,6 +567,11 @@ function validateCardTemplates(templates, templatesNode, errors) {
       ids.add(template.id);
     }
     validateCardTemplateField(template.title, getValueNodeByKey(templateNode, 'title'), `${path}.title`, errors);
+    if (template.subtitle !== undefined) {
+      validateCardTemplateField(template.subtitle, getValueNodeByKey(templateNode, 'subtitle'), `${path}.subtitle`, errors);
+    }
+    validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
+    validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
     for (const key of ['labels', 'details']) {
       const fields = template[key];
       if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {
@@ -582,18 +590,69 @@ function validateCardTemplates(templates, templatesNode, errors) {
 }
 
 /**
+ * A card template status declaration names the field whose observed value
+ * selects the card's status icon and tone, with an optional fallback field for
+ * entities whose terminal value is not yet observed.
+ * @param {unknown} status
+ * @param {unknown} statusNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplateStatus(status, statusNode, path, errors) {
+  if (status === undefined) return;
+  if (!isPlainObject(status)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template status must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(statusNode, CARD_STATUS_KEYS, path, errors);
+  validateRequiredIdentifier(status.field, `${path}.field`, 'card template status field', errors);
+  if (status['fallback-field'] !== undefined) {
+    validateRequiredIdentifier(status['fallback-field'], `${path}.fallback-field`, 'card template status fallback field', errors);
+  }
+  validateOptionalStringField(status.title, `${path}.title`, errors);
+}
+
+/**
+ * A card template timing declaration is an ordered sequence of icon-labeled
+ * field definitions presented beside the card, such as the start time and the
+ * elapsed duration of a run.
+ * @param {unknown} timing
+ * @param {unknown} timingNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplateTiming(timing, timingNode, path, errors) {
+  if (timing === undefined) return;
+  if (!Array.isArray(timing) || timing.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template timing must be a non-empty sequence.', path));
+    return;
+  }
+  timing.forEach((field, index) => {
+    const fieldPath = `${path}[${index}]`;
+    const fieldNode = getSequenceItemNode(timingNode, index);
+    validateCardTemplateField(field, fieldNode, fieldPath, errors, CARD_TIMING_FIELD_KEYS);
+    if (!isPlainObject(field)) return;
+    validateStringField(field.icon, `${fieldPath}.icon`, true, errors);
+    if (typeof field.icon === 'string' && !PAGE_ICON_VALUES.includes(field.icon)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template timing icon must use one canonical Octicon name.', `${fieldPath}.icon`));
+    }
+  });
+}
+
+/**
  * @param {unknown} field
  * @param {unknown} fieldNode
  * @param {string} path
  * @param {ValidationError[]} errors
+ * @param {string[]} [allowedKeys]
  */
-function validateCardTemplateField(field, fieldNode, path, errors) {
+function validateCardTemplateField(field, fieldNode, path, errors, allowedKeys = FIELD_DEFINITION_KEYS) {
   if (!isPlainObject(field)) {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template field must be a mapping.', path));
     return;
   }
 
-  validateObjectKeys(fieldNode, FIELD_DEFINITION_KEYS, path, errors);
+  validateObjectKeys(fieldNode, allowedKeys, path, errors);
   validateRequiredIdentifier(field.field, `${path}.field`, 'card template field', errors);
   validateOptionalStringField(field.title, `${path}.title`, errors);
   if (field.display !== undefined && (typeof field.display !== 'string' || !FIELD_DISPLAY_VALUES.includes(field.display))) {
@@ -2371,7 +2430,12 @@ function validateView(view, viewNode, path, viewIds, errors) {
          `${path}.config.body`
        ));
       }
-      if (view.element === 'work-project-view' && view.config.sections !== undefined) {
+      const allowedSections = view.element === 'work-project-view'
+        ? WORK_VIEW_BODY_VALUES
+        : view.element === 'outcomes-overview'
+          ? FACTORY_OVERVIEW_SECTION_VALUES
+          : null;
+      if (allowedSections && view.config.sections !== undefined) {
        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
          errors.push(createError(
            ERROR_CODES.missingOrInvalidRequiredField,
@@ -2379,10 +2443,18 @@ function validateView(view, viewNode, path, viewIds, errors) {
            `${path}.config.sections`
          ));
        } else {
+         const seenSections = new Set();
          for (let index = 0; index < view.config.sections.length; index += 1) {
            const section = view.config.sections[index];
            validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
-           const allowedSections = WORK_VIEW_BODY_VALUES;
+           if (seenSections.has(section)) {
+             errors.push(createError(
+               ERROR_CODES.unknownOrDuplicateKey,
+               `${view.element} config.sections values must be unique.`,
+               `${path}.config.sections[${index}]`
+             ));
+           }
+           seenSections.add(section);
            if (typeof section === 'string' && !allowedSections.includes(section)) {
              errors.push(createError(
                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2395,7 +2467,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.sections !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the work-project-view element.',
+         'config.sections is supported only for the work-project-view and outcomes-overview elements.',
          `${path}.config.sections`
        ));
       }
@@ -2411,10 +2483,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
       }
       if (view.config.animate !== undefined) {
-        if (view.element !== 'outcomes-overview') {
+        if (view.element !== 'factory-floor' && view.element !== 'outcomes-overview') {
           errors.push(createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-            'config.animate is supported only for the outcomes-overview element.',
+            'config.animate is supported only for the factory-floor and outcomes-overview elements.',
             `${path}.config.animate`
           ));
         }

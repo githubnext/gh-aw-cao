@@ -85,9 +85,20 @@ export function stringOrFallback(value, fallback) {
  */
 export function formatString(value, format, fallback = 'unknown') {
   const text = stringOrFallback(value, fallback);
-  if (format !== 'workflow-relative-path' || !text.startsWith('.github/workflows/')) return text;
-  const formatted = text.slice('.github/workflows/'.length);
-  return formatted || fallback;
+  if (format === 'workflow-relative-path') {
+    if (!text.startsWith('.github/workflows/')) return text;
+    const formatted = text.slice('.github/workflows/'.length);
+    return formatted || fallback;
+  }
+  if (format === 'workflow-identity-label') {
+    const separator = text.indexOf(':');
+    const repository = text.slice(0, separator);
+    const workflow = text.slice(separator + 1);
+    if (!repository || !workflow.startsWith('.github/workflows/')) return text;
+    const relativeWorkflow = workflow.slice('.github/workflows/'.length);
+    return relativeWorkflow ? `${relativeWorkflow} (${repository})` : text;
+  }
+  return text;
 }
 
 /**

@@ -96,7 +96,7 @@ Use the `add-cao-package` skill to discover and compare catalog operations when 
 node .github/aw/activity/cao.mjs add githubnext/gh-aw-cao/dependabot
 ```
 
-`cao init` creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `cao add` invokes `gh aw add`, reads the installed package's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope. `cao update` upgrades `gh-aw` to the policy's minimum version, updates installed packages, and refreshes declared worker identities while preserving operator-owned rollout settings.
+`cao init` creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `cao add` invokes `gh aw add`, reads the installed package's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope. `cao update` upgrades `gh-aw` to the policy's minimum version, updates installed packages, and refreshes declared worker identities while preserving operator-owned rollout settings. Use `cao mode live PACKAGE...` to promote configured packages or `cao mode preview PACKAGE...` to return them to review mode; the command validates every package name before updating `.github/workflows/cao.json`.
 
 > [!WARNING]
 > Do not edit generated `.lock.yml` files directly. Update their Markdown sources and regenerate them with `gh aw compile`.

@@ -598,7 +598,7 @@ function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {
         explicit: targetPolicies.has(key),
       }))
       .filter((target) => target.mode !== "unknown" && target.repository);
-    const packageId = String(bundle.id || bundle.controlPackage || "").trim();
+    const packageId = String(policyId || bundle.id || bundle.controlPackage || "").trim();
     const packageName = String(bundle.name || packageId).trim();
     const packageMembership = packageId ? { id: packageId, name: packageName || packageId } : undefined;
     const packageIcon = packagePolicy?.icon || "package";

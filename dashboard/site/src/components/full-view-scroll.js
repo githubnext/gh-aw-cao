@@ -22,14 +22,11 @@ export function syncFullViewMode(root, page) {
     ? [...fullView.parentElement.querySelectorAll(':scope > .custom-view')].filter((view) => view !== fullView)
     : [];
   const modeSelectionPage = page?.hasAttribute('data-mobile-view-mode-page') === true;
-  const mobileViewport = root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.matches === true;
-  const mobileFullViewMode = ['table', 'card'].includes(root.dataset.mobileViewMode ?? '')
-    && modeSelectionPage
-    && mobileViewport;
+  const selectedFullViewMode = ['table', 'card'].includes(root.dataset.mobileViewMode ?? '')
+    && modeSelectionPage;
   const canPin = Boolean(fullView) && (
-    modeSelectionPage && mobileViewport
-      ? mobileFullViewMode
-      : siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
+    selectedFullViewMode
+    || siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))
   );
   root.classList.toggle('dashboard-full-view', canPin);
   if (!canPin) root.classList.remove('dashboard-full-view-scrolled');

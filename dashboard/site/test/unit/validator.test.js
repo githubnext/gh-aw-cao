@@ -85,9 +85,10 @@ describe('dashboard document validation', () => {
   it('validates declarative overview counter animations', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
-    overview.views[0].config.animate = 'number';
+    const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
+    floor.config.animate = 'number';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    overview.views[0].config.animate = 'counter';
+    floor.config.animate = 'counter';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
@@ -265,6 +266,32 @@ describe('dashboard document validation', () => {
       presentation: 'cli-action',
       context: ['package']
     });
+    expect(maintenancePage.views[0].encoding.actions.slice(1)).toEqual([
+      expect.objectContaining({
+        action: 'set-package-live',
+        presentation: 'cli-action',
+        context: ['package'],
+        when: { field: 'package-mode', equals: 'review' }
+      }),
+      expect.objectContaining({
+        action: 'set-package-preview',
+        presentation: 'cli-action',
+        context: ['package'],
+        when: { field: 'package-mode', equals: 'live' }
+      })
+    ]);
+    expect(document.dashboard['cli-actions']).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'set-package-live',
+        command: './.github/aw/cao.sh mode live {{package}}',
+        placement: 'row'
+      }),
+      expect.objectContaining({
+        id: 'set-package-preview',
+        command: './.github/aw/cao.sh mode preview {{package}}',
+        placement: 'row'
+      })
+    ]));
   });
 
   it('validates declarative card lists and their view actions', () => {
@@ -488,8 +515,8 @@ describe('dashboard document validation', () => {
 
   it('defines every other editable experimental page as one full-view lazy table', () => {
     // Pages that intentionally compose more than one editable view, asserted separately below
-    // or by their own focused suites: safe-outputs, maintenance, entity cards, cost, and audit.
-    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'sessions', 'cost', 'audit']);
+    // or by their own focused suites: safe-outputs, maintenance, entity cards, operational value, cost, and audit.
+    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'sessions', 'operational-value', 'cost', 'audit']);
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -635,9 +662,9 @@ describe('dashboard document validation', () => {
       }
     });
     expect(domains.encoding.columns).toEqual([
-      { field: 'domain', type: 'nominal' },
-      { field: 'run', type: 'quantitative', title: 'Run' },
-      { field: 'accepted', type: 'quantitative', title: 'Accepted' },
+      { field: 'domain', type: 'nominal', title: 'Domain' },
+      { field: 'run', type: 'quantitative', title: 'Runs' },
+      { field: 'accepted', type: 'quantitative', title: 'Allowed' },
       { field: 'blocked', type: 'quantitative', title: 'Blocked' }
     ]);
     const serialized = JSON.stringify(firewall).toLowerCase();
@@ -682,7 +709,9 @@ describe('dashboard document validation', () => {
     expect(mcps.views).toHaveLength(2);
     expect(mcps.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'mcp-tool',
-      'calls'
+      'mcp-server',
+      'calls',
+      'workflows'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
@@ -949,7 +978,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines the Workflows run ranking as a declarative pie chart', () => {
+  it('defines the Workflows chart and inventory table as declarative views', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'workflows'
@@ -967,35 +996,65 @@ describe('dashboard document validation', () => {
       chart: 'pie',
       layout: 'horizontal',
       encoding: {
-        x: { field: 'workflow-label', type: 'nominal' },
+        x: { field: 'workflow-label', type: 'nominal', format: 'workflow-identity-label' },
         y: { field: 'runs', type: 'quantitative' },
         href: { field: 'workflow-link', type: 'nominal' }
       }
     });
+    expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-inventory'
+    )).toMatchObject({
+      data: { source: 'workflow-inventory' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view'
+    });
+    const columns = page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'workflows-inventory'
+    ).encoding.columns;
+    expect(columns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'workflow-name', display: 'workflow-link' }),
+      expect.objectContaining({ field: 'repository', display: 'repository-link' }),
+      expect.objectContaining({ field: 'package-name' }),
+      expect.objectContaining({ field: 'runs', type: 'quantitative' })
+    ]));
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines Overview as one evidence-backed outcomes element', () => {
+  it('defines Overview as declarative factory header and floor elements', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'overview'
     );
 
-    expect(page.views).toEqual([expect.objectContaining({
-      id: 'overview-outcomes',
+    expect(page.views).toEqual([
+      expect.objectContaining({
+      id: 'overview-header',
       description: 'Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
+      data: { sources: expect.arrayContaining([
+        'overview-outcome-summary',
+        'overview-run-summary',
+        'overview-factory-status',
+        'overview-rhythm'
+      ]) },
+      mark: 'element',
+      element: 'factory-header',
+      layout: 'full'
+    }),
+      expect.objectContaining({
+      id: 'overview-floor',
       data: { sources: expect.arrayContaining([
         'overview-outcome-summary',
         'overview-run-summary',
         'overview-dispatch-summary',
         'overview-value-summary',
-        'overview-factory-status',
         'overview-registered-repository-summary',
-        'overview-worker-summary',
-        'overview-rhythm'
+        'overview-worker-summary'
       ]) },
       mark: 'element',
-      element: 'outcomes-overview',
+      element: 'factory-floor',
+      config: expect.objectContaining({ animate: 'number' }),
       layout: 'full'
     })]);
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
@@ -1040,18 +1099,20 @@ dashboard:
   it('defines core data pages as declarative full-view lazy tables', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
+    const operationalValuePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operational-value');
     const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
-    const packageDetailPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'package-detail');
+    const packageWorkflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'package-workflows');
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
     const transactionsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'transactions');
 
     const packagesChart = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-value-created');
+    const operationalValueChart = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-by-package');
+    const operationalValueTable = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-packages');
     const packagesView = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-inventory');
-    const workflowsView = workflowsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflows-inventory');
-    const packageWorkflowsView = packageDetailPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-workflow-table');
+    const packageWorkflowsView = packageWorkflowsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-workflow-table');
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
     const transactionsView = transactionsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'transaction-entries');
-    for (const view of [packagesView, workflowsView, runsView]) {
+    for (const view of [packagesView, runsView]) {
       expect(view).toMatchObject({
         mark: 'table',
         controls: 'interactive',
@@ -1067,9 +1128,30 @@ dashboard:
       chart: 'pie',
       encoding: {
         x: { field: 'package-name', type: 'nominal', title: 'Package' },
-        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Value created', unit: 'grade' }
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Ops Value', unit: 'ops-value' }
       }
     });
+    expect(operationalValueChart).toMatchObject({
+      data: { source: 'package-inventory' },
+      mark: 'chart',
+      chart: 'pie',
+      encoding: {
+        x: { field: 'package-name', type: 'nominal', title: 'Package' },
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'mean', title: 'Operational value', unit: 'ops-value' }
+      }
+    });
+    expect(operationalValueTable).toMatchObject({
+      data: { source: 'package-inventory' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      'column-summaries': true,
+      layout: 'full-view'
+    });
+    expect(operationalValueTable.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
+      'Package',
+      'Operational value'
+    ]);
     expect(packagesView.encoding.href).toEqual({ field: 'package-dashboard-link', type: 'nominal' });
     expect(packagesView.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
       'Package',
@@ -1079,15 +1161,14 @@ dashboard:
       'Runs',
       'Dispatches',
       'AIC',
-      'Value created',
+      'Ops Value',
       'Registration'
     ]);
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'registration')?.display).toBe('active-state');
-    for (const view of [packagesView, packageWorkflowsView, workflowsView]) {
+    for (const view of [packagesView, packageWorkflowsView]) {
       expect(view.encoding.columns.at(-1)?.title).toBe('Registration');
     }
-    expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs-table');
     expect(runsView.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).not.toContain('organization');
     expect(runsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'run')?.display).toBe('run-link');
@@ -1109,7 +1190,7 @@ dashboard:
     ]);
     expect(workflowsPage.definition.views.map((/** @type {{ id?: string } | string} */ view) =>
       typeof view === 'string' ? view : view.id
-    )).toEqual(['workflows-by-runs', 'workflows-inventory', 'entity-workflows']);
+    )).toEqual(['workflows-by-runs', 'workflows-inventory']);
     expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
@@ -1202,7 +1283,7 @@ dashboard:
           mark: element
           element: package-route
           config:
-            body: dispatches
+            body: pull-requests
 `);
     expect(accepted.ok).toBe(true);
 
@@ -1223,7 +1304,7 @@ dashboard:
           mark: element
           element: package-route
           config:
-            body: runs
+            body: activity
 `);
     expect(invalidBody.ok).toBe(false);
     if (!invalidBody.ok) {
@@ -1369,7 +1450,7 @@ dashboard:
           data:
             sources: [runs]
           mark: element
-          element: outcomes-overview
+          element: factory-floor
           config:
             labels:
               repositories:
@@ -1419,7 +1500,7 @@ dashboard:
           data:
             sources: [runs]
           mark: element
-          element: outcomes-overview
+          element: factory-floor
           config:
             labels:
               Repositories:
@@ -1436,6 +1517,82 @@ dashboard:
         path: '$.dashboard.pages[0].views[0].config.labels.Repositories'
       }));
     }
+  });
+
+  it('accepts the declarative factory elements and rejects nested factory sections', () => {
+    const accepted = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-header
+          data:
+            sources: [runs]
+          mark: element
+          element: factory-header
+        - id: overview-floor
+          data:
+            sources: [runs]
+          mark: element
+          element: factory-floor
+`);
+    expect(accepted.ok).toBe(true);
+
+    const invalid = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-sections
+  title: Overview sections
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-factory
+          data:
+            sources: [runs]
+          mark: element
+          element: factory-floor
+          config:
+            sections: [header, floor]
+`);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: '$.dashboard.pages[0].views[0].config.sections'
+      }));
+    }
+  });
+
+  it('keeps the version 0.1.0 outcomes overview element valid as a compatibility alias', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: legacy-overview
+  title: Legacy overview
+  pages:
+    - id: overview
+      kind: custom
+      title: Overview
+      views:
+        - id: outcomes
+          data:
+            sources: [runs, outcomes]
+          mark: element
+          element: outcomes-overview
+          config:
+            sections: [header, floor]
+            animate: number
+            labels:
+              repositories:
+                singular: Repository
+                plural: Repositories
+`);
+
+    expect(result.ok).toBe(true);
   });
 
   it('defines work-project-view composition through canonical body values', () => {
@@ -1596,9 +1753,12 @@ dashboard:
       const sources = page.views.map(
         (/** @type {{ data: { source: string } }} */ view) => canonicalSource(view.data.source)
       );
+      const attainmentSource = pageId === 'optimization-dashboard'
+        ? 'grader-observations'
+        : 'operational-values';
       const expectedSources = pageId === 'cao-evolution-dashboard'
-        ? ['operational-values', 'operational-values', 'outcomes', 'outcomes', 'runs']
-        : ['operational-values', 'operational-values', 'outcomes', 'runs'];
+        ? [attainmentSource, attainmentSource, 'outcomes', 'outcomes', 'runs']
+        : [attainmentSource, attainmentSource, 'outcomes', 'runs'];
       expect(sources.sort()).toEqual(expectedSources.sort());
     }
   });

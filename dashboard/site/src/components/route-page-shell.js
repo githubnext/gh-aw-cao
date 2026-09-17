@@ -7,7 +7,7 @@ import { createRouteView } from './route-empty-state.js';
 import { renderRouteTabSet } from './route-tab-set.js';
 
 /**
- * @typedef {{ id: string, label: string, icon: string, href: string }} RoutePageTab
+ * @typedef {{ id: string, label: string, icon: string, href: string, trailingIcon?: string }} RoutePageTab
  */
 
 /**

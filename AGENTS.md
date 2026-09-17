@@ -105,6 +105,7 @@ Run these commands from the `dashboard/site/` directory:
 ## Working changes
 
 - Read the relevant workflow source, its imports, its package manifest, and the effective policy before changing behavior.
+- Always run the applicable lint and type-check commands for code changes before committing.
 - Always run `gh aw compile` if any `.md` file is modified.
 - In the catalog, follow the relevant skill under `.github/skills/` and run the narrowest tests plus `npm run compile`.
 - In a control repository, validate policy JSON after editing it, reject unresolved placeholders, run `gh aw compile` after workflow-source changes, and review generated lock-file diffs.

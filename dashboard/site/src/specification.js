@@ -19,7 +19,8 @@ export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'views', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
-export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'title', 'labels', 'details'];
+export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'status', 'title', 'subtitle', 'labels', 'details', 'timing'];
+export const CARD_STATUS_KEYS = ['field', 'fallback-field', 'title'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
 export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'view', 'row'];
@@ -65,8 +66,9 @@ export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'labels', 'animate'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
+export const FACTORY_OVERVIEW_SECTION_VALUES = ['header', 'floor'];
 export const PLURAL_TEXT_KEYS = ['singular', 'plural'];
-export const PLURAL_LABEL_ELEMENTS = ['outcomes-overview'];
+export const PLURAL_LABEL_ELEMENTS = ['factory-floor', 'outcomes-overview'];
 export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field'];
 export const CALLOUT_KEYS = ['label', 'icon'];
 export const VIEW_MARK_VALUES = ['metric', 'table', 'list', 'chart', 'element', 'callout'];
@@ -98,6 +100,8 @@ export const VIEW_ELEMENT_VALUES = [
   'work-project-view',
   'agent-marketplace-view',
   'insights-overview',
+  'factory-header',
+  'factory-floor',
   'outcomes-overview'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
@@ -134,9 +138,10 @@ export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action'];
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];
 export const TREE_TABLE_KEYS = ['id-field', 'parent-field'];
 export const FIELD_DEFINITION_KEYS = ['field', 'type', 'aggregate', 'time-unit', 'title', 'as', 'display', 'filter', 'format', 'unit'];
+export const CARD_TIMING_FIELD_KEYS = [...FIELD_DEFINITION_KEYS, 'icon'];
 export const FIELD_TYPE_VALUES = ['nominal', 'ordinal', 'quantitative', 'temporal'];
-export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'digest', 'outcome-link', 'run-link', 'repository-link', 'workflow-link', 'evidence-link'];
-export const FIELD_FORMAT_VALUES = ['human-friendly-timestamp', 'workflow-relative-path', 'workflow-run-url', 'shortened-url'];
+export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'ref', 'digest', 'outcome-link', 'run-link', 'repository-link', 'workflow-link', 'evidence-link'];
+export const FIELD_FORMAT_VALUES = ['human-friendly-timestamp', 'workflow-relative-path', 'workflow-identity-label', 'workflow-run-url', 'shortened-url'];
 export const AGGREGATE_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max', 'none'];
 export const TIME_UNIT_VALUES = ['hour', 'day', 'week', 'month'];
 export const LINK_RELATION_VALUES = [
@@ -299,7 +304,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     'package-inventory': ['package-name', 'workflows', 'roles', 'modes', 'registration', 'runs', 'aic']
   },
   workflows: {
-    'workflow-inventory': ['package-name', 'repository', 'workflow', 'workflow-role', 'rollout-mode', 'workflow-active', 'aic', 'runs']
+    'workflow-inventory': ['runs']
   },
   runs: {
     runs: ['run', 'run-status', 'run-conclusion', 'repository-coordinate', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'started-at']

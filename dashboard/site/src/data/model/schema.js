@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 8;
+export const CANONICAL_SCHEMA_VERSION = 9;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'package',
@@ -71,6 +71,7 @@ export function relationshipErrors(batch) {
   const packagesById = new Map(packageRecords.map((record) => [record.id, record]));
   const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
   const jobsById = new Map(batch.jobs.map((record) => [record.id, record]));
+  const sessionsById = new Map(batch.sessions.map((record) => [record.id, record]));
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
     packages: new Set(packageRecords.map((record) => record.id)),
@@ -136,6 +137,11 @@ export function relationshipErrors(batch) {
   }
   for (const event of batch.events) {
     requireReference(event, 'sessionId', 'sessions');
+    requireReference(event, 'runId', 'runs');
+    const session = sessionsById.get(event.sessionId);
+    if (session && session.runId !== event.runId) {
+      errors.push(`${String(event.id ?? '<unknown>')}.sessionId references a session from another run`);
+    }
   }
 
   return errors;

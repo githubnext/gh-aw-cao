@@ -1,4 +1,5 @@
 const DEBUG_PARAMETER = 'debug';
+const DEBUG_SHARD_LIMIT_PARAMETER = 'debug-shard-limit';
 const DEBUG_PREFIX = 'cao';
 const patternCache = new Map();
 const disabledDebug = () => {};
@@ -63,9 +64,24 @@ export function fullDebugUrl(href = globalThis.location?.href ?? '') {
  */
 export function withDebugParameter(url, search = globalThis.location?.search ?? '') {
   const result = new URL(url);
-  const value = new URLSearchParams(search).get(DEBUG_PARAMETER);
-  if (value) result.searchParams.set(DEBUG_PARAMETER, value);
+  const parameters = new URLSearchParams(search);
+  for (const parameter of [DEBUG_PARAMETER, DEBUG_SHARD_LIMIT_PARAMETER]) {
+    const value = parameters.get(parameter);
+    if (value) result.searchParams.set(parameter, value);
+  }
   return result;
+}
+
+/**
+ * Returns the positive integer activity-shard limit supplied for debug runs.
+ * @param {string} [search]
+ * @returns {number | undefined}
+ */
+export function debugShardLimit(search = globalThis.location?.search ?? '') {
+  const value = new URLSearchParams(search).get(DEBUG_SHARD_LIMIT_PARAMETER);
+  if (!value || !/^[1-9]\d*$/.test(value)) return undefined;
+  const limit = Number(value);
+  return Number.isSafeInteger(limit) ? limit : undefined;
 }
 
 /**
