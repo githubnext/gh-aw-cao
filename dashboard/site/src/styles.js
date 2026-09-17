@@ -380,6 +380,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .issue-list-card-title a { color: inherit; text-decoration: none; }
 .issue-list-card-title a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .issue-list-card-title a .octicon { width: 12px; height: 12px; color: var(--muted); }
+.issue-list-card-subtitle { min-width: 0; color: var(--muted); font-size: .75rem; line-height: 1.4; overflow-wrap: anywhere; }
 .issue-list-card-meta { display: flex; flex-wrap: wrap; gap: 2px 6px; margin: 0; color: var(--muted); font-size: .75rem; }
 .issue-list-card-meta > div { display: contents; }
 .issue-list-card-meta dt { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

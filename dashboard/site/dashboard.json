@@ -77,6 +77,17 @@
         ]
       },
       {
+        "id": "mcp-tool",
+        "icon": "mcp",
+        "title": { "field": "mcp-tool", "title": "MCP tool" },
+        "subtitle": { "field": "mcp-server", "title": "MCP server" },
+        "labels": [],
+        "details": [
+          { "field": "calls", "title": "Calls" },
+          { "field": "workflows", "title": "Workflows" }
+        ]
+      },
+      {
         "id": "firewall-domain",
         "icon": "globe",
         "title": { "field": "domain", "title": "Domain" },
@@ -2100,28 +2111,48 @@
             "as": "mcp-tool-label",
             "function": "concat",
             "args": [{ "field": "mcp-server" }, { "value": "/" }, { "field": "mcp-tool" }]
+          },
+          {
+            "as": "workflow-key",
+            "function": "concat",
+            "args": [
+              { "field": "organization" },
+              { "value": "/" },
+              { "field": "repository" },
+              { "value": ":" },
+              { "field": "workflow" }
+            ]
           }
         ]
       },
       {
         "name": "mcp-tool-totals",
-        "intent": "Group observed MCP activity by tool and count calls, excluding the internal safe outputs server.",
-        "description": "Observed MCP tool-call totals grouped by MCP tool.",
+        "intent": "Group observed MCP activity by tool and count calls and calling workflows, excluding the internal safe outputs server.",
+        "description": "Observed MCP tool-call totals grouped by MCP server and tool, with the number of distinct calling workflows.",
         "from": "mcp-tool-calls",
         "filter": { "predicates": [{ "field": "safe-output-server", "equals": false }] },
         "aggregate": {
-          "by": ["mcp-tool-label"],
-          "values": [{ "field": "mcp-observation", "as": "calls", "reducer": "count" }]
+          "by": ["mcp-tool-label", "mcp-server", "mcp-tool"],
+          "values": [
+            { "field": "mcp-observation", "as": "calls", "reducer": "count" },
+            { "field": "workflow-key", "as": "workflows", "reducer": "distinct-count" }
+          ]
         },
-        "select": [{ "field": "mcp-tool-label", "as": "mcp-tool" }, { "field": "calls" }],
-        "order-by": [{ "field": "calls", "direction": "desc" }, { "field": "mcp-tool", "direction": "asc" }]
+        "select": [
+          { "field": "mcp-tool-label" },
+          { "field": "mcp-tool" },
+          { "field": "mcp-server" },
+          { "field": "calls" },
+          { "field": "workflows" }
+        ],
+        "order-by": [{ "field": "calls", "direction": "desc" }, { "field": "mcp-tool-label", "direction": "asc" }]
       },
       {
         "name": "mcp-top-tools",
         "intent": "Show the ten most frequently called MCP tools.",
         "description": "The ten MCP tools with the most observed calls, excluding the internal safe outputs server.",
         "from": "mcp-tool-totals",
-        "order-by": [{ "field": "calls", "direction": "desc" }, { "field": "mcp-tool", "direction": "asc" }],
+        "order-by": [{ "field": "calls", "direction": "desc" }, { "field": "mcp-tool-label", "direction": "asc" }],
         "limit": 10
       },
       {
@@ -3983,7 +4014,7 @@
             "empty-message": "No MCP tool activity was observed.",
             "encoding": {
               "x": {
-                "field": "mcp-tool",
+                "field": "mcp-tool-label",
                 "type": "nominal",
                 "title": "MCP tool"
               },
@@ -4014,9 +4045,19 @@
                   "title": "MCP tool"
                 },
                 {
+                  "field": "mcp-server",
+                  "type": "nominal",
+                  "title": "MCP server"
+                },
+                {
                   "field": "calls",
                   "type": "quantitative",
                   "title": "Calls"
+                },
+                {
+                  "field": "workflows",
+                  "type": "quantitative",
+                  "title": "Workflows"
                 }
               ]
             }
