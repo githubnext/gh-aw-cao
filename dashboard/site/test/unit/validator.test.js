@@ -1711,18 +1711,7 @@ dashboard:
   it('DLS-VIEW-005 accepts bounded heatmaps and rejects invalid axes, values, and limits', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const performance = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'performance');
-    const heatmap = {
-      id: 'job-duration-by-job-runner',
-      data: { source: 'job-performance', limit: 100 },
-      mark: 'chart',
-      chart: 'heatmap',
-      encoding: {
-        x: { field: 'job', type: 'nominal' },
-        y: { field: 'runner', type: 'nominal' },
-        color: { field: 'job-duration-seconds', type: 'quantitative', aggregate: 'mean' }
-      }
-    };
-    performance.views.push(heatmap);
+    const heatmap = performance.views.find((/** @type {{ id?: string }} */ view) => view.id === 'job-duration-by-runner');
 
     expect(heatmap).toMatchObject({
       chart: 'heatmap',

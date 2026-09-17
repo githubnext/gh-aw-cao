@@ -202,7 +202,7 @@ describe('chart element helpers', () => {
     expect(singleCategoryPie.querySelector('.pie-chart-total-value')?.textContent).toBe('3');
   });
 
-  it('renders compact heatmaps as accessible labeled tables without relying on color', () => {
+  it('renders compact heatmaps as accessible labeled SVG rect marks without relying on color', () => {
     const chart = renderChartWidget('heatmap', [
       { x: 'build', y: 62, color: 'ubuntu', source: {} },
       { x: 'test', y: 125, color: 'ubuntu', source: {} },
@@ -214,14 +214,16 @@ describe('chart element helpers', () => {
     });
 
     expect(chart.getAttribute('data-chart-widget')).toBe('heatmap');
-    expect(chart.querySelector('.heatmap-chart caption')?.textContent).toBe('Heatmap of Mean job time');
-    expect([...chart.querySelectorAll('thead th')].map((cell) => cell.textContent)).toEqual(['build', 'test']);
-    expect([...chart.querySelectorAll('tbody th')].map((cell) => cell.textContent)).toEqual(['macos', 'ubuntu']);
+    expect(chart.querySelector('.heatmap-chart')?.tagName).toBe('svg');
+    expect(chart.querySelector('.heatmap-chart')?.getAttribute('aria-label')).toBe('Heatmap of Mean job time');
+    expect([...chart.querySelectorAll('.heatmap-column-label')].map((label) => label.textContent)).toEqual(['buildbuild', 'testtest']);
+    expect([...chart.querySelectorAll('.heatmap-row-label')].map((label) => label.textContent)).toEqual(['macosmacos', 'ubuntuubuntu']);
     expect(chart.querySelectorAll('.heatmap-cell')).toHaveLength(4);
     expect([...chart.querySelectorAll('.heatmap-cell[tabindex="0"]')].map((cell) => cell.getAttribute('aria-label'))).toContain('build, ubuntu, Mean job time: 62 s');
     expect(chart.querySelector('.heatmap-cell-empty')?.getAttribute('aria-label')).toBe('test, macos: no observation');
     expect(chart.querySelector('.heatmap-cell-empty')?.getAttribute('tabindex')).toBe('0');
-    expect([...chart.querySelectorAll('.heatmap-cell[tabindex="0"]')].map((cell) => cell.textContent)).toContain('62 s');
+    expect(chart.querySelectorAll('.heatmap-cell rect')).toHaveLength(4);
+    expect([...chart.querySelectorAll('.heatmap-cell text')].map((cell) => cell.textContent)).toContain('62 s');
   });
 
   it('rejects oversized heatmaps with a visible status instead of rendering a dense matrix', () => {

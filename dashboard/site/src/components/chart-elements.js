@@ -27,6 +27,12 @@ const BAR_CHART_HEIGHT = 34;
 const MAX_HISTOGRAM_X_TICKS = 5;
 const MAX_HEATMAP_CELLS = 100;
 const MAX_HEATMAP_AXIS_CATEGORIES = 12;
+const HEATMAP_VIEWBOX_WIDTH = 120;
+const HEATMAP_LEFT = 28;
+const HEATMAP_TOP = 12;
+const HEATMAP_RIGHT = 2;
+const HEATMAP_CELL_HEIGHT = 11;
+const HEATMAP_BOTTOM = 2;
 const PIE_CHART_CENTER = 21;
 const PIE_CHART_RADIUS = 15.9155;
 const PIE_CHART_STROKE_WIDTH = 6;
@@ -881,6 +887,9 @@ function renderHeatmapChart(points, valueLabel, unit) {
   const minimum = Math.min(...values);
   const maximum = Math.max(...values);
   const span = maximum - minimum;
+  const plotWidth = HEATMAP_VIEWBOX_WIDTH - HEATMAP_LEFT - HEATMAP_RIGHT;
+  const cellWidth = plotWidth / columns.length;
+  const viewBoxHeight = HEATMAP_TOP + (rows.length * HEATMAP_CELL_HEIGHT) + HEATMAP_BOTTOM;
 
   return renderChartWidgetShell(
     'heatmap',
@@ -889,51 +898,84 @@ function renderHeatmapChart(points, valueLabel, unit) {
       'div',
       { className: 'heatmap-scroll-region', tabIndex: 0, role: 'region', 'aria-label': 'Heatmap chart' },
       h(
-        'table',
-        { className: 'heatmap-chart' },
-        h('caption', { className: 'sr-only' }, `Heatmap of ${valueLabel}`),
-        h(
-          'thead',
-          null,
+        'svg',
+        {
+          className: 'heatmap-chart',
+          style: `--heatmap-columns: ${columns.length}`,
+          viewBox: `0 0 ${HEATMAP_VIEWBOX_WIDTH} ${viewBoxHeight}`,
+          role: 'img',
+          'aria-label': `Heatmap of ${valueLabel}`
+        },
+        ...columns.map((column, columnIndex) => h(
+          'text',
+          {
+            className: 'heatmap-axis-label heatmap-column-label',
+            x: HEATMAP_LEFT + ((columnIndex + 0.5) * cellWidth),
+            y: HEATMAP_TOP - 2,
+            'text-anchor': 'middle',
+            'aria-hidden': 'true'
+          },
+          h('title', null, column),
+          compactAxisLabel(column)
+        )),
+        ...rows.flatMap((row, rowIndex) => [
           h(
-            'tr',
-            null,
-            h('td', { 'aria-hidden': 'true' }),
-            ...columns.map((column) => h('th', { scope: 'col' }, column))
-          )
-        ),
-        h(
-          'tbody',
-          null,
-          ...rows.map((row) => h(
-            'tr',
-            null,
-            h('th', { scope: 'row' }, row),
-            ...columns.map((column) => {
+            'text',
+            {
+              className: 'heatmap-axis-label heatmap-row-label',
+              x: HEATMAP_LEFT - 1.5,
+              y: HEATMAP_TOP + ((rowIndex + 0.5) * HEATMAP_CELL_HEIGHT) + 1,
+              'text-anchor': 'end',
+              'aria-hidden': 'true'
+            },
+            h('title', null, row),
+            compactAxisLabel(row)
+          ),
+          ...columns.map((column, columnIndex) => {
               const point = cells.get(JSON.stringify([column, row]));
+              const x = HEATMAP_LEFT + (columnIndex * cellWidth);
+              const y = HEATMAP_TOP + (rowIndex * HEATMAP_CELL_HEIGHT);
               if (!point) {
-                return h('td', {
+                const label = `${column}, ${row}: no observation`;
+                return h('g', {
                   className: 'heatmap-cell heatmap-cell-empty',
                   tabIndex: 0,
-                  'aria-label': `${column}, ${row}: no observation`
-                }, '');
+                  role: 'img',
+                  'aria-label': label
+                },
+                h('title', null, label),
+                h('rect', { x, y, width: cellWidth, height: HEATMAP_CELL_HEIGHT, rx: 0.75 }),
+                h('text', {
+                  x: x + (cellWidth / 2),
+                  y: y + (HEATMAP_CELL_HEIGHT / 2) + 1,
+                  'text-anchor': 'middle',
+                  'aria-hidden': 'true'
+                }, '—'));
               }
               const value = toNumber(point.y);
               const formatted = formatNumber(value, unit);
               const intensity = span > 0 ? 12 + (((value - minimum) / span) * 28) : 26;
+              const label = `${column}, ${row}, ${valueLabel}: ${formatted}`;
               return h(
-                'td',
+                'g',
                 {
                   className: 'heatmap-cell',
                   style: `--heatmap-intensity: ${intensity.toFixed(1)}%`,
                   tabIndex: 0,
-                  'aria-label': `${column}, ${row}, ${valueLabel}: ${formatted}`
+                  role: 'img',
+                  'aria-label': label
                 },
-                formatted
+                h('title', null, label),
+                h('rect', { x, y, width: cellWidth, height: HEATMAP_CELL_HEIGHT, rx: 0.75 }),
+                h('text', {
+                  x: x + (cellWidth / 2),
+                  y: y + (HEATMAP_CELL_HEIGHT / 2) + 1,
+                  'text-anchor': 'middle',
+                  'aria-hidden': 'true'
+                }, formatted)
               );
-            })
-          ))
-        )
+          })
+        ])
       )
     )
   );
