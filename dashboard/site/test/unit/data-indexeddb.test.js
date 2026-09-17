@@ -71,6 +71,9 @@ describe('canonical IndexedDB', () => {
       'workflows'
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
+    expect([
+      ...database.transaction('events').objectStore('events').indexNames
+    ]).toEqual(['bySessionSequence']);
     database.close();
   });
 

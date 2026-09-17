@@ -5,7 +5,7 @@ import { createDebug } from '../../debug.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 12;
+export const DATABASE_VERSION = 13;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -62,13 +62,7 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
   },
   events: {
     keyPath: 'id',
-    indexes: {
-      bySessionSequence: ['sessionId', 'sequence'],
-      bySessionTimestamp: ['sessionId', 'timestamp'],
-      byType: 'type',
-      bySource: 'source',
-      byCorrelation: 'correlationId'
-    }
+    indexes: { bySessionSequence: ['sessionId', 'sequence'] }
   },
   transactions: {
     keyPath: 'id',
