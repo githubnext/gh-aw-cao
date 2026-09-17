@@ -531,4 +531,31 @@ describe('gh-aw logs adapter', () => {
     expect(batch.events.length).toBeGreaterThan(0);
     expect(batch.events.every((event) => event.runId === batch.runs[0].id)).toBe(true);
   });
+
+  it('keeps null aggregate evidence unavailable', () => {
+    const batch = normalize(adaptCachedGhAwJsonl(`${JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 304,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow_name: 'Activity',
+        workflow_path: '.github/workflows/cao-activity.yml',
+        status: 'completed',
+        created_at: '2026-09-17T00:00:00Z',
+        updated_at: '2026-09-17T00:00:01Z',
+        firewall_analysis: null,
+        mcp_tool_usage: null
+      }
+    })}\n`).observations);
+
+    expect(batch.runs[0]).toMatchObject({
+      firewallAllowedCalls: null,
+      firewallBlockedCalls: null,
+      mcpToolCalls: null,
+      mcpResponseBytes: null
+    });
+  });
 });

@@ -213,7 +213,8 @@ function runAggregates(run) {
     && !Array.isArray(firewall.requests_by_domain)
     ? /** @type {Record<string, unknown>} */ (firewall.requests_by_domain)
     : {};
-  const hasFirewallAggregate = firewallValue !== undefined;
+  const hasFirewallAggregate = firewallValue !== null && typeof firewallValue === 'object'
+    && !Array.isArray(firewallValue);
   let firewallAllowedCalls = 0;
   let firewallBlockedCalls = 0;
   for (const value of Object.values(requestsByDomain)) {
@@ -233,7 +234,15 @@ function runAggregates(run) {
     : {};
   const mcp = Array.isArray(runMcp.tool_calls) && runMcp.tool_calls.length > 0 ? runMcp : auditMcp;
   const toolCalls = Array.isArray(mcp.tool_calls) ? mcp.tool_calls : [];
-  const hasMcpAggregate = run.mcp_tool_usage !== undefined || audit.mcp_tool_usage !== undefined;
+  const hasMcpAggregate = (
+    run.mcp_tool_usage !== null
+      && typeof run.mcp_tool_usage === 'object'
+      && !Array.isArray(run.mcp_tool_usage)
+  ) || (
+    audit.mcp_tool_usage !== null
+      && typeof audit.mcp_tool_usage === 'object'
+      && !Array.isArray(audit.mcp_tool_usage)
+  );
   const mcpResponseBytes = toolCalls.reduce((total, value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return total;
     return total + Math.max(0, finiteNumber(/** @type {Record<string, unknown>} */ (value).output_size) ?? 0);

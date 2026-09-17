@@ -115,6 +115,14 @@ create the base Run using its own GitHub and workflow fields.
 | `agent_id`, `agent`, `engine_id`, or `aw_info.engine_id` | `agentId` |
 | `agent_version`, `engine_version`, or `aw_info.version` | `agentVersion` |
 | `model_id`, `resolved_model`, `model`, `aw_info.model`, or dominant `by_model` entry | `modelId` |
+| completed `started_at` or `created_at` through `updated_at` or `completed_at` | `agenticDurationSeconds` |
+| `firewall_analysis.requests_by_domain.*.allowed` or audit equivalent | `firewallAllowedCalls` |
+| `firewall_analysis.requests_by_domain.*.blocked` or audit equivalent | `firewallBlockedCalls` |
+| `mcp_tool_usage.tool_calls` or audit equivalent | `mcpToolCalls` |
+| `mcp_tool_usage.tool_calls[].output_size` or audit equivalent | `mcpResponseBytes` |
+| the single `graders.results[]` entry identified by `operational-value` | `operationalValue` |
+| high-severity or high-priority audit findings, insights, and recommendations | `highPriorityAuditItems` |
+| medium-severity or medium-priority audit findings, insights, and recommendations | `mediumPriorityAuditItems` |
 | `gh_aw_version`, `ghAwVersion`, `cli_version`, `version`, or `aw_info.cli_version` | `ghAwVersion` |
 | `engine` or `aw_info.engine_name` | `engine` |
 | `engine_id` or `aw_info.engine_id` | `engineId` |
@@ -144,6 +152,10 @@ Raw `workflow_runs` values SHALL own GitHub execution state when both source
 variants contain the field. Enriched values SHALL own agentic analysis fields.
 Absent, explicit `null`, zero, `false`, and empty collections SHALL remain
 distinct.
+
+Unavailable immutable aggregates SHALL map to `null`. When the corresponding
+firewall, MCP, or audit evidence class is present but contains no matching
+entries, its count or size aggregate SHALL map to zero.
 
 ## 2.1 Token-optimization supporting evidence
 

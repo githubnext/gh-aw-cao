@@ -337,6 +337,7 @@ Run.repositoryId      -> Repository.id
 Run.workflowId        -> Workflow.id
 Job.runId             -> Run.id
 Session.runId         -> Run.id
+Event.runId           -> Run.id
 Event.sessionId       -> Session.id
 ```
 
@@ -907,6 +908,17 @@ Example:
   startedAt: "...",
   completedAt: "...",
 
+  agentId: "copilot",
+  modelId: "gpt-5.4",
+  agenticDurationSeconds: 10,
+  firewallAllowedCalls: 4,
+  firewallBlockedCalls: 2,
+  mcpToolCalls: 2,
+  mcpResponseBytes: 192,
+  operationalValue: 0.8,
+  highPriorityAuditItems: 1,
+  mediumPriorityAuditItems: 2,
+
   headSha: "...",
   headBranch: "main",
 
@@ -921,6 +933,16 @@ Example:
 **RUN-002** — Canonical identity SHOULD incorporate run ID and attempt.
 
 **RUN-003** — Later observations MAY enrich incomplete Run records.
+
+**RUN-004** — A completed Run SHOULD retain immutable `agentId`, `modelId`,
+`agenticDurationSeconds`, `firewallAllowedCalls`, `firewallBlockedCalls`,
+`mcpToolCalls`, `mcpResponseBytes`, `operationalValue`,
+`highPriorityAuditItems`, and `mediumPriorityAuditItems` values when the
+corresponding source evidence is available at import time.
+
+**RUN-005** — An unavailable aggregate MUST remain `null`. An observed evidence
+class with no matching calls or audit items SHALL produce zero. Duration is
+measured in seconds, and MCP response size is measured in bytes.
 
 ---
 
@@ -1041,6 +1063,7 @@ Example:
 {
   id: "event:01J...",
 
+  runId: "github:run:123456789:attempt:1",
   sessionId: "session:abc123",
 
   sequence: 17,

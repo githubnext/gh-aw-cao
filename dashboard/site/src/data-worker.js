@@ -199,9 +199,9 @@ function scheduleDashboardSubscriptions(ids = dashboardSubscriptions.keys()) {
   }, delay);
 }
 
-async function flushDashboardSubscriptions() {
+async function flushDashboardSubscriptions(allowDuringIngestion = false) {
   if (subscriptionFlushRunning
-      || (dashboardIngestionCount > 0 && !hasUnrenderedDashboardSubscription())) return;
+      || (!allowDuringIngestion && dashboardIngestionCount > 0 && !hasUnrenderedDashboardSubscription())) return;
   subscriptionFlushRunning = true;
   try {
     while (dirtyDashboardSubscriptions.size > 0) {
@@ -469,17 +469,24 @@ export function processDataRequest(request, signal) {
             shardStates.push({ index, shard, shardUrl, current, sizeBytes: undefined });
           }
           const pendingShards = shardStates.filter(({ current }) => !current);
+          const runPhaseShardCount = phasedShards.length > 0
+            ? Math.min(runInformationShards.length, shardStates.length)
+            : 0;
+          const initialPendingShards = runPhaseShardCount > 0
+            ? pendingShards.filter(({ index }) => index < runPhaseShardCount)
+            : pendingShards;
           if (pendingShards.length > 0) {
             progress.start();
             progress.reportShardImportProgress(shardStates.length - pendingShards.length, shardCount);
           }
-          await Promise.all(pendingShards.map(async (state) => {
+          const measureShards = (/** @type {typeof pendingShards} */ states) => Promise.all(states.map(async (state) => {
             const response = await fetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
             const contentLength = response?.ok ? Number(response.headers.get('content-length')) : Number.NaN;
             state.sizeBytes = Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : undefined;
           }));
-          const workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
-            ? pendingShards.reduce((sum, { sizeBytes }) => sum + (sizeBytes ?? 0), 0)
+          await measureShards(initialPendingShards);
+          let workloadBytes = initialPendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
+            ? initialPendingShards.reduce((sum, { sizeBytes }) => sum + (sizeBytes ?? 0), 0)
             : undefined;
           progress.setWorkload(workloadBytes);
           let completedShardCount = shardStates.length - pendingShards.length;
@@ -491,6 +498,22 @@ export function processDataRequest(request, signal) {
           let processedBytes = 0;
           let processedRecords = 0;
           for (const { index, shard, shardUrl, current, sizeBytes } of shardStates) {
+            if (runPhaseShardCount > 0 && index === runPhaseShardCount) {
+              progress.log('Run information is available; refreshing active dashboard queries.');
+              liveDashboard = {
+                logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+                revision: (liveDashboard?.revision ?? 0) + 1
+              };
+              dashboardActivated = true;
+              scheduleDashboardSubscriptions();
+              await flushDashboardSubscriptions(true);
+              const eventPendingShards = pendingShards.filter((state) => state.index >= runPhaseShardCount);
+              await measureShards(eventPendingShards);
+              workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
+                ? pendingShards.reduce((sum, state) => sum + (state.sizeBytes ?? 0), 0)
+                : undefined;
+              progress.setWorkload(workloadBytes);
+            }
             if (current) {
               debugIngestion('skipping current activity shard', {
                 shard: shard.name,
