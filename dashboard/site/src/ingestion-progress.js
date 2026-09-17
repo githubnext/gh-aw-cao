@@ -108,7 +108,7 @@ export function startIngestionProgress(target = self, requestId) {
         : formatDataSize(processedBytes);
       updateStatus();
       clock.update(
-        `Parsing ${recordsIngested.toLocaleString('en-US')} rec, ${byteProgress}.`,
+        `Parsing activity shards: ${recordsIngested.toLocaleString('en-US')} rec and ${byteProgress} processed overall.`,
         'parsing'
       );
     },
