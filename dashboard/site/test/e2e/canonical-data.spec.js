@@ -220,6 +220,61 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
   };
 }
 
+function canonicalWarningSources() {
+  const sources = canonicalSources();
+  for (const sourceName of [
+    'usage',
+    'outcomes',
+    'work-items',
+    'security-findings',
+    'graders',
+    'experiments',
+    'evals',
+    'eval-observations',
+    'admissions',
+    'safe-output-performance'
+  ]) {
+    Reflect.deleteProperty(sources, sourceName);
+  }
+  const eventRows = /** @type {Array<Record<string, unknown>>} */ (sources.events.rows);
+  eventRows.push(
+    {
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow: '.github/workflows/dashboard.md',
+      run: '12345',
+      'run-attempt': 2,
+      session: 'session-12345',
+      event: 'safe-output-12345',
+      'event-timestamp': '2026-09-09T04:03:00Z',
+      'event-source': 'safe-output',
+      'event-type': 'safe_output.created',
+      'event-summary': 'Created issue',
+      'event-status': 'created',
+      'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/7',
+      'safe-output-type': 'create_issue',
+      'github-entity-type': 'issue',
+      'observed-at': '2026-09-09T05:00:00Z'
+    },
+    {
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow: '.github/workflows/dashboard.md',
+      run: '12345',
+      'run-attempt': 2,
+      session: 'session-12345',
+      event: 'finding-12345',
+      'event-timestamp': '2026-09-09T04:04:00Z',
+      'event-source': 'audit',
+      'event-type': 'audit.finding',
+      'event-summary': 'Prompt injection detected',
+      'event-status': 'high',
+      'observed-at': '2026-09-09T05:00:00Z'
+    }
+  );
+  return sources;
+}
+
 test.beforeEach(async ({ context, page }) => {
   await context.route('http://dashboard.test/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -444,6 +499,64 @@ test('data worker returns only the canonical payload requested by a view', async
       rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
       metadata: { 'source-kind': 'canonical-query' }
     });
+  }
+});
+
+test('data worker avoids unavailable legacy boundaries on initial and navigated requests', async ({ context, page }) => {
+  await context.route('http://dashboard.test/canonical-warning-sources.json', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(canonicalWarningSources())
+    });
+  });
+
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const sourceNames = [
+      'usage',
+      'outcomes',
+      'findings',
+      'security-findings',
+      'detection-observations',
+      'work-items',
+      'graders',
+      'experiments',
+      'evals',
+      'eval-observations',
+      'admissions',
+      'safe-output-performance',
+      'data-health-collections',
+      'data-health-coverage'
+    ];
+    const dashboardContext = {
+      githubUrlBase: dashboard.dashboard['github-url-base'],
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/canonical-warning-sources.json`,
+      sourceNames,
+      dashboardContext
+    );
+    const navigated = await loadCanonicalDashboardPage(sourceNames, dashboardContext);
+    return { initial, navigated, sourceNames };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload).sort()).toEqual([...result.sourceNames].sort());
+    for (const source of Object.values(payload)) {
+      expect(source.metadata.availability).not.toBe('unavailable');
+    }
+    expect(payload.outcomes.rows[0]).toMatchObject({
+      'outcome-category': 'issue',
+      'outcome-number': 7
+    });
+    expect(payload['security-findings'].rows).toHaveLength(1);
+    expect(payload['work-items'].rows[0]['lifecycle-state']).toBe('blocked');
+    expect(payload['data-health-collections'].metadata.availability).toBe('available');
+    expect(payload['data-health-coverage'].metadata.availability).toBe('available');
   }
 });
 

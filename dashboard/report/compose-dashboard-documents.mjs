@@ -3,6 +3,7 @@
  *   "language-version": string,
  *   dashboard: {
  *     pages: Array<Record<string, unknown>>,
+ *     queries?: Array<{ name?: string } & Record<string, unknown>>,
  *     "cli-actions"?: Array<{ id: string } & Record<string, unknown>>,
  *     navigation?: Array<{ label?: string, pages: string[], experimental?: boolean }>,
  *     [key: string]: unknown
@@ -21,6 +22,10 @@ export function composeDashboardDocuments(primary, additions) {
   const result = /** @type {DashboardDocument} */ (structuredClone(primary));
   const additionalDocuments = /** @type {DashboardDocument[]} */ (additions);
   const pageIds = new Set(result.dashboard.pages.map((page) => page.id));
+  const queryNames = new Set(
+    (Array.isArray(result.dashboard.queries) ? result.dashboard.queries : [])
+      .map((query) => query?.name),
+  );
   const cliActionIds = new Set(
     (Array.isArray(result.dashboard["cli-actions"]) ? result.dashboard["cli-actions"] : [])
       .map((action) => action?.id),
@@ -35,6 +40,12 @@ export function composeDashboardDocuments(primary, additions) {
       if (pageIds.has(page.id)) throw new Error(`duplicate dashboard page id: ${page.id}`);
       pageIds.add(page.id);
       result.dashboard.pages.push(page);
+    }
+    for (const query of addition.dashboard.queries ?? []) {
+      if (queryNames.has(query.name)) throw new Error(`duplicate dashboard query name: ${query.name}`);
+      queryNames.add(query.name);
+      result.dashboard.queries ??= [];
+      result.dashboard.queries.push(structuredClone(query));
     }
     for (const action of addition.dashboard["cli-actions"] ?? []) {
       if (cliActionIds.has(action.id)) throw new Error(`duplicate dashboard CLI action id: ${action.id}`);
