@@ -3089,6 +3089,18 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                   config: { body: 'runs' }
                 },
                 {
+                  id: 'package-run-status',
+                  title: 'Workflow run status',
+                  data: { source: 'package-runs', 'route-field': 'package' },
+                  mark: 'chart',
+                  chart: 'pie',
+                  empty-message: 'No workflow runs were observed for this package in the current run window.',
+                  encoding: {
+                    x: { field: 'status', type: 'nominal', title: 'Status' },
+                    y: { field: 'started-at', type: 'quantitative', aggregate: 'count', title: 'Runs' }
+                  }
+                },
+                {
                   id: 'package-failure-reason-distribution',
                   title: 'Why these dispatches failed',
                   data: {
@@ -3099,6 +3111,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                   },
                   mark: 'chart',
                   chart: 'pie',
+                  empty-message: 'No failed workflow dispatch runs were observed for this package in the current run window.',
                   encoding: {
                     x: { field: 'status-detail', type: 'nominal', title: 'Failure reason' },
                     y: { field: 'status-detail', type: 'quantitative', aggregate: 'count', title: 'Failed dispatches' }
@@ -3129,9 +3142,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                   }
                 },
                 {
-                  id: 'package-dispatch-table',
-                  title: 'All dispatches',
-                  data: { source: 'dispatches', 'route-field': 'package' },
+                  id: 'package-run-table',
+                  title: 'All workflow runs',
+                  data: { source: 'package-runs', 'route-field': 'package' },
                   mark: 'table',
                   controls: 'interactive',
                   encoding: {
@@ -3347,6 +3360,14 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(packageWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
   await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
   await expect(packageWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
+  await packageNavigation.getByRole('link', { name: 'Runs' }).click();
+  const packageRunsPage = page.locator('[data-page-id="package-runs"]');
+  await expect(packageRunsPage.locator('.custom-view-grid > .custom-view').first()).toHaveAttribute('data-view-id', 'package-run-navigation');
+  await expect(packageNavigation.getByRole('link', { name: 'Runs' })).toHaveAttribute('aria-current', 'page');
+  await expect(packageRunsPage.locator('[data-view-id="package-run-status"] [data-chart-widget="pie"]')).toBeVisible();
+  await expect(packageRunsPage.locator('[data-view-id="package-failure-reason-distribution"] [data-chart-widget="pie"]')).toBeVisible();
+  await packageRunsPage.getByText('All workflow runs', { exact: true }).click();
+  await expect(packageRunsPage.locator('[data-view-id="package-run-table"] tbody tr')).toHaveCount(5);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(packageNavigation).toHaveCSS('display', 'grid');
