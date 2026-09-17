@@ -1,1 +1,36 @@
-{"source_sha":"ccd11876e259626b5f0863ea9b5b468246ce6035","next_category":"Astro documentation generation","evaluations":[{"evaluated_at":"2026-09-17T12:52:00Z","worker_run_id":35223143542,"category":"dependency installation and caching","evidence_run_ids":[35222423037,35221849947,35220468568,35219760205,35219456568,35219321299],"outcome":"no-op: evidence window 2026-09-17T12:07:07Z to 2026-09-17T12:42:03Z. Analyzed 6 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (2 push, 1 schedule, 3 workflow_run). Parent workflow median duration was 115s (p90 143.5s), build median 63.5s (p90 73.5s), deploy median 46s (p90 47s), and queue median 3.5s (p90 18s). Trusted job-step metadata confirmed node_modules cache hits on all 6/6 samples because Restore node_modules median was 5s while Install dependencies and Save node_modules were skipped on every run. Build documentation remained small at 7.5s median. The repeated dependency-install path is already effectively cached and is not the dominant cost. The larger repeated costs in this window were dashboard artifact retrieval after Restore cached CAO Dashboard completed instantly but did not avoid Find latest CAO Dashboard run + Mount latest CAO Dashboard artifact (median 9s combined) and Upload Pages artifact (31.5s median). No fresh non-duplicate dependency-caching recommendation met the 60s or 15 percent threshold safely.","suggestion_fingerprint":""}]}
+{
+  "source_sha": "ccd11876e259626b5f0863ea9b5b468246ce6035",
+  "next_category": "reusable dashboard generation",
+  "evaluations": [
+    {
+      "evaluated_at": "2026-09-17T12:52:00Z",
+      "worker_run_id": 35223143542,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        35222423037,
+        35221849947,
+        35220468568,
+        35219760205,
+        35219456568,
+        35219321299
+      ],
+      "outcome": "no-op: evidence window 2026-09-17T12:07:07Z to 2026-09-17T12:42:03Z. Analyzed 6 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (2 push, 1 schedule, 3 workflow_run). Parent workflow median duration was 115s (p90 143.5s), build median 63.5s (p90 73.5s), deploy median 46s (p90 47s), and queue median 3.5s (p90 18s). Trusted job-step metadata confirmed node_modules cache hits on all 6/6 samples because Restore node_modules median was 5s while Install dependencies and Save node_modules were skipped on every run. Build documentation remained small at 7.5s median. The repeated dependency-install path is already effectively cached and is not the dominant cost. The larger repeated costs in this window were dashboard artifact retrieval after Restore cached CAO Dashboard completed instantly but did not avoid Find latest CAO Dashboard run + Mount latest CAO Dashboard artifact (median 9s combined) and Upload Pages artifact (31.5s median). No fresh non-duplicate dependency-caching recommendation met the 60s or 15 percent threshold safely.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-17T13:05:00Z",
+      "worker_run_id": 35224520148,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        35224564776,
+        35223705265,
+        35222423037,
+        35221849947,
+        35220468568,
+        35219760205
+      ],
+      "outcome": "no-op: evidence window 2026-09-17T12:11:56Z to 2026-09-17T13:03:20Z. Analyzed 6 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (1 push, 3 schedule, 2 workflow_run), while disclosing skipped, cancelled, and action_required workflow_run outliers. Parent workflow median duration was 99.5s (p90 123.5s), build median 63.5s (p90 69.5s), deploy-job median 27.5s (p90 46.5s), and queue median 0s (p90 0s). Trusted step metadata showed Build documentation stayed small at 7s median (p90 8s) with node_modules cache hits on 6/6 samples and no npm ci execution. Repeated larger costs were Upload Pages artifact at 31.5s median and, on workflow_run-triggered outliers, Deploy Pages at 41-43s. Astro generation is not the dominant bottleneck and no fresh Astro-targeted change is likely to save at least 60s or 15 percent without weakening correctness or freshness.",
+      "suggestion_fingerprint": ""
+    }
+  ]
+}
