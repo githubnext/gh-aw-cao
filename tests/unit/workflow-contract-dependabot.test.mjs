@@ -27,7 +27,9 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
   ]);
 
   for (const fixture of fixtures) {
+    let handled = false;
     if (fixture.expected.atomicWorkIssues) {
+      handled = true;
       assert.equal(fixture.expected.pullRequestsPerWorkIssue, 1, fixture.name);
       assert.ok(fixture.expected.atomicWorkIssues > fixture.evidence.assignedIssues, fixture.name);
       assert.match(source, /Every assignable work issue must correspond to exactly one independently mergeable pull request boundary/);
@@ -37,11 +39,13 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
     }
 
     if (fixture.expected.umbrellaAssignable === false) {
+      handled = true;
       assert.match(source, /The umbrella plan issue is an inventory and index only\. It must never be assigned to a coding agent/);
       assert.match(source, /\*\*Action:\*\* Assign the linked work issues below to Copilot or another coding agent\. Do not assign this umbrella issue\./);
     }
 
     if (fixture.expected.countsDerivedFromInventory) {
+      handled = true;
       assert.notDeepEqual(fixture.evidence.summaryCounts, fixture.evidence.checklistCounts, fixture.name);
       assert.match(source, /Build one structured inventory before writing any issue text/);
       assert.match(source, /Derive every count in every issue from that final inventory/);
@@ -49,9 +53,10 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
     }
 
     if (fixture.expected.migrationInvariant) {
+      handled = true;
       assert.match(source, /## Major-version migration review/);
       assert.match(source, /read the upstream release notes, changelog, and migration guide before declaring the update actionable/);
-      assert.match(source, new RegExp(`\`${fixture.expected.migrationInvariant.replace(/[:]/g, "\\$&")}\``));
+      assert.ok(source.includes(`\`${fixture.expected.migrationInvariant}\``), fixture.name);
       assert.match(source, /`actions\/upload-pages-artifact` v4 and later exclude hidden files by default/);
       assert.match(source, /docs\/public\/\.well-known\/ai\.txt/);
       assert.equal(fixture.expected.artifactValidationRequired, true, fixture.name);
@@ -59,6 +64,7 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
     }
 
     if (fixture.expected.canonicalSourceRequired) {
+      handled = true;
       assert.match(source, /## Canonical ownership of pins and manifests/);
       assert.match(source, /Name the canonical manifest, lockfile, pin registry, or helper that produces the value/);
       assert.equal(fixture.expected.generatedFilesEditedDirectly, false, fixture.name);
@@ -68,16 +74,23 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
     }
 
     if (fixture.expected.lockfileDriftRejected) {
+      handled = true;
       const [first] = fixture.evidence.resolutions;
       assert.notEqual(first.reviewedTarget, first.resolved, fixture.name);
       assert.equal(fixture.expected.exactVersionFrozen, true, fixture.name);
       assert.match(source, /## Version and lockfile discipline/);
       assert.match(source, /The assigned agent may install only the exact target version unless the work issue explicitly authorizes a newer target/);
-      assert.match(source, new RegExp(`require rejecting and repairing any lockfile that resolves a reviewed package beyond its exact reviewed target, for example \`${first.resolved}\` when \`${first.reviewedTarget}\` was reviewed`));
+      assert.ok(
+        source.includes(
+          `require rejecting and repairing any lockfile that resolves a reviewed package beyond its exact reviewed target, for example \`${first.resolved}\` when \`${first.reviewedTarget}\` was reviewed`,
+        ),
+        fixture.name,
+      );
       assert.match(source, /require inspecting the lockfile diff and reverting unrelated resolver churn before requesting review/);
     }
 
     if (fixture.expected.classification === "blocked") {
+      handled = true;
       assert.equal(fixture.evidence.openDependabotAlerts, 0, fixture.name);
       assert.equal(fixture.expected.workIssueCreated, false, fixture.name);
       assert.match(source, /## Candidate compatibility and security preflight/);
@@ -88,6 +101,7 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
     }
 
     if (fixture.expected.closingKeyword) {
+      handled = true;
       assert.equal(fixture.evidence.pullRequestClosingKeyword, "Fixes", fixture.name);
       assert.equal(fixture.expected.umbrellaClosedByPartialWork, false, fixture.name);
       assert.match(source, /use `Part of #<issue>` when the pull request implements only part of this issue, and use `Fixes #<issue>` only when the pull request completely fulfills it/);
@@ -97,6 +111,8 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
       assert.equal(fixture.expected.deferredRemainOpen, true, fixture.name);
       assert.match(source, /leave every unresolved or deferred update out of the pull request, keep its issue open, and report the deferral reason and remaining work on the issue/);
     }
+
+    assert.ok(handled, `${fixture.name} matched no contract assertion`);
   }
 });
 
