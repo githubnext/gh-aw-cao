@@ -381,6 +381,7 @@ describe('data view renderer', () => {
         encoding: { columns: [{ field: 'event-summary' }] }
       }
     });
+
     const query = renderDataView('list', {
       ...baseContext,
       view: {
@@ -408,6 +409,53 @@ describe('data view renderer', () => {
     const activate = vi.spyOn(queryLink, 'click');
     query?.querySelector('.entity-card-list-card')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(activate).toHaveBeenCalledOnce();
+  });
+
+  it('renders entity-card grids with row-selected icons', () => {
+    const rendered = renderDataView('list', {
+      pageId: 'agents',
+      title: 'Operations',
+      sourceName: 'marketplace-operations',
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          layout: 'grid',
+          card: 'operation',
+          drill: { type: 'external', field: 'operation-link' }
+        },
+        encoding: { columns: [{ field: 'operation-name' }] }
+      },
+      rows: [{
+        'operation-name': 'Doctor',
+        'operation-icon': 'gear',
+        'operation-link': {
+          'dashboard-href': '#page-package-detail?package=doctor',
+          'dashboard-label': 'View Doctor'
+        }
+      }],
+      cardTemplates: {
+        operation: {
+          icon: 'workflow',
+          'icon-field': 'operation-icon',
+          title: { field: 'operation-name' },
+          labels: [],
+          details: []
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('.entity-card-list-grid')).not.toBeNull();
+    expect(rendered?.querySelector('.issue-list-card-icon .octicon-gear')).not.toBeNull();
+    expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
+      .toBe('#page-package-detail?package=doctor');
   });
 
   it('keeps a list action available when its source is unavailable', () => {

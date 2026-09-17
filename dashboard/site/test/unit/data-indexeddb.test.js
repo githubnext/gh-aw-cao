@@ -1,10 +1,11 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canonicalDatabaseName,
   DATABASE_NAME,
   deleteCanonicalDatabase,
   openCanonicalDatabase,
+  queryCollection,
   readCollection,
   readRecord,
   replaceCanonicalBatch,
@@ -12,6 +13,7 @@ import {
   withCanonicalIngestionLock
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
+import { tidy } from '../../src/data-operations.js';
 
 function batch() {
   return normalize([
@@ -48,6 +50,19 @@ async function writeTransactionRecord(record) {
   }
 }
 
+/** @param {string} storeName @param {Record<string, unknown>[]} records */
+async function writeRecords(storeName, records) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const transaction = database.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    for (const record of records) store.put(record);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
 beforeEach(async () => {
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
@@ -71,6 +86,8 @@ describe('canonical IndexedDB', () => {
       'workflows'
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
+    expect(database.transaction('runs').objectStore('runs').indexNames).toContain('byConclusion');
+    expect(database.transaction('events').objectStore('events').indexNames).toContain('bySessionType');
     database.close();
   });
 
@@ -122,6 +139,99 @@ describe('canonical IndexedDB', () => {
     await upsertCanonicalBatch(indexedDB, canonicalBatch);
 
     expect(await readCollection(indexedDB, 'repositories')).toHaveLength(1);
+  });
+
+  it('compiles indexed predicates while preserving JavaScript query semantics', async () => {
+    const records = [
+      { id: 'run:3', conclusion: 'failure', startedAt: '2026-09-03T00:00:00Z' },
+      { id: 'run:1', conclusion: 'success', startedAt: '2026-09-01T00:00:00Z' },
+      { id: 'run:4', conclusion: 'timed-out', startedAt: '2026-09-04T00:00:00Z' },
+      { id: 'run:2', conclusion: 'failure', startedAt: '2026-09-03T00:00:00Z' }
+    ];
+    const operators = /** @type {import('../../src/data-operations.js').DataOperator[]} */ ([
+      {
+        op: 'filter',
+        predicates: [{ field: 'conclusion', in: ['failure', 'timed-out'] }]
+      },
+      { op: 'arrange', by: [{ field: 'startedAt', direction: 'desc' }] },
+      { op: 'slice', limit: 2 }
+    ]);
+    await writeRecords('runs', records);
+    const stored = await readCollection(indexedDB, 'runs');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+
+    const result = await queryCollection(indexedDB, 'runs', operators);
+
+    expect(result).toEqual(tidy(stored, operators));
+    expect(indexedReads).toHaveBeenCalledTimes(2);
+    indexedReads.mockRestore();
+  });
+
+  it('uses compound indexes without changing filtered collection order', async () => {
+    const records = [
+      { id: 'event:1', sessionId: 'session:1', type: 'tool.call' },
+      { id: 'event:2', sessionId: 'session:2', type: 'tool.call' },
+      { id: 'event:3', sessionId: 'session:1', type: 'tool.result' },
+      { id: 'event:4', sessionId: 'session:1', type: 'tool.call' }
+    ];
+    const operators = /** @type {import('../../src/data-operations.js').DataOperator[]} */ ([{
+      op: 'filter',
+      predicates: [
+        { field: 'sessionId', equals: 'session:1' },
+        { field: 'type', equals: 'tool.call' }
+      ]
+    }]);
+    await writeRecords('events', records);
+    const stored = await readCollection(indexedDB, 'events');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+
+    const result = await queryCollection(indexedDB, 'events', operators);
+
+    expect(result).toEqual(tidy(stored, operators));
+    expect(indexedReads).toHaveBeenCalledTimes(1);
+    indexedReads.mockRestore();
+  });
+
+  it('falls back to JavaScript for predicates IndexedDB cannot represent', async () => {
+    const records = [
+      { id: 'event:1', type: 'github-api.request' },
+      { id: 'event:2', type: 'tool.call' }
+    ];
+    const operators = /** @type {import('../../src/data-operations.js').DataOperator[]} */ ([{
+      op: 'filter',
+      predicates: [{ field: 'type', includes: 'github-api.' }]
+    }]);
+    await writeRecords('events', records);
+    const stored = await readCollection(indexedDB, 'events');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+
+    const result = await queryCollection(indexedDB, 'events', operators);
+
+    expect(result).toEqual(tidy(stored, operators));
+    expect(indexedReads).not.toHaveBeenCalled();
+    indexedReads.mockRestore();
+  });
+
+  it('falls back when JavaScript sentinel semantics are broader than IndexedDB keys', async () => {
+    const records = [
+      { id: 'run:1', conclusion: null },
+      { id: 'run:2', conclusion: 'unknown' },
+      { id: 'run:3', conclusion: 'success' }
+    ];
+    const operators = /** @type {import('../../src/data-operations.js').DataOperator[]} */ ([{
+      op: 'filter',
+      predicates: [{ field: 'conclusion', equals: 'unknown' }]
+    }]);
+    await writeRecords('runs', records);
+    const stored = await readCollection(indexedDB, 'runs');
+    const indexedReads = vi.spyOn(IDBIndex.prototype, 'getAll');
+
+    const result = await queryCollection(indexedDB, 'runs', operators);
+
+    expect(result).toEqual(tidy(stored, operators));
+    expect(result).toHaveLength(2);
+    expect(indexedReads).not.toHaveBeenCalled();
+    indexedReads.mockRestore();
   });
 
   it('writes 100,000 records in bounded transactions', async () => {
