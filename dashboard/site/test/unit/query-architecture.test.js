@@ -45,6 +45,8 @@ describe('dashboard query architecture', () => {
     expect(canonicalSources).not.toContain('tokenEfficiencySources');
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))
       .toBeUndefined();
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions'))
+      .toBeUndefined();
     expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities')?.from)
       .toBe('events');
     expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions')?.from)
