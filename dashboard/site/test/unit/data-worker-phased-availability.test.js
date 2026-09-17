@@ -142,7 +142,8 @@ it('publishes run queries while event ingestion continues', async () => {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
   expect(posted.find(({ id }) => id === 1)?.error).toBeUndefined();
-  for (let attempt = 0; attempt < 200 && !posted.some(({ subscriptionId }) => subscriptionId === 'events'); attempt += 1) {
+  for (let attempt = 0; attempt < 200 && !['events', 'events-during-run-phase'].every((subscriptionId) =>
+    posted.some((message) => message.subscriptionId === subscriptionId)); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'events')).toBeDefined();

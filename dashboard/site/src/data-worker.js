@@ -281,6 +281,30 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
   }
 }
 
+/**
+ * Publishes the latest committed canonical projection without blocking the next
+ * shard download. The subscription flusher coalesces commits that arrive while
+ * an earlier refresh is still running.
+ *
+ * @param {Record<string, import('./presenter.js').LogicalSourceInput>} logicalSources
+ * @param {boolean} runsOnly
+ * @returns {Promise<void>}
+ */
+function refreshDashboardSubscriptions(logicalSources, runsOnly) {
+  liveDashboard = {
+    logicalSources,
+    revision: (liveDashboard?.revision ?? 0) + 1
+  };
+  dashboardActivated = true;
+  runPhaseOnly = runsOnly;
+  scheduleDashboardSubscriptions(runsOnly
+    ? [...dashboardSubscriptions]
+        .filter(([, subscription]) => isRunPhaseSubscription(subscription))
+        .map(([id]) => id)
+    : dashboardSubscriptions.keys());
+  return flushDashboardSubscriptions(true);
+}
+
 /** @param {unknown} value */
 function dashboardContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -541,18 +565,12 @@ export function processDataRequest(request, signal) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             if (runPhaseShardCount > 0 && index === runPhaseShardCount) {
               const eventPendingShards = pendingShards.filter((state) => state.index >= runPhaseShardCount);
-              if (eventPendingShards.length > 0 && (!dashboardActivated || changed)) {
+              if (eventPendingShards.length > 0 && !dashboardActivated) {
                 progress.log('Run information is available; refreshing active dashboard queries.');
-                liveDashboard = {
-                  logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-                  revision: (liveDashboard?.revision ?? 0) + 1
-                };
-                dashboardActivated = true;
-                runPhaseOnly = true;
-                scheduleDashboardSubscriptions([...dashboardSubscriptions]
-                  .filter(([, subscription]) => isRunPhaseSubscription(subscription))
-                  .map(([id]) => id));
-                await flushDashboardSubscriptions(true);
+                await refreshDashboardSubscriptions(
+                  /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+                  true
+                );
                 if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
               }
               await measureShards(eventPendingShards);
@@ -634,6 +652,13 @@ export function processDataRequest(request, signal) {
               });
               completedShardCount += 1;
               progress.reportShardImportProgress(completedShardCount, shardCount);
+              if (ingestion.updated) {
+                progress.log(`Shard ${index + 1}/${shardCount} is available; refreshing active dashboard queries.`);
+                void refreshDashboardSubscriptions(
+                  /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+                  runPhaseShardCount > 0 && index < runPhaseShardCount
+                );
+              }
             }
           }
           if (inventoryResponse.ok) {

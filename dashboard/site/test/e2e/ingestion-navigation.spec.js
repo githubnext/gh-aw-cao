@@ -49,6 +49,11 @@ const inventory = {
 test('views remain interactive while activity shards are ingested', async ({ context, page }) => {
   const shardCount = 12;
   let requestedShards = 0;
+  let completedShards = 0;
+  let releaseFinalShard = () => {};
+  const finalShardReady = new Promise((resolve) => {
+    releaseFinalShard = () => resolve(undefined);
+  });
   await context.route(`${origin}/**`, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/') {
@@ -71,7 +76,7 @@ test('views remain interactive while activity shards are ingested', async ({ con
         contentType: 'application/json',
         body: JSON.stringify(Object.fromEntries(
           Array.from({ length: shardCount }, (_, index) => [
-            `gh-aw-logs-shards/logs-${index + 1}.jsonl`,
+           `gh-aw-logs-shards/logs-${String(index + 1).padStart(2, '0')}.jsonl`,
             String(index + 1).padStart(64, 'a')
           ])
         ))
@@ -87,6 +92,7 @@ test('views remain interactive while activity shards are ingested', async ({ con
       requestedShards += 1;
       await new Promise((resolve) => setTimeout(resolve, 35));
       const run = Number(shard[1]);
+      if (run === shardCount) await finalShardReady;
       await route.fulfill({
         contentType: 'application/x-ndjson',
         body: `${JSON.stringify({
@@ -107,6 +113,7 @@ test('views remain interactive while activity shards are ingested', async ({ con
           }
         })}\n`
       });
+      completedShards += 1;
       return;
     }
     const filePath = join(siteRoot, url.pathname);
@@ -122,6 +129,9 @@ test('views remain interactive while activity shards are ingested', async ({ con
 
   await page.goto(`${origin}/`);
   await expect.poll(() => requestedShards).toBeGreaterThan(0);
+  await expect(page.getByRole('cell', { name: 'Ingested run 1', exact: true })).toBeVisible();
+  expect(completedShards).toBeLessThan(shardCount);
+  await expect(page.locator('.loading-progress')).toBeVisible();
 
   for (let cycle = 0; cycle < 4; cycle += 1) {
     for (const [, title] of pageDefinitions) {
@@ -130,6 +140,7 @@ test('views remain interactive while activity shards are ingested', async ({ con
     }
   }
 
+  releaseFinalShard();
   await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page.getByRole('cell', { name: 'Ingested run 12' })).toBeVisible();
   expect(requestedShards).toBe(shardCount);
