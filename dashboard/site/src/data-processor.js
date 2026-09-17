@@ -4,8 +4,8 @@ import { clusterScatterPoints } from './scatter-clustering.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
-import { publishNotification } from './notification-service.js';
 import { withDebugParameter } from './debug.js';
+import { createWorkerNotificationController } from './worker-notification-controller.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -37,49 +37,10 @@ const pending = new Map();
  */
 /** @type {Map<string, ViewSubscription>} */
 const subscriptions = new Map();
-/** @type {Map<string, ReturnType<typeof publishNotification>>} */
-const workerNotificationHandles = new Map();
-/** @type {Set<string>} */
-const cancelledWorkerNotificationIds = new Set();
 /** @type {Set<(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }) => void>} */
 const workerLoadingProgressListeners = new Set();
 /** @type {Set<string>} */
 const workerLoadingProgressOperations = new Set();
-
-/**
- * Adds supported main-thread behavior to a serializable worker notification.
- * @param {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} notification
- * @param {string} id
- * @param {() => ReturnType<typeof publishNotification>} getHandle
- */
-function attachWorkerNotificationAction(notification, id, getHandle) {
-  const { action, ...base } = notification;
-  if (!action || typeof action !== 'object' || Array.isArray(action)
-      || action.operation !== 'cancel-data-ingestion') {
-    return base;
-  }
-  const label = typeof action.label === 'string' && action.label.trim() ? action.label : 'Cancel';
-  return {
-    ...base,
-    action: {
-      label,
-      ...(action.placement === 'details' ? { placement: /** @type {'details'} */ ('details') } : {}),
-      run: () => {
-        if (typeof action.requestId !== 'number'
-            || !cancelDataProcessingRequest(action.requestId)) return;
-        getHandle().update({
-          ...base,
-          message: 'Data ingestion cancelled.',
-          tone: 'warning',
-          action: undefined,
-          dismissOnCollapse: true,
-          duration: 0
-        });
-        cancelledWorkerNotificationIds.add(id);
-      }
-    }
-  };
-}
 
 /** @param {number} id */
 function cancelDataProcessingRequest(id) {
@@ -88,6 +49,10 @@ function cancelDataProcessingRequest(id) {
   request.processor.postMessage({ id: ++nextRequestId, operation: 'cancel-data-processing', ids: [id] });
   return 1;
 }
+
+const workerNotifications = createWorkerNotificationController({
+  cancelRequest: cancelDataProcessingRequest
+});
 
 /** @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state */
 function emitWorkerLoadingProgress(state) {
@@ -551,36 +516,7 @@ function getWorker() {
       return;
     }
     if (event.data?.type === 'notification') {
-      try {
-        const notification = event.data.notification;
-        const id = typeof notification?.id === 'string' ? notification.id : undefined;
-        if (notification?.dismiss === true) {
-          if (id) {
-            if (!cancelledWorkerNotificationIds.has(id)) {
-              workerNotificationHandles.get(id)?.dismiss();
-            }
-            workerNotificationHandles.delete(id);
-            cancelledWorkerNotificationIds.delete(id);
-          }
-        } else if (id) {
-          if (cancelledWorkerNotificationIds.has(id)) return;
-          if (typeof notification.message !== 'string') return;
-          const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} */ (notification);
-          const current = workerNotificationHandles.get(id);
-          if (current) {
-            current.update(attachWorkerNotificationAction(interactiveNotification, id, () => current));
-          } else {
-            /** @type {ReturnType<typeof publishNotification>} */
-            let handle;
-            handle = publishNotification(attachWorkerNotificationAction(interactiveNotification, id, () => handle));
-            workerNotificationHandles.set(id, handle);
-          }
-        } else {
-          publishNotification(notification);
-        }
-      } catch {
-        // Ignore malformed worker notifications without disrupting data processing.
-      }
+      workerNotifications.handle(event.data.notification);
       return;
     }
     if (typeof event.data?.subscriptionId === 'string') {
@@ -631,11 +567,7 @@ function resetWorker(processor) {
     emitWorkerLoadingProgress({ id, phase: 'complete' });
   }
   workerLoadingProgressOperations.clear();
-  for (const [id, notification] of workerNotificationHandles) {
-    if (!cancelledWorkerNotificationIds.has(id)) notification.dismiss();
-  }
-  workerNotificationHandles.clear();
-  cancelledWorkerNotificationIds.clear();
+  workerNotifications.reset();
   for (const subscription of subscriptions.values()) subscription.registeredWorker = null;
 }
 
