@@ -325,6 +325,8 @@ describe('data view renderer', () => {
 
     expect(completed?.querySelector('.entity-card-list-status-success .octicon-check-circle-fill')).not.toBeNull();
     expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('data-card-status')).toBe('success');
+    expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('title')).toBe('Success');
+    expect(running?.querySelector('.entity-card-list-status .sr-only')?.textContent).toBe('Status: In Progress');
     expect(completed?.querySelector('.entity-card-list-ref')?.textContent).toBe('copilot/add-desktop-tabs');
     const timing = completed?.querySelectorAll('.entity-card-list-timing-item') ?? [];
     expect(timing).toHaveLength(2);

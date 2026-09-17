@@ -342,7 +342,7 @@ function renderEntityCardListView(options) {
  *   title: string,
  *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon?: string }> },
+ *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
  *   drill?: Record<string, unknown> | null,
  *   keyOffset?: number
  * }} options
@@ -378,7 +378,7 @@ function renderEntityCardItems(rows, options) {
       return [h(
         'li',
         { className: 'entity-card-list-timing-item' },
-        h('span', { className: 'entity-card-list-timing-icon', 'aria-hidden': 'true' }, octicon(column.icon ?? 'clock')),
+        h('span', { className: 'entity-card-list-timing-icon', 'aria-hidden': 'true' }, octicon(column.icon)),
         h('span', { className: 'entity-card-list-timing-value' }, renderValue(column, value, row))
       )];
     });
@@ -404,11 +404,11 @@ function renderEntityCardItems(rows, options) {
           'span',
           {
             className: `issue-list-card-icon entity-card-list-status entity-card-list-status-${status.tone}`,
-            title: status.text,
+            title: titleCase(status.text),
             'data-card-status': status.text
           },
           octicon(status.icon),
-          h('span', { className: 'sr-only' }, `${fieldTitle(definition.status ?? { field: 'status' })}: ${status.text}`)
+          h('span', { className: 'sr-only' }, `${fieldTitle(definition.status ?? { field: 'status' })}: ${titleCase(status.text)}`)
         )
         : h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(definition.icon)),
       h(
