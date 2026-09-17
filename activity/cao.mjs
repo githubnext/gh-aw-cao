@@ -64,7 +64,7 @@ const USAGE = `Usage:
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
-  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--runs-dir DIRECTORY] [--events-dir DIRECTORY] [--inventory FILE] [--output FILE]
+  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--events-dir DIRECTORY] [--inventory FILE] [--output FILE]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
   cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
@@ -941,7 +941,14 @@ function workflowHintsFromInventory(input) {
   ));
 }
 
-async function hashActivityPayloads({ databasePath, shardDirectory, runsDirectory, eventsDirectory, inventoryPath }) {
+async function hashActivityPayloads({
+  databasePath,
+  shardDirectory,
+  normalizedDirectory,
+  runsDirectory,
+  eventsDirectory,
+  inventoryPath
+}) {
   const hashFile = async (filePath) => {
     const hash = createHash('sha256');
     for await (const chunk of createReadStream(filePath)) hash.update(chunk);
@@ -966,21 +973,31 @@ async function hashActivityPayloads({ databasePath, shardDirectory, runsDirector
       .digest('hex')
       .slice(0, 16);
     const retainedPayloads = new Set();
+    if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
     if (runsDirectory) await mkdir(runsDirectory, { recursive: true });
     if (eventsDirectory) await mkdir(eventsDirectory, { recursive: true });
     for (const name of shardNames) {
       const shardPath = path.join(shardDirectory, name);
       const rawHash = await hashFile(shardPath);
       hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
-      if (!runsDirectory || !eventsDirectory) continue;
+      if (!normalizedDirectory && !runsDirectory && !eventsDirectory) continue;
       const payloadName = `${rawHash}-${normalizationContext}.json`;
-      const runsPath = path.join(runsDirectory, payloadName);
-      const eventsPath = path.join(eventsDirectory, payloadName);
       retainedPayloads.add(payloadName);
-      try {
-        await Promise.all([stat(runsPath), stat(eventsPath)]);
-      } catch (error) {
-        if (!(error && error.code === 'ENOENT')) throw error;
+      const outputPaths = [
+        normalizedDirectory ? ['normalized', path.join(normalizedDirectory, payloadName)] : null,
+        runsDirectory ? ['runs', path.join(runsDirectory, payloadName)] : null,
+        eventsDirectory ? ['events', path.join(eventsDirectory, payloadName)] : null
+      ].filter(Boolean);
+      const missing = [];
+      for (const output of outputPaths) {
+        try {
+          await stat(output[1]);
+        } catch (error) {
+          if (!(error && error.code === 'ENOENT')) throw error;
+          missing.push(output);
+        }
+      }
+      if (missing.length > 0) {
         const adapted = await adaptCachedGhAwJsonlStream(createReadStream(shardPath), {
           workflowHints,
           payloadIdentity: rawHash
@@ -991,47 +1008,46 @@ async function hashActivityPayloads({ databasePath, shardDirectory, runsDirector
           ingestionVersion: NORMALIZED_JSON_INGESTION_VERSION,
           sourceRecords: adapted.records
         };
-        const runsPayload = {
-          ...metadata,
-          phase: 'runs',
-          batch: {
-            packages: batch.packages,
-            repositories: batch.repositories,
-            workflows: batch.workflows,
-            runs: batch.runs,
-            jobs: [],
-            sessions: [],
-            events: []
+        const payloads = {
+          normalized: { ...metadata, batch },
+          runs: {
+            ...metadata,
+            phase: 'runs',
+            batch: {
+              packages: batch.packages,
+              repositories: batch.repositories,
+              workflows: batch.workflows,
+              runs: batch.runs,
+              jobs: [],
+              sessions: [],
+              events: []
+            }
+          },
+          events: {
+            ...metadata,
+            phase: 'events',
+            batch: {
+              packages: [],
+              repositories: [],
+              workflows: [],
+              runs: [],
+              jobs: batch.jobs,
+              sessions: batch.sessions,
+              events: batch.events
+            }
           }
         };
-        const eventsPayload = {
-          ...metadata,
-          phase: 'events',
-          batch: {
-            packages: [],
-            repositories: [],
-            workflows: [],
-            runs: [],
-            jobs: batch.jobs,
-            sessions: batch.sessions,
-            events: batch.events
-          }
-        };
-        const temporaryRunsPath = `${runsPath}.${process.pid}.tmp`;
-        const temporaryEventsPath = `${eventsPath}.${process.pid}.tmp`;
-        await Promise.all([
-          writeFile(temporaryRunsPath, JSON.stringify(runsPayload)),
-          writeFile(temporaryEventsPath, JSON.stringify(eventsPayload))
-        ]);
-        await Promise.all([
-          rename(temporaryRunsPath, runsPath),
-          rename(temporaryEventsPath, eventsPath)
-        ]);
+        await Promise.all(missing.map(async ([phase, outputPath]) => {
+          const temporaryPath = `${outputPath}.${process.pid}.tmp`;
+          await writeFile(temporaryPath, JSON.stringify(payloads[phase]));
+          await rename(temporaryPath, outputPath);
+        }));
       }
-      hashes[`${path.basename(runsDirectory)}/${payloadName}`] = await hashFile(runsPath);
-      hashes[`${path.basename(eventsDirectory)}/${payloadName}`] = await hashFile(eventsPath);
+      for (const [, outputPath] of outputPaths) {
+        hashes[`${path.basename(path.dirname(outputPath))}/${payloadName}`] = await hashFile(outputPath);
+      }
     }
-    for (const directory of [runsDirectory, eventsDirectory].filter(Boolean)) {
+    for (const directory of [normalizedDirectory, runsDirectory, eventsDirectory].filter(Boolean)) {
       for (const name of await readdir(directory)) {
         if (name.endsWith('.json') && !retainedPayloads.has(name)) {
           await rm(path.join(directory, name), { force: true });
@@ -1454,10 +1470,13 @@ export async function runCli(arguments_, input = process.stdin) {
     return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
   }
   if (command === 'hash-payloads') {
-    rejectUnknownOptions(options, ['database', 'shard-dir', 'runs-dir', 'events-dir', 'inventory', 'output']);
+    rejectUnknownOptions(options, ['database', 'shard-dir', 'normalized-dir', 'runs-dir', 'events-dir', 'inventory', 'output']);
     const hashes = await hashActivityPayloads({
       databasePath: option(options, 'database', false) ? path.resolve(option(options, 'database', false)) : undefined,
       shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined,
+      normalizedDirectory: option(options, 'normalized-dir', false)
+        ? path.resolve(option(options, 'normalized-dir', false))
+        : undefined,
       runsDirectory: option(options, 'runs-dir', false)
         ? path.resolve(option(options, 'runs-dir', false))
         : undefined,

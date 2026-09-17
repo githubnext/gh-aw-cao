@@ -50,8 +50,8 @@ function batch() {
   });
   canonical.sessions.push({ id: 'session:1', runId: 'run:1' });
   canonical.events.push(
-    { id: 'event:2', sessionId: 'session:1', sequence: 2 },
-    { id: 'event:1', sessionId: 'session:1', sequence: 1 }
+    { id: 'event:2', runId: 'run:1', sessionId: 'session:1', sequence: 2 },
+    { id: 'event:1', runId: 'run:1', sessionId: 'session:1', sequence: 1 }
   );
   return canonical;
 }
@@ -230,7 +230,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       [`normalized/${normalizedName}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
     });
     expect(JSON.parse(readFileSync(join(normalizedDirectory, normalizedName), 'utf8'))).toMatchObject({
-      schemaVersion: 8,
+      schemaVersion: 9,
       ingestionVersion: 2,
       sourceRecords: 3,
       batch: {
@@ -365,6 +365,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     stale.runs[0].workflowId = stale.workflows[0].id;
     stale.sessions[0].runId = stale.runs[0].id;
     stale.events.forEach((event) => {
+      event.runId = stale.runs[0].id;
       event.sessionId = stale.sessions[0].id;
       event.timestamp = '2020-01-01T00:00:00Z';
     });

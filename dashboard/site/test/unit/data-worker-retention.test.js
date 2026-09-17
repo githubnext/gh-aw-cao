@@ -147,7 +147,7 @@ describe('canonical dashboard worker retention updates', () => {
     const requestUrls = [];
     const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
     const normalizedPayload = {
-      schemaVersion: 8,
+      schemaVersion: 9,
       ingestionVersion: 2,
       sourceRecords: 0,
       batch: {

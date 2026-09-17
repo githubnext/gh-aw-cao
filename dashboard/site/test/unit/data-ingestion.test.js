@@ -78,7 +78,7 @@ beforeEach(async () => {
 describe('canonical source ingestion and queries', () => {
   it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
     const payload = {
-      schemaVersion: 8,
+      schemaVersion: 9,
       ingestionVersion: 2,
       sourceRecords: 1,
       batch: {
