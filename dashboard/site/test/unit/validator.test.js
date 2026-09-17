@@ -85,9 +85,10 @@ describe('dashboard document validation', () => {
   it('validates declarative overview counter animations', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const overview = document.dashboard.pages.find((/** @type {{ id?: string }} */ page) => page.id === 'overview');
-    overview.views[0].config.animate = 'number';
+    const floor = overview.views.find((/** @type {{ element?: string }} */ view) => view.element === 'factory-floor');
+    floor.config.animate = 'number';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    overview.views[0].config.animate = 'counter';
+    floor.config.animate = 'counter';
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
   });
 
@@ -1019,28 +1020,39 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines Overview as one evidence-backed outcomes element', () => {
+  it('defines Overview as declarative factory header and floor elements', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'overview'
     );
 
-    expect(page.views).toEqual([expect.objectContaining({
-      id: 'overview-outcomes',
+    expect(page.views).toEqual([
+      expect.objectContaining({
+      id: 'overview-header',
       description: 'Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.',
+      data: { sources: expect.arrayContaining([
+        'overview-outcome-summary',
+        'overview-run-summary',
+        'overview-factory-status',
+        'overview-rhythm'
+      ]) },
+      mark: 'element',
+      element: 'factory-header',
+      layout: 'full'
+    }),
+      expect.objectContaining({
+      id: 'overview-floor',
       data: { sources: expect.arrayContaining([
         'overview-outcome-summary',
         'overview-run-summary',
         'overview-dispatch-summary',
         'overview-value-summary',
-        'overview-factory-status',
         'overview-registered-repository-summary',
-        'overview-worker-summary',
-        'overview-rhythm'
+        'overview-worker-summary'
       ]) },
       mark: 'element',
-      element: 'outcomes-overview',
-      config: expect.objectContaining({ sections: ['header', 'floor'] }),
+      element: 'factory-floor',
+      config: expect.objectContaining({ animate: 'number' }),
       layout: 'full'
     })]);
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
@@ -1436,7 +1448,7 @@ dashboard:
           data:
             sources: [runs]
           mark: element
-          element: outcomes-overview
+          element: factory-floor
           config:
             labels:
               repositories:
@@ -1486,7 +1498,7 @@ dashboard:
           data:
             sources: [runs]
           mark: element
-          element: outcomes-overview
+          element: factory-floor
           config:
             labels:
               Repositories:
@@ -1505,7 +1517,7 @@ dashboard:
     }
   });
 
-  it('accepts declarative factory overview sections and rejects unknown sections', () => {
+  it('accepts the declarative factory elements and rejects nested factory sections', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: overview-sections
@@ -1515,13 +1527,16 @@ dashboard:
       kind: custom
       title: Overview page
       views:
-        - id: overview-factory
+        - id: overview-header
           data:
             sources: [runs]
           mark: element
-          element: outcomes-overview
-          config:
-            sections: [header, floor]
+          element: factory-header
+        - id: overview-floor
+          data:
+            sources: [runs]
+          mark: element
+          element: factory-floor
 `);
     expect(accepted.ok).toBe(true);
 
@@ -1538,42 +1553,44 @@ dashboard:
           data:
             sources: [runs]
           mark: element
-          element: outcomes-overview
+          element: factory-floor
           config:
-            sections: [status]
+            sections: [header, floor]
 `);
     expect(invalid.ok).toBe(false);
     if (!invalid.ok) {
       expect(invalid.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.sections[0]'
+        code: 'DLS-E003',
+        path: '$.dashboard.pages[0].views[0].config.sections'
       }));
     }
+  });
 
-    const duplicate = validateDashboardDocument(`language-version: "0.1.0"
+  it('keeps the version 0.1.0 outcomes overview element valid as a compatibility alias', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
-  id: overview-sections
-  title: Overview sections
+  id: legacy-overview
+  title: Legacy overview
   pages:
-    - id: overview-page
+    - id: overview
       kind: custom
-      title: Overview page
+      title: Overview
       views:
-        - id: overview-factory
+        - id: outcomes
           data:
-            sources: [runs]
+            sources: [runs, outcomes]
           mark: element
           element: outcomes-overview
           config:
-            sections: [header, header]
+            sections: [header, floor]
+            animate: number
+            labels:
+              repositories:
+                singular: Repository
+                plural: Repositories
 `);
-    expect(duplicate.ok).toBe(false);
-    if (!duplicate.ok) {
-      expect(duplicate.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E004',
-        path: '$.dashboard.pages[0].views[0].config.sections[1]'
-      }));
-    }
+
+    expect(result.ok).toBe(true);
   });
 
   it('defines work-project-view composition through canonical body values', () => {

@@ -7,6 +7,7 @@ import { bindSourceContinuations, continuationRequests } from "./continuation.js
 import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "../debug-events.js";
 import { startAutomaticDashboardDataUpdates } from "../dashboard-data-updates.js";
 import { configureSourceLoader, refreshSources as refreshBoundSources } from "../source-store.js";
+import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
 /** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string } }} DashboardQueryContext */
@@ -127,7 +128,28 @@ export async function startDashboardData(options) {
       );
     });
   };
-  configureSourceLoader(async (name) => (await loadCanonicalDashboardPage([name], dashboardContext))[name]);
+  configureSourceLoader(async (name, options) => {
+    const sources = await loadCanonicalDashboardPage(
+      [name],
+      dashboardContext,
+      undefined,
+      {
+        pageId: options?.pageId,
+        viewId: options?.viewId,
+        queryContext: options?.queryContext,
+      },
+    );
+    const alias = options?.pageId && options.viewId
+      ? dashboardViewAliasName(
+          options.pageId,
+          { id: options.viewId },
+          0,
+          name,
+          options.sourceIndex ?? 0,
+        )
+      : name;
+    return sources[alias] ?? sources[name];
+  });
   const startAutomaticUpdates = () => {
     stopAutomaticDataUpdates = startAutomaticDashboardDataUpdates([
       new URL("./payload-hashes.json", sourceUrl).href,

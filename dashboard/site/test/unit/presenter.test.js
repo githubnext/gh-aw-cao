@@ -118,19 +118,20 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
-  it('loads the factory overview through one page-scoped worker subscription', () => {
+  it('leaves factory queries to independently bound reactive elements', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
-      'overview-outcome-summary',
-      'overview-run-summary',
-      'overview-dispatch-summary',
-      'overview-delivery-summary',
-      'overview-value-summary',
-      'overview-factory-status',
-      'overview-registered-repository-summary',
-      'overview-worker-summary',
-      'overview-rhythm',
       'data-health-collections'
     ]);
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources: () => new Promise(() => {})
+    });
+    const overview = rendered.querySelector('[data-page-id="overview"]');
+    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(overview?.querySelector('.dashboard-lazy-view')).toBeNull();
+    expect(overview?.querySelector('.dashboard-view-skeleton')).toBeNull();
+    disposeDashboard(rendered);
   });
 
   it('reports the paginated source shared by the runs page views', () => {
@@ -1327,7 +1328,8 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const page = await activatePage(rendered, 'overview');
-    expect(page?.querySelector('.agent-factory')).not.toBeNull();
+    expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();

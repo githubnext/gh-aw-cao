@@ -178,7 +178,7 @@ export function processDashboardQueries(queries, sources, options = {}) {
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
+ * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
@@ -195,7 +195,7 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
+ * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
  */
 export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
@@ -211,7 +211,7 @@ export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
+ * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardPage(sourceNames, context, pagination, options = {}) {

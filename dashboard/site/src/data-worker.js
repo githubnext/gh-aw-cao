@@ -47,7 +47,7 @@ let liveDashboard = null;
 let dashboardActivated = false;
 const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -102,6 +102,7 @@ function pageScopedSources(sources, requested) {
  * @param {string} [pageId]
  * @param {Record<string, string>} [routeParameters]
  * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } }} [queryContext]
+ * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
  */
 async function queryLiveDashboard(
@@ -113,6 +114,7 @@ async function queryLiveDashboard(
   pageId,
   routeParameters,
   queryContext,
+  viewId,
   dashboard = liveDashboard
 ) {
   dashboard ??= await loadActiveDashboard();
@@ -124,7 +126,8 @@ async function queryLiveDashboard(
     pagination,
     pageId,
     routeParameters,
-    queryContext
+    queryContext,
+    viewId
   ]);
   return dashboardQueryMemoization.get(dashboard.revision, key, async () => {
     const required = resolveDashboardQuerySources(context.queries, requested);
@@ -142,7 +145,9 @@ async function queryLiveDashboard(
           queryContext,
           evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
           queries: context.queries,
-          views: context.views
+          views: context.views,
+          viewId,
+          sourceNames: requested
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
@@ -228,6 +233,7 @@ async function flushDashboardSubscriptions() {
             subscription.pageId,
             subscription.routeParameters,
             subscription.queryContext,
+            subscription.viewId,
             dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
@@ -309,7 +315,7 @@ export function publishedNormalizedShards(hashes) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -325,7 +331,8 @@ export function processDataRequest(request, signal) {
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
       typeof request.pageId === 'string' ? request.pageId : undefined,
       routeParameters(request.routeParameters),
-      queryContext(request.queryContext)
+      queryContext(request.queryContext),
+      typeof request.viewId === 'string' ? request.viewId : undefined
     );
   }
   if (request?.operation === 'load-canonical-dashboard') {
@@ -578,7 +585,8 @@ export function processDataRequest(request, signal) {
           /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
           typeof request.pageId === 'string' ? request.pageId : undefined,
           routeParameters(request.routeParameters),
-          queryContext(request.queryContext)
+          queryContext(request.queryContext),
+          typeof request.viewId === 'string' ? request.viewId : undefined
         );
         return request.reportActivation
           ? { sources: projected, changed }
@@ -669,6 +677,7 @@ if (typeof document === 'undefined' && workerScope) {
         requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
         pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
         pageId: typeof event.data.pageId === 'string' ? event.data.pageId : undefined,
+        viewId: typeof event.data.viewId === 'string' ? event.data.viewId : undefined,
         routeParameters: routeParameters(event.data.routeParameters),
         queryContext: queryContext(event.data.queryContext),
         revision: liveDashboard?.revision ?? null,
