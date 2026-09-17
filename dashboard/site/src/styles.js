@@ -940,6 +940,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .workflow-health-chart > .chart-widget { width: 84px; min-height: 84px; margin: 0; border: 0; background: transparent; }
 .workflow-health-chart > .chart-widget svg { width: 84px; height: 84px; }
 .workflow-health-chart .pie-chart-total-value, .workflow-health-chart .pie-chart-total-label { opacity: 0; }
+.workflow-health-chart .pie-chart-summary { display: none; }
 .workflow-health-chart .chart-widget .chart-series-1 { stroke: var(--success); }
 .workflow-health-chart .chart-widget .chart-series-2 { stroke: var(--danger); }
 .workflow-health-chart .chart-widget .chart-series-3 { stroke: var(--attention); }
