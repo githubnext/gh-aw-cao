@@ -2099,16 +2099,6 @@
         "from": "events",
         "joins": [
           {
-            "source": "workflows",
-            "type": "left",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" }
-            ],
-            "fields": [{ "field": "package", "as": "package" }]
-          },
-          {
             "source": "runs",
             "type": "left",
             "on": [
@@ -2127,7 +2117,6 @@
           { "field": "event-type" },
           { "field": "event-status" },
           { "field": "event-summary" },
-          { "field": "package" },
           { "field": "organization" },
           { "field": "repository" },
           { "field": "workflow" },
@@ -2165,6 +2154,16 @@
         },
         "joins": [
           {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "package", "as": "declared-package" }]
+          },
+          {
             "source": "runs",
             "type": "left",
             "on": [
@@ -2182,6 +2181,7 @@
           { "field": "event-type", "as": "audit-kind" },
           { "field": "event-status" },
           { "field": "event-summary" },
+          { "field": "declared-package", "as": "package" },
           { "field": "organization" },
           { "field": "repository" },
           { "field": "workflow" },

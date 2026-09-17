@@ -2,7 +2,6 @@
  * Package route composition registry shared by declarative route views.
  */
 
-import { h } from '../dom.js';
 import { titleCase } from './count-formatters.js';
 import { createRouteBodyConfig } from './route-body-config.js';
 import {
