@@ -26,11 +26,11 @@ describe("live Dashboard Language sources", () => {
     expect(startup).toContain("subscribeCanonicalDashboardView(");
     expect(startup).toContain("signal: pageOptions.signal");
     expect(startup).toContain("pageOptions.onUpdate(boundSources)");
-    expect(preview).toContain("dashboardPageLazySourceNames, dashboardPageSourceNames");
+    expect(preview).toContain("dashboardPagePaginatedSourceBindings, dashboardPageSourceNames");
     expect(startup).not.toContain("drainSourceContinuation");
     expect(startup).not.toContain("drainChartSources");
     expect(startup).toContain("pageSourceNames(pageId)");
-    expect(startup).toContain("pageLazySourceNames(pageId)");
+    expect(startup).toContain("pagePaginatedSourceBindings(pageId)");
     expect(startup).toContain("refreshCanonicalDashboardSources(\n      sourceUrl,\n      []");
     expect(startup).not.toContain("loadInitialSources");
     expect(startup).toContain('render({}, "cached", loadPageSources)');

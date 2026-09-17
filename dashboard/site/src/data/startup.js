@@ -44,7 +44,7 @@ export function waitForDashboardUi(browserWindow) {
  *   },
  *   preparePage?: (pageId: string) => Promise<void>,
  *   pageSourceNames: (pageId: string) => string[],
- *   pageLazySourceNames: (pageId: string) => string[],
+ *   pagePaginatedSourceBindings: (pageId: string) => Record<string, { sourceName: string, viewId: string }>,
  *   render: (sources: DashboardSources, state: 'ready' | 'cached' | 'stale', loadPageSources: PageSourceLoader, retryRefresh?: () => void) => void,
  *   settleUi?: () => Promise<void>,
  * }} options
@@ -58,7 +58,7 @@ export async function startDashboardData(options) {
     dashboardContext,
     preparePage,
     pageSourceNames,
-    pageLazySourceNames,
+    pagePaginatedSourceBindings,
     render,
     settleUi = () => waitForDashboardUi(browserWindow),
   } = options;
@@ -74,24 +74,36 @@ export async function startDashboardData(options) {
   /**
    * @param {string} pageId
    * @param {DashboardSources} sources
-   * @param {string[]} sourceNames
+   * @param {Record<string, { sourceName: string, viewId: string }>} bindings
    * @param {Pick<PageLoadOptions, 'routeParameters' | 'queryContext'>} [pageOptions]
    */
-  const bindContinuations = (pageId, sources, sourceNames, pageOptions = {}) => bindSourceContinuations(
+  const bindContinuations = (pageId, sources, bindings, pageOptions = {}) => bindSourceContinuations(
     sources,
-    sourceNames,
-    (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination, {
-      pageId,
-      routeParameters: pageOptions.routeParameters,
-      queryContext: pageOptions.queryContext,
-    }),
+    Object.keys(bindings),
+    (requested, pagination) => {
+      const binding = bindings[requested[0]];
+      return loadCanonicalDashboardPage(
+        [...new Set(requested.flatMap((alias) => {
+          const sourceName = bindings[alias]?.sourceName;
+          return sourceName ? [sourceName] : [];
+        }))],
+        dashboardContext,
+        pagination,
+        {
+          pageId,
+          viewId: binding?.viewId,
+          routeParameters: pageOptions.routeParameters,
+          queryContext: pageOptions.queryContext,
+        },
+      );
+    },
   );
   /** @type {PageSourceLoader} */
   const loadPageSources = async (pageId, pageOptions) => {
     await preparePage?.(pageId);
     const sourceNames = pageSourceNames(pageId);
-    const lazySources = pageLazySourceNames(pageId);
-    const pagination = continuationRequests(lazySources);
+    const paginatedSources = pagePaginatedSourceBindings(pageId);
+    const pagination = continuationRequests(Object.keys(paginatedSources));
     return new Promise((resolve, reject) => {
       let receivedInitialSnapshot = false;
       const abort = () => reject(new DOMException("Dashboard page load was cancelled.", "AbortError"));
@@ -101,7 +113,7 @@ export async function startDashboardData(options) {
         sourceNames,
         dashboardContext,
         (sources) => {
-          const boundSources = bindContinuations(pageId, sources, lazySources, pageOptions);
+          const boundSources = bindContinuations(pageId, sources, paginatedSources, pageOptions);
           if (!receivedInitialSnapshot) {
             receivedInitialSnapshot = true;
             pageOptions.signal.removeEventListener("abort", abort);

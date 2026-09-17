@@ -129,6 +129,30 @@ export function dashboardPageLazySourceNames(document, pageId) {
   return collectDashboardPageLazySourceNames(document, pageId);
 }
 
+/**
+ * Maps each paginated view alias to the authored source and view that can
+ * reproduce it for continuation requests.
+ * @param {PresentationDocument} document
+ * @param {string} pageId
+ * @returns {Record<string, { sourceName: string, viewId: string }>}
+ */
+export function dashboardPagePaginatedSourceBindings(document, pageId) {
+  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
+  if (!page) return {};
+  const payload = getBuiltInPagePayload(page, document.dashboard.views);
+  return Object.fromEntries((payload.views ?? []).flatMap((view, viewIndex) => {
+    if (!isPlainObject(view)
+        || typeof view.id !== 'string'
+        || (view['lazy-list'] !== true && !supportsIncrementalChartContinuation(view))) {
+      return [];
+    }
+    return getViewSources(view).map((sourceName, sourceIndex) => [
+      dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex),
+      { sourceName, viewId: view.id }
+    ]);
+  }));
+}
+
 /** @param {PresentationDocument} document */
 export function dashboardTableSourceNames(document) {
   return collectDashboardTableSourceNames(document);

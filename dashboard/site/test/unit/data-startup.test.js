@@ -30,7 +30,7 @@ function options(overrides = {}) {
     sourceUrl: "https://example.test/dashboard/payload-hashes.json",
     dashboardContext: { pages: [], queries: [] },
     pageSourceNames: () => ["runs"],
-    pageLazySourceNames: () => [],
+    pagePaginatedSourceBindings: () => ({}),
     render: (
       /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
       /** @type {'ready' | 'cached' | 'stale'} */ state,
@@ -100,5 +100,63 @@ describe("dashboard data startup", () => {
       "automatic",
       "refresh",
     ]);
+  });
+
+  it("paginates view aliases and reloads only the originating view", async () => {
+    const alias = "view:runs:timeline:runs-table";
+    const page = {
+      source: alias,
+      rows: [{ run: "2" }],
+      continuationToken: "next",
+      metadata: { "total-row-count": 2 },
+    };
+    /** @type {((pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<Record<string, import('../../src/presenter.js').LogicalSourceInput>>) | undefined} */
+    let loadPageSources;
+    dataProcessor.subscribeCanonicalDashboardView.mockImplementation(
+      (_id, _sources, _context, listener) => {
+        listener({ [alias]: page });
+        return () => {};
+      },
+    );
+    dataProcessor.loadCanonicalDashboardPage.mockResolvedValue({
+      [alias]: {
+        ...page,
+        rows: [{ run: "1" }],
+        continuationToken: undefined,
+      },
+    });
+
+    await startDashboardData(options({
+      pageSourceNames: () => ["runs-table"],
+      pagePaginatedSourceBindings: () => ({
+        [alias]: { sourceName: "runs-table", viewId: "timeline" },
+      }),
+      render: (_sources, state, loader) => {
+        calls.push(`render:${state}`);
+        loadPageSources = loader;
+      },
+    }));
+
+    if (!loadPageSources) throw new Error("Page source loader was not registered.");
+    const sources = await loadPageSources("runs", {
+      signal: new AbortController().signal,
+      onUpdate: () => {},
+    });
+    await sources[alias].loadContinuation("next");
+
+    expect(dataProcessor.subscribeCanonicalDashboardView).toHaveBeenCalledWith(
+      "page:runs",
+      ["runs-table"],
+      expect.anything(),
+      expect.any(Function),
+      { [alias]: { limit: 25 } },
+      expect.objectContaining({ pageId: "runs" }),
+    );
+    expect(dataProcessor.loadCanonicalDashboardPage).toHaveBeenLastCalledWith(
+      ["runs-table"],
+      expect.anything(),
+      { [alias]: { limit: 25, continuationToken: "next" } },
+      expect.objectContaining({ pageId: "runs", viewId: "timeline" }),
+    );
   });
 });

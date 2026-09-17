@@ -1,4 +1,4 @@
-      import { dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
+      import { dashboardPagePaginatedSourceBindings, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { setLoadingProgressState } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
       import { processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
@@ -1071,7 +1071,7 @@
             dashboardContext,
             preparePage: ensureDashboardPageLoaded,
             pageSourceNames: (pageId) => dashboardPageSourceNames(dashboardDocument, pageId),
-            pageLazySourceNames: (pageId) => dashboardPageLazySourceNames(dashboardDocument, pageId),
+            pagePaginatedSourceBindings: (pageId) => dashboardPagePaginatedSourceBindings(dashboardDocument, pageId),
             render: (sources, state, loadPageSources, retryRefresh) => {
               renderSources(sources, state, true, loadPageSources, retryRefresh);
             },

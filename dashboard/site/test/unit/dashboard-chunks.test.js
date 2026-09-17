@@ -10,6 +10,7 @@ import {
   resolveDashboardDocument,
   splitDashboardDocument,
 } from '../../src/dashboard-chunks.js';
+import { dashboardPagePaginatedSourceBindings } from '../../src/presenter.js';
 
 /** @returns {import('../../src/dashboard-chunks.js').DashboardDocument} */
 function sampleDocument() {
@@ -40,8 +41,8 @@ function sampleDocument() {
           kind: 'custom',
           title: 'Beta',
           views: [
-            { element: 'chart', data: { source: 'beta-source' } },
-            { element: 'list', 'lazy-list': true, data: { source: 'gamma-source' } },
+            { id: 'timeline', mark: 'chart', chart: 'swimlane', data: { source: 'gamma-source' } },
+            { id: 'rows', mark: 'table', controls: 'interactive', 'lazy-list': true, data: { source: 'gamma-source' } },
           ],
         },
         {
@@ -71,6 +72,14 @@ describe('dashboard-chunks source discovery', () => {
   it('collects lazy-list source names separately from eager sources', () => {
     expect(dashboardPageLazySourceNames(sampleDocument(), 'beta-page')).toEqual(['gamma-source']);
     expect(dashboardPageLazySourceNames(sampleDocument(), 'alpha-page')).toEqual([]);
+  });
+
+  it('maps lazy tables and incremental charts to independently paginated view aliases', () => {
+    expect(dashboardPagePaginatedSourceBindings(sampleDocument(), 'beta-page')).toEqual({
+      'view:beta-page:timeline:gamma-source': { sourceName: 'gamma-source', viewId: 'timeline' },
+      'view:beta-page:rows:gamma-source': { sourceName: 'gamma-source', viewId: 'rows' }
+    });
+    expect(dashboardPagePaginatedSourceBindings(sampleDocument(), 'alpha-page')).toEqual({});
   });
 
   it('collects table-mark source names for a single page or across all pages', () => {
