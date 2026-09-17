@@ -22,8 +22,16 @@ const sources = {
   repositories: { rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }], metadata },
   workflows: {
     rows: [{
-      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-      package: 'dashboard', 'package-name': 'CAO Dashboard', 'workflow-role': 'worker', 'rollout-mode': 'review'
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.lock.yml',
+      package: 'dashboard', 'package-name': 'CAO Dashboard', 'workflow-id': '501',
+      'workflow-name': 'Published registry name', 'workflow-role': 'worker',
+      'workflow-registry-state': 'active', 'workflow-active': 'true',
+      'workflow-link': {
+        relation: 'workflow',
+        href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
+      },
+      'created-at': '2026-09-01T00:00:00Z', 'updated-at': '2026-09-08T00:00:00Z',
+      'rollout-mode': 'review'
     }],
     metadata
   },
@@ -216,7 +224,17 @@ describe('canonical view sources', () => {
       expect.objectContaining({
         package: 'dashboard',
         'package-name': 'CAO Dashboard',
-        'workflow-role': 'worker'
+        workflow: '.github/workflows/dashboard.md',
+        'workflow-id': '501',
+        'workflow-name': 'Published registry name',
+        'workflow-role': 'worker',
+        'workflow-registry-state': 'active',
+        'created-at': '2026-09-01T00:00:00Z',
+        'updated-at': '2026-09-08T00:00:00Z',
+        'workflow-link': {
+          relation: 'workflow',
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
+        }
       })
     ]);
   });

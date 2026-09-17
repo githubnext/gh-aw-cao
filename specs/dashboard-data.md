@@ -310,7 +310,9 @@ repository enrollment. Cached gh-aw JSONL SHALL provide observed runtime
 evidence: Repository, Workflow, Run, Job, Session, and Event observations. A
 declared or registered Workflow MAY exist without an observed Run. Queries MUST
 preserve that distinction and registry coverage metadata rather than fabricate
-runtime or inventory completeness.
+runtime or inventory completeness. Deleted registry entries SHALL NOT appear as
+current Workflows, and local compilation SHALL NOT convert missing or unknown
+registry evidence into an active runtime state.
 
 Each resolved Repository SHALL have an independent `--cached-logs` wildcard
 prefix in the shared shard directory. Repeated collection SHALL reuse known

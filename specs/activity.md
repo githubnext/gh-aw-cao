@@ -84,6 +84,9 @@ evidence remain bounded to declarations in the checked-out control repository.
 Registry enumeration MUST be paginated and report availability, completeness,
 and per-repository failures. A failed registry read MUST remain partial or
 unavailable evidence and MUST NOT be represented as a complete empty registry.
+Deleted registry entries MUST NOT be represented as current Workflows, and an
+unknown registry state MUST remain unknown rather than being inferred from
+local compilation status.
 Activity MUST NOT invoke per-workflow run-list, per-run detail, Jobs, or another
 remote fallback collector to fill missing runtime fields.
 

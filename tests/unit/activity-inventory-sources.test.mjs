@@ -101,6 +101,37 @@ test("paginates workflow registries until total_count is observed", async () => 
   assert.equal(registries[0].workflows.length, 101);
 });
 
+test("excludes deleted workflows without degrading registry completeness", async () => {
+  const registries = await discoverWorkflowRegistries([{ full_name: "acme/app" }], {
+    token: "test-token",
+    fetchImplementation: async () => new Response(JSON.stringify({
+      total_count: 1,
+      workflows: [workflow(101, ".github/workflows/deleted.yml", { state: "deleted" })],
+    })),
+  });
+
+  assert.equal(registries[0].state, "complete");
+  assert.equal(registries[0].observed, 1);
+  assert.deepEqual(registries[0].workflows, []);
+});
+
+test("includes the control repository when target discovery omits it", async () => {
+  const requestedRepositories = [];
+  const registries = await discoverWorkflowRegistries([{ full_name: "acme/app" }], {
+    token: "test-token",
+    controlRepository: "acme/control",
+    fetchImplementation: async (url) => {
+      const repository = String(url).match(/repos\/([^/]+\/[^/]+)\/actions/)?.[1];
+      assert.ok(repository);
+      requestedRepositories.push(repository);
+      return new Response(JSON.stringify({ total_count: 0, workflows: [] }));
+    },
+  });
+
+  assert.deepEqual(requestedRepositories, ["acme/app", "acme/control"]);
+  assert.deepEqual(registries.map((registry) => registry.repository), ["acme/app", "acme/control"]);
+});
+
 test("represents inaccessible repositories and workflow registries as partial evidence", async () => {
   const discoveredRepositories = await discoverRepositories({
     allowed_repositories: ["acme/app", "acme/private"],
@@ -232,6 +263,79 @@ test("merges control registry metadata without replacing package ownership", () 
   });
 });
 
+test("preserves an unknown registry state instead of inferring active from compilation", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "acme/control",
+    generatedAt: "2026-09-17T00:00:00Z",
+    inventory: {
+      workflows: [{
+        id: "worker",
+        name: "Declared Worker",
+        sourcePath: ".github/workflows/worker.md",
+        compiled: true,
+      }],
+      bundles: [],
+    },
+    controlSettings: {},
+    discoveredRepositories: [{ full_name: "acme/control", visibility: "private" }],
+    workflowRegistries: [{
+      repository: "acme/control",
+      expected: 1,
+      observed: 1,
+      pages: 1,
+      state: "complete",
+      failure: null,
+      workflows: [{
+        repository: "acme/control",
+        id: 501,
+        name: "Registered Worker",
+        path: ".github/workflows/worker.lock.yml",
+        state: "unknown",
+        htmlUrl: "https://github.com/acme/control/actions/workflows/501",
+        createdAt: null,
+        updatedAt: null,
+      }],
+    }],
+  });
+
+  assert.equal(sources.workflows.rows[0]["workflow-active"], "unknown");
+});
+
+test("does not infer active state when registry evidence is unavailable", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "acme/control",
+    generatedAt: "2026-09-17T00:00:00Z",
+    inventory: {
+      workflows: [{
+        id: "worker",
+        name: "Declared Worker",
+        sourcePath: ".github/workflows/worker.md",
+        compiled: true,
+      }],
+      bundles: [],
+    },
+    controlSettings: {},
+    discoveredRepositories: [{ full_name: "acme/control", visibility: "private" }],
+    workflowRegistries: [{
+      repository: "acme/control",
+      expected: null,
+      observed: 0,
+      pages: 0,
+      state: "unavailable",
+      failure: {
+        repository: "acme/control",
+        state: "unavailable",
+        "failure-class": "permission",
+        status: 403,
+        reason: "Unable to discover workflows for acme/control: 403",
+      },
+      workflows: [],
+    }],
+  });
+
+  assert.equal(sources.workflows.rows[0]["workflow-active"], "unknown");
+});
+
 test("remote registry and run-derived workflows share one canonical identity", () => {
   const generatedAt = "2026-09-17T00:00:00Z";
   const sources = buildInventoryDashboardSources({
@@ -281,5 +385,7 @@ test("remote registry and run-derived workflows share one canonical identity", (
   assert.equal(canonical.workflows[0].name, "CI");
   assert.equal(canonical.workflows[0].path, ".github/workflows/ci.yml");
   assert.equal(canonical.workflows[0].state, "active");
+  assert.equal(canonical.workflows[0].githubId, "101");
+  assert.equal(canonical.workflows[0].registryState, "active");
   assert.equal(canonical.runs[0].workflowId, canonical.workflows[0].id);
 });

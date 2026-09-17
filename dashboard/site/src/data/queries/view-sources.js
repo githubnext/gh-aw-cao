@@ -1,4 +1,5 @@
 import { ingestDashboardSources } from '../ingest/coordinator.js';
+import { workflowSourcePath } from '../model/ids.js';
 import { createCanonicalQueries } from './index.js';
 
 /**
@@ -191,25 +192,35 @@ function packagesSource(packages, sources) {
  */
 function workflowsSource(workflows, repositoriesById, sources) {
   const publishedWorkflows = new Map(sourceRows(sources.workflows).map((workflow) => [
-    [workflow.organization, workflow.repository, workflow.workflow].map(normalizedKey).join(':'),
+    [
+      workflow.organization,
+      workflow.repository,
+      workflowSourcePath(String(workflow.workflow ?? ''))
+    ].map(normalizedKey).join(':'),
     workflow
   ]));
   return {
     source: 'workflows',
     rows: workflows.map((workflow) => {
       const repository = repositoriesById.get(workflow.repositoryId) ?? {};
+      const publishedWorkflow = publishedWorkflows.get([
+        repository.owner,
+        repository.name,
+        workflow.path
+      ].map(normalizedKey).join(':'));
       return {
-        ...(publishedWorkflows.get([
-          repository.owner,
-          repository.name,
-          workflow.path
-        ].map(normalizedKey).join(':')) ?? {}),
+        ...(publishedWorkflow ?? {}),
         organization: repository.owner,
         repository: repository.name,
         workflow: workflow.path,
-        'workflow-name': workflow.name,
-        'workflow-active': workflow.state === 'active' ? 'true'
-          : workflow.state === 'disabled' ? 'false' : 'unknown',
+        'workflow-id': publishedWorkflow?.['workflow-id'] ?? workflow.githubId,
+        'workflow-name': publishedWorkflow?.['workflow-name'] ?? workflow.name,
+        'workflow-active': publishedWorkflow?.['workflow-active']
+          ?? (workflow.state === 'active' ? 'true'
+            : workflow.state === 'disabled' ? 'false' : 'unknown'),
+        'workflow-registry-state': publishedWorkflow?.['workflow-registry-state'] ?? workflow.registryState,
+        'created-at': publishedWorkflow?.['created-at'] ?? workflow.createdAt,
+        'updated-at': publishedWorkflow?.['updated-at'] ?? workflow.updatedAt,
         package: workflow.package,
         'package-name': workflow.packageName,
         'package-icon': workflow.packageIcon,
@@ -220,7 +231,7 @@ function workflowsSource(workflows, repositoriesById, sources) {
         'gh-aw-version': workflow.ghAwVersion,
         'gh-aw-current-version': workflow.ghAwCurrentVersion,
         'gh-aw-update-state': workflow.ghAwUpdateState,
-        'workflow-link': workflow.workflowLink
+        'workflow-link': publishedWorkflow?.['workflow-link'] ?? workflow.workflowLink
       };
     }),
     metadata: projectionMetadata(sources, 'workflows', 'workflows', true)

@@ -243,6 +243,7 @@ function canonicalWorkflowPath(value) {
 function workflowRegistryRecord(repository, candidate) {
   const path = workflowPath(candidate?.path);
   const name = String(candidate?.name || "").trim();
+  if (candidate?.state === "deleted") return null;
   if (!path || !name) return null;
   return {
     repository,
@@ -260,17 +261,28 @@ export async function discoverWorkflowRegistries(discoveredRepositories, {
   fetchImplementation = fetch,
   token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
   apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
+  controlRepository = "",
 } = {}) {
   if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover workflows");
-  const registries = [];
+  const repositoryCandidates = new Map();
   for (const candidate of discoveredRepositories) {
+    const repository = String(repositoryFullName(candidate) || "").trim();
+    if (repository) repositoryCandidates.set(repository.toLowerCase(), candidate);
+  }
+  const controlRepositoryName = String(controlRepository || "").trim();
+  if (controlRepositoryName && !repositoryCandidates.has(controlRepositoryName.toLowerCase())) {
+    repositoryCandidates.set(controlRepositoryName.toLowerCase(), { full_name: controlRepositoryName });
+  }
+  const registries = [];
+  for (const candidate of repositoryCandidates.values()) {
     const repository = String(repositoryFullName(candidate) || "").trim();
     if (!repository) continue;
     const workflows = [];
     let expected = null;
+    let observed = 0;
     let pages = 0;
     let failure = null;
-    for (let page = 1; workflows.length < MAX_WORKFLOWS_PER_REPOSITORY; page += 1) {
+    for (let page = 1; observed < MAX_WORKFLOWS_PER_REPOSITORY; page += 1) {
       try {
         const response = await githubResponse(
           fetchImplementation,
@@ -293,11 +305,13 @@ export async function discoverWorkflowRegistries(discoveredRepositories, {
         }
         pages += 1;
         if (Number.isFinite(Number(payload.total_count))) expected = Number(payload.total_count);
-        const pageWorkflows = payload.workflows
+        const pageRecords = payload.workflows.slice(0, MAX_WORKFLOWS_PER_REPOSITORY - observed);
+        observed += pageRecords.length;
+        const pageWorkflows = pageRecords
           .map((workflow) => workflowRegistryRecord(repository, workflow))
           .filter(Boolean);
-        workflows.push(...pageWorkflows.slice(0, MAX_WORKFLOWS_PER_REPOSITORY - workflows.length));
-        if (payload.workflows.length < WORKFLOW_PAGE_SIZE || (expected !== null && workflows.length >= expected)) break;
+        workflows.push(...pageWorkflows);
+        if (payload.workflows.length < WORKFLOW_PAGE_SIZE || (expected !== null && observed >= expected)) break;
       } catch (error) {
         failure = repositoryFailure(
           repository,
@@ -307,18 +321,18 @@ export async function discoverWorkflowRegistries(discoveredRepositories, {
         break;
       }
     }
-    if (!failure && expected !== null && workflows.length < expected) {
+    if (!failure && expected !== null && observed < expected) {
       failure = repositoryFailure(
         repository,
         200,
-        `Workflow discovery for ${repository} stopped after ${workflows.length} of ${expected} workflows`,
+        `Workflow discovery for ${repository} stopped after ${observed} of ${expected} workflows`,
       );
     }
     registries.push({
       repository,
       workflows,
       expected,
-      observed: workflows.length,
+      observed,
       pages,
       state: failure ? workflows.length > 0 ? "partial" : "unavailable" : "complete",
       failure,
@@ -570,9 +584,9 @@ function workflowRows(inventory, controlSettings, repository, generatedAt, workf
       ...remoteRow,
       ...localRow,
       "workflow-name": remoteRow?.["workflow-name"] || localRow["workflow-name"],
-      "workflow-active": remoteRow?.["workflow-active"] === "unknown" || !remoteRow
-        ? localRow["workflow-active"]
-        : remoteRow["workflow-active"],
+      "workflow-active": remoteRow
+        ? remoteRow["workflow-active"]
+        : workflowRegistries.length > 0 ? "unknown" : localRow["workflow-active"],
       ...(remoteRow?.["workflow-registry-state"]
         ? { "workflow-registry-state": remoteRow["workflow-registry-state"] }
         : {}),
@@ -683,7 +697,9 @@ export async function main() {
       readFile(controlSettingsPath, "utf8").then(JSON.parse),
     ]);
     const discoveredRepositories = await discoverRepositories(controlSettings);
-    const workflowRegistries = await discoverWorkflowRegistries(discoveredRepositories);
+    const workflowRegistries = await discoverWorkflowRegistries(discoveredRepositories, {
+      controlRepository: repository,
+    });
     const sources = buildInventoryDashboardSources({
       inventory,
       controlSettings,

@@ -28,11 +28,15 @@ const STORES = /** @type {const} */ ([
   'sessions',
   'events'
 ]);
-const WORKFLOW_PACKAGE_FIELDS = /** @type {const} */ ([
+const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
   'packageId',
   'package',
   'packageName',
-  'packageIcon'
+  'packageIcon',
+  'githubId',
+  'registryState',
+  'createdAt',
+  'updatedAt'
 ]);
 const RECORD_OVERHEAD_BYTES = 512;
 
@@ -180,10 +184,15 @@ function upsertRecords(
       // Discovery owns repository metadata, so run-derived observations may only
       // backfill missing repository records and must never overwrite existing ones.
       if (storeName === 'repositories' && preserveRepositoryRecords && records.has(id)) continue;
+      // Inventory discovery owns package membership and registry metadata.
+      // Run-derived observations may enrich other workflow fields only.
       if (storeName === 'workflows' && preserveWorkflowPackageMappings) {
         const existing = records.get(id);
         if (existing) {
-          const preserved = Object.fromEntries(WORKFLOW_PACKAGE_FIELDS
+          const inventoryFields = existing.registryState === undefined
+            ? WORKFLOW_INVENTORY_FIELDS
+            : [...WORKFLOW_INVENTORY_FIELDS, 'state', 'name', 'path', 'workflowLink'];
+          const preserved = Object.fromEntries(inventoryFields
             .filter((field) => existing[field] !== undefined)
             .map((field) => [field, existing[field]]));
           records.set(id, { ...record, ...preserved });
