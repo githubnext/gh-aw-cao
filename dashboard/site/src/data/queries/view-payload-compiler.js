@@ -375,7 +375,8 @@ function compileTimePredicates(time) {
 /** @param {string} routeField @param {string} routeValue */
 function compileRoutePredicates(routeField, routeValue) {
   const value = decodeRouteValue(routeValue.trim());
-  if (!routeField || !value) return [];
+  if (!routeField) return [];
+  if (!value) return [{ field: routeField, equals: '' }];
   if (routeField === 'workflow') {
     const separator = value.indexOf(':');
     const repository = separator > 0 ? value.slice(0, separator) : '';

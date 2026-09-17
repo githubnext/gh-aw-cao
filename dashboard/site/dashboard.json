@@ -5511,6 +5511,94 @@
         ]
       },
       {
+        "id": "package-dispatches",
+        "kind": "custom",
+        "title": "Package",
+        "description": "Workflow dispatch runs for this package.",
+        "icon": "play",
+        "class-name": "package-runs-page",
+        "route": {
+          "hash-query-parameter": "package"
+        },
+        "views": [
+          {
+            "id": "package-dispatch-compatibility-status",
+            "title": "Workflow dispatch status",
+            "description": "Observed workflow-dispatch conclusions for this package.",
+            "data": {
+              "source": "dispatches",
+              "route-field": "package"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "status",
+                "type": "nominal",
+                "title": "Status"
+              },
+              "y": {
+                "field": "run",
+                "type": "quantitative",
+                "aggregate": "distinct-count",
+                "title": "Dispatches"
+              }
+            }
+          },
+          {
+            "id": "package-dispatch-compatibility-navigation",
+            "title": "Package workflow runs",
+            "data": {
+              "sources": ["workflows"]
+            },
+            "mark": "element",
+            "element": "package-route",
+            "layout": "full",
+            "config": {
+              "body": "dispatches"
+            }
+          },
+          {
+            "id": "package-dispatch-compatibility-table",
+            "title": "Workflow dispatches",
+            "data": {
+              "source": "dispatches",
+              "route-field": "package"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No workflow dispatch runs were observed for this package.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Started"
+                },
+                {
+                  "field": "workflow-name",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
+          }
+        ]
+      },
+      {
         "id": "package-repositories",
         "kind": "custom",
         "title": "Package",

@@ -90,6 +90,7 @@ it('injects route and runtime predicates before a declared aggregate executes', 
       timeWindow: { start: '2026-09-01T00:00:00Z', end: '2026-10-01T00:00:00Z' }
     }
   });
+
   const results = executeDashboardQueries(payload.queries, {
     runs: {
       source: 'runs',
@@ -104,6 +105,32 @@ it('injects route and runtime predicates before a declared aggregate executes', 
   }, payload.aliases);
 
   expect(results[payload.aliases[0]].rows).toEqual([{ count: 1 }]);
+});
+
+it('fails closed when a route-scoped view has no route value', () => {
+  const page = {
+    route: { 'hash-query-parameter': 'package' },
+    views: [{
+      id: 'package-issues',
+      data: { source: 'outcomes', 'route-field': 'package' }
+    }]
+  };
+  const payload = compileDashboardViewPayloadQueries(page, 'package-issues');
+  const results = executeDashboardQueries(payload.queries, {
+    outcomes: {
+      source: 'outcomes',
+      rows: [
+        { package: 'alpha', 'safe-output': 'issue-1' },
+        { package: 'beta', 'safe-output': 'issue-2' }
+      ],
+      metadata
+    }
+  }, payload.aliases);
+
+  expect(/** @type {any} */ (payload.queries[0]).filter.predicates).toEqual([
+    { field: 'package', equals: '' }
+  ]);
+  expect(results[payload.aliases[0]].rows).toEqual([]);
 });
 
 it('applies the selected horizon before derived repository totals aggregate runs', () => {

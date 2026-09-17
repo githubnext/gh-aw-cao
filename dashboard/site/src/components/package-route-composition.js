@@ -10,7 +10,11 @@ import { renderPackageReadme } from './package-readme.js';
 import { renderWorkflowValueReport } from './workflow-runtime.js';
 
 /**
- * @typedef {'overview'|'issues'|'pull-requests'|'runs'|'repositories'|'insights'|'reports'} PackageRouteBody
+ * @typedef {'overview'|'issues'|'pull-requests'|'runs'|'repositories'|'insights'|'reports'|'workflows'|'dispatches'} PackageRouteBody
+ */
+
+/**
+ * @typedef {'overview'|'issues'|'pull-requests'|'runs'|'repositories'|'insights'|'reports'} PackageRouteTab
  */
 
 /**
@@ -18,7 +22,7 @@ import { renderWorkflowValueReport } from './workflow-runtime.js';
  *   rootClassName: string,
  *   selectMessage: string,
  *   description: string,
- *   currentTab: PackageRouteBody,
+ *   currentTab: PackageRouteTab,
  *   bodyRenderer: PackageRouteBodyRenderer | undefined
  * }} PackageRouteComposition
  */
@@ -89,6 +93,20 @@ const PACKAGE_ROUTE_COMPOSITIONS = {
     selectMessage: 'Select a package to view its reports.',
     description: 'Durable reports produced by the {packageName} package.',
     currentTab: 'reports',
+    bodyRenderer: undefined
+  },
+  workflows: {
+    rootClassName: 'package-detail',
+    selectMessage: 'Select a package to view its overview.',
+    description: 'Overview of the {packageName} package.',
+    currentTab: 'overview',
+    bodyRenderer: ({ packageId, packageName, workflows }) => renderPackageReadme({ packageId, packageName, workflows })
+  },
+  dispatches: {
+    rootClassName: 'package-runs',
+    selectMessage: 'Select a package to view its workflow runs.',
+    description: 'Workflow runs for the {packageName} package.',
+    currentTab: 'runs',
     bodyRenderer: undefined
   }
 };

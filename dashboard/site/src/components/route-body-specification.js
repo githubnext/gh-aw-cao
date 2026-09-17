@@ -14,6 +14,7 @@ export const PACKAGE_ROUTE_TABS = Object.freeze([
   { id: 'reports', label: 'Reports', icon: 'file', page: 'package-reports' }
 ]);
 export const PACKAGE_ROUTE_BODY_VALUES = PACKAGE_ROUTE_TABS.map((tab) => tab.id);
+PACKAGE_ROUTE_BODY_VALUES.push('workflows', 'dispatches');
 export const OUTCOME_DETAIL_SECTION_BODY_VALUES = ['discussion', 'metadata'];
 export const PACKAGE_ROUTE_VARIANT_VALUES = PACKAGE_ROUTE_BODY_VALUES;
 export const WORK_VIEW_BODY_VALUES = ['board', 'tasks', 'roadmap'];

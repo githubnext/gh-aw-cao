@@ -1290,7 +1290,7 @@ dashboard:
           mark: element
           element: package-route
           config:
-            body: workflows
+            body: activity
 `);
     expect(invalidBody.ok).toBe(false);
     if (!invalidBody.ok) {
