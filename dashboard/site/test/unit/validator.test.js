@@ -1203,14 +1203,13 @@ dashboard:
       'runs',
       'engines-models',
       'firewall',
-      'mcps',
-      'events'
+      'mcps'
     ]);
     expect(document.dashboard.navigation.find(
       (/** @type {{ label?: string }} */ section) => section.label === 'Investigate'
     )).toMatchObject({
       experimental: true,
-      pages: expect.arrayContaining(['sessions'])
+      pages: expect.arrayContaining(['events', 'sessions'])
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
