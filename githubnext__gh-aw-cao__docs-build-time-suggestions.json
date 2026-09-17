@@ -1,6 +1,6 @@
 {
-  "source_sha": "ccd11876e259626b5f0863ea9b5b468246ce6035",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "418876ad329797b0874fd3f56d3670351754c7ce",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
       "evaluated_at": "2026-09-17T12:52:00Z",
@@ -46,6 +46,23 @@
       ],
       "outcome": "issue: evidence window 2026-09-17T12:11:56Z to 2026-09-17T13:03:20Z. Analyzed 6 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (1 push, 3 schedule, 2 workflow_run), while disclosing skipped, cancelled, and action_required workflow_run outliers. Parent workflow median duration was 99.5s (p90 123.5s), build median 63.5s (p90 69.5s), deploy-job median 27.5s (p90 46.5s), and queue median 0s (p90 0s). Trusted step metadata showed Restore cached CAO Dashboard returned success immediately in 6/6 samples but did not prevent Find latest CAO Dashboard run + Mount latest CAO Dashboard artifact (median 9s combined) or Upload Pages artifact (31.5s median, about 50% of build job). The repeated cost indicates the cached dashboard path is ineffective because the downstream Pages upload still repackages the large dashboard payload every run. A build/deploy split that lets Documentation Pages deploy the already-produced dashboard artifact directly from CAO Dashboard while rebuilding docs only when docs inputs change is expected to save roughly 39-41s per run (~39% of workflow median) without reducing freshness or deployment safety.",
       "suggestion_fingerprint": "c1979ae4b7fcb3efb1c3"
+    },
+    {
+      "evaluated_at": "2026-09-17T13:37:30Z",
+      "worker_run_id": 35227912610,
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        35227812057,
+        35227767558,
+        35226808314,
+        35224564776,
+        35223705265,
+        35221849947,
+        35220468568,
+        35219760205
+      ],
+      "outcome": "no-op: evidence window 2026-09-17T12:11:56Z to 2026-09-17T13:36:58Z. Analyzed 8 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (5 schedule, 3 workflow_run), while disclosing 4 skipped and 4 action_required workflow_run outliers. Parent workflow median duration was 99.5s (p90 158.1s), build median 63.5s (p90 77.0s), deploy-job median 10.5s (p90 52.1s), and queue median 3.5s (p90 38.8s). Trusted step metadata showed Upload Pages artifact remained the dominant repeated cost at 32.0s median (p90 32.3s), but the next-category focus artifact transfer and Pages packaging does not yield a fresh actionable recommendation because open issue fingerprint c1979ae4b7fcb3efb1c3 already covers the material improvement: avoid repackaging the large reused dashboard payload by deploying the CAO Dashboard artifact directly. Deploy Pages itself split into two clusters: 9-11s for schedule runs and 46-64s for workflow_run-triggered runs, which is material evidence to preserve but not a distinct workflow change with >=60s or >=15% additional savings beyond the existing issue. No non-duplicate artifact-transfer recommendation met the threshold safely.",
+      "suggestion_fingerprint": ""
     }
   ]
 }
