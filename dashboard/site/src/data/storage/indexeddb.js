@@ -335,9 +335,10 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
  *
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, previousBatch?: import('../model/schema.js').CanonicalBatch }} [options]
+ * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, previousBatch?: import('../model/schema.js').CanonicalBatch, signal?: AbortSignal }} [options]
  */
 export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
+  options.signal?.throwIfAborted();
   const errors = relationshipErrors(batch);
   if (errors.length > 0) throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
   const batchSize = options.batchSize ?? DEFAULT_WRITE_BATCH_SIZE;
@@ -362,6 +363,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
     for (const storeName of ENTITY_STORES) {
+      options.signal?.throwIfAborted();
       const records = batch[storeName];
       const retained = new Set(records.map((record) => String(record.id)));
       // Evict first so reclaimed space is available to the writes that follow.
@@ -377,6 +379,7 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
       });
       const changedRecords = recordsToWrite[storeName];
       for (let offset = 0; offset < changedRecords.length; offset += batchSize) {
+        options.signal?.throwIfAborted();
         const boundedRecords = changedRecords.slice(offset, offset + batchSize);
         const transaction = database.transaction(storeName, 'readwrite');
         const store = transaction.objectStore(storeName);

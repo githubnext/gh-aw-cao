@@ -503,6 +503,7 @@ export function processDataRequest(request, signal) {
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
                 onWriteProgress: (/** @type {{ storedRecords: number, totalRecords: number }} */ written) => progress.store(written),
                 onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+                signal,
                 payloadIdentity: shard.hash,
                 payloadScope: shardUrl.href
               };
@@ -547,7 +548,8 @@ export function processDataRequest(request, signal) {
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               payloadScope: inventoryUrl.href,
               onWriteProgress: (written) => progress.store(written),
-              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE)
+              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+              signal
             });
             changed ||= inventoryIngestion.updated;
             progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
@@ -561,13 +563,15 @@ export function processDataRequest(request, signal) {
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
             payloadScope: sourceUrl.href,
             onWriteProgress: (written) => progress.store(written),
-            onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE)
+            onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+            signal
           });
           changed ||= ingestion.updated;
           progress.log('skipped' in ingestion && ingestion.skipped
             ? 'Dashboard source data is already current.'
             : `Dashboard ingestion committed ${ingestion.committedRecords} canonical records.`);
         }
+        if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
         progress.log('Refreshing active dashboard queries.');
         const nextRevision = (liveDashboard?.revision ?? 0)
           + (!dashboardActivated || changed ? 1 : 0);
