@@ -204,7 +204,9 @@ function runAggregates(run) {
   const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
     ? /** @type {Record<string, unknown>} */ (run.audit)
     : {};
-  const firewallValue = run.firewall_analysis ?? audit.firewall_analysis;
+  const firewallValue = Object.hasOwn(run, 'firewall_analysis')
+    ? run.firewall_analysis
+    : audit.firewall_analysis;
   const firewall = firewallValue && typeof firewallValue === 'object' && !Array.isArray(firewallValue)
     ? /** @type {Record<string, unknown>} */ (firewallValue)
     : {};
@@ -224,25 +226,15 @@ function runAggregates(run) {
     firewallBlockedCalls += Math.max(0, finiteNumber(counts.blocked) ?? 0);
   }
 
-  const runMcp = run.mcp_tool_usage && typeof run.mcp_tool_usage === 'object'
-    && !Array.isArray(run.mcp_tool_usage)
-    ? /** @type {Record<string, unknown>} */ (run.mcp_tool_usage)
+  const mcpValue = Object.hasOwn(run, 'mcp_tool_usage')
+    ? run.mcp_tool_usage
+    : audit.mcp_tool_usage;
+  const mcp = mcpValue && typeof mcpValue === 'object' && !Array.isArray(mcpValue)
+    ? /** @type {Record<string, unknown>} */ (mcpValue)
     : {};
-  const auditMcp = audit.mcp_tool_usage && typeof audit.mcp_tool_usage === 'object'
-    && !Array.isArray(audit.mcp_tool_usage)
-    ? /** @type {Record<string, unknown>} */ (audit.mcp_tool_usage)
-    : {};
-  const mcp = Array.isArray(runMcp.tool_calls) && runMcp.tool_calls.length > 0 ? runMcp : auditMcp;
   const toolCalls = Array.isArray(mcp.tool_calls) ? mcp.tool_calls : [];
-  const hasMcpAggregate = (
-    run.mcp_tool_usage !== null
-      && typeof run.mcp_tool_usage === 'object'
-      && !Array.isArray(run.mcp_tool_usage)
-  ) || (
-    audit.mcp_tool_usage !== null
-      && typeof audit.mcp_tool_usage === 'object'
-      && !Array.isArray(audit.mcp_tool_usage)
-  );
+  const hasMcpAggregate = mcpValue !== null && typeof mcpValue === 'object'
+    && !Array.isArray(mcpValue);
   const mcpResponseBytes = toolCalls.reduce((total, value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return total;
     return total + Math.max(0, finiteNumber(/** @type {Record<string, unknown>} */ (value).output_size) ?? 0);
@@ -268,7 +260,7 @@ function runAggregates(run) {
   const priorityCount = (priority) => auditItems.filter((item) =>
     optionalString(item.severity ?? item.priority)?.toLowerCase() === priority).length;
   const startedAt = timestamp(run.started_at ?? run.created_at);
-  const completedAt = run.status === 'completed' ? timestamp(run.updated_at ?? run.completed_at) : null;
+  const completedAt = run.status === 'completed' ? timestamp(run.completed_at ?? run.updated_at) : null;
 
   return {
     agenticDurationSeconds: startedAt && completedAt

@@ -898,6 +898,7 @@ async function ingestNormalizedShardDirectories(indexedDB, directories, options 
         JSON.parse(content.toString('utf8')),
         {
           ...options,
+          expectedPhase: phase,
           payloadScope: `gh-aw-${phase}:${name}`,
           payloadIdentity
         }
@@ -972,7 +973,11 @@ async function hashActivityPayloads({
       .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSON_INGESTION_VERSION}\0${JSON.stringify(workflowHints)}`)
       .digest('hex')
       .slice(0, 16);
-    const retainedPayloads = new Set();
+    const retainedPayloads = {
+      normalized: new Set(),
+      runs: new Set(),
+      events: new Set()
+    };
     if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
     if (runsDirectory) await mkdir(runsDirectory, { recursive: true });
     if (eventsDirectory) await mkdir(eventsDirectory, { recursive: true });
@@ -982,12 +987,15 @@ async function hashActivityPayloads({
       hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
       if (!normalizedDirectory && !runsDirectory && !eventsDirectory) continue;
       const payloadName = `${rawHash}-${normalizationContext}.json`;
-      retainedPayloads.add(payloadName);
+      const phasedPayloadName = `${path.parse(name).name}-${payloadName}`;
       const outputPaths = [
         normalizedDirectory ? ['normalized', path.join(normalizedDirectory, payloadName)] : null,
-        runsDirectory ? ['runs', path.join(runsDirectory, payloadName)] : null,
-        eventsDirectory ? ['events', path.join(eventsDirectory, payloadName)] : null
+        runsDirectory ? ['runs', path.join(runsDirectory, phasedPayloadName)] : null,
+        eventsDirectory ? ['events', path.join(eventsDirectory, phasedPayloadName)] : null
       ].filter(Boolean);
+      for (const [phase, outputPath] of outputPaths) {
+        retainedPayloads[phase].add(path.basename(outputPath));
+      }
       const missing = [];
       for (const output of outputPaths) {
         try {
@@ -1044,12 +1052,16 @@ async function hashActivityPayloads({
         }));
       }
       for (const [, outputPath] of outputPaths) {
-        hashes[`${path.basename(path.dirname(outputPath))}/${payloadName}`] = await hashFile(outputPath);
+        hashes[`${path.basename(path.dirname(outputPath))}/${path.basename(outputPath)}`] = await hashFile(outputPath);
       }
     }
-    for (const directory of [normalizedDirectory, runsDirectory, eventsDirectory].filter(Boolean)) {
+    for (const [phase, directory] of [
+      ['normalized', normalizedDirectory],
+      ['runs', runsDirectory],
+      ['events', eventsDirectory]
+    ].filter(([, directory]) => Boolean(directory))) {
       for (const name of await readdir(directory)) {
-        if (name.endsWith('.json') && !retainedPayloads.has(name)) {
+        if (name.endsWith('.json') && !retainedPayloads[phase].has(name)) {
           await rm(path.join(directory, name), { force: true });
         }
       }

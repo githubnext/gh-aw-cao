@@ -45,6 +45,7 @@ async function* responseChunks(body) {
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
 let dashboardActivated = false;
+let runPhaseOnly = false;
 const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
  * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
@@ -83,6 +84,19 @@ function requestedSourceNames(sourceNames) {
     throw new TypeError('Canonical dashboard source names must be an array of strings.');
   }
   return new Set(sourceNames);
+}
+
+const RUN_PHASE_CANONICAL_SOURCES = new Set(['packages', 'repositories', 'workflows', 'runs']);
+
+/** @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription */
+function isRunPhaseSubscription(subscription) {
+  const queryNames = new Set(subscription.context.queries
+    .filter((definition) => definition && typeof definition === 'object' && !Array.isArray(definition))
+    .map((definition) => /** @type {{ name?: unknown }} */ (definition).name)
+    .filter((name) => typeof name === 'string'));
+  return resolveDashboardQuerySources(subscription.context.queries, subscription.sourceNames)
+    .filter((name) => !queryNames.has(name))
+    .every((name) => RUN_PHASE_CANONICAL_SOURCES.has(name));
 }
 
 /**
@@ -315,9 +329,12 @@ export function publishedNormalizedShards(hashes) {
 }
 
 /** @param {unknown} hashes @param {'runs' | 'events'} phase */
-function publishedPhasedShards(hashes, phase) {
+function publishedPhaseShards(hashes, phase) {
   if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
-  const pattern = new RegExp(`^gh-aw-logs-${phase}/[a-f0-9]{64}-[a-f0-9]{16}\\.json$`, 'i');
+  const pattern = new RegExp(
+    `^gh-aw-logs-${phase}/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\\.json$`,
+    'i'
+  );
   return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
     .filter(([name, hash]) => pattern.test(name)
       && typeof hash === 'string'
@@ -328,12 +345,24 @@ function publishedPhasedShards(hashes, phase) {
 
 /** @param {unknown} hashes */
 export function publishedRunInformationShards(hashes) {
-  return publishedPhasedShards(hashes, 'runs');
+  return publishedPhaseShards(hashes, 'runs');
 }
 
 /** @param {unknown} hashes */
 export function publishedEventShards(hashes) {
-  return publishedPhasedShards(hashes, 'events');
+  return publishedPhaseShards(hashes, 'events');
+}
+
+/** @param {unknown} hashes */
+export function publishedPhasedActivityShards(hashes) {
+  const runs = publishedRunInformationShards(hashes);
+  const events = publishedEventShards(hashes);
+  const fileName = (/** @type {{ name: string }} */ shard) => shard.name.slice(shard.name.lastIndexOf('/') + 1);
+  return runs.length > 0
+    && runs.length === events.length
+    && runs.every((shard, index) => fileName(shard) === fileName(events[index]))
+    ? [...runs, ...events]
+    : [];
 }
 
 /**
@@ -416,10 +445,7 @@ export function processDataRequest(request, signal) {
             ? await payloadHashesResponse.json().catch(() => null)
             : null;
           const runInformationShards = publishedRunInformationShards(payloadHashes);
-          const eventShards = publishedEventShards(payloadHashes);
-          const phasedShards = runInformationShards.length > 0 && eventShards.length > 0
-            ? [...runInformationShards, ...eventShards]
-            : [];
+          const phasedShards = publishedPhasedActivityShards(payloadHashes);
           const normalizedShards = publishedNormalizedShards(payloadHashes);
           const publishedShards = phasedShards.length > 0
             ? phasedShards
@@ -514,16 +540,21 @@ export function processDataRequest(request, signal) {
           for (const { index, shard, shardUrl, current, sizeBytes } of shardStates) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             if (runPhaseShardCount > 0 && index === runPhaseShardCount) {
-              progress.log('Run information is available; refreshing active dashboard queries.');
-              liveDashboard = {
-                logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-                revision: (liveDashboard?.revision ?? 0) + 1
-              };
-              dashboardActivated = true;
-              scheduleDashboardSubscriptions();
-              await flushDashboardSubscriptions(true);
-              if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
               const eventPendingShards = pendingShards.filter((state) => state.index >= runPhaseShardCount);
+              if (eventPendingShards.length > 0 && (!dashboardActivated || changed)) {
+                progress.log('Run information is available; refreshing active dashboard queries.');
+                liveDashboard = {
+                  logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+                  revision: (liveDashboard?.revision ?? 0) + 1
+                };
+                dashboardActivated = true;
+                runPhaseOnly = true;
+                scheduleDashboardSubscriptions([...dashboardSubscriptions]
+                  .filter(([, subscription]) => isRunPhaseSubscription(subscription))
+                  .map(([id]) => id));
+                await flushDashboardSubscriptions(true);
+                if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
+              }
               await measureShards(eventPendingShards);
               workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
                 ? pendingShards.reduce((sum, state) => sum + (state.sizeBytes ?? 0), 0)
@@ -558,6 +589,9 @@ export function processDataRequest(request, signal) {
                 ? `Shard ${index + 1} received; parsing.`
                 : `Shard ${index + 1} received (${formatDataSize(payloadBytes)}`
                   + `${compressed ? ' compressed' : ''}); parsing.`);
+              const expectedPhase = 'phase' in shard && (shard.phase === 'runs' || shard.phase === 'events')
+                ? /** @type {'runs' | 'events'} */ (shard.phase)
+                : undefined;
               const ingestionOptions = {
                 storage: globalThis.navigator?.storage,
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
@@ -565,7 +599,8 @@ export function processDataRequest(request, signal) {
                 onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
                 signal,
                 payloadIdentity: shard.hash,
-                payloadScope: shardUrl.href
+                payloadScope: shardUrl.href,
+                expectedPhase
               };
               const ingestion = normalized
                 ? await ingestNormalizedJson(indexedDB, await response.json(), ingestionOptions)
@@ -640,6 +675,7 @@ export function processDataRequest(request, signal) {
           revision: nextRevision
         };
         dashboardActivated = true;
+        runPhaseOnly = false;
         scheduleDashboardSubscriptions();
         progress.complete();
         const projected = await queryLiveDashboard(
@@ -736,7 +772,7 @@ if (typeof document === 'undefined' && workerScope) {
       const subscriptionId = event.data.subscriptionId;
       if (typeof subscriptionId !== 'string' || !subscriptionId.trim()) return;
       const context = dashboardContext(event.data.context);
-      dashboardSubscriptions.set(subscriptionId, {
+      const subscription = {
         sourceNames: [...requestedSourceNames(event.data.sourceNames)],
         context,
         requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
@@ -747,8 +783,11 @@ if (typeof document === 'undefined' && workerScope) {
         queryContext: queryContext(event.data.queryContext),
         revision: liveDashboard?.revision ?? null,
         emitted: false
-      });
-      if (liveDashboard && event.data.emitCurrent !== false) {
+      };
+      dashboardSubscriptions.set(subscriptionId, subscription);
+      if (liveDashboard
+        && event.data.emitCurrent !== false
+        && (!runPhaseOnly || isRunPhaseSubscription(subscription))) {
         scheduleDashboardSubscriptions([subscriptionId]);
       }
       return;

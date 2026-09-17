@@ -10,8 +10,8 @@ const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
 const DEBUG_PREFIX = 'cao';
 const JSONL_SHARD_PATH = /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/;
 const NORMALIZED_SHARD_PATH = /\/gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
-const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
-const EVENT_SHARD_PATH = /\/gh-aw-logs-events\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
+const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
+const EVENT_SHARD_PATH = /\/gh-aw-logs-events\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
 
 /**
  * Extracts the raw `debug` query parameter from a location search string
@@ -142,16 +142,19 @@ async function downloadData(urls) {
         : cache.put(url, response.clone())
   )));
   const runEntries = Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-runs\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+    .filter(([name, hash]) => /^gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
   const eventEntries = Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-events\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+    .filter(([name, hash]) => /^gh-aw-logs-events\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
-  const phasedEntries = runEntries.length > 0 && eventEntries.length > 0
+  const fileName = ([name]) => name.slice(name.lastIndexOf('/') + 1);
+  const phasedEntries = runEntries.length > 0
+    && runEntries.length === eventEntries.length
+    && runEntries.every((entry, index) => fileName(entry) === fileName(eventEntries[index]))
     ? [...runEntries, ...eventEntries]
     : [];
   const normalizedEntries = Object.entries(currentHashes)

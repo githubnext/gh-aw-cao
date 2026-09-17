@@ -119,10 +119,12 @@ describe('canonical entity relationships', () => {
       workflowId: 'github:workflow:2'
     });
     batch.jobs[0].runId = 'github:run:9:attempt:1';
+    batch.events[0].runId = 'github:run:9:attempt:1';
 
     expect(relationshipErrors(batch)).toEqual([
       'github:run:3:attempt:1.workflowId references a workflow from another repository',
-      'session:5.jobId references a job from another run'
+      'session:5.jobId references a job from another run',
+      'event:6.sessionId references a session from another run'
     ]);
   });
 });

@@ -1048,6 +1048,8 @@ Events MUST NOT be stored as one ever-growing array inside the Session record.
 ## 12.1 Unified Transaction Log
 
 Every operational occurrence associated with a Session SHOULD become an Event.
+Every Event MUST reference both its owning Run and Session, and the referenced
+Session MUST belong to that same Run.
 
 Safe-output Events SHALL preserve the safe-output action and, when the affected
 entity is hosted by GitHub, its canonical GitHub entity type. The SQLite

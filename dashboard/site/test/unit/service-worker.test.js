@@ -114,6 +114,29 @@ describe('dashboard service worker', () => {
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/logs-1.jsonl'))).toBe(false);
   });
 
+  it('rejects unpaired phased activity shards', async () => {
+    const { listeners, fetch, entries } = serviceWorkerHarness();
+    const stem = `gh-aw-logs-1000-a-${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
+    const payloadHashes = JSON.stringify({
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
+      [`gh-aw-logs-runs/${stem}`]: 'd'.repeat(64)
+    });
+    fetch.mockImplementation(async (url) => new Response(
+      String(url).endsWith('/payload-hashes.json') ? payloadHashes : '[]'
+    ));
+
+    await dispatchExtendedEvent(listeners.message, {
+      data: {
+        type: 'DOWNLOAD_DATA',
+        urls: ['https://example.test/dashboard/payload-hashes.json']
+      },
+      ports: [{ postMessage: vi.fn() }]
+    });
+
+    expect(entries.has('https://example.test/dashboard/gh-aw-logs-shards/logs-1.jsonl')).toBe(true);
+    expect(entries.has(`https://example.test/dashboard/gh-aw-logs-runs/${stem}`)).toBe(false);
+  });
+
   it('downloads configured dashboard data during periodic background sync with no page open', async () => {
     const { listeners, worker, fetch, entries } = serviceWorkerHarness();
     const payloadHashes = JSON.stringify({

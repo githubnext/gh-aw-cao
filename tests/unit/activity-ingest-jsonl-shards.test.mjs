@@ -158,3 +158,36 @@ test('ingest-jsonl injects every run shard before event shards', async () => {
     ].sort(),
   );
 });
+
+test('phased shard names preserve source order and pair exactly', async () => {
+  const { root, shardDirectory } = await fixture();
+  const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
+  const source = await readFile(sourcePath, 'utf8');
+  await writeFile(sourcePath, source.replace('"status":"completed"', '"status":"queued"'));
+  await writeFile(
+    path.join(shardDirectory, 'gh-aw-logs-2000000000-bbbb.jsonl'),
+    source
+  );
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'hash-payloads',
+    '--shard-dir',
+    shardDirectory,
+    '--runs-dir',
+    runsDirectory,
+    '--events-dir',
+    eventsDirectory,
+  ]);
+
+  const runs = (await readdir(runsDirectory)).sort();
+  const events = (await readdir(eventsDirectory)).sort();
+  const hashes = JSON.parse(stdout);
+  assert.equal(runs.length, 2);
+  assert.deepEqual(runs, events);
+  assert.match(runs[0], /^gh-aw-logs-1000000000-aaaa-/);
+  assert.match(runs[1], /^gh-aw-logs-2000000000-bbbb-/);
+  assert.ok(hashes[`gh-aw-logs-runs/${runs[0]}`]);
+  assert.ok(hashes[`gh-aw-logs-events/${events[1]}`]);
+});

@@ -83,10 +83,19 @@ $RUNNER_TEMP/cao-activity/drain3_weights.json
 shards to their SHA-256 checksums. Run-information shards contain immutable
 agent/model identity and duration, firewall, MCP, operational-value, and audit
 priority aggregates. Every event includes its owning run identity. The
-dashboard imports all run-information shards before event shards so
-clients can detect unchanged data without downloading either complete payload.
+run and event directories contain exactly matching filename stems. The
+dashboard validates that pairing and imports all run-information shards before
+event shards so clients can query runs while detailed ingestion continues.
+Each phase filename retains the source shard's sortable prefix before its
+content and normalization hashes, preserving observation precedence across
+repeated records.
 Dashboard ingestion checks this sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is usable.
+
+The split improves time to first useful Run query rather than reducing the
+total transfer required for a complete refresh. Run results exposed between
+phases are partial snapshot state; event-dependent results become current only
+after the event phase succeeds.
 
 `activity/cao.mjs` logs shard skip/ingest decisions and per-file hash results
 through Node's built-in `util.debuglog` (see `activity/debug.mjs`), scoped

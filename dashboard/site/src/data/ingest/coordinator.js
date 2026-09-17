@@ -331,7 +331,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'events', signal?: AbortSignal }} options
  */
 export function ingestNormalizedJson(indexedDB, input, options) {
   return serializeIngestion(indexedDB, async () => {
@@ -340,7 +340,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       if (!input || typeof input !== 'object' || Array.isArray(input)) {
         throw new TypeError('Normalized activity payload must be an object');
       }
-      const payload = /** @type {{ schemaVersion?: unknown, ingestionVersion?: unknown, sourceRecords?: unknown, batch?: unknown }} */ (input);
+      const payload = /** @type {{ schemaVersion?: unknown, ingestionVersion?: unknown, sourceRecords?: unknown, phase?: unknown, batch?: unknown }} */ (input);
       if (payload.schemaVersion !== CANONICAL_SCHEMA_VERSION) {
         throw new TypeError(`Unsupported normalized activity schema: ${String(payload.schemaVersion)}`);
       }
@@ -354,6 +354,19 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'jobs', 'sessions', 'events']) {
         if (!Array.isArray(batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)])) {
           throw new TypeError(`Normalized activity payload is missing ${collection}`);
+        }
+      }
+      if (options.expectedPhase) {
+        if (payload.phase !== options.expectedPhase) {
+          throw new TypeError(`Normalized activity payload phase must be ${options.expectedPhase}`);
+        }
+        const excluded = options.expectedPhase === 'runs'
+          ? ['jobs', 'sessions', 'events']
+          : ['packages', 'repositories', 'workflows', 'runs'];
+        for (const collection of excluded) {
+          if (batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)].length > 0) {
+            throw new TypeError(`Normalized ${options.expectedPhase} payload must not include ${collection}`);
+          }
         }
       }
       if (await isNormalizedJsonCurrent(indexedDB, options)) {
