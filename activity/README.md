@@ -11,7 +11,13 @@ for each repository in the distinct union of the control repository and the
 allowed repositories resolved from `cao.json`. `cao.json` bounds collection; it
 does not declare runtime workflow or run identities. The collector then ingests
 the JSONL shards through the canonical Node.js data pipeline and consolidates
-them for publication. It uploads the completed snapshot as a one-day artifact.
+them for publication. Before log collection, it also enumerates each resolved
+repository's paginated GitHub Actions workflow registry. Those registry rows
+provide workflow paths, names, active or disabled state, and links; target-owned
+workflows remain standalone and never become CAO package workers or rollout
+authority. Per-repository registry failures are published as partial or
+unavailable source evidence rather than complete empty inventories. It uploads
+the completed snapshot as a one-day artifact.
 A dependent job downloads
 that artifact, verifies every snapshot file is present and non-empty, and
 publishes the source JSONL and its local SQLite projection to the shared cache,
@@ -43,7 +49,7 @@ Activity has two source classes:
 
 | Input | Authority | Canonical contribution |
 | --- | --- | --- |
-| `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, package configuration, declared control workflows, and maintenance evidence | Package, Repository, and declared Workflow observations |
+| `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, package configuration, declared control workflows, paginated Actions workflow registries, and maintenance evidence | Package, Repository, declared control Workflow, and standalone repository Workflow observations |
 | `gh-aw-logs-shards/*.jsonl` | Observed GitHub Actions execution and agentic audit evidence | Repository, Workflow, Run, Job, Session, and Event observations |
 
 The SQLite database and browser IndexedDB are

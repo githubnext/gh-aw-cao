@@ -13,7 +13,7 @@ beforeEach(async () => {
   });
 });
 
-it('publishes run queries while event ingestion continues', async () => {
+it('refreshes subscriptions during ingestion only when explicitly requested', async () => {
   /** @type {Map<string, (event: { data: Record<string, unknown> }) => void>} */
   const listeners = new Map();
   /** @type {Record<string, unknown>[]} */
@@ -117,6 +117,17 @@ it('publishes run queries while event ingestion continues', async () => {
     }
   });
 
+  for (let attempt = 0; attempt < 200 && !eventDownloaded; attempt += 1) {
+    await new Promise((resolve) => { setTimeout(resolve, 5); });
+  }
+  await new Promise((resolve) => { setTimeout(resolve, 75); });
+  expect(posted.some(({ subscriptionId }) => subscriptionId)).toBe(false);
+  listeners.get('message')?.({
+    data: {
+      operation: 'sync-dashboard-queries',
+      requestId: 1
+    }
+  });
   for (let attempt = 0; attempt < 200 && !posted.some(({ subscriptionId }) => subscriptionId === 'runs'); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
@@ -126,7 +137,7 @@ it('publishes run queries while event ingestion continues', async () => {
   });
   expect(eventDownloaded).toBe(true);
   expect(posted.some(({ id }) => id === 1)).toBe(false);
-  expect(posted.some(({ subscriptionId }) => subscriptionId === 'events')).toBe(false);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'events')).toBe(true);
   listeners.get('message')?.({
     data: {
       operation: 'subscribe-canonical-dashboard',
@@ -136,7 +147,7 @@ it('publishes run queries while event ingestion continues', async () => {
     }
   });
   await new Promise((resolve) => { setTimeout(resolve, 75); });
-  expect(posted.some(({ subscriptionId }) => subscriptionId === 'events-during-run-phase')).toBe(false);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'events-during-run-phase')).toBe(true);
   releaseEvent();
   for (let attempt = 0; attempt < 200 && !posted.some(({ id }) => id === 1); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });

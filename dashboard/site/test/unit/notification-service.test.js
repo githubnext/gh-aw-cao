@@ -96,27 +96,38 @@ describe('dashboard notification service', () => {
     expect(details.hidden).toBe(true);
   });
 
-  it('shows a details action at the bottom and dismisses a cancelled view when collapsed', () => {
+  it('shows details actions together and dismisses a cancelled view when collapsed', () => {
     const service = createNotificationService(document);
     const cancel = vi.fn();
+    const sync = vi.fn();
     const handle = service.publish({
       message: 'Ingesting data.',
       duration: 0,
       details: ['Downloading data.'],
-      action: { label: 'Cancel', run: cancel, placement: 'details' }
+      actions: [
+        { label: 'Cancel', run: cancel, placement: 'details' },
+        { label: 'Sync queries', run: sync, placement: 'details' }
+      ]
     });
     const toggle = /** @type {HTMLButtonElement} */ (
       document.querySelector('.dashboard-notification-toggle')
     );
-    const action = /** @type {HTMLButtonElement} */ (
-      document.querySelector('.dashboard-notification-action')
+    const actions = /** @type {NodeListOf<HTMLButtonElement>} */ (
+      document.querySelectorAll('.dashboard-notification-action')
     );
 
-    expect(action.hidden).toBe(true);
+    expect(/** @type {HTMLElement | null} */ (
+      document.querySelector('.dashboard-notification-actions')
+    )?.hidden).toBe(true);
     toggle.click();
-    expect(action.hidden).toBe(false);
-    expect(action.parentElement?.classList.contains('dashboard-notification-content')).toBe(true);
-    action.click();
+    expect(/** @type {HTMLElement | null} */ (
+      document.querySelector('.dashboard-notification-actions')
+    )?.hidden).toBe(false);
+    expect(actions).toHaveLength(2);
+    expect(actions[0].parentElement?.parentElement?.classList.contains('dashboard-notification-content')).toBe(true);
+    actions[1].click();
+    expect(sync).toHaveBeenCalledOnce();
+    actions[0].click();
     expect(cancel).toHaveBeenCalledOnce();
 
     handle.update({

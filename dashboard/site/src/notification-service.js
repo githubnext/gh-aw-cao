@@ -21,6 +21,7 @@ const services = new WeakMap();
  *   duration?: number,
  *   details?: string[],
  *   action?: { label: string, run: () => void, placement?: 'details' },
+ *   actions?: Array<{ label: string, run: () => void, placement?: 'details' }>,
  *   dismissOnCollapse?: boolean
  * }} Notification
  */
@@ -86,7 +87,7 @@ export function publishNotification(notification, document = globalThis.document
 
 /**
  * @param {string | Notification} input
- * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details' | 'dismissOnCollapse'>> & Pick<Notification, 'action' | 'detailsSubtitle' | 'icon'>}
+ * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details' | 'dismissOnCollapse' | 'actions'>> & Pick<Notification, 'detailsSubtitle' | 'icon'>}
  */
 function normalizeNotification(input) {
   const candidate = typeof input === 'string' ? { message: input } : input;
@@ -99,12 +100,15 @@ function normalizeNotification(input) {
   const duration = Number.isFinite(candidate.duration) && Number(candidate.duration) >= 0
     ? Number(candidate.duration)
     : DEFAULT_DURATION;
-  const action = candidate.action
-    && typeof candidate.action.label === 'string'
-    && Boolean(candidate.action.label.trim())
-    && typeof candidate.action.run === 'function'
-      ? candidate.action
-      : undefined;
+  const actionCandidates = Array.isArray(candidate.actions) ? candidate.actions : [candidate.action];
+  const actions = actionCandidates.flatMap((action) =>
+    action
+      && typeof action.label === 'string'
+      && Boolean(action.label.trim())
+      && typeof action.run === 'function'
+      ? [action]
+      : []
+  );
   const dismissOnCollapse = candidate.dismissOnCollapse === true;
   const details = Array.isArray(candidate.details)
     ? candidate.details
@@ -116,7 +120,7 @@ function normalizeNotification(input) {
     ? candidate.detailsSubtitle.trim()
     : undefined;
   const icon = candidate.icon === 'download' ? candidate.icon : undefined;
-  return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, icon, action, dismissOnCollapse };
+  return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, icon, actions, dismissOnCollapse };
 }
 
 /**
@@ -153,10 +157,7 @@ function renderNotification(initial, container, onRemove) {
     id: detailSubtitleId
   });
   const content = h('div', { className: 'dashboard-notification-content' });
-  const action = h('button', {
-    className: 'dashboard-notification-action',
-    type: 'button'
-  });
+  const actions = h('div', { className: 'dashboard-notification-actions' });
   const element = h('div', {
     className: `dashboard-notification dashboard-notification-${initial.tone} dashboard-notification-enter`
   }, content);
@@ -203,14 +204,20 @@ function renderNotification(initial, container, onRemove) {
       `${current.message} ${expandedState ? 'Hide' : 'Show'} ingestion progress history`
     );
   };
-  const setAction = () => {
-    action.remove();
-    if (!current.action) return;
-    action.textContent = current.action.label;
-    action.onclick = () => current.action?.run();
-    action.hidden = current.action.placement === 'details'
+  const setActions = () => {
+    actions.remove();
+    const placement = current.actions.every((action) => action.placement === 'details')
+      ? 'details'
+      : 'summary';
+    actions.replaceChildren(...current.actions.map((action) => h('button', {
+      className: 'dashboard-notification-action',
+      type: 'button',
+      onclick: action.run
+    }, action.label)));
+    if (!current.actions.length) return;
+    actions.hidden = placement === 'details'
       && toggle.getAttribute('aria-expanded') !== 'true';
-    (current.action.placement === 'details' ? content : element).append(action);
+    (placement === 'details' ? content : element).append(actions);
   };
   toggle.onclick = () => {
     const expanded = toggle.getAttribute('aria-expanded') === 'true';
@@ -221,7 +228,9 @@ function renderNotification(initial, container, onRemove) {
     );
     details.hidden = expanded;
     detailsSubtitle.hidden = expanded || !current.detailsSubtitle;
-    action.hidden = Boolean(current.action?.placement === 'details' && expanded);
+    actions.hidden = Boolean(current.actions.length
+      && current.actions.every((action) => action.placement === 'details')
+      && expanded);
     if (!expanded) details.scrollTop = details.scrollHeight;
     if (expanded && current.dismissOnCollapse) dismiss();
   };
@@ -265,14 +274,14 @@ function renderNotification(initial, container, onRemove) {
       message.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
       setIcon();
       setDetails();
-      setAction();
+      setActions();
       scheduleDismissal();
     }
   };
 
   setIcon();
   setDetails();
-  setAction();
+  setActions();
   container.append(element);
   requestAnimationFrame(() => element.classList.remove('dashboard-notification-enter'));
   scheduleDismissal();

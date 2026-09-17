@@ -364,21 +364,36 @@ describe('canonical dashboard view subscriptions', () => {
         message: 'Ingesting dashboard data.',
         duration: 0,
         details: ['Downloading data.'],
-        action: {
-          label: 'Cancel',
-          operation: 'cancel-data-ingestion',
-          placement: 'details',
-          requestId
-        }
+        actions: [
+          {
+            label: 'Cancel',
+            operation: 'cancel-data-ingestion',
+            placement: 'details',
+            requestId
+          },
+          {
+            label: 'Sync queries',
+            operation: 'sync-dashboard-queries',
+            placement: 'details',
+            requestId
+          }
+        ]
       }
     });
     const toggle = /** @type {HTMLButtonElement} */ (
       document.querySelector('.dashboard-notification-toggle')
     );
     toggle.click();
-    /** @type {HTMLButtonElement} */ (
-      document.querySelector('.dashboard-notification-action')
-    ).click();
+    const actions = /** @type {NodeListOf<HTMLButtonElement>} */ (
+      document.querySelectorAll('.dashboard-notification-action')
+    );
+    expect([...actions].map((action) => action.textContent)).toEqual(['Cancel', 'Sync queries']);
+    actions[1].click();
+    expect(worker.messages.at(-1)).toEqual({
+      operation: 'sync-dashboard-queries',
+      requestId
+    });
+    actions[0].click();
     const rejection = expect(pending).rejects.toMatchObject({ name: 'DataProcessingCancelledError' });
 
     expect(document.querySelector('.dashboard-notification-message')?.textContent)

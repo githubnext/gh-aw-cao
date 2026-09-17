@@ -58,9 +58,11 @@ does not grant authority.
 ## 3. Collection boundary
 
 An Activity refresh MUST create a coherent snapshot from the inputs available
-to the same workflow run. Inputs are limited to compiled workflow metadata in the checked-out control
-repository, a compatible prior JSONL cache entry, and the bounded run metadata,
-audits, and declared artifacts acquired by one `gh aw logs` invocation.
+to the same workflow run. Inputs are limited to compiled workflow metadata in
+the checked-out control repository, the bounded GitHub Actions workflow
+registries for repositories resolved by the reviewed control policy, a
+compatible prior JSONL cache entry, and the bounded run metadata, audits, and
+declared artifacts acquired by one `gh aw logs` invocation.
 
 The prior JSONL cache entry MAY be maintained internally as a carried-forward
 set of wildcard shard files rather than one growing file. Shard-based caching
@@ -70,13 +72,23 @@ allow a shard's data to be skipped from the published snapshot merely because
 it was skipped from re-ingestion.
 
 The publisher MUST bound remote acquisition by repository scope, evidence
-window, pagination, or another explicit limit. It MUST NOT discover workflows
-in target repositories merely because those repositories appear in rollout
-policy. Installed workflow discovery is bounded to the checked-out control
-repository.
+window, pagination, or another explicit limit. For each repository already
+resolved into the allowed collection scope, the publisher MAY enumerate the
+GitHub Actions workflow registry to obtain authoritative workflow path, display
+name, active or disabled state, stable link, and native identifier evidence.
+Repository-owned workflows discovered this way MUST remain standalone runtime
+inventory and MUST NOT be attributed to a CAO package, registered as a package
+worker, or treated as rollout authority. Package ownership and admission
+evidence remain bounded to declarations in the checked-out control repository.
 
-Activity MUST NOT invoke a post-processing indexer, GitHub APIs, or another
-remote collector to fill missing fields.
+Registry enumeration MUST be paginated and report availability, completeness,
+and per-repository failures. A failed registry read MUST remain partial or
+unavailable evidence and MUST NOT be represented as a complete empty registry.
+Deleted registry entries MUST NOT be represented as current Workflows, and an
+unknown registry state MUST remain unknown rather than being inferred from
+local compilation status.
+Activity MUST NOT invoke per-workflow run-list, per-run detail, Jobs, or another
+remote fallback collector to fill missing runtime fields.
 
 ## 4. Snapshot contract
 

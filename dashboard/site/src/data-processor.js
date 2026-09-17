@@ -48,36 +48,51 @@ const workerLoadingProgressOperations = new Set();
 
 /**
  * Adds supported main-thread behavior to a serializable worker notification.
- * @param {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} notification
+ * @param {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action' | 'actions'> & { actions?: Array<{ label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown }> }} notification
  * @param {string} id
  * @param {() => ReturnType<typeof publishNotification>} getHandle
  */
-function attachWorkerNotificationAction(notification, id, getHandle) {
-  const { action, ...base } = notification;
-  if (!action || typeof action !== 'object' || Array.isArray(action)
-      || action.operation !== 'cancel-data-ingestion') {
-    return base;
-  }
-  const label = typeof action.label === 'string' && action.label.trim() ? action.label : 'Cancel';
+function attachWorkerNotificationActions(notification, id, getHandle) {
+  const { actions, ...base } = notification;
   return {
     ...base,
-    action: {
-      label,
-      ...(action.placement === 'details' ? { placement: /** @type {'details'} */ ('details') } : {}),
-      run: () => {
-        if (typeof action.requestId !== 'number'
-            || !cancelDataProcessingRequest(action.requestId)) return;
-        getHandle().update({
-          ...base,
-          message: 'Data ingestion cancelled.',
-          tone: 'warning',
-          action: undefined,
-          dismissOnCollapse: true,
-          duration: 0
-        });
-        cancelledWorkerNotificationIds.add(id);
+    actions: (Array.isArray(actions) ? actions : []).flatMap((action) => {
+      if (!action || typeof action !== 'object' || Array.isArray(action)) return [];
+      const placement = action.placement === 'details'
+        ? { placement: /** @type {'details'} */ ('details') }
+        : {};
+      if (action.operation === 'cancel-data-ingestion') {
+        return [{
+          label: typeof action.label === 'string' && action.label.trim() ? action.label : 'Cancel',
+          ...placement,
+          run: () => {
+            if (typeof action.requestId !== 'number'
+                || !cancelDataProcessingRequest(action.requestId)) return;
+            getHandle().update({
+              ...base,
+              message: 'Data ingestion cancelled.',
+              tone: 'warning',
+              actions: [],
+              dismissOnCollapse: true,
+              duration: 0
+            });
+            cancelledWorkerNotificationIds.add(id);
+          }
+        }];
       }
-    }
+      if (action.operation === 'sync-dashboard-queries') {
+        return [{
+          label: typeof action.label === 'string' && action.label.trim() ? action.label : 'Sync queries',
+          ...placement,
+          run: () => {
+            if (typeof action.requestId === 'number') {
+              syncDashboardQueries(action.requestId);
+            }
+          }
+        }];
+      }
+      return [];
+    })
   };
 }
 
@@ -87,6 +102,13 @@ function cancelDataProcessingRequest(id) {
   if (!request) return 0;
   request.processor.postMessage({ id: ++nextRequestId, operation: 'cancel-data-processing', ids: [id] });
   return 1;
+}
+
+/** @param {number} id */
+function syncDashboardQueries(id) {
+  const request = pending.get(id);
+  if (!request) return;
+  request.processor.postMessage({ operation: 'sync-dashboard-queries', requestId: id });
 }
 
 /** @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state */
@@ -562,14 +584,14 @@ function getWorker() {
         } else if (id) {
           if (cancelledWorkerNotificationIds.has(id)) return;
           if (typeof notification.message !== 'string') return;
-          const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} */ (notification);
+          const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action' | 'actions'> & { actions?: Array<{ label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown }> }} */ (notification);
           const current = workerNotificationHandles.get(id);
           if (current) {
-            current.update(attachWorkerNotificationAction(interactiveNotification, id, () => current));
+            current.update(attachWorkerNotificationActions(interactiveNotification, id, () => current));
           } else {
             /** @type {ReturnType<typeof publishNotification>} */
             let handle;
-            handle = publishNotification(attachWorkerNotificationAction(interactiveNotification, id, () => handle));
+            handle = publishNotification(attachWorkerNotificationActions(interactiveNotification, id, () => handle));
             workerNotificationHandles.set(id, handle);
           }
         } else {

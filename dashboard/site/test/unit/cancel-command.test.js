@@ -58,4 +58,64 @@ describe('dashboard cancel command', () => {
     expect(cancel).not.toHaveBeenCalled();
     expect(document.querySelector('.dashboard-notification')).toBeNull();
   });
+
+  it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '?debug=cancel-command', output })
+      };
+    });
+    vi.resetModules();
+    const { offerCancelCommand: offerCancelCommandWithDebug } = await import('../../src/cancel-command.js');
+
+    const cancel = vi.fn(() => 42);
+    const command = offerCancelCommandWithDebug(document, { delay: 5000, cancel });
+
+    vi.advanceTimersByTime(5000);
+    expect(output.debug).toHaveBeenCalledWith('[cao:cancel-command]', { event: 'offered', delayMs: 5000 });
+
+    /** @type {HTMLButtonElement} */ (document.querySelector('.dashboard-notification-action')).click();
+    expect(output.debug).toHaveBeenCalledWith('[cao:cancel-command]', { event: 'cancel-requested', workerId: 42 });
+
+    command.complete();
+    expect(output.debug).toHaveBeenCalledWith('[cao:cancel-command]', { event: 'completed', offered: true });
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { offerCancelCommand: offerCancelCommandWithoutDebug } = await import('../../src/cancel-command.js');
+
+    const cancel = vi.fn(() => 1);
+    const command = offerCancelCommandWithoutDebug(document, { delay: 5000, cancel });
+    vi.advanceTimersByTime(5000);
+    command.complete();
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
 });

@@ -587,14 +587,14 @@ describe('dashboard document validation', () => {
     ]));
   });
 
-  it('defines firewall with a most-blocked pie chart and full-view lazy domain table', () => {
+  it('defines firewall summaries, attribution, and effective policy details', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Data'
     ).pages).toContain('firewall');
     expect(firewall.sections).toBeUndefined();
-    expect(firewall.views).toHaveLength(2);
+    expect(firewall.views).toHaveLength(4);
     expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'firewall-domain-totals',
       intent: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
@@ -629,7 +629,16 @@ describe('dashboard document validation', () => {
       ],
       limit: 10
     }));
-    const [mostBlocked, domains] = firewall.views;
+    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'firewall-attribution-details',
+      from: 'firewall-observations',
+      filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] }
+    }));
+    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'firewall-policy-inventory',
+      from: 'firewall-policy-rules'
+    }));
+    const [mostBlocked, domains, attribution, policy] = firewall.views;
     expect(mostBlocked).toMatchObject({
       id: 'security-firewall-most-blocked-domains',
       mark: 'chart',
@@ -667,6 +676,31 @@ describe('dashboard document validation', () => {
       { field: 'accepted', type: 'quantitative', title: 'Allowed' },
       { field: 'blocked', type: 'quantitative', title: 'Blocked' }
     ]);
+    expect(attribution).toMatchObject({
+      id: 'security-firewall-attribution',
+      disclosure: 'supplemental',
+      'disclosure-label': 'Workflow and agent attribution',
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      data: { source: 'firewall-attribution-details' }
+    });
+    expect(attribution.encoding.columns).toEqual(expect.arrayContaining([
+      { field: 'workflow', type: 'nominal', title: 'Workflow', format: 'workflow-relative-path' },
+      { field: 'run', type: 'nominal', title: 'Run', display: 'run-link' },
+      { field: 'engine', type: 'nominal', title: 'Agent / engine' },
+      { field: 'resolved-model', type: 'nominal', title: 'Resolved model' },
+      { field: 'policy-rule-description', type: 'nominal', title: 'Policy reason' }
+    ]));
+    expect(policy).toMatchObject({
+      id: 'security-firewall-policy',
+      disclosure: 'supplemental',
+      'disclosure-label': 'Effective allow and deny policy',
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      data: { source: 'firewall-policy-inventory' }
+    });
     const serialized = JSON.stringify(firewall).toLowerCase();
     expect(serialized).not.toContain('blocked = failure');
     expect(serialized).not.toContain('allowed = safe');

@@ -46,7 +46,7 @@ const inventory = {
   }
 };
 
-test('views remain interactive while activity shards are ingested', async ({ context, page }) => {
+test('views remain interactive when queries are synced during activity ingestion', async ({ context, page }) => {
   const shardCount = 12;
   let requestedShards = 0;
   let completedShards = 0;
@@ -129,6 +129,9 @@ test('views remain interactive while activity shards are ingested', async ({ con
 
   await page.goto(`${origin}/`);
   await expect.poll(() => requestedShards).toBeGreaterThan(0);
+  await expect(page.getByRole('cell', { name: 'Ingested run 1', exact: true })).toHaveCount(0);
+  await page.locator('.dashboard-notification-toggle').click();
+  await page.getByRole('button', { name: 'Sync queries', exact: true }).click();
   await expect(page.getByRole('cell', { name: 'Ingested run 1', exact: true })).toBeVisible();
   expect(completedShards).toBeLessThan(shardCount);
   await expect(page.locator('.loading-progress')).toBeVisible();
