@@ -63,10 +63,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     cacheJob,
     /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
   );
-  assert.match(
-    cacheJob,
-    /find "\$snapshot_root\/gh-aw-logs-runs"[\s\S]*?find "\$snapshot_root\/gh-aw-logs-events"[\s\S]*?cmp -s "\$run_shards" "\$event_shards"[\s\S]*?Activity run and event shard sets do not match/,
-  );
+  assert.doesNotMatch(cacheJob, /Activity run and event shard sets do not match/);
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,

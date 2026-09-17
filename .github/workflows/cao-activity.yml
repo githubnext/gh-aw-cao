@@ -328,15 +328,6 @@ jobs:
               missing=1
             fi
           done
-          run_shards="$(mktemp)"
-          event_shards="$(mktemp)"
-          find "$snapshot_root/gh-aw-logs-runs" -maxdepth 1 -type f -name '*.json' -printf '%f\n' | sort > "$run_shards"
-          find "$snapshot_root/gh-aw-logs-events" -maxdepth 1 -type f -name '*.json' -printf '%f\n' | sort > "$event_shards"
-          if ! cmp -s "$run_shards" "$event_shards"; then
-            echo "Activity run and event shard sets do not match" >&2
-            missing=1
-          fi
-          rm -f "$run_shards" "$event_shards"
           if [[ "$missing" -ne 0 ]]; then
             echo "Extracted activity snapshot contents:" >&2
             ls -l "$snapshot_root" >&2 || true

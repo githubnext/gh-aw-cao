@@ -383,12 +383,7 @@ export function publishedEventShards(hashes) {
 export function publishedPhasedActivityShards(hashes) {
   const runs = publishedRunInformationShards(hashes);
   const events = publishedEventShards(hashes);
-  const fileName = (/** @type {{ name: string }} */ shard) => shard.name.slice(shard.name.lastIndexOf('/') + 1);
-  return runs.length > 0
-    && runs.length === events.length
-    && runs.every((shard, index) => fileName(shard) === fileName(events[index]))
-    ? [...runs, ...events]
-    : [];
+  return runs.length > 0 ? [...runs, ...events] : [];
 }
 
 /**

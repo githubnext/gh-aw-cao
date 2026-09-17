@@ -192,6 +192,46 @@ test('phased shard names preserve source order and pair exactly', async () => {
   assert.ok(hashes[`gh-aw-logs-events/${events[1]}`]);
 });
 
+test('hash-payloads drops empty phased shards from files and hashes', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'activity-empty-phased-shards-'));
+  const shardDirectory = path.join(root, 'gh-aw-logs-shards');
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+  await mkdir(shardDirectory, { recursive: true });
+  await writeFile(path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'), `${JSON.stringify({
+    schema_version: 2,
+    kind: 'run',
+    run: {
+      run_id: 303,
+      run_attempt: 1,
+      organization: 'githubnext',
+      repository: 'gh-aw-cao',
+      workflow_name: 'Dashboard',
+      workflow_path: '.github/workflows/dashboard.md',
+      status: 'completed',
+      classification: 'success',
+      created_at: '2026-09-17T00:00:00Z'
+    }
+  })}\n`);
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'hash-payloads',
+    '--shard-dir',
+    shardDirectory,
+    '--runs-dir',
+    runsDirectory,
+    '--events-dir',
+    eventsDirectory,
+  ]);
+
+  const hashes = JSON.parse(stdout);
+  assert.equal((await readdir(runsDirectory)).length, 1);
+  assert.deepEqual(await readdir(eventsDirectory), []);
+  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 1);
+  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-events/')).length, 0);
+});
+
 test('hash-payloads upgrades the legacy cached layout to phased shards', async () => {
   const { root, shardDirectory } = await fixture();
   const legacyNormalizedDirectory = path.join(root, 'gh-aw-logs-normalized');
