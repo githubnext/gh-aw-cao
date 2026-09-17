@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Audit date:** 2026-09-14
+**Audit date:** 2026-09-17
 
 The control bootstrap checks out the control repository's `.github` tree at `github.workflow_sha`. The CAO package installs the runtime under `.github/workflows/shared`, so installed and source-managed control repositories use that single checkout without fetching a second copy.
 
@@ -22,7 +22,7 @@ The control bootstrap checks out the control repository's `.github` tree at `git
 
 </details>
 
-**Current acquisition state:** The inventory below supersedes historical details in the parenthetical refresh notes above. Activity now requests only compact usage artifacts with audit generation, performs no Actions fallback or Jobs API enrichment, and supplies run attribution to `records.mjs`. Report collection no longer reads repository details, remote workflow inventories, lock sources, gh-aw releases, or Actions run details. Activity's `gh aw logs` invocation now uses `--cached-logs` with a trailing wildcard shard prefix instead of `--cached-jsonl`; new data lands in a freshly named shard rather than a rescanned single growing file, and ingestion processes the carried-forward shard directory one shard at a time, skipping shards whose content hash already matches the transactions table.
+**Current acquisition state:** The inventory below supersedes historical details in the parenthetical refresh notes above. Activity requests compact usage artifacts with audit generation, performs no Actions run fallback or Jobs API enrichment, and supplies run attribution to `records.mjs`. Its inventory sidecar now reads the paginated Actions workflow registry for each resolved repository so workflow identity and state do not depend on run telemetry; per-repository failures remain partial evidence. Report collection no longer reads repository details, remote workflow inventories, lock sources, gh-aw releases, or Actions run details. Activity's `gh aw logs` invocation now uses `--cached-logs` with a trailing wildcard shard prefix instead of `--cached-jsonl`; new data lands in a freshly named shard rather than a rescanned single growing file, and ingestion processes the carried-forward shard directory one shard at a time, skipping shards whose content hash already matches the transactions table.
 
 **Refresh ledger:** See [Data Acquisition Audit History](./data-acquisition-audit-history.md) for compact dated refresh notes.
 
@@ -74,6 +74,7 @@ The former two-request Contents API bootstrap in `shared/control.md` has been re
 
 | Source | Requests and behavior | Existing mitigation or gap |
 | --- | --- | --- |
+| `activity/inventory-sources.mjs` | Reads repository metadata for explicit allow-list entries or bounded repository inventory pages for allowed owners, then paginates `GET /repos/{owner}/{repository}/actions/workflows` for every resolved repository. | Repository scope comes only from resolved control policy. Workflow registry pagination is bounded to 100 items per page and 10,000 workflows per repository. Per-repository failures remain explicit partial or unavailable source metadata; registry rows never grant package ownership, worker status, admission, or rollout authority. |
 | `activity/index.mjs` | Performs no GitHub API operations. It reads checked-out workflow sources and locks, local control-plane inventory, and the shared `gh aw logs` snapshot. | Target repositories are policy subjects rather than workflow-discovery roots. Missing usage-artifact metadata is reported by field and bounded sample run IDs instead of triggering fallback Actions API reads. |
 | `activity/github-telemetry.mjs` | Runs `gh api rate_limit` after shared log acquisition and around the remaining GitHub-backed dashboard collectors, appending rate-limit and activity-cache-hydration snapshots to a job-local JSONL ledger (`$RUNNER_TEMP/cao-gh/cao-gh.jsonl`). | The local activity-index transform has no telemetry probe because it performs no GitHub operations. The rolling 24-hour ledger remains in the activity cache and the separate 30-day artifact. |
 | `dashboard/report/records.mjs` | For every report repository, fetches up to ten pages each of issues and issue comments and the first 100 Actions artifacts. When private inventory is explicitly enabled, it also checks the control repository's Pages privacy state before collection. | Run attribution is joined from `deployed-workflows.json` by runtime repository and run ID. The collector does not request repository details, remote workflow inventories, commits, contents, raw lock sources, gh-aw releases, or Actions run details. A prior confirmed-public durable-record snapshot is retained on rate limit; successful runs still rescan issue/comment history and artifact metadata. |
