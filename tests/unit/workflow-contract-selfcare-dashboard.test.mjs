@@ -312,7 +312,7 @@ test("SelfCare view reuse worker generalizes one Dashboard Language view", () =>
   assert.match(source, /npm --prefix dashboard\/site run validate:corpus/);
   assert.match(source, /uses: actions\/cache@/);
   assert.match(source, /path: ~\/\.cache\/ms-playwright/);
-  assert.match(source, /npm exec --prefix dashboard\/site -- playwright install --with-deps chromium/);
+  assert.match(source, /npm exec --prefix dashboard\/site -- playwright install --with-deps chromium webkit/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-language-refactor\]/);
   assert.match(source, /title-prefix: "\[self-care:dashboard-language-refactor\] "/);
   assert.equal(source.split(liveGuard).length - 1, 4);
