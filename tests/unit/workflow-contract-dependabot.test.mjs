@@ -90,7 +90,7 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
     if (fixture.expected.closingKeyword) {
       assert.equal(fixture.evidence.pullRequestClosingKeyword, "Fixes", fixture.name);
       assert.equal(fixture.expected.umbrellaClosedByPartialWork, false, fixture.name);
-      assert.match(source, /use `Part of #<issue>` when the pull request implements only part of this issue, and use `Fixes #<issue>` only when the pull request completely fulfils it/);
+      assert.match(source, /use `Part of #<issue>` when the pull request implements only part of this issue, and use `Fixes #<issue>` only when the pull request completely fulfills it/);
       assert.match(source, /never use `Fixes` against the umbrella inventory issue, because a partial batch must never close it/);
       assert.equal(fixture.expected.metadataSynchronized, true, fixture.name);
       assert.match(source, /keep the pull request title, description, checklist, and validation report synchronized with the final diff whenever review changes the scope/);

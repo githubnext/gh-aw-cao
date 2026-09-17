@@ -1,9 +1,9 @@
 ---
 emoji: ":dependabot:"
 
-description: "Repository-scoped Dependabot planner that maintains one agent-ready issue covering all identified updates."
+description: "Repository-scoped Dependabot planner that maintains one umbrella inventory issue and one atomic agent-ready work issue per update group."
 
-intent: Reduce maintainer effort applying Dependabot-identified updates by maintaining one repository-scoped, agent-ready plan.
+intent: Reduce maintainer effort applying Dependabot-identified updates by maintaining one repository-scoped inventory and atomic, independently mergeable agent-ready work issues.
 
 name: "Dependabot / Update Planner"
 
@@ -220,7 +220,7 @@ Reconstruct the manifest graph before writing the plan:
 - shared lockfiles, workspace roots, solution or project references, local or path dependencies, one resolver invocation, and one deployable artifact are hard edges;
 - dependency families, shared test boundaries, coordinated releases, and observed historical coupling are soft edges.
 
-Group updates only when hard edges prove they must be resolved and tested together. Keep unrelated major upgrades as separate checklist items. Record blocked or migration-heavy updates in the same repository plan instead of opening another umbrella issue.
+Group updates only when hard edges prove they must be resolved and tested together. Keep unrelated major upgrades as separate inventory entries and separate work issues. Record blocked or migration-heavy updates in the same repository plan instead of opening another umbrella issue.
 
 ### Atomic work boundaries
 
@@ -350,7 +350,7 @@ Build a complete snapshot from Dependabot service evidence:
 1. Find every open Dependabot-authored dependency update pull request for the target repository, including grouped updates.
 2. Find every open Dependabot security alert visible to this workflow, including alerts not represented by an open pull request.
 3. Inspect Dependabot configuration and recent Dependabot failures only to explain blocked identified updates. Do not invent general freshness work that Dependabot has not identified.
-4. Reconcile duplicates by ecosystem, package, manifest, target version, advisory, and existing pull request. One update appears once in the checklist, with all related links.
+4. Reconcile duplicates by ecosystem, package, manifest, target version, advisory, and existing pull request. One update appears once in the inventory, with all related links.
 5. Sort the plan by critical/high security, broken or conflicted updates, other security updates, major updates, then compatible minor and patch updates.
 
 Include all current identified updates, even when they should not be applied together. For each update, specify whether the assigned agent should update or supersede an existing Dependabot pull request, create a replacement pull request, or stop and report a blocker. Never ask the worker itself to perform those actions.
@@ -363,7 +363,7 @@ Derive every count in every issue from that final inventory. Totals, per-ecosyst
 
 ## Validation guidance
 
-Identify exact repository-declared validation commands for each checklist item. Prefer manifest and lockfile consistency, dependency resolution, targeted tests, type checks, lint, then broader checks. Do not claim a command passed because this planning worker did not apply the updates. Flag missing credentials, private registries, services, toolchains, and runtime verification as conditions the assigned agent must report rather than bypass.
+Identify exact repository-declared validation commands for each inventory entry. Prefer manifest and lockfile consistency, dependency resolution, targeted tests, type checks, lint, then broader checks. Do not claim a command passed because this planning worker did not apply the updates. Flag missing credentials, private registries, services, toolchains, and runtime verification as conditions the assigned agent must report rather than bypass.
 
 Compilation, type checks, and tests alone are not sufficient evidence. Every work issue must also require validation of the repository-specific artifacts and invariants that the update can break, such as regenerated files matching their canonical source, published artifacts still containing intentionally published paths, pins resolving through the shared registry, and lockfiles resolving to the exact reviewed versions. State the expected evidence for each command.
 
@@ -413,7 +413,7 @@ Include `Part of #<umbrella issue number>` and a `<details><summary><b>Agent pro
 - install only the exact target versions stated in this issue, keep manifests and lockfiles consistent, and revert lockfile resolutions and transitive churn that go beyond the reviewed targets;
 - apply only the migration changes required by the recorded release notes, compilation, or tests, and preserve the stated repository-specific invariants;
 - run the exact validation commands listed in this issue, never bypass protections or expose credentials, and stop and report any unresolved blocker instead of forcing the update;
-- use `Part of #<issue>` when the pull request implements only part of this issue, and use `Fixes #<issue>` only when the pull request completely fulfils it;
+- use `Part of #<issue>` when the pull request implements only part of this issue, and use `Fixes #<issue>` only when the pull request completely fulfills it;
 - never use `Fixes` against the umbrella inventory issue, because a partial batch must never close it;
 - keep the pull request title, description, checklist, and validation report synchronized with the final diff whenever review changes the scope, removing claims about updates no longer contained in the diff;
 - leave every unresolved or deferred update out of the pull request, keep its issue open, and report the deferral reason and remaining work on the issue.
@@ -443,7 +443,7 @@ Never create more than one umbrella plan issue for the target repository, and ne
 
 At the end of every run, produce exactly one of these terminal outcome sequences:
 
-- `create_issue` for the umbrella issue, followed by one `create_issue` per actionable atomic group, for a repository that has current Dependabot work but no plan issue;
+- `create_issue` for the umbrella issue, followed by one `create_issue` per actionable atomic group, for a repository that has current Dependabot work but no plan issue. The umbrella issue counts against the same `create_issue` budget, so a bootstrap run creates at most one fewer work issue than the configured maximum;
 - `update_issue` followed by `add_comment` for an existing umbrella issue, plus one `create_issue` per actionable atomic group that has no open work issue, including a completed description when no work remains;
 - `noop` when Dependabot identifies no current work and no plan issue exists.
 
