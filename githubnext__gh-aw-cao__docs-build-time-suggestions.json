@@ -1,6 +1,6 @@
 {
   "source_sha": "f330a9a2803a2f06f0b0431742b1f535fca9d89f",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-17T12:52:00Z",
@@ -171,6 +171,25 @@
         35233569643
       ],
       "outcome": "no-op: evidence window 2026-09-17T14:26:26Z to 2026-09-17T16:03:37Z. Analyzed 10 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (7 schedule, 2 workflow_run, 1 push), while disclosing 1 cancelled, 4 skipped, and 5 action_required outliers. Parent workflow median duration was 110s (p90 220.5s), build median 70s (p90 131.3s), deploy-job median 10.5s (p90 74.2s), and queue median 3.5s (p90 4s). Trusted step metadata showed Build documentation remained small at 6.5s median, Restore node_modules hit on 10/10 samples because Install dependencies and Save node_modules were skipped on all 10, and Restore cached CAO Dashboard missed in bounded logs. Bounded log reads confirmed repeated 201.5-216.7 MB dashboard artifact downloads followed by equally large github-pages uploads consuming 34.5s median, plus one schedule outlier that spent 463s downloading the dashboard artifact. However, open issue fingerprint c1979ae4b7fcb3efb1c3 already covers the only current actionable improvement above the >=60s or >=15% threshold: reuse the CAO Dashboard artifact directly and avoid re-downloading and re-packaging the large dashboard payload in docs.yml. No fresh non-duplicate artifact-transfer recommendation met the threshold safely.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-17T16:40:00Z",
+      "worker_run_id": 35247707776,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        35247583999,
+        35246537035,
+        35244060841,
+        35242353629,
+        35240938201,
+        35239947580,
+        35238435116,
+        35237982297,
+        35237547829,
+        35235832402
+      ],
+      "outcome": "no-op: evidence window 2026-09-17T14:26:26Z to 2026-09-17T16:37:43Z. Analyzed 10 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (7 schedule, 2 workflow_run, 1 push), while disclosing 4 skipped and 5 action_required workflow_run outliers. Parent workflow median duration was 112s (p90 220.5s), build median 71.5s (p90 134.0s), deploy-job median 10.5s (p90 74.2s), and queue median 3.5s (p90 4s). Trusted metadata confirmed node_modules cache hits on 10/10 sampled successes and bounded logs confirmed dashboard cache misses on 10/10 sampled successes. Build documentation stayed small at 7.5s median, while Find latest CAO Dashboard run + Mount latest CAO Dashboard artifact + Upload Pages artifact consumed about 45s median with 192.2-205.0 MiB dashboard payloads. The actionable improvement remains the already-recorded reusable-dashboard recommendation fingerprint c1979ae4b7fcb3efb1c3, so no fresh non-duplicate scheduling- or rebuild-specific recommendation met the threshold safely.",
       "suggestion_fingerprint": ""
     }
   ]
