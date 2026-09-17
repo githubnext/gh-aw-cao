@@ -443,9 +443,12 @@ function registerSubscription(processor, subscription) {
  * Retains only the newest worker payload until the current microtask completes.
  * @param {ViewSubscription} subscription
  * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ * @param {boolean} partial
  */
-function enqueueSubscriptionUpdate(subscription, sources) {
-  subscription.latest = sources;
+function enqueueSubscriptionUpdate(subscription, sources, partial) {
+  subscription.latest = partial
+    ? { ...(subscription.latest ?? subscription.snapshot ?? {}), ...sources }
+    : sources;
   for (const listener of subscription.listeners) cancelSubscriberFrame(listener);
   if (subscription.frame !== null) return;
   const flush = () => {
@@ -584,7 +587,7 @@ function getWorker() {
       const subscription = subscriptions.get(event.data.subscriptionId);
       if (subscription?.registeredWorker === processor
           && event.data.data && typeof event.data.data === 'object') {
-        enqueueSubscriptionUpdate(subscription, event.data.data);
+        enqueueSubscriptionUpdate(subscription, event.data.data, event.data.partial === true);
       } else if (subscription?.registeredWorker === processor
           && typeof event.data.error === 'string') {
         const error = new Error(event.data.error);

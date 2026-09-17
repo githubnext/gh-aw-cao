@@ -135,6 +135,7 @@ it('publishes run queries while event ingestion continues', async () => {
     data: { 'run-summary': { rows: [{ run: '303' }] } }
   });
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'mixed')).toMatchObject({
+    partial: true,
     data: {
       'mixed-summary': { rows: [{ run: '303' }] }
     }

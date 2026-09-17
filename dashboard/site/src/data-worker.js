@@ -259,7 +259,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             subscription.emitted = true;
             subscription.revision = dashboard.revision;
             subscription.pagination = pagination;
-            workerScope?.postMessage({ subscriptionId: id, data });
+            workerScope?.postMessage({ subscriptionId: id, data, partial: dashboard.runsOnly });
           }
         } catch (error) {
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {

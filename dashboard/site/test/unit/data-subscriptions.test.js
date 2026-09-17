@@ -188,6 +188,47 @@ describe('canonical dashboard view subscriptions', () => {
     unsubscribeFirst();
   });
 
+  it('merges partial run-phase updates with the current page snapshot', () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    /** @type {FrameRequestCallback[]} */
+    const frames = [];
+    vi.stubGlobal('requestAnimationFrame', (/** @type {FrameRequestCallback} */ callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const listener = vi.fn();
+    const unsubscribe = subscribeCanonicalDashboardView(
+      'mixed-page',
+      ['run-summary', 'event-summary'],
+      { pages: [] },
+      listener
+    );
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+    const eventSummary = { rows: [{ event: 'cached' }] };
+
+    worker.emit({
+      subscriptionId: 'mixed-page',
+      data: {
+        'run-summary': { rows: [{ run: '1' }] },
+        'event-summary': eventSummary
+      }
+    });
+    frames.shift()?.(0);
+    worker.emit({
+      subscriptionId: 'mixed-page',
+      partial: true,
+      data: { 'run-summary': { rows: [{ run: '2' }] } }
+    });
+    frames.shift()?.(1);
+
+    expect(listener).toHaveBeenLastCalledWith({
+      'run-summary': { rows: [{ run: '2' }] },
+      'event-summary': eventSummary
+    });
+    unsubscribe();
+  });
+
   it('rejects conflicting query parameters for the same view', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     const unsubscribe = subscribeCanonicalDashboardView('overview', ['runs'], { pages: [] }, () => {});
