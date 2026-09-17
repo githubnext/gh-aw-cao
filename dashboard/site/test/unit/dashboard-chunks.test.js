@@ -12,7 +12,7 @@ import {
 } from '../../src/dashboard-chunks.js';
 import { dashboardPagePaginatedSourceBindings } from '../../src/presenter.js';
 
-/** @returns {import('../../src/dashboard-chunks.js').DashboardDocument} */
+/** @returns {import('../../src/presenter.js').PresentationDocument} */
 function sampleDocument() {
   return {
     languageVersion: '0.1.0',

@@ -131,18 +131,25 @@ describe("dashboard data startup", () => {
       pagePaginatedSourceBindings: () => ({
         [alias]: { sourceName: "runs-table", viewId: "timeline" },
       }),
-      render: (_sources, state, loader) => {
+      render: (
+        /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ _sources,
+        /** @type {'ready' | 'cached' | 'stale'} */ state,
+        /** @type {(pageId: string, options: { signal: AbortSignal, onUpdate: () => void }) => Promise<Record<string, import('../../src/presenter.js').LogicalSourceInput>>} */ loader,
+      ) => {
         calls.push(`render:${state}`);
         loadPageSources = loader;
       },
     }));
 
-    if (!loadPageSources) throw new Error("Page source loader was not registered.");
-    const sources = await loadPageSources("runs", {
+    const loader = loadPageSources;
+    if (!loader) throw new Error("Page source loader was not registered.");
+    const sources = await loader("runs", {
       signal: new AbortController().signal,
       onUpdate: () => {},
     });
-    await sources[alias].loadContinuation("next");
+    const loadContinuation = sources[alias]?.loadContinuation;
+    if (!loadContinuation) throw new Error("Continuation loader was not bound.");
+    await loadContinuation("next");
 
     expect(dataProcessor.subscribeCanonicalDashboardView).toHaveBeenCalledWith(
       "page:runs",
