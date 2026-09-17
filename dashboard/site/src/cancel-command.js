@@ -1,6 +1,6 @@
 import { cancelDataProcessing } from './data-processor.js';
 import { publishNotification } from './notification-service.js';
-import { createDebug } from './debug.mjs';
+import { createDebug } from './debug.js';
 
 /** Milliseconds of uninterrupted work before the cancel command is offered. */
 const REVEAL_DELAY = 5000;
