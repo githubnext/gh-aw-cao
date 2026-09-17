@@ -51,8 +51,7 @@ const workerLoadingProgressOperations = new Set();
  * @param {() => ReturnType<typeof publishNotification>} getHandle
  */
 function attachWorkerNotificationAction(notification, id, getHandle) {
-  const action = notification.action;
-  const { action: _serializableAction, ...base } = notification;
+  const { action, ...base } = notification;
   if (!action || typeof action !== 'object' || Array.isArray(action)
       || action.operation !== 'cancel-data-ingestion') {
     return base;
