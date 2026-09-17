@@ -159,18 +159,17 @@ safe-outputs:
     target: "*"
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     body: true
-    required-labels: [dependabot]
+    required-title-prefix: "[dependabot:update-planner] "
     max: 1
   add-comment:
     target: "*"
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
-    required-labels: [dependabot]
+    required-title-prefix: "[dependabot:update-planner] "
     pull-requests: false
     max: 1
   create-issue:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[dependabot:update-planner] "
-    labels: [dependabot, dependabot:update-planner]
     deduplicate-by-title: true
     max: 1
 
@@ -331,7 +330,7 @@ Derive the memory filename by replacing `/` with `__` in `SAFE_OUTPUT_REPO` and 
 
 Read that memory file first. When it contains the expected repository pair and a positive integer issue number, call `issue_read` for that exact issue; never search for it. Accept it only when it is an open issue whose canonical title or `dependabot-update-plan:repository` marker matches the target repository.
 
-When memory is missing, malformed, or stale, bootstrap once with `list_issues` in `SAFE_OUTPUT_REPO`, bounded to open issues carrying the `dependabot` package label. Match by the exact canonical title or repository marker, choose the oldest canonical issue if duplicates exist, and write its number and repository pair to the memory file. This package-label bootstrap intentionally preserves issues created under the former `dependabot:release-train-updater` worker label; newly created issues use `dependabot:update-planner`. Do not call `search_issues`, semantic issue search, code search, or repository search. Do not treat a Dependabot pull request as the plan issue.
+When memory is missing, malformed, or stale, bootstrap once with `list_issues` in `SAFE_OUTPUT_REPO`. List open issues in `SAFE_OUTPUT_REPO` without requiring labels because not all live targets allow this workflow to create missing labels. Match by the exact canonical title or repository marker, choose the oldest canonical issue if duplicates exist, and write its number and repository pair to the memory file. This label-free bootstrap preserves issues created under the former `dependabot:release-train-updater` worker label and issues created without labels. Do not call `search_issues`, semantic issue search, code search, or repository search. Do not treat a Dependabot pull request as the plan issue.
 
 After identifying an existing canonical issue, ensure its current number is stored in the memory file before finishing. A newly created issue number is not available until safe-output processing completes; on the next run, perform the bounded `list_issues` bootstrap once and persist the resulting number. Never guess an issue number.
 
