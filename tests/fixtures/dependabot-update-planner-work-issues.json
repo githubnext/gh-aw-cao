@@ -1,0 +1,108 @@
+[
+  {
+    "name": "mixed ecosystem batch assigned as one issue",
+    "source": "github/gh-aw#61573",
+    "evidence": {
+      "umbrellaUpdates": [
+        { "ecosystem": "actions", "package": "actions/upload-pages-artifact", "updateType": "major" },
+        { "ecosystem": "go", "package": "golang.org/x/crypto", "updateType": "minor", "sensitive": "crypto" },
+        { "ecosystem": "npm", "package": "@types/node", "updateType": "minor" }
+      ],
+      "assignedIssues": 1,
+      "producedPullRequests": 1
+    },
+    "expected": {
+      "umbrellaAssignable": false,
+      "atomicWorkIssues": 3,
+      "pullRequestsPerWorkIssue": 1
+    }
+  },
+  {
+    "name": "summary counts disagree with checklist",
+    "source": "github/gh-aw#61573",
+    "evidence": {
+      "summaryCounts": { "total": 15, "actions": 5, "go": 6, "npm": 4 },
+      "checklistCounts": { "total": 16, "actions": 5, "go": 4, "npm": 7 }
+    },
+    "expected": {
+      "countsDerivedFromInventory": true
+    }
+  },
+  {
+    "name": "upload-pages-artifact major upgrade drops hidden files",
+    "source": "github/gh-aw#61574",
+    "evidence": {
+      "package": "actions/upload-pages-artifact",
+      "updateType": "major",
+      "releaseNote": "v4 excludes hidden files by default",
+      "repositoryArtifact": "docs/public/.well-known/ai.txt"
+    },
+    "expected": {
+      "migrationInvariant": "include-hidden-files: true",
+      "artifactValidationRequired": true
+    }
+  },
+  {
+    "name": "duplicated literal action pin outside the canonical registry",
+    "source": "github/gh-aw#61574",
+    "evidence": {
+      "package": "actions/setup-node",
+      "canonicalSource": "shared action-pin helper",
+      "duplicateLiteralPin": "pkg/workflow/maintenance_workflow_yaml_jobs.go",
+      "generatedConsumers": [".github/workflows/*.lock.yml"]
+    },
+    "expected": {
+      "canonicalSourceRequired": true,
+      "duplicateLiteralPinReplaced": true,
+      "generatedFilesEditedDirectly": false
+    }
+  },
+  {
+    "name": "lockfile resolves beyond the reviewed target",
+    "source": "github/gh-aw#61574",
+    "evidence": {
+      "resolutions": [
+        { "package": "@types/node", "reviewedTarget": "26.5.1", "resolved": "26.6.1" },
+        { "package": "@primer/octicons", "reviewedTarget": "19.36.0", "resolved": "19.37.0" }
+      ]
+    },
+    "expected": {
+      "exactVersionFrozen": true,
+      "lockfileDriftRejected": true
+    }
+  },
+  {
+    "name": "candidate breaks peer range and adds advisories",
+    "source": "github/gh-aw#61574",
+    "evidence": {
+      "package": "mermaid",
+      "candidate": "12",
+      "peerDependent": "astro-mermaid@2.1.0",
+      "supportedPeerRange": "10 || 11",
+      "candidateGraphAdvisories": ["high"],
+      "openDependabotAlerts": 0
+    },
+    "expected": {
+      "classification": "blocked",
+      "workIssueCreated": false
+    }
+  },
+  {
+    "name": "partial batch closes the umbrella issue",
+    "source": "github/gh-aw#61574",
+    "evidence": {
+      "umbrellaIssue": 61573,
+      "mergedUpdates": 6,
+      "removedUpdates": ["actions", "go"],
+      "deferredUpdates": ["mermaid"],
+      "pullRequestClosingKeyword": "Fixes",
+      "pullRequestMetadata": "stale"
+    },
+    "expected": {
+      "closingKeyword": "Part of",
+      "umbrellaClosedByPartialWork": false,
+      "metadataSynchronized": true,
+      "deferredRemainOpen": true
+    }
+  }
+]

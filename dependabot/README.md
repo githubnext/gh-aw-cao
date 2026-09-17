@@ -11,7 +11,13 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 
 - Prioritizes repositories with dependency alerts, stale or conflicted update pull requests, lockfile drift, and actionable Dependabot configuration failures.
 - Understands relationships among manifests, lockfiles, workspaces, solutions, source code, tests, and CI instead of grouping updates only by package name.
-- Maintains one repository-scoped issue containing every update currently identified by Dependabot.
+- Maintains one repository-scoped umbrella issue containing every update currently identified by Dependabot.
+- Creates one separate assignable work issue per atomic update group so each assignment maps to exactly one independently mergeable pull request; the umbrella issue itself is never assigned to a coding agent.
+- Revalidates every candidate against the target repository's exact HEAD and classifies it as current, stale, superseded, blocked, or actionable before issuing work.
+- Names the canonical manifest or pin source for every value, prohibits direct edits to generated consumers, and flags duplicated literal pins that should use an existing shared registry or helper.
+- Reads major-version release notes, records repository-specific migration invariants, and preflights candidate peer ranges and candidate dependency-graph advisories before declaring an update actionable.
+- Freezes exact target versions, states the permitted lockfile and transitive changes, and requires rejecting resolver drift beyond the reviewed update.
+- Requires `Part of #...` for partial batches, reserves `Fixes #...` for complete fulfillment, and requires pull request metadata to stay synchronized with the final diff.
 - Refreshes the durable existing issue, posts a confirmation comment on later runs, and replaces obsolete tasks with a completed description when no work remains.
 - Remembers the issue number in repository memory and reads that issue directly on later runs instead of repeatedly using GitHub search.
 - Reads optional target-maintainer guidance from `.github/dependabot.md` and tells issue readers how to use that feedback channel.
@@ -24,7 +30,7 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 | Workflow | Role |
 | --- | --- |
 | [`dependabot`](../.github/workflows/dependabot.md) | Daily orchestrator workflow that discovers, ranks, and selects repositories. |
-| [Dependabot / Update Planner](../.github/workflows/dependabot-update-planner.md) | Repository-scoped worker workflow that creates or refreshes one agent-ready Dependabot update-plan issue. |
+| [Dependabot / Update Planner](../.github/workflows/dependabot-update-planner.md) | Repository-scoped worker workflow that refreshes one Dependabot umbrella inventory issue and creates its atomic, agent-ready work issues. |
 
 The orchestrator workflow can dispatch no more than 50 worker workflows in one run. Each worker workflow handles one target repository and uses only its declared issue, refresh-comment, or `noop` safe outputs.
 
@@ -114,7 +120,7 @@ Repositories without a recognized dependency ecosystem, readable manifests, or e
 - The orchestrator workflow selects repositories but does not mutate them directly.
 - A worker workflow receives one target and cannot discover more repositories, dispatch another workflow, or promote its mode.
 - The worker workflow cannot create or mutate pull requests or repository files.
-- The worker can create one deduplicated plan issue, refresh the existing issue with one confirmation comment, replace resolved work with a completed description, or emit `noop`.
+- The worker can create one deduplicated umbrella plan issue and a bounded number of deduplicated atomic work issues, refresh the umbrella issue with one confirmation comment, replace resolved work with a completed description, or emit `noop`.
 - Credentials remain in the private control repository and are never included in dispatch inputs.
 
 ## Operational Questions

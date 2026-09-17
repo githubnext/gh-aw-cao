@@ -115,14 +115,14 @@ test("self-care pages health worker creates a fix PR instead of a report issue",
   assert.match(source, /Fix only the selected quick wins/);
 });
 
-test("Dependabot worker maintains one agent-ready issue and never writes pull requests", () => {
+test("Dependabot worker maintains one umbrella inventory issue with atomic work issues and never writes pull requests", () => {
   const source = workflow("dependabot-update-planner.md");
   const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
   assert.ok(frontmatter, "Dependabot worker must have frontmatter");
   const outputs = parse(frontmatter)["safe-outputs"];
 
   assert.deepEqual(Object.keys(outputs).sort(), ["add-comment", "create-issue", "update-issue"]);
-  assert.equal(outputs["create-issue"].max, 1);
+  assert.equal(outputs["create-issue"].max, 10);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
   assert.equal(outputs["create-issue"].expires, undefined);
   assert.equal(outputs["create-issue"].labels, undefined);
@@ -137,7 +137,9 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
   assert.match(source, /Dependency update plan for <owner>\/<repository>/);
   assert.match(source, /Dependabot update plan refreshed\./);
   assert.match(source, /<summary><b>Agent prompt<\/b><\/summary>/);
-  assert.match(source, /complete every unchecked item/);
+  assert.match(source, /complete exactly this atomic group in exactly one pull request/);
+  assert.match(source, /Dependency update: <atomic group summary> in <owner>\/<repository>/);
+  assert.match(source, /Do not assign this umbrella issue\./);
   assert.match(source, /repo-memory:/);
   assert.match(source, /issue-index\/<safe-output-owner>/);
   assert.match(source, /Do not call `search_issues`/);
