@@ -469,6 +469,7 @@ function enableResponsiveReportActions(root, signal) {
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');
   const headerDesktopSlot = overviewHeader?.parentElement;
+  const headerDescription = overviewHeader?.querySelector('[data-page-description]');
   const viewModeToggle = root.querySelector('.mobile-view-mode-toggle');
   const mobileToggleSlot = root.querySelector('.sidebar-header');
   const mobileToggleAnchor = root.querySelector('.mobile-nav-menu');
@@ -483,8 +484,10 @@ function enableResponsiveReportActions(root, signal) {
     if (overviewHeader instanceof HTMLElement && mobileHeaderSlot instanceof HTMLElement && headerDesktopSlot) {
       if (media.matches) {
         if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.prepend(overviewHeader);
+        if (headerDescription instanceof HTMLElement) headerDescription.setAttribute('aria-hidden', 'true');
       } else if (overviewHeader.parentElement !== headerDesktopSlot) {
         headerDesktopSlot.prepend(overviewHeader);
+        if (headerDescription instanceof HTMLElement) headerDescription.removeAttribute('aria-hidden');
       }
     }
     if (

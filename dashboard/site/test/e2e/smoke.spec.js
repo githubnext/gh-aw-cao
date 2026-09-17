@@ -111,7 +111,7 @@ test('mobile title bar keeps the dashboard subtitle adjacent to the page title',
           title: 'gh-aw-cao',
           repository: 'githubnext/gh-aw-cao',
           pages: [
-            { id: 'overview', kind: 'custom', title: 'Overview', views: [], sections: [] }
+            { id: 'overview', kind: 'custom', title: 'Overview', description: 'Operational dashboard', views: [], sections: [] }
           ]
         }
       },
@@ -122,6 +122,7 @@ test('mobile title bar keeps the dashboard subtitle adjacent to the page title',
   const mobileHeader = page.locator('.mobile-page-header');
   await expect(mobileHeader.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   await expect(mobileHeader.locator('.mobile-brand-name')).toHaveText('gh-aw-cao');
+  await expect(mobileHeader.locator('[data-page-description]')).toHaveAttribute('aria-hidden', 'true');
 
   const titleGap = await mobileHeader.evaluate((element) => {
     const title = element.querySelector('h1')?.getBoundingClientRect();
