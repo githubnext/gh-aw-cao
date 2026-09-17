@@ -555,6 +555,56 @@ describe('data view renderer', () => {
     expect(labels?.getAttribute('aria-label')).toBe('Daily ops labels and metrics');
   });
 
+  it('renders a declared card subtitle beneath the card title', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'mcps',
+      title: 'MCP tools',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: {
+          columns: [
+            { field: 'mcp-tool', type: 'nominal', title: 'MCP tool' },
+            { field: 'mcp-server', type: 'nominal', title: 'MCP server' },
+            { field: 'calls', type: 'quantitative', title: 'Calls' },
+            { field: 'workflows', type: 'quantitative', title: 'Workflows' }
+          ]
+        }
+      },
+      sourceName: 'mcp-tool-totals',
+      rows: [{ 'mcp-tool': 'issue_read', 'mcp-server': 'github', calls: 4778, workflows: 12 }],
+      cardTemplates: {
+        'mcp-tool': {
+          icon: 'mcp',
+          title: { field: 'mcp-tool', title: 'MCP tool' },
+          subtitle: { field: 'mcp-server', title: 'MCP server' },
+          labels: [],
+          details: [
+            { field: 'calls', title: 'Calls' },
+            { field: 'workflows', title: 'Workflows' }
+          ]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('issue_read');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('github');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.getAttribute('aria-label')).toBe('MCP server: github');
+    const metrics = [...card?.querySelectorAll('.entity-card-list-metric') ?? []]
+      .map((metric) => metric.textContent);
+    expect(metrics).toEqual(['4778Calls', '12Workflows']);
+  });
+
   it('lets a mobile card continuation retry after a load failure', async () => {
     const load = vi.fn()
       .mockRejectedValueOnce(new Error('worker unavailable'))

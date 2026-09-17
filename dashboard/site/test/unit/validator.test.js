@@ -709,7 +709,9 @@ describe('dashboard document validation', () => {
     expect(mcps.views).toHaveLength(2);
     expect(mcps.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'mcp-tool',
-      'calls'
+      'mcp-server',
+      'calls',
+      'workflows'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });

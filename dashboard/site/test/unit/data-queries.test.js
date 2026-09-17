@@ -1037,15 +1037,19 @@ describe('declarative dashboard queries', () => {
         source: 'mcp-calls',
         rows: [
           {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
             'mcp-observation': 'call-1', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
           },
           {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
             'mcp-observation': 'call-2', 'mcp-server': 'github', 'mcp-tool': 'search_issues'
           },
           {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
             'mcp-observation': 'call-3', 'mcp-server': 'github', 'mcp-tool': 'create_issue'
           },
           {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
             'mcp-observation': 'call-4', 'mcp-server': 'safe_outputs', 'mcp-tool': 'create_issue'
           }
         ],
@@ -1057,15 +1061,15 @@ describe('declarative dashboard queries', () => {
       expect(Object.keys(derived)).toEqual(['mcp-tool-totals', 'mcp-top-tools']);
       expect(derived['mcp-tool-totals']).toMatchObject({
         rows: [
-          { 'mcp-tool': 'github/search_issues', calls: 2 },
-          { 'mcp-tool': 'github/create_issue', calls: 1 }
+          { 'mcp-tool-label': 'github/search_issues', 'mcp-tool': 'search_issues', 'mcp-server': 'github', calls: 2, workflows: 2 },
+          { 'mcp-tool-label': 'github/create_issue', 'mcp-tool': 'create_issue', 'mcp-server': 'github', calls: 1, workflows: 1 }
         ],
         metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-totals' }
       });
       expect(derived['mcp-top-tools']).toMatchObject({
         rows: [
-          { 'mcp-tool': 'github/search_issues', calls: 2 },
-          { 'mcp-tool': 'github/create_issue', calls: 1 }
+          { 'mcp-tool-label': 'github/search_issues', 'mcp-tool': 'search_issues', 'mcp-server': 'github', calls: 2, workflows: 2 },
+          { 'mcp-tool-label': 'github/create_issue', 'mcp-tool': 'create_issue', 'mcp-server': 'github', calls: 1, workflows: 1 }
         ],
         metadata: { 'source-kind': 'derived', 'query-name': 'mcp-top-tools' }
     });

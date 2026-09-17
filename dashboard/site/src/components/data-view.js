@@ -95,7 +95,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
  *   toText: (value: unknown) => string,
- *   cardTemplates?: Record<string, { icon: string, title: TableField, labels: TableField[], details: TableField[] }>,
+ *   cardTemplates?: Record<string, { icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
  * }} DataViewContext
  */
@@ -301,7 +301,7 @@ function renderListView(context) {
  *   headingTag: 'h3'|'h4',
  *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
+ *   definition: { icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
  *   listAction: HTMLElement | null
  * }} options
  */
@@ -341,7 +341,7 @@ function renderEntityCardListView(options) {
  *   title: string,
  *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
+ *   definition: { icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] },
  *   drill?: Record<string, unknown> | null,
  *   keyOffset?: number
  * }} options
@@ -350,6 +350,7 @@ function renderEntityCardItems(rows, options) {
   const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0 } = options;
   return rows.map((row, index) => {
     const titleText = toText(row[definition.title.field]);
+    const subtitleText = definition.subtitle ? toText(row[definition.subtitle.field]) : '';
     const target = resolveEntityCardDrill(row, drill, titleText);
     const titleContent = target?.external
       ? renderExternalLink(target.link)
@@ -383,6 +384,16 @@ function renderEntityCardItems(rows, options) {
         'div',
         { className: 'issue-list-card-content' },
         h('div', { className: 'issue-list-card-title entity-card-list-title' }, titleContent),
+        subtitleText
+          ? h(
+            'div',
+            {
+              className: 'issue-list-card-subtitle entity-card-list-subtitle',
+              'aria-label': `${fieldTitle(definition.subtitle ?? { field: '' })}: ${subtitleText}`
+            },
+            subtitleText
+          )
+          : null,
         h(
           'dl',
           { className: 'issue-list-card-meta', 'aria-label': `${titleText || 'Item'} metadata` },
@@ -798,7 +809,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const availableRows = [...rows];
   const initialRows = availableRows.slice(0, pageSize);
   const columnFields = new Set(columns.map((column) => column.field));
-  /** @type {{ icon: string, title: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] }} */
+  /** @type {{ icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] }} */
   const definition = Object.values(cardTemplates)
     .filter((template) => columnFields.has(template.title.field))
     .toSorted((left, right) => (
@@ -832,6 +843,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   }
   const visibleDefinition = {
     ...definition,
+    subtitle: definition.subtitle && columnFields.has(definition.subtitle.field) ? definition.subtitle : undefined,
     labels: definition.labels.filter((field) => columnFields.has(field.field)),
     details: visibleDetails,
     metrics: visibleMetrics

@@ -628,14 +628,17 @@ test('data worker returns MCP tool totals without safe outputs calls on initial 
     expect(payload['mcp-tool-totals']).toMatchObject({
       source: 'mcp-tool-totals',
       rows: [{
-        'mcp-tool': 'github/search_issues',
-        calls: 2
+        'mcp-tool-label': 'github/search_issues',
+        'mcp-tool': 'search_issues',
+        'mcp-server': 'github',
+        calls: 2,
+        workflows: 1
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-totals' }
     });
     expect(payload['mcp-top-tools']).toMatchObject({
       source: 'mcp-top-tools',
-      rows: [{ 'mcp-tool': 'github/search_issues', calls: 2 }],
+      rows: [{ 'mcp-tool-label': 'github/search_issues', 'mcp-tool': 'search_issues', 'mcp-server': 'github', calls: 2, workflows: 1 }],
       metadata: { 'source-kind': 'derived', 'query-name': 'mcp-top-tools' }
     });
   }

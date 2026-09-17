@@ -565,6 +565,9 @@ function validateCardTemplates(templates, templatesNode, errors) {
       ids.add(template.id);
     }
     validateCardTemplateField(template.title, getValueNodeByKey(templateNode, 'title'), `${path}.title`, errors);
+    if (template.subtitle !== undefined) {
+      validateCardTemplateField(template.subtitle, getValueNodeByKey(templateNode, 'subtitle'), `${path}.subtitle`, errors);
+    }
     for (const key of ['labels', 'details']) {
       const fields = template[key];
       if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {
