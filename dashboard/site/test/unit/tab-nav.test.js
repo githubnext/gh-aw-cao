@@ -9,7 +9,7 @@ describe('tab-nav', () => {
       ariaLabel: 'Workflow views',
       tabs: [
         { label: 'Insights', icon: 'graph', href: '#page-one' },
-        { label: 'Reports', icon: 'issue', href: '#page-two', current: true }
+        { label: 'Reports', icon: 'issue', href: '#page-two', current: true, trailingIcon: 'chevron-right' }
       ]
     });
 
@@ -19,6 +19,7 @@ describe('tab-nav', () => {
       ['Insights', '#page-one', null],
       ['Reports', '#page-two', 'page']
     ]);
+    expect(rendered.querySelector('.tab-trailing-icon')?.classList).toContain('octicon-chevron-right');
   });
 
   it('renders interactive tabs and supports roving selection with keyboard navigation', () => {

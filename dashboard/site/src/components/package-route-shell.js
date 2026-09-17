@@ -75,6 +75,7 @@ function packageTabs(packageId) {
     id: tab.id,
     label: tab.label,
     icon: tab.icon,
-    href: `#page-${tab.page}${packageQuery}`
+    href: `#page-${tab.page}${packageQuery}`,
+    trailingIcon: 'chevron-right'
   }));
 }

@@ -3301,6 +3301,17 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   const packageNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
   await expect(packageNavigation).toContainText('OverviewIssuesPull requestsActionsRepositoriesInsightsReports');
   await expect(packageNavigation).toHaveCSS('display', 'flex');
+  await expect(packageNavigation).toHaveCSS('border-bottom-style', 'solid');
+  const currentPackageLink = packageNavigation.getByRole('link', { name: 'Overview' });
+  await expect(currentPackageLink).toHaveAttribute('aria-current', 'page');
+  expect(await currentPackageLink.evaluate((link) => {
+    const token = document.createElement('span');
+    token.style.color = 'var(--accent)';
+    link.append(token);
+    const colors = [getComputedStyle(link, '::after').backgroundColor, getComputedStyle(token).color];
+    token.remove();
+    return colors[0] === colors[1];
+  })).toBe(true);
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
   const packageWorkflowRows = page.locator('[data-page-id="package-detail"] .custom-table tbody tr');
   await expect(packageWorkflowRows).toHaveCount(2);
@@ -3320,8 +3331,12 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(packageNavigation).toHaveCSS('display', 'grid');
+  await expect(packageNavigation).toHaveCSS('gap', '0px');
+  await expect(packageNavigation).toHaveCSS('overflow', 'hidden');
   const mobilePackageLinks = packageNavigation.locator('a');
   await expect(mobilePackageLinks).toHaveCount(7);
+  await expect(mobilePackageLinks.first().locator('.tab-trailing-icon')).toBeVisible();
+  expect(await mobilePackageLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
   const mobileLinkBoxes = await mobilePackageLinks.evaluateAll((links) => links.map((link) => {
     const box = link.getBoundingClientRect();
     return { height: box.height, top: box.top };
