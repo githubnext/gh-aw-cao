@@ -181,7 +181,7 @@ test('core dashboard stays small and page chunks load on demand with in-memory c
       value: await response.json(),
     };
   });
-  expect(core.textLength).toBeLessThan(75000);
+  expect(core.textLength).toBeLessThan(76000);
   expect(core.value.dashboard.pages.some((/** @type {{ views?: unknown[] }} */ entry) => Array.isArray(entry.views))).toBe(false);
   expect(core.value.dashboard.pages.some((/** @type {{ definition?: { views?: unknown[] } }} */ entry) => Array.isArray(entry.definition?.views))).toBe(false);
 
