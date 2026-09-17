@@ -121,6 +121,8 @@ test("optimization package installs the token optimizer contract", () => {
     manifest,
     new RegExp(`destination: \\.github/aw/optimization/graders/${graderName.replaceAll(".", "\\.")}`),
   );
+  assert.match(manifest, /source: collect-token-efficiency\.sh/);
+  assert.match(manifest, /destination: \.github\/aw\/optimization\/collect-token-efficiency\.sh/);
 });
 
 test("token optimizer is review-only, assignment-scoped, and gated before inference", () => {
@@ -158,7 +160,7 @@ test("token optimizer is review-only, assignment-scoped, and gated before infere
 });
 
 test("token optimizer observations use the Activity JSONL boundary, not issue text", () => {
-  const collector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
+  const collector = readFileSync(join(root, "optimization", "collect-token-efficiency.sh"), "utf8");
   const adapter = readFileSync(
     join(root, "dashboard", "site", "src", "data", "adapters", "gh-aw-logs.js"),
     "utf8",
