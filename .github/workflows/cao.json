@@ -63,7 +63,14 @@
       },
       "dependabot": {
         "icon": "dependabot",
-        "mode": "review",
+        "mode": "live",
+        "max-repositories": 1,
+        "rollout-percent": 100,
+        "targets": {
+          "github/gh-aw": {
+            "mode": "live"
+          }
+        },
         "workers": {
           "update-planner": {
             "workflow": "dependabot-update-planner"
