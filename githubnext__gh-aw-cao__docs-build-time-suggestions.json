@@ -1,6 +1,6 @@
 {
   "source_sha": "ccd11876e259626b5f0863ea9b5b468246ce6035",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-17T12:52:00Z",
@@ -31,6 +31,21 @@
       ],
       "outcome": "no-op: evidence window 2026-09-17T12:11:56Z to 2026-09-17T13:03:20Z. Analyzed 6 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (1 push, 3 schedule, 2 workflow_run), while disclosing skipped, cancelled, and action_required workflow_run outliers. Parent workflow median duration was 99.5s (p90 123.5s), build median 63.5s (p90 69.5s), deploy-job median 27.5s (p90 46.5s), and queue median 0s (p90 0s). Trusted step metadata showed Build documentation stayed small at 7s median (p90 8s) with node_modules cache hits on 6/6 samples and no npm ci execution. Repeated larger costs were Upload Pages artifact at 31.5s median and, on workflow_run-triggered outliers, Deploy Pages at 41-43s. Astro generation is not the dominant bottleneck and no fresh Astro-targeted change is likely to save at least 60s or 15 percent without weakening correctness or freshness.",
       "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-17T13:16:22Z",
+      "worker_run_id": 35225639341,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        35224564776,
+        35223705265,
+        35222423037,
+        35221849947,
+        35220468568,
+        35219760205
+      ],
+      "outcome": "issue: evidence window 2026-09-17T12:11:56Z to 2026-09-17T13:03:20Z. Analyzed 6 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (1 push, 3 schedule, 2 workflow_run), while disclosing skipped, cancelled, and action_required workflow_run outliers. Parent workflow median duration was 99.5s (p90 123.5s), build median 63.5s (p90 69.5s), deploy-job median 27.5s (p90 46.5s), and queue median 0s (p90 0s). Trusted step metadata showed Restore cached CAO Dashboard returned success immediately in 6/6 samples but did not prevent Find latest CAO Dashboard run + Mount latest CAO Dashboard artifact (median 9s combined) or Upload Pages artifact (31.5s median, about 50% of build job). The repeated cost indicates the cached dashboard path is ineffective because the downstream Pages upload still repackages the large dashboard payload every run. A build/deploy split that lets Documentation Pages deploy the already-produced dashboard artifact directly from CAO Dashboard while rebuilding docs only when docs inputs change is expected to save roughly 39-41s per run (~39% of workflow median) without reducing freshness or deployment safety.",
+      "suggestion_fingerprint": "c1979ae4b7fcb3efb1c3"
     }
   ]
 }
