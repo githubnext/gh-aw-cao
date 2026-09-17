@@ -54,7 +54,7 @@
 name: "EU CRA / Maintenance"
 on:
   schedule:
-    - cron: "49 18 * * *"  # Friendly format: daily (scattered)
+    - cron: "5 10 * * *"  # Friendly format: daily (scattered)
   workflow_dispatch:
     inputs:
       aw_context:
