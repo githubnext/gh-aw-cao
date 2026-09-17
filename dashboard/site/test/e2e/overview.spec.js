@@ -118,18 +118,41 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
 });
 
 test('renders the factory structure immediately with only unresolved widgets pending', async ({ page }) => {
-  await page.evaluate(async ({ documentModel, presenterModuleUrl, sourceStoreModuleUrl }) => {
+  const immediate = await page.evaluate(async ({ documentModel, presenterModuleUrl, sourceStoreModuleUrl }) => {
     const [{ renderDashboard }, { configureSourceLoader }] = await Promise.all([
       import(presenterModuleUrl),
       import(sourceStoreModuleUrl)
     ]);
-    configureSourceLoader(() => new Promise(() => {}));
+    let sourceLoadCalls = 0;
+    let pageLoadCalls = 0;
+    configureSourceLoader(() => {
+      sourceLoadCalls += 1;
+      return new Promise(() => {});
+    });
     const rendered = renderDashboard({
       document: documentModel,
       sources: {},
-      loadPageSources: () => new Promise(() => {})
+      loadPageSources: () => {
+        pageLoadCalls += 1;
+        return new Promise(() => {});
+      }
     });
     document.querySelector('#root')?.replaceChildren(rendered);
+    const overview = rendered.querySelector('[data-page-id="overview"]');
+    return {
+      sourceLoadCalls,
+      pageLoadCalls,
+      header: Boolean(overview?.querySelector(':scope > .custom-view-grid > .factory-intro')),
+      floor: Boolean(overview?.querySelector(':scope > .custom-view-grid > .factory-floor')),
+      pageSkeletons: overview?.querySelectorAll('.dashboard-view-skeleton').length,
+      pageBusy: overview?.getAttribute('aria-busy'),
+      headerBusy: overview?.querySelector('.factory-intro')?.getAttribute('aria-busy'),
+      floorBusy: overview?.querySelector('.factory-floor')?.getAttribute('aria-busy'),
+      runningPending: overview?.querySelectorAll('.factory-running-pending').length,
+      headingPending: overview?.querySelectorAll('.factory-heading-pending').length,
+      rhythmPending: overview?.querySelectorAll('.factory-rhythm-pending').length,
+      stationsPending: overview?.querySelectorAll('.factory-station-pending').length
+    };
   }, {
     documentModel: {
       'language-version': dashboardDocument['language-version'],
@@ -143,15 +166,18 @@ test('renders the factory structure immediately with only unresolved widgets pen
     sourceStoreModuleUrl: 'http://dashboard.test/src/source-store.js'
   });
 
-  const overview = page.locator('[data-page-id="overview"]');
-  await expect(overview.locator(':scope > .custom-view-grid > .factory-intro')).toBeVisible();
-  await expect(overview.locator(':scope > .custom-view-grid > .factory-floor')).toBeVisible();
-  await expect(overview.locator('.dashboard-view-skeleton')).toHaveCount(0);
-  await expect(overview).not.toHaveAttribute('aria-busy', 'true');
-  await expect(overview.locator('.factory-running-pending')).toHaveCount(1);
-  await expect(overview.locator('.factory-heading-pending')).toHaveCount(1);
-  await expect(overview.locator('.factory-rhythm-pending')).toHaveCount(1);
-  await expect(overview.locator('.factory-station-pending')).toHaveCount(4);
-  await expect(overview.locator('.factory-intro')).not.toHaveAttribute('aria-busy', 'true');
-  await expect(overview.locator('.factory-floor')).not.toHaveAttribute('aria-busy', 'true');
+  expect(immediate).toEqual({
+    sourceLoadCalls: 11,
+    pageLoadCalls: 1,
+    header: true,
+    floor: true,
+    pageSkeletons: 0,
+    pageBusy: null,
+    headerBusy: null,
+    floorBusy: null,
+    runningPending: 1,
+    headingPending: 1,
+    rhythmPending: 1,
+    stationsPending: 4
+  });
 });
