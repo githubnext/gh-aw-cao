@@ -29,10 +29,42 @@ describe('Audit dashboard view', () => {
       expect.objectContaining({ source: 'audit-events', 'route-field': 'package' })
     ]);
     expect(issues.views
-      .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'outcomes')
-      .every((/** @type {{ data: { filters: Record<string, string[]> } }} */ view) => (
-        view.data.filters['workflow-role']?.includes('worker')
-      ))).toBe(true);
+      .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'package-worker-issues')
+      .map((/** @type {{ data: Record<string, string> }} */ view) => view.data['route-field'])).toEqual([
+      'package',
+      'package'
+    ]);
+  });
+
+  it('projects only issue outcomes produced by package workers', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['package-worker-issues'],
+      sources: {
+        outcomes: {
+          source: 'outcomes',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/orchestrator.md', 'safe-output': 'orchestrator-issue', 'outcome-category': 'issue' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/worker.md', 'safe-output': 'worker-issue', 'outcome-category': 'issue' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/worker.md', 'safe-output': 'worker-pr', 'outcome-category': 'pull-request' }
+          ],
+          metadata
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/orchestrator.md', 'workflow-role': 'orchestrator' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/worker.md', 'workflow-role': 'worker' }
+          ],
+          metadata
+        }
+      }
+    }));
+
+    expect(result['package-worker-issues'].rows).toEqual([
+      expect.objectContaining({ package: 'ambient-context', 'safe-output': 'worker-issue' })
+    ]);
   });
 
   it('declares an aggregate chart before the reorganized event table', () => {
