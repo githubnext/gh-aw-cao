@@ -216,8 +216,8 @@ describe('chart element helpers', () => {
     expect(chart.getAttribute('data-chart-widget')).toBe('heatmap');
     expect(chart.querySelector('.heatmap-chart')?.tagName).toBe('svg');
     expect(chart.querySelector('.heatmap-chart')?.getAttribute('aria-label')).toBe('Heatmap of Mean job time');
-    expect([...chart.querySelectorAll('.heatmap-column-label')].map((label) => label.textContent)).toEqual(['buildbuild', 'testtest']);
-    expect([...chart.querySelectorAll('.heatmap-row-label')].map((label) => label.textContent)).toEqual(['macosmacos', 'ubuntuubuntu']);
+    expect([...chart.querySelectorAll('.heatmap-column-label')].map((label) => label.lastChild?.textContent)).toEqual(['build', 'test']);
+    expect([...chart.querySelectorAll('.heatmap-row-label')].map((label) => label.lastChild?.textContent)).toEqual(['macos', 'ubuntu']);
     expect(chart.querySelectorAll('.heatmap-cell')).toHaveLength(4);
     expect([...chart.querySelectorAll('.heatmap-cell[tabindex="0"]')].map((cell) => cell.getAttribute('aria-label'))).toContain('build, ubuntu, Mean job time: 62 s');
     expect(chart.querySelector('.heatmap-cell-empty')?.getAttribute('aria-label')).toBe('test, macos: no observation');

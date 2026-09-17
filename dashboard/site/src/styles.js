@@ -638,7 +638,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .heatmap-cell text { fill: var(--fg); font-size: 3px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
 .heatmap-cell-empty rect { fill: var(--canvas-subtle); stroke: var(--border-muted); }
 .heatmap-cell-empty text { fill: var(--muted); font-weight: 400; }
-.heatmap-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.heatmap-cell:focus-visible { outline: none; }
+.heatmap-cell:focus-visible rect { stroke: var(--focus); stroke-width: 1; }
 .chart-series-1 { stroke: var(--success); }
 .chart-series-2 { stroke: var(--attention); }
 .chart-series-3 { stroke: var(--danger); }
