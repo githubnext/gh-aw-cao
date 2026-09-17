@@ -3494,7 +3494,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
   await filterBar.locator('.horizon-toggle').click();
 
-  await filterBar.getByRole('checkbox', { name: 'review' }).uncheck();
+  await filterBar.getByRole('checkbox', { name: 'review' }).uncheck({ force: true });
   await expect(filterBar.locator('.count-badge')).toHaveText('2');
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('1');
   await expect.poll(() => page.evaluate(() => JSON.parse(
