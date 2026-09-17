@@ -49,6 +49,20 @@ test("exposes the dashboard data CLI as cao", async () => {
   }
 });
 
+test("reports a missing cao add package without a stack trace", async () => {
+  let error;
+  try {
+    await executeFile(process.execPath, [cao, "add"]);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error);
+  assert.equal(error.code, 1);
+  assert.equal(error.stdout, "");
+  assert.match(error.stderr, /^Error: cao add requires a package\n\nUsage:\n  cao init\n  cao add PACKAGE /);
+  assert.doesNotMatch(error.stderr, /\n\s+at /);
+});
+
 test("queries canonical data with the gh-like surface", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-gh-cli-"));
   const inputDirectory = path.join(root, "gh-aw-logs-shards");

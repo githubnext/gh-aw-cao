@@ -1490,7 +1490,8 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n\n${USAGE}\n`);
+    const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    process.stderr.write(`${message}\n\n${USAGE}\n`);
     process.exitCode = 1;
   });
 }
