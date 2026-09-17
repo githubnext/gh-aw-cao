@@ -318,6 +318,29 @@
       };
 
       /**
+       * @param {HTMLElement} dashboard
+       * @param {'ready' | 'loading' | 'cached' | 'stale'} state
+       * @param {() => void} [retryRefresh]
+       */
+      const applyDashboardDataState = (dashboard, state, retryRefresh) => {
+        dashboard.classList.remove("dashboard-loading", "dashboard-refreshing", "dashboard-stale");
+        dashboard.removeAttribute("aria-busy");
+        dashboard.querySelector(".source-refresh-error")?.remove();
+        if (state === "loading") {
+          dashboard.classList.add("dashboard-loading");
+          dashboard.setAttribute("aria-busy", "true");
+        } else if (state === "cached") {
+          dashboard.classList.add("dashboard-refreshing");
+          dashboard.setAttribute("aria-busy", "true");
+        } else if (state === "stale") {
+          dashboard.classList.add("dashboard-stale");
+          if (retryRefresh) {
+            dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh));
+          }
+        }
+      };
+
+      /**
        * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
        * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
        * @param {boolean} [prepared]
@@ -345,10 +368,8 @@
           loadPageSources,
           tableRowLimit,
         });
+        applyDashboardDataState(dashboard, state, retryRefresh);
         if (state === "loading") {
-          dashboard.classList.add("dashboard-loading");
-          dashboard.setAttribute("aria-busy", "true");
-
           const skeleton = document.createElement("div");
           skeleton.className = "dashboard-loading-skeleton";
           skeleton.setAttribute("aria-hidden", "true");
@@ -356,14 +377,6 @@
             skeleton.append(block);
           }
           dashboard.querySelector(".report-body")?.prepend(skeleton);
-        } else if (state === "cached") {
-          dashboard.classList.add("dashboard-refreshing");
-          dashboard.setAttribute("aria-busy", "true");
-        } else if (state === "stale") {
-          dashboard.classList.add("dashboard-stale");
-          if (retryRefresh) {
-            dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh));
-          }
         }
         attachCopilotPanel(dashboard);
         attachCliActions(dashboard, dashboardDocument.dashboard["cli-actions"] ?? [], {
@@ -374,6 +387,17 @@
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);
         return dashboard;
+      };
+      /**
+       * Updates ingestion chrome without replacing the mounted dashboard. Active
+       * page subscriptions own fresh data delivery and the smallest DOM updates.
+       * @param {'ready' | 'cached' | 'stale'} state
+       * @param {() => void} [retryRefresh]
+       */
+      const updateDashboardDataState = (state, retryRefresh) => {
+        const dashboard = root.firstElementChild;
+        if (!(dashboard instanceof HTMLElement)) return;
+        applyDashboardDataState(dashboard, state, retryRefresh);
       };
       window.addEventListener("dashboard-preview-update", (event) => {
         const previewEvent = /** @type {CustomEvent<{ dashboard: { 'language-version': string, dashboard: import('./presenter.js').PresentableDashboard }, traceId?: string }>} */ (event);
@@ -1075,6 +1099,7 @@
             render: (sources, state, loadPageSources, retryRefresh) => {
               renderSources(sources, state, true, loadPageSources, retryRefresh);
             },
+            updateState: updateDashboardDataState,
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

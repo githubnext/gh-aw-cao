@@ -166,6 +166,9 @@ test("cached view is populated before background ingestion updates it", async ({
   await page.goto(`${origin}/`);
   await expect(page.getByRole("cell", { name: "Cached dashboard run" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "gh-aw-cao" })).toHaveCount(0);
+  await page.locator(".dashboard-root").evaluate((element) => {
+    element.dataset.refreshMount = "original";
+  });
 
   await page.getByRole("link", { name: "Repositories" }).click();
   await expect(page.getByRole("cell", { name: "gh-aw-cao" })).toBeVisible();
@@ -177,4 +180,5 @@ test("cached view is populated before background ingestion updates it", async ({
   releaseFreshData();
 
   await expect(page.getByRole("cell", { name: "Fresh dashboard run" })).toBeVisible();
+  await expect(page.locator('.dashboard-root[data-refresh-mount="original"]')).toHaveCount(1);
 });

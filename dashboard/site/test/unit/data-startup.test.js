@@ -45,6 +45,11 @@ function options(overrides = {}) {
         }).catch(() => {});
       }
     },
+    updateState: (
+      /** @type {'ready' | 'cached' | 'stale'} */ state,
+    ) => {
+      calls.push(`state:${state}`);
+    },
     settleUi: async () => {
       calls.push("settle");
     },
@@ -100,6 +105,16 @@ describe("dashboard data startup", () => {
       "automatic",
       "refresh",
     ]);
+  });
+
+  it("updates refresh state without remounting the dashboard", async () => {
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ sources: {}, changed: true });
+
+    await startDashboardData(options());
+    await Promise.resolve();
+
+    expect(calls.filter((call) => call.startsWith("render:"))).toEqual(["render:cached"]);
+    expect(calls).toContain("state:ready");
   });
 
   it("paginates view aliases and reloads only the originating view", async () => {
