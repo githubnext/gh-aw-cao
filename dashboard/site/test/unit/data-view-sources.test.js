@@ -7,9 +7,6 @@ import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/d
 import { createDashboardQueryBudget, executeDashboardQueries } from '../../src/data/queries/declarative.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
-const dashboardQueries = JSON.parse(
-  readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
-).dashboard.queries;
 const optimizationDashboardQueries = JSON.parse(
   readFileSync(`${process.cwd()}/../../optimization/dashboard.json`, 'utf8')
 ).dashboard.queries;
@@ -592,7 +589,7 @@ describe('canonical view sources', () => {
       })
     ]);
     expect(projected['token-efficiency-interventions'].rows[0]).not.toHaveProperty('issue-link');
-    const latest = executeDashboardQueries([...dashboardQueries, {
+    const latest = executeDashboardQueries([...optimizationDashboardQueries, {
       name: 'latest-token-intervention',
       from: 'token-efficiency-interventions',
       select: [
