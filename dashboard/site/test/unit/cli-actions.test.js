@@ -245,4 +245,103 @@ describe('CLI actions', () => {
       .toBe('gh aw update --repo octo/example');
     expect(rendered.querySelector('.table-cli-action-button .octicon-sync')).not.toBeNull();
   });
+
+  it('is disabled by default (no debug output) when the debug query is absent', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) => actual.createDebug(category, { search: () => '', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCliActions: renderCliActionsWithoutDebug } = await import('../../src/components/cli-actions.js');
+
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"type":"complete","result":{"ok":true,"stdout":"","stderr":""}}\n'));
+          controller.close();
+        }
+      })
+    });
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderCliActionsWithoutDebug([{
+      id: 'compile-workflows',
+      label: 'Compile workflows',
+      icon: 'play',
+      command: 'gh aw compile --strict'
+    }]);
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    expect(output.debug).not.toHaveBeenCalled();
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
+
+  it('logs only scalar metadata under its predictable category when enabled', async () => {
+    const output = { debug: vi.fn() };
+    vi.doMock('../../src/debug.js', async () => {
+      const actual = /** @type {typeof import('../../src/debug.js')} */ (
+        await vi.importActual('../../src/debug.js')
+      );
+      return {
+        ...actual,
+        createDebug: (/** @type {string} */ category) =>
+          actual.createDebug(category, { search: () => '?debug=cli-actions', output })
+      };
+    });
+    vi.resetModules();
+    const { renderCliActions: renderCliActionsWithDebug } = await import('../../src/components/cli-actions.js');
+
+    const fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"type":"complete","result":{"ok":true,"stdout":"","stderr":""}}\n'));
+            controller.close();
+          }
+        })
+      })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'boom' }) });
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderCliActionsWithDebug([{
+      id: 'compile-workflows',
+      label: 'Compile workflows',
+      icon: 'play',
+      command: 'gh aw compile --strict'
+    }]);
+    document.body.append(/** @type {HTMLElement} */ (rendered));
+
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+    await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith('[cao:cli-actions]', {
+      event: 'execute-completed', actionId: 'compile-workflows', ok: true
+    }));
+    expect(output.debug).toHaveBeenCalledWith('[cao:cli-actions]', {
+      event: 'execute-started', actionId: 'compile-workflows'
+    });
+
+    rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
+    await vi.waitFor(() => expect(output.debug).toHaveBeenCalledWith('[cao:cli-actions]', {
+      event: 'execute-failed', actionId: 'compile-workflows', errorName: 'Error'
+    }));
+
+    for (const call of output.debug.mock.calls) {
+      const metadata = call[1];
+      expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
+    }
+
+    vi.doUnmock('../../src/debug.js');
+    vi.resetModules();
+  });
 });
