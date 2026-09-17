@@ -652,6 +652,9 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .pie-chart-segment { stroke: var(--accent); }
 .pie-chart-total-value { fill: var(--fg); font-size: 5px; font-weight: 700; }
 .pie-chart-total-label { fill: var(--muted); font-size: 2.75px; text-transform: uppercase; letter-spacing: .04em; }
+.pie-chart-summary { display: grid; justify-items: center; color: var(--muted); line-height: 1.2; text-align: center; text-transform: uppercase; letter-spacing: .04em; }
+.pie-chart-summary strong { color: var(--fg); font-size: 1.25rem; font-variant-numeric: tabular-nums; letter-spacing: normal; }
+.pie-chart-summary span { font-size: .6875rem; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 12px; padding: 0; list-style: none; color: var(--muted); font-size: .75rem; }
 .chart-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 18px; height: 0; border-top-width: 2px; border-top-style: solid; }

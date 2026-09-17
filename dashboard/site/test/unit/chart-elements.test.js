@@ -141,8 +141,23 @@ describe('chart element helpers', () => {
     const chart = renderChartWidget('pie', [], [], { entries, total: 3_177_281 });
 
     expect(legend.querySelector('strong')?.textContent).toBe('3,177,281');
-    expect(chart.querySelector('.pie-chart-total-value')?.textContent).toBe('3,177,281');
+    expect(chart.querySelector('.pie-chart-total-value')).toBeNull();
+    expect(chart.querySelector('.pie-chart-summary strong')?.textContent).toBe('3,177,281');
     expect(chart.querySelector('svg')?.getAttribute('aria-label')).toContain('blocked.example 3,177,281');
+  });
+
+  it('moves a long pie summary below the donut', () => {
+    const chart = renderChartWidget(
+      'pie',
+      [],
+      [],
+      { entries: [['blocked.example', 42]], total: 42 },
+      'Blocked requests'
+    );
+
+    expect(chart.querySelector('.pie-chart-total-value')).toBeNull();
+    expect(chart.querySelector('.pie-chart-total-label')).toBeNull();
+    expect(chart.querySelector('.pie-chart-summary')?.textContent).toBe('42Blocked requests');
   });
 
   it('toggles the pie table when the chart is tapped', () => {

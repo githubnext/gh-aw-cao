@@ -2873,7 +2873,7 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
               chart: 'pie',
               encoding: {
                 x: { field: 'repository', type: 'nominal', title: 'Repository' },
-                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'Total AIC' }
+                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'Blocked requests' }
               }
             }]
           }],
@@ -2884,8 +2884,8 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
         usage: {
           source: 'usage',
           rows: [
-            { repository: 'a-very-long-repository-name-that-must-wrap-within-the-legend', aic: 5 },
-            { repository: 'service', aic: 3 }
+            { repository: 'a-very-long-repository-name-that-must-wrap-within-the-legend', aic: 4280186 },
+            { repository: 'service', aic: 2568112 }
           ],
           metadata: {
             'source-id': 'pie-layout-fixture',
@@ -2908,6 +2908,7 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   const description = card.locator('.view-description');
   const layout = page.locator('.pie-chart-layout');
   const chart = layout.locator('.pie-chart-widget');
+  const summary = chart.locator('.pie-chart-summary');
   const legend = layout.locator('.chart-legend-pie');
   const table = page.locator('.chart-view-pie > .table-region');
   const [headingBox, descriptionBox, layoutBox, chartBox, legendBox, cardBox] = await Promise.all(
@@ -2920,6 +2921,13 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   expect(chartBox).not.toBeNull();
   expect(legendBox).not.toBeNull();
   expect(cardBox).not.toBeNull();
+  await expect(summary).toContainText('6,848,298');
+  await expect(summary).toContainText('Blocked requests');
+  const [svgBox, summaryBox] = await Promise.all([
+    chart.locator('svg').boundingBox(),
+    summary.boundingBox()
+  ]);
+  expect(summaryBox?.y).toBeGreaterThanOrEqual((svgBox?.y ?? 0) + (svgBox?.height ?? 0));
   await expect(table).toHaveCount(0);
   expect(layoutBox?.x).toBeCloseTo(headingBox?.x ?? 0, 0);
   expect(layoutBox?.y).toBeGreaterThan((descriptionBox?.y ?? 0) + (descriptionBox?.height ?? 0));
