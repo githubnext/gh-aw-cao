@@ -17,6 +17,15 @@ export function normalizeVersion(value) {
   return parseVersion(value)?.normalized || null;
 }
 
+export function compilerVersionFromLock(source) {
+  const metadata = String(source || "").match(/^# gh-aw-metadata: (.+)$/m)?.[1];
+  try {
+    return normalizeVersion(metadata ? JSON.parse(metadata)?.compiler_version : null);
+  } catch {
+    return null;
+  }
+}
+
 export function compareVersions(left, right) {
   const parsedLeft = parseVersion(left);
   const parsedRight = parseVersion(right);
@@ -47,4 +56,11 @@ export function compareVersions(left, right) {
 export function updateState(version, latestVersion) {
   const comparison = version && latestVersion ? compareVersions(version, latestVersion) : null;
   return comparison === null ? "unknown" : comparison < 0 ? "update-available" : "up-to-date";
+}
+
+export function revisionUpdateState(revision, latestRevision) {
+  const installed = String(revision || "").trim().toLowerCase();
+  const latest = String(latestRevision || "").trim().toLowerCase();
+  if (!installed || !latest) return "unknown";
+  return installed === latest ? "up-to-date" : "update-available";
 }
