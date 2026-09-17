@@ -28,6 +28,10 @@ const inventory = {
   }
 };
 
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {number} expectedTotal
+ */
 async function expectRunsLoadOnScroll(page, expectedTotal) {
   const view = page.locator('[data-view-id="runs-runs-source"]');
   const rows = view.locator('tbody > tr');
@@ -37,20 +41,28 @@ async function expectRunsLoadOnScroll(page, expectedTotal) {
   await expect(view.locator('.table-filter-result')).toHaveText(`Showing 25 of ${expectedTotal} results`);
   await scroll.hover();
   await page.mouse.wheel(0, 10_000);
-  await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await scroll.evaluate((element) => {
+    const scrollElement = /** @type {HTMLElement} */ (element);
+    scrollElement.scrollTop = scrollElement.scrollHeight;
+  });
   await scroll.dispatchEvent('scroll');
-  await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => scroll.evaluate((element) => /** @type {HTMLElement} */ (element).scrollTop)).toBeGreaterThan(0);
   await expect(loadBoundary).toHaveText('Load more rows');
   await expect.poll(() => rows.count()).toBeGreaterThan(25);
 }
 
+/** @param {import('@playwright/test').Page} page */
 async function storedRunCount(page) {
-  return page.evaluate(async () => {
-    const { readCollection } = await import('/src/data/storage/indexeddb.js');
+  return page.evaluate(async (storageUrl) => {
+    const { readCollection } = await import(storageUrl);
     return (await readCollection(indexedDB, 'runs')).length;
-  });
+  }, `${origin}/src/data/storage/indexeddb.js`);
 }
 
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} pageId
+ */
 async function navigateToPage(page, pageId) {
   await page.evaluate((nextPageId) => {
     const link = document.querySelector(`[data-nav-page-id="${nextPageId}"]`);
