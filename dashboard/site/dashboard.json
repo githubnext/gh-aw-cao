@@ -74,6 +74,17 @@
         ]
       },
       {
+        "id": "firewall-domain",
+        "icon": "globe",
+        "title": { "field": "domain", "title": "Domain" },
+        "labels": [],
+        "details": [
+          { "field": "accepted", "title": "Allowed" },
+          { "field": "blocked", "title": "Blocked" },
+          { "field": "run", "title": "Runs" }
+        ]
+      },
+      {
         "id": "issue",
         "icon": "issue-opened",
         "title": { "field": "event-summary", "title": "Issue" },
@@ -3911,17 +3922,18 @@
               "columns": [
                 {
                   "field": "domain",
-                  "type": "nominal"
+                  "type": "nominal",
+                  "title": "Domain"
                 },
                 {
                   "field": "run",
                   "type": "quantitative",
-                  "title": "Run"
+                  "title": "Runs"
                 },
                 {
                   "field": "accepted",
                   "type": "quantitative",
-                  "title": "Accepted"
+                  "title": "Allowed"
                 },
                 {
                   "field": "blocked",

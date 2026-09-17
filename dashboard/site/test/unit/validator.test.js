@@ -662,9 +662,9 @@ describe('dashboard document validation', () => {
       }
     });
     expect(domains.encoding.columns).toEqual([
-      { field: 'domain', type: 'nominal' },
-      { field: 'run', type: 'quantitative', title: 'Run' },
-      { field: 'accepted', type: 'quantitative', title: 'Accepted' },
+      { field: 'domain', type: 'nominal', title: 'Domain' },
+      { field: 'run', type: 'quantitative', title: 'Runs' },
+      { field: 'accepted', type: 'quantitative', title: 'Allowed' },
       { field: 'blocked', type: 'quantitative', title: 'Blocked' }
     ]);
     const serialized = JSON.stringify(firewall).toLowerCase();

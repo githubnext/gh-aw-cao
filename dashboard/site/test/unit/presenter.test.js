@@ -437,8 +437,12 @@ describe('presenter built-in and custom pages', () => {
     expect(text).toContain('new.example');
     expect(text).toContain('blocked.example');
     expect(text).toContain('changed.example');
-    expect(text).toContain('Accepted');
+    expect(text).toContain('Allowed');
     expect(text).toContain('Blocked');
+    const firewallCard = page?.querySelector('[data-view-id="security-firewall-domains"] .entity-card-list-card');
+    expect(firewallCard?.querySelector('.entity-card-list-title')?.textContent).toBe('blocked.example');
+    expect([...firewallCard?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
+      .toEqual(['0Allowed', '3177281Blocked', '1Runs']);
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });
