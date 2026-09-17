@@ -65,7 +65,7 @@ const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --events-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
-  cao compact-jsonl --input-dir SHARD_DIRECTORY --prefix SHARD_PREFIX
+  cao compact-jsonl --input-dir SHARD_DIRECTORY --prefix SHARD_PREFIX [--prefix SHARD_PREFIX...]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
@@ -524,9 +524,9 @@ function parseOptions(arguments_) {
     const value = arguments_[index + 1];
     if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
-    if (name === 'where') {
-      const existing = options.where;
-      options.where = [...(Array.isArray(existing) ? existing : []), value];
+    if (name === 'where' || name === 'prefix') {
+      const existing = options[name];
+      options[name] = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
       throw new UsageError(`Option --${name} may only be specified once`);
     } else {
@@ -743,15 +743,7 @@ async function* jsonlLines(paths) {
   }
 }
 
-export async function compactJsonlShards(inputDirectory, prefix) {
-  if (!/^[A-Za-z0-9._-]+$/.test(prefix)) {
-    throw new UsageError('--prefix must contain only letters, numbers, dots, underscores, and hyphens');
-  }
-  const directory = path.resolve(inputDirectory);
-  const names = (await readdir(directory))
-    .filter((name) => name.startsWith(prefix)
-      && /^\d+-[A-Za-z0-9._-]+\.jsonl$/.test(name.slice(prefix.length)))
-    .sort();
+async function compactJsonlShardGroup(directory, prefix, names) {
   const sourcePaths = names.map((name) => path.join(directory, name));
   const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
     .reduce((sum, size) => sum + size, 0);
@@ -759,8 +751,6 @@ export async function compactJsonlShards(inputDirectory, prefix) {
     let sourceRecords = 0;
     for await (const line of jsonlLines(sourcePaths)) sourceRecords += 1;
     return {
-      command: 'compact-jsonl',
-      inputDirectory: directory,
       prefix,
       sourceFiles: sourcePaths.length,
       sourceRecords,
@@ -796,8 +786,6 @@ export async function compactJsonlShards(inputDirectory, prefix) {
   await Promise.all(sourcePaths.filter((filePath) => filePath !== outputPath).map((filePath) => rm(filePath)));
   const compactedBytes = (await stat(outputPath)).size;
   return {
-    command: 'compact-jsonl',
-    inputDirectory: directory,
     prefix,
     sourceFiles: sourcePaths.length,
     sourceRecords: retainedRecords,
@@ -805,6 +793,33 @@ export async function compactJsonlShards(inputDirectory, prefix) {
     sourceBytes,
     compactedBytes,
     output: outputPath
+  };
+}
+
+export async function compactJsonlShards(inputDirectory, prefixes) {
+  const uniquePrefixes = [...new Set(prefixes)];
+  if (uniquePrefixes.length === 0) throw new UsageError('At least one --prefix is required');
+  for (const prefix of uniquePrefixes) {
+    if (!/^[A-Za-z0-9._-]+$/.test(prefix)) {
+      throw new UsageError('--prefix must contain only letters, numbers, dots, underscores, and hyphens');
+    }
+  }
+  uniquePrefixes.sort((left, right) => right.length - left.length || left.localeCompare(right));
+  const directory = path.resolve(inputDirectory);
+  const groupedNames = new Map(uniquePrefixes.map((prefix) => [prefix, []]));
+  for (const name of (await readdir(directory)).sort()) {
+    const owner = uniquePrefixes.find((prefix) => name.startsWith(prefix)
+      && /^\d+-[A-Za-z0-9._-]+\.jsonl$/.test(name.slice(prefix.length)));
+    if (owner) groupedNames.get(owner).push(name);
+  }
+  const groups = [];
+  for (const prefix of uniquePrefixes.toSorted()) {
+    groups.push(await compactJsonlShardGroup(directory, prefix, groupedNames.get(prefix)));
+  }
+  return {
+    command: 'compact-jsonl',
+    inputDirectory: directory,
+    groups
   };
 }
 
@@ -1586,9 +1601,12 @@ export async function runCli(arguments_, input = process.stdin) {
   }
   if (command === 'compact-jsonl') {
     rejectUnknownOptions(options, ['input-dir', 'prefix']);
+    const prefixes = options.prefix
+      ? Array.isArray(options.prefix) ? options.prefix : [options.prefix]
+      : [];
     return compactJsonlShards(
       path.resolve(option(options, 'input-dir')),
-      option(options, 'prefix')
+      prefixes
     );
   }
   if (command === 'hash-payloads') {

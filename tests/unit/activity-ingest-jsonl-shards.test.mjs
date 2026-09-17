@@ -125,7 +125,8 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   const firstPath = path.join(root, `${prefix}1000-aaaa.jsonl`);
   const secondPath = path.join(root, `${prefix}2000-bbbb.jsonl`);
   const unrelatedPath = path.join(root, 'github-gh-aw-logs-1000-cccc.jsonl');
-  const overlappingPrefixPath = path.join(root, `${prefix}other-logs-1000-dddd.jsonl`);
+  const overlappingPrefix = `${prefix}123-logs-`;
+  const overlappingPrefixPath = path.join(root, `${overlappingPrefix}1000-dddd.jsonl`);
   const first = '{"schema_version":2,"kind":"run","run":{"run_id":1}}';
   const second = '{"schema_version":2,"kind":"run","run":{"run_id":2}}';
   const third = '{"schema_version":2,"kind":"run","run":{"run_id":3}}';
@@ -141,15 +142,20 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
     root,
     '--prefix',
     prefix,
+    '--prefix',
+    overlappingPrefix,
   ]);
   const result = JSON.parse(stdout);
-  assert.equal(result.sourceFiles, 2);
-  assert.equal(result.sourceRecords, 4);
-  assert.equal(result.retainedRecords, 4);
+  const compacted = result.groups.find((group) => group.prefix === prefix);
+  assert.equal(compacted.sourceFiles, 2);
+  assert.equal(compacted.sourceRecords, 4);
+  assert.equal(compacted.retainedRecords, 4);
+  assert.equal(
+    result.groups.find((group) => group.prefix === overlappingPrefix).sourceFiles,
+    1,
+  );
 
-  const names = (await readdir(root)).sort();
-  const compactedName = names.find((name) => name.startsWith(prefix));
-  assert.ok(compactedName);
+  const compactedName = path.basename(compacted.output);
   assert.deepEqual(
     (await readFile(path.join(root, compactedName), 'utf8')).trim().split('\n'),
     [first, second, first, third],
