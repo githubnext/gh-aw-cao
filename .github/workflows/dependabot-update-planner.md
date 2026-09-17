@@ -389,7 +389,7 @@ In the `Evidence` block, include the revalidated target HEAD commit SHA and a br
 
 ## Work issue contract
 
-Create one work issue per actionable atomic group. Its canonical unprefixed subject is `Dependency update: <atomic group summary> in <owner>/<repository>`. Build `<atomic group summary>` deterministically as the ecosystem name followed by the alphabetically sorted package or action names in the group, separated by `, `, and never include versions, counts, severities, dates, or run identifiers. The same group therefore produces the same subject on every run so `deduplicate-by-title` prevents duplicates.
+Create one work issue per actionable atomic group. Its canonical unprefixed subject is `Dependency update: <atomic group summary> in <owner>/<repository>`. Build `<atomic group summary>` deterministically as the ecosystem name followed by the alphabetically sorted package or action names in the group, separated by `, `, and never include versions, counts, severities, dates, or run identifiers. List at most the first three sorted names and append ` and <remaining count> more` when the group is larger, so the subject stays short enough that GitHub never truncates it. The same group therefore produces the same subject on every run so `deduplicate-by-title` prevents duplicates.
 
 Every work issue body must contain, in order:
 
@@ -444,8 +444,7 @@ Never create more than one umbrella plan issue for the target repository, and ne
 At the end of every run, produce exactly one of these terminal outcome sequences:
 
 - one `create_issue` for the umbrella issue, and no work issues, for a repository that has current Dependabot work but no plan issue, because the umbrella issue number is not available in the same run;
-- `update_issue` followed by `add_comment` for an umbrella issue recovered through the bounded `list_issues` bootstrap, whose number is persisted in the memory file during the same run, plus one `create_issue` per actionable atomic group that has no open work issue;
-- `update_issue` followed by `add_comment` for an existing umbrella issue with remaining work, plus one `create_issue` per actionable atomic group that has no open work issue;
+- `update_issue` followed by `add_comment` for an existing umbrella issue with remaining work, whether it came from memory or from the bounded `list_issues` bootstrap, plus one `create_issue` per actionable atomic group that has no open work issue;
 - `update_issue` with a completed description followed by `add_comment`, and no work issues, for an existing umbrella issue when no work remains;
 - `noop` when Dependabot identifies no current work and no plan issue exists.
 
