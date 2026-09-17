@@ -859,6 +859,34 @@
         }
       },
       {
+        "name": "token-efficiency-mature-run-values",
+        "intent": "Fail closed to Runs with at least one accepted, mature operational-value grader observation before deriving portfolio readiness.",
+        "from": "token-efficiency-mature-graders",
+        "filter": {
+          "predicates": [
+            {
+              "field": "role",
+              "equals": "operational-value"
+            }
+          ]
+        },
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow",
+            "run"
+          ],
+          "values": [
+            {
+              "field": "grader",
+              "as": "graded-observation-count",
+              "reducer": "count"
+            }
+          ]
+        }
+      },
+      {
         "name": "token-efficiency-assignment-runs",
         "intent": "Join included experiment assignments to exact Run cost, reliability, and mature accepted-outcome evidence.",
         "from": "runs",
@@ -2116,6 +2144,34 @@
         "from": "token-efficiency-prioritization-run-evidence",
         "joins": [
           {
+            "source": "token-efficiency-mature-run-values",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              },
+              {
+                "left": "run",
+                "right": "run"
+              }
+            ],
+            "fields": [
+              {
+                "field": "graded-observation-count",
+                "as": "observed-graded-count"
+              }
+            ]
+          },
+          {
             "source": "token-efficiency-active-experiment-interventions",
             "type": "left",
             "on": [
@@ -2346,6 +2402,30 @@
             ]
           },
           {
+            "as": "graded-count",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-graded-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "graded-ready",
+            "function": "greater-than",
+            "args": [
+              {
+                "field": "graded-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
             "as": "quality-ready",
             "function": "greater-than",
             "args": [
@@ -2393,6 +2473,21 @@
               },
               {
                 "value": 1
+              }
+            ]
+          },
+          {
+            "as": "graded-score",
+            "function": "if",
+            "args": [
+              {
+                "field": "graded-ready"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
               }
             ]
           },
@@ -2711,6 +2806,9 @@
               },
               {
                 "field": "readiness-run"
+              },
+              {
+                "field": "graded-score"
               }
             ]
           }
@@ -2729,7 +2827,7 @@
                 "field": "candidate-readiness"
               },
               {
-                "value": 20
+                "value": 21
               }
             ]
           },

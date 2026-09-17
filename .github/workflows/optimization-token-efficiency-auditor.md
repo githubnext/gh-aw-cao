@@ -202,6 +202,23 @@ jobs:
                     --until "$window_end" \
                     --limit 1000 2>/dev/null)"
                   runs_status=$?
+                  sessions="$(node "$cao_script" query \
+                    --database "$db" \
+                    --collection sessions \
+                    --limit 100000 2>/dev/null)"
+                  sessions_status=$?
+                  grader_events="$(node "$cao_script" query \
+                    --database "$db" \
+                    --collection events \
+                    --where type=workflow_run_grader \
+                    --limit 100000 2>/dev/null)"
+                  grader_events_status=$?
+                  usage_events="$(node "$cao_script" query \
+                    --database "$db" \
+                    --collection events \
+                    --where type=workflow_run_usage \
+                    --limit 100000 2>/dev/null)"
+                  usage_events_status=$?
                   events="$(node "$cao_script" query \
                     --database "$db" \
                     --collection events \
@@ -212,6 +229,26 @@ jobs:
 
                   if [ "$runs_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$runs" >/dev/null; then
                     reason=run-evidence-unavailable
+                  elif [ "$sessions_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$sessions" >/dev/null \
+                      || [ "$grader_events_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$grader_events" >/dev/null \
+                      || [ "$usage_events_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$usage_events" >/dev/null; then
+                    reason=grader-evidence-unavailable
+                  elif ! runs="$(jq -ce --argjson sessions "$sessions" --argjson graders "$grader_events" --argjson usage "$usage_events" '
+                      (reduce $sessions[] as $session ({}; .[$session.id] = $session.runId)) as $sessionRun
+                      | (reduce $graders[] as $event ({};
+                          ($sessionRun[$event.sessionId] // "") as $runId
+                          | if $runId == "" then . else .[$runId] += [$event] end
+                        )) as $gradersByRun
+                      | (reduce $usage[] as $event ({};
+                          ($sessionRun[$event.sessionId] // "") as $runId
+                          | if $runId == "" then . else .[$runId] += [$event] end
+                        )) as $usageByRun
+                      | map(. + {
+                          graders: ($gradersByRun[(.id // "")] // []),
+                          usage: ($usageByRun[(.id // "")] // [])
+                        })
+                    ' <<<"$runs")"; then
+                    reason=run-evidence-invalid
                   elif ! verified_run_ids="$(jq -ce --argjson expected "$run_ids" '
                       [.[]
                         | (.githubRunId // .runId // .id // empty)
@@ -222,8 +259,9 @@ jobs:
                     ' <<<"$runs")"; then
                     reason=run-evidence-invalid
                   elif ! jq -e --argjson expected "$run_ids" '
-                      length == ($expected | length)
-                      and all($expected[] as $id; index($id) != null)
+                      . as $verified
+                      | length == ($expected | length)
+                      and all($expected[]; . as $id | $verified | index($id) != null)
                     ' <<<"$verified_run_ids" >/dev/null; then
                     reason=run-evidence-incomplete
                   elif ! jq -e \
@@ -242,12 +280,15 @@ jobs:
                         and ($matched[0] as $run
                           | (($run.startedAt // $run.createdAt // "") == $candidate["evidence-window-start"])
                           and (($run.completedAt // $run.updatedAt // "") == $candidate["evidence-window-end"])
-                          and (($run.aicTotal // $run.aic // null) == $candidate["measured-aic"])
-                          and any($run.graders.results[]?;
-                            .id == "operational-value"
-                            and (.status == "pass" or .passed == true)
+                          and ($run.usage | map(select(.aic != null and (.aic | type == "number"))) as $usageRows
+                            | ($usageRows | length) > 0
+                            and (($usageRows | map(.aic) | add) == $candidate["measured-aic"])
+                          )
+                          and any($run.graders[]?;
+                            .grader == "operational-value"
+                            and (.status == "pass")
                             and (
-                              (.implementation.digest // .evaluatorDigest // .observation.evaluatorDigest // "")
+                              (.implementation.digest // "")
                               == $candidate["evaluator-digest"]
                             )
                             and (
@@ -256,7 +297,6 @@ jobs:
                             )
                             and (
                               (.observation.mature // false) == true
-                              or (.maturityStatus // "") == "matured"
                             )
                           )
                         )

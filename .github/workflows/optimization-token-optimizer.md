@@ -252,6 +252,17 @@ jobs:
               --until "$EVIDENCE_WINDOW_END" \
               --limit 100 2>/dev/null)"
             runs_status=$?
+            sessions="$(node "$cao_script" query \
+              --database "$db" \
+              --collection sessions \
+              --limit 100000 2>/dev/null)"
+            sessions_status=$?
+            grader_events="$(node "$cao_script" query \
+              --database "$db" \
+              --collection events \
+              --where type=workflow_run_grader \
+              --limit 100000 2>/dev/null)"
+            grader_events_status=$?
             events="$(node "$cao_script" query \
               --database "$db" \
               --collection events \
@@ -261,19 +272,28 @@ jobs:
 
             if [ "$runs_status" -ne 0 ] || ! jq -e 'type == "array" and length > 0' <<<"$runs" >/dev/null; then
               reason=assigned-runs-unavailable
-            elif ! jq -e --argjson assignment "$assignment" '
-                [
-                  .[]
-                  | {
-                      id: ((.githubRunId // .runId // .id // empty) | tostring),
-                      startedAt: (.startedAt // .createdAt // ""),
-                      completedAt: (.completedAt // .updatedAt // ""),
-                      graders: (.graders.results // [])
-                    }
+            elif [ "$sessions_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$sessions" >/dev/null \
+                || [ "$grader_events_status" -ne 0 ] || ! jq -e 'type == "array"' <<<"$grader_events" >/dev/null; then
+              reason=grader-evidence-unavailable
+            elif ! jq -e --argjson assignment "$assignment" --argjson sessions "$sessions" --argjson graders "$grader_events" '
+                (reduce $sessions[] as $session ({}; .[$session.id] = $session.runId)) as $sessionRun
+                | (reduce $graders[] as $event ({};
+                    ($sessionRun[$event.sessionId] // "") as $runId
+                    | if $runId == "" then . else .[$runId] += [$event] end
+                  )) as $gradersByRun
+                | [
+                    .[]
+                    | {
+                        id: ((.githubRunId // .runId // .id // empty) | tostring),
+                        canonicalId: (.id // ""),
+                        startedAt: (.startedAt // .createdAt // ""),
+                        completedAt: (.completedAt // .updatedAt // ""),
+                        graders: ($gradersByRun[(.id // "")] // [])
+                      }
                 ] as $runs
                 | ($runs | map(.id)) as $runIds
                 | ($runIds | index($assignment.assignmentRunId)) != null
-                and all($assignment.attributableRunIds[] as $runId; $runIds | index($runId) != null)
+                and all($assignment.attributableRunIds[]; ($runIds | index(.)) != null)
                 and any($runs[];
                   .id == $assignment.assignmentRunId
                   and (.startedAt | fromdateiso8601? != null)
@@ -281,10 +301,10 @@ jobs:
                   and ((.startedAt | fromdateiso8601) >= ($assignment.evidenceWindowStart | fromdateiso8601))
                   and ((.completedAt | fromdateiso8601) <= ($assignment.evidenceWindowEnd | fromdateiso8601))
                   and any(.graders[]?;
-                    .id == "operational-value"
-                    and (.status == "pass" or .passed == true)
+                    .grader == "operational-value"
+                    and (.status == "pass")
                     and (
-                      (.implementation.digest // .evaluatorDigest // .observation.evaluatorDigest // "")
+                      (.implementation.digest // "")
                       == $assignment.evaluatorDigest
                     )
                     and (
@@ -293,7 +313,6 @@ jobs:
                     )
                     and (
                       (.observation.mature // false) == true
-                      or (.maturityStatus // "") == "matured"
                     )
                   )
                 )
