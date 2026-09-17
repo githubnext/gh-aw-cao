@@ -636,6 +636,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('Produced a review');
     expect(page?.textContent).toContain('assistant_message');
     expect(page?.querySelector('thead')?.textContent).toContain('Correlation');
+    expect(page?.querySelector('[data-view-id="event-inspection"] .table-summary-row')).toBeNull();
     expect(page?.querySelector('tbody')?.textContent).toContain('correlation-1');
     expect(page?.querySelector('tbody tr td:first-child a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1002');
   });
@@ -1199,7 +1200,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="workflows"]')?.closest('.nav-section')).toBe(sections[0]);
     expect(rendered.querySelector('[data-nav-page-id="runs"]')?.closest('.nav-section')).toBe(sections[0]);
-    expect(rendered.querySelector('[data-nav-page-id="events"]')?.closest('.nav-section')).toBe(sections[0]);
+    expect(rendered.querySelector('[data-nav-page-id="events"]')?.closest('.nav-section')).toBe(sections[1]);
     expect(rendered.querySelector('[data-nav-page-id="operations"]')?.closest('.nav-section')?.textContent).toContain('Experimental');
     expect(rendered.querySelector('[data-nav-page-id="runtime"]')?.closest('.nav-section')).toBe(sections[1]);
     expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')).toBe(sections[1]);
@@ -1214,11 +1215,11 @@ describe('presenter built-in and custom pages', () => {
       'Models & Agents',
       'Firewall',
       'MCPs',
-      'Events',
       'Work',
       'Operations',
       'Insights',
       'Operational health',
+      'Events',
       'Sessions',
       'Runtime',
       'Performance',

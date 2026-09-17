@@ -7015,6 +7015,7 @@
             },
             "mark": "table",
             "controls": "interactive",
+            "column-summaries": false,
             "empty-message": "No workflow events were observed in the current run window.",
             "layout": "full-view",
             "encoding": {
@@ -8541,14 +8542,14 @@
           "runs",
           "engines-models",
           "firewall",
-          "mcps",
-          "events"
+          "mcps"
         ]
       },
       {
         "label": "Investigate",
         "experimental": true,
         "pages": [
+          "events",
           "sessions",
           "runtime",
           "performance",
