@@ -193,6 +193,7 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
   const logsContent = '{"schema_version":2,"kind":"run","run":{"run_id":303}}\n';
   const manifest = JSON.stringify({
     "gh-aw-logs-shards/fixture.jsonl": createHash("sha256").update(logsContent).digest("hex"),
+    "gh-aw-logs-shards/empty.jsonl": createHash("sha256").update("").digest("hex"),
   });
   const databaseContent = Buffer.from("published sqlite bytes");
   const requests = [];
@@ -200,7 +201,7 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
     requests.push(request.url);
     response.writeHead(200, { "content-type": "application/x-ndjson" });
     response.end(request.url?.endsWith(".sqlite")
-      ? databaseContent
+      ? databaseContent : request.url?.endsWith("empty.jsonl") ? ""
       : request.url?.endsWith("payload-hashes.json") ? manifest : logsContent);
   });
 
@@ -307,8 +308,20 @@ test("downloads the deployed activity shards and SQLite file without rebuilding"
     ]);
     const result = JSON.parse(stdout);
     assert.equal(await readFile(path.join(output, "gh-aw-logs-shards", "fixture.jsonl"), "utf8"), logsContent);
+    await assert.rejects(
+      readFile(path.join(output, "gh-aw-logs-shards", "empty.jsonl")),
+      { code: "ENOENT" },
+    );
+    assert.equal(
+      Object.hasOwn(
+        JSON.parse(await readFile(path.join(output, "payload-hashes.json"), "utf8")),
+        "gh-aw-logs-shards/empty.jsonl",
+      ),
+      false,
+    );
     assert.deepEqual(await readFile(path.join(output, "gh-aw-logs.sqlite")), databaseContent);
     assert.deepEqual(requests.toSorted(), [
+      "/cao/gh-aw-logs-shards/empty.jsonl",
       "/cao/gh-aw-logs-shards/fixture.jsonl",
       "/cao/gh-aw-logs.sqlite",
       "/cao/payload-hashes.json",

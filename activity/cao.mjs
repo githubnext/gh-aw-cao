@@ -830,7 +830,7 @@ function deployedDataUrl(value) {
   return url;
 }
 
-async function downloadFile(url, destination) {
+async function downloadFile(url, destination, { allowEmpty = false } = {}) {
   const response = await fetch(url, {
     headers: { accept: 'application/x-ndjson, application/json, text/plain' },
     redirect: 'follow',
@@ -839,9 +839,11 @@ async function downloadFile(url, destination) {
   if (!response.ok) throw new Error(`Unable to download ${url}: HTTP ${response.status}`);
   if (!response.body) throw new Error(`Unable to download ${url}: response body is empty`);
   await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx' }));
-  if ((await stat(destination)).size === 0) {
+  const size = (await stat(destination)).size;
+  if (!allowEmpty && size === 0) {
     throw new Error(`Unable to download ${url}: response body is empty`);
   }
+  return size;
 }
 
 async function replaceFile(source, destination) {
@@ -882,13 +884,18 @@ export async function downloadDeployedDashboardData({
     await mkdir(temporaryShards);
     for (const [name, expectedDigest] of shardEntries) {
       const destination = path.join(temporaryShards, path.basename(name));
-      await downloadFile(new URL(name, manifestUrl), destination);
+      const size = await downloadFile(new URL(name, manifestUrl), destination, { allowEmpty: true });
       const hash = createHash('sha256');
       for await (const chunk of createReadStream(destination)) hash.update(chunk);
       if (hash.digest('hex') !== expectedDigest.toLowerCase()) {
         throw new Error(`Activity shard checksum mismatch: ${name}`);
       }
+      if (size === 0) {
+        delete hashes[name];
+        await rm(destination);
+      }
     }
+    await writeFile(temporaryManifest, `${JSON.stringify(hashes, null, 2)}\n`);
     await rm(shardsPath, { recursive: true, force: true });
     await rename(temporaryShards, shardsPath);
     await replaceFile(temporaryManifest, manifestPath);
@@ -1082,6 +1089,11 @@ async function hashActivityPayloads({
     if (eventsDirectory) await mkdir(eventsDirectory, { recursive: true });
     for (const name of shardNames) {
       const shardPath = path.join(shardDirectory, name);
+      if ((await stat(shardPath)).size === 0) {
+        await rm(shardPath);
+        debugHash('dropped empty source shard %s', shardPath);
+        continue;
+      }
       const rawHash = await hashFile(shardPath);
       hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
       if (!normalizedDirectory && !runsDirectory && !eventsDirectory) continue;

@@ -79,7 +79,9 @@ duplicate IndexedDB writes, or uncompressed cache size.
 The collector now consolidates each repository prefix after a successful
 `gh aw logs` call. It removes byte-identical JSONL lines, retains their last
 occurrence to preserve precedence, writes atomically, and leaves the previous
-cache untouched when collection fails.
+cache untouched when collection fails. Payload generation removes empty source
+shards, and `cao download` tolerates and omits empty shards from older deployed
+manifests.
 
 Replaying the deployed snapshot through this compaction reduced:
 

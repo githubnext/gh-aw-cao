@@ -239,6 +239,8 @@ test('hash-payloads drops empty phased shards from files and hashes', async () =
     path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'),
     `${JSON.stringify({ schema_version: 2, kind: 'unknown' })}\n`,
   );
+  const emptySourcePath = path.join(shardDirectory, 'empty.jsonl');
+  await writeFile(emptySourcePath, '');
 
   const { stdout } = await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
@@ -256,6 +258,8 @@ test('hash-payloads drops empty phased shards from files and hashes', async () =
   assert.deepEqual(await readdir(eventsDirectory), []);
   assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 0);
   assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-events/')).length, 0);
+  assert.equal(Object.hasOwn(hashes, 'gh-aw-logs-shards/empty.jsonl'), false);
+  await assert.rejects(readFile(emptySourcePath), { code: 'ENOENT' });
 });
 
 test('hash-payloads upgrades the legacy cached layout to phased shards', async () => {
