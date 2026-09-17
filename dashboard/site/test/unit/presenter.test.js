@@ -134,6 +134,43 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('keeps independently bound Overview elements mounted when the page subscription resolves', async () => {
+    let resolvePageSources = () => {};
+    const loadPageSources = vi.fn(() => new Promise((resolve) => {
+      resolvePageSources = () => resolve({
+        'data-health-collections': {
+          source: 'data-health-collections',
+          rows: [],
+          metadata: {
+            'source-id': 'data-health-collections',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-17T00:00:00Z',
+            'retrieved-at': '2026-09-17T00:00:00Z',
+            availability: 'empty',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      });
+    }));
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources
+    });
+    const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
+    const floorBefore = overviewBefore?.querySelector('.factory-floor');
+
+    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
+    resolvePageSources();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
+    expect(rendered.querySelector('.factory-floor')).toBe(floorBefore);
+    disposeDashboard(rendered);
+  });
+
   it('reports the paginated source shared by the runs page views', () => {
     const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
     expect(lazySourceNames).toContain('runs-table');

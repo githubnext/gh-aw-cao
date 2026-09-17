@@ -220,9 +220,7 @@ export function renderDashboard(input) {
       if (!resolvedPage()) return null;
       const rendersBeforePageSources = pageUsesIndependentSourceElements(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const render = (pageSources) => {
-        const page = resolvedPage();
-        if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
+      const updateHorizon = (pageSources) => {
         if (options.signal?.aborted !== true) {
           dashboardHorizon.update(resolveDashboardHorizonViewModel(
             pageSources,
@@ -231,6 +229,12 @@ export function renderDashboard(input) {
             evaluatedAt
           ));
         }
+      };
+      /** @param {Record<string, LogicalSourceInput>} pageSources */
+      const render = (pageSources) => {
+        const page = resolvedPage();
+        if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
+        updateHorizon(pageSources);
         return showInitialLoadingSkeleton && !rendersBeforePageSources
           ? renderPageLoadingSkeleton(page)
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
@@ -240,7 +244,7 @@ export function renderDashboard(input) {
         if (rendersBeforePageSources) {
           const renderedPage = render(sources);
           void input.loadPageSources(pageId, options)
-            .then((pageSources) => options.renderUpdate(render(pageSources)))
+            .then(updateHorizon)
             .catch((error) => {
               if (!options.signal?.aborted) {
                 console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
