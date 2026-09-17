@@ -1712,6 +1712,47 @@
         "limit": 10
       },
       {
+        "name": "firewall-attribution-details",
+        "intent": "Attribute each observed firewall decision to its workflow run, run-level agent metadata, and matched policy rule.",
+        "description": "Observed allowed and denied requests with workflow, run, agent or engine, model, and policy-rule provenance.",
+        "from": "firewall-observations",
+        "filter": { "predicates": [{ "field": "decision", "in": ["allowed", "denied"] }] },
+        "select": [
+          { "field": "domain" },
+          { "field": "decision-label" },
+          { "field": "request-count" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "engine" },
+          { "field": "resolved-model" },
+          { "field": "policy-rule-action" },
+          { "field": "policy-domain-pattern" },
+          { "field": "policy-rule-description" },
+          { "field": "protocol" },
+          { "field": "last-seen-at" },
+          { "field": "run-link" },
+          { "field": "evidence-link" }
+        ],
+        "order-by": [
+          { "field": "decision-label", "direction": "desc" },
+          { "field": "request-count", "direction": "desc" },
+          { "field": "domain", "direction": "asc" },
+          { "field": "workflow", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "firewall-policy-inventory",
+        "intent": "List the effective firewall allow and deny rules with workflow, run, and observed hit counts.",
+        "description": "Effective policy rules show configured decisions even when a rule has no observed requests.",
+        "from": "firewall-policy-rules",
+        "order-by": [
+          { "field": "action", "direction": "desc" },
+          { "field": "hit-count", "direction": "desc" },
+          { "field": "domain-pattern", "direction": "asc" },
+          { "field": "workflow", "direction": "asc" }
+        ]
+      },
+      {
         "name": "safe-output-usage",
         "intent": "Show every retained safe output with its identity, disposition, workflow, repository, rollout mode, timestamps, and provenance.",
         "description": "Canonical safe-output outcomes ordered from newest to oldest.",
@@ -3869,7 +3910,7 @@
         "navigation-label": "Firewall",
         "icon": "globe",
         "class-name": "firewall-page",
-        "description": "Observed firewall domains and aggregate request activity for agent egress.",
+        "description": "Observed firewall domains, workflow and run-level agent attribution, and effective allow or deny policy for agent egress.",
         "views": [
           {
             "id": "security-firewall-most-blocked-domains",
@@ -3936,6 +3977,62 @@
                   "type": "quantitative",
                   "title": "Blocked"
                 }
+              ]
+            }
+          },
+          {
+            "id": "security-firewall-attribution",
+            "disclosure-label": "Workflow and agent attribution",
+            "description": "Maps observed decisions to the workflow, run, run-level agent or engine, model, and matched policy rule. Firewall audit events do not identify the individual skill or tool that initiated a request.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "firewall-attribution-details"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No attributable allowed or denied firewall requests are available for this selection.",
+            "encoding": {
+              "columns": [
+                { "field": "domain", "type": "nominal", "title": "Domain" },
+                { "field": "decision-label", "type": "nominal", "title": "Decision", "display": "label" },
+                { "field": "request-count", "type": "quantitative", "title": "Requests" },
+                { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+                { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+                { "field": "engine", "type": "nominal", "title": "Agent / engine" },
+                { "field": "resolved-model", "type": "nominal", "title": "Resolved model" },
+                { "field": "policy-domain-pattern", "type": "nominal", "title": "Matched policy" },
+                { "field": "policy-rule-description", "type": "nominal", "title": "Policy reason" },
+                { "field": "protocol", "type": "nominal", "title": "Protocol" },
+                { "field": "last-seen-at", "type": "temporal", "title": "Last observed", "format": "human-friendly-timestamp" }
+              ]
+            }
+          },
+          {
+            "id": "security-firewall-policy",
+            "disclosure-label": "Effective allow and deny policy",
+            "description": "Shows every effective domain rule, its allow or deny action, explanation, workflow run, and observed hit count, including rules with zero traffic.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "firewall-policy-inventory"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No effective firewall policy manifest is available for this selection.",
+            "encoding": {
+              "columns": [
+                { "field": "action", "type": "nominal", "title": "Action", "display": "label" },
+                { "field": "domain-pattern", "type": "nominal", "title": "Domain pattern" },
+                { "field": "description", "type": "nominal", "title": "Reason" },
+                { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+                { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+                { "field": "engine", "type": "nominal", "title": "Agent / engine" },
+                { "field": "resolved-model", "type": "nominal", "title": "Resolved model" },
+                { "field": "protocol", "type": "nominal", "title": "Protocol" },
+                { "field": "hit-count", "type": "quantitative", "title": "Observed requests" }
               ]
             }
           }

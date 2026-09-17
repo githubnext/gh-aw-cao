@@ -3064,6 +3064,10 @@ test("dashboard source bridge preserves firewall evidence states, policy attribu
       workflowPath: ".github/workflows/security.lock.yml",
       conclusion: "success",
       mode: "review",
+      engine: "copilot",
+      engineVersion: "1.0.0",
+      requestedModel: "gpt-5",
+      resolvedModel: "gpt-5.1",
     };
     const sources = buildDashboardLanguageSources({
       deployed: {
@@ -3158,7 +3162,9 @@ test("dashboard source bridge preserves firewall evidence states, policy attribu
       && row.domain === "api.github.com"
       && row["drift-state"] === "decision-changed"
       && row["previous-decision"] === "allowed"
-      && row["current-decision"] === "denied"));
+      && row["current-decision"] === "denied"
+      && row.engine === "copilot"
+      && row["resolved-model"] === "gpt-5.1"));
     assert.ok(observations.rows.some((row) => row.run === "41"
       && row.domain === "new.example"
       && row["drift-state"] === "newly-allowed"
@@ -3174,5 +3180,7 @@ test("dashboard source bridge preserves firewall evidence states, policy attribu
       && row["request-count"] === null));
     assert.ok(sources["firewall-policy-rules"].rows.some((row) => row["rule-id"] === "new-domain"
       && row["domain-pattern"] === "new.example"
-      && row["hit-count"] === 1));
+      && row["hit-count"] === 1
+      && row.engine === "copilot"
+      && row["resolved-model"] === "gpt-5.1"));
 });
