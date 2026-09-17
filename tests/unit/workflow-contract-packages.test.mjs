@@ -141,7 +141,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
       name.endsWith(".md")
       && workflowConfig(name).imports?.some((entry) => entry.uses === "shared/control.md"))
     .sort();
-  assert.deepEqual(operationWorkflows, declaredOperationWorkflows);
+  assert.deepEqual(operationWorkflows.map((name) => `.github/workflows/${name}`), declaredOperationWorkflows);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
