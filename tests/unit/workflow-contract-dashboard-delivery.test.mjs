@@ -273,8 +273,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(activityCollector, /--prune-older-runs/);
   assert.equal((activityCollector.match(/gh aw logs/g) || []).length, 1);
   assert.doesNotMatch(activityCollector, /gh api|token-efficiency/);
-  assert.match(activityWorkflow, /optimization\/collect-token-efficiency\.sh/);
-  assert.match(activityWorkflow, /\.github\/aw\/optimization\/collect-token-efficiency\.sh/);
+  assert.doesNotMatch(activityWorkflow, /(?:\.github\/aw\/)?optimization\/collect-token-efficiency\.sh/);
   assert.doesNotMatch(activityLogs, /gh aw logs --audit|runGhAw/);
   assert.doesNotMatch(aicUsage, /spawn|runGhAw|"aw", "logs"|--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
