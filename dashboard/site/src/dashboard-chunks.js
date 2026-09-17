@@ -296,7 +296,12 @@ export function splitDashboardDocument(source, options = {}) {
     const sourceNames = dashboardPageSourceNames(document, page.id ?? '');
     const lazySourceNames = dashboardPageLazySourceNames(document, page.id ?? '');
     const tableSourceNames = dashboardTableSourceNames(document, page.id ?? '');
-    const requiredQueryNames = new Set(resolveDashboardQuerySources(queryDefinitions, sourceNames));
+    const payload = dashboardPagePayload(page, document.dashboard.views);
+    const querySourceNames = new Set([
+      ...sourceNames,
+      ...(payload.views ?? []).flatMap(getViewSources),
+    ]);
+    const requiredQueryNames = new Set(resolveDashboardQuerySources(queryDefinitions, querySourceNames));
     const queries = queryDefinitions.filter((query) => (
       typeof query?.name === 'string' && requiredQueryNames.has(query.name)
     ));

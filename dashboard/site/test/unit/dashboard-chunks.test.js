@@ -26,6 +26,7 @@ function sampleDocument() {
         { name: 'beta-source', source: 'beta' },
         { name: 'callout-source', source: 'callout' },
         { name: 'gamma-source', source: 'gamma' },
+        { name: 'factory-summary', from: 'runs' },
       ],
       pages: [
         {
@@ -49,6 +50,12 @@ function sampleDocument() {
           page: 'workflows',
           title: 'Workflows',
           definition: { views: [{ element: 'chart', data: { source: 'alpha-source' } }] },
+        },
+        {
+          id: 'factory-page',
+          kind: 'custom',
+          title: 'Factory',
+          views: [{ element: 'factory-header', data: { source: 'factory-summary' } }],
         },
       ],
     },
@@ -99,7 +106,7 @@ describe('splitDashboardDocument / resolveDashboardDocument round-trip', () => {
       expect(page.definition).toBeUndefined();
       expect(typeof dashboardPageChunkPath(page)).toBe('string');
     }
-    expect(pageChunks.size).toBe(3);
+    expect(pageChunks.size).toBe(4);
   });
 
   it('only includes the queries a page actually needs in its chunk', () => {
@@ -109,6 +116,9 @@ describe('splitDashboardDocument / resolveDashboardDocument round-trip', () => {
 
     const betaChunk = pageChunks.get('beta-page');
     expect(betaChunk?.queries.map((query) => query.name).toSorted()).toEqual(['beta-source', 'callout-source', 'gamma-source']);
+
+    const factoryChunk = pageChunks.get('factory-page');
+    expect(factoryChunk?.queries.map((query) => query.name).toSorted()).toEqual(['callout-source', 'factory-summary']);
   });
 
   it('reconstructs a fully-loaded document equivalent to the original once every chunk is resolved', () => {
