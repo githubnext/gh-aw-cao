@@ -134,6 +134,43 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('keeps independently bound Overview elements mounted when the page subscription resolves', async () => {
+    let resolvePageSources = () => {};
+    const loadPageSources = vi.fn(() => new Promise((resolve) => {
+      resolvePageSources = () => resolve({
+        'data-health-collections': {
+          source: 'data-health-collections',
+          rows: [],
+          metadata: {
+            'source-id': 'data-health-collections',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-17T00:00:00Z',
+            'retrieved-at': '2026-09-17T00:00:00Z',
+            availability: 'empty',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      });
+    }));
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources
+    });
+    const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
+    const floorBefore = overviewBefore?.querySelector('.factory-floor');
+
+    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
+    resolvePageSources();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
+    expect(rendered.querySelector('.factory-floor')).toBe(floorBefore);
+    disposeDashboard(rendered);
+  });
+
   it('reports the paginated source shared by the runs page views', () => {
     const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
     expect(lazySourceNames).toContain('runs-table');
@@ -1972,14 +2009,15 @@ describe('presenter built-in and custom pages', () => {
     });
 
     expect(authoritativeDashboardDocument.dashboard.defaults?.time).toBeUndefined();
-    expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('aria-label')).toBe('Horizon unavailable');
-    expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(true);
+    expect(rendered.querySelector('.dashboard-horizon')?.hasAttribute('aria-label')).toBe(false);
+    expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+    expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 week');
     expect(rendered.querySelectorAll('.dashboard-horizon')).toHaveLength(1);
     expect(rendered.querySelector('.freshness')).toBeNull();
     const horizonHelp = rendered.querySelector('.dashboard-horizon .tooltip-trigger');
     const horizonTooltip = rendered.querySelector('.dashboard-horizon .tooltip-content');
     expect(horizonHelp).toBeNull();
-    expect(horizonTooltip).toBeNull();
+    expect(horizonTooltip?.textContent).toContain('1 week');
 
     for (const pageId of ['runtime', 'security', 'firewall', 'operational-value']) {
       await activatePage(rendered, pageId);
@@ -2119,7 +2157,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.horizon-tooltip-counts')).toBeNull();
   });
 
-  it('reactively replaces the Horizon skeleton when page sources load', async () => {
+  it('renders the configured Horizon immediately and updates it when page sources load', async () => {
     let publishUpdate = () => {};
     const loadPageSources = vi.fn(async (_pageId, options) => {
       publishUpdate = () => options.onUpdate({
@@ -2147,7 +2185,8 @@ describe('presenter built-in and custom pages', () => {
       loadPageSources
     });
 
-    expect(rendered.querySelector('.dashboard-horizon-skeleton')).not.toBeNull();
+    expect(rendered.querySelector('.dashboard-horizon-skeleton')).toBeNull();
+    expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 week');
     await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
     publishUpdate();
 

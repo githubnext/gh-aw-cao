@@ -125,6 +125,7 @@ it('renders both elements immediately and updates only widgets whose query resol
 
   const header = renderUiElement('factory-header', context('factory-header', {}));
   const floor = renderUiElement('factory-floor', context('factory-floor', {}));
+  floor?.classList.add('custom-view');
 
   expect(header?.classList.contains('factory-intro')).toBe(true);
   expect(header?.querySelector('.factory-heading-pending')).not.toBeNull();
@@ -162,6 +163,7 @@ it('renders both elements immediately and updates only widgets whose query resol
   expect(floor?.querySelector('.factory-station:nth-child(2)')?.textContent).toBe('Successful runs31 failed');
   expect(floor?.querySelector('.factory-station:nth-child(2)')?.classList.contains('factory-station-pending')).toBe(false);
   expect(floor?.querySelector('.factory-station:nth-child(3)')?.classList.contains('factory-station-pending')).toBe(true);
+  expect(floor?.classList.contains('custom-view')).toBe(true);
 });
 
 it('stops updating an element after its rendered root is removed', async () => {

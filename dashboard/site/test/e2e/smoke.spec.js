@@ -3296,6 +3296,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  const awDoctorCard = page.locator('[data-page-id="packages"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
+  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
+  await awDoctorCard.click({ position: { x: 6, y: 6 } });
+  await expect(page).toHaveURL(/#page-package-detail\?package=aw-doctor$/);
   await page.evaluate(() => {
     window.location.hash = '#page-operational-value';
   });
@@ -3444,7 +3449,8 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   `);
 
   const filterBar = page.getByLabel('Dashboard filters');
-  await expect(page.locator('.dashboard-horizon-skeleton')).toBeVisible();
+  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
+  await expect(page.locator('.horizon-toggle')).toHaveAccessibleName(/1 week/);
   await page.evaluate(() => /** @type {{ publishHorizonSources: () => void }} */ (
     /** @type {unknown} */ (window)
   ).publishHorizonSources());
