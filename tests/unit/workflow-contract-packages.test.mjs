@@ -244,7 +244,7 @@ test("root package installs the CAO CLI helper", () => {
     rootManifest.resources.find(({ source }) => source === "cao.sh"),
     { source: "cao.sh", destination: ".github/aw/cao.sh" },
   );
-  assert.match(helper, /^#!\/usr\/bin\/env bash/);
+  assert.match(helper, /^#!\/bin\/sh/);
   assert.match(helper, /activity\/cao\.mjs/);
 });
 
