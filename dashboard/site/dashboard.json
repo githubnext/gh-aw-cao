@@ -7005,7 +7005,6 @@
         "icon": "pulse",
         "description": "Inspect observed workflow events and their execution context.",
         "views": [
-          "entity-events",
           {
             "id": "event-inspection",
             "title": "Event inspection",
