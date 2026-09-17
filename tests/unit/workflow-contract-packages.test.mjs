@@ -328,13 +328,14 @@ test("root package CAO helper stays portable across POSIX-family shells", () => 
     writeFileSync(helperPath, helper);
     writeFileSync(join(activityDirectory, "cao.mjs"), "");
     writeFileSync(join(binDirectory, "node"), `#!/bin/sh
+: "\${CAO_NODE_ARGS:?}"
 printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
 `);
     chmodSync(join(binDirectory, "node"), 0o755);
 
     const shells = ["sh", "bash", "zsh"].filter((shell) => {
       try {
-        execFileSync("sh", ["-c", `command -v "${shell}"`], { stdio: "ignore" });
+        execFileSync(shell, ["-c", "exit 0"], { stdio: "ignore" });
         return true;
       } catch {
         return false;
