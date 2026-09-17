@@ -39,6 +39,8 @@ const pending = new Map();
 const subscriptions = new Map();
 /** @type {Map<string, ReturnType<typeof publishNotification>>} */
 const workerNotificationHandles = new Map();
+/** @type {Set<string>} */
+const cancelledWorkerNotificationIds = new Set();
 /** @type {Set<(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }) => void>} */
 const workerLoadingProgressListeners = new Set();
 /** @type {Set<string>} */
@@ -73,7 +75,7 @@ function attachWorkerNotificationAction(notification, id, getHandle) {
           dismissOnCollapse: true,
           duration: 0
         });
-        workerNotificationHandles.delete(id);
+        cancelledWorkerNotificationIds.add(id);
       }
     }
   };
@@ -551,10 +553,14 @@ function getWorker() {
         const id = typeof notification?.id === 'string' ? notification.id : undefined;
         if (notification?.dismiss === true) {
           if (id) {
-            workerNotificationHandles.get(id)?.dismiss();
+            if (!cancelledWorkerNotificationIds.has(id)) {
+              workerNotificationHandles.get(id)?.dismiss();
+            }
             workerNotificationHandles.delete(id);
+            cancelledWorkerNotificationIds.delete(id);
           }
         } else if (id) {
+          if (cancelledWorkerNotificationIds.has(id)) return;
           if (typeof notification.message !== 'string') return;
           const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} */ (notification);
           const current = workerNotificationHandles.get(id);
@@ -622,8 +628,11 @@ function resetWorker(processor) {
     emitWorkerLoadingProgress({ id, phase: 'complete' });
   }
   workerLoadingProgressOperations.clear();
-  for (const notification of workerNotificationHandles.values()) notification.dismiss();
+  for (const [id, notification] of workerNotificationHandles) {
+    if (!cancelledWorkerNotificationIds.has(id)) notification.dismiss();
+  }
   workerNotificationHandles.clear();
+  cancelledWorkerNotificationIds.clear();
   for (const subscription of subscriptions.values()) subscription.registeredWorker = null;
 }
 

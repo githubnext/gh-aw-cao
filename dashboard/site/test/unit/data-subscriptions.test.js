@@ -384,6 +384,19 @@ describe('canonical dashboard view subscriptions', () => {
     expect(document.querySelector('.dashboard-notification-message')?.textContent)
       .toBe('Data ingestion cancelled.');
     expect(document.querySelector('.dashboard-notification')).not.toBeNull();
+    worker.emit({
+      type: 'notification',
+      notification: {
+        id: 'ingestion-cancel',
+        message: 'Ingesting dashboard data: 42 records processed.',
+        duration: 0,
+        details: ['Still storing data.']
+      }
+    });
+    worker.emit({ type: 'notification', notification: { id: 'ingestion-cancel', dismiss: true } });
+    expect(document.querySelectorAll('.dashboard-notification')).toHaveLength(1);
+    expect(document.querySelector('.dashboard-notification-message')?.textContent)
+      .toBe('Data ingestion cancelled.');
     const later = processDashboardQueries([], {});
     const laterRequestId = /** @type {number} */ (worker.messages.at(-1)?.id);
     worker.emit({ id: requestId, error: 'Data ingestion was cancelled.', cancelled: true });
