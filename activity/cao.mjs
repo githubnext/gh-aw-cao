@@ -52,6 +52,7 @@ const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
 const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
+// Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
 
 const USAGE = `Usage:
