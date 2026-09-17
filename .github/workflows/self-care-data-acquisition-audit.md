@@ -85,13 +85,14 @@ safe-outputs:
     if-no-changes: ignore
     allowed-files:
       - "specs/data-acquisition-audit.md"
+      - "specs/data-acquisition-audit-history.md"
 ---
 
 # Data Acquisition Audit Refresher
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without investigating or changing files.
 
-Re-audit the target repository and update `specs/data-acquisition-audit.md` only when its material findings have changed.
+Re-audit the target repository and update `specs/data-acquisition-audit.md` only when its material findings have changed. When you make a material update, also add one dated row to its refresh ledger `specs/data-acquisition-audit-history.md`. Those two files are the only files you may change.
 
 ## Investigation
 
@@ -110,10 +111,10 @@ Re-audit the target repository and update `specs/data-acquisition-audit.md` only
 
 - Preserve the document's scope, inventory, duplicate-work analysis, prioritized bottlenecks, cache-safety constraints, and staged recommendations.
 - Correct stale paths, claims, counts, priorities, or omissions using current repository evidence.
-- Set the audit date to the current UTC date when making a material update.
+- Set the audit date to the current UTC date when making a material update, and record the same date in the refresh ledger row describing the material acquisition delta and any non-material changes noted.
 - Keep the report compact and evidence-based: prefer short tables and one-sentence findings, remove repeated explanations, and keep detailed evidence in citations rather than reproducing source text. Do not speculate about runtime request counts when source code cannot establish them.
 - Include a `## API Request Relationships` section in the specification. Under that heading, generate one concise Mermaid `flowchart LR` diagram that shows each material GitHub API or `gh aw logs` request family, the workflow or utility that issues it, and the cache, snapshot, artifact, or report it feeds. Connect duplicated or overlapping acquisition paths explicitly; label edges with the request or reuse relationship, and omit non-API browser traffic unless it is needed to explain a relationship. Keep the diagram synchronized with the inventory and bottleneck sections.
-- Do not change runtime code, workflow files, generated locks, policy, documentation outside this specification, or credentials.
+- Do not change runtime code, workflow files, generated locks, policy, documentation outside this specification and its refresh ledger, or credentials.
 - Never print or copy secret values while investigating.
 
 Review the final diff and run `git diff --check`. If the audit remains materially accurate, call `noop` with a short reason and do not create a pull request. Otherwise, call `create_pull_request` exactly once with a concise draft PR describing the changed findings and validation. Include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.

@@ -58,9 +58,13 @@ test("SelfCare data acquisition audit refreshes its specification", () => {
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: data-acquisition-audit/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /draft: true/);
-  assert.match(source, /allowed-files:\n\s+- "specs\/data-acquisition-audit\.md"/);
+  assert.match(
+    source,
+    /allowed-files:\n\s+- "specs\/data-acquisition-audit\.md"\n\s+- "specs\/data-acquisition-audit-history\.md"/,
+  );
   assert.match(source, /Inspect JavaScript and embedded JavaScript/);
   assert.match(compiled, /specs\/data-acquisition-audit\.md/);
+  assert.match(compiled, /specs\/data-acquisition-audit-history\.md/);
 });
 
 test("SelfCare runs every 20 minutes", () => {
