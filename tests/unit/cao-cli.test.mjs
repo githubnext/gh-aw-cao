@@ -22,6 +22,6 @@ test("reports a missing cao add package without a stack trace", async () => {
   assert.equal(error.code, 1);
   assert.equal(error.stdout, "");
   assert.match(error.stderr, /^Error: cao add requires a package\n\n/);
-  assert.match(error.stderr, /\n  cao add PACKAGE /);
+  assert.match(error.stderr, /\n  cao add PACKAGE\b/);
   assert.doesNotMatch(error.stderr, /\n\s+at /);
 });
