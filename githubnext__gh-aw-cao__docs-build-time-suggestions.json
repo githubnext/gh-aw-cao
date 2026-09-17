@@ -1,6 +1,6 @@
 {
   "source_sha": "f55d724f6c8d14fb86e276d7e66d911341d9022d",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-17T11:06:00Z",
@@ -294,6 +294,18 @@
       ],
       "outcome": "no-op: evidence window 2026-09-17T11:01:47Z to 2026-09-17T11:48:39Z. Analyzed 5 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days, using the same-sha scheduled subset at e471d4a360f966116a4c9d3257c1b5095b5fcbe1 plus the latest successful run for bounded log verification. Parent workflow queue median was 0s (p90 0s) and execution median was 83s (p90 108.8s); build and deploy job medians were 65s and 9s. Trusted step metadata and logs confirmed node dependency cache hits on all 5/5 samples because setup-node and Restore node_modules both reported cache hits, while Install dependencies and Save node_modules were skipped every time. Trusted logs also confirmed Restore cached CAO Dashboard missed the fixed key central-agentic-ops-dashboard, then downloaded a 173703386-byte dashboard artifact before Upload Pages artifact re-uploaded a 175366068-byte Pages bundle in a 29s median step. Even so, the artifact-transfer-and-packaging category does not present a fresh non-duplicate recommendation above the 60s or 15 percent threshold beyond the already recorded reusable-dashboard-generation evidence, because most repeatable savings still come from avoiding the dashboard artifact round trip rather than tuning Pages packaging itself.",
       "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-17T12:20:00Z",
+      "worker_run_id": 35220293587,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        35219760205,
+        35219456568,
+        35219321299,
+        35218899121
+      ],
+      "outcome": "no-op: latest 20 completed docs.yml runs in the last 14 days yielded only 4 successful comparable runs (35219760205, 35219456568, 35219321299, 35218899121), below the required minimum of 5. Current window is dominated by skipped, cancelled, and action_required workflow_run attempts triggered around dashboard activity, so a fresh complete evaluation for scheduling/concurrency/avoidable rebuilds could not be established from trusted metadata. Bounded reads still confirmed for run 35219760205 that node_modules cache hit, dashboard cache missed the fixed key central-agentic-ops-dashboard, dashboard artifact download took ~8s, and Upload Pages artifact took ~31s, but the sample is insufficient for a complete actionable recommendation under this task contract."
     }
   ]
 }
