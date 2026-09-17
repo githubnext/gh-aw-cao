@@ -41,8 +41,8 @@ function sampleDocument() {
           kind: 'custom',
           title: 'Beta',
           views: [
-            { id: 'timeline', mark: 'chart', chart: 'swimlane', data: { source: 'gamma-source' } },
-            { id: 'rows', mark: 'table', controls: 'interactive', 'lazy-list': true, data: { source: 'gamma-source' } },
+            { element: 'chart', data: { source: 'beta-source' } },
+            { element: 'list', 'lazy-list': true, data: { source: 'gamma-source' } },
           ],
         },
         {
@@ -75,11 +75,28 @@ describe('dashboard-chunks source discovery', () => {
   });
 
   it('maps lazy tables and incremental charts to independently paginated view aliases', () => {
-    expect(dashboardPagePaginatedSourceBindings(sampleDocument(), 'beta-page')).toEqual({
-      'view:beta-page:timeline:gamma-source': { sourceName: 'gamma-source', viewId: 'timeline' },
-      'view:beta-page:rows:gamma-source': { sourceName: 'gamma-source', viewId: 'rows' }
+    const document = /** @type {import('../../src/presenter.js').PresentationDocument} */ ({
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'pagination',
+        title: 'Pagination',
+        pages: [{
+          id: 'runs',
+          kind: 'custom',
+          title: 'Runs',
+          views: [
+            { id: 'timeline', mark: 'chart', chart: 'swimlane', data: { source: 'gamma-source' } },
+            { id: 'rows', mark: 'table', controls: 'interactive', 'lazy-list': true, data: { source: 'gamma-source' } },
+          ],
+        }],
+      },
     });
-    expect(dashboardPagePaginatedSourceBindings(sampleDocument(), 'alpha-page')).toEqual({});
+
+    expect(dashboardPagePaginatedSourceBindings(document, 'runs')).toEqual({
+      'view:runs:timeline:gamma-source': { sourceName: 'gamma-source', viewId: 'timeline' },
+      'view:runs:rows:gamma-source': { sourceName: 'gamma-source', viewId: 'rows' }
+    });
+    expect(dashboardPagePaginatedSourceBindings(document, 'missing')).toEqual({});
   });
 
   it('collects table-mark source names for a single page or across all pages', () => {

@@ -32,8 +32,12 @@ describe('dashboard query architecture', () => {
     expect(worker).toContain("operation === 'subscribe-canonical-dashboard'");
     expect(startup).toContain('subscribeCanonicalDashboardView(');
     expect(startup).toContain('signal: pageOptions.signal');
-    expect(startup).toContain('bindContinuations(pageId, sources, lazySources, pageOptions)');
-    expect(startup).toMatch(/loadCanonicalDashboardPage\(requested, dashboardContext, pagination, \{[\s\S]{0,220}pageId,[\s\S]{0,220}routeParameters: pageOptions\.routeParameters,[\s\S]{0,220}queryContext: pageOptions\.queryContext/);
+    expect(startup).toContain('bindContinuations(pageId, sources, paginatedSources, pageOptions)');
+    expect(startup).toContain('const sourceName = bindings[alias]?.sourceName');
+    expect(startup).toContain('dashboardContext,\n        pagination,');
+    expect(startup).toContain('viewId: binding?.viewId');
+    expect(startup).toContain('routeParameters: pageOptions.routeParameters');
+    expect(startup).toContain('queryContext: pageOptions.queryContext');
     expect(presenter).not.toMatch(/filterDashboardSources|filterRowsForView|deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
     expect(factoryElements).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
     expect(factoryElements).toMatch(/requestSource|publishSource/);
