@@ -11,9 +11,14 @@ const dataProcessor = vi.hoisted(() => ({
 const updates = vi.hoisted(() => ({
   startAutomaticDashboardDataUpdates: vi.fn(),
 }));
+const sourceStore = vi.hoisted(() => ({
+  configureSourceLoader: vi.fn(),
+  refreshSources: vi.fn(),
+}));
 
 vi.mock("../../src/data-processor.js", () => dataProcessor);
 vi.mock("../../src/dashboard-data-updates.js", () => updates);
+vi.mock("../../src/source-store.js", () => sourceStore);
 
 import { startDashboardData } from "../../src/data/startup.js";
 
@@ -44,6 +49,11 @@ function options(overrides = {}) {
           onUpdate: () => {},
         }).catch(() => {});
       }
+    },
+    updateState: (
+      /** @type {'ready' | 'cached' | 'stale'} */ state,
+    ) => {
+      calls.push(`state:${state}`);
     },
     settleUi: async () => {
       calls.push("settle");
@@ -100,5 +110,25 @@ describe("dashboard data startup", () => {
       "automatic",
       "refresh",
     ]);
+  });
+
+  it("updates refresh state without remounting the dashboard", async () => {
+    dataProcessor.refreshCanonicalDashboardSources.mockResolvedValue({ changed: true });
+
+    await startDashboardData(options());
+    await vi.waitFor(() => expect(calls).toContain("state:ready"));
+
+    expect(calls.filter((call) => call.startsWith("render:"))).toEqual(["render:cached"]);
+    expect(sourceStore.refreshSources).toHaveBeenCalledOnce();
+  });
+
+  it("shows stale state without remounting the dashboard when refresh fails", async () => {
+    dataProcessor.refreshCanonicalDashboardSources.mockRejectedValue(new Error("network unavailable"));
+
+    await startDashboardData(options());
+    await vi.waitFor(() => expect(calls).toContain("state:stale"));
+
+    expect(calls.filter((call) => call.startsWith("render:"))).toEqual(["render:cached"]);
+    expect(calls).not.toContain("state:ready");
   });
 });
