@@ -363,7 +363,6 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
     for (const storeName of ENTITY_STORES) {
-      options.signal?.throwIfAborted();
       const records = batch[storeName];
       const retained = new Set(records.map((record) => String(record.id)));
       // Evict first so reclaimed space is available to the writes that follow.
@@ -379,7 +378,6 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
       });
       const changedRecords = recordsToWrite[storeName];
       for (let offset = 0; offset < changedRecords.length; offset += batchSize) {
-        options.signal?.throwIfAborted();
         const boundedRecords = changedRecords.slice(offset, offset + batchSize);
         const transaction = database.transaction(storeName, 'readwrite');
         const store = transaction.objectStore(storeName);
