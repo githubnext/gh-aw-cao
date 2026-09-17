@@ -151,6 +151,33 @@ function repositoriesSource(repositories, sources) {
   };
 }
 
+/** @param {Record<string, unknown>[]} repositories @param {Record<string, unknown>} sources */
+function organizationsSource(repositories, sources) {
+  const publishedOrganizations = new Map(sourceRows(sources.organizations).map((organization) => [
+    normalizedKey(organization.organization),
+    organization
+  ]));
+  const organizations = new Map();
+  for (const repository of repositories) {
+    const owner = repository.owner;
+    if (!owner) continue;
+    const key = normalizedKey(owner);
+    if (organizations.has(key)) continue;
+    organizations.set(key, {
+      ...(publishedOrganizations.get(key) ?? {}),
+      organization: owner,
+      'organization-name': owner,
+      'observed-at': repository.observedAt,
+      'organization-link': repository.organizationLink
+    });
+  }
+  return {
+    source: 'organizations',
+    rows: [...organizations.values()],
+    metadata: projectionMetadata(sources, 'organizations', 'organizations', true)
+  };
+}
+
 /** @param {Record<string, unknown>[]} packages @param {Record<string, unknown>} sources */
 function packagesSource(packages, sources) {
   return {
@@ -711,6 +738,7 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
   return {
     ...namedLogicalSources(logicalSources),
     ...await queryCanonicalViewSources(indexedDB, logicalSources, [
+      'organizations',
       'repositories',
       'packages',
       'workflows',
@@ -744,7 +772,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const needsEvents = requested.has('events') || needsFirewall || needsGraders || needsMcpCalls;
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
-    requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
+    requested.has('repositories') || requested.has('workflows') || requested.has('organizations')
+      ? queries.repositories.list() : [],
     requested.has('workflows') || requested.has('runs') ? queries.workflows.list() : [],
     requested.has('runs') || requested.has('job-performance') || needsSessions || needsEvents
       ? queries.runs.list() : [],
@@ -769,6 +798,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('source-metadata')) projected['source-metadata'] = sourceMetadataSource(logicalSources);
   if (requested.has('packages')) projected.packages = packagesSource(packages, sources);
   if (requested.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
+  if (requested.has('organizations')) projected.organizations = organizationsSource(repositories, sources);
   if (requested.has('workflows')) projected.workflows = workflowsSource(workflows, repositoriesById, sources);
   if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);

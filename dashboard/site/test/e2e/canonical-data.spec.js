@@ -447,6 +447,31 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
+test('data worker projects distinct organizations from canonical repositories on initial and navigated requests', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const context = { githubUrlBase: 'https://github.com', pages: [] };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['organizations'],
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(['organizations'], context);
+    return { initial, navigated };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload)).toEqual(['organizations']);
+    expect(payload.organizations).toMatchObject({
+      source: 'organizations',
+      rows: [{ organization: 'githubnext', 'organization-name': 'githubnext' }],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
+    expect(payload.organizations.rows).toHaveLength(1);
+  }
+});
+
 test('data worker reports an already ingested payload as unchanged', async ({ page }) => {
   const refreshes = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;

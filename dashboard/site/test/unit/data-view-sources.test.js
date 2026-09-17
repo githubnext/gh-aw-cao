@@ -239,6 +239,19 @@ describe('canonical view sources', () => {
     ]);
   });
 
+  it('projects distinct organization rows from canonical repositories', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['organizations']);
+
+    expect(projected.organizations).toMatchObject({
+      source: 'organizations',
+      rows: [{ organization: 'githubnext', 'organization-name': 'githubnext' }],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
+    expect(projected.organizations.rows).toHaveLength(1);
+  });
+
   it('returns requested authoritative sources through the canonical query boundary', async () => {
     const loaded = await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
