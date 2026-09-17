@@ -128,7 +128,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
         `${packageName} private package manifest must not include undeclared operation workflows`,
       );
     }
-    return declaredWorkflowIds.map((workflowId) => `${workflowId}.md`);
+    return declaredWorkflowIds.map((workflowId) => `.github/workflows/${workflowId}.md`);
   }).sort();
 
   assert.match(control, /dispatch_max:\n\s+type: number/);
