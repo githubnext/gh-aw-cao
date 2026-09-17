@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
 import { capturedConsoleLogText } from '../console-log-capture.js';
-import { fullDebugUrl } from '../debug.js';
+import { createDebug, fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import { renderThemeSettings } from './theme-settings.js';
@@ -15,6 +15,8 @@ import {
   onAutomaticDashboardBackgroundUpdateStatus,
   setAutomaticDashboardDataUpdatesEnabled
 } from '../dashboard-data-updates.js';
+
+const debugConfigurationView = createDebug('configuration-view');
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -236,10 +238,15 @@ function renderSettingsEditor(policyDocument) {
     statusClassName: 'configuration-copy-status',
     successText: 'Updated JSON copied.'
   });
+  let lastModified = false;
   const updateStatus = () => {
     const modified = JSON.stringify(draft) !== JSON.stringify(original);
     status.textContent = modified ? 'Modified locally' : 'No changes';
     status.setAttribute('data-state', modified ? 'modified' : 'clean');
+    if (modified !== lastModified) {
+      debugConfigurationView('settings draft state changed', { modified });
+      lastModified = modified;
+    }
   };
   /** @param {string[]} segments @param {unknown} value */
   const updateValue = (segments, value) => {
@@ -270,13 +277,21 @@ function renderSettingsEditor(policyDocument) {
     onClick: async () => {
       diagnosticsButton.disabled = true;
       diagnosticsStatus.textContent = 'Collecting diagnostics…';
+      debugConfigurationView('diagnostics collection started');
+      const startedAt = Date.now();
       try {
         const report = await collectFullDiagnostics();
         const copied = await copyTextToClipboard(JSON.stringify(report, null, 2));
         diagnosticsStatus.textContent = copied ? 'Diagnostics copied.' : 'Diagnostics collected; copy unavailable.';
+        debugConfigurationView('diagnostics collection finished', { status: 'success', copied, durationMs: Date.now() - startedAt });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         diagnosticsStatus.textContent = `Unable to collect diagnostics: ${message}`;
+        debugConfigurationView('diagnostics collection finished', {
+          status: 'error',
+          errorName: error instanceof Error ? error.name : 'Error',
+          durationMs: Date.now() - startedAt
+        });
       } finally {
         diagnosticsButton.disabled = false;
       }

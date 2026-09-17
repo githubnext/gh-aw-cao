@@ -2,12 +2,12 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { indexedDB } from 'fake-indexeddb';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
-import { fullDebugUrl } from '../../src/debug.js';
+import { fullDebugUrl, isDebugEnabled } from '../../src/debug.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'configuration-fixture',
@@ -400,5 +400,90 @@ describe('Configuration dashboard view', () => {
 
     expect(rendered.textContent).toContain('The policy cannot be edited until it contains valid JSON.');
     expect(rendered.querySelector('.configuration-copy-button')).toBeNull();
+  });
+
+  describe('debug logging', () => {
+    afterEach(() => {
+      window.history.replaceState(null, '', '/');
+      vi.restoreAllMocks();
+    });
+
+    it('derives the configuration-view debug category predictably from the filename', () => {
+      expect(isDebugEnabled('configuration-view', '?debug=configuration-view')).toBe(true);
+      expect(isDebugEnabled('configuration-view', '?debug=1')).toBe(true);
+      expect(isDebugEnabled('configuration-view', '?debug=render')).toBe(false);
+    });
+
+    it('stays silent by default while editing settings and collecting diagnostics', async () => {
+      vi.stubGlobal('indexedDB', indexedDB);
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: vi.fn().mockResolvedValue(undefined) }
+      });
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const rendered = renderConfigurationView(context({
+        document: { 'control-plane': { defaults: { 'max-repositories': 7 } } },
+        raw: '',
+        diagnostics: []
+      }));
+      if (!rendered) throw new Error('configuration view did not render');
+      document.body.append(rendered);
+
+      const input = rendered.querySelector('#configuration-control-plane-defaults-max-repositories');
+      if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
+      input.value = '12';
+      input.dispatchEvent(new Event('input'));
+
+      const diagnosticsButton = rendered.querySelector('.configuration-diagnostics-button');
+      if (!(diagnosticsButton instanceof HTMLButtonElement)) throw new Error('diagnostics button did not render');
+      diagnosticsButton.click();
+      await vi.waitFor(() => expect(diagnosticsButton.nextElementSibling?.textContent).not.toBe('Collecting diagnostics…'));
+
+      expect(debug).not.toHaveBeenCalled();
+    });
+
+    it('logs sanitized draft and diagnostics metadata when the category is enabled', async () => {
+      window.history.replaceState(null, '', '/?debug=configuration-view');
+      vi.stubGlobal('indexedDB', indexedDB);
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: vi.fn().mockResolvedValue(undefined) }
+      });
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      vi.resetModules();
+      const { renderConfigurationView: renderConfigurationViewWithDebug } = await import('../../src/components/configuration-view.js');
+      const rendered = renderConfigurationViewWithDebug(context({
+        document: { 'control-plane': { defaults: { 'max-repositories': 7 } } },
+        raw: '',
+        diagnostics: []
+      }));
+      if (!rendered) throw new Error('configuration view did not render');
+      document.body.append(rendered);
+
+      const input = rendered.querySelector('#configuration-control-plane-defaults-max-repositories');
+      if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
+      input.value = '12';
+      input.dispatchEvent(new Event('input'));
+      expect(debug).toHaveBeenCalledWith('[cao:configuration-view]', 'settings draft state changed', { modified: true });
+
+      const diagnosticsButton = rendered.querySelector('.configuration-diagnostics-button');
+      if (!(diagnosticsButton instanceof HTMLButtonElement)) throw new Error('diagnostics button did not render');
+      diagnosticsButton.click();
+      expect(debug).toHaveBeenCalledWith('[cao:configuration-view]', 'diagnostics collection started');
+
+      await vi.waitFor(() => expect(debug).toHaveBeenCalledWith(
+        '[cao:configuration-view]',
+        'diagnostics collection finished',
+        expect.objectContaining({ status: 'success', copied: true, durationMs: expect.any(Number) })
+      ));
+
+      for (const call of debug.mock.calls) {
+        for (const value of call.slice(1)) {
+          if (value && typeof value === 'object') {
+            expect(Object.keys(value)).not.toEqual(expect.arrayContaining(['message', 'token', 'secret', 'report']));
+          }
+        }
+      }
+    });
   });
 });
