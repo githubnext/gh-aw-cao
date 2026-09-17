@@ -129,7 +129,7 @@ test('views remain interactive while activity shards are ingested', async ({ con
 
   await page.goto(`${origin}/`);
   await expect.poll(() => requestedShards).toBeGreaterThan(0);
-  await expect(page.getByRole('cell', { name: 'Ingested run 1' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Ingested run 1', exact: true })).toBeVisible();
   expect(completedShards).toBeLessThan(shardCount);
   await expect(page.locator('.loading-progress')).toBeVisible();
 
