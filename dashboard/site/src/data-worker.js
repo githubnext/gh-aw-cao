@@ -47,7 +47,7 @@ let liveDashboard = null;
 let dashboardActivated = false;
 const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -102,6 +102,7 @@ function pageScopedSources(sources, requested) {
  * @param {string} [pageId]
  * @param {Record<string, string>} [routeParameters]
  * @param {{ filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } }} [queryContext]
+ * @param {string} [viewId]
  * @param {typeof liveDashboard} [dashboard]
  */
 async function queryLiveDashboard(
@@ -113,6 +114,7 @@ async function queryLiveDashboard(
   pageId,
   routeParameters,
   queryContext,
+  viewId,
   dashboard = liveDashboard
 ) {
   dashboard ??= await loadActiveDashboard();
@@ -124,7 +126,8 @@ async function queryLiveDashboard(
     pagination,
     pageId,
     routeParameters,
-    queryContext
+    queryContext,
+    viewId
   ]);
   return dashboardQueryMemoization.get(dashboard.revision, key, async () => {
     const required = resolveDashboardQuerySources(context.queries, requested);
@@ -142,7 +145,9 @@ async function queryLiveDashboard(
           queryContext,
           evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
           queries: context.queries,
-          views: context.views
+          views: context.views,
+          viewId,
+          sourceNames: requested
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
@@ -228,6 +233,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             subscription.pageId,
             subscription.routeParameters,
             subscription.queryContext,
+            subscription.viewId,
             dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
@@ -331,8 +337,8 @@ export function publishedEventShards(hashes) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
- * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
+ * @param {{ id?: unknown, operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, viewId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
@@ -347,7 +353,8 @@ export function processDataRequest(request, signal) {
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
       typeof request.pageId === 'string' ? request.pageId : undefined,
       routeParameters(request.routeParameters),
-      queryContext(request.queryContext)
+      queryContext(request.queryContext),
+      typeof request.viewId === 'string' ? request.viewId : undefined
     );
   }
   if (request?.operation === 'load-canonical-dashboard') {
@@ -367,13 +374,18 @@ export function processDataRequest(request, signal) {
     const context = dashboardContext(request.context);
     return (async () => {
       dashboardIngestionCount += 1;
-      const progress = startIngestionProgress();
+      const progress = startIngestionProgress(
+        undefined,
+        typeof request.id === 'number' ? request.id : undefined
+      );
+      /** @type {typeof fetch} */
+      const ingestionFetch = (input, init) => fetch(input, { ...init, signal });
       const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       if (!activity) progress.start();
       let changed = false;
       try {
         progress.log(activity ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
-        let sources = activity ? {} : await loadDashboardSources(fetch, sourceUrl.href, {
+        let sources = activity ? {} : await loadDashboardSources(ingestionFetch, sourceUrl.href, {
           onShardLoaded: ({ name, sizeBytes, cacheStatus }) => {
             const size = sizeBytes === null ? 'size unavailable' : `${sizeBytes.toLocaleString()} bytes`;
             progress.log(`Loaded dashboard source shard ${name} (${size}; cache: ${cacheStatus ?? 'unavailable'}).`);
@@ -384,7 +396,7 @@ export function processDataRequest(request, signal) {
           const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
           progress.log('Refreshing workflow and repository inventory.');
           const { response: inventoryResponse, value: inventorySources } = await withRetries(async () => {
-            const response = await fetch(inventoryUrl, { cache: 'no-store' });
+            const response = await ingestionFetch(inventoryUrl, { cache: 'no-store' });
             if (!response.ok) {
               if (response.status === 404) return { response, value: {} };
               throw new Error(`Unable to load dashboard inventory sources: ${response.status}`);
@@ -398,7 +410,8 @@ export function processDataRequest(request, signal) {
             progress.log('No separate inventory metadata was published.');
           }
           progress.log('Checking the published payload identity.');
-          const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
+          const payloadHashesResponse = await ingestionFetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
+          if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
           const payloadHashes = payloadHashesResponse?.ok
             ? await payloadHashesResponse.json().catch(() => null)
             : null;
@@ -454,6 +467,7 @@ export function processDataRequest(request, signal) {
           /** @type {Array<{ index: number, shard: { name: string, hash: string }, shardUrl: URL, current: boolean, sizeBytes: number | undefined }>} */
           const shardStates = [];
           for (const [index, shard] of shards.entries()) {
+            if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
             const current = normalized
               ? await isNormalizedJsonCurrent(indexedDB, {
@@ -480,7 +494,7 @@ export function processDataRequest(request, signal) {
             progress.reportShardImportProgress(shardStates.length - pendingShards.length, shardCount);
           }
           const measureShards = (/** @type {typeof pendingShards} */ states) => Promise.all(states.map(async (state) => {
-            const response = await fetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
+            const response = await ingestionFetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
             const contentLength = response?.ok ? Number(response.headers.get('content-length')) : Number.NaN;
             state.sizeBytes = Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : undefined;
           }));
@@ -498,6 +512,7 @@ export function processDataRequest(request, signal) {
           let processedBytes = 0;
           let processedRecords = 0;
           for (const { index, shard, shardUrl, current, sizeBytes } of shardStates) {
+            if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             if (runPhaseShardCount > 0 && index === runPhaseShardCount) {
               progress.log('Run information is available; refreshing active dashboard queries.');
               liveDashboard = {
@@ -507,6 +522,7 @@ export function processDataRequest(request, signal) {
               dashboardActivated = true;
               scheduleDashboardSubscriptions();
               await flushDashboardSubscriptions(true);
+              if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
               const eventPendingShards = pendingShards.filter((state) => state.index >= runPhaseShardCount);
               await measureShards(eventPendingShards);
               workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
@@ -528,7 +544,7 @@ export function processDataRequest(request, signal) {
               index: index + 1,
               shardCount
             });
-            const response = await fetch(shardUrl);
+            const response = await ingestionFetch(shardUrl);
             if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
             if (!normalized && !response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
             {
@@ -547,6 +563,7 @@ export function processDataRequest(request, signal) {
                 retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
                 onWriteProgress: (/** @type {{ storedRecords: number, totalRecords: number }} */ written) => progress.store(written),
                 onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+                signal,
                 payloadIdentity: shard.hash,
                 payloadScope: shardUrl.href
               };
@@ -591,7 +608,8 @@ export function processDataRequest(request, signal) {
               retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
               payloadScope: inventoryUrl.href,
               onWriteProgress: (written) => progress.store(written),
-              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE)
+              onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+              signal
             });
             changed ||= inventoryIngestion.updated;
             progress.log('skipped' in inventoryIngestion && inventoryIngestion.skipped
@@ -605,13 +623,15 @@ export function processDataRequest(request, signal) {
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
             payloadScope: sourceUrl.href,
             onWriteProgress: (written) => progress.store(written),
-            onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE)
+            onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
+            signal
           });
           changed ||= ingestion.updated;
           progress.log('skipped' in ingestion && ingestion.skipped
             ? 'Dashboard source data is already current.'
             : `Dashboard ingestion committed ${ingestion.committedRecords} canonical records.`);
         }
+        if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
         progress.log('Refreshing active dashboard queries.');
         const nextRevision = (liveDashboard?.revision ?? 0)
           + (!dashboardActivated || changed ? 1 : 0);
@@ -630,7 +650,8 @@ export function processDataRequest(request, signal) {
           /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {}),
           typeof request.pageId === 'string' ? request.pageId : undefined,
           routeParameters(request.routeParameters),
-          queryContext(request.queryContext)
+          queryContext(request.queryContext),
+          typeof request.viewId === 'string' ? request.viewId : undefined
         );
         return request.reportActivation
           ? { sources: projected, changed }
@@ -721,6 +742,7 @@ if (typeof document === 'undefined' && workerScope) {
         requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
         pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
         pageId: typeof event.data.pageId === 'string' ? event.data.pageId : undefined,
+        viewId: typeof event.data.viewId === 'string' ? event.data.viewId : undefined,
         routeParameters: routeParameters(event.data.routeParameters),
         queryContext: queryContext(event.data.queryContext),
         revision: liveDashboard?.revision ?? null,
@@ -750,7 +772,7 @@ if (typeof document === 'undefined' && workerScope) {
     /** @param {unknown} error */
     const failure = (error) => ({
       error: error instanceof Error ? error.message : String(error),
-      cancelled: error instanceof DashboardQueryCancelledError
+      cancelled: controller.signal.aborted || error instanceof DashboardQueryCancelledError
     });
     const settle = (/** @type {Record<string, unknown>} */ message) => {
       inFlight.delete(id);

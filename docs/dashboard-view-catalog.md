@@ -19,7 +19,7 @@ These are the default product destinations. They are custom pages composed from 
 
 | Page ID | Navigation title | Named element | Purpose |
 | --- | --- | --- | --- |
-| `overview` | Overview | `outcomes-overview` | Summarizes current motion, outcomes, delivery, runs, dispatches, value, and weekly rhythm. |
+| `overview` | Overview | `factory-header`, `factory-floor` | Summarizes current motion, outcomes, delivery, runs, dispatches, value, and weekly rhythm. |
 | `work` | Work | `work-project-view` | Presents delegated work as board, task, and roadmap modes. |
 | `agents` | Operations | `agent-marketplace-view` | Presents the policy-scoped package and agent marketplace. |
 | `insights` | Insights | `insights-overview` | Composes outcomes, value, usage, runtime, security, and experiment evidence. |
@@ -105,7 +105,9 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `work-project-view` | Presents delegated work in board, task, and roadmap modes. |
 | `agent-marketplace-view` | Presents policy-scoped packages and agent capabilities. |
 | `insights-overview` | Composes the primary cross-domain Insights experience. |
-| `outcomes-overview` | Composes the primary Overview factory experience from configurable `header` and `floor` sections. |
+| `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
+| `factory-floor` | Presents linked repository, run, dispatch, and value stations. |
+| `outcomes-overview` | Compatibility alias that composes the factory header and floor for existing version 0.1.0 documents. |
 
 ## Testing standard
 

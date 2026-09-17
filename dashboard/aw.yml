@@ -219,10 +219,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/count-formatters.js
   - source: site/src/components/data-state.js
     destination: .github/aw/dashboard/site/src/components/data-state.js
-  - source: site/src/components/factory-overview.js
-    destination: .github/aw/dashboard/site/src/components/factory-overview.js
-  - source: site/src/components/factory-overview-sections.js
-    destination: .github/aw/dashboard/site/src/components/factory-overview-sections.js
+  - source: site/src/components/factory-elements.js
+    destination: .github/aw/dashboard/site/src/components/factory-elements.js
   - source: site/src/components/factory-floor.js
     destination: .github/aw/dashboard/site/src/components/factory-floor.js
   - source: site/src/components/factory-header.js

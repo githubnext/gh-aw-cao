@@ -19,7 +19,7 @@ describe('dashboard query architecture', () => {
     const worker = read('src/data-worker.js');
     const startup = read('src/data/startup.js');
     const presenter = read('src/presenter.js');
-    const factoryOverview = read('src/components/factory-overview.js');
+    const factoryElements = read('src/components/factory-elements.js');
     const workProject = read('src/components/work-project-view.js');
     const presentationQueryFixture = read('test/workflow-inventory-query.js');
     const canonicalSources = read('src/data/queries/view-sources.js');
@@ -35,7 +35,9 @@ describe('dashboard query architecture', () => {
     expect(startup).toContain('bindContinuations(pageId, sources, lazySources, pageOptions)');
     expect(startup).toMatch(/loadCanonicalDashboardPage\(requested, dashboardContext, pagination, \{[\s\S]{0,220}pageId,[\s\S]{0,220}routeParameters: pageOptions\.routeParameters,[\s\S]{0,220}queryContext: pageOptions\.queryContext/);
     expect(presenter).not.toMatch(/filterDashboardSources|filterRowsForView|deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
-    expect(factoryOverview).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
+    expect(factoryElements).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
+    expect(factoryElements).toMatch(/requestSource|publishSource/);
+    expect(factoryElements).not.toMatch(/indexedDB/);
     expect(workProject).not.toMatch(/normalizeState|actorForLifecycle|compareWorkItems|orchestratedPackageNames/);
     expect(read('src/components/ui-elements.js')).not.toContain('filterRows');
     expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");

@@ -47,6 +47,46 @@ it('loads each requested source once and notifies bound effects', async () => {
   handle.stop();
 });
 
+it('forwards query context and reloads a source when that context changes', async () => {
+  /** @type {Array<{ pageId?: string, query?: string }>} */
+  const requests = [];
+  configureSourceLoader((name, options) => {
+    requests.push({
+      pageId: options?.pageId,
+      query: options?.queryContext?.search?.query
+    });
+
+    it('keeps separate view bindings for the same canonical source', async () => {
+      configureSourceLoader((name, options) => Promise.resolve({
+        source: name,
+        rows: [{ view: options?.viewId }],
+        metadata
+      }));
+
+      requestSource('runs', { pageId: 'overview', viewId: 'header', bindingKey: 'header-runs' });
+      requestSource('runs', { pageId: 'overview', viewId: 'floor', bindingKey: 'floor-runs' });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(sourceState('header-runs').get().source?.rows).toEqual([{ view: 'header' }]);
+      expect(sourceState('floor-runs').get().source?.rows).toEqual([{ view: 'floor' }]);
+    });
+    return Promise.resolve({ source: name, rows: [], metadata });
+  });
+
+  requestSource('runs', { pageId: 'overview', queryContext: { search: { fields: ['workflow'], query: 'first' } } });
+  await Promise.resolve();
+  await Promise.resolve();
+  requestSource('runs', { pageId: 'overview', queryContext: { search: { fields: ['workflow'], query: 'second' } } });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(requests).toEqual([
+    { pageId: 'overview', query: 'first' },
+    { pageId: 'overview', query: 'second' }
+  ]);
+});
+
 it('marks a source failed when its query rejects', async () => {
   configureSourceLoader(() => Promise.reject(new Error('query unavailable')));
 

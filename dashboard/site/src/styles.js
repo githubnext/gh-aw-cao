@@ -27,6 +27,7 @@ export function notificationStylesheet() {
 .dashboard-notification-details { max-height: min(320px, 45vh); margin: 10px 0 0; padding: 8px; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--border, ButtonBorder); color: var(--muted, GrayText); font: .6875rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; list-style: none; }
 .dashboard-notification-details li + li { margin-top: 4px; }
 .dashboard-notification-action { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--border, ButtonBorder); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.dashboard-notification-content > .dashboard-notification-action { width: 100%; margin-top: 10px; }
 .dashboard-notification-action:hover { border-color: var(--accent, Highlight); background: var(--neutral-muted, color-mix(in srgb, CanvasText 12%, transparent)); }
 .dashboard-notification-action:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 2px; }
 @media (max-width: 700px) {
@@ -1561,11 +1562,11 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-layout { grid-column: 1; grid-row: auto; grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); gap: 12px; }
 .dashboard-overview-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card > :is(.view-source, .view-metadata, .view-context) { grid-column: 1; }
-.dashboard-overview-page .custom-view-grid { display: block; }
+.dashboard-overview-page > .custom-view-grid { display: block; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .dashboard-overview-page .custom-view { margin: 0; }
-.agent-factory { display: grid; gap: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .factory-intro { min-height: 210px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); align-items: center; gap: 48px; padding: 32px 40px; background: linear-gradient(115deg, color-mix(in srgb, var(--success) 8%, var(--canvas)) 0 34%, var(--canvas) 68%, color-mix(in srgb, var(--accent) 6%, var(--canvas)) 100%); }
 .factory-running { margin: 0 0 12px; color: var(--muted); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
+.factory-running-pending { width: 124px; height: .75rem; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-running-active { color: var(--success); }
 .factory-running-active > span { position: relative; display: inline-flex; align-items: baseline; gap: 5px; padding-bottom: 6px; overflow: hidden; }
 .factory-running-detail { color: var(--muted); }
@@ -1576,6 +1577,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   50% { opacity: 1; transform: translateX(55%); }
 }
 .factory-intro h2 { max-width: 680px; margin: 0; font-size: clamp(2rem, 3.5vw, 3.25rem); font-weight: 600; letter-spacing: 0; line-height: 1.05; }
+.factory-intro h2.factory-heading-pending { width: min(100%, 560px); height: 3.25rem; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .factory-intro-copy > p:last-child { max-width: 650px; margin: 14px 0 0; color: var(--muted); font-size: .875rem; line-height: 1.5; }
 .factory-capacity { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; margin: 0; padding: 20px 0 0 24px; border-left: 1px solid var(--border); }
 .factory-capacity > div:last-child { grid-column: 1 / -1; }
@@ -1625,6 +1627,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-baseline { width: 82%; border: 1px solid var(--border); background: var(--canvas-subtle); }
 .factory-rhythm-current { width: 82%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
 .factory-rhythm-bars small { color: var(--muted); font-size: .625rem; font-style: normal; }
+.factory-rhythm-pending .factory-rhythm-bars { border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
+.factory-rhythm-pending .factory-rhythm-bars > * { visibility: hidden; }
 .factory-status { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 40px; border-top: 1px solid var(--border); background: var(--canvas-subtle); }
 .factory-status > div { display: flex; align-items: center; gap: 10px; }
 .factory-status > div > span { color: var(--success); }
@@ -1644,7 +1648,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   .factory-rhythm { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 }
 @media (max-width: 700px) {
-  .agent-factory { border: 0; border-radius: 0; }
+  .dashboard-overview-page > .custom-view-grid { border: 0; border-radius: 0; }
   .factory-intro { min-height: 0; gap: 24px; padding: 24px 20px; }
   .factory-intro h2 { font-size: 2rem; }
   .factory-capacity { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1978,7 +1982,7 @@ thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75
 .table-summary-boolean .chart-legend i.chart-series-semantic-failure { border-color: var(--danger); color: var(--danger); }
 .table-summary-count { font-weight: 400; }
 .table-summary-quantitative { display: grid; gap: 6px; }
-.table-summary-histogram { width: 100%; height: 32px; overflow: visible; }
+.table-summary-histogram { width: 100%; max-width: 120px; height: 32px; overflow: visible; } /* cap at the SVG's natural viewBox width (histogram.js) so wide columns don't stretch the bars */
 .table-summary-histogram rect { fill: var(--accent); opacity: .75; }
 .table-output-evidence { display: block; max-width: 80ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tree-table-cell { display: block; padding-inline-start: calc(var(--tree-depth) * 1.25rem); }
@@ -2461,7 +2465,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-  .dashboard-loading-skeleton > div, .dashboard-view-skeleton > div, .dashboard-lazy-view-skeleton > span, .dashboard-horizon-skeleton > span, .table-summary-skeleton span, .home-catchup-mobile-card { animation: none; }
+  .dashboard-loading-skeleton > div, .dashboard-view-skeleton > div, .dashboard-lazy-view-skeleton > span, .dashboard-horizon-skeleton > span, .table-summary-skeleton span, .home-catchup-mobile-card, .factory-running-pending, .factory-heading-pending, .factory-rhythm-pending .factory-rhythm-bars { animation: none; }
 }
 @media (prefers-contrast: more) {
   :root {

@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { effect } from '../reactive.js';
 import { formatCount } from './count-formatters.js';
+import { bindFactorySources, createFactoryMetrics, createFactoryScope } from './factory-elements.js';
 import { renderFactoryRhythm } from './factory-rhythm.js';
 
 /** @typedef {{ operations: number, live: number, review: number }} Motion */
@@ -20,26 +21,34 @@ export function renderFactoryHeader(sources, metrics, scope) {
   const summary = h('p', {});
 
   effect(() => {
+    const pending = sources['overview-run-summary']?.pending() ?? false;
     const motion = scope.motion.get();
-    running.className = `factory-running${motion.operations > 0 ? ' factory-running-active' : ''}`;
+    running.className = `factory-running${pending ? ' factory-running-pending' : ''}${motion.operations > 0 ? ' factory-running-active' : ''}`;
+    running.toggleAttribute('aria-busy', pending);
     running.replaceChildren(
-      motion.operations > 0 ? h('span', {}, 'Work in motion') : 'Actions activity observed'
+      pending ? '' : motion.operations > 0 ? h('span', {}, 'Work in motion') : 'Actions activity observed'
     );
   }, { signal: scope.signal });
 
   effect(() => {
     const status = sources['overview-factory-status'];
+    const pending = status.pending();
     const candidate = status.rows()[0]?.['factory-heading'];
-    heading.textContent = !status.unavailable() && typeof candidate === 'string' && candidate
+    heading.classList.toggle('factory-heading-pending', pending);
+    heading.toggleAttribute('aria-busy', pending);
+    heading.textContent = pending
+      ? ''
+      : !status.unavailable() && typeof candidate === 'string' && candidate
       ? candidate
       : 'Your factory status is unavailable.';
   }, { signal: scope.signal });
 
   effect(() => {
+    const pending = sources['overview-outcome-summary']?.pending() ?? false;
     const usefulOutputs = metrics.usefulOutputs();
     const deliveredRepositories = metrics.deliveredRepositories();
-    summary.hidden = usefulOutputs === 0;
-    summary.textContent = usefulOutputs > 0
+    summary.hidden = pending || usefulOutputs === 0;
+    summary.textContent = !pending && usefulOutputs > 0
       ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
       : '';
   }, { signal: scope.signal });
@@ -50,4 +59,30 @@ export function renderFactoryHeader(sources, metrics, scope) {
     h('div', { className: 'factory-intro-copy' }, running, heading, summary),
     renderFactoryRhythm(sources['overview-rhythm'], scope)
   );
+}
+
+const HEADER_SOURCE_NAMES = [
+  'overview-outcome-summary',
+  'overview-run-summary',
+  'overview-factory-status',
+  'overview-rhythm'
+];
+
+/**
+ * Renders the JSON-selected factory header from its declared query payloads.
+ * @param {import('./ui-elements.js').ElementRenderContext} context
+ */
+export function renderFactoryHeaderElement(context) {
+  const sources = bindFactorySources(context.sources, HEADER_SOURCE_NAMES, {
+    pageId: context.pageId,
+    viewId: context.viewId,
+    viewIndex: context.viewIndex,
+    sourceNames: context.sourceNames,
+    queryContext: context.queryContext
+  });
+  const metrics = createFactoryMetrics(sources);
+  const scope = createFactoryScope(metrics);
+  const rendered = renderFactoryHeader(sources, metrics, scope);
+  scope.bind(rendered);
+  return rendered;
 }

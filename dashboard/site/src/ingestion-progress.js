@@ -7,7 +7,7 @@ let nextIngestionProgressId = 0;
 
 /**
  * Publishes a user-facing notification from the data worker.
- * @param {{ id?: string, message?: string, icon?: 'download', detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], dismiss?: boolean }} notification
+ * @param {{ id?: string, message?: string, icon?: 'download', detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], action?: { label: string, operation: 'cancel-data-ingestion', placement: 'details', requestId?: number }, dismiss?: boolean }} notification
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 export function publishWorkerNotification(notification, target = self) {
@@ -26,8 +26,9 @@ function publishWorkerLoadingProgress(state, target = self) {
 /**
  * Reports long-running ingestion status through the main-thread notification manager.
  * @param {{ postMessage: (message: unknown) => void }} [target]
+ * @param {number} [requestId]
  */
-export function startIngestionProgress(target = self) {
+export function startIngestionProgress(target = self, requestId) {
   const id = `ingestion-progress-${++nextIngestionProgressId}`;
   const clock = createElapsedStepTracker('Preparing data...', {
     historyLimit: INGESTION_PROGRESS_HISTORY_LIMIT
@@ -66,6 +67,7 @@ export function startIngestionProgress(target = self) {
         icon: 'download',
         detailsSubtitle: 'Downloading and processing a local copy in this browser can take several minutes. Cached shards are reused.',
         details: snapshot.history,
+        action: { label: 'Cancel', operation: 'cancel-data-ingestion', placement: 'details', requestId },
         tone: 'info',
         duration: 0
       }, target);

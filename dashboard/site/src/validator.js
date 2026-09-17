@@ -2425,10 +2425,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
       }
       if (view.config.animate !== undefined) {
-        if (view.element !== 'outcomes-overview') {
+        if (view.element !== 'factory-floor' && view.element !== 'outcomes-overview') {
           errors.push(createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-            'config.animate is supported only for the outcomes-overview element.',
+            'config.animate is supported only for the factory-floor and outcomes-overview elements.',
             `${path}.config.animate`
           ));
         }

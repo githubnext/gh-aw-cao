@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+root="$(CDPATH= cd -P "$(dirname "$0")" && pwd)"
 
-if [[ -f "$root/activity/cao.mjs" ]]; then
+if [ -f "$root/activity/cao.mjs" ]; then
   cli="$root/activity/cao.mjs"
 else
   echo "cao CLI is unavailable; install the Central Agentic Ops root package." >&2

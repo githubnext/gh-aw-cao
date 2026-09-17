@@ -51,6 +51,7 @@ describe('dashboard notification service', () => {
       duration: 0,
       details: Array.from({ length: 105 }, (_, index) => `Step ${index + 1}`)
     });
+
     const toggle = /** @type {HTMLButtonElement} */ (
       document.querySelector('.dashboard-notification-toggle')
     );
@@ -93,6 +94,42 @@ describe('dashboard notification service', () => {
     toggle.click();
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(details.hidden).toBe(true);
+  });
+
+  it('shows a details action at the bottom and dismisses a cancelled view when collapsed', () => {
+    const service = createNotificationService(document);
+    const cancel = vi.fn();
+    const handle = service.publish({
+      message: 'Ingesting data.',
+      duration: 0,
+      details: ['Downloading data.'],
+      action: { label: 'Cancel', run: cancel, placement: 'details' }
+    });
+    const toggle = /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-toggle')
+    );
+    const action = /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-action')
+    );
+
+    expect(action.hidden).toBe(true);
+    toggle.click();
+    expect(action.hidden).toBe(false);
+    expect(action.parentElement?.classList.contains('dashboard-notification-content')).toBe(true);
+    action.click();
+    expect(cancel).toHaveBeenCalledOnce();
+
+    handle.update({
+      message: 'Data ingestion cancelled.',
+      tone: 'warning',
+      duration: 0,
+      details: ['Downloading data.'],
+      dismissOnCollapse: true
+    });
+    expect(document.querySelector('.dashboard-notification')).not.toBeNull();
+    toggle.click();
+    vi.advanceTimersByTime(180);
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
   });
 
   it('updates progress entries in place while following or preserving scroll', () => {

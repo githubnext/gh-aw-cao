@@ -12,7 +12,6 @@ export {
   WORKFLOW_ROUTE_BODY_VALUES,
   WORKFLOW_ROUTE_PAGE_BODY_VALUES
 } from './components/route-body-specification.js';
-export { FACTORY_OVERVIEW_SECTION_VALUES } from './components/factory-overview-sections.js';
 
 export const LANGUAGE_VERSION = '0.1.0';
 
@@ -66,8 +65,9 @@ export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 
 export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
 export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'labels', 'animate'];
 export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
+export const FACTORY_OVERVIEW_SECTION_VALUES = ['header', 'floor'];
 export const PLURAL_TEXT_KEYS = ['singular', 'plural'];
-export const PLURAL_LABEL_ELEMENTS = ['outcomes-overview'];
+export const PLURAL_LABEL_ELEMENTS = ['factory-floor', 'outcomes-overview'];
 export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field'];
 export const CALLOUT_KEYS = ['label', 'icon'];
 export const VIEW_MARK_VALUES = ['metric', 'table', 'list', 'chart', 'element', 'callout'];
@@ -99,6 +99,8 @@ export const VIEW_ELEMENT_VALUES = [
   'work-project-view',
   'agent-marketplace-view',
   'insights-overview',
+  'factory-header',
+  'factory-floor',
   'outcomes-overview'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];

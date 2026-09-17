@@ -197,7 +197,10 @@ describe('canonical dashboard worker retention updates', () => {
     expect(posted.slice(repeatedStart).filter(({ type }) => (
       type === 'notification' || type === 'loading-progress'
     ))).toEqual([]);
-    expect(jsonlRequests).toEqual([{ method: 'HEAD' }, undefined]);
+    expect(jsonlRequests).toEqual([
+      expect.objectContaining({ method: 'HEAD', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    ]);
     expect(requestUrls).toEqual([
       'https://dashboard.example/inventory-sources.json',
       'https://dashboard.example/payload-hashes.json',
@@ -236,7 +239,10 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 5))?.data).toMatchObject({ changed: true });
-    expect(jsonlRequests.slice(2)).toEqual([{ method: 'HEAD' }, undefined]);
+    expect(jsonlRequests.slice(2)).toEqual([
+      expect.objectContaining({ method: 'HEAD', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    ]);
     dispatch({
       id: 6,
       operation: 'load-canonical-dashboard',
