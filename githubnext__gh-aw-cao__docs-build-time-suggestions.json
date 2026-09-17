@@ -1,6 +1,6 @@
 {
   "source_sha": "1eb55ec7fdadbbb325a52a306e2fabd4332f2803",
-  "next_category": "Astro documentation generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-17T12:52:00Z",
@@ -117,6 +117,24 @@
         35227767558
       ],
       "outcome": "no-op: evidence window 2026-09-17T13:33:00Z to 2026-09-17T14:38:22Z. Analyzed 9 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (5 schedule, 1 push, 3 workflow_run), while disclosing 1 cancelled push run plus 10 skipped or action_required workflow_run outliers. Parent workflow median duration was 194s (p90 255s), build median 71s (p90 84s), deploy-job median 11s (p90 131s), and queue median 0s (p90 0s). Trusted job-step metadata confirmed Build documentation remained small at 7s median (p90 8s), Restore node_modules hit on 9/9 samples because Install dependencies and Save node_modules were skipped on all 9, and the repeated larger build costs were Mount latest CAO Dashboard artifact at 9s median plus Upload Pages artifact at 32s median. The next-category focus Astro documentation generation is not the dominant bottleneck, and the only current >15% savings opportunity remains the already-recorded reusable-dashboard suggestion fingerprint c1979ae4b7fcb3efb1c3. No fresh non-duplicate Astro-targeted change meets the >=60s or >=15% threshold safely.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-17T14:52:00Z",
+      "worker_run_id": 35236212647,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        35234721267,
+        35233569643,
+        35231123238,
+        35230885060,
+        35229152444,
+        35228206335,
+        35228055642,
+        35227812057,
+        35227767558
+      ],
+      "outcome": "no-op: evidence window 2026-09-17T13:33:00Z to 2026-09-17T14:38:22Z. Analyzed 9 comparable successful docs.yml runs from the latest 20 completed runs in the last 14 days (5 schedule, 1 push, 3 workflow_run), while disclosing 1 cancelled push run plus 10 skipped or action_required workflow_run outliers. Parent workflow median duration was 194s (p90 221s), build median 71s (p90 83s), deploy-job median 11s (p90 105s), and queue median 0s (p90 0s). Trusted job-step metadata and bounded log reads confirmed Restore node_modules hit on 9/9 samples because Install dependencies and Save node_modules were skipped on all 9; Build documentation stayed small at 7s median. The repeated larger build costs remained Mount latest CAO Dashboard artifact at 9s median and Upload Pages artifact at 32s median. Bounded logs for the latest 5 successful runs showed dashboard cache misses on 5/5 samples, so docs.yml still re-downloads and re-uploads the large dashboard payload. However, open issue fingerprint c1979ae4b7fcb3efb1c3 already covers the actionable reusable-dashboard change to deploy the CAO Dashboard artifact directly and avoid repeated packaging work. No fresh non-duplicate reusable-dashboard recommendation met the >=60s or >=15% threshold safely.",
       "suggestion_fingerprint": ""
     }
   ]
