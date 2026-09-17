@@ -15,7 +15,7 @@ export function renderPackageRouteView(context) {
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
- * @param {'overview'|'issues'|'pull-requests'|'runs'|'repositories'|'insights'|'reports'|'workflows'|'dispatches'} variant
+ * @param {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports'|'dispatches'} variant
  * @returns {HTMLElement}
  */
 export function renderPackageRouteVariant(context, variant) {

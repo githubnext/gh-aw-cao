@@ -166,7 +166,7 @@ describe('renderPackageNavigation', () => {
       detail: { parameter: 'package', value: 'ambient-context' }
     }));
 
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-insights?package=ambient-context');
+    expect(rendered.querySelector('.package-tabs [aria-current="page"]')).toBeNull();
     expect(rendered.querySelector('.value-report h2')?.textContent).toBe('Ambient Context / AGENTS.md');
     expect(rendered.querySelector('.value-score')?.textContent).toContain('75%');
     expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Outcome change from first observation');
@@ -183,16 +183,12 @@ describe('renderPackageNavigation', () => {
     }));
 
     expect(rendered.dataset.package).toBe('ambient-context');
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewIssuesPull requestsActionsRepositoriesInsightsReports');
+    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewWorkflowsRuns');
     expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context');
     expect([...rendered.querySelectorAll('.package-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-package-detail?package=ambient-context',
-      '#page-package-issues?package=ambient-context',
-      '#page-package-pull-requests?package=ambient-context',
-      '#page-package-runs?package=ambient-context',
-      '#page-package-repositories?package=ambient-context',
-      '#page-package-insights?package=ambient-context',
-      '#page-package-reports?package=ambient-context'
+      '#page-package-workflows?package=ambient-context',
+      '#page-package-runs?package=ambient-context'
     ]);
     expect(rendered.querySelector('.package-readme h1')?.textContent).toBe('Ambient Context');
     expect(rendered.querySelector('.package-readme h2')?.textContent).toBe('Capabilities');
@@ -213,13 +209,13 @@ describe('renderPackageNavigation', () => {
   });
 
   it('renders workflow tab composition through the reusable package route variant primitive', () => {
-    const rendered = renderPackageRouteVariant(context(), 'overview');
+    const rendered = renderPackageRouteVariant(context(), 'workflows');
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'package', value: 'ambient-context' }
     }));
 
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context');
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewIssuesPull requestsActionsRepositoriesInsightsReports');
+    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-workflows?package=ambient-context');
+    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewWorkflowsRuns');
   });
 
   describe('workflow run navigation', () => {
@@ -296,7 +292,7 @@ describe('renderPackageNavigation', () => {
         detail: { parameter: 'package', value: 'ambient-context' }
       }));
 
-      expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-reports?package=ambient-context');
+      expect(rendered.querySelector('.package-tabs [aria-current="page"]')).toBeNull();
       expect(rendered.getAttribute('data-route-view')).not.toBeNull();
     });
 

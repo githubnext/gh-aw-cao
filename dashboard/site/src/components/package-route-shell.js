@@ -12,7 +12,7 @@ import { PACKAGE_ROUTE_TABS } from './route-body-specification.js';
  *   rootClassName: string,
  *   selectMessage: string,
  *   description: string,
- *   currentTab: 'overview'|'issues'|'pull-requests'|'runs'|'repositories'|'insights'|'reports',
+ *   currentTab: 'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports',
  *   bodyRenderer: PackageRouteBodyRenderer | undefined
  * }} PackageRouteShellConfig
  */

@@ -1290,7 +1290,7 @@ describe('declarative dashboard queries', () => {
       package: 'aw-doctor',
       'package-name': 'AW Doctor',
       'package-dashboard-link': {
-        'dashboard-href': '#page-package-insights?package=aw-doctor',
+        'dashboard-href': '#page-package-detail?package=aw-doctor',
         'dashboard-label': 'View AW Doctor package dashboard'
       },
       workflows: 3,
@@ -2244,7 +2244,7 @@ describe('computed field vocabulary', () => {
     });
     expect(compute('dashboard-link', [
       { field: 'missing' },
-      { value: '#page-package-insights?package=' },
+      { value: '#page-package-detail?package=' },
       { value: 'View package dashboard' },
       { value: '' }
     ])).toBeNull();

@@ -11,6 +11,7 @@ export const PACKAGE_ROUTE_DEFAULT_BODY = packageResourceNavigation.default;
 export const PACKAGE_ROUTE_ALIASES = Object.freeze(packageResourceNavigation.aliases);
 export const PACKAGE_ROUTE_BODY_VALUES = Object.freeze([
   ...PACKAGE_ROUTE_TABS.map((tab) => tab.id),
+  ...packageResourceNavigation['additional-bodies'],
   ...Object.keys(PACKAGE_ROUTE_ALIASES)
 ]);
 export const OUTCOME_DETAIL_SECTION_BODY_VALUES = ['discussion', 'metadata'];

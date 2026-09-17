@@ -15,11 +15,11 @@ import { renderPackageReadme } from './package-readme.js';
 import { renderWorkflowValueReport } from './workflow-runtime.js';
 
 /**
- * @typedef {'overview'|'issues'|'pull-requests'|'runs'|'repositories'|'insights'|'reports'|'workflows'|'dispatches'} PackageRouteBody
+ * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports'|'dispatches'} PackageRouteBody
  */
 
 /**
- * @typedef {'overview'|'issues'|'pull-requests'|'runs'|'repositories'|'insights'|'reports'} PackageRouteTab
+ * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports'} PackageRouteTab
  */
 
 /**
@@ -49,6 +49,13 @@ const PACKAGE_ROUTE_COMPOSITIONS = {
     description: 'Overview of the {packageName} package.',
     currentTab: 'overview',
     bodyRenderer: ({ packageId, packageName, workflows }) => renderPackageReadme({ packageId, packageName, workflows })
+  },
+  workflows: {
+    rootClassName: 'package-workflows',
+    selectMessage: 'Select a package to view its workflows.',
+    description: 'Orchestrator and worker workflows in the {packageName} package.',
+    currentTab: 'workflows',
+    bodyRenderer: undefined
   },
   issues: {
     rootClassName: 'package-issues',

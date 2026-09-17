@@ -2448,7 +2448,7 @@
           {
             "as": "package-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
           },
           {
             "as": "package-dashboard-label",
@@ -2752,7 +2752,7 @@
           {
             "as": "package-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
           },
           {
             "as": "package-dashboard-label",
@@ -3417,7 +3417,7 @@
           {
             "as": "package-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
           },
           {
             "as": "package-dashboard-label",
@@ -5000,9 +5000,37 @@
         "id": "package-detail",
         "kind": "custom",
         "title": "Package",
-        "description": "Orchestrator and worker workflows in this package.",
+        "description": "Overview of this package.",
         "icon": "package",
         "class-name": "package-detail-page",
+        "route": {
+          "hash-query-parameter": "package"
+        },
+        "views": [
+          {
+            "id": "package-overview-navigation",
+            "title": "Package overview",
+            "data": {
+              "sources": [
+                "workflows"
+              ]
+            },
+            "mark": "element",
+            "element": "package-route",
+            "layout": "full",
+            "config": {
+              "body": "overview"
+            }
+          }
+        ]
+      },
+      {
+        "id": "package-workflows",
+        "kind": "custom",
+        "title": "Package",
+        "description": "Orchestrator and worker workflows in this package.",
+        "icon": "workflow",
+        "class-name": "package-workflows-page",
         "route": {
           "hash-query-parameter": "package"
         },
@@ -5019,7 +5047,7 @@
             "element": "package-route",
             "layout": "full",
             "config": {
-              "body": "overview"
+              "body": "workflows"
             }
           },
           {
