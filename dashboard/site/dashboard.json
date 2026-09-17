@@ -2099,6 +2099,16 @@
         "from": "events",
         "joins": [
           {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "package", "as": "package" }]
+          },
+          {
             "source": "runs",
             "type": "left",
             "on": [
@@ -2117,6 +2127,7 @@
           { "field": "event-type" },
           { "field": "event-status" },
           { "field": "event-summary" },
+          { "field": "package" },
           { "field": "organization" },
           { "field": "repository" },
           { "field": "workflow" },
@@ -2205,11 +2216,24 @@
             { "field": "event-status", "in": ["high", "medium"] }
           ]
         },
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "package", "as": "package" }]
+          }
+        ],
         "aggregate": {
-          "by": ["workflow", "event-summary"],
+          "by": ["package", "workflow", "event-summary"],
           "values": [{ "field": "event", "as": "events", "reducer": "count" }]
         },
         "select": [
+          { "field": "package" },
           { "field": "workflow" },
           { "field": "event-summary" },
           { "field": "events" }
@@ -4945,7 +4969,7 @@
         "id": "package-insights",
         "kind": "custom",
         "title": "Package",
-        "description": "Operational value attained by workers in this package.",
+        "description": "Audit events observed for this package.",
         "icon": "graph",
         "class-name": "package-insights-page",
         "route": {
@@ -4953,51 +4977,124 @@
         },
         "views": [
           {
-            "id": "package-insights-by-workflow",
-            "title": "AI Credit usage by workflow",
-            "description": "Measured workflow allocation highlights the package's dominant operating activity.",
+            "id": "package-insights-navigation",
+            "title": "Package insights",
             "data": {
-              "source": "packaged-workflows",
-              "route-field": "package"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "workflow-name",
-                "type": "nominal",
-                "format": "workflow-relative-path",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "as": "total-aic",
-                "title": "Total AIC",
-                "unit": "aic"
-              },
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "package-operational-value",
-            "title": "Package operational value",
-            "data": {
-              "sources": [
-                "workflows",
-                "operational-values"
-              ]
+              "sources": ["workflows"]
             },
             "mark": "element",
             "element": "package-route",
             "layout": "full",
             "config": {
               "body": "insights"
+            }
+          },
+          {
+            "id": "package-audit-event-summary-buckets",
+            "title": "High and medium severity audit events",
+            "description": "The 20 most frequent audit-event buckets for this package, grouped by workflow and shared summary after info-level events are excluded.",
+            "data": {
+              "source": "audit-event-summary-buckets",
+              "route-field": "package"
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "empty-message": "No high- or medium-severity audit events were observed for this package in the current run window.",
+            "encoding": {
+              "x": {
+                "field": "workflow",
+                "type": "nominal",
+                "format": "workflow-relative-path",
+                "title": "Workflow"
+              },
+              "y": {
+                "field": "events",
+                "type": "quantitative",
+                "title": "Events"
+              },
+              "color": {
+                "field": "event-summary",
+                "type": "nominal",
+                "title": "Summary"
+              }
+            }
+          },
+          {
+            "id": "package-audit-events-table",
+            "title": "Audit events",
+            "description": "Observed audit events for this package ordered from newest to oldest with their audit kind, status, summary, and run context.",
+            "data": {
+              "source": "audit-events",
+              "route-field": "package"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No audit events were observed for this package in the current run window.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Summary"
+                },
+                {
+                  "field": "event-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "format": "workflow-relative-path",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "audit-kind",
+                  "type": "nominal",
+                  "title": "Audit event",
+                  "display": "label"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "run-attempt",
+                  "type": "quantitative",
+                  "title": "Attempt"
+                },
+                {
+                  "field": "session",
+                  "type": "nominal",
+                  "title": "Session"
+                },
+                {
+                  "field": "event",
+                  "type": "nominal",
+                  "title": "Event"
+                }
+              ]
             }
           }
         ]
@@ -5138,7 +5235,8 @@
               "source": "outcomes",
               "route-field": "package",
               "filters": {
-                "outcome-category": ["issue"]
+                "outcome-category": ["issue"],
+                "workflow-role": ["worker"]
               }
             },
             "mark": "chart",
@@ -5178,7 +5276,8 @@
               "source": "outcomes",
               "route-field": "package",
               "filters": {
-                "outcome-category": ["issue"]
+                "outcome-category": ["issue"],
+                "workflow-role": ["worker"]
               },
               "order-by": [
                 { "field": "observed-at", "direction": "desc" }
