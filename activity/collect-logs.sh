@@ -65,6 +65,22 @@ for target_repository in "${repositories[@]}"; do
     "${drain3_args[@]+"${drain3_args[@]}"}"
   repository_exit_code=$?
   set -e
+  if [[ $repository_exit_code -eq 0 ]]; then
+    if [[ -f activity/cao.mjs ]]; then
+      cao_script=activity/cao.mjs
+    elif [[ -f .github/aw/activity/cao.mjs ]]; then
+      cao_script=.github/aw/activity/cao.mjs
+    else
+      echo "CAO activity CLI is unavailable" >&2
+      repository_exit_code=1
+    fi
+    if [[ $repository_exit_code -eq 0 ]]; then
+      node "$cao_script" compact-jsonl \
+        --input-dir "$shard_directory" \
+        --prefix "$(basename "$shard_prefix")"
+      repository_exit_code=$?
+    fi
+  fi
   generated_weights="$output_directory/$cache_name/drain3_weights.json"
   if [[ -n "$drain3_weights_path" && -f "$generated_weights" ]]; then
     mv "$generated_weights" "$drain3_weights_path"
@@ -78,4 +94,5 @@ done
 printf '%s\n' "$exit_code" > "$exit_code_path"
 
 # The shard directory is persisted by the caller so each repository reuses
-# known runs; out-of-range shards are pruned by `--cache-before`.
+# known runs. Successful collections collapse exact duplicate records into one
+# repository shard; out-of-range records are pruned by `--cache-before`.

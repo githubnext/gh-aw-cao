@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -51,7 +52,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -64,6 +65,7 @@ const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --events-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
+  cao compact-jsonl --input-dir SHARD_DIRECTORY --prefix SHARD_PREFIX
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
@@ -726,6 +728,94 @@ async function auditJsonlDirectory(inputDirectory) {
     shards: names.length,
     source,
     canonical
+  };
+}
+
+async function* jsonlLines(paths) {
+  for (const filePath of paths) {
+    const lines = createInterface({
+      input: createReadStream(filePath),
+      crlfDelay: Infinity
+    });
+    for await (const line of lines) {
+      if (line) yield line;
+    }
+  }
+}
+
+export async function compactJsonlShards(inputDirectory, prefix) {
+  if (!/^[A-Za-z0-9._-]+$/.test(prefix)) {
+    throw new UsageError('--prefix must contain only letters, numbers, dots, underscores, and hyphens');
+  }
+  const directory = path.resolve(inputDirectory);
+  const names = (await readdir(directory))
+    .filter((name) => name.startsWith(prefix) && name.endsWith('.jsonl'))
+    .sort();
+  const sourcePaths = names.map((name) => path.join(directory, name));
+  const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
+    .reduce((sum, size) => sum + size, 0);
+  const lastOccurrence = new Map();
+  let sourceRecords = 0;
+  for await (const line of jsonlLines(sourcePaths)) {
+    lastOccurrence.set(createHash('sha256').update(line).digest('hex'), sourceRecords);
+    sourceRecords += 1;
+  }
+  const duplicateRecords = sourceRecords - lastOccurrence.size;
+  if (sourcePaths.length <= 1 && duplicateRecords === 0) {
+    return {
+      command: 'compact-jsonl',
+      inputDirectory: directory,
+      prefix,
+      sourceFiles: sourcePaths.length,
+      sourceRecords,
+      duplicateRecords,
+      retainedRecords: sourceRecords,
+      sourceBytes,
+      compactedBytes: sourceBytes,
+      output: sourcePaths[0] ?? null
+    };
+  }
+
+  const temporaryPath = path.join(directory, `.${prefix}${process.pid}.tmp`);
+  const outputHash = createHash('sha256');
+  let ordinal = 0;
+  let retainedRecords = 0;
+  await pipeline(
+    (async function* compactedLines() {
+      for await (const line of jsonlLines(sourcePaths)) {
+        const lineHash = createHash('sha256').update(line).digest('hex');
+        if (lastOccurrence.get(lineHash) === ordinal) {
+          const outputLine = `${line}\n`;
+          outputHash.update(outputLine);
+          retainedRecords += 1;
+          yield outputLine;
+        }
+        ordinal += 1;
+      }
+    })(),
+    createWriteStream(temporaryPath, { flags: 'wx' })
+  );
+  const latestSequence = names.reduce((latest, name) => {
+    const match = name.slice(prefix.length).match(/^(\d+)-/);
+    return match ? Math.max(latest, Number(match[1])) : latest;
+  }, 0);
+  const sequence = Math.max(Math.floor(Date.now() / 1000), latestSequence + 1);
+  const outputName = `${prefix}${sequence}-${outputHash.digest('hex').slice(0, 16)}.jsonl`;
+  const outputPath = path.join(directory, outputName);
+  await rename(temporaryPath, outputPath);
+  await Promise.all(sourcePaths.filter((filePath) => filePath !== outputPath).map((filePath) => rm(filePath)));
+  const compactedBytes = (await stat(outputPath)).size;
+  return {
+    command: 'compact-jsonl',
+    inputDirectory: directory,
+    prefix,
+    sourceFiles: sourcePaths.length,
+    sourceRecords,
+    duplicateRecords,
+    retainedRecords,
+    sourceBytes,
+    compactedBytes,
+    output: outputPath
   };
 }
 
@@ -1492,6 +1582,13 @@ export async function runCli(arguments_, input = process.stdin) {
   if (command === 'audit-jsonl') {
     rejectUnknownOptions(options, ['input-dir']);
     return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
+  }
+  if (command === 'compact-jsonl') {
+    rejectUnknownOptions(options, ['input-dir', 'prefix']);
+    return compactJsonlShards(
+      path.resolve(option(options, 'input-dir')),
+      option(options, 'prefix')
+    );
   }
   if (command === 'hash-payloads') {
     rejectUnknownOptions(options, ['database', 'shard-dir', 'normalized-dir', 'runs-dir', 'events-dir', 'inventory', 'output']);
