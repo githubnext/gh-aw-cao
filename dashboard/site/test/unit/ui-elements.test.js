@@ -775,7 +775,7 @@ describe('UI elements', () => {
     const cards = [...(rendered?.querySelectorAll('.package-status-card') ?? [])];
     expect(cards).toHaveLength(2);
     expect(cards[0]?.querySelector('.package-status-identity')?.getAttribute('href')).toBe('#page-package-insights?package=daily-ops');
-    expect(cards[0]?.querySelector('.package-status-activity')?.getAttribute('href')).toBe('#page-package-dispatches?package=daily-ops');
+    expect(cards[0]?.querySelector('.package-status-activity')?.getAttribute('href')).toBe('#page-package-runs?package=daily-ops');
     expect(cards[0]?.querySelector('.package-status-activity')?.classList.contains('package-status-activity-warning')).toBe(true);
     expect(cards[0]?.querySelector('.package-status-activity-state')?.textContent).toContain('2 failed');
     expect(cards[0]?.querySelector('.package-status-activity-state')?.classList.contains('package-status-activity-state-failed')).toBe(true);
@@ -894,8 +894,8 @@ describe('UI elements', () => {
       detail: { parameter: 'package', value: 'sample-package' }
     }));
 
-    expect(rendered?.querySelector('.package-tabs [aria-current="page"]')?.textContent).toBe('Workflows');
-    expect(rendered?.querySelector('.package-tabs')?.textContent).toContain('Reports');
+    expect(rendered?.querySelector('.package-tabs [aria-current="page"]')?.textContent).toBe('Overview');
+    expect(rendered?.querySelector('.package-tabs')?.textContent).toBe('OverviewWorkflowsRuns');
   });
 
   it('renders the packages page shell through one declarative element composition', () => {

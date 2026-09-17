@@ -145,16 +145,32 @@ describe('canonical dashboard worker retention updates', () => {
     const jsonlRequests = [];
     /** @type {string[]} */
     const requestUrls = [];
+    const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
+    const normalizedPayload = {
+      schemaVersion: 9,
+      ingestionVersion: 2,
+      sourceRecords: 0,
+      batch: {
+        packages: [],
+        repositories: [],
+        workflows: [],
+        runs: [],
+        jobs: [],
+        sessions: [],
+        events: []
+      }
+    };
     const payloadHashes = {
       'gh-aw-logs.sqlite': 'b'.repeat(64),
-      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64)
+      'gh-aw-logs-shards/logs-1.jsonl': 'c'.repeat(64),
+      [normalizedName]: 'd'.repeat(64)
     };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       requestUrls.push(String(input));
       if (String(input).endsWith('/payload-hashes.json')) return Response.json(payloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
-      return new Response('', { headers: { etag: '"generation-b"' } });
+      return Response.json(normalizedPayload, { headers: { etag: '"generation-b"' } });
     });
     dispatch({
       id: 3,
@@ -165,6 +181,7 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     const firstJsonl = await settled((message) => message.id === 3);
+    const repeatedStart = posted.length;
     dispatch({
       id: 4,
       operation: 'load-canonical-dashboard',
@@ -177,19 +194,27 @@ describe('canonical dashboard worker retention updates', () => {
 
     expect(firstJsonl?.data).toMatchObject({ changed: true });
     expect(repeatedJsonl?.data).toMatchObject({ changed: false });
-    expect(jsonlRequests).toHaveLength(1);
+    expect(posted.slice(repeatedStart).filter(({ type }) => (
+      type === 'notification' || type === 'loading-progress'
+    ))).toEqual([]);
+    expect(jsonlRequests).toEqual([
+      expect.objectContaining({ method: 'HEAD', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    ]);
     expect(requestUrls).toEqual([
-      'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json',
-      'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
       'https://dashboard.example/payload-hashes.json',
-      'https://dashboard.example/inventory-sources.json'
+      `https://dashboard.example/${normalizedName}`,
+      `https://dashboard.example/${normalizedName}`,
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/payload-hashes.json'
     ]);
     expect((await readTransactions(indexedDB))
-      .filter((transaction) => transaction.kind === 'ingest-jsonl'))
+      .filter((transaction) => transaction.kind === 'ingest-normalized-json'))
       .toEqual([
         expect.objectContaining({
-          payloadScope: 'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
+          payloadScope: `https://dashboard.example/${normalizedName}`,
+          payloadHash: payloadHashes[normalizedName],
           committedRecords: expect.any(Number)
         })
       ]);
@@ -197,13 +222,13 @@ describe('canonical dashboard worker retention updates', () => {
     const updatedPayloadHashes = {
       ...payloadHashes,
 
-      'gh-aw-logs-shards/logs-1.jsonl': 'e'.repeat(64)
+      [normalizedName]: 'e'.repeat(64)
     };
     globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       if (String(input).endsWith('/payload-hashes.json')) return Response.json(updatedPayloadHashes);
       if (String(input).endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
       jsonlRequests.push(init);
-      return new Response('', { headers: { etag: '"generation-c"' } });
+      return Response.json(normalizedPayload, { headers: { etag: '"generation-c"' } });
     });
     dispatch({
       id: 5,
@@ -214,7 +239,10 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 5))?.data).toMatchObject({ changed: true });
-    expect(jsonlRequests[1]).toBeUndefined();
+    expect(jsonlRequests.slice(2)).toEqual([
+      expect.objectContaining({ method: 'HEAD', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    ]);
     dispatch({
       id: 6,
       operation: 'load-canonical-dashboard',
@@ -224,7 +252,7 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 6))?.data).toMatchObject({ changed: false });
-    expect(jsonlRequests).toHaveLength(2);
+    expect(jsonlRequests).toHaveLength(4);
 
     globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {
       if (String(input).endsWith('/payload-hashes.json')) return new Response(null, { status: 404 });

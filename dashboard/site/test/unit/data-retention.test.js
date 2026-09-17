@@ -80,6 +80,7 @@ describe('canonical retention merge', () => {
 
     expect(merged.events.map((event) => event.id)).toEqual(['event:1', 'event:2', 'event:3']);
     expect(merged.events.map((event) => event.sequence)).toEqual([0, 1, 2]);
+    expect(merged.events[0]).toBe(previous.events[0]);
   });
 
   it(`prunes retained events observed before the ${RETENTION_WINDOW_DAYS}-day window`, () => {

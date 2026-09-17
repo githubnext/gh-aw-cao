@@ -25,9 +25,8 @@ function formatConsoleValue(value) {
 
 /**
  * @param {Pick<Console, 'debug' | 'info' | 'log' | 'warn' | 'error'>} output
- * @param {() => Date} [now]
  */
-export function createConsoleLogCapture(output, now = () => new Date()) {
+export function createConsoleLogCapture(output) {
   /** @type {string[]} */
   const entries = [];
   let started = false;
@@ -38,20 +37,14 @@ export function createConsoleLogCapture(output, now = () => new Date()) {
     for (const method of CONSOLE_METHODS) {
       const original = output[method].bind(output);
       output[method] = (...values) => {
-        const timestamp = now().toISOString();
-        entries.push(`[${timestamp}] ${method.toUpperCase()} ${values.map(formatConsoleValue).join(' ')}`);
+        entries.push(`${method.toUpperCase()} ${values.map(formatConsoleValue).join(' ')}`);
         if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES);
         original(...values);
       };
     }
   };
 
-  const text = () => [
-    'Central Agentic Ops console log',
-    `Exported: ${now().toISOString()}`,
-    '',
-    entries.length > 0 ? entries.join('\n') : 'No console entries captured.'
-  ].join('\n');
+  const text = () => (entries.length > 0 ? entries.join('\n') : 'No console entries captured.');
 
   return { start, text };
 }

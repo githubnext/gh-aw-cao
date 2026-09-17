@@ -1,0 +1,11 @@
+{
+  "package": "eslint-rules",
+  "orchestrator": "eslint-rules",
+  "workers": {
+    "inventory": "eslint-rules-inventory",
+    "miner": "eslint-rules-miner",
+    "refiner": "eslint-rules-refiner",
+    "applier": "eslint-rules-applier",
+    "librarian": "eslint-rules-librarian"
+  }
+}

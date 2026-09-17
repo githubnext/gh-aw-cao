@@ -112,28 +112,38 @@ export function renderLabeledSpan(label, value) {
 }
 
 /**
- * @param {{ id: string, label: string, description: string, icon: Node, content?: Node }} options
+ * @param {{
+ *   id: string,
+ *   label: string,
+ *   description?: string,
+ *   icon?: Node,
+ *   content?: Node | Node[],
+ *   trigger?: HTMLElement,
+ *   className?: string,
+ *   contentClassName?: string
+ * }} options
  * @returns {HTMLElement}
  */
-export function renderTooltip({ id, label, description, icon, content }) {
+export function renderTooltip({ id, label, description, icon, content, trigger, className, contentClassName }) {
+  const tooltipTrigger = trigger ?? h(
+    'button',
+    {
+      type: 'button',
+      className: 'tooltip-trigger'
+    },
+    icon
+  );
+  tooltipTrigger.setAttribute('aria-label', label);
+  tooltipTrigger.setAttribute('aria-describedby', id);
   return h(
     'span',
-    { className: 'tooltip-help' },
-    h(
-      'button',
-      {
-        type: 'button',
-        className: 'tooltip-trigger',
-        'aria-label': label,
-        'aria-describedby': id
-      },
-      icon
-    ),
+    { className: ['tooltip-help', className].filter(Boolean).join(' ') },
+    tooltipTrigger,
     h(
       'span',
-      { id, className: 'tooltip-content', role: 'tooltip' },
-      h('span', { className: 'tooltip-description' }, description),
-      content
+      { id, className: ['tooltip-content', contentClassName].filter(Boolean).join(' '), role: 'tooltip' },
+      description ? h('span', { className: 'tooltip-description' }, description) : null,
+      ...(Array.isArray(content) ? content : [content])
     )
   );
 }

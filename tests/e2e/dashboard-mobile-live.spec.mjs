@@ -12,9 +12,35 @@ import {
 } from "./dashboard-tree-analysis.mjs";
 
 const maximumDomNodes = 6_000;
+const transientDownloadStatuses = new Set([408, 429, 500, 502, 503, 504]);
 let preview;
 let sourcePayload;
 let expectedActivityShardPaths;
+
+function optionalPositiveInteger(name) {
+  const value = process.env[name];
+  if (value === undefined) return undefined;
+  if (!/^[1-9]\d*$/.test(value)) throw new Error(`${name} must be a positive integer.`);
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) throw new Error(`${name} must be a safe integer.`);
+  return parsed;
+}
+
+async function fetchDeployedData(url) {
+  const maximumAttempts = 4;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      if (response.ok || !transientDownloadStatuses.has(response.status) || attempt === maximumAttempts) {
+        return response;
+      }
+      await response.body?.cancel();
+    } catch (error) {
+      if (attempt === maximumAttempts) throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000 * 2 ** (attempt - 1)));
+  }
+}
 
 function metricValues(metrics) {
   return Object.fromEntries(metrics.map(({ name, value }) => [name, value]));
@@ -181,8 +207,8 @@ test.beforeAll(async () => {
       const inventoryUrl = new URL("inventory-sources.json", dataUrl);
       const payloadHashesUrl = new URL("payload-hashes.json", dataUrl);
       const [payloadHashesResponse, inventoryResponse] = await Promise.all([
-        fetch(payloadHashesUrl),
-        fetch(inventoryUrl),
+        fetchDeployedData(payloadHashesUrl),
+        fetchDeployedData(inventoryUrl),
       ]);
       if (!payloadHashesResponse.ok) {
         throw new Error(`Unable to download deployed dashboard manifest: HTTP ${payloadHashesResponse.status}.`);
@@ -196,13 +222,14 @@ test.beforeAll(async () => {
           && /^[a-f0-9]{64}$/i.test(hash))
         .sort(([left], [right]) => left.localeCompare(right));
       if (shards.length === 0) throw new Error("Deployed dashboard manifest contains no valid activity shards.");
-      expectedActivityShardPaths = shards.map(([name]) => `/${name}`);
+      const selectedShards = shards.slice(0, optionalPositiveInteger("MOBILE_DEBUG_SHARD_LIMIT"));
+      expectedActivityShardPaths = selectedShards.map(([name]) => `/${name}`);
       await mkdir(destination, { recursive: true });
       const inventoryPath = join(destination, "inventory-sources.json");
       await pipeline(inventoryResponse.body, createWriteStream(inventoryPath));
       let activityBytes = 0;
-      for (const [name] of shards) {
-        const response = await fetch(new URL(name, dataUrl));
+      for (const [name] of selectedShards) {
+        const response = await fetchDeployedData(new URL(name, dataUrl));
         if (!response.ok) throw new Error(`Unable to download deployed dashboard shard ${name}: HTTP ${response.status}.`);
         if (!response.body) throw new Error(`Deployed dashboard shard ${name} has no body.`);
         const shardPath = join(destination, name);
@@ -270,7 +297,10 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     if (pathname.endsWith("/inventory-sources.json")) inventoryResponse = response;
   });
 
-  await page.goto(`${preview.url}/?debug=1`, { waitUntil: "domcontentloaded" });
+  const parameters = new URLSearchParams({ debug: "1" });
+  const shardLimit = optionalPositiveInteger("MOBILE_DEBUG_SHARD_LIMIT");
+  if (shardLimit !== undefined) parameters.set("debug-shard-limit", String(shardLimit));
+  await page.goto(`${preview.url}/?${parameters}`, { waitUntil: "domcontentloaded" });
   const dashboard = page.locator(".dashboard-root");
   await expect(dashboard).toBeVisible();
   await memoryInvestigation.mark("dashboard-visible");

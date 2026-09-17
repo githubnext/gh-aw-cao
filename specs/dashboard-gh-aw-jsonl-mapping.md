@@ -115,6 +115,14 @@ create the base Run using its own GitHub and workflow fields.
 | `agent_id`, `agent`, `engine_id`, or `aw_info.engine_id` | `agentId` |
 | `agent_version`, `engine_version`, or `aw_info.version` | `agentVersion` |
 | `model_id`, `resolved_model`, `model`, `aw_info.model`, or dominant `by_model` entry | `modelId` |
+| completed `started_at` or `created_at` through `completed_at`, falling back to `updated_at` | `agenticDurationSeconds` |
+| `firewall_analysis.requests_by_domain.*.allowed` or audit equivalent | `firewallAllowedCalls` |
+| `firewall_analysis.requests_by_domain.*.blocked` or audit equivalent | `firewallBlockedCalls` |
+| `mcp_tool_usage.tool_calls` or audit equivalent | `mcpToolCalls` |
+| `mcp_tool_usage.tool_calls[].output_size` or audit equivalent | `mcpResponseBytes` |
+| the single `graders.results[]` entry identified by `operational-value` | `operationalValue` |
+| high-severity or high-priority audit findings, insights, and recommendations | `highPriorityAuditItems` |
+| medium-severity or medium-priority audit findings, insights, and recommendations | `mediumPriorityAuditItems` |
 | `gh_aw_version`, `ghAwVersion`, `cli_version`, `version`, or `aw_info.cli_version` | `ghAwVersion` |
 | `engine` or `aw_info.engine_name` | `engine` |
 | `engine_id` or `aw_info.engine_id` | `engineId` |
@@ -144,6 +152,44 @@ Raw `workflow_runs` values SHALL own GitHub execution state when both source
 variants contain the field. Enriched values SHALL own agentic analysis fields.
 Absent, explicit `null`, zero, `false`, and empty collections SHALL remain
 distinct.
+
+Unavailable immutable aggregates SHALL map to `null`. When the corresponding
+firewall, MCP, or audit evidence class is present but contains no matching
+entries, its count or size aggregate SHALL map to zero.
+Explicit top-level firewall or MCP evidence, including `null` or an empty
+collection, SHALL take precedence over the audit equivalent; audit evidence is
+used only when the top-level field is absent.
+
+## 2.1 Token-optimization supporting evidence
+
+The schema-v2 `run` envelope supplies supporting token-optimization evidence at
+the grain declared by the source schema:
+
+| JSONL source | Canonical projection |
+| --- | --- |
+| `turns` | Run-level turn diagnostic |
+| `token_usage_summary.total_aic` | Run-aggregate AIC |
+| `token_usage_summary.total_input_tokens` | Run-aggregate input tokens |
+| `token_usage_summary.total_output_tokens` | Run-aggregate output tokens |
+| `token_usage_summary.total_cache_read_tokens` | Run-aggregate cache-read tokens |
+| `token_usage_summary.total_cache_write_tokens` | Run-aggregate cache-write tokens |
+| `token_usage_summary.by_model` | Run-and-model aggregate usage |
+| `token_usage_summary.cache_efficiency` | Run-level cache diagnostic |
+| `experiments.assignments` | One experiment assignment per map entry for the Run |
+| `mcp_tool_usage.tool_calls[]` | Correlated canonical tool Events |
+| canonical Run conclusion | Completed-Run reliability evidence |
+
+The summary and `by_model` objects SHALL retain aggregate cost grain and MUST
+NOT fabricate API-invocation identities. When invocation-grain API-proxy usage
+is also collected, adapters SHALL prefer it for invocation queries and MUST NOT
+add the corresponding summary AIC a second time.
+
+Token-efficiency opportunities, interventions, and comparisons MUST NOT be
+inferred solely from high cost, aggregate token usage, or a safe-output creation
+Event. They require the explicit producer observations, frozen assignment, and
+evidence rules in `specs/dashboard-data.md` Section 5.5. Safe-output creation is
+not accepted-outcome evidence without an authoritative disposition or frozen
+evaluator rule.
 
 ## 3 Job mapping
 
@@ -231,6 +277,43 @@ sequence
 observedAt
 provenance
 ```
+
+The Activity collector MAY append a schema-v2
+`token_efficiency_observation` envelope only from the validated
+`token-efficiency-observation` Actions artifact produced by
+`optimization-token-optimizer`. The envelope SHALL join to the preceding
+canonical Run by `observation.optimizerRunId` and SHALL emit exactly one
+`token_efficiency.opportunity` Event and one `token_efficiency.intervention`
+Event. These Events MAY additionally retain the Section 5.5 identity,
+evidence, state, disposition, variant, proposed-savings, supersession, and
+attributable-Run fields needed by their Dashboard Language projections.
+
+The artifact is the authoritative structured boundary for those fields. The
+collector and adapter MUST NOT reconstruct opportunity identity, intervention
+identity, disposition, or supersession from issue titles, bodies, comments, or
+other display text. A matching `safe_output_item` MAY supply only the resulting
+issue link by same-Run correlation.
+
+The Activity collector MAY append a schema-v2
+`token_efficiency_lifecycle_observation` envelope only from a validated
+`token-efficiency-lifecycle-claim` artifact produced by
+`optimization-token-intervention-tracker`. The collector SHALL correlate the
+claim to exactly one optimizer observation and exactly one same-Run
+`create_issue` safe-output record. An accepted claim is authoritative for the
+maintainer decision only. Any implementation pull request SHALL independently
+match the assigned target Repository, change the assigned Workflow path, and
+use GitHub's authoritative open or merged state before the lifecycle advances.
+When implementation Run IDs are supplied, the collector SHALL verify that each
+Run belongs to the target Repository and the implementation pull request's head
+commit before retaining it. Each observation SHALL retain its claim source ID,
+schema revision, immutable generation, observed time, completeness, freshness,
+and evidence links in `sourceProvenance`.
+The append-only lifecycle shard SHALL retain that optimizer Run as a
+`token_efficiency_run_context` envelope so lifecycle Events keep their canonical
+Run and Session relationships after ordinary Activity-window pruning. This
+context envelope does not represent an additional Run.
+Issue titles, bodies, comments, and open or closed state MUST NOT establish
+acceptance, implementation, disposition, or lineage.
 
 ## 6 `github_api_rate_limit` envelope
 

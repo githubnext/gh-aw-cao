@@ -45,6 +45,20 @@ describe('table cell display helper', () => {
     expect(workflowRun.rel).toBe('noopener noreferrer');
     expect(renderCellDisplay(undefined, 'https://example.com/actions/runs/12345', toText, null, 'nominal', 'workflow-run-url'))
       .toBe('https://example.com/actions/runs/12345');
+    const shortenedUrl = /** @type {HTMLAnchorElement} */ (renderCellDisplay(
+      undefined,
+      'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
+      toText,
+      null,
+      'nominal',
+      'shortened-url'
+    ));
+    expect(shortenedUrl.href).toBe('https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl');
+    expect(shortenedUrl.textContent).toContain('https://dashboard.example/.../logs-1.jsonl');
+    expect(shortenedUrl.getAttribute('aria-label')).toBe('https://dashboard.example/.../logs-1.jsonl');
+    expect(shortenedUrl.target).toBe('_blank');
+    expect(shortenedUrl.rel).toBe('noopener noreferrer');
+    expect(renderCellDisplay(undefined, 'gh-aw-jsonl', toText, null, 'nominal', 'shortened-url')).toBe('gh-aw-jsonl');
     expect(renderCellDisplay('unsupported', null, toText)).toBe('');
     expect(renderCellDisplay(undefined, null, toText, null, 'temporal', 'human-friendly-timestamp')).toBe('');
     const temporal = /** @type {HTMLElement} */ (renderCellDisplay(undefined, '2026-08-30T07:00:00Z', toText, null, 'temporal'));

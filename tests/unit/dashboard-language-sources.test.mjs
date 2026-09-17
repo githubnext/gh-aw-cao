@@ -57,7 +57,7 @@ test("builds deployable package and workflow inventory sources", () => {
           role: "orchestrator",
           sourcePath: ".github/workflows/daily-ops.md",
           compiled: true,
-          controlPackage: "daily-ops",
+          controlPackage: "daily-operations",
           maxAiCredits: 100,
         },
         {
@@ -66,13 +66,13 @@ test("builds deployable package and workflow inventory sources", () => {
           role: "worker",
           sourcePath: ".github/workflows/daily-worker.md",
           compiled: true,
-          controlPackage: "daily-ops",
+          controlPackage: "daily-operations",
           maxAiCredits: 200,
         },
       ],
       bundles: [{
         id: "daily-ops",
-        controlPackage: "daily-ops",
+        controlPackage: "daily-operations",
         name: "Daily Operations",
         description: "Daily operational checks.",
         workflow: ".github/workflows/daily-ops.md",
@@ -90,7 +90,7 @@ test("builds deployable package and workflow inventory sources", () => {
     controlSettings: {
       allowed_repositories: ["githubnext/control"],
       packages: {
-        "daily-ops": {
+        "daily-operations": {
           icon: "clock",
           mode: "review",
           "rollout-percent": 25,
@@ -102,12 +102,15 @@ test("builds deployable package and workflow inventory sources", () => {
           },
         },
       },
+      policy_resolution: { status: "available", reason: "" },
+      policy_document: { version: 1, "control-plane": { packages: { "daily-ops": { mode: "review" } } } },
+      policy_source: '{\n  "version": 1\n}\n',
     },
   });
 
   assert.equal(sources.packages.rows.length, 1);
   assert.deepEqual(sources.packages.rows[0], {
-    package: "daily-ops",
+    package: "daily-operations",
     "package-name": "Daily Operations",
     "package-description": "Daily operational checks.",
     "package-icon": "clock",
@@ -135,8 +138,8 @@ test("builds deployable package and workflow inventory sources", () => {
       role: workflow["workflow-role"],
     })),
     [
-      { workflow: ".github/workflows/daily-ops.md", package: "daily-ops", role: "orchestrator" },
-      { workflow: ".github/workflows/daily-worker.md", package: "daily-ops", role: "worker" },
+      { workflow: ".github/workflows/daily-ops.md", package: "daily-operations", role: "orchestrator" },
+      { workflow: ".github/workflows/daily-worker.md", package: "daily-operations", role: "worker" },
     ],
   );
   assert.deepEqual(
@@ -144,7 +147,7 @@ test("builds deployable package and workflow inventory sources", () => {
     {
       organization: "githubnext",
       repository: "control",
-      package: "daily-ops",
+      package: "daily-operations",
       "package-name": "Daily Operations",
       "package-icon": "clock",
       "package-aic-allowance": 300,
@@ -165,6 +168,16 @@ test("builds deployable package and workflow inventory sources", () => {
       "observed-at": generatedAt,
     },
   );
+  assert.equal(sources["configuration-policy"].source, "configuration-policy");
+  assert.equal(sources["configuration-policy"].rows[0].path, ".github/workflows/cao.json");
+  assert.equal(sources["configuration-policy"].rows[0].document.version, 1);
+  assert.equal(sources["configuration-policy"].rows[0].raw, '{\n  "version": 1\n}\n');
+  assert.deepEqual(sources["configuration-policy"].rows[0].diagnostics, [{
+    severity: "valid",
+    path: ".github/workflows/cao.json",
+    title: "Policy is valid",
+    detail: "The runtime policy resolver accepted this revision.",
+  }]);
 });
 
 test("excludes internal packages from user-facing package inventory", () => {
@@ -181,6 +194,116 @@ test("excludes internal packages from user-facing package inventory", () => {
   });
 
   assert.deepEqual(sources.packages.rows, []);
+});
+
+test("inventory configuration policy source reports unavailable control policy resolution", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: {
+      policy_resolution: { status: "unavailable", reason: "policy file is invalid JSON" },
+      policy_document: null,
+      policy_source: "{",
+    },
+  });
+
+  assert.deepEqual(sources["configuration-policy"].rows, [{
+    path: ".github/workflows/cao.json",
+    document: null,
+    raw: "{",
+    diagnostics: [{
+      severity: "error",
+      path: ".github/workflows/cao.json",
+      title: "Policy validation failed",
+      detail: "policy file is invalid JSON",
+    }],
+  }]);
+});
+
+test("inventory configuration policy source stays empty when no policy was collected", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: {},
+  });
+
+  assert.deepEqual(sources["configuration-policy"].rows, []);
+});
+
+test("inventory sources tolerate null control settings", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: null,
+  });
+
+  assert.deepEqual(sources.packages.rows, []);
+  assert.deepEqual(sources["configuration-policy"].rows, []);
+});
+
+test("inventory sources tolerate non-object control settings", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: "not-collected",
+  });
+
+  assert.deepEqual(sources.packages.rows, []);
+  assert.deepEqual(sources["configuration-policy"].rows, []);
+});
+
+test("inventory configuration policy source distinguishes collected unvalidated policy", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: {
+      policy_document: null,
+      policy_source: "",
+    },
+  });
+
+  assert.deepEqual(sources["configuration-policy"].rows, [{
+    path: ".github/workflows/cao.json",
+    document: null,
+    raw: "",
+    diagnostics: [{
+      severity: "warning",
+      path: ".github/workflows/cao.json",
+      title: "Policy validation status unavailable",
+      detail: "The control policy was collected but not validated.",
+    }],
+  }]);
+});
+
+test("includes registered packages that have no inventory or run history", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-16T00:00:00Z",
+    inventory: {
+      bundles: [],
+      workflows: [],
+      packages: [{ id: "repo-assist", name: "Repo Assist" }],
+    },
+    controlSettings: { packages: {} },
+  });
+
+  assert.deepEqual(sources.packages.rows.map((row) => ({
+    package: row.package,
+    name: row["package-name"],
+    mode: row["package-mode"],
+    workers: row["package-worker-count"],
+  })), [{
+    package: "repo-assist",
+    name: "Repo Assist",
+    mode: "unknown",
+    workers: 0,
+  }]);
+  assert.deepEqual(sources.workflows.rows, []);
 });
 
 test("transaction logs retain a session when artifacts contain no timeline", () => {
@@ -206,7 +329,7 @@ test("transaction logs retain a session when artifacts contain no timeline", () 
   }]);
 });
 
-test("transaction log events preserve correlation ids", () => {
+test("transaction log events preserve correlation ids and request counts", () => {
   const rows = transactionLogRows({
     generatedAt: "2026-09-09T05:00:00Z",
     securityRuns: [{
@@ -219,14 +342,77 @@ test("transaction log events preserve correlation ids", () => {
       timeline: [{
         sourceId: "event-1",
         timestamp: "2026-09-09T04:02:01Z",
-        source: "gateway",
-        type: "tool_call",
+        source: "firewall",
+        type: "net_blocked",
         correlationId: "call-305",
+        requestCount: 7,
       }],
     }],
   });
 
   assert.equal(rows.events[0]["correlation-id"], "call-305");
+  assert.equal(rows.events[0]["event-type"], "firewall.request.blocked");
+  assert.equal(rows.events[0]["request-count"], 7);
+});
+
+test("transaction log events preserve token-efficiency lifecycle fields", () => {
+  const rows = transactionLogRows({
+    generatedAt: "2026-09-09T05:00:00Z",
+    securityRuns: [{
+      repository: "githubnext/gh-aw-cao",
+      workflowPath: ".github/workflows/optimization-token-optimizer.lock.yml",
+      runId: 306,
+      runAttempt: 1,
+      createdAt: "2026-09-09T04:02:00Z",
+      logsPayload: { status: "completed" },
+      timeline: [{
+        sourceId: "event-token-lifecycle",
+        timestamp: "2026-09-09T04:02:01Z",
+        source: "token-intervention-lifecycle",
+        type: "token_efficiency.intervention",
+        targetRepo: "octo/example",
+        targetOrganization: "octo",
+        targetRepository: "example",
+        targetWorkflowPath: ".github/workflows/review.md",
+        opportunityId: "token-opportunity:1",
+        interventionId: "token-intervention:1",
+        lifecycleObservationId: "token-lifecycle:1",
+        interventionState: "running",
+        recommendationDisposition: "applied",
+        safeOutputUrl: "https://github.com/githubnext/gh-aw-cao/issues/11861",
+        implementationPullRequestUrl: "https://github.com/octo/example/pull/42",
+        implementationRunIds: ["7001"],
+        acceptedAt: "2026-09-08T04:00:00Z",
+      }],
+    }],
+  });
+
+  assert.deepEqual(rows.events[0], {
+    organization: "githubnext",
+    repository: "gh-aw-cao",
+    workflow: ".github/workflows/optimization-token-optimizer.md",
+    run: "306",
+    "run-attempt": 1,
+    session: rows.sessions[0].session,
+    event: "event:gh-aw-logs:event-token-lifecycle",
+    "event-timestamp": "2026-09-09T04:02:01Z",
+    "event-source": "token-intervention-lifecycle",
+    "event-type": "token_efficiency.intervention",
+    "target-repo": "octo/example",
+    "target-organization": "octo",
+    "target-repository": "example",
+    "target-workflow-path": ".github/workflows/review.md",
+    "opportunity-id": "token-opportunity:1",
+    "intervention-id": "token-intervention:1",
+    "lifecycle-observation-id": "token-lifecycle:1",
+    "intervention-state": "running",
+    "recommendation-disposition": "applied",
+    "safe-output-url": "https://github.com/githubnext/gh-aw-cao/issues/11861",
+    "implementation-pull-request-url": "https://github.com/octo/example/pull/42",
+    "implementation-run-ids": ["7001"],
+    "accepted-at": "2026-09-08T04:00:00Z",
+    "observed-at": "2026-09-09T04:02:00Z",
+  });
 });
 
 test("detection observations preserve verdict, warning, tooling, skipped, and unknown states", () => {

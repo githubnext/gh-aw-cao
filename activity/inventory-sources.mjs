@@ -4,6 +4,11 @@ import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "./actions-log.mjs";
 
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
+const POLICY_PATH = ".github/workflows/cao.json";
+
+function objectRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
 
 function rolloutMode(value) {
   return ["review", "live"].includes(value) ? value : "unknown";
@@ -159,8 +164,12 @@ function packageRows(inventory, controlSettings, generatedAt) {
     String(bundle.controlPackage || bundle.id || "").trim(),
     bundle,
   ]).filter(([id]) => id));
+  const registered = new Map((inventory.packages || []).map((entry) => [
+    String(entry.id || "").trim(),
+    entry,
+  ]).filter(([id]) => id));
   const ids = new Set(
-    [...bundles.keys(), ...Object.keys(controlSettings.packages || {})]
+    [...bundles.keys(), ...registered.keys(), ...Object.keys(controlSettings.packages || {})]
       .filter((id) => !INTERNAL_PACKAGES.has(id)),
   );
   return [...ids].sort().map((id) => {
@@ -185,7 +194,7 @@ function packageRows(inventory, controlSettings, generatedAt) {
       .reduce((total, value) => total + value, 0);
     return {
       package: id,
-      "package-name": bundle.name || id,
+      "package-name": bundle.name || registered.get(id)?.name || id,
       "package-description": bundle.description || "",
       "package-icon": policy.icon || "package",
       "package-mode": rolloutMode(policy.mode),
@@ -329,19 +338,71 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
   });
 }
 
+function configurationPolicyRows(controlSettings) {
+  const settings = objectRecord(controlSettings);
+  const resolution = objectRecord(settings.policy_resolution);
+  // No collected policy fields produces an empty Settings source. When any
+  // policy field is present, the resolver status distinguishes "available" and
+  // "unavailable"; any other status means collected but not validated.
+  const hasDocument = Object.hasOwn(settings, "policy_document");
+  const hasSource = Object.hasOwn(settings, "policy_source");
+  const hasResolution = Object.hasOwn(settings, "policy_resolution");
+  if (!hasDocument && !hasSource && !hasResolution) {
+    return [];
+  }
+  const status = resolution.status;
+  let diagnostic;
+  if (status === "available") {
+    diagnostic = {
+      severity: "valid",
+      title: "Policy is valid",
+      detail: "The runtime policy resolver accepted this revision.",
+    };
+  } else if (status === "unavailable") {
+    diagnostic = {
+      severity: "error",
+      title: "Policy validation failed",
+      detail: resolution.reason || "The control policy could not be resolved.",
+    };
+  } else {
+    diagnostic = {
+      severity: "warning",
+      title: "Policy validation status unavailable",
+      detail: resolution.reason || "The control policy was collected but not validated.",
+    };
+  }
+  return [{
+    path: POLICY_PATH,
+    document: settings.policy_document ?? null,
+    raw: settings.policy_source || "",
+    diagnostics: [{
+      severity: diagnostic.severity,
+      path: POLICY_PATH,
+      title: diagnostic.title,
+      detail: diagnostic.detail,
+    }],
+  }];
+}
+
 export function buildInventoryDashboardSources({
   inventory = {},
-  controlSettings = {},
+  controlSettings,
   discoveredRepositories = [],
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
+  const settings = objectRecord(controlSettings);
   return {
-    packages: source("packages", packageRows(inventory, controlSettings, generatedAt), generatedAt),
+    packages: source("packages", packageRows(inventory, settings, generatedAt), generatedAt),
     repositories: source("repositories", repositoryRows(discoveredRepositories, repository, generatedAt), generatedAt),
     workflows: source(
       "workflows",
-      workflowRows(inventory, controlSettings, repository, generatedAt),
+      workflowRows(inventory, settings, repository, generatedAt),
+      generatedAt,
+    ),
+    "configuration-policy": source(
+      "configuration-policy",
+      configurationPolicyRows(settings),
       generatedAt,
     ),
   };

@@ -5,6 +5,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { normalize } from './data/normalize/index.js';
 import { batch } from './reactive.js';
 import { publishNotification } from './notification-service.js';
+import { withDebugParameter } from './debug.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -38,6 +39,79 @@ const pending = new Map();
 const subscriptions = new Map();
 /** @type {Map<string, ReturnType<typeof publishNotification>>} */
 const workerNotificationHandles = new Map();
+/** @type {Set<string>} */
+const cancelledWorkerNotificationIds = new Set();
+/** @type {Set<(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }) => void>} */
+const workerLoadingProgressListeners = new Set();
+/** @type {Set<string>} */
+const workerLoadingProgressOperations = new Set();
+
+/**
+ * Adds supported main-thread behavior to a serializable worker notification.
+ * @param {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} notification
+ * @param {string} id
+ * @param {() => ReturnType<typeof publishNotification>} getHandle
+ */
+function attachWorkerNotificationAction(notification, id, getHandle) {
+  const { action, ...base } = notification;
+  if (!action || typeof action !== 'object' || Array.isArray(action)
+      || action.operation !== 'cancel-data-ingestion') {
+    return base;
+  }
+  const label = typeof action.label === 'string' && action.label.trim() ? action.label : 'Cancel';
+  return {
+    ...base,
+    action: {
+      label,
+      ...(action.placement === 'details' ? { placement: /** @type {'details'} */ ('details') } : {}),
+      run: () => {
+        if (typeof action.requestId !== 'number'
+            || !cancelDataProcessingRequest(action.requestId)) return;
+        getHandle().update({
+          ...base,
+          message: 'Data ingestion cancelled.',
+          tone: 'warning',
+          action: undefined,
+          dismissOnCollapse: true,
+          duration: 0
+        });
+        cancelledWorkerNotificationIds.add(id);
+      }
+    }
+  };
+}
+
+/** @param {number} id */
+function cancelDataProcessingRequest(id) {
+  const request = pending.get(id);
+  if (!request) return 0;
+  request.processor.postMessage({ id: ++nextRequestId, operation: 'cancel-data-processing', ids: [id] });
+  return 1;
+}
+
+/** @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state */
+function emitWorkerLoadingProgress(state) {
+  for (const listener of workerLoadingProgressListeners) {
+    try {
+      listener(state);
+    } catch {
+      // Ignore listener failures so a broken consumer cannot interrupt other subscribers.
+    }
+  }
+}
+
+/**
+ * Subscribes to worker-owned loading progress for the active top progress bar.
+ * @param {(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }) => void} listener
+ * @returns {() => void}
+ */
+export function subscribeWorkerLoadingProgress(listener) {
+  if (typeof listener !== 'function') {
+    throw new TypeError('Worker loading progress subscribers require a listener.');
+  }
+  workerLoadingProgressListeners.add(listener);
+  return () => workerLoadingProgressListeners.delete(listener);
+}
 
 /**
  * Cancels every in-flight data-worker request. The worker is first asked to
@@ -149,7 +223,7 @@ export function processDashboardQueries(queries, sources, options = {}) {
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
+ * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
@@ -166,7 +240,7 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
+ * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
  */
 export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination, options = {}) {
@@ -182,7 +256,7 @@ export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ pageId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
+ * @param {{ pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: ViewSubscription['queryContext'] }} [options]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardPage(sourceNames, context, pagination, options = {}) {
@@ -461,22 +535,43 @@ function processRequest(request, fallback, recoverWorkerError = true, signal) {
 function getWorker() {
   if (worker) return worker;
   if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:')) return null;
-  worker = new Worker(new URL('./data-worker.js', import.meta.url), { type: 'module' });
+  worker = new Worker(withDebugParameter(new URL('./data-worker.js', import.meta.url)), { type: 'module' });
   const processor = worker;
   worker.addEventListener('message', (event) => {
+    if (event.data?.type === 'loading-progress') {
+      const state = event.data.state;
+      if (typeof state?.id === 'string' && ['start', 'update', 'complete'].includes(state.phase)) {
+        if (state.phase === 'start') workerLoadingProgressOperations.add(state.id);
+        if (state.phase === 'complete') workerLoadingProgressOperations.delete(state.id);
+        emitWorkerLoadingProgress(state);
+      }
+      return;
+    }
     if (event.data?.type === 'notification') {
       try {
         const notification = event.data.notification;
         const id = typeof notification?.id === 'string' ? notification.id : undefined;
         if (notification?.dismiss === true) {
           if (id) {
-            workerNotificationHandles.get(id)?.dismiss();
+            if (!cancelledWorkerNotificationIds.has(id)) {
+              workerNotificationHandles.get(id)?.dismiss();
+            }
             workerNotificationHandles.delete(id);
+            cancelledWorkerNotificationIds.delete(id);
           }
         } else if (id) {
+          if (cancelledWorkerNotificationIds.has(id)) return;
+          if (typeof notification.message !== 'string') return;
+          const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} */ (notification);
           const current = workerNotificationHandles.get(id);
-          if (current) current.update(notification);
-          else workerNotificationHandles.set(id, publishNotification(notification));
+          if (current) {
+            current.update(attachWorkerNotificationAction(interactiveNotification, id, () => current));
+          } else {
+            /** @type {ReturnType<typeof publishNotification>} */
+            let handle;
+            handle = publishNotification(attachWorkerNotificationAction(interactiveNotification, id, () => handle));
+            workerNotificationHandles.set(id, handle);
+          }
         } else {
           publishNotification(notification);
         }
@@ -529,8 +624,15 @@ function resetWorker(processor) {
   processor?.terminate();
   if (worker !== processor) return;
   worker = null;
-  for (const notification of workerNotificationHandles.values()) notification.dismiss();
+  for (const id of workerLoadingProgressOperations) {
+    emitWorkerLoadingProgress({ id, phase: 'complete' });
+  }
+  workerLoadingProgressOperations.clear();
+  for (const [id, notification] of workerNotificationHandles) {
+    if (!cancelledWorkerNotificationIds.has(id)) notification.dismiss();
+  }
   workerNotificationHandles.clear();
+  cancelledWorkerNotificationIds.clear();
   for (const subscription of subscriptions.values()) subscription.registeredWorker = null;
 }
 

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
+import { withoutIgnoredDashboardPageIds } from "./dashboard-view-assessment.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const primaryDashboardPath = "dashboard/site/dashboard.json";
@@ -97,7 +98,9 @@ function canScopeComponent(path) {
 }
 
 export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
-  const allPageIds = dashboard.dashboard.pages.map((page) => page.id);
+  const allPageIds = withoutIgnoredDashboardPageIds(
+    dashboard.dashboard.pages.map((page) => page.id),
+  );
   const selected = new Set();
 
   for (const path of changedFiles) {
@@ -118,7 +121,7 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
     }
     if (
       path === ".github/workflows/dashboard-views.yml"
-      || path === "playwright.dashboard-views.config.mjs"
+      || path === "tests/playwright/configs/dashboard-views.config.mjs"
       || path === "tests/e2e/dashboard-view-data.mjs"
       || path === "tests/e2e/dashboard-view-sources.mjs"
       || path === "tests/e2e/dashboard-views-live.spec.mjs"

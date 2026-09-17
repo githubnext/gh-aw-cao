@@ -118,6 +118,26 @@ export function renderWorkflowRunUrl(value) {
 }
 
 /**
+ * Renders an HTTPS URL as an external link with its intermediate path replaced by an ellipsis.
+ * @param {unknown} value
+ * @returns {HTMLElement | null}
+ */
+export function renderShortenedUrl(value) {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return null;
+    const segments = url.pathname.split('/').filter(Boolean);
+    const label = segments.length > 1
+      ? `${url.origin}/.../${segments.at(-1)}`
+      : url.href;
+    return renderExternalLink({ href: url.href, label });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {SafeLink} link
  * @returns {HTMLElement}
  */

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard as renderDashboardView, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames } from '../../src/presenter.js';
+import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, dashboardPageSourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { deriveDataHealthSources } from '../../src/data-health.js';
@@ -11,6 +11,7 @@ import { SOURCE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
+import { dashboardPagePayload, resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
@@ -24,6 +25,7 @@ const authoritativeDashboardDocument = composeDashboardDocuments(
 
 /** @param {Parameters<typeof renderDashboardView>[0]} input */
 function renderDashboard(input) {
+  const resolvedDocument = resolveBuiltInPages(input.document, authoritativeDashboardDocument);
   const sources = { ...input.sources };
   if (Object.keys(input.sources).length > 0) {
     Object.assign(sources, deriveDataHealthSources(sources));
@@ -85,7 +87,7 @@ function renderDashboard(input) {
         id: page.id
       }
     : page;
-  for (const page of input.document.dashboard.pages) {
+  for (const page of resolvedDocument.dashboard.pages) {
     const payload = pagePayload(page);
     const compiled = compileDashboardViewPayloadQueries(payload, page.id, {
       queries: executableQueries,
@@ -100,7 +102,7 @@ function renderDashboard(input) {
       sourceNames: compiled.aliases
     }));
   }
-  return renderDashboardView({ ...input, sources });
+  return renderDashboardView({ ...input, document: resolvedDocument, sources });
 }
 
 /** @param {HTMLElement} rendered @param {string} pageId */
@@ -116,23 +118,74 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
-  it('loads the factory overview through one page-scoped worker subscription', () => {
+  it('leaves factory queries to independently bound reactive elements', () => {
     expect(dashboardPageSourceNames(authoritativeDashboardDocument, 'overview')).toEqual([
-      'overview-outcome-summary',
-      'overview-run-summary',
-      'overview-dispatch-summary',
-      'overview-delivery-summary',
-      'overview-value-summary',
-      'overview-registered-repository-summary',
-      'overview-worker-summary',
-      'overview-rhythm',
       'data-health-collections'
     ]);
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources: () => new Promise(() => {})
+    });
+    const overview = rendered.querySelector('[data-page-id="overview"]');
+    expect(overview?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
+    expect(overview?.querySelector('.dashboard-lazy-view')).toBeNull();
+    expect(overview?.querySelector('.dashboard-view-skeleton')).toBeNull();
+    disposeDashboard(rendered);
+  });
+
+  it('keeps independently bound Overview elements mounted when the page subscription resolves', async () => {
+    let resolvePageSources = () => {};
+    const loadPageSources = vi.fn(() => new Promise((resolve) => {
+      resolvePageSources = () => resolve({
+        'data-health-collections': {
+          source: 'data-health-collections',
+          rows: [],
+          metadata: {
+            'source-id': 'data-health-collections',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-17T00:00:00Z',
+            'retrieved-at': '2026-09-17T00:00:00Z',
+            availability: 'empty',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      });
+    }));
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources
+    });
+    const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
+    const floorBefore = overviewBefore?.querySelector('.factory-floor');
+
+    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
+    resolvePageSources();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
+    expect(rendered.querySelector('.factory-floor')).toBe(floorBefore);
+    disposeDashboard(rendered);
   });
 
   it('reports the paginated source shared by the runs page views', () => {
     const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
     expect(lazySourceNames).toContain('runs-table');
+  });
+
+  it('keeps Settings useful while the policy source is unavailable', async () => {
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    const page = await activatePage(rendered, 'configuration');
+
+    expect(page?.querySelector('.configuration-view')).not.toBeNull();
+    expect(page?.textContent).toContain('The policy cannot be edited until it contains valid JSON.');
+    expect(page?.textContent).not.toContain('Affected source: configuration-policy');
   });
 
   it('maps every rendered element and dynamic descendant to its owning JSON view when ?debug=1 is set', async () => {
@@ -338,7 +391,54 @@ describe('dashboard DOM provenance', () => {
 });
 
 describe('presenter built-in and custom pages', () => {
-  it('renders aggregated firewall domains in a full-view lazy table', async () => {
+  it('resolves reusable view IDs referenced by custom pages', () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'reusable-view-dashboard',
+          title: 'Reusable view dashboard',
+          views: [{
+            id: 'reusable-total',
+            title: 'Reusable total',
+            mark: 'metric',
+            data: { source: 'summary' },
+            encoding: {
+              value: { field: 'value', aggregate: 'sum' }
+            }
+          }],
+          pages: [{
+            id: 'custom',
+            kind: 'custom',
+            title: 'Custom',
+            views: ['reusable-total']
+          }]
+        }
+      },
+      sources: {
+        summary: {
+          source: 'summary',
+          rows: [{ value: 7 }],
+          metadata: {
+            'source-id': 'summary-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T18:00:00Z',
+            'retrieved-at': '2026-09-16T18:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      }
+    });
+
+    const view = rendered.querySelector('[data-view-id="reusable-total"]');
+    expect(view?.textContent).toContain('Reusable total');
+    expect(view?.querySelector('[data-metric-value="value"]')?.textContent).toBe('7');
+    expect(view?.textContent).not.toContain('Invalid custom view definition.');
+  });
+
+  it('renders the most-blocked domains pie chart and aggregated domain table', async () => {
     const metadata = /** @type {const} */ ({
       'source-id': 'firewall-fixture',
       'source-kind': 'fixture',
@@ -351,18 +451,22 @@ describe('presenter built-in and custom pages', () => {
     const rows = [
       { domain: 'api.github.com', run: 4, accepted: 12, blocked: 1 },
       { domain: 'new.example', run: 2, accepted: 3, blocked: 0 },
-      { domain: 'blocked.example', run: 1, accepted: 0, blocked: 7 },
+      { domain: 'blocked.example', run: 1, accepted: 0, blocked: 3_177_281 },
       { domain: 'changed.example', run: 2, accepted: 1, blocked: 2 }
     ];
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        'firewall-most-blocked-domains': { source: 'firewall-most-blocked-domains', rows, metadata },
         'firewall-domain-totals': { source: 'firewall-domain-totals', rows, metadata },
         'firewall-policy-rules': { source: 'firewall-policy-rules', rows: [], metadata }
       }
     });
 
     const page = await activatePage(rendered, 'firewall');
+    expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] [data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-category="blocked.example"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="security-firewall-most-blocked-domains"] .chart-legend-pie strong')?.textContent).toBe('3,177,281');
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     const text = page?.textContent ?? '';
@@ -370,8 +474,12 @@ describe('presenter built-in and custom pages', () => {
     expect(text).toContain('new.example');
     expect(text).toContain('blocked.example');
     expect(text).toContain('changed.example');
-    expect(text).toContain('Accepted');
+    expect(text).toContain('Allowed');
     expect(text).toContain('Blocked');
+    const firewallCard = page?.querySelector('[data-view-id="security-firewall-domains"] .entity-card-list-card');
+    expect(firewallCard?.querySelector('.entity-card-list-title')?.textContent).toBe('blocked.example');
+    expect([...firewallCard?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
+      .toEqual(['0Allowed', '3177281Blocked', '1Runs']);
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });
@@ -380,6 +488,19 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        'firewall-most-blocked-domains': {
+          source: 'firewall-most-blocked-domains',
+          rows: [],
+          metadata: {
+            'source-id': 'firewall-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-05T11:00:00Z',
+            'retrieved-at': '2026-09-05T11:05:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'empty'
+          }
+        },
         'firewall-domain-totals': {
           source: 'firewall-domain-totals',
           rows: [],
@@ -515,7 +636,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
   });
 
-  it('renders event inspection as one full-view lazy table', async () => {
+  it('renders the reusable event view and full-view lazy inspection table', async () => {
     const metadata = {
       'source-id': 'event-inspection-fixture',
       'source-kind': 'fixture',
@@ -546,10 +667,13 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'events');
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-view-id="entity-events"]')).toBeNull();
+    expect(page?.textContent).not.toContain('Invalid custom view definition.');
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.textContent).toContain('Produced a review');
     expect(page?.textContent).toContain('assistant_message');
     expect(page?.querySelector('thead')?.textContent).toContain('Correlation');
+    expect(page?.querySelector('[data-view-id="event-inspection"] .table-summary-row')).toBeNull();
     expect(page?.querySelector('tbody')?.textContent).toContain('correlation-1');
     expect(page?.querySelector('tbody tr td:first-child a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1002');
   });
@@ -570,12 +694,11 @@ describe('presenter built-in and custom pages', () => {
         'transactions-table': {
           source: 'transactions-table',
           rows: [{
-            transaction: 'ingest-jsonl:current:test',
             kind: 'ingest-jsonl',
             'created-at': '2026-09-02T12:00:00Z',
-            'payload-scope': 'gh-aw-jsonl',
-            records: 12,
-            'committed-records': 10
+            'payload-scope': 'https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl',
+            'raw-runs': 8,
+            'agentic-runs': 6
           }],
           metadata
         }
@@ -588,11 +711,24 @@ describe('presenter built-in and custom pages', () => {
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="transactions"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="transactions"]');
       expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+      expect(page?.querySelectorAll('.line-chart-series')).toHaveLength(2);
+      expect(page?.querySelector('.chart-legend')?.textContent).toContain('Known runs');
+      expect(page?.querySelector('.chart-legend')?.textContent).toContain('Runs with session data');
       expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
       expect(page?.querySelector('input[type="search"]')).not.toBeNull();
       expect(page?.textContent).toContain('ingest-jsonl');
-      expect(page?.textContent).toContain('gh-aw-jsonl');
-      expect(page?.querySelector('thead')?.textContent).toContain('Committed records');
+      expect(page?.textContent).toContain('https://dashboard.example/.../logs-1.jsonl');
+      expect(page?.querySelector('tbody a')?.getAttribute('href')).toBe('https://dashboard.example/gh-aw-logs-shards/logs-1.jsonl');
+      const headings = [...page?.querySelectorAll('thead tr:first-child th') ?? []].map((heading) => heading.textContent?.trim());
+      expect(headings.at(-1)).toBe('Created');
+      expect(headings).not.toEqual(expect.arrayContaining([
+        'Committed records',
+        'Records',
+        'Raw payload records',
+        'Transaction',
+        'Payload hash',
+        'Payload ETag'
+      ]));
     } finally {
       rendered.remove();
       window.history.replaceState(null, '', '/');
@@ -624,7 +760,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders a JSON-declared full-view workflow inventory', () => {
+  it('renders the JSON-declared workflow chart and inventory table', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -718,21 +854,16 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
-    expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelector('[data-table-filter]')).not.toBeNull();
-    const rows = [...(page?.querySelectorAll('tbody tr') ?? [])];
-    expect(rows).toHaveLength(3);
-    expect(rows.find((row) => row.textContent?.includes('dependabot.yml'))?.textContent).toContain('30');
-    expect(rows.find((row) => row.textContent?.includes('ci.yml'))?.textContent).toContain('5');
-    expect(page?.querySelector('.mode-review')).not.toBeNull();
-    expect(page?.querySelector('.mode-live')).not.toBeNull();
-    expect(page?.querySelector('.status-success')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml (githubnext/gh-aw-cao)');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml (github/target-service)');
+    expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
+    expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
     expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-rocket$/);
   });
 
-  it('DLS-LINK-006 DLS-LINK-007 derives organization, repository, and workflow links from raw identity fields in the topology view', () => {
+  it('uses declared workflow identities for inventory navigation', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -811,12 +942,14 @@ describe('presenter built-in and custom pages', () => {
       })
     });
 
-    const links = [...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
+    const links = [...rendered.querySelectorAll('[data-page-name="workflows"] .chart-legend-pie a')]
       .map((link) => link.getAttribute('href'));
-    expect(links).toContain('#page-package-insights?package=dependabot');
-    expect(links).toContain('#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdependabot.yml');
-    expect(links).toContain('#page-workflow-runtime?workflow=github%2Ftarget-service%3A.github%2Fworkflows%2Fci.yml');
-    expect(links).toContain('#page-repository-detail?repository=github%2Ftarget-service');
+    expect(links).toHaveLength(0);
+    expect(rendered.querySelector('[data-page-name="workflows"] table')).not.toBeNull();
+    expect(rendered.querySelector('[data-page-name="workflows"] table a')?.getAttribute('href'))
+      .toMatch(/^#page-workflow-runtime\?workflow=/);
+    expect([...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
+      .every((link) => !(link.parentElement instanceof HTMLAnchorElement))).toBe(true);
   });
 
   it('DLS-LINK-006 DLS-LINK-007 renders worker-provided entity links in table columns and honours explicit link overrides', () => {
@@ -1088,6 +1221,15 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')?.textContent).toContain('Settings');
     expect(rendered.querySelector('.account-menu')).toBeNull();
+    const viewerAvatar = rendered.querySelector('.viewer-avatar-image');
+    expect(viewerAvatar?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
+    expect(viewerAvatar?.getAttribute('alt')).toBe('The Octocat avatar');
+    const unsafeViewer = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      viewer: { login: 'octocat', name: 'The Octocat', avatarUrl: 'javascript:alert(1)' }
+    });
+    expect(unsafeViewer.querySelector('.viewer-avatar-image')).toBeNull();
     expect(rendered.querySelector('.appearance-settings')).toBeNull();
     expect(rendered.querySelector('.database-counts')).toBeNull();
     expect(rendered.querySelector('.reset-dashboard-control')).toBeNull();
@@ -1095,7 +1237,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="workflows"]')?.closest('.nav-section')).toBe(sections[0]);
     expect(rendered.querySelector('[data-nav-page-id="runs"]')?.closest('.nav-section')).toBe(sections[0]);
-    expect(rendered.querySelector('[data-nav-page-id="events"]')?.closest('.nav-section')).toBe(sections[0]);
+    expect(rendered.querySelector('[data-nav-page-id="events"]')?.closest('.nav-section')).toBe(sections[1]);
     expect(rendered.querySelector('[data-nav-page-id="operations"]')?.closest('.nav-section')?.textContent).toContain('Experimental');
     expect(rendered.querySelector('[data-nav-page-id="runtime"]')?.closest('.nav-section')).toBe(sections[1]);
     expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')).toBe(sections[1]);
@@ -1110,11 +1252,12 @@ describe('presenter built-in and custom pages', () => {
       'Models & Agents',
       'Firewall',
       'MCPs',
-      'Events',
       'Work',
       'Operations',
       'Insights',
       'Operational health',
+      'Events',
+      'Sessions',
       'Runtime',
       'Performance',
       'Security',
@@ -1128,6 +1271,7 @@ describe('presenter built-in and custom pages', () => {
       'GitHub API',
       'Maintenance',
       'Issues',
+      'Pull requests',
       'Safe output items',
       'Safe Outputs',
       'Detection',
@@ -1226,7 +1370,8 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const page = await activatePage(rendered, 'overview');
-    expect(page?.querySelector('.agent-factory')).not.toBeNull();
+    expect(page?.querySelector(':scope > .custom-view-grid')).not.toBeNull();
+    expect(page?.querySelectorAll(':scope > .custom-view-grid > .custom-view')).toHaveLength(2);
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
     expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
@@ -1452,6 +1597,199 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('persists the selected view mode and paints a skeleton before hydrating a revealed table', async () => {
+    window.localStorage.clear();
+    const observerDescriptor = Object.getOwnPropertyDescriptor(window, 'IntersectionObserver');
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    });
+    /** @type {FrameRequestCallback[]} */
+    const animationFrames = [];
+    const requestAnimationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    const document = {
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'mobile-view-mode-dashboard',
+        title: 'Mobile View Mode',
+        pages: [{
+          id: 'runs',
+          kind: /** @type {'custom'} */ ('custom'),
+          title: 'Runs',
+          views: [
+            {
+              id: 'runs-chart',
+              title: 'Run trend',
+              data: { source: 'runs' },
+              mark: 'chart',
+              chart: 'line',
+              encoding: {
+                x: { field: 'started-at', type: 'temporal' },
+                y: { field: 'run-count', type: 'quantitative' }
+              }
+            },
+            {
+              id: 'runs-table',
+              title: 'Runs',
+              data: { source: 'runs' },
+              mark: 'table',
+              controls: 'interactive',
+              'lazy-list': true,
+              layout: 'full-view',
+              encoding: {
+                columns: [{ field: 'run' }]
+              }
+            }
+          ]
+        }]
+      }
+    };
+    const sources = /** @type {Parameters<typeof renderDashboard>[0]['sources']} */ ({
+      runs: {
+        source: 'runs',
+        rows: [{ run: '1', 'run-count': 1, 'started-at': '2026-09-16T10:00:00Z' }],
+        metadata: {
+          'source-id': 'runs-fixture',
+          'source-kind': 'fixture',
+          'as-of': '2026-09-16T10:00:00Z',
+          'retrieved-at': '2026-09-16T10:00:00Z',
+          availability: 'available',
+          completeness: 'complete',
+          freshness: 'fresh'
+        }
+      }
+    });
+
+    try {
+      const rendered = renderDashboard({ document, sources });
+      const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-view-mode-toggle'));
+      const page = rendered.querySelector('[data-page-id="runs"]');
+
+      expect(rendered.dataset.mobileViewMode).toBe('chart');
+      expect(page?.hasAttribute('data-mobile-view-mode-page')).toBe(true);
+      expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-mobile-view-mode')).toBe('chart');
+      expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-mobile-view-mode')).toBe('table');
+      expect(toggle?.hidden).toBe(false);
+      expect(toggle?.getAttribute('aria-label')).toBe('Show table view');
+      expect(toggle?.querySelector('.octicon-table')).not.toBeNull();
+
+      toggle?.click();
+
+      expect(rendered.dataset.mobileViewMode).toBe('table');
+      expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).not.toBeNull();
+      expect(toggle?.getAttribute('aria-label')).toBe('Show card list view');
+      expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+      expect(toggle?.querySelector('.octicon-stack')).not.toBeNull();
+      expect(window.localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode')).toBe('table');
+
+      await vi.waitFor(() => expect(animationFrames).toHaveLength(1));
+      animationFrames.shift()?.(0);
+      expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).not.toBeNull();
+      expect(animationFrames).toHaveLength(1);
+      animationFrames.shift()?.(0);
+      await vi.waitFor(() => {
+        expect(page?.querySelector('[data-view-id="runs-table"] .dashboard-lazy-view-skeleton')).toBeNull();
+      });
+      expect(page?.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('1');
+
+      toggle?.click();
+      expect(rendered.dataset.mobileViewMode).toBe('card');
+      expect(toggle?.getAttribute('aria-label')).toBe('Show chart view');
+      expect(toggle?.querySelector('.octicon-graph')).not.toBeNull();
+      expect(window.localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode')).toBe('card');
+
+      const restored = renderDashboard({ document, sources });
+      expect(restored.dataset.mobileViewMode).toBe('card');
+      expect(restored.querySelector('.mobile-view-mode-toggle')?.getAttribute('aria-label')).toBe('Show chart view');
+    } finally {
+      requestAnimationFrame.mockRestore();
+      if (observerDescriptor) {
+        Object.defineProperty(window, 'IntersectionObserver', observerDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'IntersectionObserver');
+      }
+      window.localStorage.clear();
+    }
+  });
+
+  it('switches a standalone full-view lazy table between table and card-list modes', () => {
+    window.localStorage.clear();
+    const document = {
+      languageVersion: '0.1.0',
+      dashboard: {
+        id: 'mobile-table-card-dashboard',
+        title: 'Mobile Table Cards',
+        pages: [{
+          id: 'repositories',
+          kind: /** @type {'custom'} */ ('custom'),
+          title: 'Repositories',
+          views: [{
+            id: 'repositories-table',
+            title: 'Repositories',
+            data: { source: 'repositories' },
+            mark: 'table',
+            controls: 'interactive',
+            'lazy-list': true,
+            layout: 'full-view',
+            encoding: {
+              columns: [
+                { field: 'repository-coordinate', type: 'nominal' },
+                { field: 'organization', type: 'nominal' }
+              ]
+            }
+          }]
+        }],
+        'card-templates': [{
+          id: 'repository',
+          icon: 'repo',
+          title: { field: 'repository-coordinate' },
+          labels: [],
+          details: [{ field: 'organization' }]
+        }]
+      }
+    };
+    const rendered = renderDashboard({
+      document,
+      sources: {
+        repositories: {
+          source: 'repositories',
+          rows: [{ 'repository-coordinate': 'githubnext/gh-aw-cao', organization: 'githubnext' }],
+          metadata: {
+            'source-id': 'repositories-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-16T10:00:00Z',
+            'retrieved-at': '2026-09-16T10:00:00Z',
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    });
+    const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-view-mode-toggle'));
+
+    expect(rendered.dataset.mobileViewMode).toBe('table');
+    expect(toggle?.hidden).toBe(false);
+    expect(toggle?.getAttribute('aria-label')).toBe('Show card list view');
+    expect(rendered.querySelector('[data-mobile-card-list] .entity-card-list-card')?.textContent).toContain('githubnext/gh-aw-cao');
+
+    toggle?.click();
+    expect(rendered.dataset.mobileViewMode).toBe('card');
+    expect(toggle?.getAttribute('aria-label')).toBe('Show table view');
+    expect(toggle?.querySelector('.octicon-table')).not.toBeNull();
+
+    toggle?.click();
+    expect(rendered.dataset.mobileViewMode).toBe('table');
+    window.localStorage.clear();
+  });
+
   it('renders a mobile view menu with full labels and closes it after selection', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
@@ -1473,11 +1811,12 @@ describe('presenter built-in and custom pages', () => {
       'Models & Agents',
       'Firewall',
       'MCPs',
-      'Events',
       'Work',
       'Operations',
       'Insights',
       'Operational health',
+      'Events',
+      'Sessions',
       'Runtime',
       'Performance',
       'Security',
@@ -1491,6 +1830,7 @@ describe('presenter built-in and custom pages', () => {
       'GitHub API',
       'Maintenance',
       'Issues',
+      'Pull requests',
       'Safe output items',
       'Safe Outputs',
       'Detection',
@@ -1564,7 +1904,7 @@ describe('presenter built-in and custom pages', () => {
     }));
     window.dispatchEvent(new HashChangeEvent('hashchange'));
 
-    expect(directions).toEqual(['forward', 'backward']);
+    expect(directions.filter(Boolean)).toEqual(['forward', 'backward']);
     await Promise.resolve();
     rendered.remove();
     Reflect.deleteProperty(document, 'startViewTransition');
@@ -1602,7 +1942,8 @@ describe('presenter built-in and custom pages', () => {
     );
     window.dispatchEvent(new HashChangeEvent('hashchange'));
 
-    expect(directions).toEqual(['forward', 'forward', undefined]);
+    expect(directions.slice(0, 2)).toEqual(['forward', 'forward']);
+    expect(directions.slice(2).every((direction) => direction === undefined)).toBe(true);
     await Promise.resolve();
     rendered.remove();
     Reflect.deleteProperty(document, 'startViewTransition');
@@ -1668,14 +2009,15 @@ describe('presenter built-in and custom pages', () => {
     });
 
     expect(authoritativeDashboardDocument.dashboard.defaults?.time).toBeUndefined();
-    expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('aria-label')).toBe('Horizon unavailable');
-    expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(true);
+    expect(rendered.querySelector('.dashboard-horizon')?.hasAttribute('aria-label')).toBe(false);
+    expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+    expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 week');
     expect(rendered.querySelectorAll('.dashboard-horizon')).toHaveLength(1);
     expect(rendered.querySelector('.freshness')).toBeNull();
     const horizonHelp = rendered.querySelector('.dashboard-horizon .tooltip-trigger');
     const horizonTooltip = rendered.querySelector('.dashboard-horizon .tooltip-content');
     expect(horizonHelp).toBeNull();
-    expect(horizonTooltip).toBeNull();
+    expect(horizonTooltip?.textContent).toContain('1 week');
 
     for (const pageId of ['runtime', 'security', 'firewall', 'operational-value']) {
       await activatePage(rendered, pageId);
@@ -1748,14 +2090,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('gpt-5.4');
   });
 
-  it('applies the JSON horizon and lazily loads database counts for its tooltip', async () => {
-    const loadHorizonSources = vi.fn().mockResolvedValue({
-      'database-package-count': { rows: [{ packages: 2 }] },
-      'database-repository-count': { rows: [{ repositories: 3 }] },
-      'database-workflow-count': { rows: [{ workflows: 4 }] },
-      'database-run-count': { rows: [{ runs: 12 }] },
-      'database-event-count': { rows: [{ events: 89 }] }
-    });
+  it('applies the JSON horizon without database counts', () => {
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -1805,8 +2140,7 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      },
-      loadHorizonSources
+      }
     });
 
     const table = rendered.querySelector('.custom-table');
@@ -1820,21 +2154,56 @@ describe('presenter built-in and custom pages', () => {
     );
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
     expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
-    expect(loadHorizonSources).not.toHaveBeenCalled();
-    expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent).toBe('Database counts load on hover');
+    expect(rendered.querySelector('.horizon-tooltip-counts')).toBeNull();
+  });
 
-    rendered.querySelector('.horizon-summary')?.dispatchEvent(new Event('pointerenter'));
-
-    await vi.waitFor(() => {
-      expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent)
-        .toBe('2 packages · 3 repositories · 4 workflows · 12 runs · 89 events');
+  it('renders the configured Horizon immediately and updates it when page sources load', async () => {
+    let publishUpdate = () => {};
+    const loadPageSources = vi.fn(async (_pageId, options) => {
+      publishUpdate = () => options.onUpdate({
+        runs: {
+          source: 'runs',
+          rows: [{ run: '1', 'observed-at': '2026-09-01T11:00:00Z' }],
+          metadata: {
+            'source-id': 'runs',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-01T12:00:00Z',
+            'retrieved-at': '2026-09-01T12:00:00Z',
+            'coverage-start': '2026-08-31T12:00:00Z',
+            'coverage-end': '2026-09-01T12:00:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      });
+      return {};
     });
-    expect(loadHorizonSources).toHaveBeenCalledOnce();
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources
+    });
 
-    expect(loadHorizonSources).toHaveBeenCalledOnce();
+    expect(rendered.querySelector('.dashboard-horizon-skeleton')).toBeNull();
+    expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 week');
+    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
+    publishUpdate();
 
-    rendered.querySelector('.horizon-toggle')?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-    expect(loadHorizonSources).toHaveBeenCalledOnce();
+    const horizon = rendered.querySelector('.dashboard-horizon');
+    expect(horizon?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+    expect(horizon?.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 day');
+    expect(horizon?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z');
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details')).not.toBeNull();
+
+    optionsOnUpdateWithNoSources();
+    expect(horizon?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+
+    function optionsOnUpdateWithNoSources() {
+      const latestOptions = loadPageSources.mock.calls.at(-1)?.[1];
+      expect(latestOptions).toBeDefined();
+      latestOptions.onUpdate({});
+    }
   });
 
   it('renders Security assurance records as one full-view lazy table', async () => {
@@ -1917,7 +2286,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('img')).toBeNull();
   });
 
-  it('renders operational-value observations as one full-view lazy table', async () => {
+  it('renders package operational value as a pie chart and full-view table', async () => {
     const metadata = {
       'source-id': 'value-fixture',
       'source-kind': 'fixture',
@@ -1942,6 +2311,30 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        'package-inventory': {
+          source: 'package-inventory',
+          rows: [
+            {
+              package: 'ambient-context',
+              'package-name': 'Ambient Context',
+              'package-dashboard-link': {
+                'dashboard-href': '#page-package-insights?package=ambient-context',
+                'dashboard-label': 'View Ambient Context package dashboard'
+              },
+              'value-created': 1.6
+            },
+            {
+              package: 'aw-doctor',
+              'package-name': 'AW Doctor',
+              'package-dashboard-link': {
+                'dashboard-href': '#page-package-insights?package=aw-doctor',
+                'dashboard-label': 'View AW Doctor package dashboard'
+              },
+              'value-created': 0.4
+            }
+          ],
+          metadata
+        },
         'operational-values': {
           source: 'operational-values',
           rows: [
@@ -2091,29 +2484,32 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'operational-value');
     const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'operational-value');
-    expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Value & outcomes' });
+    expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Operational value' });
     expect(dashboardPage).not.toHaveProperty('page');
     expect(dashboardPage).not.toHaveProperty('sections');
     expect(rendered.querySelector('[data-nav-page-id="operational-value"] .octicon-beaker')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="operational-value-by-package"] [data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('Ambient Context');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('AW Doctor');
     const tables = page?.querySelectorAll('.custom-table') ?? [];
     expect(tables).toHaveLength(1);
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(5);
-    expect(tables[0]?.querySelector('.status-success')?.textContent).toBe('pass');
-    expect(tables[0]?.querySelector('.status-attention')?.textContent).toBe('unavailable');
-    expect(tables[0]?.textContent).toContain('Mature');
-    expect(tables[0]?.textContent).toContain('Interim');
-    expect(tables[0]?.textContent).toContain('sha256:curre');
-    expect(tables[0]?.querySelector('a[aria-label="View run 103"]')?.getAttribute('href')).toContain('/actions/runs/103');
-    const graderRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
-    const graderFilter = /** @type {HTMLInputElement} */ (graderRegion?.querySelector('[data-table-filter]'));
-    expect(graderFilter.closest('label')?.textContent).toContain('Filter Operational Value Ledger');
-    graderFilter.value = 'review-value';
-    graderFilter.dispatchEvent(new Event('input'));
-    expect([...graderRegion.querySelectorAll('tbody tr')]
+    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect([...tables[0]?.querySelectorAll('thead > tr:first-child > th') ?? []].map((cell) => cell.textContent)).toEqual([
+      'Package',
+      'Operational value'
+    ]);
+    expect(tables[0]?.textContent).toContain('Ambient Context');
+    expect(tables[0]?.textContent).toContain('1.60');
+    const valueRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
+    const valueFilter = /** @type {HTMLInputElement} */ (valueRegion?.querySelector('[data-table-filter]'));
+    expect(valueFilter.closest('label')?.textContent).toContain('Filter Packages');
+    valueFilter.value = 'AW Doctor';
+    valueFilter.dispatchEvent(new Event('input'));
+    expect([...valueRegion.querySelectorAll('tbody tr')]
       .filter((row) => row instanceof HTMLTableRowElement && !row.hidden)).toHaveLength(1);
-    expect(graderRegion.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
+    expect(valueRegion.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
   });
 
   it('DLS-VIEW-018 DLS-VIEW-019 DLS-VIEW-020 progressively discloses supplemental views in source order', () => {
@@ -2633,12 +3029,12 @@ describe('presenter built-in and custom pages', () => {
     expect(unavailablePackagesPage?.querySelector('.custom-table')).not.toBeNull();
   });
 
-  it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
+  it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 DLS-PAGE-017 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
     const pages = authoritativeDashboardDocument.dashboard.pages.filter(
       (/** @type {{ kind: string }} */ page) => page.kind === 'built-in'
     );
     expect(Array.isArray(pages)).toBe(true);
-    expect(pages).toHaveLength(11);
+    expect(pages).toHaveLength(12);
     expect(pages.map((/** @type {{ page: string }} */ page) => page.page)).toEqual([
       'overview',
       'organizations',
@@ -2650,10 +3046,15 @@ describe('presenter built-in and custom pages', () => {
       'graders',
       'evals',
       'usage',
-      'findings'
+      'findings',
+      'issues'
     ]);
 
     for (const page of pages) {
+      const views = dashboardPagePayload(
+        page,
+        authoritativeDashboardDocument.dashboard.views
+      ).views;
       expect(page.kind).toBe('built-in');
       expect(page.id).toBe(page.page === 'overview' ? 'operations' : page.page);
       expect(typeof page.icon).toBe('string');
@@ -2662,10 +3063,11 @@ describe('presenter built-in and custom pages', () => {
       });
       expect(Array.isArray(page.definition?.views)).toBe(true);
       expect(page.definition.views.length).toBeGreaterThan(0);
-      expect(page.definition.views.every((/** @type {{ data?: { source?: unknown, sources?: unknown } }} */ view) => (
-        typeof view?.data?.source === 'string'
-        || (Array.isArray(view?.data?.sources) && view.data.sources.every((source) => typeof source === 'string'))
-      ))).toBe(true);
+      expect(views.every((view) => {
+        const configuredView = /** @type {{ data?: { source?: unknown, sources?: unknown } }} */ (view);
+        return typeof configuredView?.data?.source === 'string'
+          || (Array.isArray(configuredView?.data?.sources) && configuredView.data.sources.every((source) => typeof source === 'string'));
+      })).toBe(true);
     }
 
     const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs');
@@ -2690,33 +3092,41 @@ describe('presenter built-in and custom pages', () => {
             { field: 'runs', type: 'quantitative', title: 'Runs' },
             { field: 'ingestion', type: 'nominal', title: 'Ingestion %' },
             { field: 'failure-summary', type: 'nominal', title: 'Failure rate', filter: false },
-            { field: 'aic', type: 'quantitative', title: 'Local AIC', unit: 'aic' },
+            { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
             { field: 'workflows', type: 'quantitative', title: 'AWs' },
             { field: 'status', type: 'nominal', title: 'Status', display: 'status' }
           ],
           href: { field: 'repository-link', type: 'nominal' }
         }
-      }
+      },
+      'entity-repositories'
     ]);
 
     const workflowsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'workflows');
     expect(workflowsPage?.definition.views).toMatchObject([
       {
+        id: 'workflows-by-runs',
+        data: {
+          source: 'workflow-inventory',
+          'order-by': [{ field: 'runs', direction: 'desc' }],
+          limit: 10
+        },
+        mark: 'chart',
+        chart: 'pie',
+        layout: 'horizontal',
+        encoding: {
+          x: { field: 'workflow-label', type: 'nominal', format: 'workflow-identity-label', title: 'Workflow' },
+          y: { field: 'runs', type: 'quantitative', title: 'Runs' },
+          href: { field: 'workflow-link', type: 'nominal' }
+        }
+      },
+      {
         id: 'workflows-inventory',
         data: { source: 'workflow-inventory' },
-        encoding: {
-          columns: [
-            { field: 'package-name', type: 'nominal', title: 'Package' },
-            { field: 'repository', type: 'nominal', title: 'Control repository' },
-            { field: 'workflow', type: 'nominal', format: 'workflow-relative-path', title: 'Workflow' },
-            { field: 'workflow-role', type: 'nominal', title: 'Role' },
-            { field: 'rollout-mode', type: 'nominal', title: 'Mode', display: 'mode' },
-            { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
-            { field: 'runs', type: 'quantitative', title: 'Runs' },
-            { field: 'ingestion', type: 'nominal', title: 'Ingestion %' },
-            { field: 'workflow-active', type: 'nominal', title: 'Registration', display: 'active-state' }
-          ]
-        }
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
       }
     ]);
   });
@@ -3588,6 +3998,187 @@ describe('presenter built-in and custom pages', () => {
       root.remove();
       window.history.replaceState(null, '', '/');
     }
+  });
+
+  it('keeps route tabs visible while a sibling view loads', async () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first?package=ambient-context">First</a>
+      <a data-nav-page-id="second" href="#page-second?package=ambient-context">Second</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first">
+          <nav data-route-tabs aria-label="Ambient Context views">
+            <a href="#page-first?package=ambient-context" aria-current="page">Overview</a>
+            <a href="#page-second?package=ambient-context">Workflows</a>
+            <a href="#page-third?package=ambient-context">Runs</a>
+          </nav>
+          <p>Overview content</p>
+        </section>
+        <section class="dashboard-page" id="page-second" data-page-id="second" data-page-pending></section>
+      </main>
+    `;
+    document.body.append(root);
+    const renderPage = vi.fn((pageId) => pageId === 'second'
+      ? new Promise(() => {})
+      : null);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="second"]')).click();
+
+      await vi.waitFor(() => {
+        expect(root.querySelector('#page-second .dashboard-view-skeleton')).not.toBeNull();
+      });
+      const pendingTabs = root.querySelector('#page-second [data-route-tabs]');
+      expect(pendingTabs?.textContent?.replace(/\s/g, '')).toBe('OverviewWorkflowsRuns');
+      expect(pendingTabs?.querySelector('[aria-current="page"]')?.textContent?.trim()).toBe('Workflows');
+      expect(root.querySelector('#page-second')?.getAttribute('aria-busy')).toBe('true');
+      disposeNavigation();
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('aborts the active page subscription when the dashboard is disposed', async () => {
+    /** @type {AbortSignal | undefined} */
+    let pageSignal;
+    const loadPageSources = vi.fn(async (_pageId, options) => {
+      pageSignal = options.signal;
+      return {};
+    });
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'disposable-dashboard',
+          title: 'Disposable Dashboard',
+          pages: [{
+            id: 'overview',
+            kind: /** @type {'custom'} */ ('custom'),
+            title: 'Overview',
+            views: []
+          }]
+        }
+      },
+      sources: {},
+      loadPageSources
+    });
+
+    await vi.waitFor(() => expect(pageSignal).toBeDefined());
+    expect(pageSignal?.aborted).toBe(false);
+
+    disposeDashboard(rendered);
+
+    expect(pageSignal?.aborted).toBe(true);
+  });
+
+  it('ignores a pending view transition after the dashboard is disposed', () => {
+    /** @type {(() => void) | undefined} */
+    let transitionUpdate;
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        transitionUpdate = callback;
+        return { finished: Promise.resolve() };
+      })
+    });
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'transition-disposal-dashboard',
+          title: 'Transition Disposal Dashboard',
+          pages: [
+            { id: 'first', kind: /** @type {'custom'} */ ('custom'), title: 'First', views: [] },
+            { id: 'second', kind: /** @type {'custom'} */ ('custom'), title: 'Second', views: [] }
+          ]
+        }
+      },
+      sources: {}
+    });
+    document.body.append(rendered);
+    try {
+      /** @type {HTMLAnchorElement | null} */ (
+        rendered.querySelector('[data-nav-page-id="second"]')
+      )?.click();
+      expect(transitionUpdate).toBeDefined();
+
+      disposeDashboard(rendered);
+      transitionUpdate?.();
+
+      expect(rendered.querySelector('[data-page-id="second"]')?.hasAttribute('data-page-pending')).toBe(true);
+    } finally {
+      rendered.remove();
+      Reflect.deleteProperty(document, 'startViewTransition');
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('removes page navigation handlers when navigation is disposed', async () => {
+    /** @type {FrameRequestCallback[]} */
+    const animationFrames = [];
+    const requestAnimationFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first">First</a>
+      <a data-nav-page-id="second" href="#page-second">Second</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first" data-page-pending></section>
+        <section class="dashboard-page" id="page-second" data-page-id="second" data-page-pending></section>
+      </main>
+    `;
+    document.body.append(root);
+    const renderPage = vi.fn((pageId) => {
+      const page = document.createElement('section');
+      page.className = 'dashboard-page';
+      page.id = `page-${pageId}`;
+      page.dataset.pageId = pageId;
+      return page;
+    });
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      expect(renderPage).toHaveBeenCalledOnce();
+
+      root.querySelector('[data-nav-page-id="second"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
+      expect(animationFrames).toHaveLength(1);
+      disposeNavigation();
+      while (animationFrames.length > 0) {
+        animationFrames.shift()?.(0);
+      }
+      window.history.replaceState(null, '', '/#page-second');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      root.querySelector('[data-nav-page-id="second"]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true })
+      );
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 0));
+
+      expect(renderPage).toHaveBeenCalledOnce();
+    } finally {
+      requestAnimationFrame.mockRestore();
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('uses only declared query drill titles at every navigation depth', () => {
+    const knownQueries = new Set(['issue-events']);
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=issue-events&title=Issue+42&issue-id=42'),
+      knownQueries
+    )).toBe('Issue 42');
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=issue-events&title=Issue+43&issue-id=43'),
+      knownQueries
+    )).toBe('Issue 43');
+    expect(resolveQueryDrillPageTitle(
+      new URLSearchParams('query=unknown&title=Untrusted'),
+      knownQueries
+    )).toBe('');
   });
 
   it('opens coverage diagnostics as an Overview subpage with canonical breadcrumbs', async () => {

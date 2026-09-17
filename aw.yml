@@ -17,3 +17,5 @@ resources:
     destination: .github/aw/default-AGENTS.md
   - source: .github/aw/instructions.md
     destination: .github/aw/instructions.md
+  - source: cao.sh
+    destination: .github/aw/cao.sh

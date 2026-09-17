@@ -7,17 +7,19 @@ import { octicon } from '../octicons.js';
 import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js';
 import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
-import { listChartSeries, pieChartEntries, renderChartLegend, renderPieLegend, renderChartWidget } from './chart-elements.js';
+import { resolveCardStatus } from './card-status.js';
+import { listChartSeries, pieChartEntries, renderChartLegend, renderPieChartLayout, renderPieLegend, renderChartWidget } from './chart-elements.js';
 import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderOutcomeLink, renderWorkflowRunLink } from './link-content.js';
 import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
-import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog } from './ui-primitives.js';
+import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog, observeLoadMoreBoundary } from './ui-primitives.js';
 import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 import { renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
 import { effect, onCleanup, state } from '../reactive.js';
+import { createDebug } from '../debug.js';
 
 /** @type {Record<string, 'organization-link'|'repository-link'|'workflow-link'>} */
 const ENTITY_LINK_FIELDS = {
@@ -32,11 +34,11 @@ const RUN_LINK_FIELD = 'run-link';
 const MAX_INCREMENTAL_SWIMLANE_RENDERS = 10;
 const REPOSITORY_LINK_DISPLAY = 'repository-link';
 const WORKFLOW_LINK_DISPLAY = 'workflow-link';
+const debugChart = createDebug('render:chart');
 const GITHUB_ENTITY_DISPLAY_FIELDS = {
   [REPOSITORY_LINK_DISPLAY]: 'repository',
   [WORKFLOW_LINK_DISPLAY]: 'workflow'
 };
-
 /**
  * @param {Record<string, unknown>} row
  * @param {'repository-link' | 'workflow-link'} field
@@ -94,6 +96,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
  *   toText: (value: unknown) => string,
+ *   cardTemplates?: Record<string, { icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
  * }} DataViewContext
  */
@@ -145,14 +148,25 @@ function renderMetricView(context) {
       ? view.metric['navigation-page']
       : null;
     const tag = navigationPage ? 'a' : 'div';
+    const animateNumber = view.metric.animate === 'number' && isWholeNumber(displayedValue);
     return h(tag, {
       className: `metric-card-widget metric-card-widget-${tone}${active ? ' metric-card-widget-active' : ''}`,
       ...(navigationPage ? { href: `#page-${encodeURIComponent(navigationPage)}` } : {})
     },
-    h('strong', { className: 'metric-card-widget-value', 'data-metric-value': fieldName ?? 'unknown' }, displayedValue),
+    h('strong', {
+      className: `metric-card-widget-value${animateNumber ? ' metric-number-animated' : ''}`,
+      'data-metric-value': fieldName ?? 'unknown',
+      ...(animateNumber ? { style: `--metric-number-target: ${displayedValue}` } : {})
+    }, animateNumber ? h('span', { className: 'metric-number-animated-value' }, displayedValue) : displayedValue),
     h(headingTag, { className: 'metric-card-widget-label' }, title),
     h('span', { className: 'metric-card-widget-icon', 'aria-hidden': 'true' }, octicon(icon)),
     ...renderViewSectionChrome(metadata, contextDetails));
+  }
+
+  /** @param {string} value */
+  function isWholeNumber(value) {
+    const number = Number(value);
+    return Number.isSafeInteger(number) && String(number) === value;
   }
 
   const content = [
@@ -207,6 +221,24 @@ function renderListView(context) {
       listAction
     });
   }
+  if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
+    const definition = context.cardTemplates?.[view.list.card];
+    if (definition) {
+      return renderEntityCardListView({
+        pageId,
+        title,
+        view,
+        rows: preparedRows,
+        metadata,
+        contextDetails,
+        headingTag,
+        renderValue,
+        toText,
+        definition,
+        listAction
+      });
+    }
+  }
   const cards = preparedRows.map((row, index) => {
     const titleColumn = columns[0];
     const titleField = typeof titleColumn?.as === 'string' ? titleColumn.as : titleColumn?.field;
@@ -257,6 +289,225 @@ function renderListView(context) {
     ],
     headingTag
   );
+}
+
+/**
+ * @param {{
+ *   pageId: string,
+ *   title: string,
+ *   view: Record<string, any>,
+ *   rows: Array<Record<string, unknown>>,
+ *   metadata: import('../presenter.js').SourceMetadata,
+ *   contextDetails: string[],
+ *   headingTag: 'h3'|'h4',
+ *   renderValue: (column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
+ *   toText: (value: unknown) => string,
+ *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
+ *   listAction: HTMLElement | null
+ * }} options
+ */
+function renderEntityCardListView(options) {
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag, renderValue, toText, definition, listAction } = options;
+  const drill = isPlainObject(view.list) && isPlainObject(view.list.drill) ? view.list.drill : null;
+  const cards = renderEntityCardItems(rows, {
+    pageId,
+    title,
+    renderValue,
+    toText,
+    definition,
+    drill
+  });
+  const emptyMessage = metadata.availability === 'unavailable'
+    ? 'Data is unavailable for this view.'
+    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  return renderPageSection(
+    pageId,
+    title,
+    [
+      ...renderViewSectionChrome(metadata, contextDetails),
+      h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
+      cards.length > 0
+        ? h('ul', { className: 'document-list issue-list entity-card-list', 'data-custom-view-mark': 'list' }, cards)
+        : h('p', { className: 'document-list-empty' }, emptyMessage)
+    ],
+    headingTag,
+    view.description
+  );
+}
+
+/**
+ * @param {Array<Record<string, unknown>>} rows
+ * @param {{
+ *   pageId: string,
+ *   title: string,
+ *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
+ *   toText: (value: unknown) => string,
+ *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
+ *   drill?: Record<string, unknown> | null,
+ *   keyOffset?: number
+ * }} options
+ */
+function renderEntityCardItems(rows, options) {
+  const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0 } = options;
+  return rows.map((row, index) => {
+    const titleText = toText(row[definition.title.field]);
+    const subtitle = definition.subtitle;
+    const subtitleText = subtitle ? toText(row[subtitle.field]) : '';
+    const target = resolveEntityCardDrill(row, drill, titleText);
+    const titleContent = target?.external
+      ? renderExternalLink(target.link)
+      : target
+        ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
+        : titleText;
+    if (target && titleContent instanceof HTMLAnchorElement) {
+      titleContent.dataset.cardDrill = target.external ? 'external' : 'query';
+    }
+    const status = definition.status
+      ? resolveCardStatus(row[definition.status.field])
+        ?? (typeof definition.status['fallback-field'] === 'string'
+          ? resolveCardStatus(row[definition.status['fallback-field']])
+          : null)
+      : null;
+    const labels = definition.labels.flatMap((column) => {
+      const value = row[column.field];
+      const values = Array.isArray(value) ? value : [value];
+      return values.map((label) => toText(label)).filter(Boolean).map((label) => h(
+        'li',
+        column.display === 'ref' ? { className: 'entity-card-list-ref' } : null,
+        label
+      ));
+    });
+    const timing = (definition.timing ?? []).flatMap((column) => {
+      const value = row[column.field];
+      if (value === null || value === undefined || value === '') return [];
+      return [h(
+        'li',
+        { className: 'entity-card-list-timing-item' },
+        h('span', { className: 'entity-card-list-timing-icon', 'aria-hidden': 'true' }, octicon(column.icon)),
+        h('span', { className: 'entity-card-list-timing-value' }, renderValue(column, value, row))
+      )];
+    });
+    const metrics = (definition.metrics ?? []).flatMap((column) => {
+      const rawValue = row[column.field];
+      if (rawValue === null || rawValue === undefined) return [];
+      return [h(
+        'li',
+        { className: 'entity-card-list-metric' },
+        h('strong', null, renderValue(column, rawValue, row)),
+        h('span', null, fieldTitle(column))
+      )];
+    });
+    const labelsDescription = [
+      ...(labels.length > 0 ? ['labels'] : []),
+      ...(metrics.length > 0 ? ['metrics'] : [])
+    ].join(' and ');
+    return h(
+      'li',
+      {
+        className: 'issue-list-card entity-card-list-card',
+        'data-custom-row-key': `${pageId}-${title}-${keyOffset + index}`,
+        ...(target ? { onClick: activateCardDrill } : {})
+      },
+      status
+        ? h(
+          'span',
+          {
+            className: `issue-list-card-icon entity-card-list-status entity-card-list-status-${status.tone}`,
+            title: titleCase(status.text),
+            'data-card-status': status.text
+          },
+          octicon(status.icon),
+          h('span', { className: 'sr-only' }, `${fieldTitle(definition.status ?? { field: 'status' })}: ${titleCase(status.text)}`)
+        )
+        : h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(definition.icon)),
+      h(
+        'div',
+        { className: 'issue-list-card-content' },
+        h('div', { className: 'issue-list-card-title entity-card-list-title' }, titleContent),
+        subtitle && subtitleText
+          ? h(
+            'div',
+            {
+              className: 'issue-list-card-subtitle entity-card-list-subtitle',
+              'aria-label': `${fieldTitle(subtitle)}: ${subtitleText}`
+            },
+            subtitleText
+          )
+          : null,
+        h(
+          'dl',
+          { className: 'issue-list-card-meta', 'aria-label': `${titleText || 'Item'} metadata` },
+          ...definition.details.map((column) => {
+            const value = column.field === RUN_FIELD || column.display === 'run-link'
+              ? renderWorkflowRunLink(row, toText(row[column.field]))
+              : renderValue(column, row[column.field], row);
+            return h('div', null, h('dt', null, fieldTitle(column)), h('dd', null, value));
+          })
+        )
+      ),
+      h(
+        'ul',
+        { className: 'issue-list-labels', 'aria-label': labelsDescription ? `${titleText || 'Item'} ${labelsDescription}` : undefined },
+        ...labels,
+        ...metrics
+      ),
+      timing.length > 0
+        ? h(
+          'ul',
+          { className: 'entity-card-list-timing', 'aria-label': `${titleText || 'Item'} timing` },
+          ...timing
+        )
+        : null
+    );
+  });
+}
+
+/** @param {MouseEvent} event */
+function activateCardDrill(event) {
+  if (!(event.currentTarget instanceof HTMLElement) || !(event.target instanceof Element)) return;
+  if (event.target.closest('a, button, input, select, textarea, summary')) return;
+  const link = event.currentTarget.querySelector('[data-card-drill]');
+  if (link instanceof HTMLAnchorElement) link.click();
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {Record<string, unknown> | null} drill
+ * @param {string} title
+ * @returns {{ external: boolean, link: { href: string, label: string } } | null}
+ */
+function resolveEntityCardDrill(row, drill, title) {
+  if (!drill || typeof drill.type !== 'string') return null;
+  if (drill.type === 'external' && typeof drill.field === 'string') {
+    const link = resolveCardLink(row, drill.field, title);
+    return link ? { external: true, link: { ...link, label: title || link.label } } : null;
+  }
+  if (
+    drill.type !== 'query'
+    || typeof drill.page !== 'string'
+    || typeof drill.query !== 'string'
+    || typeof drill['title-field'] !== 'string'
+    || !Array.isArray(drill.arguments)
+  ) return null;
+  const pageTitle = row[drill['title-field']];
+  if (!['string', 'number', 'boolean'].includes(typeof pageTitle) || String(pageTitle).length === 0) return null;
+  const parameters = new URLSearchParams();
+  parameters.set('query', drill.query);
+  parameters.set('title', String(pageTitle));
+  for (const argument of drill.arguments) {
+    if (!isPlainObject(argument) || typeof argument.name !== 'string' || typeof argument.field !== 'string') return null;
+    const value = row[argument.field];
+    if (!['string', 'number', 'boolean'].includes(typeof value) || String(value).length === 0) return null;
+    parameters.set(argument.name, String(value));
+  }
+  const suffix = parameters.size > 0 ? `?${parameters.toString()}` : '';
+  return {
+    external: false,
+    link: {
+      href: `#page-${encodeURIComponent(drill.page)}${suffix}`,
+      label: title
+    }
+  };
 }
 
 /**
@@ -495,7 +746,7 @@ function renderTableView(context) {
   ));
   const bodyRows = renderBodyRows(displayedRows);
   let renderedRowCount = bodyRows.length;
-  const continuation = context.continuation;
+  const continuation = replayableContinuation(context.continuation);
 
   const interactive = view.controls !== 'static';
   const staticEmptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.';
@@ -520,76 +771,225 @@ function renderTableView(context) {
         }
       }
     : undefined;
-  return renderPageSection(pageId, title, [
-    ...renderViewSectionChrome(metadata, contextDetails),
-    renderTableRegion({
-      tableClassName: 'custom-table',
-      tableRole: tree ? 'treegrid' : undefined,
-      regionClassName: interactive ? undefined : 'table-region-static',
-      emptyMessage,
-      emptyAction,
-      colSpan: Math.max(columns.length + actions.length, 1),
-      headCells: [...actions.map((action) => action.presentation === 'cli-action' ? '' : 'Action'), ...columns.map(fieldTitle)],
-      unsortableColumns: actions.map((_, index) => index),
-      compactColumns: actions.flatMap((action, index) => action.presentation === 'cli-action' ? [index] : []),
-      summaryColumns: interactive && view['column-summaries'] !== false
-        ? [
-            ...actions.map((action) => ({
-              label: action.presentation === 'cli-action' ? '' : 'Action',
-              compact: action.presentation === 'cli-action',
-              values: []
-            })),
-            ...columns.map((column) => {
-              const outputField = typeof column.as === 'string' ? column.as : column.field;
-              return {
-                field: outputField,
-                label: fieldTitle(column),
-                type: String(column.type ?? ''),
-                display: typeof column.display === 'string' ? column.display : undefined,
-                values: tableRows.map((row) => row[outputField])
-              };
-            })
-          ]
-        : [],
-      filterLabel: interactive ? `Filter ${title}` : undefined,
-      filterId: typeof view.id === 'string' ? view.id : `${pageId}-table`,
-      filterFields: columns.flatMap((column, columnIndex) => (
-        column.filter !== false && ['nominal', 'ordinal'].includes(String(column.type))
-          ? [{
-              key: typeof column.as === 'string' ? column.as : column.field,
+  const tableRegion = renderTableRegion({
+    tableClassName: 'custom-table',
+    tableRole: tree ? 'treegrid' : undefined,
+    regionClassName: interactive ? undefined : 'table-region-static',
+    emptyMessage,
+    emptyAction,
+    colSpan: Math.max(columns.length + actions.length, 1),
+    headCells: [...actions.map((action) => action.presentation === 'cli-action' ? '' : 'Action'), ...columns.map(fieldTitle)],
+    unsortableColumns: actions.map((_, index) => index),
+    compactColumns: actions.flatMap((action, index) => action.presentation === 'cli-action' ? [index] : []),
+    summaryColumns: interactive && view['column-summaries'] !== false
+      ? [
+          ...actions.map((action) => ({
+            label: action.presentation === 'cli-action' ? '' : 'Action',
+            compact: action.presentation === 'cli-action',
+            values: []
+          })),
+          ...columns.map((column) => {
+            const outputField = typeof column.as === 'string' ? column.as : column.field;
+            return {
+              field: outputField,
               label: fieldTitle(column),
-              columnIndex: actions.length + columnIndex,
-              always: column.display === 'status'
-            }]
-          : []
-      )),
-      bodyRows,
-      lazyList: view['lazy-list'] === true,
-      continuation: continuation && renderedRowCount < effectiveRowLimit
-        ? {
-            ...continuation,
-            load: async (token) => {
-              const next = await continuation.load(token);
-              const remainingRows = effectiveRowLimit - renderedRowCount;
-              const nextTableRows = prepareTableRows(next.rows, columns, view.data).slice(0, remainingRows);
-              const nextDisplayedRows = tree
-                ? arrangeTreeRows(nextTableRows, tree['id-field'], tree['parent-field'])
-                : nextTableRows.map((row) => ({ row, depth: 0 }));
-              const rows = renderBodyRows(nextDisplayedRows, renderedRowCount)
-                .filter((row) => row instanceof HTMLTableRowElement);
-              renderedRowCount += rows.length;
-              return {
-                rows,
-                continuationToken: renderedRowCount < effectiveRowLimit
-                  ? next.continuationToken
-                  : undefined
-              };
-            }
+              type: String(column.type ?? ''),
+              display: typeof column.display === 'string' ? column.display : undefined,
+              values: tableRows.map((row) => row[outputField])
+            };
+          })
+        ]
+      : [],
+    filterLabel: interactive ? `Filter ${title}` : undefined,
+    filterId: typeof view.id === 'string' ? view.id : `${pageId}-table`,
+    filterFields: columns.flatMap((column, columnIndex) => (
+      column.filter !== false && ['nominal', 'ordinal'].includes(String(column.type))
+        ? [{
+            key: typeof column.as === 'string' ? column.as : column.field,
+            label: fieldTitle(column),
+            columnIndex: actions.length + columnIndex,
+            always: column.display === 'status'
+          }]
+        : []
+    )),
+    bodyRows,
+    lazyList: view['lazy-list'] === true,
+    continuation: continuation && renderedRowCount < effectiveRowLimit
+      ? {
+          ...continuation,
+          load: async (token) => {
+            const next = await continuation.load(token);
+            const remainingRows = effectiveRowLimit - renderedRowCount;
+            const nextTableRows = prepareTableRows(next.rows, columns, view.data).slice(0, remainingRows);
+            const nextDisplayedRows = tree
+              ? arrangeTreeRows(nextTableRows, tree['id-field'], tree['parent-field'])
+              : nextTableRows.map((row) => ({ row, depth: 0 }));
+            const rows = renderBodyRows(nextDisplayedRows, renderedRowCount)
+              .filter((row) => row instanceof HTMLTableRowElement);
+            renderedRowCount += rows.length;
+            return {
+              rows,
+              continuationToken: renderedRowCount < effectiveRowLimit
+                ? next.continuationToken
+                : undefined
+            };
           }
-        : undefined,
-      sortable: interactive
-    })
+        }
+      : undefined,
+    sortable: interactive
+  });
+  const mobileCardList = view.layout === 'full-view' && view['lazy-list'] === true
+    ? renderMobileTableCardList({ ...context, continuation }, columns, tableRows, renderCellValue, effectiveRowLimit)
+    : null;
+  return renderPageSection(pageId, title, [
+    ...renderViewSectionChrome(metadata, contextDetails).filter((node) => node instanceof HTMLElement),
+    tableRegion,
+    ...(mobileCardList ? [mobileCardList] : [])
   ], headingTag, view.description);
+}
+
+/**
+ * Renders the mobile companion for a full-view lazy table. Declared card templates
+ * are preferred when their title field is present; otherwise the table columns form
+ * a generic built-in card.
+ * @param {DataViewContext} context
+ * @param {TableField[]} columns
+ * @param {Array<Record<string, unknown>>} rows
+ * @param {(column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement} renderValue
+ * @param {number} rowLimit
+ */
+function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit) {
+  const { pageId, title, view, toText, cardTemplates = {}, prepareTableRows } = context;
+  const hrefDefinition = isPlainObject(view.encoding) && isPlainObject(view.encoding.href)
+    ? view.encoding.href
+    : null;
+  const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null;
+  const drill = hrefField ? { type: 'external', field: hrefField } : null;
+  const pageSize = 25;
+  const availableRows = [...rows];
+  const initialRows = availableRows.slice(0, pageSize);
+  const columnFields = new Set(columns.map((column) => column.field));
+  /** @type {{ icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[] }} */
+  const definition = Object.values(cardTemplates)
+    .filter((template) => columnFields.has(template.title.field))
+    .toSorted((left, right) => (
+      [...right.labels, ...right.details].filter((field) => columnFields.has(field.field)).length
+      - [...left.labels, ...left.details].filter((field) => columnFields.has(field.field)).length
+    ))[0] ?? {
+      icon: 'table',
+      title: columns[0] ?? { field: '' },
+      labels: columns.slice(1).filter((column) => ['label', 'status', 'active-state', 'mode'].includes(String(column.display))),
+      details: columns.slice(1).filter((column) => !['label', 'status', 'active-state', 'mode'].includes(String(column.display)))
+    };
+  const quantitativeFields = new Set(columns
+    .filter((column) => column.type === 'quantitative')
+    .map((column) => column.field));
+  const visibleDetails = [];
+  const visibleMetrics = [];
+  const seenFields = new Set();
+  for (const field of definition.details) {
+    if (!columnFields.has(field.field) || seenFields.has(field.field)) continue;
+    seenFields.add(field.field);
+    if (quantitativeFields.has(field.field)) {
+      visibleMetrics.push(field);
+    } else {
+      visibleDetails.push(field);
+    }
+  }
+  for (const field of definition.metrics ?? []) {
+    if (!columnFields.has(field.field) || seenFields.has(field.field)) continue;
+    seenFields.add(field.field);
+    visibleMetrics.push(field);
+  }
+  const visibleDefinition = {
+    ...definition,
+    subtitle: definition.subtitle && columnFields.has(definition.subtitle.field) ? definition.subtitle : undefined,
+    labels: definition.labels.filter((field) => columnFields.has(field.field)),
+    details: visibleDetails,
+    metrics: visibleMetrics
+  };
+  const list = h('ul', {
+    className: 'document-list issue-list entity-card-list mobile-table-card-list-items',
+    'data-custom-view-mark': 'list'
+  }, ...renderEntityCardItems(initialRows, { pageId, title, renderValue, toText, definition: visibleDefinition, drill }));
+  const empty = availableRows.length === 0
+    ? h('p', { className: 'document-list-empty' }, typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.')
+    : null;
+  const more = (availableRows.length > initialRows.length || context.continuation) && initialRows.length < rowLimit
+    ? h('button', { className: 'table-filter-more', type: 'button', 'data-card-list-more': '' }, 'Load more cards')
+    : null;
+  const region = h('div', {
+    className: 'mobile-table-card-list',
+    'data-mobile-card-list': '',
+    role: 'region',
+    'aria-label': `${title}: card list`
+  }, list, empty, more);
+  if (!(more instanceof HTMLButtonElement)) return region;
+
+  const continuation = context.continuation;
+  let token = continuation?.token ?? '';
+  let renderedCount = initialRows.length;
+  let loading = false;
+  const loadMore = async () => {
+    if (loading || renderedCount >= rowLimit || (renderedCount >= availableRows.length && !token)) return;
+    loading = true;
+    more.disabled = true;
+    try {
+      let nextToken = token;
+      if (renderedCount >= availableRows.length && token && continuation) {
+        const next = await continuation.load(token);
+        availableRows.push(...prepareTableRows(next.rows, columns, view.data));
+        nextToken = next.continuationToken ?? '';
+      }
+      const nextRows = availableRows.slice(renderedCount, Math.min(renderedCount + pageSize, rowLimit));
+      list.append(...renderEntityCardItems(nextRows, {
+        pageId,
+        title,
+        renderValue,
+        toText,
+        definition: visibleDefinition,
+        drill,
+        keyOffset: renderedCount
+      }));
+      renderedCount += nextRows.length;
+      token = renderedCount < rowLimit ? nextToken : '';
+      more.textContent = 'Load more cards';
+      more.hidden = renderedCount >= availableRows.length && !token;
+    } catch {
+      more.textContent = 'Retry loading cards';
+    } finally {
+      loading = false;
+      more.disabled = false;
+    }
+  };
+  more.addEventListener('click', () => void loadMore());
+  observeLoadMoreBoundary(globalThis.IntersectionObserver, more, () => void loadMore(), { rootMargin: '200px' });
+  return region;
+}
+
+/**
+ * Makes a stateful source continuation safe for the table and card-list
+ * presentations to consume independently by replaying already loaded pages.
+ * @param {DataViewContext['continuation']} continuation
+ * @returns {DataViewContext['continuation']}
+ */
+function replayableContinuation(continuation) {
+  if (!continuation) return undefined;
+  /** @type {Map<string, Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }>>} */
+  const pages = new Map();
+  return {
+    ...continuation,
+    load(token) {
+      const existing = pages.get(token);
+      if (existing) return existing;
+      const loaded = continuation.load(token).catch((error) => {
+        pages.delete(token);
+        throw error;
+      });
+      pages.set(token, loaded);
+      return loaded;
+    }
+  };
 }
 
 /**
@@ -654,7 +1054,9 @@ function renderChartView(context) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, buildChartPoints, prepareChartPoints, continuation } = context;
   const encoding = isPlainObject(view.encoding) ? view.encoding : null;
   const x = isPlainObject(encoding?.x) && typeof encoding.x.field === 'string' ? encoding.x : null;
-  const y = isPlainObject(encoding?.y) && typeof encoding.y.field === 'string' ? encoding.y : null;
+  const yDefinitions = (Array.isArray(encoding?.y) ? encoding.y : [encoding?.y])
+    .filter((definition) => isPlainObject(definition) && typeof definition.field === 'string');
+  const y = yDefinitions[0] ?? null;
   const color = isPlainObject(encoding?.color) && typeof encoding.color.field === 'string' ? encoding.color : null;
   const reference = isPlainObject(encoding?.reference) && typeof encoding.reference.field === 'string' ? encoding.reference : null;
   const href = isPlainObject(encoding?.href) && typeof encoding.href.field === 'string' ? encoding.href : null;
@@ -662,13 +1064,31 @@ function renderChartView(context) {
   const value = chartType === 'heatmap' ? color : y;
   const series = chartType === 'heatmap' ? y : color;
   /** @param {Array<Record<string, unknown>>} chartRows */
-  const pointsForRows = (chartRows) => prepareChartPoints(
-    buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
-    x,
-    value,
-    series,
-    view.data
-  );
+  const pointsForRows = (chartRows) => {
+    if (chartType === 'line' && yDefinitions.length > 1) {
+      const points = yDefinitions.flatMap((definition) => buildChartPoints(
+        pageId,
+        title,
+        chartRows,
+        x,
+        definition,
+        null,
+        href?.field ?? null
+      ).map((point) => ({
+        ...point,
+        key: `${point.key}-${definition.field}`,
+        color: fieldTitle(definition)
+      })));
+      return prepareChartPoints(points, x, y, null, view.data);
+    }
+    return prepareChartPoints(
+      buildChartPoints(pageId, title, chartRows, x, value, series, href?.field ?? null),
+      x,
+      value,
+      series,
+      view.data
+    );
+  };
   const points = pointsForRows(rows);
   const description = typeof view.description === 'string' && view.description.length > 0
     ? h('p', { className: 'view-description' }, view.description)
@@ -687,14 +1107,14 @@ function renderChartView(context) {
       isPlainObject(view.data) && isPlainObject(view.data.time) ? view.data.time : null,
       reference?.field ?? null
     );
-    const chartLegend = color && !['heatmap', 'pie', 'swimlane'].includes(chartType)
+    const chartLegend = (color || yDefinitions.length > 1) && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)
       : null;
     return {
       chartContent: [
         ...(chartLegend && chartType !== 'scatter' ? [chartLegend] : []),
         ...(pieSummary
-          ? [h('div', { className: 'pie-chart-layout' }, chartWidget, renderPieLegend(
+          ? [renderPieChartLayout(chartWidget, renderPieLegend(
               pieSummary.entries,
               pieSummary.total,
               chartCategoryLinks(renderedPoints),
@@ -752,6 +1172,28 @@ function renderChartView(context) {
     section.append(
       h('div', { className: 'pie-chart-card' }, ...Array.from(section.children))
     );
+  } else if (view.layout === 'horizontal') {
+    const children = Array.from(section.children);
+    /** @param {Element} element */
+    const isCopy = (element) => element.matches('h3, h4, .view-description, .view-source, .view-metadata, .view-context, .view-description-tooltip');
+    const firstVisualization = children.findIndex((element) => !isCopy(element));
+    const copy = firstVisualization === -1 ? children : children.slice(0, firstVisualization);
+    const visualization = firstVisualization === -1 ? [] : children.slice(firstVisualization);
+    if (firstVisualization > 0 && copy.every(isCopy) && visualization.every((element) => !isCopy(element))) {
+      section.replaceChildren(
+        h(
+          'div',
+          { className: 'chart-horizontal-card' },
+          h('div', { className: 'chart-horizontal-copy' }, ...copy),
+          h('div', { className: 'chart-horizontal-layout' }, ...visualization)
+        )
+      );
+    } else {
+      debugChart('Horizontal layout requires title and visualization regions in source order.', {
+        title,
+        childCount: children.length
+      });
+    }
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
   if (supportsIncrementalChartContinuation(view) && continuation?.token && !pending) {

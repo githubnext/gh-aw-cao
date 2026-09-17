@@ -2,7 +2,13 @@ import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ingestCachedGhAwJsonl, ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
+import {
+  ingestCachedGhAwJsonl,
+  ingestDashboardSources,
+  ingestGhAwLogs,
+  ingestNormalizedJson,
+  ingestSqlExport
+} from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
 import {
   DATABASE_NAME,
@@ -70,6 +76,70 @@ beforeEach(async () => {
 });
 
 describe('canonical source ingestion and queries', () => {
+  it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
+    const payload = {
+      schemaVersion: 9,
+      ingestionVersion: 2,
+      sourceRecords: 1,
+      batch: {
+        packages: [],
+        repositories: [{
+          id: 'repository:normalized',
+          observedAt: metadata['as-of'],
+          provenance: { source: 'test', sourceId: 'normalized', observedAt: metadata['as-of'] }
+        }],
+        workflows: [],
+        runs: [],
+        jobs: [],
+        sessions: [],
+        events: []
+      }
+    };
+    const options = {
+      payloadIdentity: 'a'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-normalized/shard.json'
+    };
+
+    await expect(ingestNormalizedJson(indexedDB, payload, options)).resolves.toMatchObject({
+      updated: true,
+      records: 1,
+      timings: { parsingMs: 0, normalizationMs: 0, storageMs: expect.any(Number) }
+    });
+    await expect(ingestNormalizedJson(indexedDB, payload, options)).resolves.toMatchObject({
+      updated: false,
+      skipped: true
+    });
+    expect((await readCanonicalBatch(indexedDB)).repositories).toEqual(payload.batch.repositories);
+  });
+
+  it('rejects mislabeled or mixed phased payloads', async () => {
+    const payload = {
+      schemaVersion: 9,
+      ingestionVersion: 2,
+      sourceRecords: 1,
+      phase: 'events',
+      batch: {
+        packages: [],
+        repositories: [],
+        workflows: [],
+        runs: [{ id: 'run:unexpected' }],
+        jobs: [],
+        sessions: [],
+        events: []
+      }
+    };
+    const options = {
+      payloadIdentity: 'b'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-events/shard.json',
+      expectedPhase: /** @type {const} */ ('events')
+    };
+
+    await expect(ingestNormalizedJson(indexedDB, payload, options))
+      .rejects.toThrow('Normalized events payload must not include runs');
+    await expect(ingestNormalizedJson(indexedDB, { ...payload, phase: 'runs' }, options))
+      .rejects.toThrow('Normalized activity payload phase must be events');
+  });
+
   it('upserts current sources for immediate canonical queries', async () => {
     await expect(ingestDashboardSources(indexedDB, sources)).resolves.toMatchObject({
       updated: true
@@ -99,7 +169,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })
     ]);
@@ -390,7 +460,9 @@ describe('canonical source ingestion and queries', () => {
           source: 'mcp',
           type: 'tool.call',
           correlationId: 'call-7',
-          summary: 'github/get_file'
+          summary: 'github/get_file',
+          mcpServer: 'github',
+          mcpTool: 'get_file'
         }),
         expect.objectContaining({
           source: 'mcp',
@@ -403,7 +475,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-jsonl',
-        ingestionVersion: 2,
+        ingestionVersion: 3,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })
@@ -490,11 +562,17 @@ describe('canonical source ingestion and queries', () => {
     const progress = [];
 
     await expect(ingestCachedGhAwJsonl(indexedDB, chunks(), {
+      payloadIdentity: 'published-shard-identity',
       onProgress: (update) => progress.push(update)
     })).resolves.toMatchObject({
       updated: true,
       records: 1,
-      agenticRuns: 1
+      agenticRuns: 1,
+      timings: {
+        parsingMs: expect.any(Number),
+        normalizationMs: expect.any(Number),
+        storageMs: expect.any(Number)
+      }
     });
     expect(progress.at(-1)).toEqual({
       bytesProcessed: content.byteLength,
@@ -503,7 +581,8 @@ describe('canonical source ingestion and queries', () => {
     });
     await expect(ingestCachedGhAwJsonl(
       indexedDB,
-      new TextDecoder().decode(content)
+      new TextDecoder().decode(content),
+      { payloadIdentity: 'published-shard-identity' }
     )).resolves.toMatchObject({
       updated: false,
       skipped: true

@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Activity Specification
 description: Normative collection, snapshot, data-quality, authority, and consumer requirements for CAO Activity.
-version: 1.1.0
+version: 1.2.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Activity Specification
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Status:** Working Draft
 **Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/activity.md
 **Editors:** GitHub Next
@@ -38,8 +38,9 @@ Activity consumer conforms when it satisfies Section 8.
 ## 2. Role and authority
 
 CAO Activity is deterministic collection infrastructure. It MUST collect one
-bounded `gh aw logs` JSONL snapshot for reuse. It MUST NOT normalize, index, or
-derive additional records from that snapshot.
+bounded `gh aw logs` JSONL snapshot for reuse. It MAY produce deterministic,
+rebuildable run-information and event transport shards from that snapshot, but
+MUST NOT supplement or reinterpret the collected evidence.
 
 Activity:
 
@@ -85,9 +86,40 @@ immutable identity derived from the publisher's workflow run ID and run
 attempt. A consumer that dispatches Activity MUST restore the exact snapshot
 for the completed run and attempt rather than an unspecified latest snapshot.
 
-The snapshot consists only of the JSONL produced by `gh aw logs`. Consumers
-MUST determine availability, completeness, freshness, and scope for their own
-use and MUST NOT infer those properties from row counts.
+The snapshot consists of the JSONL produced by `gh aw logs`, compact
+run-information shards, detailed event shards, and rebuildable projections.
+Run-information shards MUST contain only Package, Repository, Workflow, and Run
+records. Event shards MUST contain only Job, Session, and Event records. Every
+Event transport record MUST carry its canonical Run identity in addition to its
+Session identity.
+
+The two phases MUST be a complete one-to-one partition of the same source shard
+set: each run-information filename stem MUST have exactly one matching event
+filename stem and vice versa. Publishers MUST fail rather than publish
+unmatched phase sets. Consumers MUST validate the pairing and phase labels
+before phased ingestion, and MUST fall back to a complete compatible transport
+or fail closed when the phased set is invalid.
+
+Phase filenames MUST preserve the source-shard ordering prefix before their
+content and normalization hashes. Publishers and consumers MUST process both
+phases in that order so a later observation of the same canonical entity wins
+over an earlier observation; content-hash order MUST NOT determine precedence.
+
+A consumer MUST load all run-information shards before event shards and MAY
+expose the resulting Run queries while event ingestion continues. This
+intermediate state is partial: it MUST NOT be represented as a complete
+snapshot, and event-dependent queries MUST remain unavailable or stale until
+the event phase succeeds. Failure or cancellation of the event phase MUST NOT
+invalidate already committed Run information, but the consumer MUST retry the
+missing event phase rather than mark the snapshot complete. Consumers MUST
+determine availability, completeness, freshness, and scope for their own use
+and MUST NOT infer those properties from row counts.
+
+The phase split optimizes time to first useful Run query and avoids rewriting
+unchanged canonical records. It does not reduce the total bytes required for a
+complete refresh: phase metadata and direct Event-to-Run identity add bounded
+overhead. Consumers SHOULD avoid background event transfer on metered or
+data-saver connections.
 
 The concrete cache file and identity rule are defined by
 [`activity/README.md`](../activity/README.md). Changing the file or identity

@@ -31,6 +31,7 @@ const PIE_CHART_CENTER = 21;
 const PIE_CHART_RADIUS = 15.9155;
 const PIE_CHART_STROKE_WIDTH = 6;
 const PIE_CHART_SEGMENT_GAP = 0.03;
+const PIE_CHART_CENTER_TEXT_LENGTH = 21;
 const MAX_SWIMLANE_SECTIONS_PER_LANE = 120;
 const SWIMLANE_DEFINITIONS = [
   ['action-required', 'Action required'],
@@ -72,6 +73,7 @@ export const SWIMLANE_LAYOUT = Object.freeze({
 });
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
+let pieChartTableId = 0;
 const SEMANTIC_SERIES_TERMS = {
   failure: new Set(['0', 'denied', 'error', 'errored', 'fail', 'failed', 'failing', 'failure', 'false', 'invalid', 'no', 'rejected', 'stale', 'timeout', 'unhealthy', 'unsuccessful']),
   success: new Set(['approved', 'complete', 'completed', 'healthy', 'pass', 'passed', 'passing', 'resolved', 'succeed', 'succeeded', 'success', 'successful']),
@@ -231,6 +233,7 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
 }
 
 /**
+ * Ranks rows by value descending while retaining their input-order color.
  * @param {Array<[string, number]>} entries
  * @param {number} total
  * @param {Map<string, { href: string, label: string }>} [links]
@@ -238,20 +241,57 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
  * @returns {HTMLElement}
  */
 export function renderPieLegend(entries, total, links = new Map(), unit = null) {
+  const rankedEntries = entries
+    .map((entry, index) => ({ entry, index }))
+    .sort((left, right) => right.entry[1] - left.entry[1] || left.index - right.index);
   return renderLegendList(
     'chart-legend chart-legend-pie',
-    entries,
-    ([label], index) => chartSeriesClassName(label, index),
-    ([label, value]) => {
+    rankedEntries,
+    ({ entry: [label], index }) => chartSeriesClassName(label, index),
+    ({ entry: [label, value] }) => {
       const link = links.get(label) ?? null;
       return [
         h('span', null, renderSafeLink(label, link)),
-        h('strong', null, formatNumber(value, unit)),
+        h('strong', null, formatPieValue(value, unit)),
         h('small', null, total > 0 ? formatCoveragePercent(value / total) : '0%')
       ];
     },
     { 'data-chart-legend': 'visual' }
   );
+}
+
+/**
+ * @param {number} value
+ * @param {{ name: string, symbol: string, significant: number } | null} unit
+ * @param {boolean} [includeUnit]
+ */
+function formatPieValue(value, unit, includeUnit = true) {
+  return unit ? formatNumber(value, unit, includeUnit) : formatCount(value);
+}
+
+/**
+ * @param {HTMLElement} chart
+ * @param {HTMLElement} table
+ * @returns {HTMLElement}
+ */
+export function renderPieChartLayout(chart, table) {
+  const tableId = `pie-chart-table-${++pieChartTableId}`;
+  table.id = tableId;
+  const toggle = h('button', {
+    type: 'button',
+    className: 'pie-chart-table-toggle',
+    'aria-controls': tableId,
+    'aria-expanded': 'true',
+    'aria-label': 'Hide chart table'
+  });
+  const layout = h('div', { className: 'pie-chart-layout' }, chart, toggle, table);
+  toggle.addEventListener('click', () => {
+    layout.toggleAttribute('data-chart-table-hidden');
+    const expanded = !layout.hasAttribute('data-chart-table-hidden');
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.setAttribute('aria-label', `${expanded ? 'Hide' : 'Show'} chart table`);
+  });
+  return layout;
 }
 
 /**
@@ -393,6 +433,13 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
   if (chartType === 'pie') {
     const { entries, total } = /** @type {{ entries: Array<[string, number]>, total: number }} */ (pieData);
     const safeTotal = Number.isFinite(total) && total > 0 ? total : 0;
+    const formattedTotal = formatPieValue(total, unit, false);
+    const totalValueLengthAttrs = formattedTotal.length > 7
+      ? { textLength: PIE_CHART_CENTER_TEXT_LENGTH, lengthAdjust: 'spacingAndGlyphs' }
+      : null;
+    const totalLabelLengthAttrs = totalLabel.length > 12
+      ? { textLength: PIE_CHART_CENTER_TEXT_LENGTH, lengthAdjust: 'spacingAndGlyphs' }
+      : null;
     const separated = entries.filter(([, value]) => Number.isFinite(value) && value > 0).length > 1;
     let cumulativeValue = 0;
     return renderChartWidgetShell(
@@ -400,14 +447,14 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       null,
       h(
         'svg',
-        { viewBox: '0 0 42 42', role: 'img', 'aria-label': `Pie chart: ${entries.map(([label, value]) => `${label} ${formatNumber(value, unit)}`).join(', ') || 'no data'}` },
+        { viewBox: '0 0 42 42', role: 'img', 'aria-label': `Pie chart: ${entries.map(([label, value]) => `${label} ${formatPieValue(value, unit)}`).join(', ') || 'no data'}` },
         h('circle', { className: 'pie-chart-track', cx: PIE_CHART_CENTER, cy: PIE_CHART_CENTER, r: PIE_CHART_RADIUS, fill: 'none', 'stroke-width': PIE_CHART_STROKE_WIDTH }),
         ...entries.map(([label, value], index) => {
           const segmentValue = Number.isFinite(value) && value > 0 ? value : 0;
           const startFraction = safeTotal > 0 ? cumulativeValue / safeTotal : 0;
           cumulativeValue = Math.min(safeTotal, cumulativeValue + segmentValue);
           const endFraction = safeTotal > 0 ? cumulativeValue / safeTotal : startFraction;
-          const segmentLabel = `${label}: ${formatNumber(value, unit)}`;
+          const segmentLabel = `${label}: ${formatPieValue(value, unit)}`;
           const midpoint = ((startFraction + endFraction) / 2) * Math.PI * 2 - (Math.PI / 2);
           const tooltipWidth = Math.min(40, Math.max(18, (segmentLabel.length * 1.25) + 5));
           const tooltipX = Math.min(Math.max(21 + (Math.cos(midpoint) * 14) - (tooltipWidth / 2), 1), 41 - tooltipWidth);
@@ -436,8 +483,8 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             }
           });
         }),
-        h('text', { className: 'pie-chart-total-value', x: 21, y: 20, 'text-anchor': 'middle', 'aria-hidden': 'true' }, formatNumber(total, unit, false)),
-        h('text', { className: 'pie-chart-total-label', x: 21, y: 25.5, 'text-anchor': 'middle', 'aria-hidden': 'true' }, totalLabel)
+        h('text', { className: 'pie-chart-total-value', x: 21, y: 20, 'text-anchor': 'middle', 'aria-hidden': 'true', ...(totalValueLengthAttrs ?? {}) }, formattedTotal),
+        h('text', { className: 'pie-chart-total-label', x: 21, y: 25.5, 'text-anchor': 'middle', 'aria-hidden': 'true', ...(totalLabelLengthAttrs ?? {}) }, totalLabel)
       )
     );
   }

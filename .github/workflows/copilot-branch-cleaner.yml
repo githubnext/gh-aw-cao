@@ -39,6 +39,7 @@ jobs:
             const refPrefix = 'refs/heads/'
             const branchNamePrefix = 'copilot/'
             const zeroOid = '0000000000000000000000000000000000000000'
+            const deleteDelayMs = 1000
             const candidates = []
             let cursor
             let repositoryId
@@ -125,8 +126,7 @@ jobs:
 
             const deleted = []
             const failed = []
-            for (let offset = 0; offset < candidates.length; offset += 100) {
-              const batch = candidates.slice(offset, offset + 100)
+            for (const [index, candidate] of candidates.entries()) {
               try {
                 await github.graphql(
                   `mutation DeleteCopilotBranches($input: UpdateRefsInput!) {
@@ -137,23 +137,23 @@ jobs:
                   {
                     input: {
                       repositoryId,
-                      refUpdates: batch.map(({ qualifiedName, oid }) => ({
-                        name: qualifiedName,
-                        beforeOid: oid,
+                      refUpdates: [{
+                        name: candidate.qualifiedName,
+                        beforeOid: candidate.oid,
                         afterOid: zeroOid,
-                      })),
+                      }],
                     },
                   },
                 )
-                for (const candidate of batch) {
-                  deleted.push(candidate)
-                  deleted.push(candidate)
-                }
+                deleted.push(candidate)
               } catch {
-                failed.push(...batch)
+                failed.push(candidate)
                 core.warning(
-                  `Skipped a batch of ${batch.length} branches because at least one branch changed or could not be deleted`,
+                  `Skipped ${candidate.name} because it changed or could not be deleted`,
                 )
+              }
+              if (index < candidates.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, deleteDelayMs))
               }
             }
 
@@ -169,8 +169,7 @@ jobs:
               for (const candidate of failed) {
                 core.info(`Not deleted ${candidate.name}`)
               }
-            }
-
-            if (failed.length > 0) {
-              core.setFailed(`${failed.length} eligible branches could not be deleted`)
+              core.warning(
+                `${failed.length} eligible branch${failed.length === 1 ? " was" : "es were"} not deleted because the ref changed or could not be deleted`,
+              )
             }

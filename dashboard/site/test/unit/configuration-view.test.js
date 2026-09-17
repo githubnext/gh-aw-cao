@@ -56,27 +56,9 @@ describe('Configuration dashboard view', () => {
       .toContain('Periodic Background Sync is not supported');
   });
 
-  it('renders browser settings and local database totals on the full settings page', () => {
+  it('renders browser settings without local database queries', () => {
     localStorage.clear();
-    const rendered = renderConfigurationView({
-      ...context({ document: { version: 1 }, raw: '', diagnostics: [] }),
-      sourceNames: [
-        'configuration-policy',
-        'database-package-count',
-        'database-repository-count',
-        'database-workflow-count',
-        'database-run-count',
-        'database-event-count'
-      ],
-      sources: {
-        ...context({ document: { version: 1 }, raw: '', diagnostics: [] }).sources,
-        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
-        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
-        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
-        'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
-      }
-    });
+    const rendered = renderConfigurationView(context({ document: { version: 1 }, raw: '', diagnostics: [] }));
 
     if (!rendered) throw new Error('configuration view did not render');
     const root = document.createElement('div');
@@ -88,12 +70,9 @@ describe('Configuration dashboard view', () => {
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-theme-value="dark"]')).click();
     expect(root.dataset.theme).toBe('dark');
     expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
-    expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
-    expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
-    const transactions = rendered.querySelector('.configuration-transactions-button');
-    expect(transactions?.textContent).toContain('View retained transactions');
-    expect(transactions?.getAttribute('href')).toBe('#page-transactions');
-    expect(transactions?.getAttribute('aria-label')).toBe('View retained transactions table');
+    expect(rendered.querySelector('.configuration-database-counts')).toBeNull();
+    expect(rendered.querySelector('.reset-dashboard-trigger')).toBeNull();
+    expect(rendered.querySelector('.configuration-transactions-button')?.getAttribute('href')).toBe('#page-transactions');
     const debugSettings = rendered.querySelector('.configuration-debug-settings');
     expect(debugSettings).toBe(rendered.lastElementChild);
     const debugLink = debugSettings?.querySelector('a');
@@ -118,7 +97,7 @@ describe('Configuration dashboard view', () => {
     button.click();
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    expect(writeText.mock.calls[0][0]).toContain('Central Agentic Ops console log');
+    expect(writeText.mock.calls[0][0]).toBe('No console entries captured.');
     await vi.waitFor(() => expect(rendered?.querySelector('.configuration-debug-settings output')?.textContent)
       .toBe('Console logs copied.'));
   });
@@ -214,6 +193,7 @@ describe('Configuration dashboard view', () => {
     expect(page.views.every((/** @type {{ mark: string }} */ view) => view.mark !== 'chart')).toBe(true);
     expect(page.views).toHaveLength(1);
     expect(page.views[0].id).toBe('configuration-policy');
+    expect(page.views[0].data.sources).toEqual(['configuration-policy']);
     expect(dashboard['cli-actions']
       .filter((/** @type {{ id: string }} */ action) => ['update-repository', 'upgrade-repository'].includes(action.id))
       .every((/** @type {{ placement: string }} */ action) => action.placement === 'view')).toBe(true);
@@ -228,14 +208,7 @@ describe('Configuration dashboard view', () => {
       title: view.title,
       description: view.description,
       sourceNames: view.data.sources,
-      sources: {
-        ...context({ document: { version: 1 }, raw: '', diagnostics: [] }).sources,
-        'database-package-count': { source: 'database-package-count', rows: [{ packages: 0 }], metadata },
-        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 0 }], metadata },
-        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 0 }], metadata },
-        'database-run-count': { source: 'database-run-count', rows: [{ runs: 0 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 0 }], metadata }
-      }
+      sources: context({ document: { version: 1 }, raw: '', diagnostics: [] }).sources
     });
 
     expect(rendered?.classList.contains('configuration-view')).toBe(true);
@@ -298,7 +271,7 @@ describe('Configuration dashboard view', () => {
       database: expect.any(Object),
       ui: expect.any(Object)
     }));
-    expect(rendered.querySelector('.configuration-copy-status')?.textContent).toBe('Diagnostics copied.');
+    await vi.waitFor(() => expect(button.nextElementSibling?.textContent).toBe('Diagnostics copied.'));
   });
 
   it('defers settings inside collapsed groups until they are expanded', () => {
@@ -371,7 +344,12 @@ describe('Configuration dashboard view', () => {
     expect(values.value).toBe('[2, false, {"mode":"live"}]');
   });
 
-  it('can discard local changes without offering JSON copy', () => {
+  it('copies edited policy JSON', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
     const rendered = renderConfigurationView(context({
       document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
       raw: '',
@@ -383,7 +361,31 @@ describe('Configuration dashboard view', () => {
     if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
     input.value = '12';
     input.dispatchEvent(new Event('input'));
-    expect(rendered.querySelector('.configuration-copy-button')).toBeNull();
+    const copyButton = rendered.querySelector('.configuration-copy-button');
+    if (!(copyButton instanceof HTMLButtonElement)) throw new Error('copy button did not render');
+    copyButton.click();
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(JSON.parse(writeText.mock.calls[0][0])).toEqual({
+      version: 1,
+      'control-plane': { defaults: { 'max-repositories': 12 } }
+    });
+    await vi.waitFor(() => expect(copyButton.nextElementSibling?.textContent).toBe('Updated JSON copied.'));
+  });
+
+  it('can discard local changes', () => {
+    const rendered = renderConfigurationView(context({
+      document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+
+    const input = rendered.querySelector('#configuration-control-plane-defaults-max-repositories');
+    if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
+    input.value = '12';
+    input.dispatchEvent(new Event('input'));
+    expect(rendered.querySelector('.configuration-copy-button')).not.toBeNull();
 
     const resetButton = rendered.querySelector('.configuration-reset-button');
     if (!(resetButton instanceof HTMLButtonElement)) throw new Error('reset button did not render');

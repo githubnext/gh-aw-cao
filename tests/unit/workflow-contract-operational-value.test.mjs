@@ -36,6 +36,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "optimization-agents-md-curator-operational-value.sh",
     "optimization-ai-credit-auditor-operational-value.sh",
     "optimization-ai-credit-optimizer-operational-value.sh",
+    "optimization-token-optimizer-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
     "repo-assist-issue-triage-operational-value.sh",
     "repo-assist-maintenance-operational-value.sh",

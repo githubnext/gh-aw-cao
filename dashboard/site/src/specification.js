@@ -18,7 +18,9 @@ export const LANGUAGE_VERSION = '0.1.0';
 export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
-export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
+export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'views', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
+export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'status', 'title', 'subtitle', 'labels', 'details', 'timing'];
+export const CARD_STATUS_KEYS = ['field', 'fallback-field', 'title'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
 export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings', 'view', 'row'];
@@ -28,7 +30,7 @@ export const MAX_CLI_ACTIONS = 20;
 export const MAX_CLI_ACTION_ARGUMENTS = 10;
 export const MAX_CLI_ACTION_COMMAND_LENGTH = 1000;
 
-export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'time', 'joins', 'filter', 'compute', 'aggregate', 'select', 'order-by', 'limit'];
+export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'time', 'joins', 'filter', 'compute', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
 export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
 export const QUERY_JOIN_ON_KEYS = ['left', 'right'];
@@ -38,12 +40,14 @@ export const QUERY_PREDICATE_KEYS = ['field', 'equals', 'in', 'includes', 'gte',
 export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
 export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value', 'context'];
 export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
-export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer'];
+export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer', 'filter'];
+export const QUERY_AGGREGATE_FILTER_PREDICATE_KEYS = ['field', 'equals', 'in'];
+export const QUERY_PREDICT_KEYS = ['field', 'on', 'method', 'order', 'groupby', 'as'];
 export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'distinct-values', 'calendar-week-rhythm', 'sum', 'mean', 'min', 'max'];
 export const QUERY_SELECT_KEYS = ['field', 'as'];
 export const QUERY_NUMERIC_REDUCER_VALUES = ['sum', 'mean', 'min', 'max'];
 export const INFERRED_FIELD_NAMES = ['package-link'];
-export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, TEXT_COMPUTE_FUNCTIONS } from './data-operations.js';
+export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, PREDICTION_METHODS, TEXT_COMPUTE_FUNCTIONS } from './data-operations.js';
 export { DASHBOARD_QUERY_LIMITS };
 export const QUERY_MAX_JOINS = DASHBOARD_QUERY_LIMITS['max-joins'];
 export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when'];
@@ -58,10 +62,13 @@ export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'des
 export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page'];
 
 export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
-export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'route-field', 'limit', 'order-by', 'source-metadata'];
-export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'labels'];
+export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata'];
+export const VIEW_DATA_ARGUMENT_KEYS = ['name', 'field'];
+export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'labels', 'animate'];
+export const VIEW_ELEMENT_ANIMATION_VALUES = ['number'];
+export const FACTORY_OVERVIEW_SECTION_VALUES = ['header', 'floor'];
 export const PLURAL_TEXT_KEYS = ['singular', 'plural'];
-export const PLURAL_LABEL_ELEMENTS = ['outcomes-overview'];
+export const PLURAL_LABEL_ELEMENTS = ['factory-floor', 'outcomes-overview'];
 export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field'];
 export const CALLOUT_KEYS = ['label', 'icon'];
 export const VIEW_MARK_VALUES = ['metric', 'table', 'list', 'chart', 'element', 'callout'];
@@ -89,18 +96,25 @@ export const VIEW_ELEMENT_VALUES = [
   'outcome-detail-section',
   'configuration-policy',
   'configuration-actions',
+  'local-database',
   'work-project-view',
   'agent-marketplace-view',
   'insights-overview',
+  'factory-header',
+  'factory-floor',
   'outcomes-overview'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
-export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page'];
+export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];
-export const VIEW_LIST_KEYS = ['style', 'icon', 'action'];
-export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues'];
-export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third'];
+export const VIEW_METRIC_ANIMATION_VALUES = ['number'];
+export const VIEW_LIST_KEYS = ['style', 'icon', 'action', 'card', 'drill'];
+export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues', 'entity-cards'];
+export const VIEW_LIST_DRILL_KEYS = ['type', 'field', 'page', 'query', 'title-field', 'arguments'];
+export const VIEW_LIST_DRILL_TYPE_VALUES = ['external', 'query'];
+export const VIEW_LIST_DRILL_ARGUMENT_KEYS = ['name', 'field'];
+export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third', 'horizontal'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
 export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
 export const MAX_ESSENTIAL_VIEWS_PER_PAGE = 4;
@@ -124,9 +138,10 @@ export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt', 'cli-action'];
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];
 export const TREE_TABLE_KEYS = ['id-field', 'parent-field'];
 export const FIELD_DEFINITION_KEYS = ['field', 'type', 'aggregate', 'time-unit', 'title', 'as', 'display', 'filter', 'format', 'unit'];
+export const CARD_TIMING_FIELD_KEYS = [...FIELD_DEFINITION_KEYS, 'icon'];
 export const FIELD_TYPE_VALUES = ['nominal', 'ordinal', 'quantitative', 'temporal'];
-export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'digest', 'outcome-link', 'run-link', 'repository-link', 'workflow-link', 'evidence-link'];
-export const FIELD_FORMAT_VALUES = ['human-friendly-timestamp', 'workflow-relative-path', 'workflow-run-url'];
+export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'ref', 'digest', 'outcome-link', 'run-link', 'repository-link', 'workflow-link', 'evidence-link'];
+export const FIELD_FORMAT_VALUES = ['human-friendly-timestamp', 'workflow-relative-path', 'workflow-identity-label', 'workflow-run-url', 'shortened-url'];
 export const AGGREGATE_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max', 'none'];
 export const TIME_UNIT_VALUES = ['hour', 'day', 'week', 'month'];
 export const LINK_RELATION_VALUES = [
@@ -239,7 +254,8 @@ export const BUILT_IN_PAGE_VALUES = [
   'usage',
   'engines-models',
   'operational-value',
-  'findings'
+  'findings',
+  'issues'
 ];
 
 export const BUILT_IN_PAGE_DEFINITION_KEYS = ['views', 'sections', 'data-state'];
@@ -261,7 +277,8 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   usage: ['usage'],
   'engines-models': ['model-usage-summary', 'engine-usage-summary', 'run-aggregate-summary'],
   'operational-value': ['operational-values'],
-  findings: ['findings']
+  findings: ['findings'],
+  issues: ['issues']
 };
 
 export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
@@ -287,10 +304,10 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     'package-inventory': ['package-name', 'workflows', 'roles', 'modes', 'registration', 'runs', 'aic']
   },
   workflows: {
-    'workflow-inventory': ['package-name', 'repository', 'workflow', 'workflow-role', 'rollout-mode', 'workflow-active', 'aic', 'runs']
+    'workflow-inventory': ['runs']
   },
   runs: {
-    runs: ['run', 'run-status', 'run-conclusion', 'organization', 'repository', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'started-at']
+    runs: ['run', 'run-status', 'run-conclusion', 'repository-coordinate', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'started-at']
   },
   experiments: {
     experiments: ['experiment']
@@ -316,6 +333,9 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
   },
   findings: {
     findings: ['finding-summary', 'finding-severity', 'finding-status', 'organization', 'repository', 'workflow', 'observed-at', 'issue-link', 'pull-request-link', 'run-link']
+  },
+  issues: {
+    issues: ['github-entity-type', 'safe-output-type', 'event-summary', 'entity-url', 'repository', 'workflow', 'run', 'run-link', 'observed-at']
   }
 };
 
@@ -412,7 +432,7 @@ export const SOURCE_FIELDS = {
   workflows: ['organization', 'repository', 'package', 'package-name', 'package-icon', 'workflow', 'workflow-name', 'workflow-role', 'workflow-active', 'admission-status', 'admission-reason', 'gh-aw-version', 'gh-aw-current-version', 'gh-aw-version-label', 'gh-aw-update-state', 'gh-aw-metadata', 'gh-aw-manifest', 'rollout-mode', 'max-ai-credits', 'package-aic-allowance', 'package-worker-count', 'package-inventory-warnings', 'inventory-ready', 'observed-at', 'organization-link', 'repository-link', 'workflow-link', 'external-link'],
   runs: ['organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-title', 'target-repository', 'event', 'branch', 'head-sha', 'created-at', 'started-at', 'ended-at', 'updated-at', 'run-status', 'run-conclusion', 'classification', 'duration', 'action-minutes', 'github-api-calls', 'safe-items-count', 'error-count', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'failure-detail', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'agent-id', 'agent-version', 'model-id', 'gh-aw-version', 'aic-total', 'engine', 'engine-id', 'engine-version', 'requested-model', 'resolved-model', 'agent-runtime', 'firewall-version', 'gateway-version', 'data', 'logs-payload', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
   sessions: ['organization', 'repository', 'workflow', 'run', 'run-attempt', 'job-id', 'session', 'session-kind', 'session-status', 'started-at', 'ended-at', 'observed-at'],
-  events: ['organization', 'repository', 'workflow', 'run', 'run-attempt', 'session', 'event', 'event-timestamp', 'event-source', 'event-type', 'event-summary', 'event-status', 'correlation-id', 'payload-ref', 'safe-output-type', 'github-entity-type', 'source-sequence', 'observed-at'],
+  events: ['organization', 'repository', 'workflow', 'run', 'run-attempt', 'session', 'event', 'event-timestamp', 'event-source', 'event-type', 'event-summary', 'event-status', 'request-count', 'correlation-id', 'payload-ref', 'mcp-server', 'mcp-tool', 'safe-output-type', 'github-entity-type', 'source-sequence', 'observed-at', 'run-link', 'target-repo', 'target-organization', 'target-repository', 'target-workflow-path', 'optimizer-run-attempt', 'optimizer-workflow-path', 'optimizer-workflow-name', 'claim-run-id', 'claim-run-attempt', 'actor', 'source-provenance', 'opportunity-id', 'opportunity-kind', 'assignment-run', 'experiment', 'evidence-window-start', 'evidence-window-end', 'evidence-state', 'evidence-confidence', 'cost-grain', 'evidence-provenance', 'attributable-run-ids', 'intervention-id', 'lifecycle-observation-id', 'previous-intervention-state', 'intervention-state', 'previous-recommendation-disposition', 'recommendation-disposition', 'supersedes-intervention-id', 'superseded-by-intervention-id', 'recommendation-churn-count', 'recommendation-churn-rate', 'control-variant', 'optimized-variant', 'proposed-savings-aic', 'missing-reason', 'safe-output-id', 'safe-output-url', 'implementation-change-id', 'implementation-pull-request-url', 'implementation-run-ids', 'accepted-at', 'implementation-started-at', 'implementation-completed-at', 'rejected-at', 'superseded-at'],
   transactions: ['id', 'kind', 'createdAt', 'payloadScope', 'payloadHash', 'payloadEtag', 'records', 'committedRecords', 'rawPayloadRecords', 'rawRuns', 'agenticRunRecords', 'agenticRuns', 'duplicateRawRunObservations', 'duplicateAgenticRunObservations', 'unenrichedRuns', 'error'],
   admissions: ['organization', 'repository', 'workflow', 'run', 'observed-at', 'package', 'workflow-role', 'worker', 'target-repository', 'admission-status', 'admission-reason', 'failed-check', 'github-api-status', 'github-api-remaining', 'github-api-required', 'github-api-reset-at', 'runner-disk-status', 'runner-disk-available-mb', 'runner-disk-required-mb', 'run-link'],
   'admission-checks': ['organization', 'repository', 'workflow', 'run', 'observed-at', 'package', 'workflow-role', 'worker', 'target-repository', 'admission-status', 'admission-reason', 'failed-check', 'check', 'check-order', 'check-status', 'github-api-status', 'github-api-remaining', 'github-api-required', 'github-api-reset-at', 'runner-disk-status', 'runner-disk-available-mb', 'runner-disk-required-mb', 'run-link'],

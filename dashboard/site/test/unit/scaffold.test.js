@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { primerStylesheet } from '../../src/styles.js';
 
 describe('DLS-CONF-004 scaffold gates', () => {
   it('DLS-CONF-004 initializes the presenter workspace tooling', () => {
@@ -27,6 +28,9 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const preview = readFileSync(resolve('index.html'), 'utf8');
     const manifest = JSON.parse(readFileSync(resolve('manifest.webmanifest'), 'utf8'));
 
+    expect(preview).toContain(
+      '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+    );
     expect(preview).toContain('<link rel="apple-touch-icon" href="./apple-touch-icon.png">');
     expect(preview).toContain('<link rel="manifest" href="./manifest.webmanifest">');
     expect(preview).toContain('<meta name="application-name" content="Central Agentic Ops Dashboard">');
@@ -41,6 +45,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
       start_url: './',
       scope: './',
       display: 'standalone',
+      display_override: ['minimal-ui', 'standalone'],
       background_color: '#0d1117',
       theme_color: '#0d1117'
     });
@@ -127,6 +132,33 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('text-size-adjust: 100%;');
   });
 
+  it('uses the Primer body font size on mobile', () => {
+    const style = document.createElement('style');
+    style.textContent = primerStylesheet();
+    document.head.append(style);
+    try {
+      const stylesheet = style.sheet;
+      if (!stylesheet) throw new Error('Primer stylesheet did not parse');
+      const mobileBodySelectors = new Set();
+      for (const rule of stylesheet.cssRules) {
+        if (rule.type !== window.CSSRule.MEDIA_RULE) continue;
+        const mediaRule = /** @type {CSSMediaRule} */ (rule);
+        if (mediaRule.conditionText.replace(/\s/g, '') !== '(max-width:700px)') continue;
+        for (const nestedRule of mediaRule.cssRules) {
+          if (nestedRule.type !== window.CSSRule.STYLE_RULE) continue;
+          const styleRule = /** @type {CSSStyleRule} */ (nestedRule);
+          if (!styleRule.selectorText || styleRule.style.getPropertyValue('font-size') !== '1rem') continue;
+          for (const selector of styleRule.selectorText.split(',')) mobileBodySelectors.add(selector.trim());
+        }
+      }
+
+      expect(mobileBodySelectors.has('body')).toBe(true);
+      expect(mobileBodySelectors.has('.dashboard-root')).toBe(true);
+    } finally {
+      style.remove();
+    }
+  });
+
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
     const styleLines = styles.split('\n');
@@ -160,7 +192,11 @@ describe('DLS-CONF-004 scaffold gates', () => {
   });
 
   it('keeps the JSON dashboard shell aligned with its shared component styles', () => {
-    const presenter = readFileSync(resolve('src/presenter.js'), 'utf8');
+    const shellComponents = [
+      'src/components/dashboard-frame.js',
+      'src/components/dashboard-header.js',
+      'src/components/dashboard-navigation.js'
+    ].map((path) => readFileSync(resolve(path), 'utf8')).join('\n');
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
     for (const shellClass of [
@@ -173,7 +209,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
       'title-area',
       'report-body'
     ]) {
-      expect(presenter).toContain(`className: '${shellClass}`);
+      expect(shellComponents).toContain(`className: '${shellClass}`);
     }
 
     for (const sharedRule of [

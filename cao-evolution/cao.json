@@ -1,0 +1,12 @@
+{
+  "package": "cao-evolution",
+  "orchestrator": "cao-evolution",
+  "workers": {
+    "catalog-advisor": "cao-evolution-catalog-advisor",
+    "compiler-security": "cao-evolution-compiler-security",
+    "efficiency": "cao-evolution-efficiency",
+    "failures-investigator": "cao-evolution-failures-investigator",
+    "integrity": "cao-evolution-integrity",
+    "reliability": "cao-evolution-reliability"
+  }
+}

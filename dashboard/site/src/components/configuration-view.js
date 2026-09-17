@@ -4,7 +4,6 @@ import { capturedConsoleLogText } from '../console-log-capture.js';
 import { fullDebugUrl } from '../debug.js';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
-import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import { renderThemeSettings } from './theme-settings.js';
 import { renderSettingsCliActions } from './cli-actions.js';
 import {
@@ -229,6 +228,13 @@ function renderSettingsEditor(policyDocument) {
     'aria-live': 'polite'
   }, 'No changes'));
   const settings = h('div', { className: 'configuration-settings' });
+  const copyControl = createCopyControl({
+    getContent: () => JSON.stringify(draft, null, 2),
+    label: 'Copy updated JSON',
+    buttonClassName: 'configuration-copy-button',
+    statusClassName: 'configuration-copy-status',
+    successText: 'Updated JSON copied.'
+  });
   const updateStatus = () => {
     const modified = JSON.stringify(draft) !== JSON.stringify(original);
     status.textContent = modified ? 'Modified locally' : 'No changes';
@@ -237,6 +243,7 @@ function renderSettingsEditor(policyDocument) {
   /** @param {string[]} segments @param {unknown} value */
   const updateValue = (segments, value) => {
     setDocumentValue(draft, segments, value);
+    copyControl.reset();
     updateStatus();
   };
   const renderSettings = () => settings.replaceChildren(
@@ -248,6 +255,7 @@ function renderSettingsEditor(policyDocument) {
     onClick: () => {
       draft = cloneDocument(original);
       renderSettings();
+      copyControl.reset();
       updateStatus();
     }
   }, 'Discard changes');
@@ -283,6 +291,8 @@ function renderSettingsEditor(policyDocument) {
         status
       ),
       h('div', { className: 'configuration-editor-actions' },
+        copyControl.button,
+        copyControl.status,
         diagnosticsButton,
         diagnosticsStatus,
         resetButton
@@ -362,54 +372,6 @@ function renderAutomaticDataUpdatesSetting() {
   return section;
 }
 
-/** @param {import('./ui-elements.js').ElementRenderContext} context */
-function renderDatabaseSetting(context) {
-  const fields = /** @type {const} */ ([
-    ['database-package-count', 'packages', 'Packages'],
-    ['database-repository-count', 'repositories', 'Repositories'],
-    ['database-workflow-count', 'workflows', 'Workflows'],
-    ['database-run-count', 'runs', 'Runs'],
-    ['database-event-count', 'events', 'Events']
-  ]);
-  const available = fields.every(([sourceName, field]) => context.sources[sourceName]?.rows?.[0]?.[field] !== undefined);
-  return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-database-heading' },
-    h('div', { className: 'configuration-browser-settings-heading' },
-      h('div', null,
-        h('h3', { id: 'configuration-database-heading' }, 'Local database'),
-        h('p', null, 'Records currently stored in this browser.')
-      )
-    ),
-    available
-      ? h('div', { className: 'configuration-database-counts' },
-        fields.map(([sourceName, field, label]) => h('span', null,
-          h('strong', null, String(context.sources[sourceName]?.rows?.[0]?.[field] ?? 0)),
-          h('small', null, label)
-        ))
-      )
-      : h('p', { className: 'configuration-browser-setting-status' }, 'Database counts unavailable.')
-  );
-}
-
-function renderLocalDataSetting() {
-  const transactions = h('a', {
-    href: '#page-transactions',
-    className: 'configuration-transactions-button',
-    'aria-label': 'View retained transactions table',
-  }, 'View retained transactions');
-  return h('section', { className: 'configuration-browser-settings configuration-danger-settings', 'aria-labelledby': 'configuration-local-data-heading' },
-    h('div', { className: 'configuration-browser-settings-heading' },
-      h('div', null,
-        h('h3', { id: 'configuration-local-data-heading' }, 'Local data'),
-        h('p', null, 'Delete cached dashboard data and browser preferences from this device.')
-      )
-    ),
-    h('div', { className: 'configuration-local-data-actions' },
-      transactions,
-      renderResetDashboardControl()
-    )
-  );
-}
-
 function renderDebuggingSettings() {
   if (dashboardInstalled()) return null;
 
@@ -446,6 +408,14 @@ function renderDebuggingSettings() {
   );
 }
 
+function renderTransactionsLink() {
+  return h('a', {
+    href: '#page-transactions',
+    className: 'configuration-transactions-button',
+    'aria-label': 'View retained transactions table'
+  }, 'View retained transactions');
+}
+
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
@@ -459,11 +429,10 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
+    renderTransactionsLink(),
     renderThemeSettings(),
     renderSettingsCliActions(),
     renderAutomaticDataUpdatesSetting(),
-    renderDatabaseSetting(context),
-    renderLocalDataSetting(),
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)
       : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.'),

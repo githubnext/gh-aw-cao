@@ -314,19 +314,137 @@ function eventsSource(events, sessionsById, runsById, sources) {
           event: event.id,
           'event-timestamp': event.timestamp,
           'event-source': event.source,
-          'event-type': event.type,
+          'event-type': event.source === 'firewall'
+            ? { net_allowed: 'firewall.request.allowed', net_blocked: 'firewall.request.blocked' }[String(event.type)] ?? event.type
+            : event.type,
           'event-summary': event.summary,
           'event-status': event.status,
+          'request-count': event.requestCount,
           'correlation-id': event.correlationId,
           'payload-ref': event.payloadRef,
+          'mcp-server': event.mcpServer,
+          'mcp-tool': event.mcpTool,
           'safe-output-type': event.safeOutputType,
           'github-entity-type': event.githubEntityType,
           'source-sequence': event.sourceSequence,
-          'observed-at': event.observedAt
+          'observed-at': event.observedAt,
+          'run-link': run.runLink,
+          'target-repo': event.targetRepo,
+          'target-organization': event.targetOrganization,
+          'target-repository': event.targetRepository,
+          'target-workflow-path': event.targetWorkflowPath,
+          'optimizer-run-attempt': event.optimizerRunAttempt,
+          'optimizer-workflow-path': event.optimizerWorkflowPath,
+          'optimizer-workflow-name': event.optimizerWorkflowName,
+          'claim-run-id': event.claimRunId,
+          'claim-run-attempt': event.claimRunAttempt,
+          actor: event.actor,
+          'source-provenance': event.sourceProvenance,
+          'opportunity-id': event.opportunityId,
+          'opportunity-kind': event.opportunityKind,
+          'assignment-run': event.assignmentRunId,
+          experiment: event.experimentId,
+          'evidence-window-start': event.evidenceWindowStart,
+          'evidence-window-end': event.evidenceWindowEnd,
+          'evidence-state': event.evidenceState,
+          'evidence-confidence': event.evidenceConfidence,
+          'cost-grain': event.costGrain,
+          'evidence-provenance': event.evidenceProvenance,
+          'attributable-run-ids': event.attributableRunIds,
+          'intervention-id': event.interventionId,
+          'lifecycle-observation-id': event.lifecycleObservationId,
+          'previous-intervention-state': event.previousInterventionState,
+          'intervention-state': event.interventionState,
+          'previous-recommendation-disposition': event.previousRecommendationDisposition,
+          'recommendation-disposition': event.recommendationDisposition,
+          'supersedes-intervention-id': event.supersedesInterventionId,
+          'superseded-by-intervention-id': event.supersededByInterventionId,
+          'recommendation-churn-count': event.recommendationChurnCount,
+          'recommendation-churn-rate': event.recommendationChurnRate,
+          'control-variant': event.controlVariant,
+          'optimized-variant': event.optimizedVariant,
+          'proposed-savings-aic': event.proposedSavingsAic,
+          'missing-reason': event.missingReason,
+          'safe-output-id': event.safeOutputId,
+          'safe-output-url': event.safeOutputUrl,
+          'implementation-change-id': event.implementationChangeId,
+          'implementation-pull-request-url': event.implementationPullRequestUrl,
+          'implementation-run-ids': event.implementationRunIds,
+          'accepted-at': event.acceptedAt,
+          'implementation-started-at': event.implementationStartedAt,
+          'implementation-completed-at': event.implementationCompletedAt,
+          'rejected-at': event.rejectedAt,
+          'superseded-at': event.supersededAt
         })
       };
     }),
     metadata: projectionMetadata(sources, 'events', 'events', true)
+  };
+}
+
+/**
+ * Projects retained canonical MCP call events when no published MCP source is available.
+ *
+ * @param {Record<string, unknown>[]} events
+ * @param {Map<unknown, Record<string, unknown>>} sessionsById
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ * @param {Record<string, unknown>} sources
+ */
+function mcpCallsSource(events, sessionsById, runsById, sources) {
+  return {
+    source: 'mcp-calls',
+    rows: events.flatMap((event) => {
+      if (event.source !== 'mcp' || event.type !== 'tool.call') return [];
+      const session = sessionsById.get(event.sessionId) ?? {};
+      const run = runsById.get(session.runId) ?? {};
+      return [definedFields({
+        organization: run.owner,
+        repository: run.repository,
+        workflow: run.workflowPath,
+        run: run.githubRunId === undefined ? undefined : String(run.githubRunId),
+        'mcp-observation': event.id,
+        'mcp-server': event.mcpServer,
+        'mcp-tool': event.mcpTool,
+        'mcp-status': event.status,
+        'observed-at': event.observedAt,
+        'run-link': run.runLink
+      })];
+    }),
+    metadata: projectionMetadata(sources, 'mcp-calls', 'events', true)
+  };
+}
+
+/**
+ * Projects canonical sessions with their run and repository context so
+ * ingestion-rate queries (imported runs per workflow/repository) can group
+ * sessions by organization, repository, workflow, and run.
+ *
+ * @param {Record<string, unknown>[]} sessions
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ * @param {Record<string, unknown>} sources
+ */
+function sessionsSource(sessions, runsById, sources) {
+  const rows = sessions.map((session) => {
+    const run = runsById.get(session.runId) ?? {};
+    return definedFields({
+      organization: run.owner,
+      repository: run.repository,
+      workflow: run.workflowPath,
+      run: run.githubRunId === undefined ? undefined : String(run.githubRunId),
+      'run-attempt': run.attempt,
+      session: session.id,
+      'job-id': session.jobId,
+      'session-kind': session.kind,
+      'session-status': session.status,
+      'started-at': session.startedAt,
+      'ended-at': session.completedAt,
+      'observed-at': session.startedAt
+    });
+  });
+  return {
+    source: 'sessions',
+    rows,
+    metadata: projectionMetadata(sources, 'sessions', 'sessions', rows.length > 0)
   };
 }
 
@@ -603,16 +721,18 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const queries = createCanonicalQueries(indexedDB);
   const needsFirewall = requested.has('firewall-observations');
   const needsGraders = requested.has('grader-observations') || requested.has('operational-values');
-  const needsEvents = requested.has('events') || needsFirewall || needsGraders;
+  const needsMcpCalls = requested.has('mcp-calls') && !sourceRows(logicalSources['mcp-calls']).length;
+  const needsSessions = requested.has('sessions') || needsFirewall || needsGraders || needsMcpCalls;
+  const needsEvents = requested.has('events') || needsFirewall || needsGraders || needsMcpCalls;
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') || requested.has('runs') ? queries.workflows.list() : [],
-    requested.has('runs') || requested.has('job-performance') || needsEvents
+    requested.has('runs') || requested.has('job-performance') || needsSessions || needsEvents
       ? queries.runs.list() : [],
     requested.has('job-performance') ? queries.jobs.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
-    needsEvents ? queries.sessions.list() : [],
+    needsSessions || needsEvents ? queries.sessions.list() : [],
     needsEvents ? queries.events.list() : [],
     requested.has('transactions') ? queries.transactions.list() : []
   ]);
@@ -635,7 +755,9 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
+  if (requested.has('sessions')) projected.sessions = sessionsSource(sessions, runsById, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
+  if (needsMcpCalls) projected['mcp-calls'] = mcpCallsSource(events, sessionsById, runsById, sources);
   if (requested.has('grader-observations')) {
     projected['grader-observations'] = graderObservationsSource(
       graders.map(({ __event, ...grader }) => grader),

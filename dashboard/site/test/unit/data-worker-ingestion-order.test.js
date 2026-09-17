@@ -3,6 +3,17 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 
+vi.mock('../../src/retry.js', async (importOriginal) => {
+  const retry = /** @type {typeof import('../../src/retry.js')} */ (await importOriginal());
+  return {
+    ...retry,
+    withRetries: (
+      /** @type {(attempt: number) => Promise<unknown>} */ operation,
+      /** @type {{ attempts?: number, delayMs?: number }} */ options = {}
+    ) => retry.withRetries(operation, { ...options, delayMs: 0 })
+  };
+});
+
 beforeEach(async () => {
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
@@ -17,12 +28,18 @@ describe('canonical dashboard worker ingestion order', () => {
     const listeners = new Map();
     /** @type {Record<string, unknown>[]} */
     const posted = [];
+    /** @type {(value: Record<string, unknown>) => void} */
+    let resolveResponse;
+    const response = new Promise((resolve) => {
+      resolveResponse = resolve;
+    });
     globalThis.self = /** @type {typeof globalThis.self} */ (/** @type {unknown} */ ({
       addEventListener: (/** @type {string} */ type, /** @type {(event: { data: Record<string, unknown> }) => void} */ listener) => {
         listeners.set(type, listener);
       },
       postMessage: (/** @type {Record<string, unknown>} */ message) => {
         posted.push(structuredClone(message));
+        if (message.id === 1) resolveResponse(message);
       }
     }));
     await import('../../src/data-worker.js');
@@ -48,12 +65,23 @@ describe('canonical dashboard worker ingestion order', () => {
         metadata: { 'as-of': '2026-09-09T05:00:00Z' }
       }
     };
-    globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {
+    /** @type {string[]} */
+    const requestedUrls = [];
+    /** @type {(RequestInit | undefined)[]} */
+    const inventoryRequests = [];
+    let inventoryAttempts = 0;
+    globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       const url = String(input);
+      requestedUrls.push(url);
+      if (url.endsWith('/inventory-sources.json')) {
+        inventoryRequests.push(init);
+        inventoryAttempts += 1;
+        if (inventoryAttempts < 3) throw new TypeError('temporary network failure');
+        return Response.json(inventory);
+      }
       if (url.endsWith('/payload-hashes.json')) {
         return Response.json({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) });
       }
-      if (url.endsWith('/inventory-sources.json')) return Response.json(inventory);
       return new Response(`${JSON.stringify(run)}\n`);
     });
 
@@ -76,14 +104,23 @@ describe('canonical dashboard worker ingestion order', () => {
           context: { pages: [], queries: [] }
         }
       });
-      for (let attempt = 0; attempt < 200 && !posted.some((message) => message.id === 1); attempt += 1) {
-        await new Promise((resolve) => { setTimeout(resolve, 5); });
-      }
+      await response;
     } finally {
       put.mockRestore();
     }
 
     expect(posted.find((message) => message.id === 1)?.error).toBeUndefined();
+    expect(requestedUrls.slice(0, 4)).toEqual([
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/payload-hashes.json'
+    ]);
+    expect(inventoryRequests).toEqual([
+      expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) })
+    ]);
     expect(storedRunIds).toEqual(['github:run:303:attempt:1']);
-  });
+  }, 30_000);
 });

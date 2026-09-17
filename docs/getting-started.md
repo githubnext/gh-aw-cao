@@ -25,7 +25,7 @@ Before you begin, make sure you have:
 
 :::tip[Start with the setup skill]
 From an empty control repository, ask your coding agent to load and follow the
-[`setup-central-agentic-ops` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-central-agentic-ops/SKILL.md).
+[`setup-cao` skill](https://github.com/githubnext/gh-aw-cao/blob/main/.github/skills/setup-cao/SKILL.md).
 The skill gathers the control repository, operation, target, visibility, and authentication choices before it changes the repository, then proves the boundary with one review run. The manual steps below describe the same boundary for operators who need to inspect each action.
 :::
 
@@ -63,48 +63,47 @@ The new private repository is the central control plane. Agentic Workflow defini
 The control repository holds credentials, rollout policy, and cross-repository operating records. Do not make it public.
 :::
 
-### Step 2 - Install the `gh-aw` extension
+### Step 2 - Verify GitHub CLI
 
-Install GitHub Agentic Workflows:
-
-```bash
-gh extension install github/gh-aw
-```
-
-If the extension is already installed, verify that it is available:
+Confirm that GitHub CLI is available:
 
 ```bash
-gh aw --help
+gh --version
 ```
 
 ### Step 3 - Add Central Agentic Ops
 
-From the control repository, resolve the latest published CAO release and install that complete package with the gh-aw CLI:
+From the control repository, run the idempotent installer:
 
 ```bash
-CAO_RELEASE=$(gh release view --repo githubnext/gh-aw-cao --json tagName --jq '.tagName')
-gh aw add "githubnext/gh-aw-cao@${CAO_RELEASE}"
+curl --fail --silent --show-error --location \
+  https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/install.sh |
+  bash
 ```
 
-Use an older published release tag only when you intentionally need that version. Do not install from `main` or copy control files separately; `gh aw add` installs the workflows, shared control files, runtime modules, and package ownership records together.
+The script installs `gh-aw` when needed, adds the latest published core CAO package, and initializes the minimal control policy. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and `cao` commands when you intentionally need an older package release.
 
-The package installs:
+The root package installs:
 
-1. the catalog's operational orchestrators and workers, including **Dependabot**;
-2. shared authentication, routing, and fail-closed controls;
-3. shared control and its single package-installed CAO runtime under `.github/workflows/shared`;
-4. generated `.lock.yml` workflows that GitHub Actions executes.
+1. shared authentication, routing, and fail-closed controls;
+2. the activity and dashboard infrastructure;
+3. the `cao` CLI runtime under `.github/aw/activity/`; and
+4. CAO project skills under `.github/skills/` for Copilot discovery in the control repository.
 
-The installed workflows use the runtime installed into the same shared directory. Commit the installed files with the consumer-owned policy so every run resolves one atomic revision. See [Admission Gates](admission.md) for the checks this runtime performs before activation.
+Use the `add-cao-package` skill to discover and compare catalog operations when you do not already know which package fits. After explicit selection, it installs through CAO so the package declaration is merged automatically. For example, install Dependabot with:
 
-The installed operation is runnable after its package and worker workflow identities are declared in the control policy. Declared workers are enabled unless their policy sets `enabled: false`; undeclared or disabled identities are skipped by admission before agent execution.
+```bash
+node .github/aw/activity/cao.mjs add githubnext/gh-aw-cao/dependabot
+```
+
+`cao init` creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `cao add` invokes `gh aw add`, reads the installed package's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope. `cao update` upgrades `gh-aw` to the policy's minimum version, updates installed packages, and refreshes declared worker identities while preserving operator-owned rollout settings. Use `cao mode live PACKAGE...` to promote configured packages or `cao mode preview PACKAGE...` to return them to review mode; the command validates every package name before updating `.github/workflows/cao.json`.
 
 > [!WARNING]
 > Do not edit generated `.lock.yml` files directly. Update their Markdown sources and regenerate them with `gh aw compile`.
 
 ### Step 4 - Set the first-run boundary
 
-Create `.github/workflows/cao.json` with the target owner and package. The omitted package settings default to `review`, one repository, and 100 percent rollout:
+Add the target owner to the generated `.github/workflows/cao.json`. The package and worker declaration is already present; omitted package settings default to `review`, one repository, and 100 percent rollout:
 
 ```json title=".github/workflows/cao.json"
 {

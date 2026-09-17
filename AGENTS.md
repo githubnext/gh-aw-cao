@@ -11,6 +11,7 @@ Apply the guidance for every role that is present. Do not infer a role from the 
 
 ## Sources of truth
 
+- `CODEBASE.yml` is the experimental, machine-readable Codebase Model compiled from `ARCHITECTURE.md`. Read it first for compact architecture, boundaries, relationships, generation locations, and validation guidance; consult `ARCHITECTURE.md` and `specs/` for the complete human-oriented and normative contracts. Update `CODEBASE.yml` when its source architecture changes. Use `.github/skills/codebase-model/SKILL.md` to compile or refresh it; do not treat agent-specific instruction files as its source.
 - In the catalog, root and package `aw.yml` manifests define package contents. The root manifest installs the deterministic dashboard by default and must mirror the dashboard destinations declared by `dashboard/aw.yml`. Editable gh-aw workflow sources are `.github/workflows/*.md`; shared control is `.github/workflows/shared/control.md` and its dependencies.
 - For authoritative information about the dashboard data model, refer to https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md.
 - Eliminate every JavaScript-based dashboard query. All selection, filtering, searching, joins, grouping, aggregation, computation, ordering, pagination, and source derivation must be declared in Dashboard Language and executed by the query engine in the data Web Worker against the canonical database. Do not implement or preserve presenter/component query callbacks, derived source modules, main-thread row filtering, or test-only JavaScript source synthesis as compatibility paths.
@@ -81,6 +82,13 @@ Run these commands from the `dashboard/site/` directory:
 - Use stable lowercase categories, adding `:` for subcategories. Never log secrets, tokens, prompts, raw records, payloads, or URLs containing credentials.
 - Preserve the existing `?debug=1` DOM-provenance behavior and `dashboard-data` / `dashboard-render` custom events when adding logging.
 
+### Dashboard performance testing
+
+- Measure page-level regressions with `npm run test:performance` from `dashboard/site/`; it builds the site and runs the CFO, CTO, and CSO Lighthouse scenarios, retaining traces for inspection.
+- Profile slow pages against real data with `npm run dashboard:local -- --repo OWNER/REPOSITORY`, then open the page with `?debug=data:query` to emit per-stage and whole-query timings (duration, input/output rows, estimated operations, status) for each declarative query.
+- Narrow noisy sessions with category filters such as `?debug=data:query,-render:*`, and use `?debug-shard-limit=N` to profile with fewer activity shards.
+- Attribute a slow page to its declarative queries before changing view code; query cost belongs to the query engine in the data Web Worker, not to components.
+
 ### CI workflows
 
 | Workflow file | Scope | Trigger |
@@ -104,6 +112,7 @@ Run these commands from the `dashboard/site/` directory:
 ## Working changes
 
 - Read the relevant workflow source, its imports, its package manifest, and the effective policy before changing behavior.
+- Always run the applicable lint and type-check commands for code changes before committing.
 - Always run `gh aw compile` if any `.md` file is modified.
 - In the catalog, follow the relevant skill under `.github/skills/` and run the narrowest tests plus `npm run compile`.
 - In a control repository, validate policy JSON after editing it, reject unresolved placeholders, run `gh aw compile` after workflow-source changes, and review generated lock-file diffs.

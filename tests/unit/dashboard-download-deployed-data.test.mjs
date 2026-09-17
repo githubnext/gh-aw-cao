@@ -31,7 +31,10 @@ test("exposes the dashboard data CLI as cao", async () => {
   try {
     await symlink(cao, installedCommand);
     const { stdout } = await executeFile(installedCommand, ["help"]);
-    assert.match(stdout, /^Usage:\n  cao ingest /);
+    assert.match(stdout, /^Usage:\n  cao init\n/);
+    assert.match(stdout, /\n  cao ingest /);
+    assert.match(stdout, /\n  cao init\n/);
+    assert.match(stdout, /\n  cao add PACKAGE /);
     assert.match(stdout, /\n  cao download /);
     assert.match(stdout, /cao query .*--stdin/);
     assert.match(stdout, /cao gh runs /);

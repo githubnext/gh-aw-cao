@@ -78,7 +78,7 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
   const control = workflow("shared/control.md");
   const configuration = readFileSync(join(root, "docs", "configuration.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
-  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
 
   assert.match(control, /post-steps:[\s\S]*?Emit control-plane dispatcher telemetry/);
   assert.match(control, /if: \$\{\{ always\(\) \}\}/);
@@ -150,6 +150,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["eu-cra-compliance-vulnerability-handling-auditor.md", "eu-cra-compliance", "vulnerability-handling-auditor"],
     ["optimization-ai-credit-auditor.md", "optimization", "ai-credit-auditor"],
     ["optimization-ai-credit-optimizer.md", "optimization", "ai-credit-optimizer"],
+    ["optimization-token-optimizer.md", "optimization", "token-optimizer"],
     ["software-development-practices-github-well-architected.md", "software-development-practices", "github-well-architected"],
     ["software-development-practices-nist-ssdf.md", "software-development-practices", "nist-ssdf"],
     ["self-care-accessibility-checker.md", "self-care", "accessibility-checker"],
@@ -194,7 +195,12 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     assert.match(source, /SAFE_OUTPUT_REPO:.*safe_output_mode.*'review'.*safe_output_repo.*github\.repository.*target_repo/);
 
     for (const line of source.match(/^\s+target-repo:.*$/gm) || []) {
-      assert.match(line, /safe_output_mode.*'review'.*safe_output_repo.*github\.repository.*target_repo/);
+      if (name === "optimization-token-optimizer.md") {
+        assert.match(line, /inputs\.safe_output_repo.*github\.repository/);
+        assert.doesNotMatch(line, /inputs\.target_repo/);
+      } else {
+        assert.match(line, /safe_output_mode.*'review'.*safe_output_repo.*github\.repository.*target_repo/);
+      }
     }
     for (const line of source.match(/^\s+- repository:.*inputs\.safe_output_repo.*$/gm) || []) {
       assert.match(line, /safe_output_mode.*'review'.*safe_output_repo.*github\.repository.*target_repo/);

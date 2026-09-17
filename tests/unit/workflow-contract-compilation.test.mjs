@@ -30,6 +30,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     cpSync(join(root, ".github"), join(temporaryRoot, ".github"), { recursive: true });
     cpSync(join(root, "AGENTS.md"), join(temporaryRoot, "AGENTS.md"));
     cpSync(join(root, "aw.yml"), join(temporaryRoot, "aw.yml"));
+    cpSync(join(root, "cao.sh"), join(temporaryRoot, "cao.sh"));
     cpSync(join(root, "README.md"), join(temporaryRoot, "README.md"));
     for (const packageDirectory of ["activity", "cao-evolution", "dashboard", "dependabot", "optimization", "repo-assist"]) {
       cpSync(join(root, packageDirectory), join(temporaryRoot, packageDirectory), { recursive: true });
@@ -81,6 +82,9 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "eu-cra-compliance.lock.yml",
       "optimization-ai-credit-auditor.lock.yml",
       "optimization-ai-credit-optimizer.lock.yml",
+      "optimization-token-efficiency-auditor.lock.yml",
+      "optimization-token-efficiency-verifier.lock.yml",
+      "optimization-token-optimizer.lock.yml",
       "optimization.lock.yml",
       "repo-assist-issue-fix.lock.yml",
       "repo-assist-issue-triage.lock.yml",
@@ -221,6 +225,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["eu-cra-compliance-vulnerability-handling-auditor.lock.yml", ["eu-cra-compliance", "vulnerability-handling-auditor"]],
       ["optimization-ai-credit-auditor.lock.yml", ["optimization", "ai-credit-auditor"]],
       ["optimization-ai-credit-optimizer.lock.yml", ["optimization", "ai-credit-optimizer"]],
+      ["optimization-token-optimizer.lock.yml", ["optimization", "token-optimizer"]],
       ["repo-assist-issue-fix.lock.yml", ["repo-assist", "issue-fix"]],
       ["repo-assist-issue-triage.lock.yml", ["repo-assist", "issue-triage"]],
       ["repo-assist-maintenance.lock.yml", ["repo-assist", "maintenance"]],

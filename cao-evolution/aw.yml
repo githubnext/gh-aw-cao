@@ -12,6 +12,8 @@ includes:
   - .github/workflows/cao-evolution-reliability.md
   - .github/workflows/cao-evolution.md
 resources:
+  - source: cao.json
+    destination: .github/aw/cao-evolution/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/cao-evolution.json
   - source: .github/graders/cao-evolution-failures-investigator-operational-value.sh

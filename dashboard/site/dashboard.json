@@ -5,13 +5,577 @@
     "title": "Central Agentic Ops Dashboard",
     "description": "Authoritative declarative dashboard document for built-in and custom pages in the presenter prototype.",
     "repository": "githubnext/gh-aw-cao",
+    "card-templates": [
+      {
+        "id": "repository",
+        "icon": "repo",
+        "title": { "field": "repository-coordinate", "title": "Repository" },
+        "labels": [],
+        "details": [
+          { "field": "organization", "title": "Organization" },
+          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "workflow",
+        "icon": "workflow",
+        "title": { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+        "labels": [
+          { "field": "workflow-role", "title": "Role", "display": "label" },
+          { "field": "workflow-active", "title": "State", "display": "active-state" }
+        ],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "package-name", "title": "Package" },
+          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "run",
+        "icon": "play",
+        "status": { "field": "run-conclusion", "fallback-field": "run-status", "title": "Status" },
+        "title": { "field": "run-title", "title": "Run" },
+        "labels": [{ "field": "branch", "title": "Branch", "display": "ref" }],
+        "details": [
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "event", "title": "Event" },
+          { "field": "repository", "title": "Repository" },
+          { "field": "run-attempt", "title": "Attempt" }
+        ],
+        "timing": [
+          { "field": "started-at", "title": "Started", "icon": "calendar", "type": "temporal", "format": "human-friendly-timestamp" },
+          { "field": "duration", "title": "Duration", "icon": "stopwatch" }
+        ]
+      },
+      {
+        "id": "session",
+        "icon": "terminal",
+        "title": { "field": "session", "title": "Session" },
+        "labels": [
+          { "field": "session-kind", "title": "Kind", "display": "label" },
+          { "field": "session-status", "title": "Status", "display": "status" }
+        ],
+        "details": [
+          { "field": "run", "title": "Run" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "started-at", "title": "Started", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "event",
+        "icon": "pulse",
+        "title": { "field": "event-summary", "title": "Event" },
+        "labels": [
+          { "field": "event-type", "title": "Type", "display": "label" },
+          { "field": "event-status", "title": "Status", "display": "status" }
+        ],
+        "details": [
+          { "field": "event-source", "title": "Source" },
+          { "field": "session", "title": "Session" },
+          { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "mcp-tool",
+        "icon": "mcp",
+        "title": { "field": "mcp-tool", "title": "MCP tool" },
+        "subtitle": { "field": "mcp-server", "title": "MCP server" },
+        "labels": [],
+        "details": [
+          { "field": "calls", "title": "Calls" },
+          { "field": "workflows", "title": "Workflows" }
+        ]
+      },
+      {
+        "id": "firewall-domain",
+        "icon": "globe",
+        "title": { "field": "domain", "title": "Domain" },
+        "labels": [],
+        "details": [
+          { "field": "accepted", "title": "Allowed" },
+          { "field": "blocked", "title": "Blocked" },
+          { "field": "run", "title": "Runs" }
+        ]
+      },
+      {
+        "id": "issue",
+        "icon": "issue-opened",
+        "title": { "field": "event-summary", "title": "Issue" },
+        "labels": [{ "field": "safe-output-type", "title": "Safe output", "display": "label" }],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Opened", "format": "human-friendly-timestamp" }
+        ]
+      },
+      {
+        "id": "pull-request",
+        "icon": "git-pull-request",
+        "title": { "field": "event-summary", "title": "Pull request" },
+        "labels": [{ "field": "safe-output-type", "title": "Safe output", "display": "label" }],
+        "details": [
+          { "field": "repository", "title": "Repository" },
+          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "observed-at", "title": "Opened", "format": "human-friendly-timestamp" }
+        ]
+      }
+    ],
+    "views": [
+      {
+        "id": "entity-repositories",
+        "title": "Repositories",
+        "description": "Select a repository to inspect its declared workflows.",
+        "data": { "source": "entity-repositories" },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "repository",
+          "icon": "repo",
+          "drill": {
+            "type": "query",
+            "page": "repository-workflows",
+            "query": "entity-workflows",
+            "title-field": "repository-coordinate",
+            "arguments": [
+              { "name": "organization", "field": "organization" },
+              { "name": "repository", "field": "repository" }
+            ]
+          }
+        },
+        "empty-message": "No repositories discovered.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "repository-coordinate", "type": "nominal", "title": "Repository" },
+            { "field": "organization", "type": "nominal", "title": "Organization" },
+            { "field": "repository", "type": "nominal", "title": "Repository name" },
+            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" }
+          ]
+        }
+      },
+      {
+        "id": "entity-workflows",
+        "title": "Workflows",
+        "description": "Select a workflow to inspect its observed runs.",
+        "data": { "source": "entity-workflows" },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "workflow",
+          "icon": "workflow",
+          "drill": {
+            "type": "query",
+            "page": "workflow-run-cards",
+            "query": "entity-runs",
+            "title-field": "workflow",
+            "arguments": [
+              { "name": "organization", "field": "organization" },
+              { "name": "repository", "field": "repository" },
+              { "name": "workflow", "field": "workflow" }
+            ]
+          }
+        },
+        "empty-message": "No workflows observed.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "workflow-role", "type": "nominal", "title": "Role" },
+            { "field": "workflow-active", "type": "nominal", "title": "State" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "package-name", "type": "nominal", "title": "Package" },
+            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+            { "field": "organization", "type": "nominal", "title": "Organization" }
+          ]
+        }
+      },
+      {
+        "id": "repository-workflows",
+        "title": "Workflows",
+        "description": "Declared workflows for the selected repository.",
+        "data": {
+          "source": "entity-workflows",
+          "arguments": [
+            { "name": "organization", "field": "organization" },
+            { "name": "repository", "field": "repository" }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "workflow",
+          "icon": "workflow",
+          "drill": {
+            "type": "query",
+            "page": "workflow-run-cards",
+            "query": "entity-runs",
+            "title-field": "workflow",
+            "arguments": [
+              { "name": "organization", "field": "organization" },
+              { "name": "repository", "field": "repository" },
+              { "name": "workflow", "field": "workflow" }
+            ]
+          }
+        },
+        "empty-message": "No workflows were observed for this repository.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "workflow-role", "type": "nominal", "title": "Role" },
+            { "field": "workflow-active", "type": "nominal", "title": "State" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "package-name", "type": "nominal", "title": "Package" },
+            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+            { "field": "organization", "type": "nominal", "title": "Organization" }
+          ]
+        }
+      },
+      {
+        "id": "entity-runs",
+        "title": "Runs",
+        "description": "Select a run to inspect its sessions and events.",
+        "data": { "source": "entity-runs" },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "run",
+          "icon": "play",
+          "drill": {
+            "type": "query",
+            "page": "run-events",
+            "query": "entity-events",
+            "title-field": "run",
+            "arguments": [
+              { "name": "organization", "field": "organization" },
+              { "name": "repository", "field": "repository" },
+              { "name": "workflow", "field": "workflow" },
+              { "name": "run", "field": "run" },
+              { "name": "run-attempt", "field": "run-attempt" }
+            ]
+          }
+        },
+        "empty-message": "No runs observed.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "run-title", "type": "nominal", "title": "Run" },
+            { "field": "run", "type": "nominal", "title": "Run number" },
+            { "field": "run-status", "type": "nominal", "title": "Status" },
+            { "field": "run-conclusion", "type": "nominal", "title": "Conclusion" },
+            { "field": "event", "type": "nominal", "title": "Event" },
+            { "field": "branch", "type": "nominal", "title": "Branch", "display": "ref" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "run-attempt", "type": "quantitative", "title": "Attempt" },
+            { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" },
+            { "field": "duration", "type": "nominal", "title": "Duration" },
+            { "field": "organization", "type": "nominal", "title": "Organization" }
+          ]
+        }
+      },
+      {
+        "id": "workflow-runs-cards",
+        "title": "Runs",
+        "description": "Observed runs for the selected workflow.",
+        "data": {
+          "source": "entity-runs",
+          "arguments": [
+            { "name": "organization", "field": "organization" },
+            { "name": "repository", "field": "repository" },
+            { "name": "workflow", "field": "workflow" }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "run",
+          "icon": "play",
+          "drill": {
+            "type": "query",
+            "page": "run-events",
+            "query": "entity-events",
+            "title-field": "run",
+            "arguments": [
+              { "name": "organization", "field": "organization" },
+              { "name": "repository", "field": "repository" },
+              { "name": "workflow", "field": "workflow" },
+              { "name": "run", "field": "run" },
+              { "name": "run-attempt", "field": "run-attempt" }
+            ]
+          }
+        },
+        "empty-message": "No runs were observed for this workflow.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "run-title", "type": "nominal", "title": "Run" },
+            { "field": "run", "type": "nominal", "title": "Run number" },
+            { "field": "run-status", "type": "nominal", "title": "Status" },
+            { "field": "run-conclusion", "type": "nominal", "title": "Conclusion" },
+            { "field": "event", "type": "nominal", "title": "Event" },
+            { "field": "branch", "type": "nominal", "title": "Branch", "display": "ref" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "run-attempt", "type": "quantitative", "title": "Attempt" },
+            { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" },
+            { "field": "duration", "type": "nominal", "title": "Duration" },
+            { "field": "organization", "type": "nominal", "title": "Organization" }
+          ]
+        }
+      },
+      {
+        "id": "entity-sessions",
+        "title": "Sessions",
+        "description": "Select a session to inspect its events.",
+        "data": { "source": "entity-sessions" },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "session",
+          "icon": "terminal",
+          "drill": {
+            "type": "query",
+            "page": "session-events",
+            "query": "entity-events",
+            "title-field": "session",
+            "arguments": [{ "name": "session", "field": "session" }]
+          }
+        },
+        "empty-message": "No sessions observed.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "session", "type": "nominal", "title": "Session" },
+            { "field": "session-kind", "type": "nominal", "title": "Kind" },
+            { "field": "session-status", "type": "nominal", "title": "Status" },
+            { "field": "run", "type": "nominal", "title": "Run" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" }
+          ]
+        }
+      },
+      {
+        "id": "run-sessions",
+        "title": "Sessions",
+        "description": "Imported sessions for the selected run.",
+        "data": {
+          "source": "entity-sessions",
+          "arguments": [
+            { "name": "organization", "field": "organization" },
+            { "name": "repository", "field": "repository" },
+            { "name": "workflow", "field": "workflow" },
+            { "name": "run", "field": "run" },
+            { "name": "run-attempt", "field": "run-attempt" }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "session",
+          "icon": "terminal",
+          "drill": {
+            "type": "query",
+            "page": "session-events",
+            "query": "entity-events",
+            "title-field": "session",
+            "arguments": [{ "name": "session", "field": "session" }]
+          }
+        },
+        "empty-message": "No sessions were retained for this run.",
+        "layout": "full",
+        "encoding": {
+          "columns": [
+            { "field": "session", "type": "nominal", "title": "Session" },
+            { "field": "session-kind", "type": "nominal", "title": "Kind" },
+            { "field": "session-status", "type": "nominal", "title": "Status" },
+            { "field": "run", "type": "nominal", "title": "Run" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" }
+          ]
+        }
+      },
+      {
+        "id": "entity-events",
+        "title": "Events",
+        "description": "Observed events with type-specific links when an external entity is available.",
+        "data": { "source": "entity-events" },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "event",
+          "icon": "pulse",
+          "drill": { "type": "external", "field": "event-url" }
+        },
+        "empty-message": "No workflow events were observed in the current run window.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "event-summary", "type": "nominal", "title": "Event" },
+            { "field": "event-type", "type": "nominal", "title": "Type" },
+            { "field": "event-status", "type": "nominal", "title": "Status" },
+            { "field": "event-source", "type": "nominal", "title": "Source" },
+            { "field": "session", "type": "nominal", "title": "Session" },
+            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+            { "field": "event-url", "type": "nominal", "title": "External URL" }
+          ]
+        }
+      },
+      {
+        "id": "run-events",
+        "title": "Events",
+        "description": "Observed events for the selected run.",
+        "data": {
+          "source": "entity-events",
+          "arguments": [
+            { "name": "organization", "field": "organization" },
+            { "name": "repository", "field": "repository" },
+            { "name": "workflow", "field": "workflow" },
+            { "name": "run", "field": "run" },
+            { "name": "run-attempt", "field": "run-attempt" }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "event",
+          "icon": "pulse",
+          "drill": { "type": "external", "field": "event-url" }
+        },
+        "empty-message": "No events were retained for this run.",
+        "layout": "full",
+        "encoding": {
+          "columns": [
+            { "field": "event-summary", "type": "nominal", "title": "Event" },
+            { "field": "event-type", "type": "nominal", "title": "Type" },
+            { "field": "event-status", "type": "nominal", "title": "Status" },
+            { "field": "event-source", "type": "nominal", "title": "Source" },
+            { "field": "session", "type": "nominal", "title": "Session" },
+            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+            { "field": "event-url", "type": "nominal", "title": "External URL" }
+          ]
+        }
+      },
+      {
+        "id": "session-events",
+        "title": "Events",
+        "description": "Observed events for the selected session.",
+        "data": {
+          "source": "entity-events",
+          "arguments": [{ "name": "session", "field": "session" }]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "event",
+          "icon": "pulse",
+          "drill": { "type": "external", "field": "event-url" }
+        },
+        "empty-message": "No events were retained for this session.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "event-summary", "type": "nominal", "title": "Event" },
+            { "field": "event-type", "type": "nominal", "title": "Type" },
+            { "field": "event-status", "type": "nominal", "title": "Status" },
+            { "field": "event-source", "type": "nominal", "title": "Source" },
+            { "field": "session", "type": "nominal", "title": "Session" },
+            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
+            { "field": "event-url", "type": "nominal", "title": "External URL" }
+          ]
+        }
+      },
+      {
+        "id": "issues",
+        "title": "Issues",
+        "description": "Open an issue or its producing workflow run from retained safe-output item evidence.",
+        "data": {
+          "source": "issues",
+          "limit": 100,
+          "order-by": [
+            {
+              "field": "observed-at",
+              "direction": "desc"
+            }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "issue",
+          "icon": "issue-opened",
+          "drill": {
+            "type": "external",
+            "field": "entity-url"
+          }
+        },
+        "empty-message": "No issue safe outputs were retained in the current report.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "event-summary", "type": "nominal", "title": "Issue" },
+            { "field": "safe-output-type", "type": "nominal", "title": "Safe output", "display": "label" },
+            { "field": "github-entity-type", "type": "nominal", "title": "Entity type" },
+            { "field": "entity-url", "type": "nominal", "title": "Entity URL" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+            { "field": "run-link", "type": "nominal", "title": "Run link" },
+            { "field": "observed-at", "type": "temporal", "format": "human-friendly-timestamp", "title": "Opened" }
+          ]
+        }
+      },
+      {
+        "id": "pull-requests",
+        "title": "Pull requests",
+        "description": "Open a pull request or its producing workflow run from retained safe-output item evidence.",
+        "data": {
+          "source": "pull-requests",
+          "limit": 100,
+          "order-by": [
+            {
+              "field": "observed-at",
+              "direction": "desc"
+            }
+          ]
+        },
+        "mark": "list",
+        "list": {
+          "style": "entity-cards",
+          "card": "pull-request",
+          "icon": "git-pull-request",
+          "drill": {
+            "type": "external",
+            "field": "entity-url"
+          }
+        },
+        "empty-message": "No pull request safe outputs were retained in the current report.",
+        "layout": "full-view",
+        "encoding": {
+          "columns": [
+            { "field": "event-summary", "type": "nominal", "title": "Pull request" },
+            { "field": "safe-output-type", "type": "nominal", "title": "Safe output", "display": "label" },
+            { "field": "github-entity-type", "type": "nominal", "title": "Entity type" },
+            { "field": "entity-url", "type": "nominal", "title": "Entity URL" },
+            { "field": "repository", "type": "nominal", "title": "Repository" },
+            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+            { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+            { "field": "run-link", "type": "nominal", "title": "Run link" },
+            { "field": "observed-at", "type": "temporal", "format": "human-friendly-timestamp", "title": "Opened" }
+          ]
+        }
+      }
+    ],
     "cli-actions": [
       {
         "id": "update-repository",
         "label": "Update all",
         "description": "Update all installed Agentic Workflow packages in this repository.",
         "icon": "sync",
-        "command": "gh aw update --repo {{repository}}",
+        "command": "./.github/aw/cao.sh update --repo {{repository}}",
         "placement": "view",
         "arguments": [
           {
@@ -81,7 +645,23 @@
         "label": "Update package",
         "description": "Update this package's agentic workflow.",
         "icon": "sync",
-        "command": "gh aw update {{package}}",
+        "command": "./.github/aw/cao.sh add {{package}}",
+        "placement": "row"
+      },
+      {
+        "id": "set-package-live",
+        "label": "Switch to live",
+        "description": "Switch this package's workflows to live mode.",
+        "icon": "play",
+        "command": "./.github/aw/cao.sh mode live {{package}}",
+        "placement": "row"
+      },
+      {
+        "id": "set-package-preview",
+        "label": "Switch to preview",
+        "description": "Switch this package's workflows to preview mode.",
+        "icon": "eye",
+        "command": "./.github/aw/cao.sh mode preview {{package}}",
         "placement": "row"
       }
     ],
@@ -126,10 +706,11 @@
         "significant": 0.001,
         "format": "number"
       },
-      "grade": {
-        "name": "Grade",
-        "symbol": "grade",
-        "significant": 0.01
+      "ops-value": {
+        "name": "Ops Value",
+        "symbol": "ops",
+        "significant": 0.01,
+        "format": "number"
       },
       "percent": {
         "name": "Percent",
@@ -159,6 +740,118 @@
       }
     },
     "queries": [
+      {
+        "name": "entity-repositories",
+        "intent": "Project repository entities for reusable repository cards.",
+        "from": "repositories",
+        "select": [
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "repository-coordinate" },
+          { "field": "observed-at" },
+          { "field": "repository-link" }
+        ],
+        "order-by": [{ "field": "repository-coordinate", "direction": "asc" }]
+      },
+      {
+        "name": "entity-workflows",
+        "intent": "Project workflow entities for reusable workflow cards and repository drill-down.",
+        "from": "workflows",
+        "select": [
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "workflow-name" },
+          { "field": "workflow-role" },
+          { "field": "workflow-active" },
+          { "field": "package-name" },
+          { "field": "observed-at" },
+          { "field": "workflow-link" }
+        ],
+        "order-by": [
+          { "field": "repository", "direction": "asc" },
+          { "field": "workflow", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "entity-runs",
+        "intent": "Project run entities for reusable run cards and workflow drill-down.",
+        "from": "runs",
+        "select": [
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-attempt" },
+          { "field": "run-title" },
+          { "field": "run-status" },
+          { "field": "run-conclusion" },
+          { "field": "event" },
+          { "field": "branch" },
+          { "field": "duration" },
+          { "field": "started-at" },
+          { "field": "ended-at" },
+          { "field": "run-link" }
+        ],
+        "order-by": [{ "field": "started-at", "direction": "desc" }]
+      },
+      {
+        "name": "entity-sessions",
+        "intent": "Project session entities for reusable session cards and run drill-down.",
+        "from": "sessions",
+        "select": [
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-attempt" },
+          { "field": "session" },
+          { "field": "session-kind" },
+          { "field": "session-status" },
+          { "field": "started-at" },
+          { "field": "ended-at" },
+          { "field": "observed-at" }
+        ],
+        "order-by": [{ "field": "started-at", "direction": "desc" }]
+      },
+      {
+        "name": "entity-events",
+        "intent": "Project event entities for reusable event cards and run or session drill-down.",
+        "from": "events",
+        "compute": [
+          {
+            "as": "event-url",
+            "function": "coalesce",
+            "args": [
+              { "field": "safe-output-url" },
+              { "field": "correlation-id" },
+              { "field": "implementation-pull-request-url" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-attempt" },
+          { "field": "session" },
+          { "field": "event" },
+          { "field": "event-source" },
+          { "field": "event-type" },
+          { "field": "event-summary" },
+          { "field": "event-status" },
+          { "field": "github-entity-type" },
+          { "field": "safe-output-type" },
+          { "field": "event-url" },
+          { "field": "event-timestamp", "as": "observed-at" },
+          { "field": "run-link" }
+        ],
+        "order-by": [
+          { "field": "observed-at", "direction": "desc" },
+          { "field": "event", "direction": "asc" }
+        ]
+      },
       {
         "name": "database-package-count",
         "intent": "Count packages in the dashboard database.",
@@ -194,15 +887,9 @@
         "intent": "List retained ingestion transactions from newest to oldest.",
         "from": "transactions",
         "select": [
-          { "field": "id", "as": "transaction" },
           { "field": "kind" },
           { "field": "createdAt", "as": "created-at" },
           { "field": "payloadScope", "as": "payload-scope" },
-          { "field": "payloadHash", "as": "payload-hash" },
-          { "field": "payloadEtag", "as": "payload-etag" },
-          { "field": "records" },
-          { "field": "committedRecords", "as": "committed-records" },
-          { "field": "rawPayloadRecords", "as": "raw-payload-records" },
           { "field": "rawRuns", "as": "raw-runs" },
           { "field": "agenticRunRecords", "as": "agentic-run-records" },
           { "field": "agenticRuns", "as": "agentic-runs" },
@@ -252,27 +939,17 @@
             "as": "useful-output",
             "function": "if",
             "args": [{ "field": "useful" }, { "field": "safe-output" }, { "value": "" }]
-          },
-          {
-            "as": "delivered",
-            "function": "equals-any",
-            "args": [
-              { "field": "outcome-state" },
-              { "value": "accepted" },
-              { "value": "completed" },
-              { "value": "lifecycle-close" }
-            ]
-          },
-          {
-            "as": "delivered-repository",
-            "function": "if",
-            "args": [{ "field": "delivered" }, { "field": "repository" }, { "value": "" }]
           }
         ],
         "aggregate": {
           "values": [
             { "field": "useful-output", "as": "useful-outputs", "reducer": "distinct-count" },
-            { "field": "delivered-repository", "as": "delivered-repositories", "reducer": "distinct-count" }
+            {
+              "field": "repository",
+              "as": "delivered-repositories",
+              "reducer": "distinct-count",
+              "filter": { "predicates": [{ "field": "outcome-state", "in": ["accepted", "completed", "lifecycle-close"] }] }
+            }
           ]
         }
       },
@@ -292,76 +969,50 @@
             "fields": [{ "field": "package", "as": "declared-package" }]
           }
         ],
-        "compute": [
-          {
-            "as": "successful",
-            "function": "equals-any",
-            "args": [{ "field": "run-conclusion" }, { "value": "success" }]
-          },
-          {
-            "as": "failed",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-conclusion" },
-              { "value": "failure" },
-              { "value": "startup-failure" },
-              { "value": "stale" },
-              { "value": "timed-out" }
-            ]
-          },
-          {
-            "as": "active",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-status" },
-              { "value": "queued" },
-              { "value": "in-progress" },
-              { "value": "in_progress" }
-            ]
-          },
-          {
-            "as": "live-mode",
-            "function": "equals-any",
-            "args": [{ "field": "rollout-mode" }, { "value": "live" }]
-          },
-          {
-            "as": "review-mode",
-            "function": "equals-any",
-            "args": [{ "field": "rollout-mode" }, { "value": "review" }]
-          },
-          {
-            "as": "successful-count",
-            "function": "if",
-            "args": [{ "field": "successful" }, { "value": 1 }, { "value": 0 }]
-          },
-          {
-            "as": "failed-count",
-            "function": "if",
-            "args": [{ "field": "failed" }, { "value": 1 }, { "value": 0 }]
-          },
-          {
-            "as": "active-count",
-            "function": "if",
-            "args": [{ "field": "active" }, { "value": 1 }, { "value": 0 }]
-          },
-          {
-            "as": "active-live",
-            "function": "if",
-            "args": [{ "field": "live-mode" }, { "field": "active-count" }, { "value": 0 }]
-          },
-          {
-            "as": "active-review",
-            "function": "if",
-            "args": [{ "field": "review-mode" }, { "field": "active-count" }, { "value": 0 }]
-          }
-        ],
         "aggregate": {
           "values": [
-            { "field": "successful-count", "as": "successful-runs", "reducer": "sum" },
-            { "field": "failed-count", "as": "failed-runs", "reducer": "sum" },
-            { "field": "active-count", "as": "active-runs", "reducer": "sum" },
-            { "field": "active-live", "as": "active-live", "reducer": "sum" },
-            { "field": "active-review", "as": "active-review", "reducer": "sum" }
+            {
+              "field": "run-conclusion",
+              "as": "successful-runs",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] }
+            },
+            {
+              "field": "run-conclusion",
+              "as": "failed-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+              }
+            },
+            {
+              "field": "run-status",
+              "as": "active-runs",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-status", "in": ["queued", "in-progress", "in_progress"] }] }
+            },
+            {
+              "field": "run-status",
+              "as": "active-live",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  { "field": "run-status", "in": ["queued", "in-progress", "in_progress"] },
+                  { "field": "rollout-mode", "equals": "live" }
+                ]
+              }
+            },
+            {
+              "field": "run-status",
+              "as": "active-review",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  { "field": "run-status", "in": ["queued", "in-progress", "in_progress"] },
+                  { "field": "rollout-mode", "equals": "review" }
+                ]
+              }
+            }
           ]
         }
       },
@@ -370,28 +1021,17 @@
         "intent": "Count workflow dispatch runs and failures in the selected horizon.",
         "from": "runs",
         "filter": { "predicates": [{ "field": "event", "equals": "workflow_dispatch" }] },
-        "compute": [
-          {
-            "as": "failed",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-conclusion" },
-              { "value": "failure" },
-              { "value": "startup-failure" },
-              { "value": "stale" },
-              { "value": "timed-out" }
-            ]
-          },
-          {
-            "as": "failed-count",
-            "function": "if",
-            "args": [{ "field": "failed" }, { "value": 1 }, { "value": 0 }]
-          }
-        ],
         "aggregate": {
           "values": [
             { "field": "run", "as": "dispatches", "reducer": "count" },
-            { "field": "failed-count", "as": "failed-dispatches", "reducer": "sum" }
+            {
+              "field": "run-conclusion",
+              "as": "failed-dispatches",
+              "reducer": "count",
+              "filter": {
+                "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+              }
+            }
           ]
         }
       },
@@ -430,21 +1070,129 @@
       },
       {
         "name": "overview-value-summary",
-        "intent": "Count grader observations whose value exceeds their declared threshold.",
+        "intent": "Count all observed grader results.",
         "from": "grader-observations",
+        "aggregate": { "values": [{ "field": "grader", "as": "value-gains", "reducer": "count" }] }
+      },
+      {
+        "name": "overview-run-status-input",
+        "intent": "Prepare the compact run summary for declarative factory status classification.",
+        "from": "overview-run-summary",
         "compute": [
           {
-            "as": "above-threshold",
-            "function": "greater-than",
-            "args": [{ "field": "value" }, { "field": "threshold" }]
-          },
-          {
-            "as": "value-gain",
-            "function": "if",
-            "args": [{ "field": "above-threshold" }, { "value": 1 }, { "value": 0 }]
+            "as": "status-join-key",
+            "function": "concat",
+            "args": [{ "value": "factory" }, { "value": "-status" }]
           }
         ],
-        "aggregate": { "values": [{ "field": "value-gain", "as": "value-gains", "reducer": "sum" }] }
+        "select": [
+          { "field": "status-join-key" },
+          { "field": "successful-runs" },
+          { "field": "failed-runs" },
+          { "field": "active-runs" }
+        ]
+      },
+      {
+        "name": "overview-value-status-input",
+        "intent": "Prepare the compact value summary for declarative factory status classification.",
+        "from": "overview-value-summary",
+        "compute": [
+          {
+            "as": "status-join-key",
+            "function": "concat",
+            "args": [{ "value": "factory" }, { "value": "-status" }]
+          }
+        ],
+        "select": [
+          { "field": "status-join-key" },
+          { "field": "value-gains" }
+        ]
+      },
+      {
+        "name": "overview-factory-status",
+        "intent": "Classify the factory heading from compact run and optional value evidence.",
+        "from": "overview-run-status-input",
+        "joins": [
+          {
+            "source": "overview-value-status-input",
+            "type": "left",
+            "on": [{ "left": "status-join-key", "right": "status-join-key" }],
+            "fields": [{ "field": "value-gains", "as": "value-gains" }]
+          }
+        ],
+        "compute": [
+          {
+            "as": "has-successful-runs",
+            "function": "greater-than",
+            "args": [{ "field": "successful-runs" }, { "value": 0 }]
+          },
+          {
+            "as": "has-failed-runs",
+            "function": "greater-than",
+            "args": [{ "field": "failed-runs" }, { "value": 0 }]
+          },
+          {
+            "as": "failures-exceed-successes",
+            "function": "greater-than",
+            "args": [{ "field": "failed-runs" }, { "field": "successful-runs" }]
+          },
+          {
+            "as": "has-active-runs",
+            "function": "greater-than",
+            "args": [{ "field": "active-runs" }, { "value": 0 }]
+          },
+          {
+            "as": "has-value-gains",
+            "function": "greater-than",
+            "args": [{ "field": "value-gains" }, { "value": 0 }]
+          },
+          {
+            "as": "successful-heading",
+            "function": "if",
+            "args": [
+              { "field": "has-successful-runs" },
+              { "value": "Your factory is humming." },
+              { "value": "Your factory is idle." }
+            ]
+          },
+          {
+            "as": "attention-heading",
+            "function": "if",
+            "args": [
+              { "field": "has-failed-runs" },
+              { "value": "Your factory needs attention." },
+              { "field": "successful-heading" }
+            ]
+          },
+          {
+            "as": "strain-heading",
+            "function": "if",
+            "args": [
+              { "field": "failures-exceed-successes" },
+              { "value": "Your factory is under strain." },
+              { "field": "attention-heading" }
+            ]
+          },
+          {
+            "as": "active-heading",
+            "function": "if",
+            "args": [
+              { "field": "has-active-runs" },
+              { "value": "Your factory is humming." },
+              { "field": "strain-heading" }
+            ]
+          },
+          {
+            "as": "factory-heading",
+            "function": "if",
+            "args": [
+              { "field": "has-value-gains" },
+              { "value": "Your factory is delivering value." },
+              { "field": "active-heading" }
+            ]
+          }
+        ],
+        "select": [{ "field": "factory-heading" }]
       },
       {
         "name": "overview-registered-repository-summary",
@@ -928,34 +1676,22 @@
         "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
         "from": "firewall-observations",
         "filter": { "predicates": [{ "field": "decision", "in": ["allowed", "denied"] }] },
-        "compute": [
-          {
-            "as": "is-accepted",
-            "function": "equals-any",
-            "args": [{ "field": "decision" }, { "value": "allowed" }]
-          },
-          {
-            "as": "accepted",
-            "function": "if",
-            "args": [{ "field": "is-accepted" }, { "field": "request-count" }, { "value": 0 }]
-          },
-          {
-            "as": "is-blocked",
-            "function": "equals-any",
-            "args": [{ "field": "decision" }, { "value": "denied" }]
-          },
-          {
-            "as": "blocked",
-            "function": "if",
-            "args": [{ "field": "is-blocked" }, { "field": "request-count" }, { "value": 0 }]
-          }
-        ],
         "aggregate": {
           "by": ["domain"],
           "values": [
             { "field": "run", "as": "run", "reducer": "distinct-count" },
-            { "field": "accepted", "as": "accepted", "reducer": "sum" },
-            { "field": "blocked", "as": "blocked", "reducer": "sum" }
+            {
+              "field": "request-count",
+              "as": "accepted",
+              "reducer": "sum",
+              "filter": { "predicates": [{ "field": "decision", "equals": "allowed" }] }
+            },
+            {
+              "field": "request-count",
+              "as": "blocked",
+              "reducer": "sum",
+              "filter": { "predicates": [{ "field": "decision", "equals": "denied" }] }
+            }
           ]
         },
         "order-by": [
@@ -963,6 +1699,17 @@
           { "field": "accepted", "direction": "desc" },
           { "field": "domain", "direction": "asc" }
         ]
+      },
+      {
+        "name": "firewall-most-blocked-domains",
+        "intent": "Highlight the domains with the most blocked firewall requests.",
+        "description": "The ten domains with the highest observed blocked request totals.",
+        "from": "firewall-domain-totals",
+        "order-by": [
+          { "field": "blocked", "direction": "desc" },
+          { "field": "domain", "direction": "asc" }
+        ],
+        "limit": 10
       },
       {
         "name": "safe-output-usage",
@@ -991,12 +1738,18 @@
         "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
         "description": "Observed workflow runs ordered from newest to oldest.",
         "from": "runs",
+        "compute": [
+          {
+            "as": "repository-coordinate",
+            "function": "concat",
+            "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+          }
+        ],
         "select": [
           { "field": "run" },
           { "field": "run-status" },
           { "field": "run-conclusion" },
-          { "field": "organization" },
-          { "field": "repository" },
+          { "field": "repository-coordinate" },
           { "field": "workflow" },
           { "field": "rollout-mode" },
           { "field": "engine" },
@@ -1005,6 +1758,8 @@
           { "field": "requested-model" },
           { "field": "resolved-model" },
           { "field": "started-at" },
+          { "field": "repository-link" },
+          { "field": "workflow-link" },
           { "field": "run-link" }
         ],
         "order-by": [{ "field": "started-at", "direction": "desc" }]
@@ -1080,21 +1835,6 @@
         "from": "runs",
         "compute": [
           {
-            "as": "run-failed",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-conclusion" },
-              { "value": "failure" },
-              { "value": "timed_out" },
-              { "value": "startup_failure" }
-            ]
-          },
-          {
-            "as": "failed-run-count",
-            "function": "if",
-            "args": [{ "field": "run-failed" }, { "value": 1 }, { "value": 0 }]
-          },
-          {
             "as": "observed-engine",
             "function": "coalesce",
             "args": [{ "field": "engine" }, { "value": "unknown engine" }]
@@ -1120,7 +1860,16 @@
           "values": [
             { "field": "run", "as": "runs", "reducer": "distinct-count" },
             { "field": "aic-total", "as": "aic", "reducer": "sum" },
-            { "field": "failed-run-count", "as": "failed-runs", "reducer": "sum" },
+            {
+              "field": "run-conclusion",
+              "as": "failed-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [
+                  { "field": "run-conclusion", "in": ["failure", "timed-out", "startup-failure", "timed_out", "startup_failure"] }
+                ]
+              }
+            },
             { "field": "observed-agent-model", "as": "agent-model", "reducer": "distinct-list" }
           ]
         }
@@ -1285,98 +2034,63 @@
         "limit": 10
       },
       {
-        "name": "mcp-tool-results",
-        "intent": "Identify completed MCP tool calls by correlation id.",
-        "description": "Successful tool results keyed to their originating call.",
-        "from": "events",
-        "filter": { "predicates": [{ "field": "event-type", "equals": "tool.result" }] },
+        "name": "mcp-tool-calls",
+        "intent": "Prepare MCP tool calls for aggregation while excluding calls to the safe outputs server.",
+        "description": "Observed MCP tool calls labeled with whether they belong to the internal safe outputs server.",
+        "from": "mcp-calls",
         "compute": [
           {
-            "as": "result-status",
-            "function": "coalesce",
-            "args": [{ "field": "event-status" }, { "value": "success" }]
-          }
-        ],
-        "select": [{ "field": "session" }, { "field": "correlation-id" }, { "field": "result-status" }]
-      },
-      {
-        "name": "mcp-tool-errors",
-        "intent": "Identify failed MCP tool calls by correlation id.",
-        "description": "Tool errors keyed to their originating call.",
-        "from": "events",
-        "filter": { "predicates": [{ "field": "event-type", "equals": "tool.error" }] },
-        "compute": [
+            "as": "safe-output-server",
+            "function": "equals-any",
+            "args": [{ "field": "mcp-server" }, { "value": "safe_outputs" }]
+          },
           {
-            "as": "error-status",
-            "function": "coalesce",
-            "args": [{ "field": "event-status" }, { "value": "failure" }]
-          }
-        ],
-        "select": [{ "field": "session" }, { "field": "correlation-id" }, { "field": "error-status" }]
-      },
-      {
-        "name": "mcp-tool-activity",
-        "intent": "List MCP tool calls with their correlated result or error.",
-        "description": "Tool calls joined to completion events and projected for the MCP activity view.",
-        "from": "events",
-        "joins": [
+            "as": "mcp-tool-label",
+            "function": "concat",
+            "args": [{ "field": "mcp-server" }, { "value": "/" }, { "field": "mcp-tool" }]
+          },
           {
-            "source": "runs",
-            "type": "left",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" },
-              { "left": "run", "right": "run" },
-              { "left": "run-attempt", "right": "run-attempt" }
-            ],
-            "fields": [
-              { "field": "repository-link", "as": "linked-repository" },
-              { "field": "workflow-link", "as": "linked-workflow" },
-              { "field": "run-link", "as": "linked-run" }
+            "as": "workflow-key",
+            "function": "concat",
+            "args": [
+              { "field": "organization" },
+              { "value": "/" },
+              { "field": "repository" },
+              { "value": ":" },
+              { "field": "workflow" }
             ]
-          },
-          {
-            "source": "mcp-tool-results",
-            "type": "left",
-            "on": [
-              { "left": "session", "right": "session" },
-              { "left": "correlation-id", "right": "correlation-id" }
-            ],
-            "fields": [{ "field": "result-status", "as": "tool-result-status" }]
-          },
-          {
-            "source": "mcp-tool-errors",
-            "type": "left",
-            "on": [
-              { "left": "session", "right": "session" },
-              { "left": "correlation-id", "right": "correlation-id" }
-            ],
-            "fields": [{ "field": "error-status", "as": "tool-error-status" }]
           }
-        ],
-        "filter": {
-          "predicates": [{ "field": "event-type", "equals": "tool.call" }, { "field": "event-source", "equals": "mcp" }]
+        ]
+      },
+      {
+        "name": "mcp-tool-totals",
+        "intent": "Group observed MCP activity by tool and count calls and calling workflows, excluding the internal safe outputs server.",
+        "description": "Observed MCP tool-call totals grouped by MCP server and tool, with the number of distinct calling workflows.",
+        "from": "mcp-tool-calls",
+        "filter": { "predicates": [{ "field": "safe-output-server", "equals": false }] },
+        "aggregate": {
+          "by": ["mcp-tool-label", "mcp-server", "mcp-tool"],
+          "values": [
+            { "field": "mcp-observation", "as": "calls", "reducer": "count" },
+            { "field": "workflow-key", "as": "workflows", "reducer": "distinct-count" }
+          ]
         },
-        "compute": [
-          {
-            "as": "mcp-status",
-            "function": "coalesce",
-            "args": [{ "field": "tool-error-status" }, { "field": "tool-result-status" }, { "value": "missing" }]
-          }
-        ],
         "select": [
-          { "field": "event-summary", "as": "mcp-tool" },
-          { "field": "mcp-status" },
-          { "field": "repository" },
-          { "field": "linked-repository", "as": "repository-link" },
-          { "field": "workflow" },
-          { "field": "linked-workflow", "as": "workflow-link" },
-          { "field": "run" },
-          { "field": "event-timestamp", "as": "observed-at" },
-          { "field": "linked-run", "as": "run-link" }
+          { "field": "mcp-tool-label" },
+          { "field": "mcp-tool" },
+          { "field": "mcp-server" },
+          { "field": "calls" },
+          { "field": "workflows" }
         ],
-        "order-by": [{ "field": "observed-at", "direction": "desc" }]
+        "order-by": [{ "field": "calls", "direction": "desc" }, { "field": "mcp-tool-label", "direction": "asc" }]
+      },
+      {
+        "name": "mcp-top-tools",
+        "intent": "Show the ten most frequently called MCP tools.",
+        "description": "The ten MCP tools with the most observed calls, excluding the internal safe outputs server.",
+        "from": "mcp-tool-totals",
+        "order-by": [{ "field": "calls", "direction": "desc" }, { "field": "mcp-tool-label", "direction": "asc" }],
+        "limit": 10
       },
       {
         "name": "event-inspection",
@@ -1467,6 +2181,45 @@
           { "field": "linked-run", "as": "run-link" }
         ],
         "order-by": [{ "field": "observed-at", "direction": "desc" }]
+      },
+      {
+        "name": "audit-event-summary-buckets",
+        "intent": "Aggregate high- and medium-severity audit events with the same summary by workflow.",
+        "description": "The 20 most frequent high- and medium-severity audit event counts grouped by workflow and shared summary.",
+        "from": "events",
+        "filter": {
+          "predicates": [
+            {
+              "field": "event-type",
+              "in": [
+                "audit.finding",
+                "audit.observability",
+                "audit.recommendation",
+                "audit.missing_tool",
+                "audit.missing_data",
+                "audit.noop",
+                "audit.mcp_failure",
+                "audit.skill_activation"
+              ]
+            },
+            { "field": "event-status", "in": ["high", "medium"] }
+          ]
+        },
+        "aggregate": {
+          "by": ["workflow", "event-summary"],
+          "values": [{ "field": "event", "as": "events", "reducer": "count" }]
+        },
+        "select": [
+          { "field": "workflow" },
+          { "field": "event-summary" },
+          { "field": "events" }
+        ],
+        "order-by": [
+          { "field": "events", "direction": "desc" },
+          { "field": "workflow", "direction": "asc" },
+          { "field": "event-summary", "direction": "asc" }
+        ],
+        "limit": 20
       },
       {
         "name": "engines-models-usage",
@@ -1569,41 +2322,43 @@
       },
       {
         "name": "issues",
-        "intent": "List GitHub issue safe-output items from retained events.",
-        "description": "Issue safe-output item events retain target issue links and producing workflow run provenance.",
-        "from": "events",
-        "joins": [
-          {
-            "source": "runs",
-            "type": "left",
-            "on": [
-              { "left": "organization", "right": "organization" },
-              { "left": "repository", "right": "repository" },
-              { "left": "workflow", "right": "workflow" },
-              { "left": "run", "right": "run" },
-              { "left": "run-attempt", "right": "run-attempt" }
-            ],
-            "fields": [{ "field": "run-link", "as": "linked-run" }]
-          }
-        ],
-        "filter": {
-          "predicates": [
-            { "field": "event-type", "equals": "safe_output.created" },
-            { "field": "github-entity-type", "equals": "issue" }
-          ]
-        },
+        "intent": "List retained GitHub issue safe outputs.",
+        "description": "Issue-only projection of retained safe-output items.",
+        "from": "safe-output-items",
+        "filter": { "predicates": [{ "field": "github-entity-type", "equals": "issue" }] },
         "select": [
-          { "field": "event-timestamp", "as": "observed-at" },
-          { "field": "event-summary", "as": "issue-title" },
-          { "field": "correlation-id", "as": "issue-link" },
+          { "field": "observed-at" },
+          { "field": "github-entity-type" },
           { "field": "safe-output-type" },
+          { "field": "event-summary" },
+          { "field": "entity-url" },
           { "field": "organization" },
           { "field": "repository" },
           { "field": "workflow" },
           { "field": "run" },
-          { "field": "linked-run", "as": "run-link" }
+          { "field": "run-link" }
         ],
-        "order-by": [{ "field": "observed-at", "direction": "desc" }]
+        "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "entity-url", "direction": "asc" }]
+      },
+      {
+        "name": "pull-requests",
+        "intent": "List retained GitHub pull request safe outputs.",
+        "description": "Pull-request-only projection of retained safe-output items.",
+        "from": "safe-output-items",
+        "filter": { "predicates": [{ "field": "github-entity-type", "equals": "pull_request" }] },
+        "select": [
+          { "field": "observed-at" },
+          { "field": "github-entity-type" },
+          { "field": "safe-output-type" },
+          { "field": "event-summary" },
+          { "field": "entity-url" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-link" }
+        ],
+        "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "entity-url", "direction": "asc" }]
       },
       {
         "name": "workflow-inventory",
@@ -1688,7 +2443,7 @@
           {
             "as": "package-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
           },
           {
             "as": "package-dashboard-label",
@@ -1760,6 +2515,7 @@
           { "field": "repository-slug", "as": "repository" },
           { "field": "workflow" },
           { "field": "workflow-display-name", "as": "workflow-name" },
+          { "field": "workflow-identity", "as": "workflow-label" },
           { "field": "declared-role", "as": "workflow-role" },
           { "field": "declared-mode", "as": "rollout-mode" },
           { "field": "declared-registration", "as": "workflow-active" },
@@ -1910,9 +2666,9 @@
         "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "outcome-title", "direction": "asc" }]
       },
       {
-        "name": "dispatches",
-        "intent": "Project workflow-dispatch runs with package attribution and retained failure evidence.",
-        "description": "Canonical workflow-dispatch runs joined to their declared workflow identity.",
+        "name": "package-runs",
+        "intent": "Project workflow runs with package attribution and retained failure evidence.",
+        "description": "Canonical workflow runs joined to their declared package and workflow identity.",
         "from": "runs",
         "joins": [
           {
@@ -1931,7 +2687,6 @@
             ]
           }
         ],
-        "filter": { "predicates": [{ "field": "event", "equals": "workflow_dispatch" }] },
         "compute": [
           {
             "as": "status",
@@ -1992,7 +2747,7 @@
           {
             "as": "package-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
           },
           {
             "as": "package-dashboard-label",
@@ -2069,6 +2824,7 @@
           { "field": "declared-workflow-name", "as": "workflow-name" },
           { "field": "run" },
           { "field": "run-title" },
+          { "field": "event" },
           { "field": "runtime-repository" },
           { "field": "status" },
           { "field": "status-detail" },
@@ -2081,6 +2837,18 @@
           { "field": "repository-dashboard-link", "as": "repository-link" },
           { "field": "workflow-dashboard-link", "as": "workflow-link" }
         ],
+        "order-by": [{ "field": "started-at", "direction": "desc" }]
+      },
+      {
+        "name": "dispatches",
+        "intent": "Select workflow-dispatch runs from package-attributed workflow run evidence.",
+        "description": "Canonical workflow runs whose authoritative trigger is workflow_dispatch.",
+        "from": "package-runs",
+        "filter": {
+          "predicates": [
+            { "field": "event", "equals": "workflow_dispatch" }
+          ]
+        },
         "order-by": [{ "field": "started-at", "direction": "desc" }]
       },
       {
@@ -2273,18 +3041,16 @@
         "intent": "Summarize declared and disabled workflow counts by repository.",
         "description": "Declared and disabled workflow totals for each repository.",
         "from": "workflows",
-        "compute": [
-          {
-            "as": "disabled",
-            "function": "equals-any",
-            "args": [{ "field": "workflow-active" }, { "value": "false" }]
-          }
-        ],
         "aggregate": {
           "by": ["organization", "repository"],
           "values": [
             { "field": "workflow", "as": "workflows", "reducer": "count" },
-            { "field": "disabled", "as": "disabled", "reducer": "sum" }
+            {
+              "field": "workflow",
+              "as": "disabled",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "workflow-active", "equals": "false" }] }
+            }
           ]
         }
       },
@@ -2313,29 +3079,22 @@
         "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
         "description": "Distinct run and conclusion totals for each repository.",
         "from": "run-import-status",
-        "compute": [
-          {
-            "as": "failed",
-            "function": "equals-any",
-            "args": [
-              { "field": "run-conclusion" },
-              { "value": "failure" },
-              { "value": "startup-failure" },
-              { "value": "timed-out" }
-            ]
-          },
-          {
-            "as": "action-required",
-            "function": "equals-any",
-            "args": [{ "field": "run-conclusion" }, { "value": "action-required" }]
-          }
-        ],
         "aggregate": {
           "by": ["organization", "repository"],
           "values": [
             { "field": "run", "as": "runs", "reducer": "distinct-count" },
-            { "field": "failed", "as": "failed", "reducer": "sum" },
-            { "field": "action-required", "as": "action-required", "reducer": "sum" },
+            {
+              "field": "run-conclusion",
+              "as": "failed",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "timed-out"] }] }
+            },
+            {
+              "field": "run-conclusion",
+              "as": "action-required",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "equals": "action-required" }] }
+            },
             { "field": "imported", "as": "imported-runs", "reducer": "sum" }
           ]
         }
@@ -2547,6 +3306,35 @@
         ]
       },
       {
+        "name": "workflow-operational-value-totals",
+        "intent": "Summarize the operational value created by each evaluated workflow.",
+        "description": "Observed operational value totals grouped by producing workflow.",
+        "from": "operational-values",
+        "aggregate": {
+          "by": ["workflow"],
+          "values": [{ "field": "operational-value", "as": "value-created", "reducer": "sum" }]
+        }
+      },
+      {
+        "name": "package-operational-value-totals",
+        "intent": "Summarize the operational value created by each centrally managed package.",
+        "description": "Observed operational value totals attributed to centrally managed package workflows.",
+        "from": "workflow-inventory",
+        "joins": [
+          {
+            "source": "workflow-operational-value-totals",
+            "type": "inner",
+            "on": [{ "left": "workflow", "right": "workflow" }],
+            "fields": [{ "field": "value-created", "as": "workflow-value-created" }]
+          }
+        ],
+        "filter": { "predicates": [{ "field": "workflow-role", "in": ["orchestrator", "worker"] }] },
+        "aggregate": {
+          "by": ["package"],
+          "values": [{ "field": "workflow-value-created", "as": "value-created", "reducer": "sum" }]
+        }
+      },
+      {
         "name": "package-workflow-totals",
         "intent": "Summarize observed workflow and execution totals for each centrally managed package.",
         "description": "Observed workflow, rollout, run, and AI Credit totals grouped by package.",
@@ -2588,6 +3376,12 @@
             "type": "left",
             "on": [{ "left": "package", "right": "package" }],
             "fields": [{ "field": "dispatches", "as": "observed-dispatches" }]
+          },
+          {
+            "source": "package-operational-value-totals",
+            "type": "left",
+            "on": [{ "left": "package", "right": "package" }],
+            "fields": [{ "field": "value-created", "as": "value-created" }]
           }
         ],
         "compute": [
@@ -2618,7 +3412,7 @@
           {
             "as": "package-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-insights?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
           },
           {
             "as": "package-dashboard-label",
@@ -2646,7 +3440,8 @@
           { "field": "registration" },
           { "field": "runs" },
           { "field": "dispatches" },
-          { "field": "aic" }
+          { "field": "aic" },
+          { "field": "value-created" }
         ],
         "order-by": [{ "field": "package-name", "direction": "asc" }]
       },
@@ -3077,6 +3872,22 @@
         "description": "Observed firewall domains and aggregate request activity for agent egress.",
         "views": [
           {
+            "id": "security-firewall-most-blocked-domains",
+            "title": "Most blocked domains",
+            "description": "The ten domains with the highest observed blocked request totals.",
+            "data": {
+              "source": "firewall-most-blocked-domains"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No blocked firewall domains are available for this selection.",
+            "encoding": {
+              "x": { "field": "domain", "type": "nominal", "title": "Domain" },
+              "y": { "field": "blocked", "type": "quantitative", "title": "Blocked requests" }
+            }
+          },
+          {
             "id": "security-firewall-domains",
             "title": "Domains",
             "description": "Observed runs and accepted and blocked requests by normalized domain.",
@@ -3107,17 +3918,18 @@
               "columns": [
                 {
                   "field": "domain",
-                  "type": "nominal"
+                  "type": "nominal",
+                  "title": "Domain"
                 },
                 {
                   "field": "run",
                   "type": "quantitative",
-                  "title": "Run"
+                  "title": "Runs"
                 },
                 {
                   "field": "accepted",
                   "type": "quantitative",
-                  "title": "Accepted"
+                  "title": "Allowed"
                 },
                 {
                   "field": "blocked",
@@ -3139,11 +3951,35 @@
         "description": "Diagnose MCP tool reliability across agentic workflow runs.",
         "views": [
           {
+            "id": "mcp-top-tools",
+            "title": "Top MCP tools",
+            "description": "The ten most frequently called MCP tools, excluding the internal safe outputs server.",
+            "data": {
+              "source": "mcp-top-tools"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No MCP tool activity was observed.",
+            "encoding": {
+              "x": {
+                "field": "mcp-tool-label",
+                "type": "nominal",
+                "title": "MCP tool"
+              },
+              "y": {
+                "field": "calls",
+                "type": "quantitative",
+                "title": "Calls"
+              }
+            }
+          },
+          {
             "id": "mcp-tool-inventory",
             "title": "MCP tools",
-            "description": "Individual MCP tool calls and outcomes remain attributable to workflow runs.",
+            "description": "Observed MCP activity grouped by tool, excluding the internal safe outputs server.",
             "data": {
-              "source": "mcp-tool-activity"
+              "source": "mcp-tool-totals"
             },
             "mark": "table",
             "controls": "interactive",
@@ -3158,38 +3994,21 @@
                   "title": "MCP tool"
                 },
                 {
-                  "field": "mcp-status",
-                  "type": "ordinal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "repository",
+                  "field": "mcp-server",
                   "type": "nominal",
-                  "display": "repository-link"
+                  "title": "MCP server"
                 },
                 {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "display": "workflow-link"
+                  "field": "calls",
+                  "type": "quantitative",
+                  "title": "Calls"
                 },
                 {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run",
-                  "display": "run-link"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Observed"
+                  "field": "workflows",
+                  "type": "quantitative",
+                  "title": "Workflows"
                 }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
+              ]
             }
           }
         ]
@@ -3421,7 +4240,7 @@
                   {
                     "field": "aic",
                     "type": "quantitative",
-                    "title": "Local AIC",
+                    "title": "AIC",
                     "unit": "aic"
                   },
                   {
@@ -3441,9 +4260,22 @@
                   "type": "nominal"
                 }
               }
-            }
+            },
+            "entity-repositories"
           ]
         }
+      },
+      {
+        "id": "repository-workflows",
+        "kind": "custom",
+        "title": "Repository workflows",
+        "description": "Declared workflows for the selected repository.",
+        "icon": "workflow",
+        "route": {
+          "hash-query-parameter": "repository",
+          "navigation-page": "repositories"
+        },
+        "views": ["repository-workflows"]
       },
       {
         "id": "repository-detail",
@@ -3815,6 +4647,18 @@
         ]
       },
       {
+        "id": "workflow-run-cards",
+        "kind": "custom",
+        "title": "Workflow runs",
+        "description": "Observed runs for the selected workflow.",
+        "icon": "play",
+        "route": {
+          "hash-query-parameter": "workflow",
+          "navigation-page": "workflows"
+        },
+        "views": ["workflow-runs-cards"]
+      },
+      {
         "id": "workflow-runtime",
         "kind": "custom",
         "title": "Workflow runtime",
@@ -3993,6 +4837,37 @@
           },
           "views": [
             {
+              "id": "packages-value-created",
+              "title": "Ops Value by package",
+              "description": "The share of observed operational value created by each centrally managed package.",
+              "data": {
+                "source": "package-inventory"
+              },
+              "mark": "chart",
+              "chart": "pie",
+              "layout": "horizontal",
+              "empty-message": "No package operational value was observed in the selected horizon.",
+              "encoding": {
+                "x": {
+                  "field": "package-name",
+                  "type": "nominal",
+                  "title": "Package"
+                },
+                "y": {
+                  "field": "value-created",
+                  "type": "quantitative",
+                  "aggregate": "sum",
+                  "as": "total-value-created",
+                  "title": "Ops Value",
+                  "unit": "ops-value"
+                },
+                "href": {
+                  "field": "package-dashboard-link",
+                  "type": "nominal"
+                }
+              }
+            },
+            {
               "id": "packages-inventory",
               "title": "Packages",
               "description": "Centrally managed package inventory and observed execution totals.",
@@ -4047,6 +4922,12 @@
                     "type": "quantitative",
                     "title": "AIC",
                     "unit": "aic"
+                  },
+                  {
+                    "field": "value-created",
+                    "type": "quantitative",
+                    "title": "Ops Value",
+                    "unit": "ops-value"
                   },
                   {
                     "field": "registration",
@@ -4125,9 +5006,37 @@
         "id": "package-detail",
         "kind": "custom",
         "title": "Package",
-        "description": "Orchestrator and worker workflows in this package.",
+        "description": "Overview of this package.",
         "icon": "package",
         "class-name": "package-detail-page",
+        "route": {
+          "hash-query-parameter": "package"
+        },
+        "views": [
+          {
+            "id": "package-overview-navigation",
+            "title": "Package overview",
+            "data": {
+              "sources": [
+                "workflows"
+              ]
+            },
+            "mark": "element",
+            "element": "package-route",
+            "layout": "full",
+            "config": {
+              "body": "overview"
+            }
+          }
+        ]
+      },
+      {
+        "id": "package-workflows",
+        "kind": "custom",
+        "title": "Package",
+        "description": "Orchestrator and worker workflows in this package.",
+        "icon": "workflow",
+        "class-name": "package-workflows-page",
         "route": {
           "hash-query-parameter": "package"
         },
@@ -4211,27 +5120,241 @@
         ]
       },
       {
-        "id": "package-dispatches",
+        "id": "package-issues",
         "kind": "custom",
         "title": "Package",
-        "description": "Workflow dispatch runs for this package.",
-        "icon": "play",
-        "class-name": "package-dispatches-page",
+        "description": "Issues generated by this package.",
+        "icon": "issue-opened",
+        "class-name": "package-issues-page",
         "route": {
           "hash-query-parameter": "package"
         },
         "views": [
           {
-            "id": "package-dispatch-status",
-            "title": "Dispatch status",
-            "description": "Activated and guarded dispatches provide the package's leading activation signal.",
+            "id": "package-issue-status",
+            "title": "Generated issue status",
+            "description": "Current disposition of retained issue outcomes generated by this package.",
             "data": {
-              "source": "dispatches",
+              "source": "outcomes",
+              "route-field": "package",
+              "filters": {
+                "outcome-category": ["issue"]
+              }
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "outcome-status",
+                "type": "nominal",
+                "title": "Status"
+              },
+              "y": {
+                "field": "safe-output",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Issues"
+              }
+            }
+          },
+          {
+            "id": "package-issue-navigation",
+            "title": "Package issues",
+            "data": {
+              "sources": ["workflows"]
+            },
+            "mark": "element",
+            "element": "package-route",
+            "layout": "full",
+            "config": {
+              "body": "issues"
+            }
+          },
+          {
+            "id": "package-issue-table",
+            "title": "Generated issues",
+            "data": {
+              "source": "outcomes",
+              "route-field": "package",
+              "filters": {
+                "outcome-category": ["issue"]
+              },
+              "order-by": [
+                { "field": "observed-at", "direction": "desc" }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No generated issues have been attributed to this package.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "outcome-title",
+                  "type": "nominal",
+                  "title": "Issue",
+                  "display": "outcome-link"
+                },
+                {
+                  "field": "outcome-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "workflow-name",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
+                }
+              ]
+            },
+            "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "package-pull-requests",
+        "kind": "custom",
+        "title": "Package",
+        "description": "Pull requests generated by this package.",
+        "icon": "git-pull-request",
+        "class-name": "package-pull-requests-page",
+        "route": {
+          "hash-query-parameter": "package"
+        },
+        "views": [
+          {
+            "id": "package-pull-request-status",
+            "title": "Generated pull request status",
+            "description": "Current disposition of retained pull-request outcomes generated by this package.",
+            "data": {
+              "source": "outcomes",
+              "route-field": "package",
+              "filters": {
+                "outcome-category": ["pull-request"]
+              }
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "outcome-status",
+                "type": "nominal",
+                "title": "Status"
+              },
+              "y": {
+                "field": "safe-output",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Pull requests"
+              }
+            }
+          },
+          {
+            "id": "package-pull-request-navigation",
+            "title": "Package pull requests",
+            "data": {
+              "sources": ["workflows"]
+            },
+            "mark": "element",
+            "element": "package-route",
+            "layout": "full",
+            "config": {
+              "body": "pull-requests"
+            }
+          },
+          {
+            "id": "package-pull-request-table",
+            "title": "Generated pull requests",
+            "data": {
+              "source": "outcomes",
+              "route-field": "package",
+              "filters": {
+                "outcome-category": ["pull-request"]
+              },
+              "order-by": [
+                { "field": "observed-at", "direction": "desc" }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No generated pull requests have been attributed to this package.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "outcome-title",
+                  "type": "nominal",
+                  "title": "Pull request",
+                  "display": "outcome-link"
+                },
+                {
+                  "field": "outcome-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "workflow-name",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
+                }
+              ]
+            },
+            "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "package-runs",
+        "kind": "custom",
+        "title": "Package",
+        "description": "Workflow runs for this package.",
+        "icon": "play",
+        "class-name": "package-runs-page",
+        "route": {
+          "hash-query-parameter": "package"
+        },
+        "views": [
+          {
+            "id": "package-run-navigation",
+            "title": "Package workflow runs",
+            "data": {
+              "sources": [
+                "workflows"
+              ]
+            },
+            "mark": "element",
+            "element": "package-route",
+            "layout": "full",
+            "config": {
+              "body": "runs"
+            }
+          },
+          {
+            "id": "package-run-status",
+            "title": "Workflow run status",
+            "description": "Observed workflow conclusions provide the package's leading execution signal.",
+            "data": {
+              "source": "package-runs",
               "route-field": "package"
             },
             "mark": "chart",
             "chart": "pie",
             "layout": "full",
+            "empty-message": "No workflow runs were observed for this package in the current run window.",
             "encoding": {
               "x": {
                 "field": "status",
@@ -4242,23 +5365,8 @@
                 "field": "started-at",
                 "type": "quantitative",
                 "aggregate": "count",
-                "title": "Dispatches"
+                "title": "Runs"
               }
-            }
-          },
-          {
-            "id": "package-dispatch-navigation",
-            "title": "Package dispatches",
-            "data": {
-              "sources": [
-                "workflows"
-              ]
-            },
-            "mark": "element",
-            "element": "package-route",
-            "layout": "full",
-            "config": {
-              "body": "dispatches"
             }
           },
           {
@@ -4285,6 +5393,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
             "encoding": {
               "x": {
                 "field": "status-detail",
@@ -4376,17 +5485,17 @@
             "layout": "full"
           },
           {
-            "id": "package-dispatch-table",
-            "disclosure-label": "All dispatches",
+            "id": "package-run-table",
+            "disclosure-label": "All workflow runs",
             "disclosure": "supplemental",
-            "description": "Workflow dispatch runs attributed to this package, ordered newest first.",
+            "description": "Workflow runs attributed to this package, ordered newest first.",
             "data": {
-              "source": "dispatches",
+              "source": "package-runs",
               "route-field": "package"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No workflow dispatch runs were observed for this package in the current run window.",
+            "empty-message": "No workflow runs were observed for this package in the current run window.",
             "encoding": {
               "href": {
                 "field": "run-link",
@@ -4430,6 +5539,196 @@
                   "field": "status-detail",
                   "type": "nominal",
                   "title": "Why"
+                }
+              ]
+            },
+            "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "package-dispatches",
+        "kind": "custom",
+        "title": "Package",
+        "description": "Workflow dispatch runs for this package.",
+        "icon": "play",
+        "class-name": "package-runs-page",
+        "route": {
+          "hash-query-parameter": "package"
+        },
+        "views": [
+          {
+            "id": "package-dispatch-compatibility-status",
+            "title": "Workflow dispatch status",
+            "description": "Observed workflow-dispatch conclusions for this package.",
+            "data": {
+              "source": "dispatches",
+              "route-field": "package"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "status",
+                "type": "nominal",
+                "title": "Status"
+              },
+              "y": {
+                "field": "run",
+                "type": "quantitative",
+                "aggregate": "distinct-count",
+                "title": "Dispatches"
+              }
+            }
+          },
+          {
+            "id": "package-dispatch-compatibility-navigation",
+            "title": "Package workflow runs",
+            "data": {
+              "sources": ["workflows"]
+            },
+            "mark": "element",
+            "element": "package-route",
+            "layout": "full",
+            "config": {
+              "body": "dispatches"
+            }
+          },
+          {
+            "id": "package-dispatch-compatibility-table",
+            "title": "Workflow dispatches",
+            "data": {
+              "source": "dispatches",
+              "route-field": "package"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No workflow dispatch runs were observed for this package.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Started"
+                },
+                {
+                  "field": "workflow-name",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "package-repositories",
+        "kind": "custom",
+        "title": "Package",
+        "description": "Repositories associated with this package.",
+        "icon": "repo",
+        "class-name": "package-repositories-page",
+        "route": {
+          "hash-query-parameter": "package"
+        },
+        "views": [
+          {
+            "id": "package-repository-workflows",
+            "title": "Workflows by repository",
+            "description": "Distribution of package workflows across associated repositories.",
+            "data": {
+              "source": "packaged-workflows",
+              "route-field": "package"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "repository",
+                "type": "nominal",
+                "title": "Repository"
+              },
+              "y": {
+                "field": "workflow",
+                "type": "quantitative",
+                "aggregate": "distinct-count",
+                "title": "Workflows"
+              },
+              "href": {
+                "field": "repository-link",
+                "type": "nominal"
+              }
+            }
+          },
+          {
+            "id": "package-repository-navigation",
+            "title": "Package repositories",
+            "data": {
+              "sources": ["workflows"]
+            },
+            "mark": "element",
+            "element": "package-route",
+            "layout": "full",
+            "config": {
+              "body": "repositories"
+            }
+          },
+          {
+            "id": "package-repository-table",
+            "title": "Associated repositories",
+            "data": {
+              "source": "packaged-workflows",
+              "route-field": "package",
+              "order-by": [
+                { "field": "repository", "direction": "asc" },
+                { "field": "workflow-name", "direction": "asc" }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No repositories are associated with this package.",
+            "encoding": {
+              "href": {
+                "field": "repository-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository",
+                  "display": "repository-link"
+                },
+                {
+                  "field": "workflow-name",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "workflow-role",
+                  "type": "ordinal",
+                  "title": "Role",
+                  "display": "label"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "mode"
                 }
               ]
             },
@@ -4549,17 +5848,47 @@
           },
           "views": [
             {
-              "id": "workflows-inventory",
-              "title": "Workflows",
-              "description": "Central package and repository-owned workflow inventory with observed execution totals.",
+              "id": "workflows-by-runs",
+              "title": "Workflows by runs",
+              "description": "Declared workflows ranked by the number of observed runs.",
               "data": {
                 "source": "workflow-inventory",
                 "order-by": [
                   {
-                    "field": "repository",
-                    "direction": "asc"
+                    "field": "runs",
+                    "direction": "desc"
                   }
-                ]
+                ],
+                "limit": 10
+              },
+              "mark": "chart",
+              "chart": "pie",
+              "layout": "horizontal",
+              "empty-message": "No workflow runs observed.",
+              "encoding": {
+                "x": {
+                  "field": "workflow-label",
+                  "type": "nominal",
+                  "format": "workflow-identity-label",
+                  "title": "Workflow"
+                },
+                "y": {
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Runs"
+                },
+                "href": {
+                  "field": "workflow-link",
+                  "type": "nominal"
+                }
+              }
+            },
+            {
+              "id": "workflows-inventory",
+              "title": "Workflows",
+              "description": "Declared workflows across the configured repository scope.",
+              "data": {
+                "source": "workflow-inventory"
               },
               "mark": "table",
               "controls": "interactive",
@@ -4568,26 +5897,23 @@
               "layout": "full-view",
               "empty-message": "No workflows observed.",
               "encoding": {
-                "href": {
-                  "field": "package-link",
-                  "type": "nominal"
-                },
                 "columns": [
                   {
-                    "field": "package-name",
+                    "field": "workflow-name",
                     "type": "nominal",
-                    "title": "Package"
+                    "title": "Workflow",
+                    "display": "workflow-link"
                   },
                   {
                     "field": "repository",
                     "type": "nominal",
-                    "title": "Control repository"
+                    "title": "Repository",
+                    "display": "repository-link"
                   },
                   {
-                    "field": "workflow",
+                    "field": "package-name",
                     "type": "nominal",
-                    "format": "workflow-relative-path",
-                    "title": "Workflow"
+                    "title": "Package"
                   },
                   {
                     "field": "workflow-role",
@@ -4599,6 +5925,12 @@
                     "type": "nominal",
                     "title": "Mode",
                     "display": "mode"
+                  },
+                  {
+                    "field": "workflow-active",
+                    "type": "nominal",
+                    "title": "State",
+                    "display": "active-state"
                   },
                   {
                     "field": "aic",
@@ -4614,13 +5946,7 @@
                   {
                     "field": "ingestion",
                     "type": "nominal",
-                    "title": "Ingestion %"
-                  },
-                  {
-                    "field": "workflow-active",
-                    "type": "nominal",
-                    "title": "Registration",
-                    "display": "active-state"
+                    "title": "Ingestion"
                   }
                 ]
               }
@@ -4822,7 +6148,7 @@
               },
               "mark": "chart",
               "chart": "swimlane",
-              "layout": "full",
+              "layout": "horizontal",
               "encoding": {
                 "x": {
                   "field": "started-at",
@@ -4866,7 +6192,8 @@
                 "columns": [
                   {
                     "field": "run",
-                    "type": "nominal"
+                    "type": "nominal",
+                    "display": "run-link"
                   },
                   {
                     "field": "run-status",
@@ -4879,16 +6206,15 @@
                     "display": "status"
                   },
                   {
-                    "field": "organization",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal"
+                    "field": "repository-coordinate",
+                    "type": "nominal",
+                    "title": "Repository",
+                    "display": "repository-link"
                   },
                   {
                     "field": "workflow",
-                    "type": "nominal"
+                    "type": "nominal",
+                    "display": "workflow-link"
                   },
                   {
                     "field": "rollout-mode",
@@ -5580,6 +6906,38 @@
         }
       },
       {
+        "id": "sessions",
+        "kind": "custom",
+        "title": "Sessions",
+        "icon": "terminal",
+        "description": "Inspect imported execution sessions and drill into their retained events.",
+        "views": ["entity-sessions"]
+      },
+      {
+        "id": "run-events",
+        "kind": "custom",
+        "title": "Run",
+        "icon": "pulse",
+        "description": "Imported sessions and observed events for the selected workflow run.",
+        "route": {
+          "hash-query-parameter": "run",
+          "navigation-page": "runs"
+        },
+        "views": ["run-sessions", "run-events"]
+      },
+      {
+        "id": "session-events",
+        "kind": "custom",
+        "title": "Session",
+        "icon": "pulse",
+        "description": "Observed events for the selected execution session.",
+        "route": {
+          "hash-query-parameter": "session",
+          "navigation-page": "sessions"
+        },
+        "views": ["session-events"]
+      },
+      {
         "id": "events",
         "kind": "custom",
         "title": "Events",
@@ -5595,6 +6953,7 @@
             },
             "mark": "table",
             "controls": "interactive",
+            "column-summaries": false,
             "empty-message": "No workflow events were observed in the current run window.",
             "layout": "full-view",
             "encoding": {
@@ -5683,6 +7042,36 @@
         "description": "Inspect observed agent audit events, including findings, recommendations, gaps, and skill activations.",
         "views": [
           {
+            "id": "audit-event-summary-buckets",
+            "title": "High and medium severity audit events",
+            "description": "The 20 most frequent audit-event buckets grouped by workflow and shared summary after info-level events are excluded.",
+            "data": {
+              "source": "audit-event-summary-buckets"
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "empty-message": "No high- or medium-severity audit events were observed in the current run window.",
+            "encoding": {
+              "x": {
+                "field": "workflow",
+                "type": "nominal",
+                "format": "workflow-relative-path",
+                "title": "Workflow"
+              },
+              "y": {
+                "field": "events",
+                "type": "quantitative",
+                "title": "Events"
+              },
+              "color": {
+                "field": "event-summary",
+                "type": "nominal",
+                "title": "Summary"
+              }
+            }
+          },
+          {
             "id": "audit-events-table",
             "title": "Audit events",
             "description": "Observed audit events ordered from newest to oldest with their audit kind, status, summary, and run context.",
@@ -5701,25 +7090,27 @@
               },
               "columns": [
                 {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Observed"
-                },
-                {
-                  "field": "audit-kind",
+                  "field": "event-summary",
                   "type": "nominal",
-                  "title": "Audit event"
+                  "title": "Summary"
                 },
                 {
                   "field": "event-status",
                   "type": "nominal",
-                  "title": "Status"
+                  "title": "Status",
+                  "display": "status"
                 },
                 {
-                  "field": "event-summary",
+                  "field": "workflow",
                   "type": "nominal",
-                  "title": "Summary"
+                  "format": "workflow-relative-path",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "audit-kind",
+                  "type": "nominal",
+                  "title": "Audit event",
+                  "display": "label"
                 },
                 {
                   "field": "repository",
@@ -5727,14 +7118,16 @@
                   "title": "Repository"
                 },
                 {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
                 },
                 {
                   "field": "run",
                   "type": "nominal",
-                  "title": "Run"
+                  "title": "Run",
+                  "display": "run-link"
                 },
                 {
                   "field": "run-attempt",
@@ -5764,6 +7157,54 @@
         "description": "Inspect retained dashboard ingestion transactions.",
         "views": [
           {
+            "id": "transaction-local-database",
+            "title": "Local database",
+            "description": "Inspect and manage records retained in this browser.",
+            "data": {
+              "sources": [
+                "database-package-count",
+                "database-repository-count",
+                "database-workflow-count",
+                "database-run-count",
+                "database-event-count"
+              ]
+            },
+            "mark": "element",
+            "element": "local-database",
+            "layout": "full"
+          },
+          {
+            "id": "transaction-ingestion-trend",
+            "title": "Run ingestion coverage",
+            "description": "Known factory runs compared with runs that include imported session data at each ingestion transaction.",
+            "data": {
+              "source": "transactions-table"
+            },
+            "mark": "chart",
+            "chart": "line",
+            "layout": "full",
+            "empty-message": "No run ingestion transactions have been retained.",
+            "encoding": {
+              "x": {
+                "field": "created-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp"
+              },
+              "y": [
+                {
+                  "field": "raw-runs",
+                  "type": "quantitative",
+                  "title": "Known runs"
+                },
+                {
+                  "field": "agentic-runs",
+                  "type": "quantitative",
+                  "title": "Runs with session data"
+                }
+              ]
+            }
+          },
+          {
             "id": "transaction-entries",
             "title": "Transaction entries",
             "description": "Retained ingestion transactions ordered from newest to oldest.",
@@ -5778,12 +7219,6 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "created-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Created"
-                },
-                {
                   "field": "kind",
                   "type": "nominal",
                   "title": "Kind"
@@ -5791,22 +7226,8 @@
                 {
                   "field": "payload-scope",
                   "type": "nominal",
+                  "format": "shortened-url",
                   "title": "Scope"
-                },
-                {
-                  "field": "committed-records",
-                  "type": "quantitative",
-                  "title": "Committed records"
-                },
-                {
-                  "field": "records",
-                  "type": "quantitative",
-                  "title": "Records"
-                },
-                {
-                  "field": "raw-payload-records",
-                  "type": "quantitative",
-                  "title": "Raw payload records"
                 },
                 {
                   "field": "raw-runs",
@@ -5844,19 +7265,10 @@
                   "title": "Error"
                 },
                 {
-                  "field": "transaction",
-                  "type": "nominal",
-                  "title": "Transaction"
-                },
-                {
-                  "field": "payload-hash",
-                  "type": "nominal",
-                  "title": "Payload hash"
-                },
-                {
-                  "field": "payload-etag",
-                  "type": "nominal",
-                  "title": "Payload ETag"
+                  "field": "created-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Created"
                 }
               ]
             }
@@ -5927,72 +7339,67 @@
       {
         "id": "operational-value",
         "kind": "custom",
-        "title": "Value & outcomes",
+        "title": "Operational value",
         "navigation-label": "Value",
         "icon": "beaker",
         "class-name": "value-page",
-        "description": "Outcome, grader, maturity, AI Credit, and experiment-readiness evidence for the configured repositories.",
+        "description": "Operational value created by centrally managed packages.",
         "views": [
           {
-            "id": "operational-value-ledger",
+            "id": "operational-value-by-package",
+            "title": "Operational value by package",
+            "description": "The share of observed operational value created by each centrally managed package.",
             "data": {
-              "source": "grader-observations"
+              "source": "package-inventory"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "horizontal",
+            "empty-message": "No package operational value was observed in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "package-name",
+                "type": "nominal",
+                "title": "Package"
+              },
+              "y": {
+                "field": "value-created",
+                "type": "quantitative",
+                "aggregate": "mean",
+                "as": "total-value-created",
+                "title": "Operational value",
+                "unit": "ops-value"
+              }
+            }
+          },
+          {
+            "id": "operational-value-packages",
+            "title": "Packages",
+            "description": "Observed operational value created by each centrally managed package.",
+            "data": {
+              "source": "package-inventory"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No operational-value grader records were retained.",
+            "lazy-list": true,
+            "column-summaries": true,
             "layout": "full-view",
+            "empty-message": "No package operational value was observed in the selected horizon.",
             "encoding": {
               "columns": [
                 {
-                  "field": "grader",
+                  "field": "package-name",
                   "type": "nominal",
-                  "title": "Workflow"
+                  "title": "Package"
                 },
                 {
-                  "field": "status",
-                  "type": "nominal",
-                  "display": "grader-status",
-                  "title": "Status"
-                },
-                {
-                  "field": "maturity-status",
-                  "type": "nominal",
-                  "display": "label",
-                  "title": "Maturity"
-                },
-                {
-                  "field": "value",
+                  "field": "value-created",
                   "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Value"
-                },
-                {
-                  "field": "baseline-value",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Baseline"
-                },
-                {
-                  "field": "delta-from-baseline",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Delta"
-                },
-                {
-                  "field": "evaluator-digest",
-                  "type": "nominal",
-                  "display": "digest",
-                  "title": "Evaluator"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
+                  "title": "Operational value",
+                  "unit": "ops-value"
                 }
               ]
-            },
-            "lazy-list": true
+            }
           }
         ]
       },
@@ -6302,6 +7709,12 @@
                   "field": "package-current-version",
                   "type": "nominal",
                   "title": "Latest"
+                },
+                {
+                  "field": "package-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "status"
                 }
               ],
               "actions": [
@@ -6316,6 +7729,32 @@
                   "when": {
                     "field": "package-update-state",
                     "equals": "update-available"
+                  }
+                },
+                {
+                  "action": "set-package-live",
+                  "presentation": "cli-action",
+                  "icon": "play",
+                  "label": "Switch to live",
+                  "context": [
+                    "package"
+                  ],
+                  "when": {
+                    "field": "package-mode",
+                    "equals": "review"
+                  }
+                },
+                {
+                  "action": "set-package-preview",
+                  "presentation": "cli-action",
+                  "icon": "eye",
+                  "label": "Switch to preview",
+                  "context": [
+                    "package"
+                  ],
+                  "when": {
+                    "field": "package-mode",
+                    "equals": "live"
                   }
                 }
               ]
@@ -6474,12 +7913,7 @@
             "description": "Change policy values, then copy the updated JSON for review and commit.",
             "data": {
               "sources": [
-                "configuration-policy",
-                "database-package-count",
-                "database-repository-count",
-                "database-workflow-count",
-                "database-run-count",
-                "database-event-count"
+                "configuration-policy"
               ]
             },
             "mark": "element",
@@ -6490,77 +7924,27 @@
       },
       {
         "id": "issues",
-        "kind": "custom",
+        "kind": "built-in",
+        "page": "issues",
         "title": "Issues",
         "navigation-label": "Issues",
         "icon": "issue-opened",
         "description": "GitHub issue safe outputs rendered as a GitHub-style issue list.",
-        "views": [
-          {
-            "id": "issue-list",
-            "title": "Issues",
-            "description": "Open an issue or its producing workflow run from retained safe-output item evidence.",
-            "data": {
-              "source": "issues",
-              "limit": 100,
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "list",
-            "list": {
-              "style": "issues",
-              "icon": "issue-opened"
-            },
-            "empty-message": "No issue safe outputs were retained in the current report.",
-            "layout": "full-view",
-            "encoding": {
-              "href": {
-                "field": "issue-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "issue-title",
-                  "type": "nominal",
-                  "title": "Issue"
-                },
-                {
-                  "field": "safe-output-type",
-                  "type": "nominal",
-                  "title": "Safe output",
-                  "display": "label"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow",
-                  "format": "workflow-relative-path"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run",
-                  "display": "run-link"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Opened"
-                }
-              ]
-            }
-          }
-        ]
+        "definition": {
+          "data-state": {
+            "availability": true
+          },
+          "views": ["issues"]
+        }
+      },
+      {
+        "id": "pull-requests",
+        "kind": "custom",
+        "title": "Pull requests",
+        "navigation-label": "Pull requests",
+        "icon": "git-pull-request",
+        "description": "GitHub pull request safe outputs rendered with their external targets and producing-run provenance.",
+        "views": ["pull-requests"]
       },
       {
         "id": "preview",
@@ -6639,9 +8023,25 @@
         "class-name": "dashboard-overview-page",
         "views": [
           {
-            "id": "overview-outcomes",
+            "id": "overview-header",
             "title": "How are we doing?",
             "description": "Repositories registered counts distinct registered targets and compares them with retained completed delivery evidence in the selected horizon.",
+            "data": {
+              "sources": [
+                "overview-outcome-summary",
+                "overview-run-summary",
+                "overview-factory-status",
+                "overview-rhythm"
+              ]
+            },
+            "mark": "element",
+            "element": "factory-header",
+            "layout": "full"
+          },
+          {
+            "id": "overview-floor",
+            "title": "Factory floor",
+            "intent": "Compare registered repositories, successful runs, dispatches, and value gains while preserving their investigation routes.",
             "data": {
               "sources": [
                 "overview-outcome-summary",
@@ -6650,13 +8050,13 @@
                 "overview-delivery-summary",
                 "overview-value-summary",
                 "overview-registered-repository-summary",
-                "overview-worker-summary",
-                "overview-rhythm"
+                "overview-worker-summary"
               ]
             },
             "mark": "element",
-            "element": "outcomes-overview",
+            "element": "factory-floor",
             "config": {
+              "animate": "number",
               "labels": {
                 "repositories": {
                   "singular": "Repository registered",
@@ -7080,14 +8480,15 @@
           "runs",
           "engines-models",
           "firewall",
-          "mcps",
-          "events"
+          "mcps"
         ]
       },
       {
         "label": "Investigate",
         "experimental": true,
         "pages": [
+          "events",
+          "sessions",
           "runtime",
           "performance",
           "security",
@@ -7119,6 +8520,7 @@
         "experimental": true,
         "pages": [
           "issues",
+          "pull-requests",
           "safe-output-items",
           "safe-outputs",
           "detection",

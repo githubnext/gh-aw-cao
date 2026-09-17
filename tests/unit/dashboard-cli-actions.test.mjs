@@ -20,12 +20,19 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
   );
 });
 
+test("CLI actions parse CAO helper commands without a shell", () => {
+  assert.deepEqual(
+    parseDashboardCommand("./.github/aw/cao.sh add githubnext/gh-aw-cao/dependabot"),
+    ["./.github/aw/cao.sh", "add", "githubnext/gh-aw-cao/dependabot"],
+  );
+});
+
 test("CLI actions reject commands outside supported GitHub CLI commands", () => {
   assert.throws(
     () => parseDashboardCommand("gh api user"),
     {
       message:
-        'CLI action command must be an explicit "gh aw <command>" or "gh workflow run <workflow>" invocation.',
+        'CLI action command must be an explicit "./.github/aw/cao.sh <command>" or "gh aw <command>" or "gh workflow run <workflow>" invocation.',
     },
   );
   assert.throws(() => parseDashboardCommand("gh workflow view"), /must be an explicit/);
@@ -44,6 +51,35 @@ test("CLI actions reject commands outside supported GitHub CLI commands", () => 
   assert.throws(() => parseDashboardCommand("sh -c 'gh aw compile'"), /must be an explicit/);
   assert.throws(() => parseDashboardCommand("gh aw compile\nwhoami"), /single line/);
   assert.throws(() => parseDashboardCommand("gh aw compile '"), /incomplete/);
+});
+
+test("CLI actions execute the CAO helper with the approved token and Git identity", async () => {
+  const calls = [];
+  const result = await executeDashboardCommand({
+    command: "./.github/aw/cao.sh update --major",
+    workingDirectory: "/workspace",
+    githubToken: "token-value",
+    execute: async (...args) => {
+      calls.push(args);
+      if (args[1][0] === "aw") return { stdout: "usage", stderr: "" };
+      if (args[1][0] === "api") {
+        return {
+          stdout: JSON.stringify({ login: "octocat", id: 1 }),
+          stderr: "",
+        };
+      }
+      return { stdout: "updated\n", stderr: "" };
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls[2].slice(0, 2), [
+    "./.github/aw/cao.sh",
+    ["update", "--major"],
+  ]);
+  assert.equal(calls[2][2].cwd, "/workspace");
+  assert.equal(calls[2][2].env.GH_TOKEN, "token-value");
+  assert.equal(calls[2][2].env.GIT_AUTHOR_NAME, "octocat");
 });
 
 test("CLI actions execute gh directly with the approved token", async () => {

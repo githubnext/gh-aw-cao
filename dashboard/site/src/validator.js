@@ -4,12 +4,16 @@ import {
   AGGREGATE_VALUES,
   BUILT_IN_PAGE_KEYS,
   BUILT_IN_PAGE_VALUES,
+  CARD_STATUS_KEYS,
+  CARD_TEMPLATE_KEYS,
+  CARD_TIMING_FIELD_KEYS,
   CUSTOM_PAGE_KEYS,
   DASHBOARD_KEYS,
   DASHBOARD_HORIZON_KEYS,
   DASHBOARD_QUERY_LIMITS,
   COMPUTE_FUNCTION_ARITY,
   NUMERIC_COMPUTE_FUNCTIONS,
+  QUERY_AGGREGATE_FILTER_PREDICATE_KEYS,
   QUERY_AGGREGATE_KEYS,
   QUERY_AGGREGATE_VALUE_KEYS,
   QUERY_COMPUTE_ARGUMENT_KEYS,
@@ -22,9 +26,11 @@ import {
   QUERY_KEYS,
   QUERY_MAX_JOINS,
   QUERY_PREDICATE_KEYS,
+  QUERY_PREDICT_KEYS,
   QUERY_REDUCER_VALUES,
   QUERY_NUMERIC_REDUCER_VALUES,
   QUERY_SELECT_KEYS,
+  PREDICTION_METHODS,
   INFERRED_FIELD_NAMES,
   DATASET_AVAILABILITY_VALUES,
   DATASET_COMPLETENESS_VALUES,
@@ -48,6 +54,7 @@ import {
   FIELD_DISPLAY_VALUES,
   FIELD_FORMAT_VALUES,
   FIELD_TYPE_VALUES,
+  FACTORY_OVERVIEW_SECTION_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
   FINDING_SEVERITY_VALUES,
@@ -93,11 +100,16 @@ import {
   BUILT_IN_PAGE_REQUIRED_FIELDS,
   TIME_UNIT_VALUES,
   VIEW_DATA_KEYS,
+  VIEW_DATA_ARGUMENT_KEYS,
   VIEW_CHART_VALUES,
   VIEW_CONTROL_VALUES,
+  VIEW_LIST_DRILL_ARGUMENT_KEYS,
+  VIEW_LIST_DRILL_KEYS,
+  VIEW_LIST_DRILL_TYPE_VALUES,
   VIEW_DISCLOSURE_VALUES,
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
+  VIEW_ELEMENT_ANIMATION_VALUES,
   VIEW_ELEMENT_VALUES,
   PLURAL_LABEL_ELEMENTS,
   PLURAL_TEXT_KEYS,
@@ -107,6 +119,7 @@ import {
   VIEW_LIST_STYLE_VALUES,
   VIEW_MARK_VALUES,
   VIEW_METRIC_KEYS,
+  VIEW_METRIC_ANIMATION_VALUES,
   VIEW_METRIC_STYLE_VALUES,
   VIEW_METRIC_TONE_VALUES,
   VIEW_TITLE_LINK_KEYS,
@@ -242,6 +255,10 @@ function validWorkflowDispatchArguments(args) {
  * @type {Map<string, string[] | undefined>}
  */
 let declaredQueries = new Map();
+/** @type {Set<string>} */
+let declaredCardTemplates = new Set();
+/** @type {Map<string, Record<string, unknown>>} */
+let declaredViews = new Map();
 
 /** @type {Map<string, Set<string>>} */
 let declaredQuerySources = new Map();
@@ -293,6 +310,7 @@ export function validateDashboardDocument(source) {
     validateDashboard(dashboard, getValueNodeByKey(document.contents, 'dashboard'), errors);
   } finally {
     declaredQueries = new Map();
+    declaredCardTemplates = new Set();
     declaredQuerySources = new Map();
     declaredCliActions = new Map();
   }
@@ -520,6 +538,170 @@ function validateLanguageVersion(value, errors) {
 }
 
 /**
+ * @param {unknown} templates
+ * @param {unknown} templatesNode
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplates(templates, templatesNode, errors) {
+  const ids = new Set();
+  if (templates === undefined) return ids;
+  if (!Array.isArray(templates) || templates.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card-templates must be a non-empty sequence.', '$.dashboard.card-templates'));
+    return ids;
+  }
+  templates.forEach((template, index) => {
+    const path = `$.dashboard.card-templates[${index}]`;
+    const templateNode = getSequenceItemNode(templatesNode, index);
+    if (!isPlainObject(template)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template must be a mapping.', path));
+      return;
+    }
+    validateObjectKeys(templateNode, CARD_TEMPLATE_KEYS, path, errors);
+    validateRequiredIdentifier(template.id, `${path}.id`, 'card template id', errors);
+    validateStringField(template.icon, `${path}.icon`, true, errors);
+    if (typeof template.icon === 'string' && !PAGE_ICON_VALUES.includes(template.icon)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template icon must use one canonical Octicon name.', `${path}.icon`));
+    }
+    if (typeof template.id === 'string') {
+      if (ids.has(template.id)) errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'card template id must be unique.', `${path}.id`));
+      ids.add(template.id);
+    }
+    validateCardTemplateField(template.title, getValueNodeByKey(templateNode, 'title'), `${path}.title`, errors);
+    if (template.subtitle !== undefined) {
+      validateCardTemplateField(template.subtitle, getValueNodeByKey(templateNode, 'subtitle'), `${path}.subtitle`, errors);
+    }
+    validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
+    validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
+    for (const key of ['labels', 'details']) {
+      const fields = template[key];
+      if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `card template ${key} must be ${key === 'details' ? 'a non-empty' : 'an'} sequence.`, `${path}.${key}`));
+        continue;
+      }
+      fields.forEach((field, fieldIndex) => validateCardTemplateField(
+        field,
+        getSequenceItemNode(getValueNodeByKey(templateNode, key), fieldIndex),
+        `${path}.${key}[${fieldIndex}]`,
+        errors
+      ));
+    }
+  });
+  return ids;
+}
+
+/**
+ * A card template status declaration names the field whose observed value
+ * selects the card's status icon and tone, with an optional fallback field for
+ * entities whose terminal value is not yet observed.
+ * @param {unknown} status
+ * @param {unknown} statusNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplateStatus(status, statusNode, path, errors) {
+  if (status === undefined) return;
+  if (!isPlainObject(status)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template status must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(statusNode, CARD_STATUS_KEYS, path, errors);
+  validateRequiredIdentifier(status.field, `${path}.field`, 'card template status field', errors);
+  if (status['fallback-field'] !== undefined) {
+    validateRequiredIdentifier(status['fallback-field'], `${path}.fallback-field`, 'card template status fallback field', errors);
+  }
+  validateOptionalStringField(status.title, `${path}.title`, errors);
+}
+
+/**
+ * A card template timing declaration is an ordered sequence of icon-labeled
+ * field definitions presented beside the card, such as the start time and the
+ * elapsed duration of a run.
+ * @param {unknown} timing
+ * @param {unknown} timingNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplateTiming(timing, timingNode, path, errors) {
+  if (timing === undefined) return;
+  if (!Array.isArray(timing) || timing.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template timing must be a non-empty sequence.', path));
+    return;
+  }
+  timing.forEach((field, index) => {
+    const fieldPath = `${path}[${index}]`;
+    const fieldNode = getSequenceItemNode(timingNode, index);
+    validateCardTemplateField(field, fieldNode, fieldPath, errors, CARD_TIMING_FIELD_KEYS);
+    if (!isPlainObject(field)) return;
+    validateStringField(field.icon, `${fieldPath}.icon`, true, errors);
+    if (typeof field.icon === 'string' && !PAGE_ICON_VALUES.includes(field.icon)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template timing icon must use one canonical Octicon name.', `${fieldPath}.icon`));
+    }
+  });
+}
+
+/**
+ * @param {unknown} field
+ * @param {unknown} fieldNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ * @param {string[]} [allowedKeys]
+ */
+function validateCardTemplateField(field, fieldNode, path, errors, allowedKeys = FIELD_DEFINITION_KEYS) {
+  if (!isPlainObject(field)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template field must be a mapping.', path));
+    return;
+  }
+
+  validateObjectKeys(fieldNode, allowedKeys, path, errors);
+  validateRequiredIdentifier(field.field, `${path}.field`, 'card template field', errors);
+  validateOptionalStringField(field.title, `${path}.title`, errors);
+  if (field.display !== undefined && (typeof field.display !== 'string' || !FIELD_DISPLAY_VALUES.includes(field.display))) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template field display must use one canonical display value.', `${path}.display`));
+  }
+
+  if (field.format !== undefined && (typeof field.format !== 'string' || !FIELD_FORMAT_VALUES.includes(field.format))) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template field format must use one canonical format value.', `${path}.format`));
+  }
+}
+
+/**
+ * @param {unknown} views
+ * @param {unknown} viewsNode
+ * @param {ValidationError[]} errors
+ */
+function validateReusableViews(views, viewsNode, errors) {
+  const definitions = new Map();
+  if (views === undefined) return definitions;
+  if (!Array.isArray(views) || views.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'views must be a non-empty sequence.', '$.dashboard.views'));
+    return definitions;
+  }
+  const ids = new Set();
+  views.forEach((view, index) => {
+    const path = `$.dashboard.views[${index}]`;
+    validateView(view, getSequenceItemNode(viewsNode, index), path, ids, errors);
+    if (isPlainObject(view) && typeof view.id === 'string' && !definitions.has(view.id)) {
+      definitions.set(view.id, view);
+    }
+  });
+  return definitions;
+}
+
+/** @param {unknown} page */
+function resolveReusablePageViews(page) {
+  if (!isPlainObject(page)) return page;
+  const definition = page.kind === 'built-in' && isPlainObject(page.definition)
+    ? page.definition
+    : null;
+  const views = definition?.views ?? page.views;
+  if (!Array.isArray(views)) return page;
+  const resolvedViews = views.map((view) => typeof view === 'string' ? declaredViews.get(view) ?? view : view);
+  return definition
+    ? { ...page, definition: { ...definition, views: resolvedViews } }
+    : { ...page, views: resolvedViews };
+}
+
+/**
  * @param {Record<string, unknown>} dashboard
  * @param {unknown} dashboardNode
  * @param {ValidationError[]} errors
@@ -553,6 +735,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         errors
       );
     }
+
   }
 
   if (dashboard['github-url-base'] !== undefined && !isSafeGithubUrlBase(dashboard['github-url-base'])) {
@@ -591,6 +774,16 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   }
 
   declaredQueries = validateQueries(dashboard.queries, getValueNodeByKey(dashboardNode, 'queries'), errors);
+  declaredCardTemplates = validateCardTemplates(
+    dashboard['card-templates'],
+    getValueNodeByKey(dashboardNode, 'card-templates'),
+    errors
+  );
+  declaredViews = validateReusableViews(
+    dashboard.views,
+    getValueNodeByKey(dashboardNode, 'views'),
+    errors
+  );
   const unitIds = validateUnits(dashboard.units, getValueNodeByKey(dashboardNode, 'units'), errors);
   validateSiteCallouts(dashboard.callouts, getValueNodeByKey(dashboardNode, 'callouts'), errors);
   validateCliActions(dashboard['cli-actions'], getValueNodeByKey(dashboardNode, 'cli-actions'), errors);
@@ -684,14 +877,16 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         const commandTokens = parseCliActionTokens(action.command);
         const isGhAwCommand =
           commandTokens?.[0] === 'gh' && commandTokens[1] === 'aw' && commandTokens.length >= 3;
+        const isCaoCommand =
+          commandTokens?.[0] === './.github/aw/cao.sh' && commandTokens.length >= 2;
         const isWorkflowDispatchCommand =
           commandTokens?.[0] === 'gh'
           && commandTokens[1] === 'workflow'
           && commandTokens[2] === 'run';
-        if (!isGhAwCommand && !isWorkflowDispatchCommand) {
+        if (!isCaoCommand && !isGhAwCommand && !isWorkflowDispatchCommand) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
-            'CLI action command must start with "gh aw" or "gh workflow run".',
+            'CLI action command must start with "./.github/aw/cao.sh", "gh aw", or "gh workflow run".',
             `${path}.command`
           ));
         }
@@ -837,9 +1032,26 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   /** @type {Set<string>} */
   const pageIds = new Set();
   dashboard.pages.forEach((page, index) => {
-    validatePage(page, getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors);
+    if (isPlainObject(page)) {
+      const configuredViews = page.kind === 'built-in' && isPlainObject(page.definition)
+        ? page.definition.views
+        : page.views;
+      if (Array.isArray(configuredViews)) {
+        configuredViews.forEach((view, viewIndex) => {
+          if (typeof view === 'string' && !declaredViews.has(view)) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'page view must reference a declared reusable dashboard view.',
+              `$.dashboard.pages[${index}]${page.kind === 'built-in' ? '.definition' : ''}.views[${viewIndex}]`
+            ));
+          }
+        });
+      }
+    }
+    validatePage(resolveReusablePageViews(page), getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors);
   });
   dashboard.pages.forEach((page, index) => {
+    page = resolveReusablePageViews(page);
     if (!isPlainObject(page)) return;
     if (isPlainObject(page.route) && typeof page.route['navigation-page'] === 'string') {
       const navigationPage = page.route['navigation-page'];
@@ -864,6 +1076,9 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       : page.views;
     if (Array.isArray(views)) {
       views.forEach((view, viewIndex) => {
+        const viewPath = page.kind === 'built-in'
+          ? `$.dashboard.pages[${index}].definition.views[${viewIndex}]`
+          : `$.dashboard.pages[${index}].views[${viewIndex}]`;
         const navigationPage = isPlainObject(view) && isPlainObject(view.metric)
           ? view.metric['navigation-page']
           : undefined;
@@ -871,8 +1086,82 @@ function validateDashboard(dashboard, dashboardNode, errors) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
             'metric navigation-page must reference a declared dashboard page id.',
-            `$.dashboard.pages[${index}].views[${viewIndex}].metric.navigation-page`
+            `${viewPath}.metric.navigation-page`
           ));
+        }
+        const drill = isPlainObject(view) && isPlainObject(view.list) && isPlainObject(view.list.drill)
+          ? view.list.drill
+          : null;
+        if (drill?.type === 'query') {
+          if (typeof drill.page === 'string' && IDENTIFIER_PATTERN.test(drill.page) && !pageIds.has(drill.page)) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              'query drill page must reference a declared dashboard page id.',
+              `${viewPath}.list.drill.page`
+            ));
+          }
+          if (typeof drill.query === 'string' && IDENTIFIER_PATTERN.test(drill.query) && !declaredQueries.has(drill.query)) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'query drill query must reference a declared dashboard query.',
+              `${viewPath}.list.drill.query`
+            ));
+          }
+          const sourceName = isPlainObject(view.data) && typeof view.data.source === 'string'
+            ? view.data.source
+            : null;
+          const fields = sourceName ? sourceFieldNames(sourceName) : null;
+          for (const [field, fieldPath] of [
+            [drill['title-field'], `${viewPath}.list.drill.title-field`],
+            ...(Array.isArray(drill.arguments)
+              ? drill.arguments.map((argument, argumentIndex) => [
+                  isPlainObject(argument) ? argument.field : undefined,
+                  `${viewPath}.list.drill.arguments[${argumentIndex}].field`
+                ])
+              : [])
+          ]) {
+            if (fields && typeof field === 'string' && !fields.includes(field)) {
+              errors.push(createError(
+                ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+                'query drill field must be declared by the current view data source.',
+                String(fieldPath)
+              ));
+            }
+          }
+          const targetPage = resolveReusablePageViews(/** @type {unknown[]} */ (dashboard.pages)
+            .find((candidate) => isPlainObject(candidate) && candidate.id === drill.page));
+          const targetViews = isPlainObject(targetPage)
+            ? targetPage.kind === 'built-in' && isPlainObject(targetPage.definition)
+              ? targetPage.definition.views
+              : targetPage.views
+            : undefined;
+          const argumentNames = new Set(Array.isArray(drill.arguments)
+            ? drill.arguments.flatMap((argument) => (
+                isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+              ))
+            : []);
+          const destinationBindsQuery = Array.isArray(targetViews) && targetViews.some((targetView) => {
+            if (!isPlainObject(targetView) || !isPlainObject(targetView.data) || targetView.data.source !== drill.query) return false;
+            const boundNames = new Set(Array.isArray(targetView.data.arguments)
+              ? targetView.data.arguments.flatMap((argument) => (
+                  isPlainObject(argument) && typeof argument.name === 'string' ? [argument.name] : []
+                ))
+              : []);
+            return [...argumentNames].every((name) => boundNames.has(name));
+          });
+          if (
+            typeof drill.page === 'string'
+            && pageIds.has(drill.page)
+            && typeof drill.query === 'string'
+            && declaredQueries.has(drill.query)
+            && !destinationBindsQuery
+          ) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'query drill destination must bind the declared query and every drill argument.',
+              `${viewPath}.list.drill`
+            ));
+          }
         }
       });
     }
@@ -1368,6 +1657,16 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
     }
 
     const viewPath = `${path}.definition.views[${index}]`;
+    if (isPlainObject(view.list) && view.list.style === 'entity-cards') {
+      if (typeof view.list.card !== 'string' || !declaredCardTemplates.has(view.list.card)) {
+        errors.push(createError(
+          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+          'list.card must reference a declared dashboard card template.',
+          `${viewPath}.list.card`
+        ));
+      }
+      validateListDrill(view.list.drill, undefined, `${viewPath}.list`, view.list.style, errors);
+    }
     if (view.element !== undefined && view.mark !== 'element') {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
@@ -1439,6 +1738,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       ));
       continue;
     }
+    validateViewDataArguments(data.arguments, undefined, `${viewPath}.data.arguments`, data.source, errors);
 
     const coverageSources = new Set([data.source, ...(declaredQuerySources.get(data.source) ?? [])]);
     for (const coverageSource of coverageSources) {
@@ -2130,7 +2430,12 @@ function validateView(view, viewNode, path, viewIds, errors) {
          `${path}.config.body`
        ));
       }
-      if (view.element === 'work-project-view' && view.config.sections !== undefined) {
+      const allowedSections = view.element === 'work-project-view'
+        ? WORK_VIEW_BODY_VALUES
+        : view.element === 'outcomes-overview'
+          ? FACTORY_OVERVIEW_SECTION_VALUES
+          : null;
+      if (allowedSections && view.config.sections !== undefined) {
        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
          errors.push(createError(
            ERROR_CODES.missingOrInvalidRequiredField,
@@ -2138,10 +2443,18 @@ function validateView(view, viewNode, path, viewIds, errors) {
            `${path}.config.sections`
          ));
        } else {
+         const seenSections = new Set();
          for (let index = 0; index < view.config.sections.length; index += 1) {
            const section = view.config.sections[index];
            validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
-           const allowedSections = WORK_VIEW_BODY_VALUES;
+           if (seenSections.has(section)) {
+             errors.push(createError(
+               ERROR_CODES.unknownOrDuplicateKey,
+               `${view.element} config.sections values must be unique.`,
+               `${path}.config.sections[${index}]`
+             ));
+           }
+           seenSections.add(section);
            if (typeof section === 'string' && !allowedSections.includes(section)) {
              errors.push(createError(
                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2154,7 +2467,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.sections !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the work-project-view element.',
+         'config.sections is supported only for the work-project-view and outcomes-overview elements.',
          `${path}.config.sections`
        ));
       }
@@ -2167,6 +2480,23 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         } else {
           validatePluralLabels(view.config.labels, getValueNodeByKey(getValueNodeByKey(viewNode, 'config'), 'labels'), `${path}.config.labels`, errors);
+        }
+      }
+      if (view.config.animate !== undefined) {
+        if (view.element !== 'factory-floor' && view.element !== 'outcomes-overview') {
+          errors.push(createError(
+            ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+            'config.animate is supported only for the factory-floor and outcomes-overview elements.',
+            `${path}.config.animate`
+          ));
+        }
+        validateStringField(view.config.animate, `${path}.config.animate`, false, errors);
+        if (typeof view.config.animate === 'string' && !VIEW_ELEMENT_ANIMATION_VALUES.includes(view.config.animate)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'config.animate must use one canonical element animation value.',
+            `${path}.config.animate`
+          ));
         }
       }
     }
@@ -2197,10 +2527,23 @@ function validateView(view, viewNode, path, viewIds, errors) {
           errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
         }
       }
+      if (view.list.card !== undefined) {
+        validateStringField(view.list.card, `${listPath}.card`, true, errors);
+        if (typeof view.list.card === 'string' && !declaredCardTemplates.has(view.list.card)) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.card must reference a declared dashboard card template.', `${listPath}.card`));
+        }
+      }
+      if (view.list.style === 'entity-cards' && view.list.card === undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'entity-cards lists must declare a reusable card definition.', `${listPath}.card`));
+      } else if (view.list.style !== 'entity-cards' && view.list.card !== undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.card is supported only for entity-cards lists.', `${listPath}.card`));
+      }
+      validateListDrill(view.list.drill, getValueNodeByKey(getValueNodeByKey(viewNode, 'list'), 'drill'), listPath, view.list.style, errors);
     }
     if (view.mark !== 'list') {
       errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list is allowed only when mark is "list".', listPath));
     }
+
   } else if (view.mark === 'list') {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list views must declare a list widget mapping.', `${path}.list`));
   }
@@ -2214,8 +2557,16 @@ function validateView(view, viewNode, path, viewIds, errors) {
         `${path}.chart`
       ));
     }
+    if (view.mark !== 'chart') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'chart is allowed only when mark is "chart".',
+        `${path}.chart`
+      ));
+    }
+  }
 
-    if (view.metric !== undefined) {
+  if (view.metric !== undefined) {
       const metricPath = `${path}.metric`;
       if (!isPlainObject(view.metric)) {
         errors.push(createError(
@@ -2231,6 +2582,21 @@ function validateView(view, viewNode, path, viewIds, errors) {
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
             'metric style must use one canonical metric widget value.',
             `${metricPath}.style`
+          ));
+        }
+        validateStringField(view.metric.animate, `${metricPath}.animate`, false, errors);
+        if (typeof view.metric.animate === 'string' && !VIEW_METRIC_ANIMATION_VALUES.includes(view.metric.animate)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric animate must use one canonical metric animation value.',
+            `${metricPath}.animate`
+          ));
+        }
+        if (view.metric.animate !== undefined && view.metric.style !== 'card') {
+          errors.push(createError(
+            ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+            'metric animate is supported only for card metric widgets.',
+            `${metricPath}.animate`
           ));
         }
         validateStringField(view.metric.icon, `${metricPath}.icon`, true, errors);
@@ -2256,6 +2622,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
           errors
         );
       }
+
       if (view.mark !== 'metric') {
         errors.push(createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -2263,14 +2630,6 @@ function validateView(view, viewNode, path, viewIds, errors) {
           metricPath
         ));
       }
-    }
-    if (view.mark !== 'chart') {
-      errors.push(createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'chart is allowed only when mark is "chart".',
-        `${path}.chart`
-      ));
-    }
   }
 
   if (view.layout !== undefined) {
@@ -2312,7 +2671,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
           `${path}.data.source`
         ));
       }
-      for (const key of ['limit', 'order-by', 'source-metadata', 'route-field']) {
+      for (const key of ['arguments', 'limit', 'order-by', 'source-metadata', 'route-field']) {
         if (view.data[key] !== undefined) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
@@ -2348,6 +2707,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
+      validateViewDataArguments(
+        view.data.arguments,
+        getValueNodeByKey(dataNode, 'arguments'),
+        `${path}.data.arguments`,
+        sourceName,
+        errors
+      );
     }
     validateContext(dataNode, view.data, `${path}.data`, errors);
   }
@@ -2373,6 +2739,105 @@ function validateView(view, viewNode, path, viewIds, errors) {
     `${path}.encoding.actions`,
     errors
   );
+}
+
+/**
+ * @param {unknown} args
+ * @param {unknown} argsNode
+ * @param {string} path
+ * @param {string | null} sourceName
+ * @param {ValidationError[]} errors
+ */
+function validateViewDataArguments(args, argsNode, path, sourceName, errors) {
+  if (args === undefined) return;
+  if (!Array.isArray(args) || args.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'data.arguments must be a non-empty sequence.', path));
+    return;
+  }
+  const names = new Set();
+  const fields = sourceName ? sourceFieldNames(sourceName) : null;
+  for (const [index, argument] of args.entries()) {
+    const argumentPath = `${path}[${index}]`;
+    if (!isPlainObject(argument)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'data argument must be a mapping.', argumentPath));
+      continue;
+    }
+    validateObjectKeys(getSequenceItemNode(argsNode, index), VIEW_DATA_ARGUMENT_KEYS, argumentPath, errors);
+    validateRequiredIdentifier(argument.name, `${argumentPath}.name`, 'data argument name', errors);
+    validateRequiredIdentifier(argument.field, `${argumentPath}.field`, 'data argument field', errors);
+    if (typeof argument.name === 'string' && names.has(argument.name)) {
+      errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'data argument names must be unique.', `${argumentPath}.name`));
+    }
+    names.add(argument.name);
+    if (fields && typeof argument.field === 'string' && !fields.includes(argument.field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'data argument field must be declared by data.source.',
+        `${argumentPath}.field`
+      ));
+    }
+  }
+}
+
+/**
+ * @param {unknown} drill
+ * @param {unknown} drillNode
+ * @param {string} listPath
+ * @param {unknown} style
+ * @param {ValidationError[]} errors
+ */
+function validateListDrill(drill, drillNode, listPath, style, errors) {
+  const path = `${listPath}.drill`;
+  if (drill === undefined) {
+    if (style === 'entity-cards') {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'entity-cards lists must declare drill behavior.', path));
+    }
+    return;
+  }
+  if (style !== 'entity-cards') {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill is supported only for entity-cards lists.', path));
+    return;
+  }
+  if (!isPlainObject(drill)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'list.drill must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(drillNode, VIEW_LIST_DRILL_KEYS, path, errors);
+  validateStringField(drill.type, `${path}.type`, true, errors);
+  if (typeof drill.type === 'string' && !VIEW_LIST_DRILL_TYPE_VALUES.includes(drill.type)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.drill.type must be one of ${VIEW_LIST_DRILL_TYPE_VALUES.join(', ')}.`, `${path}.type`));
+  }
+  if (drill.type === 'external') {
+    validateRequiredIdentifier(drill.field, `${path}.field`, 'external drill field', errors);
+    if (drill.page !== undefined || drill.query !== undefined || drill['title-field'] !== undefined || drill.arguments !== undefined) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'external drill behavior supports only field.', path));
+    }
+    return;
+  }
+  if (drill.type !== 'query') return;
+  validateRequiredIdentifier(drill.page, `${path}.page`, 'query drill page', errors);
+  validateRequiredIdentifier(drill.query, `${path}.query`, 'query drill query', errors);
+  validateRequiredIdentifier(drill['title-field'], `${path}.title-field`, 'query drill title field', errors);
+  if (!Array.isArray(drill.arguments) || drill.arguments.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query drill behavior requires non-empty arguments.', `${path}.arguments`));
+    return;
+  }
+  const names = new Set();
+  const argumentsNode = getValueNodeByKey(drillNode, 'arguments');
+  for (const [index, argument] of drill.arguments.entries()) {
+    const argumentPath = `${path}.arguments[${index}]`;
+    if (!isPlainObject(argument)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query drill argument must be a mapping.', argumentPath));
+      continue;
+    }
+    validateObjectKeys(getSequenceItemNode(argumentsNode, index), VIEW_LIST_DRILL_ARGUMENT_KEYS, argumentPath, errors);
+    validateRequiredIdentifier(argument.name, `${argumentPath}.name`, 'query drill argument name', errors);
+    validateRequiredIdentifier(argument.field, `${argumentPath}.field`, 'query drill argument field', errors);
+    if (typeof argument.name === 'string' && names.has(argument.name)) {
+      errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'query drill argument names must be unique.', `${argumentPath}.name`));
+    }
+    names.add(argument.name);
+  }
 }
 
 /**
@@ -3052,10 +3517,12 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           }
         }
       }
-      if (!Array.isArray(query.aggregate.values) || query.aggregate.values.length === 0) {
+      if (!Array.isArray(query.aggregate.values)
+          || query.aggregate.values.length === 0
+          || query.aggregate.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
         errors.push(createError(
           ERROR_CODES.missingOrInvalidRequiredField,
-          'aggregate values must be a non-empty sequence.',
+          `aggregate values must be a sequence of 1 to ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions.`,
           `${aggregatePath}.values`
         ));
       } else {
@@ -3088,6 +3555,79 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
               `${valuePath}.reducer`
             ));
           }
+          if (value.filter !== undefined) {
+            const filterPath = `${valuePath}.filter`;
+            const filterNode = getValueNodeByKey(
+              getSequenceItemNode(getValueNodeByKey(aggregateNode, 'values'), index),
+              'filter'
+            );
+            if (!isPlainObject(value.filter)) {
+              errors.push(createError(
+                ERROR_CODES.missingOrInvalidRequiredField,
+                'aggregate filter must be a mapping.',
+                filterPath
+              ));
+            } else {
+              validateObjectKeys(filterNode, QUERY_FILTER_KEYS, filterPath, errors);
+              const predicates = value.filter.predicates;
+              if (!Array.isArray(predicates)
+                  || predicates.length === 0
+                  || predicates.length > DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates']) {
+                errors.push(createError(
+                  ERROR_CODES.missingOrInvalidRequiredField,
+                  `aggregate filter predicates must be a sequence of 1 to ${DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates']} definitions.`,
+                  `${filterPath}.predicates`
+                ));
+              } else {
+                for (const [predicateIndex, predicate] of predicates.entries()) {
+                  const predicatePath = `${filterPath}.predicates[${predicateIndex}]`;
+                  if (!isPlainObject(predicate)) {
+                    errors.push(createError(
+                      ERROR_CODES.missingOrInvalidRequiredField,
+                      'aggregate filter predicate must be a mapping.',
+                      predicatePath
+                    ));
+                    continue;
+                  }
+                  validateObjectKeys(
+                    getSequenceItemNode(getValueNodeByKey(filterNode, 'predicates'), predicateIndex),
+                    QUERY_AGGREGATE_FILTER_PREDICATE_KEYS,
+                    predicatePath,
+                    errors
+                  );
+                  validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
+                  requireField(predicate.field, `${predicatePath}.field`);
+                  requireSchemaType(predicate.field, `${predicatePath}.field`, 'scalar');
+                  const hasEquals = Object.hasOwn(predicate, 'equals');
+                  const hasIn = Object.hasOwn(predicate, 'in');
+                  if (Number(hasEquals) + Number(hasIn) !== 1) {
+                    errors.push(createError(
+                      ERROR_CODES.missingOrInvalidRequiredField,
+                      'aggregate filter predicate must declare exactly one of equals or in.',
+                      predicatePath
+                    ));
+                  } else if (hasEquals && !isAggregateFilterLiteral(predicate.equals)) {
+                    errors.push(createError(
+                      ERROR_CODES.missingOrInvalidRequiredField,
+                      'aggregate filter equals must be a string, number, or boolean literal.',
+                      `${predicatePath}.equals`
+                    ));
+                  } else if (hasIn && (
+                    !Array.isArray(predicate.in)
+                    || predicate.in.length === 0
+                    || predicate.in.length > DASHBOARD_QUERY_LIMITS['max-predicate-alternatives']
+                    || predicate.in.some((candidate) => !isAggregateFilterLiteral(candidate))
+                  )) {
+                    errors.push(createError(
+                      ERROR_CODES.missingOrInvalidRequiredField,
+                      `aggregate filter in must contain 1 to ${DASHBOARD_QUERY_LIMITS['max-predicate-alternatives']} string, number, or boolean literals.`,
+                      `${predicatePath}.in`
+                    ));
+                  }
+                }
+              }
+            }
+          }
           if (typeof value.as === 'string' && grouped.includes(value.as)) {
             errors.push(createError(
               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -3095,10 +3635,104 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
               `${valuePath}.as`
             ));
           }
+
           if (typeof value.as === 'string') grouped.push(value.as);
         }
       }
       fields = fields ? grouped : undefined;
+    }
+  }
+
+  if (query.predict !== undefined) {
+    const predictNode = getValueNodeByKey(queryNode, 'predict');
+    if (!Array.isArray(query.predict) || query.predict.length === 0) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'predict must be a non-empty sequence of prediction definitions.',
+        `${path}.predict`
+      ));
+    } else {
+      for (const [index, prediction] of query.predict.entries()) {
+        const predictionPath = `${path}.predict[${index}]`;
+        if (!isPlainObject(prediction)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'prediction must be a mapping.', predictionPath));
+          continue;
+        }
+        validateObjectKeys(getSequenceItemNode(predictNode, index), QUERY_PREDICT_KEYS, predictionPath, errors);
+        validateStringField(prediction.field, `${predictionPath}.field`, true, errors);
+        validateStringField(prediction.as, `${predictionPath}.as`, true, errors);
+        requireField(prediction.field, `${predictionPath}.field`);
+        requireSchemaType(prediction.field, `${predictionPath}.field`, 'numeric');
+
+        const predictors = typeof prediction.on === 'string'
+          ? [prediction.on]
+          : Array.isArray(prediction.on) ? prediction.on : [];
+        if (predictors.length === 0 || predictors.length > 8) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'prediction on must be one field or a sequence of 1 to 8 predictor fields.',
+            `${predictionPath}.on`
+          ));
+        }
+        for (const [predictorIndex, predictor] of predictors.entries()) {
+          const predictorPath = Array.isArray(prediction.on)
+            ? `${predictionPath}.on[${predictorIndex}]`
+            : `${predictionPath}.on`;
+          validateStringField(predictor, predictorPath, true, errors);
+          requireField(predictor, predictorPath);
+          requireSchemaType(predictor, predictorPath, 'numeric');
+        }
+        if (new Set(predictors).size !== predictors.length) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'prediction on must not contain duplicate predictor fields.',
+            `${predictionPath}.on`
+          ));
+        }
+
+        const method = prediction.method ?? 'linear';
+        if (typeof method !== 'string' || !PREDICTION_METHODS.includes(method)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            `prediction method must be one of ${PREDICTION_METHODS.join(', ')}.`,
+            `${predictionPath}.method`
+          ));
+        } else if (method !== 'linear' && predictors.length !== 1) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `prediction method ${method} requires exactly one predictor field.`,
+            `${predictionPath}.on`
+          ));
+        }
+        if (prediction.order !== undefined) {
+          if (method !== 'poly' || !Number.isSafeInteger(prediction.order)
+              || Number(prediction.order) < 1 || Number(prediction.order) > 10) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              'prediction order is allowed only for poly and must be an integer from 1 to 10.',
+              `${predictionPath}.order`
+            ));
+          }
+        }
+
+        if (prediction.groupby !== undefined) {
+          if (!Array.isArray(prediction.groupby) || prediction.groupby.length === 0) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              'prediction groupby must be a non-empty sequence of grouping fields.',
+              `${predictionPath}.groupby`
+            ));
+          } else {
+            for (const [groupIndex, groupField] of prediction.groupby.entries()) {
+              const groupPath = `${predictionPath}.groupby[${groupIndex}]`;
+              validateStringField(groupField, groupPath, true, errors);
+              requireField(groupField, groupPath);
+              requireSchemaType(groupField, groupPath, 'scalar');
+            }
+          }
+        }
+        declareField(prediction.as, `${predictionPath}.as`);
+      }
     }
   }
 
@@ -3707,6 +4341,29 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
   if (chart === undefined) {
     return;
   }
+  if (Array.isArray(encoding.y)) {
+    if (chart !== 'line') {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'multiple y fields are supported only by line charts.',
+        `${viewPath}.encoding.y`
+      ));
+    }
+    if (encoding.y.length < 2 || encoding.y.length > 8) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'multiple-measure line charts must encode between two and eight y fields.',
+        `${viewPath}.encoding.y`
+      ));
+    }
+    if (encoding.color !== undefined) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'multiple-measure line charts must not also encode color.',
+        `${viewPath}.encoding.color`
+      ));
+    }
+  }
   if (['dot', 'line', 'scatter'].includes(String(chart)) && isPlainObject(encoding.x) && encoding.x.type !== undefined && encoding.x.type !== 'temporal') {
     errors.push(createError(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3907,7 +4564,19 @@ function validateTableEncoding(encodingNode, encoding, sourceName, path, aggrega
  */
 function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, aggregateOutputIds, errors) {
   validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'x'), encoding.x, sourceName, `${path}.x`, aggregateOutputIds, errors);
-  validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'y'), encoding.y, sourceName, `${path}.y`, aggregateOutputIds, errors);
+  const yNode = getValueNodeByKey(encodingNode, 'y');
+  const yDefinitions = Array.isArray(encoding.y) ? encoding.y : [encoding.y];
+  for (const [index, definition] of yDefinitions.entries()) {
+    const definitionPath = Array.isArray(encoding.y) ? `${path}.y[${index}]` : `${path}.y`;
+    validateRequiredFieldDefinition(
+      Array.isArray(encoding.y) ? getSequenceItemNode(yNode, index) : yNode,
+      definition,
+      sourceName,
+      definitionPath,
+      aggregateOutputIds,
+      errors
+    );
+  }
 
   if (isPlainObject(encoding.x) && encoding.x.type !== undefined && !['nominal', 'ordinal', 'temporal'].includes(String(encoding.x.type))) {
     errors.push(createError(
@@ -3979,20 +4648,22 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
     ));
   }
 
-  if (
-    isPlainObject(encoding.y)
-    && encoding.y.type !== undefined
-    && (['heatmap', 'swimlane'].includes(String(chart))
-      ? !['nominal', 'ordinal'].includes(String(encoding.y.type))
-      : encoding.y.type !== 'quantitative')
-  ) {
-    errors.push(createError(
-      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-      ['heatmap', 'swimlane'].includes(String(chart))
-        ? `${chart} chart y encoding must be nominal or ordinal when explicitly typed.`
-        : 'chart y encoding must be quantitative when explicitly typed.',
-      `${path}.y.type`
-    ));
+  for (const [index, definition] of yDefinitions.entries()) {
+    if (
+      isPlainObject(definition)
+      && definition.type !== undefined
+      && (['heatmap', 'swimlane'].includes(String(chart))
+        ? !['nominal', 'ordinal'].includes(String(definition.type))
+        : definition.type !== 'quantitative')
+    ) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        ['heatmap', 'swimlane'].includes(String(chart))
+          ? `${chart} chart y encoding must be nominal or ordinal when explicitly typed.`
+          : 'chart y encoding must be quantitative when explicitly typed.',
+        Array.isArray(encoding.y) ? `${path}.y[${index}].type` : `${path}.y.type`
+      ));
+    }
   }
 
   const xType = isPlainObject(encoding.x) && typeof encoding.x.type === 'string' ? encoding.x.type : null;
@@ -4001,7 +4672,12 @@ function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, 
   const xHasTimeUnit = isPlainObject(encoding.x) && encoding.x['time-unit'] !== undefined;
   const expectedDefault = xIsTemporal ? 'line' : 'bar';
 
-  if (expectedDefault === 'line' && !['dot', 'scatter', 'swimlane'].includes(String(chart)) && !xHasTimeUnit) {
+  if (
+    expectedDefault === 'line'
+    && !['dot', 'scatter', 'swimlane'].includes(String(chart))
+    && !xHasTimeUnit
+    && !Array.isArray(encoding.y)
+  ) {
     errors.push(createError(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
       'chart views with temporal x must declare a temporal bucket to realize the line time-series default conservatively.',
@@ -4145,10 +4821,10 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
         `${path}.format`
       ));
     }
-    if (format === 'workflow-run-url' && !path.includes('.columns[')) {
+    if (['workflow-run-url', 'shortened-url'].includes(format ?? '') && !path.includes('.columns[')) {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'workflow-run-url format may be used only on table columns.',
+        `${format} format may be used only on table columns.`,
         `${path}.format`
       ));
     }
@@ -4293,7 +4969,7 @@ function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceNam
   if (isPlainObject(encoding)) {
     const definitions = [
       encoding.x,
-      encoding.y,
+      ...(Array.isArray(encoding.y) ? encoding.y : [encoding.y]),
       encoding.color,
       ...(Array.isArray(encoding.columns) ? encoding.columns : []),
     ];
@@ -4715,6 +5391,12 @@ function createError(code, message, path) {
  */
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {unknown} value */
+function isAggregateFilterLiteral(value) {
+  return ['string', 'number', 'boolean'].includes(typeof value)
+    && (typeof value !== 'number' || Number.isFinite(value));
 }
 
 /**

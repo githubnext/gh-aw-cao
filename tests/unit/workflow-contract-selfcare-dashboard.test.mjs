@@ -237,6 +237,7 @@ test("SelfCare experimental views worker exhaustively checks editable views acro
   assert.match(source, /navigation sections with `experimental: true`/);
   assert.match(source, /Ignore every view with `locked: true`/);
   assert.match(source, /Ignore all views on top-level pages in non-experimental navigation sections/);
+  assert.match(source, /In PR mode, test at most the first five in-scope views in the source-definition order of the derived inventory/);
   assert.match(source, /schema-valid empty, single-row, representative multi-row, missing-optional-field, and high-cardinality inputs/);
   assert.match(source, /document\.querySelectorAll\('\*'\)\.length/);
   assert.match(source, /`disclosure: supplemental`/);

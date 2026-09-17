@@ -18,6 +18,18 @@ describe('view formatter helpers', () => {
     expect(formatString('.github/workflows/', 'workflow-relative-path')).toBe('unknown');
   });
 
+  it('formats workflow identities as compact workflow and repository labels', () => {
+    expect(formatString(
+      'github/gh-aw-mcpg:.github/workflows/repo-assist.md',
+      'workflow-identity-label'
+    )).toBe('repo-assist.md (github/gh-aw-mcpg)');
+    expect(formatString(
+      'github/gh-aw-mcpg:.github/workflows/nested/repo-assist.md',
+      'workflow-identity-label'
+    )).toBe('nested/repo-assist.md (github/gh-aw-mcpg)');
+    expect(formatString('repo-assist.md', 'workflow-identity-label')).toBe('repo-assist.md');
+  });
+
   it('DLS-VIEW-013 formats aggregate metric values for count, distinct-count, sum, mean, min, max, and default field access', () => {
     const rows = [
       { aic: 12, repository: 'repo-a', score: 1.5 },

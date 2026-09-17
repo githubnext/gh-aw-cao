@@ -82,6 +82,33 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.octicon-x-circle')).not.toBeNull();
   });
 
+  it('renders a CSS counter for an opted-in whole-number metric card', () => {
+    const rendered = renderDataView('metric', {
+      pageId: 'overview',
+      title: 'Runs',
+      view: {
+        mark: 'metric',
+        metric: { style: 'card', icon: 'play', tone: 'neutral', animate: 'number' },
+        encoding: { value: { field: 'count' } }
+      },
+      sourceName: 'runs',
+      rows: [{ count: 12 }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h4',
+      units: {},
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const value = rendered?.querySelector('[data-metric-value="count"]');
+    expect(value?.classList.contains('metric-number-animated')).toBe(true);
+    expect(value?.getAttribute('style')).toContain('--metric-number-target: 12');
+    expect(value?.textContent).toBe('12');
+  });
+
   it('renders a declarative card list with view and conditional row actions', () => {
     setDeclaredCliActions([
       {
@@ -96,6 +123,20 @@ describe('data view renderer', () => {
         label: 'Update',
         icon: 'sync',
         command: 'gh aw update {{package}}',
+        placement: 'row'
+      },
+      {
+        id: 'set-package-live',
+        label: 'Switch to live',
+        icon: 'play',
+        command: './.github/aw/cao.sh mode live {{package}}',
+        placement: 'row'
+      },
+      {
+        id: 'set-package-preview',
+        label: 'Switch to preview',
+        icon: 'eye',
+        command: './.github/aw/cao.sh mode preview {{package}}',
         placement: 'row'
       }
     ], { canExecute: false });
@@ -113,14 +154,32 @@ describe('data view renderer', () => {
             { field: 'package-version', title: 'Installed' },
             { field: 'package-current-version', title: 'Latest' }
           ],
-          actions: [{
-            action: 'update-package',
-            presentation: 'cli-action',
-            icon: 'sync',
-            label: 'Update',
-            context: ['package'],
-            when: { field: 'package-update-state', equals: 'update-available' }
-          }]
+          actions: [
+            {
+              action: 'update-package',
+              presentation: 'cli-action',
+              icon: 'sync',
+              label: 'Update',
+              context: ['package'],
+              when: { field: 'package-update-state', equals: 'update-available' }
+            },
+            {
+              action: 'set-package-live',
+              presentation: 'cli-action',
+              icon: 'play',
+              label: 'Switch to live',
+              context: ['package'],
+              when: { field: 'package-mode', equals: 'review' }
+            },
+            {
+              action: 'set-package-preview',
+              presentation: 'cli-action',
+              icon: 'eye',
+              label: 'Switch to preview',
+              context: ['package'],
+              when: { field: 'package-mode', equals: 'live' }
+            }
+          ]
         }
       },
       sourceName: 'packages',
@@ -130,14 +189,16 @@ describe('data view renderer', () => {
           'package-name': 'Remote agent',
           'package-version': 'v1',
           'package-current-version': 'v2',
-          'package-update-state': 'update-available'
+          'package-update-state': 'update-available',
+          'package-mode': 'review'
         },
         {
           package: 'ci-doctor',
           'package-name': 'CI doctor',
           'package-version': 'v2',
           'package-current-version': 'v2',
-          'package-update-state': 'current'
+          'package-update-state': 'current',
+          'package-mode': 'live'
         }
       ],
       metadata,
@@ -151,7 +212,9 @@ describe('data view renderer', () => {
 
     expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2);
     expect(rendered?.querySelector('.document-list-header .declared-cli-action')?.textContent).toContain('Update all');
-    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(1);
+    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(3);
+    expect(rendered?.textContent).toContain('Switch to live');
+    expect(rendered?.textContent).toContain('Switch to preview');
     expect(rendered?.textContent).not.toContain('update-available');
   });
 
@@ -203,6 +266,148 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).toContain('gh-aw-cao');
     expect(rendered?.querySelector('.issue-list-card-meta a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/303');
+  });
+
+  it('presents run entity cards with status icon, branch ref, and timing rail', () => {
+    const runCard = {
+      icon: 'play',
+      status: { field: 'run-conclusion', 'fallback-field': 'run-status', title: 'Status' },
+      title: { field: 'run-title', title: 'Run' },
+      labels: [{ field: 'branch', title: 'Branch', display: 'ref' }],
+      details: [
+        { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
+        { field: 'event', title: 'Event' }
+      ],
+      timing: [
+        { field: 'started-at', title: 'Started', icon: 'calendar', type: 'temporal', format: 'human-friendly-timestamp' },
+        { field: 'duration', title: 'Duration', icon: 'stopwatch' }
+      ]
+    };
+    const render = (/** @type {Record<string, unknown>} */ row) => renderDataView('list', {
+      pageId: 'runs',
+      title: 'Runs',
+      sourceName: 'entity-runs',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'run', drill: { type: 'external', field: 'run-link' } },
+        encoding: { columns: [{ field: 'run-title' }] }
+      },
+      rows: [row],
+      cardTemplates: { run: runCard },
+      metadata,
+      contextDetails: [],
+      headingTag: /** @type {'h3'} */ ('h3'),
+      prepareTableRows: (/** @type {Record<string, unknown>[]} */ rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const completed = render({
+      'run-title': '[optimization:skills-curator] Layer AGENTS.md',
+      'run-status': 'completed',
+      'run-conclusion': 'success',
+      workflow: '.github/workflows/optimization.md',
+      event: 'issue_comment',
+      branch: 'copilot/add-desktop-tabs',
+      'started-at': '2026-09-14T22:00:00Z',
+      duration: '31s'
+    });
+    const running = render({
+      'run-title': 'Running Copilot cloud agent',
+      'run-status': 'in-progress',
+      'run-conclusion': null,
+      workflow: '.github/workflows/optimization.md',
+      event: 'workflow_dispatch',
+      branch: 'copilot/update-firewall',
+      'started-at': '2026-09-14T22:00:00Z'
+    });
+
+    expect(completed?.querySelector('.entity-card-list-status-success .octicon-check-circle-fill')).not.toBeNull();
+    expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('data-card-status')).toBe('success');
+    expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('title')).toBe('Success');
+    expect(running?.querySelector('.entity-card-list-status .sr-only')?.textContent).toBe('Status: In Progress');
+    expect(completed?.querySelector('.entity-card-list-ref')?.textContent).toBe('copilot/add-desktop-tabs');
+    const timing = completed?.querySelectorAll('.entity-card-list-timing-item') ?? [];
+    expect(timing).toHaveLength(2);
+    expect(timing[1]?.textContent).toContain('31s');
+    expect(timing[0]?.querySelector('.octicon-calendar')).not.toBeNull();
+    expect(completed?.querySelector('.issue-list-card-meta')?.textContent).toContain('issue_comment');
+
+    expect(running?.querySelector('.entity-card-list-status-attention .octicon-dot-fill')).not.toBeNull();
+    expect(running?.querySelectorAll('.entity-card-list-timing-item')).toHaveLength(1);
+  });
+
+  it('renders reusable entity cards with external and query drill behavior', () => {
+    const baseContext = {
+      pageId: 'items',
+      title: 'Items',
+      sourceName: 'safe-output-items',
+      rows: [{
+        'event-summary': 'Investigate failing compiler run',
+        'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/42',
+        'safe-output-type': 'create_issue',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run: '303',
+        'observed-at': '2026-09-14T22:00:00Z',
+        'issue-id': 42
+      }],
+      cardTemplates: {
+        issue: {
+          icon: 'issue-opened',
+          title: { field: 'event-summary', title: 'Issue' },
+          labels: [{ field: 'safe-output-type', title: 'Safe output', display: 'label' }],
+          details: [{ field: 'repository', title: 'Repository' }]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: /** @type {'h3'} */ ('h3'),
+      prepareTableRows: (/** @type {Record<string, unknown>[]} */ rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    };
+    const external = renderDataView('list', {
+      ...baseContext,
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          card: 'issue',
+          drill: { type: 'external', field: 'entity-url' }
+        },
+        encoding: { columns: [{ field: 'event-summary' }] }
+      }
+    });
+    const query = renderDataView('list', {
+      ...baseContext,
+      view: {
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          card: 'issue',
+          drill: {
+            type: 'query',
+            page: 'issue-events',
+            query: 'issue-events',
+            'title-field': 'event-summary',
+            arguments: [{ name: 'issue-id', field: 'issue-id' }]
+          }
+        },
+        encoding: { columns: [{ field: 'event-summary' }] }
+      }
+    });
+
+    expect(external?.querySelector('.entity-card-list-title a')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/gh-aw-cao/issues/42');
+    const queryLink = /** @type {HTMLAnchorElement} */ (query?.querySelector('.entity-card-list-title a'));
+    expect(queryLink?.getAttribute('href'))
+      .toBe('#page-issue-events?query=issue-events&title=Investigate+failing+compiler+run&issue-id=42');
+    const activate = vi.spyOn(queryLink, 'click');
+    query?.querySelector('.entity-card-list-card')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(activate).toHaveBeenCalledOnce();
   });
 
   it('keeps a list action available when its source is unavailable', () => {
@@ -334,6 +539,194 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('tbody')?.textContent).toContain('older');
     expect(rendered?.querySelector('tbody')?.textContent).not.toContain('oldest');
     expect(rendered?.querySelector('[data-table-more]')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('replays continuation pages when table and mobile card modes load the same rows', async () => {
+    const load = vi.fn(async () => ({
+      rows: [{ event: 'event-26' }],
+      continuationToken: undefined
+    }));
+    const rendered = renderDataView('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 26, load }
+    });
+
+    const tableMore = rendered?.querySelector('[data-table-more]');
+    expect(tableMore).toBeInstanceOf(HTMLButtonElement);
+    /** @type {HTMLButtonElement} */ (tableMore).click();
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('tbody tr')).toHaveLength(26));
+    const cardMore = rendered?.querySelector('[data-card-list-more]');
+    expect(cardMore).toBeInstanceOf(HTMLButtonElement);
+    /** @type {HTMLButtonElement} */ (cardMore).click();
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] li')).toHaveLength(26));
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders quantitative mobile table fields as labeled card metrics', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'packages',
+      title: 'Packages',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: {
+          href: { field: 'package-dashboard-link', type: 'nominal' },
+          columns: [
+            { field: 'package-name', type: 'nominal', title: 'Package' },
+            { field: 'workflows', type: 'quantitative', title: 'Workflows' },
+            { field: 'runs', type: 'quantitative', title: 'Runs' },
+            { field: 'registration', type: 'nominal', title: 'Registration', display: 'active-state' }
+          ]
+        }
+      },
+      sourceName: 'package-inventory',
+      rows: [{
+        'package-name': 'Daily ops',
+        'package-dashboard-link': {
+          'dashboard-href': '#page-package-detail?package=daily-ops',
+          'dashboard-label': 'View Daily ops package dashboard'
+        },
+        workflows: 2,
+        runs: 14,
+        registration: 'active'
+      }],
+      cardTemplates: {
+        package: {
+          icon: 'package',
+          title: { field: 'package-name', title: 'Package' },
+          labels: [{ field: 'registration', title: 'Registration', display: 'active-state' }],
+          details: [
+            { field: 'workflows', title: 'Workflows' },
+            { field: 'runs', title: 'Runs' }
+          ]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
+    expect(card?.querySelector('.issue-list-card-meta')?.textContent).toBe('');
+    expect(card?.querySelector('.entity-card-list-metric strong')?.textContent).toBe('2');
+    expect(card?.querySelector('.entity-card-list-metric span')?.textContent).toBe('Workflows');
+    expect(card?.querySelectorAll('.entity-card-list-metric')).toHaveLength(2);
+    const labels = card?.querySelector('.issue-list-labels');
+    expect(labels?.textContent).toContain('active');
+    expect(labels?.getAttribute('aria-label')).toBe('Daily ops labels and metrics');
+    const packageLink = /** @type {HTMLAnchorElement} */ (card?.querySelector('[data-card-drill]'));
+    expect(packageLink.getAttribute('href')).toBe('#page-package-detail?package=daily-ops');
+    const activate = vi.spyOn(packageLink, 'click');
+    card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(activate).toHaveBeenCalledOnce();
+  });
+
+  it('renders a declared card subtitle beneath the card title', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'mcps',
+      title: 'MCP tools',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: {
+          columns: [
+            { field: 'mcp-tool', type: 'nominal', title: 'MCP tool' },
+            { field: 'mcp-server', type: 'nominal', title: 'MCP server' },
+            { field: 'calls', type: 'quantitative', title: 'Calls' },
+            { field: 'workflows', type: 'quantitative', title: 'Workflows' }
+          ]
+        }
+      },
+      sourceName: 'mcp-tool-totals',
+      rows: [{ 'mcp-tool': 'issue_read', 'mcp-server': 'github', calls: 4778, workflows: 12 }],
+      cardTemplates: {
+        'mcp-tool': {
+          icon: 'mcp',
+          title: { field: 'mcp-tool', title: 'MCP tool' },
+          subtitle: { field: 'mcp-server', title: 'MCP server' },
+          labels: [],
+          details: [
+            { field: 'calls', title: 'Calls' },
+            { field: 'workflows', title: 'Workflows' }
+          ]
+        }
+      },
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('issue_read');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('github');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.getAttribute('aria-label')).toBe('MCP server: github');
+    const metrics = [...card?.querySelectorAll('.entity-card-list-metric') ?? []]
+      .map((metric) => metric.textContent);
+    expect(metrics).toEqual(['4778Calls', '12Workflows']);
+  });
+
+  it('lets a mobile card continuation retry after a load failure', async () => {
+    const load = vi.fn()
+      .mockRejectedValueOnce(new Error('worker unavailable'))
+      .mockResolvedValueOnce({ rows: [{ event: 'event-26' }], continuationToken: undefined });
+    const rendered = renderDataView('table', {
+      pageId: 'events',
+      title: 'Events',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: { columns: [{ field: 'event', type: 'nominal' }] }
+      },
+      sourceName: 'events',
+      rows: Array.from({ length: 25 }, (_, index) => ({ event: `event-${index + 1}` })),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String,
+      continuation: { token: 'page-2', totalRows: 26, load }
+    });
+    const more = /** @type {HTMLButtonElement} */ (rendered?.querySelector('[data-card-list-more]'));
+
+    more.click();
+    await vi.waitFor(() => expect(more.textContent).toBe('Retry loading cards'));
+    expect(more.disabled).toBe(false);
+    more.click();
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] li')).toHaveLength(26));
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it('omits table facets for columns with filtering disabled', () => {
@@ -514,6 +907,7 @@ describe('data view renderer', () => {
       view: {
         mark: 'chart',
         chart: 'swimlane',
+        layout: 'horizontal',
         encoding: {
           x: { field: 'started-at', type: 'temporal' },
           y: { field: 'run-conclusion', type: 'ordinal' }
@@ -543,6 +937,7 @@ describe('data view renderer', () => {
       }
     });
 
+    expect(rendered?.querySelector('.chart-horizontal-card')).not.toBeNull();
     expect(rendered?.querySelectorAll('.swimlane-mark')).toHaveLength(1);
     expect(load).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(load).toHaveBeenCalledWith('page-2'));
@@ -1142,6 +1537,68 @@ describe('data view renderer', () => {
     expect(links).toHaveLength(2);
     expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
     expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/cid.yml');
+  });
+
+  it('renders Runs table identifiers, merged repositories, and workflows through declared link displays', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'runs',
+      title: 'Runs',
+      view: {
+        mark: 'table',
+        'column-summaries': false,
+        encoding: {
+          href: { field: 'run-link' },
+          columns: [
+            { field: 'run', type: 'nominal', display: 'run-link' },
+            { field: 'repository-coordinate', type: 'nominal', title: 'Repository', display: 'repository-link' },
+            { field: 'workflow', type: 'nominal', display: 'workflow-link' }
+          ]
+        }
+      },
+      sourceName: 'runs-table',
+      rows: [{
+        run: '35019200904',
+        'repository-coordinate': 'githubnext/gh-aw-cao',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/self-care.md',
+        'repository-link': {
+          relation: 'repository',
+          href: 'https://github.com/githubnext/gh-aw-cao',
+          label: 'Open githubnext/gh-aw-cao'
+        },
+        'workflow-link': {
+          relation: 'workflow',
+          href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/self-care.md',
+          label: 'Open .github/workflows/self-care.md'
+        },
+        'run-link': {
+          relation: 'run',
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/35019200904',
+          label: 'Run 35019200904'
+        }
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect([...(rendered?.querySelectorAll('thead th') ?? [])].map((header) => header.textContent)).toEqual([
+      'Run',
+      'Repository',
+      'Workflow'
+    ]);
+    const links = rendered?.querySelectorAll('tbody a');
+    expect(links).toHaveLength(3);
+    expect(links?.[0]?.textContent).toBe('35019200904');
+    expect(links?.[0]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/35019200904');
+    expect(links?.[1]?.textContent).toBe('githubnext/gh-aw-cao');
+    expect(links?.[1]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
+    expect(links?.[2]?.textContent).toBe('.github/workflows/self-care.md');
+    expect(links?.[2]?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/self-care.md');
   });
 
   it.each([

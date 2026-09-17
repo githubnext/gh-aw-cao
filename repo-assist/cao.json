@@ -1,0 +1,10 @@
+{
+  "package": "repo-assist",
+  "orchestrator": "repo-assist",
+  "workers": {
+    "issue-triage": "repo-assist-issue-triage",
+    "issue-fix": "repo-assist-issue-fix",
+    "maintenance": "repo-assist-maintenance",
+    "pr-upkeep": "repo-assist-pr-upkeep"
+  }
+}

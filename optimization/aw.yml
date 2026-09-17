@@ -8,8 +8,14 @@ includes:
   - .github/workflows/optimization-ai-credit-auditor.md
   - .github/workflows/optimization-ai-credit-optimizer.md
   - .github/workflows/optimization-skills-curator.md
+  - .github/workflows/optimization-token-intervention-tracker.yml
+  - .github/workflows/optimization-token-efficiency-auditor.md
+  - .github/workflows/optimization-token-efficiency-verifier.md
+  - .github/workflows/optimization-token-optimizer.md
   - .github/workflows/optimization.md
 resources:
+  - source: cao.json
+    destination: .github/aw/optimization/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/optimization.json
   - source: .github/graders/optimization-agents-md-curator-operational-value.sh
@@ -18,3 +24,5 @@ resources:
     destination: .github/aw/optimization/graders/optimization-ai-credit-auditor-operational-value.sh
   - source: .github/graders/optimization-ai-credit-optimizer-operational-value.sh
     destination: .github/aw/optimization/graders/optimization-ai-credit-optimizer-operational-value.sh
+  - source: .github/graders/optimization-token-optimizer-operational-value.sh
+    destination: .github/aw/optimization/graders/optimization-token-optimizer-operational-value.sh

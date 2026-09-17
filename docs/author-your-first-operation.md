@@ -37,7 +37,7 @@ Open your CAO source or control repository in a coding agent. Then use this
 prompt, replacing the bracketed values:
 
 ```text
-Read and follow .github/skills/create-ops-package/SKILL.md.
+Read and follow .github/skills/create-cao-package/SKILL.md.
 
 Create an operation package for this outcome:
 [What should become measurably better in a repository?]

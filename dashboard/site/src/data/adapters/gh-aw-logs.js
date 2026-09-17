@@ -115,6 +115,29 @@ function finiteNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+/** @param {unknown} value @param {string} field @param {string[]} allowed */
+function enumValue(value, field, allowed) {
+  const normalized = requiredString(value, field);
+  if (!allowed.includes(normalized)) {
+    throw new TypeError(`${field} must be one of ${allowed.join(', ')}`);
+  }
+  return normalized;
+}
+
+/** @param {unknown} value @param {string} field */
+function optionalTimestamp(value, field) {
+  return value === undefined || value === null
+    ? undefined
+    : canonicalTimestamp(value, field);
+}
+
+/** @param {unknown} value @param {string} field */
+function optionalIdentifierArray(value, field) {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value)) throw new TypeError(`${field} must be an array`);
+  return value.map((item, index) => identifier(item, `${field}[${index}]`));
+}
+
 /** @param {Record<string, unknown>} run */
 function runMetadata(run) {
   const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
@@ -173,6 +196,83 @@ function runMetadata(run) {
     gatewayVersion: firstOptionalString(run.gateway_version, awInfo.awmg_version),
     aicTotal,
     tokenUsage
+  };
+}
+
+/** @param {Record<string, unknown>} run */
+function runAggregates(run) {
+  const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
+    ? /** @type {Record<string, unknown>} */ (run.audit)
+    : {};
+  const firewallValue = Object.hasOwn(run, 'firewall_analysis')
+    ? run.firewall_analysis
+    : audit.firewall_analysis;
+  const firewall = firewallValue && typeof firewallValue === 'object' && !Array.isArray(firewallValue)
+    ? /** @type {Record<string, unknown>} */ (firewallValue)
+    : {};
+  const requestsByDomain = firewall.requests_by_domain
+    && typeof firewall.requests_by_domain === 'object'
+    && !Array.isArray(firewall.requests_by_domain)
+    ? /** @type {Record<string, unknown>} */ (firewall.requests_by_domain)
+    : {};
+  const hasFirewallAggregate = firewallValue !== null && typeof firewallValue === 'object'
+    && !Array.isArray(firewallValue);
+  let firewallAllowedCalls = 0;
+  let firewallBlockedCalls = 0;
+  for (const value of Object.values(requestsByDomain)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+    const counts = /** @type {Record<string, unknown>} */ (value);
+    firewallAllowedCalls += Math.max(0, finiteNumber(counts.allowed) ?? 0);
+    firewallBlockedCalls += Math.max(0, finiteNumber(counts.blocked) ?? 0);
+  }
+
+  const mcpValue = Object.hasOwn(run, 'mcp_tool_usage')
+    ? run.mcp_tool_usage
+    : audit.mcp_tool_usage;
+  const mcp = mcpValue && typeof mcpValue === 'object' && !Array.isArray(mcpValue)
+    ? /** @type {Record<string, unknown>} */ (mcpValue)
+    : {};
+  const toolCalls = Array.isArray(mcp.tool_calls) ? mcp.tool_calls : [];
+  const hasMcpAggregate = mcpValue !== null && typeof mcpValue === 'object'
+    && !Array.isArray(mcpValue);
+  const mcpResponseBytes = toolCalls.reduce((total, value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return total;
+    return total + Math.max(0, finiteNumber(/** @type {Record<string, unknown>} */ (value).output_size) ?? 0);
+  }, 0);
+
+  const graders = run.graders && typeof run.graders === 'object' && !Array.isArray(run.graders)
+    ? /** @type {Record<string, unknown>} */ (run.graders)
+    : {};
+  const operationalValueResults = (Array.isArray(graders.results) ? graders.results : [])
+    .filter((value) => value && typeof value === 'object' && !Array.isArray(value))
+    .map((value) => /** @type {Record<string, unknown>} */ (value))
+    .filter((value) => value.id === 'operational-value' || value.source === 'operational-value')
+    .map((value) => finiteNumber(value.value))
+    .filter((value) => value !== null);
+
+  const auditItems = ['key_findings', 'observability_insights', 'recommendations']
+    .flatMap((field) => Array.isArray(audit[field]) ? audit[field] : [])
+    .filter((value) => value && typeof value === 'object' && !Array.isArray(value))
+    .map((value) => /** @type {Record<string, unknown>} */ (value));
+  const hasPriorityAggregate = ['key_findings', 'observability_insights', 'recommendations']
+    .some((field) => Array.isArray(audit[field]));
+  /** @param {string} priority */
+  const priorityCount = (priority) => auditItems.filter((item) =>
+    optionalString(item.severity ?? item.priority)?.toLowerCase() === priority).length;
+  const startedAt = timestamp(run.started_at ?? run.created_at);
+  const completedAt = run.status === 'completed' ? timestamp(run.completed_at ?? run.updated_at) : null;
+
+  return {
+    agenticDurationSeconds: startedAt && completedAt
+      ? Math.max(0, (Date.parse(completedAt) - Date.parse(startedAt)) / 1000)
+      : null,
+    firewallAllowedCalls: hasFirewallAggregate ? firewallAllowedCalls : null,
+    firewallBlockedCalls: hasFirewallAggregate ? firewallBlockedCalls : null,
+    mcpToolCalls: hasMcpAggregate ? toolCalls.length : null,
+    mcpResponseBytes: hasMcpAggregate ? mcpResponseBytes : null,
+    operationalValue: operationalValueResults.length === 1 ? operationalValueResults[0] : null,
+    highPriorityAuditItems: hasPriorityAggregate ? priorityCount('high') : null,
+    mediumPriorityAuditItems: hasPriorityAggregate ? priorityCount('medium') : null
   };
 }
 
@@ -622,7 +722,7 @@ export function cachedJsonlPayloadIdentity(content) {
 
 /**
  * @param {AsyncIterable<string | Uint8Array>} chunks
- * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void }} [options]
+ * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], onProgress?: (progress: { bytesProcessed: number, linesProcessed: number, recordsIngested: number }) => void, payloadIdentity?: string }} [options]
  */
 export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   if (cachedJsonlExpression.contract !== 'gh-aw-cao.jsonl-ingestion'
@@ -633,7 +733,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   const knownKinds = new Set(Object.keys(cachedJsonlExpression.variants));
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
-  const hasher = createCachedJsonlPayloadHasher();
+  const hasher = options.payloadIdentity === undefined ? createCachedJsonlPayloadHasher() : null;
   const accumulator = createCachedGhAwJsonlAccumulator(options);
   let pending = '';
   let lineNumber = 0;
@@ -664,7 +764,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
     chunksProcessed += 1;
     const bytes = typeof chunk === 'string' ? encoder.encode(chunk) : chunk;
     bytesProcessed += bytes.byteLength;
-    hasher.update(bytes);
+    hasher?.update(bytes);
     pending += decoder.decode(bytes, { stream: true });
     let start = 0;
     let newline;
@@ -688,7 +788,7 @@ export async function adaptCachedGhAwJsonlStream(chunks, options = {}) {
   options.onProgress?.({ bytesProcessed, linesProcessed: lineNumber, recordsIngested });
   const result = {
     ...accumulator.finish(),
-    payloadIdentity: hasher.digest()
+    payloadIdentity: options.payloadIdentity ?? hasher?.digest()
   };
   debug('completed streaming JSONL adaptation', {
     chunksProcessed,
@@ -723,6 +823,10 @@ function createCachedGhAwJsonlAccumulator(options) {
   const rateLimitEnvelopes = [];
   /** @type {Map<string, { value: Record<string, unknown>, line: number }[]>} */
   const safeOutputItemsByRun = new Map();
+  /** @type {Map<string, Record<string, unknown>[]>} */
+  const tokenEfficiencyObservationsByRun = new Map();
+  /** @type {Map<string, Record<string, unknown>[]>} */
+  const tokenEfficiencyLifecycleObservationsByRun = new Map();
   /** @type {Map<string, string>} */
   const latestRunByGithubId = new Map();
   /** @type {Map<string, CachedRun>} */
@@ -761,8 +865,46 @@ function createCachedGhAwJsonlAccumulator(options) {
       }
       return;
     }
-    if (envelope.kind === 'run') {
-      agenticRunRecords += 1;
+    if (envelope.kind === 'token_efficiency_observation') {
+      const observation = objectValue(
+        envelope.observation,
+        `gh-aw JSONL line ${line}.observation`
+      );
+      const optimizerRunId = identifier(
+        observation.optimizerRunId,
+        `gh-aw JSONL line ${line}.observation.optimizerRunId`
+      );
+      const optimizerRunAttempt = positiveInteger(
+        observation.runAttempt ?? 1,
+        `gh-aw JSONL line ${line}.observation.runAttempt`
+      );
+      const optimizerRunKey = runId(optimizerRunId, optimizerRunAttempt);
+      const observations = tokenEfficiencyObservationsByRun.get(optimizerRunKey) ?? [];
+      observations.push({ ...observation, __line: line });
+      tokenEfficiencyObservationsByRun.set(optimizerRunKey, observations);
+      return;
+    }
+    if (envelope.kind === 'token_efficiency_lifecycle_observation') {
+      const observation = objectValue(
+        envelope.observation,
+        `gh-aw JSONL line ${line}.observation`
+      );
+      const optimizerRunId = identifier(
+        observation.optimizerRunId,
+        `gh-aw JSONL line ${line}.observation.optimizerRunId`
+      );
+      const optimizerRunAttempt = positiveInteger(
+        observation.optimizerRunAttempt,
+        `gh-aw JSONL line ${line}.observation.optimizerRunAttempt`
+      );
+      const optimizerRunKey = runId(optimizerRunId, optimizerRunAttempt);
+      const observations = tokenEfficiencyLifecycleObservationsByRun.get(optimizerRunKey) ?? [];
+      observations.push({ ...observation, __line: line });
+      tokenEfficiencyLifecycleObservationsByRun.set(optimizerRunKey, observations);
+      return;
+    }
+    if (envelope.kind === 'run' || envelope.kind === 'token_efficiency_run_context') {
+      if (envelope.kind === 'run') agenticRunRecords += 1;
       const run = objectValue(envelope.run, `gh-aw JSONL line ${line}.run`);
       const organization = requiredString(run.organization, `gh-aw JSONL line ${line}.run.organization`);
       const coordinates = repositoryCoordinates(
@@ -854,7 +996,6 @@ function createCachedGhAwJsonlAccumulator(options) {
       );
       run.workflowPath = paths?.size === 1 ? [...paths][0] : undefined;
     }
-
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
   /** @type {Map<string, import('../model/schema.js').CanonicalObservation>} */
@@ -921,6 +1062,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       `${id}.attempt`
     );
     const metadata = runMetadata(enrichedValue);
+    const aggregates = runAggregates(enrichedValue);
     const title = optionalString(rawValue.displayTitle)
       ?? optionalString(enrichedValue.display_title)
       ?? `Run ${githubRunId}`;
@@ -979,6 +1121,7 @@ function createCachedGhAwJsonlAccumulator(options) {
         agentId: metadata.agentId ?? null,
         agentVersion: metadata.agentVersion ?? null,
         modelId: metadata.modelId ?? null,
+        ...aggregates,
         ghAwVersion: metadata.ghAwVersion ?? null,
         engine: metadata.engine ?? 'unknown',
         engineId: metadata.engineId,
@@ -1221,6 +1364,236 @@ function createCachedGhAwJsonlAccumulator(options) {
     const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
       ? /** @type {Record<string, unknown>} */ (run.audit)
       : {};
+    const explicitSafeOutputs = safeOutputItemsByRun.get(id) ?? [];
+    const nestedSafeOutputs = Array.isArray(run.safe_outputs)
+      ? run.safe_outputs
+      : Array.isArray(audit.created_items) ? audit.created_items : [];
+    const safeOutputs = explicitSafeOutputs.length > 0
+      ? explicitSafeOutputs
+      : nestedSafeOutputs.map((value) => ({ value, line: enriched.line }));
+    for (const tokenObservation of tokenEfficiencyObservationsByRun.get(id) ?? []) {
+      const observed = timestamp(tokenObservation.observedAt) ?? completedAt ?? enriched.observedAt;
+      const targetRepo = requiredString(tokenObservation.targetRepo, 'token observation targetRepo').toLowerCase();
+      if (!REPOSITORY_COORDINATE_PATTERN.test(targetRepo)) continue;
+      const targetCoordinates = repositoryCoordinates(targetRepo);
+      const targetWorkflowPath = requiredString(
+        tokenObservation.workflowPath,
+        'token observation workflowPath'
+      );
+      const opportunityId = requiredString(
+        tokenObservation.opportunityId,
+        'token observation opportunityId'
+      );
+      const interventionId = requiredString(
+        tokenObservation.interventionId,
+        'token observation interventionId'
+      );
+      emitEvent(
+        'token_efficiency.opportunity',
+        observed,
+        optionalString(tokenObservation.opportunityKind) ?? 'Token-efficiency opportunity',
+        optionalString(tokenObservation.evidenceState) ?? 'unavailable',
+        { type: 'token-efficiency-opportunity', opportunityId },
+        {
+          source: 'token-optimizer-observation',
+          targetRepo,
+          targetOrganization: targetCoordinates.owner,
+          targetRepository: targetCoordinates.name,
+          targetWorkflowPath,
+          opportunityId,
+          opportunityKind: optionalString(tokenObservation.opportunityKind),
+          assignmentRunId: optionalString(tokenObservation.assignmentRunId),
+          experimentId: optionalString(tokenObservation.experimentId),
+          evidenceWindowStart: optionalString(tokenObservation.evidenceWindowStart),
+          evidenceWindowEnd: optionalString(tokenObservation.evidenceWindowEnd),
+          evidenceState: optionalString(tokenObservation.evidenceState),
+          evidenceConfidence: finiteNumber(tokenObservation.evidenceConfidence),
+          costGrain: optionalString(tokenObservation.costGrain),
+          evidenceProvenance: tokenObservation.evidenceProvenance,
+          payloadRef: `gh-aw-logs-shards#L${String(tokenObservation.__line)}`
+        }
+      );
+      emitEvent(
+        'token_efficiency.intervention',
+        observed,
+        optionalString(tokenObservation.opportunityKind) ?? 'Token-efficiency intervention',
+        optionalString(tokenObservation.interventionState) ?? 'proposed',
+        { type: 'token-efficiency-intervention', interventionId },
+        {
+          source: 'token-optimizer-observation',
+          targetRepo,
+          targetOrganization: targetCoordinates.owner,
+          targetRepository: targetCoordinates.name,
+          targetWorkflowPath,
+          opportunityId,
+          interventionId,
+          interventionState: optionalString(tokenObservation.interventionState),
+          recommendationDisposition: optionalString(tokenObservation.recommendationDisposition),
+          supersedesInterventionId: optionalString(tokenObservation.supersedesInterventionId),
+          supersededByInterventionId: optionalString(tokenObservation.supersededByInterventionId),
+          experimentId: optionalString(tokenObservation.experimentId),
+          controlVariant: optionalString(tokenObservation.controlVariant),
+          optimizedVariant: optionalString(tokenObservation.optimizedVariant),
+          proposedSavingsAic: finiteNumber(tokenObservation.proposedSavingsAic),
+          attributableRunIds: tokenObservation.attributableRunIds,
+          payloadRef: `gh-aw-logs-shards#L${String(tokenObservation.__line)}`
+        }
+      );
+      const supersedesInterventionId = optionalString(tokenObservation.supersedesInterventionId);
+      if (supersedesInterventionId) {
+        emitEvent(
+          'token_efficiency.intervention',
+          observed,
+          'Token-efficiency intervention superseded',
+          'rejected',
+          {
+            type: 'token-efficiency-intervention-superseded',
+            interventionId: supersedesInterventionId,
+            supersededByInterventionId: interventionId
+          },
+          {
+            source: 'token-optimizer-observation',
+            targetRepo,
+            targetOrganization: targetCoordinates.owner,
+            targetRepository: targetCoordinates.name,
+            targetWorkflowPath,
+            opportunityId,
+            interventionId: supersedesInterventionId,
+            interventionState: 'rejected',
+            recommendationDisposition: 'superseded',
+            supersededByInterventionId: interventionId,
+            supersededAt: observed,
+            evidenceState: 'complete',
+            payloadRef: `gh-aw-logs-shards#L${String(tokenObservation.__line)}`
+          }
+        );
+      }
+    }
+    for (const lifecycle of tokenEfficiencyLifecycleObservationsByRun.get(id) ?? []) {
+      const observed = canonicalTimestamp(
+        lifecycle.observedAt,
+        'token lifecycle observedAt'
+      );
+      const targetRepo = requiredString(lifecycle.targetRepo, 'token lifecycle targetRepo').toLowerCase();
+      if (!REPOSITORY_COORDINATE_PATTERN.test(targetRepo)) {
+        throw new TypeError('token lifecycle targetRepo must be an owner/repository coordinate');
+      }
+      const targetCoordinates = repositoryCoordinates(targetRepo);
+      const targetWorkflowPath = requiredString(
+        lifecycle.workflowPath,
+        'token lifecycle workflowPath'
+      );
+      const opportunityId = requiredString(
+        lifecycle.opportunityId,
+        'token lifecycle opportunityId'
+      );
+      const interventionId = requiredString(
+        lifecycle.interventionId,
+        'token lifecycle interventionId'
+      );
+      const lifecycleObservationId = requiredString(
+        lifecycle.lifecycleObservationId,
+        'token lifecycle lifecycleObservationId'
+      );
+      const previousInterventionState = enumValue(
+        lifecycle.previousInterventionState,
+        'token lifecycle previousInterventionState',
+        ['proposed', 'accepted', 'running', 'verified', 'regressed', 'inconclusive', 'rejected']
+      );
+      const interventionState = enumValue(
+        lifecycle.interventionState,
+        'token lifecycle interventionState',
+        ['proposed', 'accepted', 'running', 'verified', 'regressed', 'inconclusive', 'rejected']
+      );
+      const previousRecommendationDisposition = enumValue(
+        lifecycle.previousRecommendationDisposition,
+        'token lifecycle previousRecommendationDisposition',
+        ['applied', 'superseded', 'outdated', 'duplicate', 'unapplied', 'failed-start', 'rejected']
+      );
+      const recommendationDisposition = enumValue(
+        lifecycle.recommendationDisposition,
+        'token lifecycle recommendationDisposition',
+        ['applied', 'superseded', 'outdated', 'duplicate', 'unapplied', 'failed-start', 'rejected']
+      );
+      const evidenceState = enumValue(
+        lifecycle.evidenceState,
+        'token lifecycle evidenceState',
+        ['complete', 'incomplete', 'unavailable']
+      );
+      emitEvent(
+        'token_efficiency.intervention',
+        observed,
+        optionalString(lifecycle.missingReason) ?? 'Token-efficiency lifecycle updated',
+        interventionState,
+        { type: 'token-efficiency-lifecycle', lifecycleObservationId },
+        {
+          source: 'token-intervention-lifecycle',
+          optimizerRunAttempt: positiveInteger(
+            lifecycle.optimizerRunAttempt,
+            'token lifecycle optimizerRunAttempt'
+          ),
+          optimizerWorkflowPath: requiredString(
+            lifecycle.optimizerWorkflowPath,
+            'token lifecycle optimizerWorkflowPath'
+          ),
+          optimizerWorkflowName: requiredString(
+            lifecycle.optimizerWorkflowName,
+            'token lifecycle optimizerWorkflowName'
+          ),
+          targetRepo,
+          targetOrganization: targetCoordinates.owner,
+          targetRepository: targetCoordinates.name,
+          targetWorkflowPath,
+          opportunityId,
+          interventionId,
+          experimentId: optionalString(lifecycle.experimentId),
+          controlVariant: optionalString(lifecycle.controlVariant),
+          optimizedVariant: optionalString(lifecycle.optimizedVariant),
+          proposedSavingsAic: finiteNumber(lifecycle.proposedSavingsAic),
+          supersedesInterventionId: optionalString(lifecycle.supersedesInterventionId),
+          recommendationChurnCount: finiteNumber(lifecycle.recommendationChurnCount),
+          recommendationChurnRate: finiteNumber(lifecycle.recommendationChurnRate),
+          lifecycleObservationId,
+          previousInterventionState,
+          interventionState,
+          previousRecommendationDisposition,
+          recommendationDisposition,
+          evidenceState,
+          missingReason: optionalString(lifecycle.missingReason),
+          safeOutputId: requiredString(lifecycle.safeOutputId, 'token lifecycle safeOutputId'),
+          safeOutputUrl: requiredString(lifecycle.safeOutputUrl, 'token lifecycle safeOutputUrl'),
+          implementationChangeId: optionalString(lifecycle.implementationChangeId),
+          implementationPullRequestUrl: optionalString(lifecycle.implementationPullRequestUrl),
+          implementationRunIds: optionalIdentifierArray(
+            lifecycle.implementationRunIds,
+            'token lifecycle implementationRunIds'
+          ),
+          acceptedAt: optionalTimestamp(lifecycle.acceptedAt, 'token lifecycle acceptedAt'),
+          implementationStartedAt: optionalTimestamp(
+            lifecycle.implementationStartedAt,
+            'token lifecycle implementationStartedAt'
+          ),
+          implementationCompletedAt: optionalTimestamp(
+            lifecycle.implementationCompletedAt,
+            'token lifecycle implementationCompletedAt'
+          ),
+          rejectedAt: optionalTimestamp(lifecycle.rejectedAt, 'token lifecycle rejectedAt'),
+          supersededAt: optionalTimestamp(lifecycle.supersededAt, 'token lifecycle supersededAt'),
+          supersededByInterventionId: optionalString(lifecycle.supersededByInterventionId),
+          claimRunId: identifier(lifecycle.claimRunId, 'token lifecycle claimRunId'),
+          claimRunAttempt: positiveInteger(
+            lifecycle.claimRunAttempt,
+            'token lifecycle claimRunAttempt'
+          ),
+          actor: requiredString(lifecycle.actor, 'token lifecycle actor'),
+          sourceProvenance: objectValue(
+            lifecycle.sourceProvenance,
+            'token lifecycle sourceProvenance'
+          ),
+          payloadRef: `gh-aw-logs-shards#L${String(lifecycle.__line)}`
+        }
+      );
+    }
     const runMcpToolUsage = run.mcp_tool_usage && typeof run.mcp_tool_usage === 'object'
       && !Array.isArray(run.mcp_tool_usage)
       ? /** @type {Record<string, unknown>} */ (run.mcp_tool_usage)
@@ -1251,7 +1624,12 @@ function createCachedGhAwJsonlAccumulator(options) {
         summary,
         'started',
         { type: 'mcp-call', index, server: record.server_name, tool: record.tool_name },
-        { source: 'mcp', correlationId }
+        {
+          source: 'mcp',
+          correlationId,
+          mcpServer: optionalString(record.server_name),
+          mcpTool: optionalString(record.tool_name)
+        }
       );
       emitEvent(
         status === 'success' ? 'tool.result' : 'tool.error',
@@ -1259,7 +1637,12 @@ function createCachedGhAwJsonlAccumulator(options) {
         summary,
         status,
         { type: 'mcp-outcome', index, status },
-        { source: 'mcp', correlationId }
+        {
+          source: 'mcp',
+          correlationId,
+          mcpServer: optionalString(record.server_name),
+          mcpTool: optionalString(record.tool_name)
+        }
       );
     });
     /**
@@ -1322,13 +1705,6 @@ function createCachedGhAwJsonlAccumulator(options) {
         );
       }
     }
-    const explicitSafeOutputs = safeOutputItemsByRun.get(id) ?? [];
-    const nestedSafeOutputs = Array.isArray(run.safe_outputs)
-      ? run.safe_outputs
-      : Array.isArray(audit.created_items) ? audit.created_items : [];
-    const safeOutputs = explicitSafeOutputs.length > 0
-      ? explicitSafeOutputs
-      : nestedSafeOutputs.map((value) => ({ value, line: enriched.line }));
     safeOutputs.forEach((safeOutput, index) => {
       const record = safeOutput.value && typeof safeOutput.value === 'object'
         && !Array.isArray(safeOutput.value)
@@ -1375,6 +1751,13 @@ function createCachedGhAwJsonlAccumulator(options) {
         { type: 'comparison', value: run.comparison }
       );
     }
+  }
+  const unmatchedLifecycleRuns = [...tokenEfficiencyLifecycleObservationsByRun.keys()]
+    .filter((id) => !runIds.has(id));
+  if (unmatchedLifecycleRuns.length > 0) {
+    throw new TypeError(
+      `Token lifecycle observations require retained optimizer runs: ${unmatchedLifecycleRuns.join(', ')}`
+    );
   }
 
   let mappedRateLimits = 0;

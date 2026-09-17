@@ -209,6 +209,62 @@ steps:
           return String(workflowPath || '').split('@', 1)[0];
         }
 
+        function compareRuns(left, right) {
+          const createdComparison = String(left.created_at || '').localeCompare(String(right.created_at || ''));
+          if (createdComparison !== 0) return createdComparison;
+          return Number(left.run_id || left.id || 0) - Number(right.run_id || right.id || 0);
+        }
+
+        function sameWorkflow(left, right) {
+          const leftWorkflowId = left.workflow_id;
+          const rightWorkflowId = right.workflow_id;
+          if (leftWorkflowId && rightWorkflowId) return leftWorkflowId === rightWorkflowId;
+          return normalizeWorkflowPath(left.workflow_path || left.path)
+            === normalizeWorkflowPath(right.workflow_path || right.path);
+        }
+
+        function laterRunsFor(failedRun, completedRuns) {
+          return completedRuns
+            .filter((candidate) => (
+              String(candidate.run_id || candidate.id || '') !== String(failedRun.run_id || failedRun.id || '')
+              && sameWorkflow(candidate, failedRun)
+              && compareRuns(candidate, failedRun) > 0
+            ))
+            .sort(compareRuns)
+            .map((run) => ({
+              run_id: run.run_id || run.id,
+              created_at: run.created_at,
+              conclusion: run.conclusion,
+              url: run.url || run.html_url,
+            }));
+        }
+
+        function summarizeFailureEvidence({ jobs = [], truncatedErrorLogs = [], laterRuns = [] }) {
+          const jobCount = jobs.length;
+          const retrievableLogCount = truncatedErrorLogs.filter(
+            (log) => typeof log.tail_lines === 'string' && log.tail_lines.trim() !== '',
+          ).length;
+          const evidenceFree = jobCount === 0 && retrievableLogCount === 0;
+          const laterSuccess = laterRuns.some(
+            (run) => String(run.conclusion || '').toLowerCase() === 'success',
+          );
+
+          return {
+            job_count: jobCount,
+            retrievable_log_count: retrievableLogCount,
+            diagnostic_evidence: evidenceFree ? 'incomplete' : 'available',
+            incomplete_reason: evidenceFree ? 'zero-jobs-and-no-retrievable-logs' : null,
+            later_runs: laterRuns,
+            later_success_after_failure: laterSuccess,
+            classification_constraints: {
+              may_infer_root_cause: !evidenceFree,
+              may_classify_p0_or_p1: !evidenceFree,
+              may_create_focused_fix_issue: !evidenceFree,
+              later_success_negates_current_high_priority: evidenceFree && laterSuccess,
+            },
+          };
+        }
+
         function isAgenticWorkflowPath(workflowPath) {
           const normalizedPath = normalizeWorkflowPath(workflowPath);
           if (AGENTIC_WORKFLOW_PATHS.size > 0) {
@@ -242,8 +298,8 @@ steps:
           return `${date.toISOString().split('.')[0]}Z`;
         }
 
-        function listFailedAgenticRuns(createdSince) {
-          const failedRuns = [];
+        function listCompletedAgenticRuns(createdSince) {
+          const completedRuns = [];
           for (let page = 1; page <= MAX_DISCOVERY_PAGES; page += 1) {
             const response =
               runApiJson(`repos/${REPO}/actions/runs`, {
@@ -259,10 +315,10 @@ steps:
             for (const run of workflowRuns) {
               const workflowPath = normalizeWorkflowPath(run.path);
               if (!isAgenticWorkflowPath(workflowPath)) continue;
-              if (!isFailureConclusion(run.conclusion)) continue;
 
-              failedRuns.push({
+              completedRuns.push({
                 run_id: run.id,
+                workflow_id: run.workflow_id,
                 workflow_name: run.name,
                 workflow_path: workflowPath,
                 created_at: run.created_at,
@@ -274,12 +330,13 @@ steps:
             if (workflowRuns.length < 100) break;
           }
 
-          failedRuns.sort((left, right) => String(right.created_at || '').localeCompare(String(left.created_at || '')));
-          return failedRuns;
+          completedRuns.sort((left, right) => String(right.created_at || '').localeCompare(String(left.created_at || '')));
+          return completedRuns;
         }
 
         const windowStart = isoformatZ(new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000));
-        const failedRuns = listFailedAgenticRuns(windowStart);
+        const completedRuns = listCompletedAgenticRuns(windowStart);
+        const failedRuns = completedRuns.filter((run) => isFailureConclusion(run.conclusion));
 
         const failureDetails = [];
         for (const run of failedRuns.slice(0, MAX_FAILURES_TO_DETAIL)) {
@@ -300,8 +357,9 @@ steps:
           const failedJobNames = [];
           const failedSteps = [];
           const truncatedErrorLogs = [];
+          const jobs = runView.jobs || [];
 
-          for (const job of runView.jobs || []) {
+          for (const job of jobs) {
             if (!isFailureConclusion(job.conclusion)) continue;
             const jobName = job.name;
             if (jobName) failedJobNames.push(jobName);
@@ -327,8 +385,16 @@ steps:
             });
           }
 
+          const laterRuns = laterRunsFor(run, completedRuns);
+          const evidence = summarizeFailureEvidence({
+            jobs,
+            truncatedErrorLogs,
+            laterRuns,
+          });
+
           failureDetails.push({
             run_id: runId,
+            workflow_id: run.workflow_id,
             workflow_name: runView.workflowName || runView.name,
             workflow_path: run.workflow_path,
             url: runView.url,
@@ -337,6 +403,7 @@ steps:
             failed_job_names: [...new Set(failedJobNames)].sort(),
             failed_steps: failedSteps,
             truncated_error_logs: truncatedErrorLogs,
+            ...evidence,
           });
         }
 
@@ -426,7 +493,7 @@ Read `/tmp/gh-aw/agent/failure-investigator/prefetch.json` once and keep the par
 | `lookback_window`, `window_start` | the analysis window |
 | `agentic_workflow_count` | compiled agentic workflows found in the target checkout |
 | `failed_run_ids` | every failed agentic workflow run in the window |
-| `failures` | detailed evidence for the most recent failures, including `truncated_error_logs` |
+| `failures` | detailed evidence for the most recent failures, including `truncated_error_logs`, later runs of the same workflow, and deterministic `classification_constraints` |
 | `existing_tracking_issues` | open current or legacy failure-investigator issues already filed |
 | `source_failure_issues` | open target-repository `[aw]` failure issues labeled `agentic-workflows` |
 
@@ -443,12 +510,14 @@ Only call additional Actions or issue APIs when a field required for a bucket is
 Group failures into buckets so each bucket represents one defect, not one run:
 
 1. Extract the dominant error signature from `truncated_error_logs[].tail_lines`. Treat an entry with `capture_likely_missed_fault: true` as insufficient evidence, never as a signature.
-2. Group failures with the same signature in the same workflow together. Keep the same signature in different workflows in separate buckets unless the evidence shows one shared cause.
-3. Assign a severity to each bucket:
+2. Treat `diagnostic_evidence: incomplete` with `incomplete_reason: zero-jobs-and-no-retrievable-logs` as evidence-free. Record only that GitHub reported the failed conclusion and that diagnostic evidence is incomplete. Do not infer credentials, secrets, runners, images, quotas, branch policy, workflow source, or any other root cause.
+3. Before classifying a bucket as blocking or persistent, inspect `later_runs` for every represented failure. A later successful run disproves that the earlier evidence-free failure is a current P0 or P1. Honor `classification_constraints.may_classify_p0_or_p1`; when it is `false`, classify the observation as needing evidence rather than P0 or P1.
+4. Group failures with the same supported signature in the same workflow together. Keep the same signature in different workflows in separate buckets unless the evidence shows one shared cause. Keep evidence-free observations separate from signature-backed buckets.
+5. Assign a severity to each evidence-backed bucket:
    - **P0** — agent or infrastructure crash, `startup_failure`, or a failure that blocks every run of the workflow
    - **P1** — a persistent pattern across two or more runs
    - **P2** — an isolated or transient failure
-4. Record for each bucket: signature, severity, affected workflows, run count, representative run URL, and probable root cause with the evidence that supports it.
+6. Record for each bucket: signature or `diagnostic evidence unavailable`, severity or `needs evidence`, affected workflows, run count, representative run URL, later-run outcomes, and probable root cause only when the evidence supports it.
 
 Do not invent a root cause. When the evidence only supports an observation, say so and mark the bucket as needing more evidence.
 
@@ -462,7 +531,7 @@ For each bucket, decide whether an open issue in `existing_tracking_issues` alre
 
 ## Phase 4 — Publish Outputs
 
-Create one consolidated failure report issue first. Then create at most two fix issues, highest severity first, and only for untracked P0 and P1 buckets. Never file a fix issue for a P2 bucket or for a bucket that is already tracked.
+Create one consolidated failure report issue first. Then create at most two fix issues, highest severity first, and only for untracked P0 and P1 buckets. Never file a fix issue for a P2 bucket, for a bucket that is already tracked, or when any represented failure has `classification_constraints.may_create_focused_fix_issue: false`.
 
 Provide only the unprefixed subject as each safe-output title. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 
@@ -482,7 +551,7 @@ The configured close reason records the native GitHub duplicate relationship. On
 - **Target repository**: `<owner/repo>`
 - **Window**: last 24 hours (from <window_start>)
 - **Failed agentic runs**: N
-- **Failure buckets**: N (P0: N, P1: N, P2: N)
+- **Failure buckets**: N (P0: N, P1: N, P2: N, needs evidence: N)
 - **Agentic workflows in repository**: N
 
 ### Failure Buckets

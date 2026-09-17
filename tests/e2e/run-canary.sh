@@ -38,7 +38,7 @@ case "$BUNDLE" in
     ;;
   optimization)
     workflow_file=optimization.lock.yml
-    worker_files=(optimization-ai-credit-auditor.lock.yml optimization-ai-credit-optimizer.lock.yml)
+    worker_files=(optimization-ai-credit-auditor.lock.yml optimization-ai-credit-optimizer.lock.yml optimization-token-optimizer.lock.yml)
     ;;
   *) printf 'Unsupported package: %s\n' "$BUNDLE" >&2; exit 1 ;;
 esac

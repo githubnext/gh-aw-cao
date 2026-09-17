@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from '../../src/components/lazy-view.js';
+import { cancelLazyViewHydration, disconnectLazyViews, enableLazyViews, hydrateLazyViewAfterPaint, renderLazyView, trackViewTransition } from '../../src/components/lazy-view.js';
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -170,6 +170,28 @@ describe('lazy dashboard views', () => {
 
     finishTransition();
     await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+  });
+
+  it('cancels deferred hydration when a revealed view is hidden again', async () => {
+    /** @type {FrameRequestCallback[]} */
+    const frames = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const render = vi.fn(() => document.createElement('article'));
+    const lazyView = renderLazyView({ label: 'Runs', render });
+    document.body.append(lazyView);
+
+    void hydrateLazyViewAfterPaint(lazyView);
+    await vi.waitFor(() => expect(frames).toHaveLength(1));
+    cancelLazyViewHydration(lazyView);
+    frames.shift()?.(0);
+    frames.shift()?.(0);
+    await Promise.resolve();
+
+    expect(render).not.toHaveBeenCalled();
+    expect(lazyView.querySelector('.dashboard-lazy-view-skeleton')).not.toBeNull();
   });
 
   it('ignores skipped view transition readiness rejections', async () => {

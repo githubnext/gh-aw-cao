@@ -98,17 +98,16 @@ export function renderCopilotPrompt(socket) {
    */
   const appendAssistantMessage = (content = '', kind = 'response') => {
     if (!content.trim()) return null;
+    const contentElement = h('div', { className: 'dashboard-copilot-message-content' });
+    contentElement.textContent = content;
     const message = h(
       'div',
       {
         className: `dashboard-copilot-message dashboard-copilot-message-assistant dashboard-copilot-message-${kind}`
       },
-      h('div', { className: 'dashboard-copilot-message-content' }, content)
+      contentElement
     );
     conversation.append(message);
-    const contentElement = /** @type {HTMLElement | null} */ (
-      message.querySelector('.dashboard-copilot-message-content')
-    );
     scrollConversation();
     return contentElement;
   };

@@ -1,3 +1,5 @@
+import { reconcileChildren } from './dom-reconciler.js';
+
 /**
  * @template T
  * @typedef {{ get: () => T, set: (value: T | ((current: T) => T)) => T, subscribe: (listener: () => void) => () => void }} State
@@ -97,6 +99,7 @@ export function effect(fn, options = {}) {
       for (const cleanup of cleanups) {
         cleanup();
       }
+
       cleanups.clear();
       const previous = activeEffect;
       activeEffect = handle;
@@ -140,6 +143,40 @@ export function effect(fn, options = {}) {
     handle.run();
   }
   return handle;
+}
+
+/**
+ * Runs a reactive DOM renderer against an isolated, detached ShadowRoot, then
+ * morphs the result into the owned root with the fewest practical mutations.
+ * Existing compatible nodes are retained, preserving focus and local DOM state.
+ *
+ * @param {Node} root
+ * @param {() => unknown} update
+ * @param {{ signal?: AbortSignal }} [options]
+ * @returns {EffectHandle}
+ */
+export function render(root, update, options = {}) {
+  const ownerDocument = root.ownerDocument ?? document;
+  const shadowHost = ownerDocument.createElement('div');
+  const shadowRoot = shadowHost.attachShadow({ mode: 'closed' });
+
+  return effect(() => {
+    const output = update();
+    shadowRoot.replaceChildren(...renderedNodes(output, ownerDocument));
+    reconcileChildren(root, shadowRoot);
+  }, options);
+}
+
+/**
+ * @param {unknown} value
+ * @param {Document} ownerDocument
+ * @returns {Node[]}
+ */
+function renderedNodes(value, ownerDocument) {
+  if (Array.isArray(value)) return value.flatMap((child) => renderedNodes(child, ownerDocument));
+  if (value == null || value === false) return [];
+  if (value instanceof Node) return [value];
+  return [ownerDocument.createTextNode(String(value))];
 }
 
 /**

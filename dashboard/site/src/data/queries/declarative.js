@@ -7,11 +7,14 @@
  * `data-operations.js` so the whole pipeline runs inside the data Web Worker.
  *
  * Clause execution order is fixed and deterministic:
- * `from` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `select` ->
- * `order-by` -> `limit`.
+ * `from` -> `joins` -> `filter` -> `compute` -> `aggregate` -> `predict` ->
+ * `select` -> `order-by` -> `limit`.
  */
 
-import { tidy } from '../../data-operations.js';
+import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
+import { createDebug } from '../../debug.js';
+
+const debugQuery = createDebug('data:query');
 
 /**
  * @typedef {Record<string, unknown>} Row
@@ -28,7 +31,8 @@ import { tidy } from '../../data-operations.js';
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string, gte?: unknown, lt?: unknown, optional?: boolean }> },
  *   compute?: import('../../data-operations.js').ComputedField[],
- *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max' }> },
+ *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'distinct-values'|'sum'|'mean'|'min'|'max', filter?: { predicates: Array<{ field: string, equals?: string|number|boolean, in?: Array<string|number|boolean> }> } }> },
+ *   predict?: import('../../data-operations.js').PredictedField[],
  *   select?: Array<{ field: string, as?: string }>,
  *   ['order-by']?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   limit?: number
@@ -44,6 +48,9 @@ export const DASHBOARD_QUERY_LIMITS = {
   'max-join-rows': 200000,
   'max-output-rows': 100000,
   'max-joins': 4,
+  'max-aggregate-values': 64,
+  'max-aggregate-filter-predicates': 8,
+  'max-predicate-alternatives': 32,
   'max-operations': 5000000,
   'max-duration-ms': 60000
 };
@@ -341,6 +348,74 @@ function queryStructuralDefect(definition) {
       return `join on "${String(join?.source)}" declares no equality keys`;
     }
   }
+  if (definition.aggregate) {
+    if (!Array.isArray(definition.aggregate.values)
+        || definition.aggregate.values.length === 0
+        || definition.aggregate.values.length > DASHBOARD_QUERY_LIMITS['max-aggregate-values']) {
+      return `aggregate values must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-values']} definitions`;
+    }
+    for (const value of definition.aggregate.values) {
+      if (!isPlainObject(value)) return 'aggregate values must be mappings';
+      if (value.filter === undefined) continue;
+      if (!isPlainObject(value.filter)
+          || Object.keys(value.filter).some((key) => key !== 'predicates')) {
+        return 'aggregate filters must be mappings containing only predicates';
+      }
+      const predicates = value.filter?.predicates;
+      if (!Array.isArray(predicates)
+          || predicates.length === 0
+          || predicates.length > DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates']) {
+        return `aggregate filter predicates must contain between 1 and ${DASHBOARD_QUERY_LIMITS['max-aggregate-filter-predicates']} definitions`;
+      }
+      for (const predicate of predicates) {
+        const keys = Object.keys(predicate ?? {});
+        const hasEquals = Object.hasOwn(predicate ?? {}, 'equals');
+        const hasIn = Object.hasOwn(predicate ?? {}, 'in');
+        const operators = Number(hasEquals) + Number(hasIn);
+        if (typeof predicate?.field !== 'string' || operators !== 1
+            || keys.some((key) => !['field', 'equals', 'in'].includes(key))
+            || (hasEquals && !isAggregateFilterLiteral(predicate.equals))
+            || (hasIn
+              && (!Array.isArray(predicate.in)
+                || predicate.in.length === 0
+                || predicate.in.length > DASHBOARD_QUERY_LIMITS['max-predicate-alternatives']
+                || predicate.in.some((candidate) => !isAggregateFilterLiteral(candidate))))) {
+          return 'aggregate filter predicates must declare a field and exactly one bounded equals or in comparison';
+        }
+      }
+    }
+  }
+  if (definition.predict !== undefined) {
+    if (!Array.isArray(definition.predict) || definition.predict.length === 0 || definition.predict.length > 8) {
+      return 'predict must contain between 1 and 8 prediction definitions';
+    }
+    for (const prediction of definition.predict) {
+      const predictors = typeof prediction?.on === 'string'
+        ? [prediction.on]
+        : Array.isArray(prediction?.on) ? prediction.on : [];
+      const groupby = prediction?.groupby ?? [];
+      if (typeof prediction?.field !== 'string' || typeof prediction?.as !== 'string'
+          || predictors.length === 0 || predictors.length > 8
+          || predictors.some((field) => typeof field !== 'string')) {
+        return 'prediction definitions require field, as, and between 1 and 8 predictor fields';
+      }
+      if (!Array.isArray(groupby) || groupby.some((field) => typeof field !== 'string')) {
+        return 'prediction groupby must contain only field names';
+      }
+      if (prediction.method !== undefined
+          && (typeof prediction.method !== 'string' || !PREDICTION_METHODS.includes(prediction.method))) {
+        return `prediction method must be one of ${PREDICTION_METHODS.join(', ')}`;
+      }
+      if ((prediction.method ?? 'linear') !== 'linear' && predictors.length !== 1) {
+        return `prediction method ${String(prediction.method)} requires exactly one predictor field`;
+      }
+      if (prediction.order !== undefined
+          && ((prediction.method ?? 'linear') !== 'poly' || !Number.isSafeInteger(prediction.order)
+            || prediction.order < 1 || prediction.order > 10)) {
+        return 'prediction order is allowed only for poly and must be an integer from 1 to 10';
+      }
+    }
+  }
   if (definition.limit !== undefined
       && (!Number.isSafeInteger(definition.limit)
         || Number(definition.limit) <= 0
@@ -424,6 +499,7 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
   if (definition.aggregate) {
     fields = [...(definition.aggregate.by ?? []), ...definition.aggregate.values.map((value) => value.as)];
   }
+  for (const predicted of definition.predict ?? []) fields.push(predicted.as);
   if (definition.select) {
     fields = definition.select.map((field) => field.as ?? field.field);
   }
@@ -544,25 +620,37 @@ export function executeDashboardQuery(definition, sources, defect, budget) {
  */
 function materializeDashboardQuery(definition, sources, defect, budget) {
   const inputs = queryInputNames(definition).map((name) => ({ name, source: sources[name] }));
-  const rejected = defect ?? queryStructuralDefect(definition);
-  if (rejected) {
-    return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), rejected);
-  }
-  const requiredInputs = new Set([
-    definition.from,
-    ...(definition.joins ?? []).filter((join) => join.type !== 'left').map((join) => join.source)
-  ]);
-  const optionalInputs = new Set((definition.joins ?? [])
-    .filter((join) => join.type === 'left' && !requiredInputs.has(join.source))
-    .map((join) => join.source));
-  const unavailable = inputs.find((input) => (
-    requiredInputs.has(input.name)
-    && (!input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable')
-  ));
-  if (unavailable) {
-    return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), `input source "${unavailable.name}" is unavailable`);
-  }
+  const startedAt = queryTimestamp();
+  const startingOperations = budget.operations;
+  let status = 'available';
+  let outputRows = 0;
+  let executing = false;
+  /** @type {string | undefined} */
+  let failure;
   try {
+    const rejected = defect ?? queryStructuralDefect(definition);
+    if (rejected) {
+      status = 'unavailable';
+      failure = rejected;
+      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), rejected);
+    }
+    const requiredInputs = new Set([
+      definition.from,
+      ...(definition.joins ?? []).filter((join) => join.type !== 'left').map((join) => join.source)
+    ]);
+    const optionalInputs = new Set((definition.joins ?? [])
+      .filter((join) => join.type === 'left' && !requiredInputs.has(join.source))
+      .map((join) => join.source));
+    const unavailable = inputs.find((input) => (
+      requiredInputs.has(input.name)
+      && (!input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable')
+    ));
+    if (unavailable) {
+      status = 'unavailable';
+      failure = `input source "${unavailable.name}" is unavailable`;
+      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), failure);
+    }
+
     const effectiveSources = { ...sources };
     for (const name of optionalInputs) {
       const source = effectiveSources[name];
@@ -571,19 +659,43 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
       }
     }
 
+    executing = true;
     const rows = runDashboardQuery(definition, effectiveSources, budget);
+    outputRows = rows.length;
     return {
       source: definition.name,
       rows,
       metadata: composedMetadata(definition.name, inputs, rows.length, optionalInputs)
     };
   } catch (error) {
-    if (error instanceof DashboardQueryCancelledError) throw error;
+    failure = error instanceof Error ? error.message : String(error);
+    if (error instanceof DashboardQueryCancelledError) {
+      status = error.kind;
+      throw error;
+    }
+    if (!executing) {
+      status = 'failed';
+      throw error;
+    }
+    status = 'unavailable';
     return unavailableResult(
       definition,
       composedMetadata(definition.name, inputs, 0),
-      error instanceof Error ? error.message : String(error)
+      failure
     );
+  } finally {
+    debugQuery('query', {
+      query: definition.name,
+      durationMs: elapsedQueryMilliseconds(startedAt),
+      inputRows: Object.fromEntries(inputs.map(({ name, source }) => [
+        name,
+        knownSourceRowCount(source)
+      ])),
+      outputRows,
+      operations: budget.operations - startingOperations,
+      status,
+      ...(failure ? { failure } : {})
+    });
   }
 }
 
@@ -638,37 +750,108 @@ function lazyValue(consume) {
 function runDashboardQuery(definition, sources, budget) {
   const input = /** @type {Row[]} */ (sources[definition.from].rows);
   enforceLimit(input.length, 'max-input-rows', definition.from);
-  budget.spend(input.length);
-  let rows = timeQueryStage(definition.name, 'from', () => input.map((row) => ({ ...row })));
+  let rows = timeQueryStage(definition.name, 'from', input.length, budget, () => {
+    budget.spend(input.length);
+    return input.map((row) => ({ ...row }));
+  });
   for (const join of definition.joins ?? []) {
-    rows = timeQueryStage(definition.name, `join:${join.source}`, () => (
-      applyJoin(rows, join, /** @type {Row[]} */ (sources[join.source].rows), join.source, budget)
-    ));
+    const joinedRows = /** @type {Row[]} */ (sources[join.source].rows);
+    rows = timeQueryStage(definition.name, `join:${join.source}`, rows.length, budget, () => (
+      applyJoin(rows, join, joinedRows, join.source, budget)
+    ), {
+      joinedRows: joinedRows.length
+    });
   }
   const operators = compileRowOperators(definition);
-  budget.spend(rows.length * Math.max(1, operators.length));
   for (const operator of operators) {
-    rows = timeQueryStage(definition.name, queryOperatorStage(operator), () => tidy(rows, [operator]));
+    rows = timeQueryStage(
+      definition.name,
+      queryOperatorStage(operator),
+      rows.length,
+      budget,
+      () => {
+        budget.spend(rows.length * queryOperatorCost(operator));
+        return tidy(rows, [operator]);
+      }
+    );
   }
   enforceLimit(rows.length, 'max-output-rows', definition.name);
   return rows;
+}
+
+/** @param {import('../../data-operations.js').DataOperator} operator */
+function queryOperatorCost(operator) {
+  if (operator.op === 'summarize') {
+    return 1 + operator.values.reduce(
+      (cost, value) => value.filter
+        ? cost + 1 + value.filter.predicates.reduce(
+            (predicateCost, predicate) => predicateCost + 1 + (predicate.in?.length ?? 0),
+            0
+          )
+        : cost,
+      0
+    );
+  }
+  if (operator.op !== 'predict') return 1;
+  return operator.values.reduce((cost, prediction) => {
+    const predictors = Array.isArray(prediction.on) ? prediction.on.length : 1;
+    const terms = prediction.method === 'quad'
+      ? 3
+      : prediction.method === 'poly' ? (prediction.order ?? 3) + 1 : predictors + 1;
+    return cost + terms * terms;
+  }, 0);
 }
 
 /**
  * @template T
  * @param {string} queryName
  * @param {string} stage
+ * @param {number} inputRows
+ * @param {QueryBudget} budget
  * @param {() => T} operation
+ * @param {Record<string, unknown>} [details]
  * @returns {T}
  */
-function timeQueryStage(queryName, stage, operation) {
-  const label = `[dashboard-query:${queryName}] ${stage}`;
-  console.time(label);
+function timeQueryStage(queryName, stage, inputRows, budget, operation, details = {}) {
+  const startedAt = queryTimestamp();
+  const startingOperations = budget.operations;
+  let outputRows = null;
+  let status = 'complete';
   try {
-    return operation();
+    const result = operation();
+    outputRows = Array.isArray(result) ? result.length : null;
+    return result;
+  } catch (error) {
+    status = error instanceof DashboardQueryCancelledError ? error.kind : 'failed';
+    throw error;
   } finally {
-    console.timeEnd(label);
+    debugQuery('stage', {
+      query: queryName,
+      stage,
+      durationMs: elapsedQueryMilliseconds(startedAt),
+      inputRows,
+      outputRows,
+      operations: budget.operations - startingOperations,
+      status,
+      ...details
+    });
   }
+}
+
+function queryTimestamp() {
+  return globalThis.performance?.now() ?? Date.now();
+}
+
+/** @param {number} startedAt */
+function elapsedQueryMilliseconds(startedAt) {
+  return Math.round((queryTimestamp() - startedAt) * 100) / 100;
+}
+
+/** @param {LogicalSourceInput | undefined} source */
+function knownSourceRowCount(source) {
+  if (!source) return null;
+  const rows = Object.getOwnPropertyDescriptor(source, 'rows');
+  return rows && 'value' in rows && Array.isArray(rows.value) ? rows.value.length : null;
 }
 
 /** @param {import('../../data-operations.js').DataOperator} operator */
@@ -694,6 +877,7 @@ export function compileRowOperators(definition) {
   if (definition.aggregate) {
     operators.push({ op: 'summarize', by: definition.aggregate.by ?? [], values: definition.aggregate.values });
   }
+  if (definition.predict?.length) operators.push({ op: 'predict', values: definition.predict });
   if (definition.select?.length) operators.push({ op: 'select', fields: definition.select });
   if (definition['order-by']?.length) operators.push({ op: 'arrange', by: definition['order-by'] });
   if (typeof definition.limit === 'number') operators.push({ op: 'slice', limit: definition.limit });
@@ -844,4 +1028,10 @@ function unavailableResult(definition, metadata, reason) {
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {unknown} value */
+function isAggregateFilterLiteral(value) {
+  return ['string', 'number', 'boolean'].includes(typeof value)
+    && (typeof value !== 'number' || Number.isFinite(value));
 }

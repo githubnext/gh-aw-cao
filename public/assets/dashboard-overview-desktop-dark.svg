@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title description" data-visual-kind="diagram" data-visual-id="dashboard-overview-components">
+  <title id="title">Overview page component map</title>
+  <desc id="description">A color-coded diagram showing the Overview shell containing the header, rhythm chart, factory floor, and four reusable station components.</desc>
+  <rect width="1200" height="760" fill="#0d1117"/>
+  <text x="60" y="62" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="32" font-weight="700">Overview component map</text>
+  <text x="60" y="96" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18">One declarative element, five explicit presentation owners</text>
+  <g data-node="overview-shell">
+    <rect x="60" y="130" width="1080" height="560" rx="12" fill="#161b22" stroke="#58a6ff" stroke-width="3"/>
+    <text x="88" y="168" fill="#79c0ff" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">Overview shell</text>
+    <text x="270" y="168" fill="#79c0ff" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">sources &#183; metrics &#183; lifetime &#183; composition</text>
+  </g>
+  <g data-node="header">
+    <rect x="90" y="195" width="660" height="210" rx="8" fill="#0f2d1c" stroke="#3fb950" stroke-width="3"/>
+    <text x="118" y="233" fill="#7ee787" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">Header</text>
+    <text x="118" y="270" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18">Work in motion</text>
+    <text x="118" y="310" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="28" font-weight="700">Your factory is delivering value.</text>
+    <text x="118" y="349" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17">Retained output evidence and delivery summary</text>
+    <text x="118" y="382" fill="#7ee787" font-family="ui-monospace, SFMono-Regular, monospace" font-size="16">factory-header.js</text>
+  </g>
+  <g data-node="rhythm">
+    <rect x="775" y="195" width="335" height="210" rx="8" fill="#2d2408" stroke="#e3b341" stroke-width="3"/>
+    <text x="803" y="233" fill="#f2cc60" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">Rhythm</text>
+    <text x="803" y="266" fill="#b1bac4" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">This week / Last week</text>
+    <g fill="#3fb950"><rect x="808" y="315" width="22" height="42" rx="3"/><rect x="848" y="290" width="22" height="67" rx="3"/><rect x="888" y="326" width="22" height="31" rx="3"/></g>
+    <g fill="#30363d" stroke="#8b949e"><rect x="928" y="278" width="22" height="79" rx="3"/><rect x="968" y="306" width="22" height="51" rx="3"/><rect x="1008" y="336" width="22" height="21" rx="3"/><rect x="1048" y="318" width="22" height="39" rx="3"/></g>
+    <text x="803" y="382" fill="#f2cc60" font-family="ui-monospace, SFMono-Regular, monospace" font-size="16">factory-rhythm.js</text>
+  </g>
+  <g data-node="factory-floor">
+    <rect x="90" y="435" width="1020" height="220" rx="8" fill="#271c36" stroke="#a371f7" stroke-width="3"/>
+    <text x="118" y="473" fill="#d2a8ff" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">Factory floor</text>
+    <text x="265" y="473" fill="#d2a8ff" font-family="ui-monospace, SFMono-Regular, monospace" font-size="16">factory-floor.js</text>
+  </g>
+  <g data-node="repository-station"><rect x="120" y="500" width="215" height="120" rx="8" fill="#321820" stroke="#f85149" stroke-width="2"/><text x="146" y="535" fill="#ff7b72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17" font-weight="700">Repositories</text><text x="146" y="575" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30" font-weight="700">6</text><text x="146" y="603" fill="#ff7b72" font-family="ui-monospace, SFMono-Regular, monospace" font-size="16">Station</text></g>
+  <g data-node="runs-station"><rect x="370" y="500" width="215" height="120" rx="8" fill="#321820" stroke="#f85149" stroke-width="2"/><text x="396" y="535" fill="#ff7b72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17" font-weight="700">Successful runs</text><text x="396" y="575" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30" font-weight="700">8</text><text x="396" y="603" fill="#ff7b72" font-family="ui-monospace, SFMono-Regular, monospace" font-size="16">Station</text></g>
+  <g data-node="dispatch-station"><rect x="620" y="500" width="215" height="120" rx="8" fill="#321820" stroke="#f85149" stroke-width="2"/><text x="646" y="535" fill="#ff7b72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17" font-weight="700">Dispatches</text><text x="646" y="575" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30" font-weight="700">7</text><text x="646" y="603" fill="#ff7b72" font-family="ui-monospace, SFMono-Regular, monospace" font-size="16">Station</text></g>
+  <g data-node="value-station"><rect x="870" y="500" width="215" height="120" rx="8" fill="#321820" stroke="#f85149" stroke-width="2"/><text x="896" y="535" fill="#ff7b72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17" font-weight="700">Value gains</text><text x="896" y="575" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30" font-weight="700">3</text><text x="896" y="603" fill="#ff7b72" font-family="ui-monospace, SFMono-Regular, monospace" font-size="16">Station</text></g>
+  <text x="60" y="728" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">Blue: orchestration &#183; Green: status &#183; Yellow: chart &#183; Purple: composition &#183; Red: reusable leaf</text>
+</svg>

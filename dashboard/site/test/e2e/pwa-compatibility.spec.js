@@ -27,6 +27,8 @@ test.beforeEach(async ({ context }) => {
 test('desktop browser exposes an installable dashboard application', async ({ page }, testInfo) => {
   await page.goto('http://localhost/');
 
+  await expect(page.locator('meta[name="viewport"]'))
+    .toHaveAttribute('content', 'width=device-width, initial-scale=1, viewport-fit=cover');
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', './manifest.webmanifest');
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', './apple-touch-icon.png');
   await expect(page.locator('meta[name="application-name"]'))
@@ -56,7 +58,8 @@ test('desktop browser exposes an installable dashboard application', async ({ pa
     id: './',
     start_url: './',
     scope: './',
-    display: 'standalone'
+    display: 'standalone',
+    display_override: ['minimal-ui', 'standalone']
   });
   if (testInfo.project.name === 'desktop-edge') expect(result.userAgent).toContain('Edg/');
   if (testInfo.project.name === 'desktop-safari') {

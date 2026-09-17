@@ -63,7 +63,7 @@
       },
       "dependabot": {
         "icon": "dependabot",
-        "mode": "live",
+        "mode": "review",
         "workers": {
           "update-planner": {
             "workflow": "dependabot-update-planner"
@@ -129,6 +129,18 @@
           },
           "skills-curator": {
             "workflow": "optimization-skills-curator"
+          },
+          "token-efficiency-auditor": {
+            "workflow": "optimization-token-efficiency-auditor",
+            "max-mode": "review"
+          },
+          "token-optimizer": {
+            "workflow": "optimization-token-optimizer",
+            "max-mode": "review"
+          },
+          "token-efficiency-verifier": {
+            "workflow": "optimization-token-efficiency-verifier",
+            "max-mode": "review"
           }
         }
       },

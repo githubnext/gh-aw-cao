@@ -42,7 +42,6 @@ describe('safe-output items dashboard', () => {
     const query = dashboard.dashboard.queries.find(
       (/** @type {{ name?: string }} */ candidate) => candidate.name === 'safe-output-items'
     );
-
     expect(dashboard.dashboard.navigation.find(
       (/** @type {{ label?: string }} */ section) => section.label === 'Explore'
     )).toMatchObject({ experimental: true, pages: expect.arrayContaining(['safe-output-items']) });
@@ -71,31 +70,36 @@ describe('safe-output items dashboard', () => {
       const query = dashboard.dashboard.queries.find(
         (/** @type {{ name?: string }} */ candidate) => candidate.name === 'issues'
       );
+      const view = dashboard.dashboard.views.find(
+        (/** @type {{ id?: string }} */ candidate) => candidate.id === 'issues'
+      );
 
       expect(dashboard.dashboard.navigation.find(
         (/** @type {{ label?: string }} */ section) => section.label === 'Explore'
       )).toMatchObject({ experimental: true, pages: expect.arrayContaining(['issues']) });
       expect(page).toMatchObject({
-        kind: 'custom',
-        views: [{
-          id: 'issue-list',
-          mark: 'list',
-          list: { style: 'issues', icon: 'issue-opened' },
-          layout: 'full-view',
-          data: { source: 'issues' },
-          encoding: {
-            href: { field: 'issue-link' }
-          }
-        }]
+        kind: 'built-in',
+        page: 'issues',
+        definition: {
+          views: ['issues']
+        }
+      });
+      expect(view).toMatchObject({
+        id: 'issues',
+        title: 'Issues',
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          card: 'issue',
+          drill: { type: 'external', field: 'entity-url' }
+        },
+        data: {
+          source: 'issues'
+        }
       });
       expect(query).toMatchObject({
-        from: 'events',
-        filter: {
-          predicates: expect.arrayContaining([
-            { field: 'event-type', equals: 'safe_output.created' },
-            { field: 'github-entity-type', equals: 'issue' }
-          ])
-        }
+        from: 'safe-output-items',
+        filter: { predicates: [{ field: 'github-entity-type', equals: 'issue' }] }
       });
     });
 
@@ -108,8 +112,9 @@ describe('safe-output items dashboard', () => {
             metadata,
             rows: [{
               'observed-at': '2026-09-14T22:00:00Z',
-              'issue-title': 'Investigate failing compiler run',
-              'issue-link': 'https://github.com/githubnext/gh-aw-cao/issues/42',
+              'github-entity-type': 'issue',
+              'event-summary': 'Investigate failing compiler run',
+              'entity-url': 'https://github.com/githubnext/gh-aw-cao/issues/42',
               'safe-output-type': 'create_issue',
               repository: 'gh-aw-cao',
               workflow: '.github/workflows/dashboard.md',

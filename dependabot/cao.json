@@ -1,0 +1,7 @@
+{
+  "package": "dependabot",
+  "orchestrator": "dependabot",
+  "workers": {
+    "release-train-updater": "dependabot-release-train-updater"
+  }
+}

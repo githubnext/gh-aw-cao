@@ -84,7 +84,7 @@ const agents = [
           <span class="option-body">
             <span class="option-name">Custom operation</span>
             <span class="option-description">
-              Describe your own operation. The prompt uses the packaged <code>create-ops-package</code> skill to design the
+              Describe your own operation. The prompt uses the packaged <code>create-cao-package</code> skill to design the
               orchestrator and workers for you.
             </span>
           </span>
@@ -202,7 +202,7 @@ const agents = [
   const CATALOG = "githubnext/gh-aw-cao";
   const CATALOG_REF = "main";
   const SETUP_SKILL_URL =
-    "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/skills/setup-central-agentic-ops/SKILL.md";
+    "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/skills/setup-cao/SKILL.md";
   function selected(form: HTMLFormElement, name: string): HTMLInputElement | null {
     return form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
   }
@@ -237,7 +237,7 @@ const agents = [
     const body = isCustom
       ? [
           `4. Install the catalog packages and packaged skills: \`gh aw add ${CATALOG}@${CATALOG_REF}\`.`,
-          "5. Read `.github/skills/create-ops-package/SKILL.md` and follow it to design a new operation package for:",
+          "5. Read `.github/skills/create-cao-package/SKILL.md` and follow it to design a new operation package for:",
           "",
           `   > ${idea}`,
           "",

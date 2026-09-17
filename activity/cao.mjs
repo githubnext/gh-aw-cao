@@ -11,8 +11,15 @@ import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 import { createDebug } from './debug.mjs';
 import { adaptCachedGhAwJsonlStream, createCachedJsonlPayloadHasher } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
-import { ingestCachedGhAwJsonl, ingestGhAwLogs, isCachedGhAwJsonlCurrent } from '../dashboard/site/src/data/ingest/coordinator.js';
+import {
+  ingestCachedGhAwJsonl,
+  ingestGhAwLogs,
+  ingestNormalizedJson,
+  isCachedGhAwJsonlCurrent,
+  NORMALIZED_JSON_INGESTION_VERSION
+} from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
+import { CANONICAL_SCHEMA_VERSION } from '../dashboard/site/src/data/model/schema.js';
 import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
@@ -40,17 +47,27 @@ const DEFAULT_ACTIVITY_STATS_WORKFLOW = 'cao-activity.yml';
 const DEFAULT_ACTIVITY_STATS_ARTIFACT = 'cao-activity-index';
 const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
 const DEFAULT_GH_LIMIT = 30;
+const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- "$1"';
+const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
+const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+
+// Intentional CLI misuse that should print usage without an internal stack trace.
+class UsageError extends Error {}
 
 const USAGE = `Usage:
+  cao init
+  cao add PACKAGE [GH_AW_ADD_OPTIONS...]
+  cao update [GH_AW_UPDATE_OPTIONS...]
+  cao mode (live|preview) PACKAGE...
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --events-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
-  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--output FILE]
+  cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--events-dir DIRECTORY] [--inventory FILE] [--output FILE]
   cao activity-stats [--repo OWNER/REPO] [--workflow FILE] [--artifact NAME] [--limit COUNT] [--keep] [--output FILE]
   cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
@@ -99,6 +116,377 @@ Activity stats defaults (uses the "gh" CLI and requires GH_TOKEN):
 
 `;
 
+function isMapping(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validatePackageDeclaration(document, source) {
+  if (!isMapping(document)) throw new Error(`${source} must contain a JSON object`);
+  const keys = Object.keys(document);
+  const unknown = keys.filter((key) => !['package', 'orchestrator', 'workers'].includes(key));
+  if (unknown.length > 0) throw new Error(`${source} contains unknown key: ${unknown[0]}`);
+  const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  if (typeof document.package !== 'string' || !slug.test(document.package)) {
+    throw new Error(`${source} package must be a kebab-case identifier`);
+  }
+  if (typeof document.orchestrator !== 'string' || !slug.test(document.orchestrator)) {
+    throw new Error(`${source} orchestrator must be a kebab-case workflow identifier`);
+  }
+  if (!isMapping(document.workers) || Object.keys(document.workers).length === 0) {
+    throw new Error(`${source} workers must be a non-empty object`);
+  }
+  const workflows = new Set();
+  for (const [worker, workflow] of Object.entries(document.workers)) {
+    if (!slug.test(worker)) throw new Error(`${source} worker ${worker} must be a kebab-case identifier`);
+    if (typeof workflow !== 'string' || !slug.test(workflow)) {
+      throw new Error(`${source} worker ${worker} must name a kebab-case workflow`);
+    }
+    if (workflows.has(workflow)) throw new Error(`${source} workers must name unique workflows`);
+    workflows.add(workflow);
+  }
+  return document;
+}
+
+function parseGhAwVersion(result) {
+  if (result.error || result.status !== 0) {
+    throw new Error(`Unable to determine gh-aw version: ${(result.stderr || '').trim() || result.error?.message || 'gh aw version failed'}`);
+  }
+  const version = String(result.stdout || '').match(/\bv[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\b/)?.[0];
+  if (!version) throw new Error('Unable to determine gh-aw version from "gh aw version" output');
+  return version;
+}
+
+function ghAwVersionParts(version) {
+  const match = String(version).match(/^v([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z.-]+))?$/);
+  if (!match) throw new Error(`Invalid gh-aw version: ${version}`);
+  return {
+    numbers: match.slice(1, 4).map(Number),
+    prerelease: match[4] ?? ''
+  };
+}
+
+function compareGhAwVersions(left, right) {
+  const leftParts = ghAwVersionParts(left);
+  const rightParts = ghAwVersionParts(right);
+  for (let index = 0; index < leftParts.numbers.length; index += 1) {
+    if (leftParts.numbers[index] !== rightParts.numbers[index]) {
+      return leftParts.numbers[index] - rightParts.numbers[index];
+    }
+  }
+  if (leftParts.prerelease === rightParts.prerelease) return 0;
+  if (!leftParts.prerelease) return 1;
+  if (!rightParts.prerelease) return -1;
+  return leftParts.prerelease.localeCompare(rightParts.prerelease, 'en', { numeric: true });
+}
+
+function commandFailureMessage(result, fallback) {
+  return (result.stderr || '').trim() || result.error?.message || fallback;
+}
+
+async function writeJsonAtomically(filePath, document) {
+  const absolutePath = path.resolve(filePath);
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+  const temporaryPath = `${absolutePath}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(document, null, 2)}\n`, { flag: 'wx' });
+    await rename(temporaryPath, absolutePath);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
+}
+
+function minimalPolicy(version) {
+  return {
+    $schema: CAO_SCHEMA_URL,
+    version: 1,
+    'gh-aw-version': version,
+    'control-plane': { packages: {} }
+  };
+}
+
+export async function initializeCaoPolicy({
+  policyPath = DEFAULT_POLICY_PATH,
+  execute = spawnSync
+} = {}) {
+  const absolutePath = path.resolve(policyPath);
+  try {
+    await stat(absolutePath);
+    throw new Error(`${policyPath} already exists`);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+  const version = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+  await writeJsonAtomically(absolutePath, minimalPolicy(version));
+  return { command: 'init', policy: policyPath, 'gh-aw-version': version };
+}
+
+function validateGlobalPolicy(document, source) {
+  if (!isMapping(document) || document.version !== 1) throw new Error(`${source} must declare version 1`);
+  if (document['control-plane'] !== undefined && !isMapping(document['control-plane'])) {
+    throw new Error(`${source} control-plane must be an object`);
+  }
+  if (document['control-plane']?.packages !== undefined && !isMapping(document['control-plane'].packages)) {
+    throw new Error(`${source} control-plane.packages must be an object`);
+  }
+  return document;
+}
+
+async function readCaoPolicy(policyPath, command = 'update') {
+  try {
+    return validateGlobalPolicy(JSON.parse(await readFile(path.resolve(policyPath), 'utf8')), policyPath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') throw new Error(`${policyPath} is required for cao ${command}`);
+    if (error instanceof SyntaxError) throw new Error(`${policyPath} contains invalid JSON: ${error.message}`);
+    throw error;
+  }
+}
+
+function ghAwMinimumVersion(policy, source) {
+  const version = policy['gh-aw-version'];
+  if (typeof version !== 'string' || !/^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+    throw new Error(`${source} gh-aw-version must be a v-prefixed semantic version`);
+  }
+  return version;
+}
+
+function mergeCaoPackageDeclaration(policy, declaration) {
+  const controlPlane = policy['control-plane'] ?? {};
+  const packages = controlPlane.packages ?? {};
+  const existingPackage = isMapping(packages[declaration.package]) ? packages[declaration.package] : {};
+  const existingWorkers = isMapping(existingPackage.workers) ? existingPackage.workers : {};
+  const workers = Object.fromEntries(Object.entries(declaration.workers).map(([worker, workflow]) => {
+    const existing = isMapping(existingWorkers[worker]) ? existingWorkers[worker] : {};
+    const preserved = {};
+    if (typeof existing.enabled === 'boolean') preserved.enabled = existing.enabled;
+    if (existing['max-mode'] === 'review' || existing['max-mode'] === 'live') preserved['max-mode'] = existing['max-mode'];
+    return [worker, { workflow, ...preserved }];
+  }));
+  policy['control-plane'] = {
+    ...controlPlane,
+    packages: {
+      ...packages,
+      [declaration.package]: {
+        ...existingPackage,
+        workers
+      }
+    }
+  };
+}
+
+function packageSlugFromSpec(spec) {
+  const refSeparator = spec.lastIndexOf('@');
+  const withoutRef = refSeparator > spec.indexOf('/') ? spec.slice(0, refSeparator) : spec;
+  const slug = withoutRef.replace(/\/+$/, '').split('/').pop();
+  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    throw new Error(`Unable to determine package name from ${spec}`);
+  }
+  return slug;
+}
+
+async function installedPackageRecords(root = process.cwd()) {
+  const recordsDirectory = path.resolve(root, '.github', 'aw', 'packages');
+  let entries;
+  try {
+    entries = await readdir(recordsDirectory, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
+  const records = new Map();
+  for (const entry of entries) {
+    if (entry.isDirectory() || !entry.name.endsWith('.json')) continue;
+    const source = path.join(recordsDirectory, entry.name);
+    let record;
+    try {
+      record = JSON.parse(await readFile(source, 'utf8'));
+    } catch (error) {
+      if (error instanceof SyntaxError) throw new Error(`${path.relative(root, source)} contains invalid JSON: ${error.message}`);
+      throw error;
+    }
+    const packageName = typeof record.package === 'string' && record.package.trim()
+      ? record.package.trim()
+      : typeof record.source === 'string'
+        ? record.source.split('@')[0].trim()
+        : '';
+    if (!packageName) throw new Error(`${path.relative(root, source)} does not identify an installed package`);
+    records.set(packageName, {
+      package: packageName,
+      source: typeof record.source === 'string' ? record.source : packageName
+    });
+  }
+  return [...records.values()].sort((left, right) => left.package.localeCompare(right.package));
+}
+
+async function readInstalledCaoDeclaration(packageName) {
+  const expectedPackage = packageSlugFromSpec(packageName);
+  const declarationPath = path.resolve('.github', 'aw', expectedPackage, 'cao.json');
+  let declaration;
+  try {
+    declaration = validatePackageDeclaration(
+      JSON.parse(await readFile(declarationPath, 'utf8')),
+      path.relative(process.cwd(), declarationPath)
+    );
+  } catch (error) {
+    if (error?.code === 'ENOENT') return undefined;
+    if (error instanceof SyntaxError) throw new Error(`Package ${expectedPackage} installed invalid cao.json: ${error.message}`);
+    throw error;
+  }
+  if (declaration.package !== expectedPackage) {
+    throw new Error(`Installed CAO declaration names package ${declaration.package}, expected ${expectedPackage}`);
+  }
+  return declaration;
+}
+
+export async function ensureGhAwMinimumVersion({
+  policyPath = DEFAULT_POLICY_PATH,
+  execute = spawnSync
+} = {}) {
+  const policy = await readCaoPolicy(policyPath);
+  const required = ghAwMinimumVersion(policy, policyPath);
+  let current = null;
+  try {
+    current = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+  } catch {
+    current = null;
+  }
+  const installRequired = !current || compareGhAwVersions(current, required) < 0;
+  if (installRequired) {
+    const install = execute('bash', ['-c', GH_AW_INSTALLER_COMMAND, 'cao-gh-aw-install', required], {
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024
+    });
+    if (install.error || install.status !== 0) {
+      throw new Error(`Unable to install gh-aw ${required}: ${commandFailureMessage(install, 'installer failed')}`);
+    }
+    const verified = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+    if (compareGhAwVersions(verified, required) < 0) {
+      throw new Error(`Installed gh-aw ${verified} is older than required ${required}`);
+    }
+    return { required, previous: current, current: verified, updated: true };
+  }
+  return { required, previous: current, current, updated: false };
+}
+
+export async function addCaoPackage(packageSpec, ghAwOptions = [], {
+  policyPath = DEFAULT_POLICY_PATH,
+  execute = spawnSync
+} = {}) {
+  if (!packageSpec || packageSpec.startsWith('-')) throw new UsageError('cao add requires a package');
+  const install = execute('gh', ['aw', 'add', packageSpec, ...ghAwOptions], {
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024
+  });
+  if (install.error || install.status !== 0) {
+    throw new Error(`gh aw add failed: ${commandFailureMessage(install, 'unknown error')}`);
+  }
+
+  const expectedPackage = packageSlugFromSpec(packageSpec);
+  const declaration = await readInstalledCaoDeclaration(packageSpec);
+  if (!declaration) throw new Error(`Package ${expectedPackage} did not install .github/aw/${expectedPackage}/cao.json`);
+
+  const absolutePolicyPath = path.resolve(policyPath);
+  let policy;
+  try {
+    policy = validateGlobalPolicy(JSON.parse(await readFile(absolutePolicyPath, 'utf8')), policyPath);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      if (error instanceof SyntaxError) throw new Error(`${policyPath} contains invalid JSON: ${error.message}`);
+      throw error;
+    }
+    const version = parseGhAwVersion(execute('gh', ['aw', 'version'], { encoding: 'utf8' }));
+    policy = minimalPolicy(version);
+  }
+
+  mergeCaoPackageDeclaration(policy, declaration);
+  await writeJsonAtomically(absolutePolicyPath, policy);
+  return {
+    command: 'add',
+    package: declaration.package,
+    orchestrator: declaration.orchestrator,
+    workers: Object.keys(declaration.workers),
+    policy: policyPath
+  };
+}
+
+export async function updateCaoPackages(ghAwOptions = [], {
+  policyPath = DEFAULT_POLICY_PATH,
+  execute = spawnSync
+} = {}) {
+  const policy = await readCaoPolicy(policyPath);
+  const ghAw = await ensureGhAwMinimumVersion({ policyPath, execute });
+  const packages = await installedPackageRecords();
+  if (packages.length === 0) {
+    throw new Error('No installed gh-aw package records found under .github/aw/packages');
+  }
+
+  const updatedPackages = [];
+  const mergedDeclarations = [];
+  for (const record of packages) {
+    const update = execute('gh', ['aw', 'update', record.package, ...ghAwOptions], {
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024
+    });
+    if (update.error || update.status !== 0) {
+      throw new Error(`gh aw update failed for ${record.package}: ${commandFailureMessage(update, 'unknown error')}`);
+    }
+    const declaration = await readInstalledCaoDeclaration(record.package);
+    if (declaration) {
+      mergeCaoPackageDeclaration(policy, declaration);
+      mergedDeclarations.push(declaration.package);
+    }
+    updatedPackages.push(record.package);
+  }
+  if (mergedDeclarations.length > 0) await writeJsonAtomically(path.resolve(policyPath), policy);
+  return {
+    command: 'update',
+    policy: policyPath,
+    'gh-aw': ghAw,
+    packages: updatedPackages,
+    declarations: mergedDeclarations
+  };
+}
+
+export async function setCaoPackageMode(mode, packageNames, {
+  policyPath = DEFAULT_POLICY_PATH
+} = {}) {
+  if (mode !== 'live' && mode !== 'preview') {
+    throw new UsageError('cao mode requires live or preview');
+  }
+  if (!Array.isArray(packageNames) || packageNames.length === 0) {
+    throw new UsageError(`cao mode ${mode} requires at least one package`);
+  }
+
+  const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const invalidPackage = packageNames.find((packageName) => typeof packageName !== 'string' || !slug.test(packageName));
+  if (invalidPackage !== undefined) {
+    throw new UsageError(`Invalid CAO package name: ${invalidPackage}`);
+  }
+
+  const policy = await readCaoPolicy(policyPath, 'mode');
+  const packages = policy['control-plane']?.packages ?? {};
+  const unknownPackages = [...new Set(packageNames)].filter((packageName) => !Object.hasOwn(packages, packageName));
+  if (unknownPackages.length > 0) {
+    throw new UsageError(`Unknown CAO package${unknownPackages.length === 1 ? '' : 's'}: ${unknownPackages.join(', ')}`);
+  }
+  for (const packageName of packageNames) {
+    if (!isMapping(packages[packageName])) {
+      throw new Error(`${policyPath} control-plane package ${packageName} must be an object`);
+    }
+  }
+
+  const policyMode = mode === 'preview' ? 'review' : 'live';
+  for (const packageName of new Set(packageNames)) {
+    packages[packageName] = { ...packages[packageName], mode: policyMode };
+  }
+  await writeJsonAtomically(path.resolve(policyPath), policy);
+  return {
+    command: 'mode',
+    mode,
+    packages: [...new Set(packageNames)],
+    policy: policyPath
+  };
+}
+
 async function jsonlFiles(root) {
   const files = [];
   const pending = [root];
@@ -125,20 +513,20 @@ function parseOptions(arguments_) {
   const options = {};
   for (let index = 0; index < arguments_.length; index += 1) {
     const argument = arguments_[index];
-    if (!argument.startsWith('--') && !aliases[argument]) throw new Error(`Unexpected argument: ${argument}`);
+    if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'keep') {
       options[name] = 'true';
       continue;
     }
     const value = arguments_[index + 1];
-    if (!value || value.startsWith('--')) throw new Error(`Missing value for --${name}`);
+    if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
     if (name === 'where') {
       const existing = options.where;
       options.where = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
-      throw new Error(`Option --${name} may only be specified once`);
+      throw new UsageError(`Option --${name} may only be specified once`);
     } else {
       options[name] = value;
     }
@@ -149,13 +537,13 @@ function parseOptions(arguments_) {
 async function rawQueryFromStdin(options, input) {
   for (const name of ['collection', 'id', 'where', 'limit']) {
     if (options[name] !== undefined) {
-      throw new Error(`Option --${name} cannot be combined with --stdin`);
+      throw new UsageError(`Option --${name} cannot be combined with --stdin`);
     }
   }
 
   let content = '';
   for await (const chunk of input) content += chunk;
-  if (!content.trim()) throw new Error('--stdin requires a JSON object');
+  if (!content.trim()) throw new UsageError('--stdin requires a JSON object');
 
   let query;
   try {
@@ -164,24 +552,24 @@ async function rawQueryFromStdin(options, input) {
     throw new Error(`Invalid query JSON from stdin: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (!query || typeof query !== 'object' || Array.isArray(query)) {
-    throw new Error('--stdin requires a JSON object');
+    throw new UsageError('--stdin requires a JSON object');
   }
   if (typeof query.name !== 'string' || typeof query.from !== 'string') {
-    throw new Error('--stdin query requires string fields "name" and "from"');
+    throw new UsageError('--stdin query requires string fields "name" and "from"');
   }
   return query;
 }
 
 function option(options, name, required = true) {
   const value = options[name];
-  if (Array.isArray(value)) throw new Error(`Option --${name} may only be specified once`);
-  if (required && !value) throw new Error(`Missing required option --${name}`);
+  if (Array.isArray(value)) throw new UsageError(`Option --${name} may only be specified once`);
+  if (required && !value) throw new UsageError(`Missing required option --${name}`);
   return value;
 }
 
 function rejectUnknownOptions(options, allowed) {
   for (const name of Object.keys(options)) {
-    if (!allowed.includes(name)) throw new Error(`Unknown option --${name}`);
+    if (!allowed.includes(name)) throw new UsageError(`Unknown option --${name}`);
   }
 }
 
@@ -198,7 +586,7 @@ function filters(options) {
   if (!values) return [];
   return (Array.isArray(values) ? values : [values]).map((filter) => {
     const separator = filter.indexOf('=');
-    if (separator < 1) throw new Error(`Invalid --where value: ${filter}`);
+    if (separator < 1) throw new UsageError(`Invalid --where value: ${filter}`);
     return {
       field: filter.slice(0, separator),
       value: filter.slice(separator + 1)
@@ -210,7 +598,7 @@ function queryLimit(options) {
   const value = option(options, 'limit', false);
   if (!value) return undefined;
   const limit = Number(value);
-  if (!Number.isInteger(limit) || limit < 1) throw new Error('--limit must be a positive integer');
+  if (!Number.isInteger(limit) || limit < 1) throw new UsageError('--limit must be a positive integer');
   return limit;
 }
 
@@ -222,7 +610,7 @@ function timeBoundary(options, name) {
   const value = option(options, name, false);
   if (!value) return undefined;
   const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) throw new Error(`--${name} must be a valid ISO 8601 time`);
+  if (!Number.isFinite(timestamp)) throw new UsageError(`--${name} must be a valid ISO 8601 time`);
   if (name === 'until' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return timestamp + DAY_MS - 1;
   return timestamp;
 }
@@ -231,7 +619,7 @@ function ghTimeRange(options) {
   const since = timeBoundary(options, 'since');
   const until = timeBoundary(options, 'until');
   if (since !== undefined && until !== undefined && since > until) {
-    throw new Error('--since must not be later than --until');
+    throw new UsageError('--since must not be later than --until');
   }
   return { since, until };
 }
@@ -241,7 +629,7 @@ function ttlDays(options) {
   if (!value) return undefined;
   if (value === 'all') return 'all';
   const days = Number(value);
-  if (!Number.isFinite(days) || days <= 0) throw new Error('--ttl-days must be a positive number or all');
+  if (!Number.isFinite(days) || days <= 0) throw new UsageError('--ttl-days must be a positive number or all');
   return days;
 }
 
@@ -252,7 +640,7 @@ function retentionWindowMs(options) {
   const days = Number(value);
   const milliseconds = days * DAY_MS;
   if (!Number.isFinite(days) || days <= 0 || !Number.isSafeInteger(milliseconds)) {
-    throw new Error('--retention-days must be a positive number or all');
+    throw new UsageError('--retention-days must be a positive number or all');
   }
   return milliseconds;
 }
@@ -264,7 +652,7 @@ function runRetentionWindowMs(options) {
   const days = Number(value);
   const milliseconds = days * DAY_MS;
   if (!Number.isFinite(days) || days <= 0 || !Number.isSafeInteger(milliseconds)) {
-    throw new Error('--run-retention-days must be a positive number or all');
+    throw new UsageError('--run-retention-days must be a positive number or all');
   }
   return milliseconds;
 }
@@ -275,7 +663,7 @@ function runTtlDays(options) {
   if (value === 'all') return 'all';
   const days = Number(value);
   if (!Number.isFinite(days) || days <= 0) {
-    throw new Error('--run-ttl-days must be a positive number or all');
+    throw new UsageError('--run-ttl-days must be a positive number or all');
   }
   return days;
 }
@@ -498,6 +886,34 @@ async function ingestJsonlShardDirectory(indexedDB, shardDirectory, options = {}
   return { ...totals, updated, committedRecords, shards };
 }
 
+async function ingestNormalizedShardDirectories(indexedDB, directories, options = {}) {
+  const shards = [];
+  let updated = false;
+  let committedRecords = 0;
+  for (const [phase, directory] of directories) {
+    const names = (await readdir(directory)).filter((name) => name.endsWith('.json')).sort();
+    for (const name of names) {
+      const shardPath = path.join(directory, name);
+      const content = await readFile(shardPath);
+      const payloadIdentity = createHash('sha256').update(content).digest('hex');
+      const result = await ingestNormalizedJson(
+        indexedDB,
+        JSON.parse(content.toString('utf8')),
+        {
+          ...options,
+          expectedPhase: phase,
+          payloadScope: `gh-aw-${phase}:${name}`,
+          payloadIdentity
+        }
+      );
+      updated ||= result.updated;
+      committedRecords += result.committedRecords ?? 0;
+      shards.push({ phase, shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
+    }
+  }
+  return { updated, committedRecords, shards };
+}
+
 async function ingestJsonlFile(indexedDB, inputPath, options = {}) {
   return ingestCachedGhAwJsonl(indexedDB, createReadStream(inputPath), options);
 }
@@ -509,7 +925,34 @@ async function ingestJsonlFile(indexedDB, inputPath, options = {}) {
  * absent shard directory yields no shard entries) so this can run
  * immediately after ingestion in the same workflow step.
  */
-async function hashActivityPayloads({ databasePath, shardDirectory }) {
+function workflowHintsFromInventory(input) {
+  const rows = input?.workflows?.rows;
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((candidate) => (
+    candidate
+      && typeof candidate === 'object'
+      && typeof candidate.organization === 'string'
+      && typeof candidate.repository === 'string'
+      && typeof candidate['workflow-name'] === 'string'
+      && typeof candidate.workflow === 'string'
+      ? [{
+          owner: candidate.organization,
+          repository: candidate.repository,
+          name: candidate['workflow-name'],
+          path: candidate.workflow
+        }]
+      : []
+  ));
+}
+
+async function hashActivityPayloads({
+  databasePath,
+  shardDirectory,
+  normalizedDirectory,
+  runsDirectory,
+  eventsDirectory,
+  inventoryPath
+}) {
   const hashFile = async (filePath) => {
     const hash = createHash('sha256');
     for await (const chunk of createReadStream(filePath)) hash.update(chunk);
@@ -527,8 +970,104 @@ async function hashActivityPayloads({ databasePath, shardDirectory }) {
       if (!(error && error.code === 'ENOENT')) throw error;
     }
     debugHash('hashing %d shard(s) in %s', shardNames.length, shardDirectory);
+    const inventorySource = inventoryPath ? await readFile(inventoryPath, 'utf8') : '{}';
+    const workflowHints = workflowHintsFromInventory(JSON.parse(inventorySource));
+    const normalizationContext = createHash('sha256')
+      .update(`${CANONICAL_SCHEMA_VERSION}\0${NORMALIZED_JSON_INGESTION_VERSION}\0${JSON.stringify(workflowHints)}`)
+      .digest('hex')
+      .slice(0, 16);
+    const retainedPayloads = {
+      normalized: new Set(),
+      runs: new Set(),
+      events: new Set()
+    };
+    if (normalizedDirectory) await mkdir(normalizedDirectory, { recursive: true });
+    if (runsDirectory) await mkdir(runsDirectory, { recursive: true });
+    if (eventsDirectory) await mkdir(eventsDirectory, { recursive: true });
     for (const name of shardNames) {
-      hashes[`${path.basename(shardDirectory)}/${name}`] = await hashFile(path.join(shardDirectory, name));
+      const shardPath = path.join(shardDirectory, name);
+      const rawHash = await hashFile(shardPath);
+      hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
+      if (!normalizedDirectory && !runsDirectory && !eventsDirectory) continue;
+      const payloadName = `${rawHash}-${normalizationContext}.json`;
+      const phasedPayloadName = `${path.parse(name).name}-${payloadName}`;
+      const outputPaths = [
+        normalizedDirectory ? ['normalized', path.join(normalizedDirectory, payloadName)] : null,
+        runsDirectory ? ['runs', path.join(runsDirectory, phasedPayloadName)] : null,
+        eventsDirectory ? ['events', path.join(eventsDirectory, phasedPayloadName)] : null
+      ].filter(Boolean);
+      for (const [phase, outputPath] of outputPaths) {
+        retainedPayloads[phase].add(path.basename(outputPath));
+      }
+      const missing = [];
+      for (const output of outputPaths) {
+        try {
+          await stat(output[1]);
+        } catch (error) {
+          if (!(error && error.code === 'ENOENT')) throw error;
+          missing.push(output);
+        }
+      }
+      if (missing.length > 0) {
+        const adapted = await adaptCachedGhAwJsonlStream(createReadStream(shardPath), {
+          workflowHints,
+          payloadIdentity: rawHash
+        });
+        const batch = normalize(adapted.observations);
+        const metadata = {
+          schemaVersion: CANONICAL_SCHEMA_VERSION,
+          ingestionVersion: NORMALIZED_JSON_INGESTION_VERSION,
+          sourceRecords: adapted.records
+        };
+        const payloads = {
+          normalized: { ...metadata, batch },
+          runs: {
+            ...metadata,
+            phase: 'runs',
+            batch: {
+              packages: batch.packages,
+              repositories: batch.repositories,
+              workflows: batch.workflows,
+              runs: batch.runs,
+              jobs: [],
+              sessions: [],
+              events: []
+            }
+          },
+          events: {
+            ...metadata,
+            phase: 'events',
+            batch: {
+              packages: [],
+              repositories: [],
+              workflows: [],
+              runs: [],
+              jobs: batch.jobs,
+              sessions: batch.sessions,
+              events: batch.events
+            }
+          }
+        };
+        await Promise.all(missing.map(async ([phase, outputPath]) => {
+          const temporaryPath = `${outputPath}.${process.pid}.tmp`;
+          await writeFile(temporaryPath, JSON.stringify(payloads[phase]));
+          await rename(temporaryPath, outputPath);
+        }));
+      }
+      for (const [, outputPath] of outputPaths) {
+        hashes[`${path.basename(path.dirname(outputPath))}/${path.basename(outputPath)}`] = await hashFile(outputPath);
+      }
+    }
+    for (const [phase, directory] of [
+      ['normalized', normalizedDirectory],
+      ['runs', runsDirectory],
+      ['events', eventsDirectory]
+    ].filter(([, directory]) => Boolean(directory))) {
+      for (const name of await readdir(directory)) {
+        if (name.endsWith('.json') && !retainedPayloads[phase].has(name)) {
+          await rm(path.join(directory, name), { force: true });
+        }
+      }
     }
   }
   return hashes;
@@ -637,9 +1176,9 @@ export async function activityWorkflowStats({
   limit = DEFAULT_ACTIVITY_STATS_LIMIT,
   keep = false
 } = {}, execute = spawnSync) {
-  if (!repo) throw new Error('Missing required option --repo (or GITHUB_REPOSITORY environment variable)');
+  if (!repo) throw new UsageError('Missing required option --repo (or GITHUB_REPOSITORY environment variable)');
   const limitCount = Number(limit);
-  if (!Number.isInteger(limitCount) || limitCount < 1) throw new Error('--limit must be a positive integer');
+  if (!Number.isInteger(limitCount) || limitCount < 1) throw new UsageError('--limit must be a positive integer');
 
   const list = execute('gh', [
     'run', 'list',
@@ -914,6 +1453,19 @@ async function runLegacyIngestion(contextPath, logDirectory) {
 export async function runCli(arguments_, input = process.stdin) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
+  if (command === 'init') {
+    if (optionArguments.length > 0) throw new UsageError(`Unexpected argument: ${optionArguments[0]}`);
+    return initializeCaoPolicy();
+  }
+  if (command === 'add') {
+    return addCaoPackage(optionArguments[0], optionArguments.slice(1));
+  }
+  if (command === 'update') {
+    return updateCaoPackages(optionArguments);
+  }
+  if (command === 'mode') {
+    return setCaoPackageMode(optionArguments[0], optionArguments.slice(1));
+  }
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
   }
@@ -933,10 +1485,20 @@ export async function runCli(arguments_, input = process.stdin) {
     return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
   }
   if (command === 'hash-payloads') {
-    rejectUnknownOptions(options, ['database', 'shard-dir', 'output']);
+    rejectUnknownOptions(options, ['database', 'shard-dir', 'normalized-dir', 'runs-dir', 'events-dir', 'inventory', 'output']);
     const hashes = await hashActivityPayloads({
       databasePath: option(options, 'database', false) ? path.resolve(option(options, 'database', false)) : undefined,
-      shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined
+      shardDirectory: option(options, 'shard-dir', false) ? path.resolve(option(options, 'shard-dir', false)) : undefined,
+      normalizedDirectory: option(options, 'normalized-dir', false)
+        ? path.resolve(option(options, 'normalized-dir', false))
+        : undefined,
+      runsDirectory: option(options, 'runs-dir', false)
+        ? path.resolve(option(options, 'runs-dir', false))
+        : undefined,
+      eventsDirectory: option(options, 'events-dir', false)
+        ? path.resolve(option(options, 'events-dir', false))
+        : undefined,
+      inventoryPath: option(options, 'inventory', false) ? path.resolve(option(options, 'inventory', false)) : undefined
     });
     const outputPath = option(options, 'output', false);
     if (outputPath) {
@@ -975,7 +1537,7 @@ export async function runCli(arguments_, input = process.stdin) {
   if (command === 'gh') {
     rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'status', 'since', 'until', 'limit']);
     if (ghResource !== 'runs' && options.status) {
-      throw new Error('--status is only supported for cao gh runs');
+      throw new UsageError('--status is only supported for cao gh runs');
     }
     return queryGhData(indexedDB, ghResource, options);
   }
@@ -994,10 +1556,10 @@ export async function runCli(arguments_, input = process.stdin) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
+    rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'runs-dir', 'events-dir', 'context', 'retention-days', 'run-retention-days']);
     const inputPath = option(options, 'input', false);
     const inputDirectory = option(options, 'input-dir', false);
-    if (inputPath && inputDirectory) throw new Error('Options --input and --input-dir cannot be combined');
+    if (inputPath && inputDirectory) throw new UsageError('Options --input and --input-dir cannot be combined');
     const contextPath = option(options, 'context', false);
     const context = contextPath
       ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
@@ -1007,9 +1569,22 @@ export async function runCli(arguments_, input = process.stdin) {
       retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
       context
     };
-    const result = inputPath
-      ? await ingestJsonlFile(indexedDB, path.resolve(inputPath), ingestOptions)
-      : await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory || DEFAULT_SHARDS_PATH), ingestOptions);
+    const runsDirectory = option(options, 'runs-dir', false);
+    const eventsDirectory = option(options, 'events-dir', false);
+    if (Boolean(runsDirectory) !== Boolean(eventsDirectory)) {
+      throw new Error('--runs-dir and --events-dir must be provided together');
+    }
+    if ((inputPath || inputDirectory) && runsDirectory) {
+      throw new Error('Phased shard directories cannot be combined with --input or --input-dir');
+    }
+    const result = runsDirectory && eventsDirectory
+      ? await ingestNormalizedShardDirectories(indexedDB, [
+          ['runs', path.resolve(runsDirectory)],
+          ['events', path.resolve(eventsDirectory)]
+        ], ingestOptions)
+      : inputPath
+        ? await ingestJsonlFile(indexedDB, path.resolve(inputPath), ingestOptions)
+        : await ingestJsonlShardDirectory(indexedDB, path.resolve(inputDirectory || DEFAULT_SHARDS_PATH), ingestOptions);
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'query') {
@@ -1018,7 +1593,7 @@ export async function runCli(arguments_, input = process.stdin) {
       ? queryRawCanonicalData(indexedDB, rawQuery)
       : queryCanonicalData(indexedDB, options);
   }
-  throw new Error(`Unknown command: ${command}`);
+  throw new UsageError(`Unknown command: ${command}`);
 }
 
 async function main() {
@@ -1029,7 +1604,12 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n\n${USAGE}\n`);
+    const message = error instanceof UsageError
+      ? `Error: ${error.message}`
+      : error instanceof Error
+        ? error.stack || `${error.name}: ${error.message}`
+        : String(error);
+    process.stderr.write(`${message}\n\n${USAGE}\n`);
     process.exitCode = 1;
   });
 }

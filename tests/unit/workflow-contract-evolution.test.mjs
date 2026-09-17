@@ -17,19 +17,30 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
     ["optimization-ai-credit-optimizer.md", "AW Optimization / AI Credit Savings"],
     ["optimization-agents-md-curator.md", "AW Optimization / AGENTS.md"],
     ["optimization-skills-curator.md", "AW Optimization / Skills"],
+    ["optimization-token-efficiency-auditor.md", "AW Optimization / Token Auditor"],
+    ["optimization-token-optimizer.md", "AW Optimization / Token Optimizer"],
+    ["optimization-token-efficiency-verifier.md", "AW Optimization / Token Efficiency Verifier"],
   ];
 
   assert.equal(manifest.name, "AW Optimization");
   assert.equal(dashboard.dashboard.title, "AW Optimization");
   assert.match(orchestrator, /^name: "AW Optimization"$/m);
-  assert.match(orchestrator, /worker_credits_per_target: 1650/);
+  assert.match(orchestrator, /worker_credits_per_target: 1950/);
   assert.match(
     orchestrator,
-    /workflows: \[optimization-ai-credit-auditor, optimization-ai-credit-optimizer, optimization-agents-md-curator, optimization-skills-curator\]/,
+    /workflows: \[optimization-ai-credit-auditor, optimization-ai-credit-optimizer, optimization-agents-md-curator, optimization-skills-curator, optimization-token-efficiency-auditor, optimization-token-optimizer, optimization-token-efficiency-verifier\]/,
   );
   assert.deepEqual(
     Object.keys(policy["control-plane"].packages.optimization.workers).sort(),
-    ["ai-credit-auditor", "ai-credit-optimizer", "agents-md-curator", "skills-curator"].sort(),
+    [
+      "ai-credit-auditor",
+      "ai-credit-optimizer",
+      "agents-md-curator",
+      "skills-curator",
+      "token-efficiency-auditor",
+      "token-optimizer",
+      "token-efficiency-verifier",
+    ].sort(),
   );
   assert.equal(policy["control-plane"].packages["ambient-context"], undefined);
   for (const [name, displayName] of workerNames) {
@@ -109,7 +120,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(efficiency, /Select one package and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
   assert.match(efficiency, /Do not duplicate `AW Optimization`/);
 
-  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
   assert.match(packageSkill, /When a worker optimizes a package or package portfolio/);
   assert.match(packageSkill, /A package workflow has no dashboard browser session/);
   assert.match(packageSkill, /never add browser automation or Pages access merely to query IndexedDB/);
@@ -158,6 +169,50 @@ test("CAO Evolution compiler security worker runs the full validation suite", ()
   assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-maintenance-compiler-security.md"));
 });
 
+test("CAO Evolution compiler security worker reports only target-owned actionable findings", () => {
+  const source = workflow("cao-evolution-compiler-security.md");
+  const fixtures = JSON.parse(readFileSync(
+    join(root, "tests", "fixtures", "cao-evolution-compiler-security-actionability.json"),
+    "utf8",
+  ));
+
+  assert.deepEqual(fixtures.map(({ name }) => name), [
+    "missing Grant policy only",
+    "upstream image findings only",
+    "mixed target and upstream findings",
+  ]);
+  for (const fixture of fixtures) {
+    if (fixture.evidence.grantPolicy === "missing") {
+      assert.match(source, /grantPolicyAvailable/);
+      assert.match(source, /Grant license policy: %s/);
+      assert.match(source, /absent target `\.grant\.yaml` as unavailable license-policy evidence/);
+      assert.match(source, /not authorization to add or decide repository license policy/);
+      assert.equal(fixture.expected.mayCreatePolicy, false, fixture.name);
+    }
+    if (fixture.evidence.findings.some(({ category, targetControlsPin }) => category === "container" && targetControlsPin === false)) {
+      assert.match(source, /Attribute every container finding to the component and repository that controls the vulnerable image or the editable pin/);
+      assert.match(source, /Compiler-selected or compiler-generated runtime, firewall, proxy, MCP, Node, and base images are upstream-owned/);
+    }
+    if (fixture.expected.targetIssue === false) {
+      assert.match(source, /When no target-owned actionable finding remains, call `noop`/);
+      if (fixture.expected.disposition === "noop-or-upstream-route") {
+        assert.match(source, /If the authorized safe-output configuration supports the owning upstream repository, route an upstream-owned finding there/);
+      }
+    } else {
+      assert.equal(fixture.expected.targetFindingCount, 1, fixture.name);
+      assert.equal(fixture.expected.upstreamContextCount, 1, fixture.name);
+      assert.match(source, /Create a target remediation issue only when at least one target-owned actionable finding remains/);
+      assert.match(source, /Keep upstream-owned findings only as bounded context in an issue that already contains target-owned actionable findings/);
+      assert.match(source, /Fix only the target-owned actionable gh-aw compiler and security findings identified in this issue/);
+    }
+  }
+  assert.match(source, /Do not add or change `\.grant\.yaml` unless a separately reviewed target license-policy decision already requires it/);
+  assert.match(source, /Do not rebuild, modify, or make dependency decisions for upstream images or components/);
+  assert.match(source, /rerunning the full compiler and security scan confirms that the target-owned actionable findings are resolved/);
+  assert.doesNotMatch(source, /merge only after the full compiler and security scan passes/);
+  assert.doesNotMatch(source, /Add `\.grant\.yaml`/);
+});
+
 test("CAO Evolution failures worker closes target AW failure issues as duplicates", () => {
   const source = workflow("cao-evolution-failures-investigator.md");
 
@@ -172,6 +227,19 @@ test("CAO Evolution failures worker closes target AW failure issues as duplicate
   assert.match(source, /set `duplicate_of` to the actual issue number returned for the newly created consolidated report/);
   assert.match(source, /In `review`, do not close target-repository issues/);
   assert.match(source, /legacy `\[aw-doctor:failures-investigator\]` tracking issues/);
+});
+
+test("CAO Evolution failures worker fails closed on evidence-free failures", () => {
+  const source = workflow("cao-evolution-failures-investigator.md");
+
+  assert.match(source, /function summarizeFailureEvidence/);
+  assert.match(source, /const completedRuns = listCompletedAgenticRuns\(windowStart\)/);
+  assert.match(source, /const laterRuns = laterRunsFor\(run, completedRuns\)/);
+  assert.match(source, /diagnostic_evidence: incomplete/);
+  assert.match(source, /Do not infer credentials, secrets, runners, images, quotas, branch policy, workflow source/);
+  assert.match(source, /A later successful run disproves that the earlier evidence-free failure is a current P0 or P1/);
+  assert.match(source, /classification_constraints\.may_create_focused_fix_issue: false/);
+  assert.match(source, /P2: N, needs evidence: N/);
 });
 
 test("slower package orchestrators run hourly", () => {

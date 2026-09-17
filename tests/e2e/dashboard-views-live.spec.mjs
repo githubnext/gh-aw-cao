@@ -2,6 +2,11 @@ import { expect, test } from "@playwright/test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import {
+  ignoredDashboardPageIds,
+  isExpectedPageCloseAbort,
+  isIgnoredDashboardPageId,
+} from "./dashboard-view-assessment.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
 const outputDirectory = resolve(
@@ -12,9 +17,10 @@ const maximumFailedViews = 5;
 
 function selectedPages(dashboard) {
   const selected = process.env.DASHBOARD_PAGE_IDS;
-  if (selected === undefined) return dashboard.dashboard.pages;
+  const pages = dashboard.dashboard.pages.filter((page) => !isIgnoredDashboardPageId(page.id));
+  if (selected === undefined) return pages;
   const pageIds = new Set(selected.split(",").filter(Boolean));
-  return dashboard.dashboard.pages.filter((page) => pageIds.has(page.id));
+  return pages.filter((page) => pageIds.has(page.id));
 }
 
 function messageText(value) {
@@ -31,6 +37,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
     sourceUrl: sourceUrl || null,
     maximumDomNodes,
     selectionMode: process.env.DASHBOARD_PAGE_IDS === undefined ? "all" : "affected",
+    ignoredPageIds: [...ignoredDashboardPageIds],
     selectedPageIds: [],
     results: [],
   };
@@ -53,13 +60,17 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
     const dashboard = await dashboardResponse.json();
     const pages = selectedPages(dashboard);
     summary.selectedPageIds = pages.map((page) => page.id);
-    if (pages.length === 0) throw new Error("No selected page IDs exist in the composed dashboard.");
+    if (pages.length === 0) {
+      if (summary.selectionMode === "affected") return;
+      throw new Error("No selected page IDs exist in the composed dashboard.");
+    }
 
     for (const pageDefinition of pages) {
       const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
       const errors = [];
       const failedRequests = [];
       let crashed = false;
+      let closing = false;
 
       page.on("crash", () => {
         crashed = true;
@@ -69,7 +80,9 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       });
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("requestfailed", (request) => {
-        failedRequests.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText || "failed"}`);
+        const errorText = request.failure()?.errorText || "failed";
+        if (isExpectedPageCloseAbort(errorText, closing)) return;
+        failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
       });
       page.on("response", (response) => {
         if (response.status() >= 400) {
@@ -142,6 +155,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         result.status = "failed";
       } finally {
         summary.results.push(result);
+        closing = true;
         await page.close();
       }
       if (summary.results.filter((entry) => entry.status !== "passed").length >= maximumFailedViews) {

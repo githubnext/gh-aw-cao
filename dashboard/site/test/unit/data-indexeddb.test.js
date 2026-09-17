@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  canonicalDatabaseName,
   DATABASE_NAME,
   deleteCanonicalDatabase,
   openCanonicalDatabase,
@@ -22,6 +23,29 @@ function batch() {
       data: { id: 'repository:1', fullName: 'githubnext/gh-aw-cao' }
     }
   ]);
+}
+
+/** @param {IDBTransaction} transaction */
+function transactionDone(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve(undefined);
+    transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+  });
+}
+
+/**
+ * @param {{ id: string, kind: string, createdAt: string, owner?: string, expiresAt?: unknown }} record
+ */
+async function writeTransactionRecord(record) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const transaction = database.transaction('transactions', 'readwrite');
+    transaction.objectStore('transactions').put(record);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
 }
 
 beforeEach(async () => {
@@ -160,6 +184,17 @@ describe('canonical IndexedDB', () => {
     expect(await readCollection(indexedDB, 'repositories')).toEqual(canonicalBatch.repositories);
   });
 
+  it('evicts records omitted from a supplied previous snapshot', async () => {
+    const canonicalBatch = batch();
+    await upsertCanonicalBatch(indexedDB, canonicalBatch);
+
+    await replaceCanonicalBatch(indexedDB, normalize([]), {
+      previousBatch: canonicalBatch
+    });
+
+    expect(await readCollection(indexedDB, 'repositories')).toEqual([]);
+  });
+
   it('validates relationships before changing stored records', async () => {
     await upsertCanonicalBatch(indexedDB, batch());
     const invalid = normalize([]);
@@ -213,7 +248,7 @@ describe('canonical IndexedDB', () => {
     );
 
     try {
-      await expect(withCanonicalIngestionLock(indexedDB, async () => 'unreachable'))
+      await expect(withCanonicalIngestionLock(indexedDB, async () => 'unreachable', { locks: null }))
         .rejects.toThrow('lock acquisition failed');
     } finally {
       IDBDatabase.prototype.transaction = originalTransaction;
@@ -222,5 +257,119 @@ describe('canonical IndexedDB', () => {
     // A leaked connection from the failed acquisition attempt would block
     // this delete; it must resolve promptly if the connection was closed.
     await expect(deleteCanonicalDatabase(indexedDB, { blockedTimeoutMs: 200 })).resolves.toBeUndefined();
+  });
+
+  it('replaces malformed ingestion lock records instead of waiting forever', async () => {
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'safari-stale-tab',
+      expiresAt: 'not-a-number'
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'recovered', { locks: null }))
+      .resolves.toBe('recovered');
+  });
+
+  it('replaces impossible future ingestion lock leases instead of waiting forever', async () => {
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'safari-stale-tab',
+      expiresAt: Date.now() + (60 * 60 * 1000)
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'recovered', { locks: null }))
+      .resolves.toBe('recovered');
+  });
+
+  it('times out instead of waiting forever for an active ingestion lock', async () => {
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'active-tab',
+      expiresAt: Date.now() + 30_000
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'unreachable', {
+      locks: null,
+      acquireTimeoutMs: 20,
+      retryDelayMs: 1
+    })).rejects.toMatchObject({ name: 'CanonicalIngestionLockTimeoutError' });
+  });
+
+  it('reports waiting while a leased ingestion lock is still active', async () => {
+    let waiting = 0;
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'active-tab',
+      expiresAt: Date.now() + 30_000
+    });
+
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'unreachable', {
+      locks: null,
+      acquireTimeoutMs: 60,
+      retryDelayMs: 1,
+      waitingNoticeDelayMs: 1,
+      onWaiting: () => { waiting += 1; }
+    })).rejects.toMatchObject({ name: 'CanonicalIngestionLockTimeoutError' });
+    expect(waiting).toBe(1);
+  });
+
+  it('ignores a lease abandoned by a terminated tab when Web Locks are available', async () => {
+    await writeTransactionRecord({
+      id: 'lock:canonical-ingestion',
+      kind: 'canonical-ingestion-lock',
+      createdAt: new Date().toISOString(),
+      owner: 'terminated-tab',
+      expiresAt: Date.now() + (4 * 60 * 1000)
+    });
+
+    // The browser releases a Web Lock when its holder goes away, so ingestion
+    // must not stall behind the record the terminated holder left behind.
+    await expect(withCanonicalIngestionLock(indexedDB, async () => 'ingested', {
+      acquireTimeoutMs: 200
+    })).resolves.toBe('ingested');
+  });
+
+  it('serializes concurrent ingestion through the Web Lock', async () => {
+    /** @type {string[]} */
+    const order = [];
+    /** @param {string} name */
+    const ingest = (name) => withCanonicalIngestionLock(indexedDB, async () => {
+      order.push(`${name}:start`);
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+      order.push(`${name}:end`);
+    });
+
+    await Promise.all([ingest('first'), ingest('second')]);
+
+    expect(order).toEqual(['first:start', 'first:end', 'second:start', 'second:end']);
+  });
+
+  it('reports waiting while another holder owns the Web Lock', async () => {
+    let waiting = 0;
+    let release = () => {};
+    const held = new Promise((resolve) => { release = () => resolve(undefined); });
+    const holder = navigator.locks.request(
+      `canonical-ingestion:${canonicalDatabaseName()}`,
+      () => held
+    );
+
+    const timedOut = withCanonicalIngestionLock(indexedDB, async () => 'unreachable', {
+      acquireTimeoutMs: 50,
+      waitingNoticeDelayMs: 1,
+      onWaiting: () => { waiting += 1; }
+    });
+
+    await expect(timedOut).rejects.toMatchObject({ name: 'CanonicalIngestionLockTimeoutError' });
+    expect(waiting).toBe(1);
+    release();
+    await holder;
   });
 });

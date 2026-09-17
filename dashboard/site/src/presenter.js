@@ -2,28 +2,42 @@
  * Presenter for JSON-driven dashboard pages using GitHub Primer styling and elements.
  */
 
-import builtInDashboard from '../dashboard.json' with { type: 'json' };
 import { h } from './dom.js';
 import { getPrimerStyles } from './styles.js';
-import { octicon, agenticWorkflowMark } from './octicons.js';
+import { octicon } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
+import { formatMediumUtcDateTime, renderEmptyMessage, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
-import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
+import { elementHandlesEmptyRows, elementHandlesUnavailableSource, elementLoadsSourcesAsync, renderUiElement } from './components/ui-elements.js';
 import { renderDataView, supportsIncrementalChartContinuation } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
+import { renderDashboardHorizon } from './components/dashboard-horizon.js';
 import { restoreDashboardTheme } from './components/theme-settings.js';
-import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
+import { cancelLazyViewHydration, disconnectLazyViews, enableLazyViews, hydrateLazyViewAfterPaint, renderLazyView } from './components/lazy-view.js';
+import { enableFullViewScrollForwarding, syncFullViewMode as syncFullViewModeForPage } from './components/full-view-scroll.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { dashboardViewAliasName } from './data/queries/view-payload-compiler.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { sourceContinuation } from './data/continuation.js';
-import { createDatabaseCountLoader, formatDatabaseCounts } from './database-counts.js';
+import { renderDashboardNavigation, enableDashboardNavigation } from './components/dashboard-navigation.js';
+import { renderDashboardHeader } from './components/dashboard-header.js';
+import { renderDashboardFooter } from './components/dashboard-footer.js';
+import { renderDashboardFrame } from './components/dashboard-frame.js';
 import { scopedStorageKey } from './storage-scope.js';
+import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
+import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
+import { publishSource } from './source-store.js';
+
+export { enableDashboardKeyboardNavigation, updateWithViewTransition };
+import {
+  dashboardPageLazySourceNames as collectDashboardPageLazySourceNames,
+  dashboardPagePayload,
+  dashboardPageSourceNames as collectDashboardPageSourceNames,
+  dashboardTableSourceNames as collectDashboardTableSourceNames,
+} from './dashboard-chunks.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -42,11 +56,11 @@ import { scopedStorageKey } from './storage-scope.js';
  */
 
 /**
- * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
+ * @typedef {{ id: string, kind: 'built-in', page: string, title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], definition?: { views?: Array<unknown>, sections?: PresentablePageSection[], ['data-state']?: Record<string, boolean> } }} PresentableBuiltInPage
  */
 
 /**
- * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
+ * @typedef {{ id: string, kind: 'custom', title?: string, ['navigation-label']?: string, description?: string, icon?: string, ['class-name']?: string, chunk?: string, ['source-names']?: string[], ['lazy-source-names']?: string[], ['table-source-names']?: string[], route?: { ['hash-query-parameter']?: string, ['navigation-page']?: string }, views: unknown[], sections?: PresentablePageSection[] }} PresentableCustomPage
  */
 
 /**
@@ -58,7 +72,7 @@ import { scopedStorageKey } from './storage-scope.js';
  */
 
 /**
- * @typedef {{ id: string, title: string, description?: string, defaults?: Record<string, unknown>, units?: Record<string, { name: string, symbol: string, significant: number }>, callouts?: Array<{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }>, ['cli-actions']?: Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>, pages: Array<PresentableBuiltInPage | PresentableCustomPage>, ['github-url-base']?: string, repository?: string, navigation?: PresentableNavigationSection[], horizon?: { label: string, tooltip: { label: string, description: string, icon?: string } } }} PresentableDashboard
+ * @typedef {{ id: string, title: string, description?: string, defaults?: Record<string, unknown>, units?: Record<string, { name: string, symbol: string, significant: number }>, queries?: Array<Record<string, unknown>>, views?: Array<Record<string, unknown>>, ['card-templates']?: Array<{ id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>, callouts?: Array<{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }>, ['cli-actions']?: Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>, pages: Array<PresentableBuiltInPage | PresentableCustomPage>, ['github-url-base']?: string, repository?: string, navigation?: PresentableNavigationSection[], horizon?: { label: string, tooltip: { label: string, description: string, icon?: string } } }} PresentableDashboard
  */
 
 /**
@@ -70,11 +84,11 @@ import { scopedStorageKey } from './storage-scope.js';
  */
 
 /**
- * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
+ * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, commitSha?: string | null, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, tableRowLimit?: number, loadPageSources?: (pageId: string, options: PageSourceLoadOptions) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -83,90 +97,17 @@ import { scopedStorageKey } from './storage-scope.js';
 
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const TABLE_ROW_LIMIT = Symbol('table-row-limit');
-const SIDEBAR_COLLAPSED_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.sidebar-collapsed');
+const MOBILE_VIEW_MODE_STORAGE_KEY = scopedStorageKey('central-agentic-ops.dashboard.mobile-view-mode');
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 /** @type {WeakMap<HTMLElement, () => void>} */
 const dashboardDisposals = new WeakMap();
-const directionalViewTransitions = new WeakMap();
-
 /**
- * @param {Document} document
- * @param {() => void} update
- * @param {'forward'|'backward'} [direction]
- */
-export function updateWithViewTransition(document, update, direction) {
-  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown>, finished?: Promise<unknown> } | void }} */ (document);
-  const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
-  if (typeof transitionDocument.startViewTransition !== 'function' || prefersReducedMotion) {
-    update();
-    return;
-  }
-
-  if (direction) {
-    document.documentElement.dataset.navigationDirection = direction;
-  } else {
-    directionalViewTransitions.delete(document);
-    delete document.documentElement.dataset.navigationDirection;
-  }
-  const transition = transitionDocument.startViewTransition(update);
-  trackViewTransition(document, transition);
-  if (!direction) return;
-  if (!transition?.finished) {
-    delete document.documentElement.dataset.navigationDirection;
-    return;
-  }
-  directionalViewTransitions.set(document, transition);
-  void Promise.resolve(transition.finished).catch(() => {}).then(() => {
-    if (directionalViewTransitions.get(document) !== transition) return;
-    directionalViewTransitions.delete(document);
-    delete document.documentElement.dataset.navigationDirection;
-  });
-}
-
-/** @type {Record<string, PresentableCustomPage>} */
-const BUILT_IN_PAGE_PAYLOADS = /** @type {Record<string, PresentableCustomPage>} */ (Object.fromEntries(
-  builtInDashboard.dashboard.pages
-    .filter((page) => page.kind === 'built-in')
-    .map((page) => [
-      page.page,
-      {
-        id: page.id,
-        kind: 'custom',
-        title: page.title,
-        description: 'description' in page ? page.description : undefined,
-        'class-name': 'class-name' in page ? page['class-name'] : undefined,
-        views: page.definition?.views ?? [],
-        sections: page.definition && 'sections' in page.definition ? page.definition.sections : undefined
-      }
-    ])
-));
-
-/**
- * @param {PresentableBuiltInPage} page
+ * @param {PresentableBuiltInPage | PresentableCustomPage} page
+ * @param {Array<Record<string, unknown>>} [reusableViews]
  * @returns {PresentableCustomPage}
  */
-function getBuiltInPagePayload(page) {
-  const payload = BUILT_IN_PAGE_PAYLOADS[page.page];
-  return {
-    ...payload,
-    id: page.id,
-    kind: 'custom',
-    title: page.title ?? payload?.title,
-    description: page.description ?? payload?.description,
-    'class-name': page['class-name'] ?? payload?.['class-name'],
-    views: payload?.views ?? [],
-    sections: payload?.sections
-  };
-}
-
-/**
- * @param {unknown} view
- * @returns {boolean}
- */
-function isAsyncElementView(view) {
-  return isPlainObject(view)
-    && typeof view.element === 'string'
-    && elementLoadsSourcesAsync(view.element);
+function getBuiltInPagePayload(page, reusableViews = []) {
+  return /** @type {PresentableCustomPage} */ (dashboardPagePayload(page, reusableViews));
 }
 
 /**
@@ -175,23 +116,7 @@ function isAsyncElementView(view) {
  * @returns {string[]}
  */
 export function dashboardPageSourceNames(document, pageId) {
-  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
-  if (!page) return [];
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-  const names = new Set();
-  for (const view of payload.views ?? []) {
-    if (isAsyncElementView(view)) continue;
-    for (const sourceName of getViewSources(view)) names.add(sourceName);
-  }
-
-  for (const section of payload.sections ?? []) {
-    if (typeof section['count-source'] === 'string') names.add(section['count-source']);
-    for (const sourceName of section['count-sources'] ?? []) names.add(sourceName);
-  }
-  for (const callout of document.dashboard.callouts ?? []) {
-    if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source);
-  }
-  return [...names];
+  return collectDashboardPageSourceNames(document, pageId);
 }
 
 /**
@@ -201,22 +126,36 @@ export function dashboardPageSourceNames(document, pageId) {
  * @param {string} pageId
  */
 export function dashboardPageLazySourceNames(document, pageId) {
+  return collectDashboardPageLazySourceNames(document, pageId);
+}
+
+/**
+ * Maps each paginated view alias to the authored source and view that can
+ * reproduce it for continuation requests.
+ * @param {PresentationDocument} document
+ * @param {string} pageId
+ * @returns {Record<string, { sourceName: string, viewId: string }>}
+ */
+export function dashboardPagePaginatedSourceBindings(document, pageId) {
   const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
-  if (!page) return [];
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-  return [...new Set((payload.views ?? []).flatMap((view) =>
-    isPlainObject(view) && view['lazy-list'] === true ? getViewSources(view) : []
-  ))];
+  if (!page) return {};
+  const payload = getBuiltInPagePayload(page, document.dashboard.views);
+  return Object.fromEntries((payload.views ?? []).flatMap((view, viewIndex) => {
+    if (!isPlainObject(view)
+        || typeof view.id !== 'string'
+        || (view['lazy-list'] !== true && !supportsIncrementalChartContinuation(view))) {
+      return [];
+    }
+    return getViewSources(view).map((sourceName, sourceIndex) => [
+      dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex),
+      { sourceName, viewId: view.id }
+    ]);
+  }));
 }
 
 /** @param {PresentationDocument} document */
 export function dashboardTableSourceNames(document) {
-  return [...new Set(document.dashboard.pages.flatMap((page) => {
-    const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-    return (payload.views ?? []).flatMap((view) =>
-      isPlainObject(view) && view.mark === 'table' ? getViewSources(view) : []
-    );
-  }))];
+  return collectDashboardTableSourceNames(document);
 }
 
 /**
@@ -224,8 +163,10 @@ export function dashboardTableSourceNames(document) {
  * @returns {HTMLElement}
  */
 export function renderDashboard(input) {
-  const { document, sources: rawSources, viewer = null, loadHorizonSources } = input;
+  const { document, sources: rawSources, viewer = null } = input;
   const pages = document.dashboard.pages;
+  const cardTemplates = Object.fromEntries((document.dashboard['card-templates'] ?? []).map((template) => [template.id, template]));
+  const reusableViews = document.dashboard.views ?? [];
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
   const showInitialLoadingSkeleton = input.loading === true && !hasData;
@@ -244,19 +185,34 @@ export function renderDashboard(input) {
     ...resolveDashboardDefaults(document.dashboard.defaults, horizonRange, evaluatedAt),
     [TABLE_ROW_LIMIT]: input.tableRowLimit
   };
+  const dashboardHorizon = renderDashboardHorizon({
+    dashboard: document.dashboard,
+    initialValue: resolveDashboardHorizonViewModel(rawSources, dashboardDefaults, horizonRange, evaluatedAt),
+    formatDate: formatReportDate
+  });
 
   const styleEl = h('style', null, getPrimerStyles());
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
-  const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation);
-  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer, loadHorizonSources, input.commitSha);
-
-  const appShell = h(
-    'div',
-    { className: 'app-shell' },
-    sidebar,
-    mainContent
-  );
+  const sidebar = renderDashboardNavigation(pages, sidebarTitle, document.dashboard.navigation);
+  const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
+  const overviewPage = pages.find((page) => page.id === 'overview');
+  const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
+  const appShell = renderDashboardFrame({
+    navigation: sidebar,
+    header: renderDashboardHeader({
+      title: initialPage ? getPageTitle(initialPage) : '',
+      description: initialPage?.description,
+      overviewPageHref: overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref,
+      dashboardHorizon: dashboardHorizon.element,
+      githubUrlBase,
+      dashboardRepository,
+      viewer
+    }),
+    callouts: renderSiteCallouts(document.dashboard.callouts, sources),
+    pages: pages.map((page) => renderPagePlaceholder(page)),
+    footer: renderDashboardFooter({ evaluatedAt, commitSha: input.commitSha })
+  });
   const root = h(
     'div',
     { className: 'dashboard-root' },
@@ -264,40 +220,80 @@ export function renderDashboard(input) {
     skipLink,
     appShell
   );
+  const dashboardOwner = new AbortController();
   void enableDashboardDomProvenanceWhenDebugging(root, document).catch((error) => {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });
-  enableSidebarToggle(root);
+  enableDashboardNavigation(root);
   restoreDashboardTheme(root);
-  enableMobileNavigationMenu(root);
   enableHorizonOutsideClickDismissal(root);
   root.addEventListener('dashboard-time-window-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
     setTimeWindowFilter(event.detail?.start, event.detail?.end, root);
-  });
+  }, { signal: dashboardOwner.signal });
   root.addEventListener('dashboard-time-window-range-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
     setTimeWindowRange(event.detail?.range, root);
-  });
-  enableResponsiveReportActions(root);
+  }, { signal: dashboardOwner.signal });
+  enableResponsiveReportActions(root, dashboardOwner.signal);
   const disposeNavigation = enableDashboardPageNavigation(
     root,
     document.dashboard.title,
     (pageId, options) => {
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
-      const page = pages[pageIndex];
-      if (!page) return null;
+      const resolvedPage = () => pages[pageIndex] ?? pages.find((candidate) => candidate.id === pageId);
+      if (!resolvedPage()) return null;
+      const rendersBeforePageSources = pageUsesIndependentSourceElements(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const render = (pageSources) => showInitialLoadingSkeleton
-        ? renderPageLoadingSkeleton(page)
-        : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, options.queryContext);
+      const updateHorizon = (pageSources) => {
+        if (options.signal?.aborted !== true) {
+          dashboardHorizon.update(resolveDashboardHorizonViewModel(
+            pageSources,
+            dashboardDefaults,
+            horizonRange,
+            evaluatedAt
+          ));
+        }
+      };
+      /** @param {Record<string, LogicalSourceInput>} pageSources */
+      const updateIndependentElements = (pageSources) => {
+        updateHorizon(pageSources);
+        for (const [bindingKey, source] of Object.entries(pageSources)) {
+          publishSource(bindingKey, source, bindingKey);
+        }
+        options.syncPageChrome?.();
+      };
+      /** @param {Record<string, LogicalSourceInput>} pageSources */
+      const render = (pageSources) => {
+        const page = resolvedPage();
+        if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
+        updateHorizon(pageSources);
+        return showInitialLoadingSkeleton && !rendersBeforePageSources
+          ? renderPageLoadingSkeleton(page)
+          : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
+      };
       if (input.loadPageSources) {
-        options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
+        options.onUpdate = rendersBeforePageSources
+          ? updateIndependentElements
+          : (pageSources) => options.renderUpdate(render(pageSources));
+        if (rendersBeforePageSources) {
+          const renderedPage = render(sources);
+          void input.loadPageSources(pageId, options)
+            .then(updateIndependentElements)
+            .catch((error) => {
+              if (!options.signal?.aborted) {
+                console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
+              }
+            });
+          return renderedPage;
+        }
         return input.loadPageSources(pageId, options).then(render);
       }
       const renderedPage = render(sources);
       /** @param {HTMLElement} rendered */
       const annotate = (rendered) => {
+        const page = resolvedPage();
+        if (!page) return rendered;
         void annotateLazyPageDomWhenDebugging(root, rendered, page, pageIndex).catch((error) => {
           root.dataset.domProvenanceError = String(error?.message ?? error);
         });
@@ -306,11 +302,36 @@ export function renderDashboard(input) {
       return renderedPage instanceof Promise ? renderedPage.then(annotate) : annotate(renderedPage);
     },
     sidebar.dataset.defaultPageId,
-    Boolean(input.loadPageSources)
-
+    Boolean(input.loadPageSources),
+    new Set((document.dashboard.queries ?? []).flatMap((query) => (
+      isPlainObject(query) && typeof query.name === 'string' ? [query.name] : []
+    )))
   );
-  dashboardDisposals.set(root, disposeNavigation);
+  dashboardDisposals.set(root, () => {
+    dashboardOwner.abort();
+    disposeNavigation();
+    dashboardHorizon.dispose();
+  });
   return root;
+}
+
+/**
+ * Pages composed entirely from independently bound elements can mount before
+ * their companion page subscription resolves.
+ * @param {PresentableBuiltInPage | PresentableCustomPage | undefined} page
+ * @param {Array<Record<string, unknown>>} reusableViews
+ */
+function pageUsesIndependentSourceElements(page, reusableViews) {
+  if (!page) return false;
+  const reusableById = new Map(reusableViews.map((view) => [view.id, view]));
+  const configuredViews = page.kind === 'built-in' ? page.definition?.views : page.views;
+  if (!Array.isArray(configuredViews) || configuredViews.length === 0) return false;
+  return configuredViews.every((configured) => {
+    const view = typeof configured === 'string' ? reusableById.get(configured) : configured;
+    return isPlainObject(view)
+      && typeof view.element === 'string'
+      && elementLoadsSourcesAsync(view.element);
+  });
 }
 
 /** @param {HTMLElement} root */
@@ -333,7 +354,63 @@ export function disposeDashboard(root) {
 async function enableDashboardDomProvenanceWhenDebugging(root, document) {
   if (!isDomProvenanceDebugRequested(root)) return;
   const { enableDashboardDomProvenance } = await import('./dom-provenance.js');
-  enableDashboardDomProvenance(root, document, getBuiltInPagePayload);
+  enableDashboardDomProvenance(root, document, getBuiltInPagePayload  );
+}
+
+/**
+ * Retains route tabs while moving between sibling views so only the selected
+ * view body enters its loading state.
+ * @param {HTMLElement} page
+ * @param {string} pageId
+ * @param {URLSearchParams} parameters
+ * @returns {HTMLElement | null}
+ */
+function cloneRouteTabsForPage(page, pageId, parameters) {
+  const tabs = page.querySelector('[data-route-tabs]');
+  if (!(tabs instanceof HTMLElement)) return null;
+  const target = [...tabs.querySelectorAll('a')].find((link) => {
+    const href = link.getAttribute('href') ?? '';
+    const [route, query = ''] = href.split('?');
+    if (!route.startsWith('#page-')) return false;
+    try {
+      return decodeURIComponent(route.slice('#page-'.length)) === pageId
+        && queryParametersMatch(new URLSearchParams(query), parameters);
+    } catch {
+      return false;
+    }
+  });
+  if (!target) return null;
+  const clone = /** @type {HTMLElement} */ (tabs.cloneNode(true));
+  for (const link of clone.querySelectorAll('a')) {
+    if (link.getAttribute('href') === target.getAttribute('href')) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  }
+  return clone;
+}
+
+/**
+ * @param {URLSearchParams} left
+ * @param {URLSearchParams} right
+ */
+function queryParametersMatch(left, right) {
+  /** @param {URLSearchParams} parameters */
+  const entries = (parameters) => [...parameters.entries()]
+    .sort(([leftKey, leftValue], [rightKey, rightValue]) => (
+      leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue)
+    ));
+  return JSON.stringify(entries(left)) === JSON.stringify(entries(right));
+}
+
+/**
+ * @param {HTMLElement} page
+ * @param {HTMLElement | null} routeTabs
+ */
+function showPageSkeleton(page, routeTabs) {
+  page.replaceChildren(...(routeTabs ? [routeTabs, renderPageSkeleton()] : [renderPageSkeleton()]));
+  page.setAttribute('aria-busy', 'true');
 }
 
 /**
@@ -375,243 +452,6 @@ function inferOrganizationName(sources) {
 }
 
 /**
- * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
- * @param {string} title
- * @param {PresentableNavigationSection[] | undefined} navigation
- * @returns {HTMLElement}
- */
-function renderSidebar(pages, title, navigation) {
-  const pagesById = new Map(pages.map((page) => [page.id, page]));
-  const primaryPages = pages;
-  const configuredSections = Array.isArray(navigation) && navigation.length > 0
-    ? navigation
-      .map((section) => ({
-        label: section?.label,
-        experimental: section?.experimental === true,
-        pages: (Array.isArray(section?.pages) ? section.pages : [])
-          .map((pageId) => pagesById.get(pageId))
-          .filter((page) => page !== undefined)
-      }))
-      .filter((section) => section.pages.length > 0)
-    : [{ label: undefined, experimental: false, pages: primaryPages }];
-  const experimentalPages = configuredSections
-    .filter((section) => section.experimental)
-    .flatMap((section) => section.pages);
-  const navigationSections = [
-    ...configuredSections.filter((section) => !section.experimental),
-    ...(experimentalPages.length > 0
-      ? [{ label: 'Experimental', experimental: true, pages: experimentalPages }]
-      : [])
-  ];
-  const firstPageId = navigationSections.find((section) => !section.experimental)?.pages[0]?.id ?? pages[0]?.id;
-  const mainSectionIndex = Math.max(
-    0,
-    navigationSections.findIndex((section) => section.label?.toLowerCase() === 'main')
-  );
-  let navigationPageIndex = 0;
-  return h(
-    'aside',
-    { className: 'org-sidebar', 'aria-label': 'Central Agentic Ops navigation', dataset: { defaultPageId: firstPageId ?? '' } },
-    h(
-      'div',
-      { className: 'sidebar-header' },
-      h(
-        'button',
-        {
-          className: 'mobile-history-back',
-          type: 'button',
-          'aria-label': 'Go back',
-          title: 'Go back',
-          hidden: true
-        },
-        octicon('arrow-left')
-      ),
-      h(
-        'a',
-        { className: 'sidebar-brand', href: firstPageId ? `#page-${firstPageId}` : '#main-content', title },
-        agenticWorkflowMark(),
-        h('span', null, title)
-      ),
-      h(
-        'div',
-        { className: 'mobile-page-header' },
-        h('span', { className: 'mobile-brand-name' }, title)
-      ),
-      h(
-        'details',
-        { className: 'mobile-nav-menu' },
-        h(
-          'summary',
-          { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
-          octicon('three-bars')
-        ),
-        h(
-          'div',
-          { className: 'mobile-nav-menu-list' },
-          h('div', { className: 'mobile-nav-menu-actions', 'aria-label': 'Dashboard controls' }),
-          ...navigationSections.flatMap((section) => [
-            ...(typeof section.label === 'string' && section.label.length > 0
-              ? [h('span', {
-                  className: 'mobile-nav-section-label'
-                }, section.label)]
-              : []),
-            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId))
-          ])
-        )
-      ),
-      h(
-        'button',
-        {
-          className: 'sidebar-toggle',
-          type: 'button',
-          'aria-label': 'Collapse navigation',
-          'aria-expanded': 'true',
-          title: 'Collapse navigation'
-        },
-        octicon('sidebar-expand')
-      )
-    ),
-    h(
-      'nav',
-      { className: 'primary-nav', 'aria-label': 'Primary' },
-      ...navigationSections.flatMap((section, sectionIndex) => {
-        const items = section.pages.map((page) => {
-          const pageIndex = navigationPageIndex++;
-          return renderNavItem(
-            page,
-            page.id === firstPageId,
-            pageIndex >= 6,
-            pageIndex >= 5
-          );
-        });
-        return typeof section.label === 'string' && section.label.length > 0
-          ? [h(
-              'details',
-              {
-                className: 'nav-section',
-                open: sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? '')
-              },
-              h(
-                'summary',
-                { className: 'nav-section-toggle', title: `${section.label} menu section` },
-                h('span', { className: 'nav-section-label' }, section.label),
-                octicon('chevron-right')
-              ),
-              h('div', { className: 'nav-section-items' }, ...items)
-            )]
-          : items;
-      })
-    )
-  );
-}
-
-/**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @param {boolean} isActive
- * @param {boolean} [mobileOverflow]
- * @param {boolean} [narrowMobileOverflow]
- * @returns {HTMLElement}
- */
-function renderNavItem(page, isActive, mobileOverflow = false, narrowMobileOverflow = false) {
-  const iconName = getPageIcon(page);
-  const title = getPageNavigationTitle(page);
-
-  return h(
-    'a',
-    {
-      href: `#page-${page.id}`,
-      className: `nav-item${isActive ? ' active' : ''}${mobileOverflow ? ' mobile-nav-overflow' : ''}${narrowMobileOverflow ? ' narrow-mobile-nav-overflow' : ''}`,
-      'aria-current': isActive ? 'page' : undefined,
-      'aria-label': title,
-      title,
-      'data-nav-page-id': page.id
-    },
-    octicon(iconName),
-    h('span', { className: 'nav-label' }, title)
-  );
-}
-
-/**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @param {boolean} isActive
- * @returns {HTMLElement}
- */
-function renderMobileNavItem(page, isActive) {
-  const title = getPageNavigationTitle(page);
-  return h(
-    'a',
-    {
-      href: `#page-${page.id}`,
-      className: `mobile-nav-item${isActive ? ' active' : ''}`,
-      'aria-current': isActive ? 'page' : undefined,
-      'data-mobile-nav-page-id': page.id
-    },
-    octicon(getPageIcon(page)),
-    h('span', { className: 'mobile-nav-label' }, title)
-  );
-}
-
-/**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @returns {string}
- */
-function getPageNavigationTitle(page) {
-  return typeof page['navigation-label'] === 'string' && page['navigation-label'].length > 0
-    ? page['navigation-label']
-    : typeof page.title === 'string' && page.title.length > 0
-      ? page.title
-      : titleCase(page.id);
-}
-
-/**
- * Restores and persists the desktop sidebar display mode.
- * @param {HTMLElement} root
- */
-function enableSidebarToggle(root) {
-  const appShell = root.querySelector('.app-shell');
-  const toggle = root.querySelector('.sidebar-toggle');
-  if (!(appShell instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) return;
-
-  /** @param {boolean} collapsed */
-  const setCollapsed = (collapsed) => {
-    appShell.classList.toggle('sidebar-collapsed', collapsed);
-    const label = collapsed ? 'Expand navigation' : 'Collapse navigation';
-    toggle.setAttribute('aria-label', label);
-    toggle.setAttribute('aria-expanded', String(!collapsed));
-    toggle.setAttribute('title', label);
-    toggle.replaceChildren(octicon(collapsed ? 'sidebar-collapse' : 'sidebar-expand'));
-  };
-
-  let collapsed = false;
-  try {
-    collapsed = globalThis.window?.localStorage?.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
-  } catch {
-    // Storage can be unavailable in embedded or privacy-restricted contexts.
-  }
-  setCollapsed(collapsed);
-
-  toggle.addEventListener('click', () => {
-    collapsed = !collapsed;
-    setCollapsed(collapsed);
-    try {
-      globalThis.window?.localStorage?.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
-    } catch {
-      // The display mode still works for the current page when storage is unavailable.
-    }
-  });
-}
-
-/**
- * Closes the mobile view menu after selection or when focus moves elsewhere.
- * @param {HTMLElement} root
- */
-function enableMobileNavigationMenu(root) {
-  const menu = root.querySelector('.mobile-nav-menu');
-  if (!(menu instanceof HTMLDetailsElement)) return;
-  enableDetailsMenuDismissal(root, menu, '[data-mobile-nav-page-id]');
-}
-
-/**
  * Keeps global dashboard controls inside the mobile hamburger menu while
  * preserving the single control instances and their filter-bar event
  * relationships. On narrow viewports the page title also moves into the
@@ -620,14 +460,19 @@ function enableMobileNavigationMenu(root) {
  * matching the title bar used by the GitHub mobile app. The factory name stays
  * visible as a secondary line below that page title.
  * @param {HTMLElement} root
+ * @param {AbortSignal} signal
  */
-function enableResponsiveReportActions(root) {
+function enableResponsiveReportActions(root, signal) {
   const actions = root.querySelector('.report-actions');
   const mobileSlot = root.querySelector('.mobile-nav-menu-actions');
   const desktopSlot = actions?.parentElement;
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');
   const headerDesktopSlot = overviewHeader?.parentElement;
+  const viewModeToggle = root.querySelector('.mobile-view-mode-toggle');
+  const mobileToggleSlot = viewModeToggle?.parentElement;
+  const mobileToggleAnchor = root.querySelector('.mobile-nav-menu');
+  const desktopToggleSlot = overviewHeader?.querySelector('.title-area');
   const view = root.ownerDocument.defaultView;
   const media = view?.matchMedia?.('(max-width: 700px)');
   if (!(actions instanceof HTMLElement) || !(mobileSlot instanceof HTMLElement) || !desktopSlot || !media) return;
@@ -642,147 +487,38 @@ function enableResponsiveReportActions(root) {
         headerDesktopSlot.prepend(overviewHeader);
       }
     }
+    if (
+      viewModeToggle instanceof HTMLElement
+      && mobileToggleSlot
+      && mobileToggleAnchor instanceof HTMLElement
+      && desktopToggleSlot instanceof HTMLElement
+    ) {
+      if (media.matches || root.classList.contains('dashboard-full-view-scrolled')) {
+        if (viewModeToggle.parentElement !== mobileToggleSlot) {
+          mobileToggleSlot.insertBefore(viewModeToggle, mobileToggleAnchor);
+        }
+      } else if (viewModeToggle.parentElement !== desktopToggleSlot) {
+        desktopToggleSlot.append(viewModeToggle);
+      }
+    }
   };
   placeActions();
-  media.addEventListener?.('change', placeActions);
+  media.addEventListener?.('change', placeActions, { signal });
+  const observer = new MutationObserver(placeActions);
+  observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+  signal.addEventListener('abort', () => observer.disconnect(), { once: true });
 }
 
 /**
- * @param {PresentableBuiltInPage | PresentableCustomPage} page
- * @returns {string}
- */
-function getPageIcon(page) {
-  return typeof page.icon === 'string' ? page.icon : 'server';
-}
-
-/**
- * @param {PresentationDocument} document
- * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
  * @param {Record<string, LogicalSourceInput>} sources
- * @param {string} githubUrlBase
- * @param {string | null} dashboardRepository
  * @param {Record<string, unknown>} dashboardDefaults
  * @param {string} horizonRange
- * @param {string} evaluatedAt
- * @param {boolean} hasData
- * @param {{ start: string, end: string, hours: number } | null} dataHorizon
- * @param {DataState} effectiveState
- * @param {LocalViewer | null} viewer
- * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
- * @param {string | null | undefined} commitSha
- * @returns {HTMLElement}
+ * @param {string} fallbackEvaluatedAt
+ * @returns {{ available: boolean, evaluatedAt: string, duration: string, start: string, end: string }}
  */
-function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer, loadHorizonSources, commitSha) {
-  const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
-  const overviewPage = pages.find((page) => page.id === 'overview');
-  const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
-  const initialPageDescription = initialPage?.description;
-  const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
-  const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
-  const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
-  return h(
-    'div',
-    { className: 'app-main' },
-    h(
-      'header',
-      { className: 'top-nav' },
-      h(
-        'div',
-        { className: 'shell' },
-        h(
-          'div',
-          { className: 'overview-header', 'aria-labelledby': 'page-title' },
-          h(
-            'nav',
-            { className: 'breadcrumb-context', 'aria-label': 'Breadcrumb' },
-            h('a', { hidden: true, 'data-breadcrumb-root': '' }),
-            h('a', { href: overviewPageHref, hidden: true, 'data-breadcrumb-dashboard': '' }, 'Overview')
-          ),
-          h(
-            'div',
-            { className: 'title-area' },
-            h('h1', { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' }, initialPageTitle),
-            h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
-            h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
-          ),
-          h(
-            'p',
-            { className: 'lede', 'data-page-description': '', hidden: !initialPageDescription },
-            initialPageDescription ?? ''
-          )
-        ),
-        h(
-          'div',
-          { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, loadDatabaseCounts),
-          dashboardRepository
-            ? h(
-              'a',
-              {
-                className: 'repository-link',
-                href: `${githubUrlBase}/${dashboardRepository}`,
-                'aria-label': `View ${dashboardRepository} on GitHub`,
-                title: `View ${dashboardRepository} on GitHub`
-              },
-              octicon('mark-github'),
-              h('span', { className: 'sr-only action-label' }, dashboardRepository)
-            )
-            : null
-        )
-      )
-    ),
-    renderSiteCallouts(document.dashboard.callouts, sources),
-    h(
-      'main',
-      { id: 'main-content', className: 'dashboard-prototype', tabIndex: -1 },
-      h(
-        'div',
-        { className: 'report-body' },
-        h(
-          'div',
-          { className: 'dashboard-pages' },
-          pages.map((page) => renderPagePlaceholder(page))
-        )
-      )
-    ),
-    h(
-      'footer',
-      { className: 'report-footer' },
-      h(
-        'div',
-        { className: 'report-footer-status' },
-        h('span', null, 'Last updated'),
-        h('time', { dateTime: evaluatedAt }, `${formatReportDate(evaluatedAt)} UTC`),
-        h('span', { className: 'report-footer-provenance' }, '· Generated deterministically from dashboard data.')
-      ),
-      commitSha && commitSha !== 'development'
-        ? h('span', { className: 'report-footer-version', title: commitSha }, 'Version ', h('code', null, commitSha.slice(0, 7)))
-        : null
-    )
-  );
-}
-
-/**
- * @param {PresentableDashboard} dashboard
- * @param {Record<string, unknown>} dashboardDefaults
- * @param {string} horizonRange
- * @param {string} evaluatedAt
- * @param {boolean} hasData
- * @param {{ start: string, end: string, hours: number } | null} dataHorizon
- * @param {() => Promise<import('./database-counts.js').DatabaseCounts>} loadDatabaseCounts
- * @returns {HTMLElement}
- */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, loadDatabaseCounts) {
-  if (!hasData) {
-    return h(
-      'span',
-      { className: 'dashboard-horizon dashboard-horizon-skeleton', 'aria-label': 'Horizon unavailable' },
-      h('span', { 'aria-hidden': 'true' })
-    );
-  }
-
-  const horizon = dashboard.horizon;
-  const label = horizon?.label || 'Horizon';
+function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRange, fallbackEvaluatedAt) {
+  const dataHorizon = resolveDataHorizon(sources);
+  const evaluatedAt = dataHorizon?.end ?? latestRetrievedAt(sources) ?? fallbackEvaluatedAt;
   const duration = dataHorizon
     ? formatDashboardHorizonHours(dataHorizon.hours)
     : formatDashboardHorizon(horizonRange);
@@ -792,64 +528,7 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
   const end = dataHorizon?.end ?? (isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.end === 'string'
     ? dashboardDefaults.time.end
     : evaluatedAt);
-  const databaseCounts = h('span', { className: 'horizon-tooltip-counts' }, 'Database counts load on hover');
-  /** @type {Promise<void> | undefined} */
-  let countsPromise;
-  const loadCounts = () => {
-    if (countsPromise) return;
-    databaseCounts.textContent = 'Loading database counts…';
-    countsPromise = loadDatabaseCounts()
-      .then((counts) => {
-        databaseCounts.textContent = formatDatabaseCounts(counts);
-      })
-      .catch(() => {
-        databaseCounts.textContent = 'Database counts unavailable';
-      });
-  };
-
-  return h(
-    'div',
-    { className: 'dashboard-horizon', 'data-dashboard-evaluated-at': evaluatedAt },
-    h(
-      'div',
-      { className: 'horizon-summary', onpointerenter: loadCounts, onfocusin: loadCounts },
-      h(
-        'button',
-        {
-          type: 'button',
-          className: 'horizon-toggle',
-          'aria-expanded': 'false',
-          'aria-label': `${label} ${duration}. Show time and mode filters`,
-          'aria-describedby': 'dashboard-horizon-tooltip'
-        },
-        octicon('clock'),
-        h('span', { className: 'sr-only action-label' }, `${label} ${duration}`)
-      ),
-      h(
-        'span',
-        { id: 'dashboard-horizon-tooltip', className: 'horizon-tooltip', role: 'tooltip' },
-        h('strong', null, duration),
-        h('span', null, label),
-        databaseCounts
-      )
-    ),
-    h(
-      'div',
-      { className: 'horizon-details', role: 'group', 'aria-label': 'Horizon details' },
-      h(
-        'span',
-        { className: 'horizon-details-description' },
-        horizon?.tooltip.description ?? 'Evidence coverage and data quality for this dashboard.'
-      ),
-      h(
-        'span',
-        { className: 'horizon-details-values' },
-        renderLabeledSpan('Start', h('time', { dateTime: start }, `${formatReportDate(start)} UTC`)),
-        renderLabeledSpan('End', h('time', { dateTime: end }, `${formatReportDate(end)} UTC`)),
-        renderLabeledSpan('Duration', duration)
-      )
-    )
-  );
+  return { available: true, evaluatedAt, duration, start, end };
 }
 
 /**
@@ -957,18 +636,15 @@ function renderPageSkeleton() {
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
+ * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
+ * @param {Array<Record<string, unknown>>} reusableViews
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderPage(page, sources, units, dashboardDefaults, queryContext) {
+function renderPage(page, sources, units, dashboardDefaults, cardTemplates, reusableViews, queryContext) {
   const title = getPageTitle(page);
-
-  if (page.kind === 'built-in') {
-    const payload = getBuiltInPagePayload(page);
-    return renderCustomPage(payload, title, sources, units, dashboardDefaults, true, queryContext);
-  }
-
-  return renderCustomPage(page, title, sources, units, dashboardDefaults, true, queryContext);
+  const payload = getBuiltInPagePayload(page, reusableViews);
+  return renderCustomPage(payload, title, sources, units, dashboardDefaults, cardTemplates, true, queryContext);
 }
 
 /**
@@ -977,17 +653,24 @@ function renderPage(page, sources, units, dashboardDefaults, queryContext) {
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
  * @param {Record<string, unknown>} dashboardDefaults
+ * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {boolean} [withFilterBar]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderCustomPage(page, title, sources, units, dashboardDefaults, withFilterBar = true, queryContext) {
+function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTemplates, withFilterBar = true, queryContext) {
   const effectiveDashboardDefaults = inventoryPage(page.id)
     ? { ...dashboardDefaults, time: undefined }
     : dashboardDefaults;
   const views = Array.isArray(page.views)
     ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults))
     : [];
+  const mobileTableViewIndex = views.findIndex((view) => (
+    isPlainObject(view)
+    && view.layout === 'full-view'
+    && view['lazy-list'] === true
+  ));
+  const supportsMobileViewMode = mobileTableViewIndex >= 0;
   const sections = Array.isArray(page.sections) ? page.sections : [];
   const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
     if (!Array.isArray(section.views) || section.views.length !== 1) return [];
@@ -1025,16 +708,26 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       )
     );
     const render = () => {
-      const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter, queryContext);
+      const rendered = renderCustomView(page.id, view, index, sources, units, cardTemplates, headingTag, routeParameter, queryContext);
       suppressSupplementalTableHeading(rendered, view, index);
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
         rendered.setAttribute('data-view-layout', layout);
       }
       rendered.setAttribute('data-disclosure', disclosure);
+      if (isPlainObject(view) && view['lazy-list'] === true) {
+        rendered.setAttribute('data-view-lazy-list', '');
+      }
+      if (supportsMobileViewMode) {
+        rendered.dataset.mobileViewMode = index === mobileTableViewIndex ? 'table' : 'chart';
+      }
       return rendered;
     };
-    const rendered = isRouteView || index === 0 || (isPlainObject(view) && view.mark === 'callout')
+    const rendered = isRouteView
+      || index === 0
+      || (isPlainObject(view) && (view.mark === 'callout' || (
+        typeof view.element === 'string' && elementLoadsSourcesAsync(view.element)
+      )))
       ? render()
       : renderLazyView({
         label: getViewTitle(view, index),
@@ -1046,6 +739,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
+    if (isPlainObject(view) && view['lazy-list'] === true) {
+      rendered.setAttribute('data-view-lazy-list', '');
+    }
     if (disclosure === 'essential') {
       return rendered;
     }
@@ -1105,7 +801,8 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       'data-page-title': title,
       'data-page-description': page.description ?? '',
       'data-route-parameter': routeParameter,
-      'data-route-navigation-page': routeNavigationPage
+      'data-route-navigation-page': routeNavigationPage,
+      'data-mobile-view-mode-page': supportsMobileViewMode ? '' : undefined
     },
     filterBar,
     ...(renderedViews.length > 0
@@ -1205,9 +902,10 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
  * @param {(pageId: string, options: PageSourceLoadOptions & { renderUpdate: (page: HTMLElement) => void }) => HTMLElement | Promise<HTMLElement> | null} [renderPageById]
  * @param {string} [defaultPageId]
  * @param {boolean} [reloadPopulatedPages]
+ * @param {Set<string>} [knownQueries]
  * @returns {() => void}
  */
-export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '', reloadPopulatedPages = false) {
+export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '', reloadPopulatedPages = false, knownQueries = new Set()) {
   const pages = [...root.querySelectorAll('.dashboard-page')]
     .filter((page) => page instanceof HTMLElement);
   /** @type {Map<string, { details: boolean[], scrollTop: number }>} */
@@ -1215,6 +913,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   let activePageId = '';
   let activationRevision = 0;
   let pageOwner = new AbortController();
+  const navigationOwner = new AbortController();
+  const disposeNavigation = () => {
+    activationRevision += 1;
+    navigationOwner.abort();
+    pageOwner.abort();
+  };
   /** @type {Map<string, { filters?: Record<string, string[]>, timeWindow?: { start?: string, end?: string } }>} */
   const pageQueryContext = new Map();
   const overviewPage = pages.find((page) => page.dataset.pageId === 'overview');
@@ -1229,19 +933,88 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageMode = root.querySelector('[data-page-mode]');
   const reportActions = root.querySelector('.report-actions');
   const pageScroller = root.querySelector('main.dashboard-prototype');
+  const mobileViewModeToggle = root.querySelector('.mobile-view-mode-toggle');
+  /** @type {'chart'|'table'|'card'} */
+  let mobileViewMode = 'chart';
+  try {
+    const storedMode = globalThis.window?.localStorage?.getItem(MOBILE_VIEW_MODE_STORAGE_KEY);
+    mobileViewMode = storedMode === 'table' || storedMode === 'card' ? storedMode : 'chart';
+  } catch {
+    // Storage can be unavailable in embedded or privacy-restricted contexts.
+  }
+  root.dataset.mobileViewMode = mobileViewMode;
+  /** @type {'chart'|'table'|'card'} */
+  let nextMobileViewMode = 'table';
+  /** @param {'chart'|'table'|'card'} mode @param {HTMLElement | undefined} page */
+  const setMobileViewMode = (mode, page) => {
+    const pendingTable = page?.querySelector('[data-mobile-view-mode="table"][data-lazy-view]');
+    if (pendingTable instanceof HTMLElement) {
+      if (mode === 'table' || mode === 'card') void hydrateLazyViewAfterPaint(pendingTable);
+      else cancelLazyViewHydration(pendingTable);
+    }
+    mobileViewMode = mode;
+    root.dataset.mobileViewMode = mode;
+    try {
+      globalThis.window?.localStorage?.setItem(MOBILE_VIEW_MODE_STORAGE_KEY, mode);
+    } catch {
+      // The display mode still works for the current page when storage is unavailable.
+    }
+    syncFullViewMode(page);
+  };
   /** @param {HTMLElement | undefined} page */
   const syncFullViewMode = (page) => {
-    const fullView = page?.querySelector('.custom-view[data-view-layout="full-view"]');
-    root.classList.toggle('dashboard-full-view', Boolean(fullView));
-    if (!fullView) root.classList.remove('dashboard-full-view-scrolled');
+    const views = page
+      ? [...page.querySelectorAll('.custom-view')].filter((view) => view instanceof HTMLElement)
+      : [];
+    const tableView = views.find((view) => (
+      view.dataset.viewLayout === 'full-view'
+      && (view.hasAttribute('data-view-lazy-list') || view.querySelector('[data-lazy-list]'))
+    ));
+    const supportsModeSelection = Boolean(tableView);
+    const hasChartMode = Boolean(tableView) && views.some((view) => view !== tableView);
+    if (supportsModeSelection && !hasChartMode && mobileViewMode === 'chart') {
+      mobileViewMode = 'table';
+      root.dataset.mobileViewMode = mobileViewMode;
+    }
+    page?.toggleAttribute('data-mobile-view-mode-page', supportsModeSelection);
+    for (const view of views) {
+      if (supportsModeSelection) {
+        view.dataset.mobileViewMode = view === tableView ? 'table' : 'chart';
+      } else {
+        delete view.dataset.mobileViewMode;
+      }
+    }
+    if (mobileViewModeToggle instanceof HTMLButtonElement) {
+      mobileViewModeToggle.hidden = !supportsModeSelection;
+      nextMobileViewMode = hasChartMode
+        ? mobileViewMode === 'chart' ? 'table' : mobileViewMode === 'table' ? 'card' : 'chart'
+        : mobileViewMode === 'card' ? 'table' : 'card';
+      const label = `Show ${nextMobileViewMode === 'card' ? 'card list' : nextMobileViewMode} view`;
+      mobileViewModeToggle.setAttribute('aria-label', label);
+      mobileViewModeToggle.setAttribute('aria-pressed', String(mobileViewMode !== 'chart'));
+      mobileViewModeToggle.setAttribute('title', label);
+      mobileViewModeToggle.replaceChildren(octicon(
+        nextMobileViewMode === 'table' ? 'table' : nextMobileViewMode === 'card' ? 'stack' : 'graph'
+      ));
+    }
+    syncFullViewModeForPage(root, page);
   };
+  if (mobileViewModeToggle instanceof HTMLButtonElement) {
+    mobileViewModeToggle.addEventListener('click', () => {
+      const page = pages.find((candidate) => candidate.dataset.pageId === activePageId);
+      setMobileViewMode(nextMobileViewMode, page);
+    }, { signal: navigationOwner.signal });
+    root.ownerDocument.defaultView?.matchMedia?.('(max-width: 700px)')?.addEventListener?.('change', () => {
+      syncFullViewMode(pages.find((candidate) => candidate.dataset.pageId === activePageId));
+    }, { signal: navigationOwner.signal });
+  }
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
     href: link instanceof HTMLAnchorElement ? link.getAttribute('href') ?? '' : '',
     hidden: link instanceof HTMLElement ? link.hidden : false
   }));
   if (pages.length === 0 || links.length === 0) {
-    return () => pageOwner.abort();
+    return disposeNavigation;
   }
 
   root.addEventListener('dashboard-route-allocation', (event) => {
@@ -1283,7 +1056,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (navigationPage && availableIds.has(navigationPage)) {
       updateNavigationLinks(links, navigationPage);
     }
-  });
+  }, { signal: navigationOwner.signal });
 
   const availableIds = new Set(pages.map((page) => page.dataset.pageId));
   const routeFromHash = () => {
@@ -1325,7 +1098,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    * @param {boolean} [deferPopulation]
    */
   const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
-    const revision = ++activationRevision;
+     if (navigationOwner.signal.aborted) return;
+     const revision = ++activationRevision;
     pageOwner.abort();
     pageOwner = new AbortController();
     let pagePopulated = false;
@@ -1337,6 +1111,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const placeDashboardHorizon = (page) => {
       const filterBar = page?.querySelector('.filter-bar');
       if (dashboardHorizon && filterBar && reportActions) {
+        if (activeFilterBar && activeFilterBar !== filterBar) {
+          // Reclaim component-owned details before discarding the stale filter bar.
+          const previousDetails = activeFilterBar.querySelector('.horizon-details');
+          if (previousDetails) dashboardHorizon.append(previousDetails);
+          activeFilterBar.remove();
+        }
         filterBar.prepend(dashboardHorizon);
         const horizonDetails = dashboardHorizon.querySelector('.horizon-details');
         const tuningControls = filterBar.querySelector('.filter-tuning-controls');
@@ -1364,9 +1144,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
     };
     let populationDeferred = false;
+    /** @type {HTMLElement | null} */
+    let retainedRouteTabs = null;
     if (activePageId && activePageId !== pageId) {
       const activePage = pages.find((candidate) => candidate.dataset.pageId === activePageId);
       if (activePage) {
+        retainedRouteTabs = cloneRouteTabsForPage(activePage, pageId, parameters);
         const horizonDetails = activeFilterBar?.querySelector('.horizon-details');
         if (dashboardHorizon && horizonDetails) dashboardHorizon.append(horizonDetails);
         if (dashboardHorizon && activeFilterBar?.contains(dashboardHorizon)) dashboardHorizon.remove();
@@ -1423,6 +1206,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         const rendered = renderPageById?.(pageId, {
           signal: pageOwner.signal,
           onUpdate: () => {},
+          syncPageChrome: () => {
+            const horizonDetails = dashboardHorizon?.querySelector('.horizon-details');
+            const tuningControls = activeFilterBar?.querySelector('.filter-tuning-controls');
+            if (horizonDetails && tuningControls) tuningControls.append(horizonDetails);
+            syncFullViewMode(currentPage);
+          },
           routeParameters,
           queryContext,
           renderUpdate: replacePage
@@ -1430,8 +1219,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         if (!rendered) return;
         if (rendered instanceof Promise) {
           if (pendingPage.hasAttribute('data-page-pending')) {
-            pendingPage.replaceChildren(renderPageSkeleton());
-            pendingPage.setAttribute('aria-busy', 'true');
+            showPageSkeleton(pendingPage, retainedRouteTabs);
           }
           void rendered.then(replacePage).catch(() => {
             if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
@@ -1444,8 +1232,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       };
       if (deferPopulation) {
         populationDeferred = true;
-        pendingPage.replaceChildren(renderPageSkeleton());
-        pendingPage.setAttribute('aria-busy', 'true');
+        showPageSkeleton(pendingPage, retainedRouteTabs);
         schedulePopulation(populate);
       } else {
         populate();
@@ -1486,7 +1273,8 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     const routeParameter = page?.dataset.routeParameter;
     const routeValue = routeParameter ? parameters.get(routeParameter)?.trim() ?? '' : '';
     if (page) page.dataset.routeValue = routeValue;
-    const title = routeValue || page?.dataset.pageTitle || '';
+    const queryTitle = resolveQueryDrillPageTitle(parameters, knownQueries);
+    const title = queryTitle || routeValue || page?.dataset.pageTitle || '';
     const description = page?.dataset.pageDescription ?? '';
     if (breadcrumbPage) breadcrumbPage.textContent = title;
     if (pageTitle) pageTitle.textContent = title;
@@ -1560,7 +1348,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     );
   }
   syncHistoryBack();
-  historyBack?.addEventListener('click', () => defaultView?.history.back());
+  historyBack?.addEventListener('click', () => defaultView?.history.back(), { signal: navigationOwner.signal });
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
@@ -1575,7 +1363,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     syncHistoryBack();
     updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true), 'forward');
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
-  });
+  }, { signal: navigationOwner.signal });
   root.addEventListener('dashboard-query-context-change', (event) => {
     if (!(event instanceof CustomEvent)) return;
     const detail = isPlainObject(event.detail) ? event.detail : {};
@@ -1589,86 +1377,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     else pageQueryContext.delete(pageId);
     const route = routeFromHash();
     activate(route?.pageId ?? pageId, route?.parameters ?? new URLSearchParams(), true);
-  });
+  }, { signal: navigationOwner.signal });
 
-  // Hiding the app chrome (sidebar/top nav) while a full-view table scrolls resizes the
-  // scroll container, which can shrink its scrollable range enough to clamp scrollTop back
-  // toward 0. That reflow re-fires the scroll handler and toggles the chrome back on, which
-  // then re-triggers the same reflow: a hide/show feedback loop ("menu jitter"). A minimum
-  // scrollable-range guard plus enter/exit hysteresis around scrollTop breaks that loop.
-  const FULL_VIEW_SCROLL_MIN_RANGE = 48;
-  const FULL_VIEW_SCROLL_ENTER = 24;
-  const FULL_VIEW_SCROLL_EXIT = 4;
-  let fullViewScrollFrame = 0;
-  /**
-   * Finds the scroll surface of a full-view table following the event target's view.
-   * @param {EventTarget | null} target
-   * @returns {HTMLElement | null}
-   */
-  const trailingFullViewScrollTarget = (target) => {
-    if (!(target instanceof Element)) return null;
-    const view = target.closest('.custom-view');
-    const fullView = view?.parentElement?.querySelector(':scope > .custom-view[data-view-layout="full-view"]');
-    if (!(view instanceof HTMLElement) || !(fullView instanceof HTMLElement) || view === fullView) return null;
-    if (!(view.compareDocumentPosition(fullView) & Node.DOCUMENT_POSITION_FOLLOWING)) return null;
-    const scroll = fullView.querySelector('.table-scroll');
-    return scroll instanceof HTMLElement ? scroll : null;
-  };
-  /** @param {HTMLElement} scroll @param {number} deltaY */
-  const scrollTrailingFullView = (scroll, deltaY) => {
-    const previousScrollTop = scroll.scrollTop;
-    scroll.scrollTop += deltaY;
-    return scroll.scrollTop !== previousScrollTop;
-  };
-  root.addEventListener('wheel', (event) => {
-    const scroll = trailingFullViewScrollTarget(event.target);
-    if (!scroll) return;
-    const deltaY = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scroll.clientHeight : 1);
-    if (scrollTrailingFullView(scroll, deltaY)) event.preventDefault();
-  }, { capture: true, passive: false });
-  /** @type {{ scroll: HTMLElement, clientY: number } | null} */
-  let trailingFullViewTouch = null;
-  root.addEventListener('touchstart', (event) => {
-    const scroll = trailingFullViewScrollTarget(event.target);
-    const touch = event.touches[0];
-    trailingFullViewTouch = scroll && touch ? { scroll, clientY: touch.clientY } : null;
-  }, { capture: true, passive: true });
-  root.addEventListener('touchmove', (event) => {
-    const touch = event.touches[0];
-    if (!trailingFullViewTouch || !touch) return;
-    const deltaY = trailingFullViewTouch.clientY - touch.clientY;
-    trailingFullViewTouch.clientY = touch.clientY;
-    if (scrollTrailingFullView(trailingFullViewTouch.scroll, deltaY)) event.preventDefault();
-  }, { capture: true, passive: false });
-  const endTrailingFullViewTouch = () => {
-    trailingFullViewTouch = null;
-  };
-  root.addEventListener('touchend', endTrailingFullViewTouch, true);
-  root.addEventListener('touchcancel', endTrailingFullViewTouch, true);
-  root.addEventListener('scroll', (event) => {
-    if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
-    const scroll = event.target.closest('.custom-view[data-view-layout="full-view"] .table-scroll');
-    if (scroll === event.target) {
-      const syncScrolledState = () => {
-        fullViewScrollFrame = 0;
-        if (!scroll.isConnected || !root.classList.contains('dashboard-full-view')) return;
-        const scrollableRange = scroll.scrollHeight - scroll.clientHeight;
-        if (scrollableRange < FULL_VIEW_SCROLL_MIN_RANGE) {
-          root.classList.remove('dashboard-full-view-scrolled');
-          return;
-        }
-        const wasScrolled = root.classList.contains('dashboard-full-view-scrolled');
-        const threshold = wasScrolled ? FULL_VIEW_SCROLL_EXIT : FULL_VIEW_SCROLL_ENTER;
-        root.classList.toggle('dashboard-full-view-scrolled', scroll.scrollTop > threshold);
-      };
-      if (defaultView?.requestAnimationFrame) {
-        if (fullViewScrollFrame) defaultView.cancelAnimationFrame(fullViewScrollFrame);
-        fullViewScrollFrame = defaultView.requestAnimationFrame(syncScrolledState);
-      } else {
-        queueMicrotask(syncScrolledState);
-      }
-    }
-  }, true);
+  const disposeFullViewScrollForwarding = enableFullViewScrollForwarding(root, defaultView);
   /** @param {PopStateEvent} event */
   const onPopState = (event) => {
     if (!root.isConnected) {
@@ -1709,10 +1420,22 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     ), navigationDirection);
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   };
-  browserNavigation?.addEventListener('currententrychange', syncHistoryBack);
-  defaultView?.addEventListener('popstate', onPopState);
-  defaultView?.addEventListener('hashchange', onHashChange);
-  return () => pageOwner.abort();
+  browserNavigation?.addEventListener('currententrychange', syncHistoryBack, { signal: navigationOwner.signal });
+  defaultView?.addEventListener('popstate', onPopState, { signal: navigationOwner.signal });
+  defaultView?.addEventListener('hashchange', onHashChange, { signal: navigationOwner.signal });
+  return () => {
+    disposeFullViewScrollForwarding();
+    disposeNavigation();
+  };
+}
+
+/**
+ * @param {URLSearchParams} parameters
+ * @param {Set<string>} knownQueries
+ */
+export function resolveQueryDrillPageTitle(parameters, knownQueries) {
+  const queryName = parameters.get('query')?.trim() ?? '';
+  return knownQueries.has(queryName) ? parameters.get('title')?.trim() ?? '' : '';
 }
 
 /**
@@ -1897,12 +1620,13 @@ function summarizeDataState(pageSources) {
  * @param {number} index
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { name: string, symbol: string, significant: number }>} units
+ * @param {Record<string, { id: string, icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>} cardTemplates
  * @param {'h3'|'h4'} [headingTag]
  * @param {string} [routeParameter]
  * @param {PageSourceLoadOptions['queryContext']} [queryContext]
  * @returns {HTMLElement}
  */
-function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3', routeParameter, queryContext) {
+function renderCustomView(pageId, view, index, sources, units, cardTemplates, headingTag = 'h3', routeParameter, queryContext) {
   const fallbackTitle = `View ${index + 1}`;
   if (!isPlainObject(view)) {
     return renderCustomViewState(pageId, fallbackTitle, null, 'unavailable', ['Invalid custom view definition.'], headingTag);
@@ -1972,10 +1696,11 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     contextDetails,
     headingTag,
     units,
+    cardTemplates,
     prepareTableRows,
     buildChartPoints,
     prepareChartPoints,
-    toText,
+    toText: toViewText,
     continuation: sourcePage ? {
       ...sourcePage,
       load: async (token) => {
@@ -2091,14 +1816,16 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
   if (sourceNames.length === 1) {
     const sourceName = sourceNames[0];
     const source = selectedSources[sourceName];
-    if (!source) {
+    if (!source && !elementHandlesUnavailableSource(elementName)) {
       return renderCustomViewState(pageId, title, sourceName, 'unavailable', contextDetails, headingTag);
     }
-    const state = source.metadata?.availability ?? inferAvailability(source.rows);
-    if (state !== 'available' && !(state === 'empty' && elementHandlesEmptyRows(elementName))) {
+    const state = source?.metadata?.availability ?? (source ? inferAvailability(source.rows) : 'unavailable');
+    if (state !== 'available'
+        && !(state === 'empty' && elementHandlesEmptyRows(elementName))
+        && !(state === 'unavailable' && elementHandlesUnavailableSource(elementName))) {
       return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag);
     }
-    if (source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
+    if (source && source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
       return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag);
     }
   }
@@ -2116,6 +1843,7 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
     routeParameter,
     queryContext,
     viewId: typeof view.id === 'string' ? view.id : undefined,
+    viewIndex,
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag
   });
@@ -2182,243 +1910,6 @@ function renderCustomViewState(pageId, title, sourceName, availability, contextD
 }
 
 /**
- * @param {string} pageId
- * @param {string} title
- * @param {Record<string, unknown>} view
- * @param {string} sourceName
- * @param {Array<Record<string, unknown>>} rows
- * @param {SourceMetadata} metadata
- * @param {string[]} contextDetails
- * @param {'h3'|'h4'} [headingTag]
- * @returns {HTMLElement}
- */
-/**
- * @param {Array<Record<string, unknown>>} rows
- * @param {TableField[]} columns
- * @param {unknown} dataConfig
- * @returns {Array<Record<string, unknown>>}
- */
-function prepareTableRows(rows, columns, dataConfig) {
-  const aggregateColumns = columns.filter((column) => typeof column.aggregate === 'string');
-  let prepared = aggregateColumns.length > 0 ? aggregateTableRows(rows, columns) : [...rows];
-  const orderBy = /** @type {TableField[]} */ (isPlainObject(dataConfig) && Array.isArray(dataConfig['order-by'])
-    ? dataConfig['order-by'].filter((item) => isPlainObject(item) && typeof item.field === 'string')
-    : []);
-  if (orderBy.length > 0) {
-    prepared.sort((left, right) => compareOrderedRows(left, right, orderBy, columns));
-  }
-  const limit = isPlainObject(dataConfig) && Number.isInteger(dataConfig.limit) && dataConfig.limit > 0
-    ? dataConfig.limit
-    : null;
-  return limit === null ? prepared : prepared.slice(0, limit);
-}
-
-/**
- * @param {Array<Record<string, unknown>>} rows
- * @param {TableField[]} columns
- * @returns {Array<Record<string, unknown>>}
- */
-function aggregateTableRows(rows, columns) {
-  const dimensions = columns.filter((column) => typeof column.aggregate !== 'string');
-  /** @type {Map<string, Array<Record<string, unknown>>>} */
-  const groups = new Map();
-  for (const row of rows) {
-    const key = JSON.stringify(dimensions.map((column) => row[column.field]));
-    const group = groups.get(key) ?? [];
-    group.push(row);
-    groups.set(key, group);
-  }
-  return [...groups.values()].map((group) => {
-    const output = Object.fromEntries(dimensions.map((column) => [column.field, group[0]?.[column.field]]));
-    for (const column of columns.filter((candidate) => typeof candidate.aggregate === 'string')) {
-      const outputField = typeof column.as === 'string' ? column.as : column.field;
-      output[outputField] = aggregateTableValue(group, column.field, column.aggregate);
-    }
-    return output;
-  });
-}
-
-/**
- * @param {Array<Record<string, unknown>>} rows
- * @param {string} field
- * @param {unknown} aggregate
- * @returns {number | string}
- */
-function aggregateTableValue(rows, field, aggregate) {
-  const present = rows.map((row) => row[field]).filter((value) => value != null && value !== '');
-  if (aggregate === 'count') return present.length;
-  if (aggregate === 'distinct-count') return new Set(present.map(toText)).size;
-  const values = present.map(toNumber);
-  if (aggregate === 'sum') return values.reduce((total, value) => total + value, 0);
-  if (aggregate === 'mean') return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : 'Unavailable';
-  if (aggregate === 'min') return values.length > 0 ? Math.min(...values) : 'Unavailable';
-  if (aggregate === 'max') return values.length > 0 ? Math.max(...values) : 'Unavailable';
-  return present[0] == null ? 'Unavailable' : toText(present[0]);
-}
-
-/**
- * @param {Record<string, unknown>} left
- * @param {Record<string, unknown>} right
- * @param {TableField[]} orderBy
- * @param {TableField[]} columns
- * @returns {number}
- */
-function compareOrderedRows(left, right, orderBy, columns) {
-  for (const ordering of orderBy) {
-    const comparison = compareTableValues(left[ordering.field], right[ordering.field]);
-    if (comparison !== 0) return ordering.direction === 'desc' ? -comparison : comparison;
-  }
-  for (const column of columns.filter((candidate) => typeof candidate.aggregate !== 'string')) {
-    const comparison = compareTableValues(left[column.field], right[column.field]);
-    if (comparison !== 0) return comparison;
-  }
-  return 0;
-}
-
-/**
- * @param {unknown} left
- * @param {unknown} right
- * @returns {number}
- */
-function compareTableValues(left, right) {
-  if (typeof left === 'number' && typeof right === 'number') return left - right;
-  return toText(left).localeCompare(toText(right));
-}
-
-/**
- * @param {string} pageId
- * @param {string} title
- * @param {Array<Record<string, unknown>>} rows
- * @param {Record<string, any> | null} x
- * @param {Record<string, any> | null} y
- * @param {Record<string, any> | null} color
- * @param {string | null} hrefField
- * @returns {Array<{ key: string, x: string, y: number, category: string, color: string | null, highlighted: boolean | null, link: { href: string, label: string } | null, source: Record<string, unknown> }>}
- */
-function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
-  const aggregate = typeof y?.aggregate === 'string' ? y.aggregate : null;
-  if (!aggregate || aggregate === 'none') {
-    return rows.map((row, rowIndex) => ({
-      key: `${pageId}-${title}-${rowIndex}`,
-      x: x ? formatString(row[x.field], x.format) : 'unknown',
-      y: y ? toNumber(row[y.field]) : 0,
-      category: y ? formatString(row[y.field], y.format) : 'unknown',
-      color: color ? formatString(row[color.field], color.format) : null,
-      highlighted: typeof row['in-window'] === 'boolean' ? row['in-window'] : null,
-      link: hrefField ? findLink(row, /** @type {LinkFieldName} */ (hrefField)) : null,
-      source: row
-    }));
-  }
-
-  /** @type {Map<string, { x: string, color: string | null, values: unknown[], links: Array<{ href: string, label: string }>, source: Record<string, unknown> }>} */
-  const groups = new Map();
-  for (const row of rows) {
-    const rawXValue = x ? toText(row[x.field]) : 'unknown';
-    const rawColorValue = color ? toText(row[color.field]) : null;
-    const xValue = x ? formatString(row[x.field], x.format) : 'unknown';
-    const colorValue = color ? formatString(row[color.field], color.format) : null;
-    const key = JSON.stringify([rawXValue, rawColorValue]);
-    const group = groups.get(key) ?? { x: xValue, color: colorValue, values: [], links: [], source: row };
-    group.values.push(y ? row[y.field] : null);
-    const link = hrefField ? findLink(row, /** @type {LinkFieldName} */ (hrefField)) : null;
-    if (link) group.links.push(link);
-    groups.set(key, group);
-  }
-  return [...groups.values()].map((group, index) => {
-    const numericValues = group.values.map(toNumber);
-    let value = 0;
-    if (aggregate === 'count') {
-      value = group.values.filter((candidate) => candidate != null && candidate !== '').length;
-    } else if (aggregate === 'distinct-count') {
-      value = new Set(group.values.map(toText)).size;
-    } else if (aggregate === 'sum') {
-      value = numericValues.reduce((total, candidate) => total + candidate, 0);
-    } else if (aggregate === 'mean') {
-      value = numericValues.length > 0
-        ? numericValues.reduce((total, candidate) => total + candidate, 0) / numericValues.length
-        : 0;
-    } else if (aggregate === 'min') {
-      value = numericValues.length > 0 ? Math.min(...numericValues) : 0;
-    } else if (aggregate === 'max') {
-      value = numericValues.length > 0 ? Math.max(...numericValues) : 0;
-    }
-    const distinctLinks = new Map(group.links.map((link) => [link.href, link]));
-    return {
-      key: `${pageId}-${title}-${index}`,
-      x: group.x,
-      y: value,
-      category: toText(group.values[0]),
-      color: group.color,
-      highlighted: null,
-      link: distinctLinks.size === 1 ? distinctLinks.values().next().value ?? null : null,
-      source: group.source
-    };
-  });
-}
-
-/**
- * Applies declarative chart ordering and limiting after aggregation.
- * @param {Array<{ key: string, x: string, y: number, category?: string, color: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }>} points
- * @param {Record<string, any> | null} x
- * @param {Record<string, any> | null} y
- * @param {Record<string, any> | null} color
- * @param {unknown} dataConfig
- * @returns {Array<{ key: string, x: string, y: number, category?: string, color: string | null, highlighted?: boolean | null, link: { href: string, label: string } | null, source?: Record<string, unknown> }>}
- */
-function prepareChartPoints(points, x, y, color, dataConfig) {
-  const prepared = [...points];
-  const orderBy = isPlainObject(dataConfig) && Array.isArray(dataConfig['order-by'])
-    ? dataConfig['order-by'].filter((item) => isPlainObject(item) && typeof item.field === 'string')
-    : [];
-  prepared.sort((left, right) => {
-    for (const item of orderBy) {
-      const comparison = compareTableValues(
-        chartPointOutputValue(left, item.field, x, y, color),
-        chartPointOutputValue(right, item.field, x, y, color)
-      );
-      if (comparison !== 0) return item.direction === 'desc' ? -comparison : comparison;
-    }
-    const xComparison = compareTableValues(
-      chartPointOutputValue(left, x?.field, x, y, color),
-      chartPointOutputValue(right, x?.field, x, y, color)
-    );
-    return xComparison !== 0
-      ? xComparison
-      : compareTableValues(
-        chartPointOutputValue(left, color?.field, x, y, color),
-        chartPointOutputValue(right, color?.field, x, y, color)
-      );
-  });
-  const limit = isPlainObject(dataConfig) && Number.isInteger(dataConfig.limit) && dataConfig.limit > 0
-    ? dataConfig.limit
-    : null;
-  return limit === null ? prepared : prepared.slice(0, limit);
-}
-
-/**
- * @param {{ x: string, y: number, color: string | null, source?: Record<string, unknown> }} point
- * @param {string | undefined} field
- * @param {Record<string, any> | null} x
- * @param {Record<string, any> | null} y
- * @param {Record<string, any> | null} color
- * @returns {unknown}
- */
-function chartPointOutputValue(point, field, x, y, color) {
-  if (typeof field !== 'string') return null;
-  if (field === x?.field || field === x?.as) return point.source?.[x.field] ?? point.x;
-  const yOutput = typeof y?.as === 'string'
-    ? y.as
-    : typeof y?.aggregate === 'string' ? `${y.aggregate}-${y.field}` : y?.field;
-  if (field === y?.field || field === yOutput) return point.y;
-  if (field === color?.field || field === color?.as) return point.source?.[color.field] ?? point.color;
-  return null;
-}
-
-/**
- * @param {Array<{ x: string, link: { href: string, label: string } | null }>} points
- * @returns {Map<string, { href: string, label: string }>}
- */
-/**
  * @param {unknown} view
  * @param {Record<string, unknown>} dashboardDefaults
  * @returns {unknown}
@@ -2478,35 +1969,6 @@ function resolveDashboardDefaults(defaults, horizonRange, evaluatedAt) {
     ...configured,
     time: { start, end: evaluatedAt }
   };
-}
-
-/**
- * @param {unknown} value
- * @returns {string}
- */
-function toText(value) {
-  return stringOrFallback(value, 'unknown');
-}
-
-
-/**
- * @param {HTMLElement} root
- */
-export function enableDashboardKeyboardNavigation(root) {
-  root.addEventListener('keydown', (event) => {
-    if (!(event instanceof KeyboardEvent) || !(event.target instanceof Element)) return;
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-    const section = event.target.closest('.dashboard-page .page-section');
-    const page = section?.closest('.dashboard-page');
-    if (!(section instanceof HTMLElement) || !(page instanceof HTMLElement)) return;
-    const sections = [...page.querySelectorAll('.page-section')]
-      .filter((candidate) => candidate instanceof HTMLElement);
-    const delta = event.key === 'ArrowDown' ? 1 : -1;
-    const nextSection = sections[sections.indexOf(section) + delta];
-    if (!nextSection) return;
-    event.preventDefault();
-    nextSection.focus();
-  });
 }
 
 /**

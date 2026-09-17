@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNotificationService } from '../../src/notification-service.js';
-import { publishWorkerNotification } from '../../src/data-worker.js';
+import { publishWorkerNotification } from '../../src/ingestion-progress.js';
 
 describe('dashboard notification service', () => {
   beforeEach(() => {
@@ -46,9 +46,12 @@ describe('dashboard notification service', () => {
     const service = createNotificationService(document);
     const handle = service.publish({
       message: 'Storing data...',
+      icon: 'download',
+      detailsSubtitle: 'A local copy is being downloaded in this browser.',
       duration: 0,
       details: Array.from({ length: 105 }, (_, index) => `Step ${index + 1}`)
     });
+
     const toggle = /** @type {HTMLButtonElement} */ (
       document.querySelector('.dashboard-notification-toggle')
     );
@@ -57,28 +60,76 @@ describe('dashboard notification service', () => {
     );
 
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.querySelector('.octicon-download')).not.toBeNull();
     expect(details.hidden).toBe(true);
     expect(details.children).toHaveLength(100);
     expect(details.firstElementChild?.textContent).toBe('Step 6');
+    const subtitle = /** @type {HTMLParagraphElement} */ (
+      document.querySelector('.dashboard-notification-details-subtitle')
+    );
+    expect(subtitle.hidden).toBe(true);
 
     toggle.click();
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(toggle.getAttribute('aria-label')).toBe('Storing data... Hide ingestion progress history');
     expect(details.hidden).toBe(false);
+    expect(subtitle.hidden).toBe(false);
+    expect(subtitle.textContent).toContain('local copy');
 
     handle.update({
       message: 'Refreshing queries...',
+      detailsSubtitle: 'Cached shards are reused.',
       duration: 0,
       details: ['Parsing complete.', 'Refreshing queries.']
     });
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(/** @type {HTMLElement | null} */ (
+      toggle.querySelector('.dashboard-notification-icon')
+    )?.hidden).toBe(true);
     expect(details.hidden).toBe(false);
     expect(details.textContent).toContain('Refreshing queries.');
+    expect(subtitle.textContent).toBe('Cached shards are reused.');
     expect(details.tagName).toBe('UL');
 
     toggle.click();
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(details.hidden).toBe(true);
+  });
+
+  it('shows a details action at the bottom and dismisses a cancelled view when collapsed', () => {
+    const service = createNotificationService(document);
+    const cancel = vi.fn();
+    const handle = service.publish({
+      message: 'Ingesting data.',
+      duration: 0,
+      details: ['Downloading data.'],
+      action: { label: 'Cancel', run: cancel, placement: 'details' }
+    });
+    const toggle = /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-toggle')
+    );
+    const action = /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-action')
+    );
+
+    expect(action.hidden).toBe(true);
+    toggle.click();
+    expect(action.hidden).toBe(false);
+    expect(action.parentElement?.classList.contains('dashboard-notification-content')).toBe(true);
+    action.click();
+    expect(cancel).toHaveBeenCalledOnce();
+
+    handle.update({
+      message: 'Data ingestion cancelled.',
+      tone: 'warning',
+      duration: 0,
+      details: ['Downloading data.'],
+      dismissOnCollapse: true
+    });
+    expect(document.querySelector('.dashboard-notification')).not.toBeNull();
+    toggle.click();
+    vi.advanceTimersByTime(180);
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
   });
 
   it('updates progress entries in place while following or preserving scroll', () => {

@@ -128,7 +128,7 @@ test("control policy requires a gh-aw compiler version for control planes", () =
   assert.match(result.stderr, /gh-aw-version is required for a control plane/);
 });
 
-test("checked-in control policy selects six repositories with live Dependabot and local SelfCare authority", () => {
+test("checked-in control policy selects six repositories with review Dependabot and local SelfCare authority", () => {
   const policy = parsePolicy(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const repositories = [
     "github/gh-aw",
@@ -150,7 +150,7 @@ test("checked-in control policy selects six repositories with live Dependabot an
       controlRepository: "githubnext/gh-aw-cao",
       targetRepository,
     });
-    assert.equal(effective.safe_output_mode, "live");
+    assert.equal(effective.safe_output_mode, "review");
     assert.equal(effective.max_repositories, 6);
   }
 

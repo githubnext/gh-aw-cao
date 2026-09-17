@@ -61,6 +61,8 @@ resources:
     destination: .github/aw/dashboard/site/src/main.js
   - source: site/src/dashboard-app.js
     destination: .github/aw/dashboard/site/src/dashboard-app.js
+  - source: site/src/dashboard-chunks.js
+    destination: .github/aw/dashboard/site/src/dashboard-chunks.js
   - source: site/src/dashboard-data-updates.js
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/adapters/dashboard-sources.js
@@ -89,6 +91,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/queries/declarative.js
   - source: site/src/data/queries/index.js
     destination: .github/aw/dashboard/site/src/data/queries/index.js
+  - source: site/src/data/queries/memoization.js
+    destination: .github/aw/dashboard/site/src/data/queries/memoization.js
   - source: site/src/data/queries/view-payload-compiler.js
     destination: .github/aw/dashboard/site/src/data/queries/view-payload-compiler.js
   - source: site/src/data/queries/view-sources.js
@@ -119,8 +123,6 @@ resources:
     destination: .github/aw/dashboard/site/src/cli-action-template.js
   - source: site/src/data-health.js
     destination: .github/aw/dashboard/site/src/data-health.js
-  - source: site/src/database-counts.js
-    destination: .github/aw/dashboard/site/src/database-counts.js
   - source: site/src/debug-events.js
     destination: .github/aw/dashboard/site/src/debug-events.js
   - source: site/src/debug.js
@@ -129,6 +131,8 @@ resources:
     destination: .github/aw/dashboard/site/src/diagnostics.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
+  - source: site/src/dom-reconciler.js
+    destination: .github/aw/dashboard/site/src/dom-reconciler.js
   - source: site/src/dom-provenance.js
     destination: .github/aw/dashboard/site/src/dom-provenance.js
   - source: site/src/debounce.js
@@ -137,6 +141,8 @@ resources:
     destination: .github/aw/dashboard/site/src/elapsed-step-tracker.js
   - source: site/src/horizon.js
     destination: .github/aw/dashboard/site/src/horizon.js
+  - source: site/src/ingestion-progress.js
+    destination: .github/aw/dashboard/site/src/ingestion-progress.js
   - source: site/src/loading-progress.js
     destination: .github/aw/dashboard/site/src/loading-progress.js
   - source: site/src/notification-service.js
@@ -151,6 +157,8 @@ resources:
     destination: .github/aw/dashboard/site/src/presenter.js
   - source: site/src/reactive.js
     destination: .github/aw/dashboard/site/src/reactive.js
+  - source: site/src/retry.js
+    destination: .github/aw/dashboard/site/src/retry.js
   - source: site/src/scatter-clustering.js
     destination: .github/aw/dashboard/site/src/scatter-clustering.js
   - source: site/src/smells.svg
@@ -173,6 +181,8 @@ resources:
     destination: .github/aw/dashboard/site/src/view-formatters.js
   - source: site/src/components/anomaly-readiness.js
     destination: .github/aw/dashboard/site/src/components/anomaly-readiness.js
+  - source: site/src/components/animated-number.js
+    destination: .github/aw/dashboard/site/src/components/animated-number.js
   - source: site/src/components/attention-rules.js
     destination: .github/aw/dashboard/site/src/components/attention-rules.js
   - source: site/src/components/attention-rules.json
@@ -183,10 +193,28 @@ resources:
     destination: .github/aw/dashboard/site/src/components/badge.js
   - source: site/src/components/cell-display.js
     destination: .github/aw/dashboard/site/src/components/cell-display.js
+  - source: site/src/components/card-status.js
+    destination: .github/aw/dashboard/site/src/components/card-status.js
+  - source: site/src/components/card-status-icons.json
+    destination: .github/aw/dashboard/site/src/components/card-status-icons.json
   - source: site/src/components/configuration-view.js
     destination: .github/aw/dashboard/site/src/components/configuration-view.js
   - source: site/src/components/configuration-actions.js
     destination: .github/aw/dashboard/site/src/components/configuration-actions.js
+  - source: site/src/components/local-database-view.js
+    destination: .github/aw/dashboard/site/src/components/local-database-view.js
+  - source: site/src/components/dashboard-horizon.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-horizon.js
+  - source: site/src/components/dashboard-footer.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-footer.js
+  - source: site/src/components/dashboard-header.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-header.js
+  - source: site/src/components/dashboard-navigation.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-navigation.js
+  - source: site/src/components/dashboard-frame.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-frame.js
+  - source: site/src/components/dashboard-interactions.js
+    destination: .github/aw/dashboard/site/src/components/dashboard-interactions.js
   - source: site/src/components/cli-actions.js
     destination: .github/aw/dashboard/site/src/components/cli-actions.js
   - source: site/src/components/chart-elements.js
@@ -195,14 +223,30 @@ resources:
     destination: .github/aw/dashboard/site/src/components/count-formatters.js
   - source: site/src/components/data-state.js
     destination: .github/aw/dashboard/site/src/components/data-state.js
-  - source: site/src/components/factory-overview.js
-    destination: .github/aw/dashboard/site/src/components/factory-overview.js
+  - source: site/src/components/factory-elements.js
+    destination: .github/aw/dashboard/site/src/components/factory-elements.js
+  - source: site/src/components/factory-floor.js
+    destination: .github/aw/dashboard/site/src/components/factory-floor.js
+  - source: site/src/components/factory-header.js
+    destination: .github/aw/dashboard/site/src/components/factory-header.js
+  - source: site/src/components/factory-rhythm.js
+    destination: .github/aw/dashboard/site/src/components/factory-rhythm.js
+  - source: site/src/components/factory-station.js
+    destination: .github/aw/dashboard/site/src/components/factory-station.js
+  - source: site/src/components/graph-widget.js
+    destination: .github/aw/dashboard/site/src/components/graph-widget.js
+  - source: site/src/components/panel.js
+    destination: .github/aw/dashboard/site/src/components/panel.js
+  - source: site/src/components/reactive-grid.js
+    destination: .github/aw/dashboard/site/src/components/reactive-grid.js
   - source: site/src/components/data-view.js
     destination: .github/aw/dashboard/site/src/components/data-view.js
   - source: site/src/components/dispatch-type-classification.json
     destination: .github/aw/dashboard/site/src/components/dispatch-type-classification.json
   - source: site/src/components/filter-bar.js
     destination: .github/aw/dashboard/site/src/components/filter-bar.js
+  - source: site/src/components/full-view-scroll.js
+    destination: .github/aw/dashboard/site/src/components/full-view-scroll.js
   - source: site/src/components/histogram.js
     destination: .github/aw/dashboard/site/src/components/histogram.js
   - source: site/src/components/link-content.js
@@ -225,6 +269,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/package-detail.js
   - source: site/src/components/package-readme.js
     destination: .github/aw/dashboard/site/src/components/package-readme.js
+  - source: site/src/components/package-resource-navigation.json
+    destination: .github/aw/dashboard/site/src/components/package-resource-navigation.json
   - source: site/src/components/package-route-composition.js
     destination: .github/aw/dashboard/site/src/components/package-route-composition.js
   - source: site/src/components/package-route-shell.js
@@ -275,6 +321,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/ui-primitives.js
   - source: site/src/components/view-chrome.js
     destination: .github/aw/dashboard/site/src/components/view-chrome.js
+  - source: site/src/components/view-data.js
+    destination: .github/aw/dashboard/site/src/components/view-data.js
   - source: site/src/components/view-element-composition.js
     destination: .github/aw/dashboard/site/src/components/view-element-composition.js
   - source: site/src/components/work-item-card.js

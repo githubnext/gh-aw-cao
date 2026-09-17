@@ -5,13 +5,14 @@
 import { rowsFor } from './source-rows.js';
 import { createRoutePageShell } from './route-page-shell.js';
 import { normalizePackageRoute, packageModeForRoute, packageNameForRoute } from './package-route-composition.js';
+import { PACKAGE_ROUTE_TABS } from './route-body-specification.js';
 
 /**
  * @typedef {{
  *   rootClassName: string,
  *   selectMessage: string,
  *   description: string,
- *   currentTab: 'insights'|'workflows'|'dispatches'|'reports',
+ *   currentTab: 'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports',
  *   bodyRenderer: PackageRouteBodyRenderer | undefined
  * }} PackageRouteShellConfig
  */
@@ -70,10 +71,11 @@ export function renderPackageRouteShell(context, config) {
  */
 function packageTabs(packageId) {
   const packageQuery = `?package=${encodeURIComponent(packageId)}`;
-  return [
-    { id: 'insights', label: 'Insights', icon: 'graph', href: `#page-package-insights${packageQuery}` },
-    { id: 'workflows', label: 'Workflows', icon: 'workflow', href: `#page-package-detail${packageQuery}` },
-    { id: 'dispatches', label: 'Dispatches', icon: 'play', href: `#page-package-dispatches${packageQuery}` },
-    { id: 'reports', label: 'Reports', icon: 'issue', href: `#page-package-reports${packageQuery}` }
-  ];
+  return PACKAGE_ROUTE_TABS.map((tab) => ({
+    id: tab.id,
+    label: tab.label,
+    icon: tab.icon,
+    href: `#page-${tab.page}${packageQuery}`,
+    trailingIcon: 'chevron-right'
+  }));
 }

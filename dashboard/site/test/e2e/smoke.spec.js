@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
+const authoritativeDashboard = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
 
 test.beforeEach(async ({ page, context }) => {
   await context.route('http://dashboard.test/**', async (route) => {
@@ -34,6 +35,22 @@ test.beforeEach(async ({ page, context }) => {
 
 function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
+}
+
+/**
+ * @param {string} pageId
+ * @param {Record<string, unknown>} [overrides]
+ */
+function builtInPage(pageId, overrides = {}) {
+  const template = authoritativeDashboard.dashboard.pages.find((/** @type {{ kind?: string, page?: string }} */ page) => (
+    page.kind === 'built-in' && page.page === pageId
+  ));
+  assert(template, `Missing built-in page template for ${pageId}`);
+  return {
+    ...template,
+    ...overrides,
+    definition: template.definition,
+  };
 }
 
 test('back navigation follows every dashboard browser history entry', async ({ page }) => {
@@ -102,13 +119,48 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
 });
 
+test('issue card labels stay compact with centered text and balanced padding', async ({ page }) => {
+  await page.setContent(`
+    <style id="dashboard-styles"></style>
+    <ul class="issue-list-labels" style="width: 240px; height: 80px">
+      <li>unknown</li>
+    </ul>
+    <script type="module">
+      import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
+      document.querySelector('#dashboard-styles').textContent = getPrimerStyles();
+    </script>
+  `);
+
+  const label = page.locator('.issue-list-labels li');
+  await expect(label).toHaveCSS('height', '20px');
+  await expect(label).toHaveCSS('padding-left', '9px');
+  await expect(label).toHaveCSS('padding-right', '9px');
+  await expect(label).toHaveCSS('text-align', 'center');
+
+  const centers = await label.evaluate((element) => {
+    const labelBounds = element.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const textBounds = range.getBoundingClientRect();
+    return {
+      labelX: labelBounds.x + labelBounds.width / 2,
+      labelY: labelBounds.y + labelBounds.height / 2,
+      textX: textBounds.x + textBounds.width / 2,
+      textY: textBounds.y + textBounds.height / 2,
+    };
+  });
+  expect(Math.abs(centers.textX - centers.labelX)).toBeLessThanOrEqual(1);
+  expect(Math.abs(centers.textY - centers.labelY)).toBeLessThanOrEqual(1);
+});
+
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {
   await page.setContent(`
     <main style="height: 2000px"></main>
     <script type="module">
       import { publishNotification } from 'http://dashboard.test/src/notification-service.js';
       const ingestionNotification = publishNotification({
-        message: 'Storing data...',
+        message: '750 KB/1.5 MB · 3s remaining',
+        icon: 'download',
         duration: 0,
         details: Array.from({ length: 40 }, (_, index) => 'Activity event ' + (index + 1))
       });
@@ -118,11 +170,12 @@ test('ingestion notifications reveal scrollable progress history on click', asyn
     </script>
   `);
 
-  const toggle = page.getByRole('button', { name: /Storing data.*Show ingestion progress history/ });
+  const toggle = page.getByRole('button', { name: /750 KB\/1.5 MB.*Show ingestion progress history/ });
   const details = page.locator('.dashboard-notification-details');
+  await expect(toggle.locator('.octicon-download')).toBeVisible();
   await expect(details).toBeHidden();
   await toggle.click();
-  const collapse = page.getByRole('button', { name: /Storing data.*Hide ingestion progress history/ });
+  const collapse = page.getByRole('button', { name: /750 KB\/1.5 MB.*Hide ingestion progress history/ });
   await expect(collapse).toHaveAttribute('aria-expanded', 'true');
   await expect(details).toBeVisible();
   await expect(details.getByRole('listitem')).toHaveCount(40);
@@ -249,6 +302,7 @@ test('production Settings view loads without an unsupported-view warning', async
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   await expect(settingsPage.locator('.configuration-view')).toBeVisible();
   await expect(settingsPage.getByRole('heading', { name: 'Appearance' })).toBeVisible();
+  await expect(settingsPage.getByRole('button', { name: 'Copy updated JSON' })).toBeVisible();
   await expect(settingsPage).not.toContainText('Unsupported view mark.');
   await expect(settingsPage).not.toContainText('Unsupported UI element.');
 });
@@ -353,7 +407,7 @@ test('mobile shell shows large overview actions and moves other views into the h
   const primaryNav = page.locator('.primary-nav');
   const overviewAction = page.locator('[data-nav-page-id="overview"]');
   const dashboardMain = page.locator('main.dashboard-prototype');
-  const factoryOverview = page.locator('[data-page-id="overview"] .agent-factory');
+  const factoryOverview = page.locator('[data-page-id="overview"] > .custom-view-grid');
   await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toHaveCSS('display', 'flex');
   await expect(overviewAction).toHaveCSS('min-height', '52px');
@@ -374,6 +428,29 @@ test('mobile shell shows large overview actions and moves other views into the h
   expectLayoutWithin(factoryBox.x, 0, layoutPixelTolerance);
   expectLayoutWithin(factoryBox.y, mainBox.y, layoutPixelTolerance);
   expectLayoutWithin(factoryBox.width, viewportWidth, layoutPixelTolerance);
+
+  const headerCopy = factoryOverview.locator('.factory-intro-copy');
+  const rhythm = factoryOverview.locator('.factory-rhythm');
+  const stations = factoryOverview.locator('.factory-station');
+  const [headerCopyBox, rhythmBox, firstStationBox, secondStationBox, thirdStationBox, fourthStationBox] = await Promise.all([
+    headerCopy.boundingBox(),
+    rhythm.boundingBox(),
+    stations.nth(0).boundingBox(),
+    stations.nth(1).boundingBox(),
+    stations.nth(2).boundingBox(),
+    stations.nth(3).boundingBox()
+  ]);
+  if (!headerCopyBox || !rhythmBox || !firstStationBox || !secondStationBox || !thirdStationBox || !fourthStationBox) {
+    throw new Error('Expected responsive Overview component boxes to be available');
+  }
+  expect(rhythmBox.y).toBeGreaterThanOrEqual(headerCopyBox.y + headerCopyBox.height);
+  expect(await factoryOverview.locator('.factory-stations').evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length
+  )).toBe(2);
+  expect(thirdStationBox.y).toBeGreaterThan(firstStationBox.y + firstStationBox.height);
+  expect(firstStationBox.x).toBeLessThan(secondStationBox.x);
+  expect(thirdStationBox.x).toBeLessThan(fourthStationBox.x);
+  await expect(factoryOverview.locator('.factory-rhythm-day')).toHaveCount(7);
 
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="cost"]').click();
@@ -513,7 +590,7 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
-test('Transactions is a responsive full-view interactive lazy table opened from Settings', async ({ page }) => {
+test('Transactions includes local database controls and a responsive transaction table', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -521,20 +598,15 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const rows = Array.from({ length: 100 }, (_, index) => ({
-        transaction: \`ingest-jsonl:current:\${index}\`,
         kind: index % 2 === 0 ? 'ingest-jsonl' : 'ingest-dashboard-sources',
         'created-at': new Date(Date.UTC(2026, 8, 12, 12, index)).toISOString(),
-        'payload-scope': 'gh-aw-jsonl',
-        records: 100 + index,
-        'committed-records': 90 + index,
-        'raw-payload-records': 110 + index,
+        'payload-scope': \`https://dashboard.example/gh-aw-logs-shards/logs-\${index}.jsonl\`,
         'raw-runs': 20 + index,
         'agentic-run-records': 10 + index,
         'agentic-runs': 8 + index,
         'duplicate-raw-run-observations': index,
         'duplicate-agentic-run-observations': index,
-        'unenriched-runs': index,
-        'payload-hash': \`payload-hash-\${index}\`
+        'unenriched-runs': index
       }));
       const metadata = {
         'source-id': 'transactions-fixture',
@@ -545,7 +617,19 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
         freshness: 'fresh',
         availability: 'available'
       };
-      const sources = { 'transactions-table': { source: 'transactions-table', rows, metadata } };
+      const sources = {
+        'transactions-table': { source: 'transactions-table', rows, metadata },
+        'configuration-policy': {
+          source: 'configuration-policy',
+          rows: [{ document: { version: 1 }, raw: '{"version":1}', diagnostics: [] }],
+          metadata
+        },
+        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
+        'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
+        'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
+        'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
+        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
+      };
       window.location.hash = '#page-overview';
       document.querySelector('#root').append(renderDashboard({ document: ${JSON.stringify(documentModel)}, sources }));
     </script>
@@ -554,22 +638,57 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
   const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
   await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
   await page.getByRole('link', { name: 'Settings' }).click();
-  const transactionsLink = page.getByRole('link', { name: 'View retained transactions table' });
-  await expect(transactionsLink).toBeVisible();
-  await transactionsLink.click();
+  await page.getByRole('link', { name: 'View retained transactions table' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="transactions"]');
   const view = transactionsPage.locator('[data-view-layout="full-view"]');
   const scroll = view.locator('.table-scroll');
+  await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toBeVisible();
+  await expect(transactionsPage.locator('.configuration-database-counts')).toContainText('13Events');
+  await expect(transactionsPage.locator('.reset-dashboard-trigger')).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
+  await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
+  await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with session data');
+  expect(await page.getByRole('button', { name: 'Show table view' }).evaluate(
+    (toggle) => toggle.parentElement?.classList.contains('title-area')
+  )).toBe(true);
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
   await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
+  const headings = await view.locator('thead tr').first().getByRole('columnheader').allTextContents();
+  expect(headings.at(-1)?.trim()).toBe('Created');
+  expect(headings).not.toEqual(expect.arrayContaining([
+    'Committed records',
+    'Records',
+    'Raw payload records',
+    'Transaction',
+    'Payload hash',
+    'Payload ETag'
+  ]));
+  const scope = view.getByRole('link', { name: 'https://dashboard.example/.../logs-0.jsonl' }).first();
+  await expect(scope).toHaveAttribute('href', 'https://dashboard.example/gh-aw-logs-shards/logs-0.jsonl');
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
 
+  await scroll.evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect(page.locator('.sidebar-header > .mobile-view-mode-toggle')).toBeVisible();
+  await expect(view).toBeHidden();
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(view).toBeVisible();
+  await expect(root).toHaveClass(/dashboard-full-view/);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
@@ -580,11 +699,12 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
     element.scrollTop = element.scrollHeight;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   await expect(page.locator('.top-nav')).toBeHidden();
 });
 
-test('Runs renders a last-week swimlane above its responsive table and scrolls it away with the page chrome', async ({ page }) => {
+test('Runs renders a last-week swimlane above its responsive table and scrolls like Cost', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -612,6 +732,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'run-conclusion': 'failure',
               organization: 'githubnext',
               repository: 'gh-aw-cao',
+              'repository-coordinate': 'githubnext/gh-aw-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -619,6 +740,8 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T12:00:00Z',
+              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao', label: 'Open githubnext/gh-aw-cao' },
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
               'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' }
             },
             {
@@ -627,6 +750,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'run-conclusion': 'success',
               organization: 'githubnext',
               repository: 'gh-aw-cao',
+              'repository-coordinate': 'githubnext/gh-aw-cao',
               workflow: '.github/workflows/aw-doctor.md',
               'rollout-mode': 'review',
               engine: 'copilot',
@@ -634,12 +758,14 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
               'requested-model': 'gpt-5',
               'resolved-model': 'gpt-5',
               'started-at': '2026-09-10T11:00:00Z',
+              'repository-link': { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao', label: 'Open githubnext/gh-aw-cao' },
+              'workflow-link': { relation: 'workflow', href: 'https://github.com/githubnext/gh-aw-cao/blob/main/.github/workflows/aw-doctor.md', label: 'Open .github/workflows/aw-doctor.md' },
               'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1', label: 'Run 1' }
             }
           ]
         }
       };
-      for (let run = 3; run <= 50; run += 1) {
+      for (let run = 3; run <= 100; run += 1) {
         const template = sources['runs-table'].rows[run % 2];
         sources['runs-table'].rows.push({
           ...template,
@@ -663,16 +789,17 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   const scroll = view.locator('.table-scroll');
   const swimlane = runsPage.locator('[data-view-id="runs-last-week"]');
   const columnHeaders = view.locator('thead > tr:first-child > th');
+  const facetControl = columnHeaders.locator('.filter-select-control').first();
   const expectAlignedColumnHeaders = async () => {
     const headerTops = await columnHeaders.evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().top));
     expect(Math.max(...headerTops) - Math.min(...headerTops)).toBeLessThanOrEqual(1);
   };
   await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
   await expect(view).toHaveCount(1);
   await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
-  await expect(swimlane.locator('.swimlane-summary')).toContainText('50 runs');
+  await expect(swimlane.locator('.swimlane-summary')).toContainText('100 runs');
   const swimlaneHeadingBox = await swimlane.getByRole('heading', { name: 'Runs in the last week' }).boundingBox();
   const swimlaneSummaryBox = await swimlane.locator('.swimlane-summary').boundingBox();
   const swimlaneChartBox = await swimlane.locator('[data-chart-widget="swimlane"] svg').boundingBox();
@@ -683,10 +810,17 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   const swimlaneChartMaxHeight = await swimlane.locator('[data-chart-widget="swimlane"] svg')
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
   expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
-  expect(Math.abs(swimlaneHeadingBox.x - swimlaneSummaryBox.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(swimlaneHeadingBox.x - swimlaneLabelBox.x)).toBeLessThanOrEqual(2);
+  expect(swimlaneSummaryBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
+  expect(swimlaneLabelBox.x).toBeGreaterThan(swimlaneHeadingBox.x);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(table).toBeVisible();
+  await expect(table.locator('tbody > tr')).toHaveCount(25);
+  const more = table.locator('[data-table-more]');
+  for (let pageIndex = 0; pageIndex < 3; pageIndex += 1) {
+    await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
+  }
+  await expect(table.locator('tbody > tr')).toHaveCount(50);
   await expect(view.locator('[data-table-filter]')).toBeVisible();
   const summaryRow = view.locator('.table-summary-row');
   const summaryToggle = summaryRow.getByRole('button', { name: 'Collapse column summaries' });
@@ -707,18 +841,29 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
     element.dispatchEvent(new Event('scroll'));
   });
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(swimlane).toBeHidden();
+  const facetControlBox = await facetControl.boundingBox();
+  const scrolledSummaryBox = await summaryRow.boundingBox();
+  assert(facetControlBox);
+  assert(scrolledSummaryBox);
+  expect(scrolledSummaryBox.y - (facetControlBox.y + facetControlBox.height)).toBeGreaterThanOrEqual(4);
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
+  await expect(swimlane).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(swimlane).toBeVisible();
+  await expect(table).toBeHidden();
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(swimlane).toBeHidden();
   await expect(table).toBeVisible();
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expectAlignedColumnHeaders();
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
-test('scrolling over the Models & Agents pie chart collapses chrome and reveals the full-view table', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('a page combining a chart with a full-view table fills and scrolls in table and card layouts', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -792,39 +937,48 @@ test('scrolling over the Models & Agents pie chart collapses chrome and reveals 
 
   const dashboardRoot = page.locator('.dashboard-root');
   const chart = page.locator('[data-view-id="engines-models-distribution"]');
-  const scroll = page.locator('[data-view-id="engines-models-usage"] .table-scroll');
+  const view = page.locator('[data-view-id="engines-models-usage"]');
+  const scroll = view.locator('.table-scroll');
+  const cards = view.locator('[data-mobile-card-list]');
+  const cardScroll = cards.locator('.mobile-table-card-list-items');
   await expect(chart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(page.locator('.org-sidebar')).toBeVisible();
-  await expect.poll(async () => scroll.evaluate((element) => element.scrollHeight > element.clientHeight + 48)).toBe(true);
+  await expect(scroll).toBeHidden();
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
 
-  await chart.hover();
-  await page.mouse.wheel(0, 100);
-
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(chart).toBeHidden();
-  await expect(page.locator('.org-sidebar')).toBeHidden();
-  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
+  await expect(scroll).toBeVisible();
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => ({
+    fillsView: Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1,
+    scrollable: element.scrollHeight > element.clientHeight
+  }))).toEqual({ fillsView: true, scrollable: true });
+  await scroll.evaluate((element) => { element.scrollTop = 100; });
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
-  await scroll.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event('scroll'));
-  });
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(chart).toBeHidden();
+  await expect(scroll).toBeHidden();
+  await expect(cards).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card').first()).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card').first()).toContainText('copilot / model-1');
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  await expect(page.getByRole('heading', { name: 'Engines and models', level: 3 })).toBeHidden();
+  await expect.poll(async () => cards.evaluate((element) =>
+    Math.abs(innerHeight - element.getBoundingClientRect().bottom) <= 1
+  )).toBe(true);
+  await expect.poll(async () => cardScroll.evaluate((element) =>
+    element.scrollHeight > element.clientHeight
+  )).toBe(true);
+  await cardScroll.evaluate((element) => { element.scrollTop = 100; });
+  await expect.poll(async () => cardScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(chart).toBeVisible();
-  await chart.evaluate((element) => {
-    const touch = (/** @type {number} */ clientY) => new Touch({ identifier: 1, target: element, clientX: 100, clientY });
-    element.dispatchEvent(new TouchEvent('touchstart', {
-      bubbles: true,
-      cancelable: true,
-      touches: [touch(300)]
-    }));
-    element.dispatchEvent(new TouchEvent('touchmove', {
-      bubbles: true,
-      cancelable: true,
-      touches: [touch(200)]
-    }));
-  });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  expect(await scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(24);
+  await expect(scroll).toBeHidden();
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view/);
 });
 
 test('Runs renders the worker-projected table for an active time window', async ({ page }) => {
@@ -901,10 +1055,11 @@ test('Runs renders the worker-projected table for an active time window', async 
   const horizonFilter = page.getByLabel('Dashboard filters');
   const select = horizonFilter.locator('[aria-label="Time window"]');
 
+  await expect(select).toHaveValue('custom');
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('2');
   await expect(rows.locator('a').first()).toBeVisible();
-  await expect(select).toHaveValue('custom');
 });
 
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
@@ -949,6 +1104,7 @@ test('full-view unavailable-data callout keeps responsive page margins', async (
 test('Safe Outputs renders every retained outcome in one progressive full-view table', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
+  await page.evaluate(() => Reflect.deleteProperty(window, 'IntersectionObserver'));
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -1542,7 +1698,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Models & Agents', 'Firewall', 'MCPs', 'Events']);
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Models & Agents', 'Firewall', 'MCPs']);
+  await expect(experimental.locator('[data-nav-page-id="events"]')).toHaveCount(1);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
@@ -1551,12 +1708,15 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-configuration$/);
   await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Appearance', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'View retained transactions table' }).click();
+  await expect(page).toHaveURL(/#page-transactions$/);
   await page.getByRole('button', { name: 'Reset local data' }).click();
   const resetDialog = page.getByRole('dialog', { name: 'Reset dashboard confirmation' });
   await expect(resetDialog).toBeVisible();
   await expect(resetDialog).toContainText('This action cannot be undone.');
   await resetDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(resetDialog).not.toBeVisible();
+  await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.dashboard-root')).not.toHaveAttribute('data-theme');
   await page.getByRole('button', { name: 'Light' }).click();
@@ -1622,7 +1782,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
-  await expect(overviewPage.locator('.agent-factory')).toBeVisible();
+  await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
   await expect(overviewPage.locator('.factory-running-active > span')).toHaveText('Work in motion');
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
@@ -1631,7 +1791,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     '',
     '80 failed',
     '0 failed',
-    'Coming soon'
+    ''
   ]);
   await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
   await expect(overviewPage.locator('.factory-status')).toHaveCount(0);
@@ -1654,6 +1814,10 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await overviewPage.getByRole('link', { name: '80 failed', exact: true }).click();
   await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
   await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
+  await cleanNavigation.filter({ hasText: 'Overview' }).click();
+  await overviewPage.locator('.factory-station').nth(3).locator('strong a').click();
+  await expect(page).toHaveURL(/#page-operational-value$/);
+  await expect(page.getByRole('heading', { name: 'Operational value', exact: true, level: 1 })).toBeVisible();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
   const failedRunsPage = page.locator('[data-page-id="overview-failed-runs"]');
   await expect(failedRunsPage).toBeVisible();
@@ -1716,14 +1880,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
-  await expect(overviewPage.locator('.agent-factory')).toBeVisible();
+  await expect(overviewPage.locator(':scope > .custom-view-grid')).toBeVisible();
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
-  await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
+  await expect(overviewPage.locator('.custom-view')).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 
@@ -2044,24 +2208,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
           id: 'built-in-overview-render',
           title: 'Built In Overview Render',
           pages: [
-            {
-              id: 'overview',
-              kind: 'built-in',
-              page: 'overview',
-              title: 'Overview',
-              definition: {
-                'data-state': {
-                  availability: true
-                },
-                views: [
-                  { id: 'workflows-source', data: { source: 'workflows' } },
-                  { id: 'runs-source', data: { source: 'runs' } },
-                  { id: 'usage-source', data: { source: 'usage' } },
-                  { id: 'findings-source', data: { source: 'findings' } },
-                  { id: 'operational-values-source', data: { source: 'operational-values' } }
-                ]
-              }
-            },
+            ${JSON.stringify(builtInPage('overview', { id: 'overview', title: 'Overview' }))},
             {
               id: 'runtime',
               kind: 'custom',
@@ -2437,6 +2584,9 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(siteCallout).toBeVisible();
   await expect(warningCallout).toBeVisible();
   await expect(summary).toBeVisible();
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(warningCallout).toBeHidden();
+  await expect(summary).toBeHidden();
   await expect(pageTitle).toBeVisible();
   await expect(tableFilter).toBeVisible();
   await expect(lazyList).toHaveCount(1);
@@ -2448,6 +2598,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
 
   const scroll = view.locator('.table-scroll');
+  await expect(scroll).toHaveCSS('overscroll-behavior-x', 'none');
   const more = view.locator('[data-table-more]');
   const sidebarBox = await page.locator('.org-sidebar').boundingBox();
   const initialScrollBox = await scroll.boundingBox();
@@ -2491,9 +2642,6 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-    await expect(siteCallout).toBeVisible();
-    await expect(warningCallout).toBeVisible();
-    await expect(summary).toBeVisible();
     await expect(pageTitle).toBeVisible();
     await expect(tableFilter).toBeVisible();
     await expect(summaryCell).toHaveCSS('opacity', '1');
@@ -2505,8 +2653,17 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     }
   }
 
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Show chart view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
+  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.org-sidebar')).toBeVisible();
+  await expect(view).toBeHidden();
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(view).toBeVisible();
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  const mobileViewportHeight = await page.evaluate(() => innerHeight);
+  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(mobileViewportHeight / 2);
   await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
@@ -2606,7 +2763,7 @@ test('full-view scrolling with a small overscroll range does not jitter the app 
   }
 });
 
-test('full-view mobile header collapses smoothly instead of jumping when scrolled', async ({ page }) => {
+test('full-view mobile chrome stays stable while a repositories table scrolls', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 390, height: 844 });
 
@@ -2675,34 +2832,18 @@ test('full-view mobile header collapses smoothly instead of jumping when scrolle
   const sidebar = page.locator('.org-sidebar');
   await expect(view).toHaveCount(1);
   await expect(sidebar).toBeVisible();
-  const restingMaxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
-  expect(restingMaxHeight).toBeGreaterThan(0);
+  const restingBox = await sidebar.boundingBox();
+  assert(restingBox);
 
-  await scroll.evaluate((element) => {
-    element.scrollTop = 100;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
-  // The mobile header must stay a laid-out, transitionable element (never display:none)
-  // so its collapse animates smoothly instead of instantly jumping the table beneath it,
-  // which is what produced the reported scroll jitter on iPhone.
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).display)).not.toBe('none');
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).transitionProperty)).toContain('max-height');
-  // Sample the collapse repeatedly while it is in flight to confirm it actually interpolates
-  // frame-by-frame rather than jumping straight to the end state.
-  await expect.poll(async () => {
-    const maxHeight = await sidebar.evaluate((element) => parseFloat(getComputedStyle(element).maxHeight));
-    return maxHeight > 0 && maxHeight < restingMaxHeight;
-  }, { timeout: 180, intervals: [10, 15, 20, 25] }).toBe(true);
-  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).toBe('0px');
-
-  await scroll.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
-  await expect(sidebar).toBeVisible();
-  await expect.poll(async () => sidebar.evaluate((element) => getComputedStyle(element).maxHeight)).not.toBe('0px');
+  for (const scrollTop of [100, 30, 120, 0]) {
+    await scroll.evaluate((element, top) => {
+      element.scrollTop = top;
+      element.dispatchEvent(new Event('scroll'));
+    }, scrollTop);
+    await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(sidebar).toBeVisible();
+    expect(await sidebar.boundingBox()).toEqual(restingBox);
+  }
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {
@@ -2732,7 +2873,7 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
               chart: 'pie',
               encoding: {
                 x: { field: 'repository', type: 'nominal', title: 'Repository' },
-                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'Total AIC' }
+                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'Blocked requests' }
               }
             }]
           }],
@@ -2743,8 +2884,8 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
         usage: {
           source: 'usage',
           rows: [
-            { repository: 'a-very-long-repository-name-that-must-wrap-within-the-legend', aic: 5 },
-            { repository: 'service', aic: 3 }
+            { repository: 'a-very-long-repository-name-that-must-wrap-within-the-legend', aic: 4_280_186 },
+            { repository: 'service', aic: 2_568_112 }
           ],
           metadata: {
             'source-id': 'pie-layout-fixture',
@@ -2801,17 +2942,39 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   expect(segmentGeometry.lineCaps).toEqual(['round', 'round']);
   expect(segmentGeometry.transforms).toEqual(['none', 'none']);
   expect(segmentGeometry.vectorEffects).toEqual(['none', 'none']);
+  const centerTextGeometry = await chart.locator('svg').evaluate((svg) => {
+    const total = /** @type {SVGGraphicsElement} */ (svg.querySelector('.pie-chart-total-value'));
+    const label = /** @type {SVGGraphicsElement} */ (svg.querySelector('.pie-chart-total-label'));
+    return [total.getBBox(), label.getBBox()].map(({ x, width }) => ({ x, width }));
+  });
+  for (const { x, width } of centerTextGeometry) {
+    expect(x).toBeGreaterThanOrEqual(9);
+    expect(x + width).toBeLessThanOrEqual(33);
+  }
 
   const firstMark = chart.locator('.pie-chart-mark').first();
   expect(await firstMark.evaluate((mark) => {
     mark.focus();
     return mark === mark.parentElement?.lastElementChild;
   })).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const tableToggle = layout.getByRole('button', { name: 'Hide chart table' });
+  await expect(legend).toBeVisible();
+  await expect(tableToggle).toBeVisible();
+  await tableToggle.click();
+  await expect(legend).toBeHidden();
+  await layout.getByRole('button', { name: 'Show chart table' }).click();
+  await expect(legend).toBeVisible();
 });
 
-test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode filters, AIC utilization, and run trends in browser', async ({ page }) => {
+test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory, and package activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
+  const operationalValuePage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value'
+  );
+  assert(operationalValuePage, 'Missing operational value page');
 
   await page.setContent(`
     <div id="root"></div>
@@ -2849,48 +3012,12 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
           title: 'Central Agentic Ops',
           queries: ${JSON.stringify(queryDefinitions)},
           pages: [
-            {
+            ${JSON.stringify(builtInPage('packages', {
               id: 'packages',
-              kind: 'built-in',
-              page: 'packages',
               title: 'Packages',
               description: 'Activity from centrally managed packages.',
-              definition: {
-                'data-state': { availability: true },
-                views: [
-                  { id: 'package-workflows', data: { source: 'workflows' } },
-                  { id: 'package-runs', data: { source: 'runs' } },
-                  { id: 'package-usage', data: { source: 'usage' } },
-                  {
-                    id: 'packages-utilization',
-                    title: 'Package AIC utilization',
-                    data: { sources: ['workflows', 'usage'] },
-                    mark: 'element',
-                    element: 'package-utilization'
-                  },
-                  {
-                    id: 'packages-run-trend',
-                    title: 'All runs over time',
-                    data: { sources: ['workflows', 'runs', 'outcomes'] },
-                    mark: 'element',
-                    element: 'package-run-trend'
-                  },
-                  {
-                    id: 'packages-summary',
-                    title: 'All output by package',
-                    data: { sources: ['workflows', 'usage', 'findings', 'outcomes', 'runs'] },
-                    mark: 'element',
-                    element: 'package-summary-table'
-                  }
-                ]
-              }
-            },
-            {
-              id: 'operational-value',
-              kind: 'custom',
-              title: 'Value & outcomes',
-              views: []
-            },
+            }))},
+            ${JSON.stringify(operationalValuePage)},
             {
               id: 'package-insights',
               kind: 'custom',
@@ -2909,6 +3036,22 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
             },
             {
               id: 'package-detail',
+              kind: 'custom',
+              title: 'Package',
+              route: { 'hash-query-parameter': 'package' },
+              views: [
+                {
+                  id: 'package-workflow-navigation',
+                  title: 'Package workflows',
+                  data: { sources: ['workflows'] },
+                  mark: 'element',
+                  element: 'package-route',
+                  config: { body: 'overview' }
+                }
+              ]
+            },
+            {
+              id: 'package-workflows',
               kind: 'custom',
               title: 'Package',
               route: { 'hash-query-parameter': 'package' },
@@ -2942,18 +3085,30 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
               ]
             },
             {
-              id: 'package-dispatches',
+              id: 'package-runs',
               kind: 'custom',
               title: 'Package',
               route: { 'hash-query-parameter': 'package' },
               views: [
                 {
-                  id: 'package-dispatch-navigation',
-                  title: 'Package dispatches',
+                  id: 'package-run-navigation',
+                  title: 'Package workflow runs',
                   data: { sources: ['workflows'] },
                   mark: 'element',
                   element: 'package-route',
-                  config: { body: 'dispatches' }
+                  config: { body: 'runs' }
+                },
+                {
+                  id: 'package-run-status',
+                  title: 'Workflow run status',
+                  data: { source: 'package-runs', 'route-field': 'package' },
+                  mark: 'chart',
+                  chart: 'pie',
+                  'empty-message': 'No workflow runs were observed for this package in the current run window.',
+                  encoding: {
+                    x: { field: 'status', type: 'nominal', title: 'Status' },
+                    y: { field: 'started-at', type: 'quantitative', aggregate: 'count', title: 'Runs' }
+                  }
                 },
                 {
                   id: 'package-failure-reason-distribution',
@@ -2966,6 +3121,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
                   },
                   mark: 'chart',
                   chart: 'pie',
+                  'empty-message': 'No failed workflow dispatch runs were observed for this package in the current run window.',
                   encoding: {
                     x: { field: 'status-detail', type: 'nominal', title: 'Failure reason' },
                     y: { field: 'status-detail', type: 'quantitative', aggregate: 'count', title: 'Failed dispatches' }
@@ -2996,9 +3152,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
                   }
                 },
                 {
-                  id: 'package-dispatch-table',
-                  title: 'All dispatches',
-                  data: { source: 'dispatches', 'route-field': 'package' },
+                  id: 'package-run-table',
+                  title: 'All workflow runs',
+                  data: { source: 'package-runs', 'route-field': 'package' },
                   mark: 'table',
                   controls: 'interactive',
                   encoding: {
@@ -3055,8 +3211,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
         packages: {
           source: 'packages',
           rows: [
-            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', 'package-link': { 'dashboard-href': '#page-package-insights?package=ambient-context', 'dashboard-label': 'View Ambient Context package dashboard' } },
-            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', 'package-link': { 'dashboard-href': '#page-package-insights?package=aw-doctor', 'dashboard-label': 'View AW Doctor package dashboard' } }
+            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', 'package-link': { 'dashboard-href': '#page-package-detail?package=ambient-context', 'dashboard-label': 'View Ambient Context package dashboard' } },
+            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', 'package-link': { 'dashboard-href': '#page-package-detail?package=aw-doctor', 'dashboard-label': 'View AW Doctor package dashboard' } }
           ],
           metadata
         },
@@ -3108,7 +3264,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
         },
         'operational-values': {
           source: 'operational-values',
-          rows: [],
+          rows: [
+            { workflow: '.github/workflows/ambient-context-worker.md', run: '4', 'operational-value': 0.75 },
+            { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-value': 0.25 }
+          ],
           metadata
         }
       };
@@ -3129,6 +3288,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   `);
 
   await expect(page.getByRole('heading', { name: 'Packages', level: 1 })).toBeVisible();
+  const valueChart = page.locator('[data-view-id="packages-value-created"]');
+  await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
+  await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
+  await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
   await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
   await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
@@ -3143,26 +3307,62 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
     'Runs',
     'Dispatches',
     'AIC',
+    'Ops Value',
     'Registration'
   ]);
   const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
+  await expect(awDoctorSummary.locator('[data-field="value-created"]')).toHaveText('0.25');
   await expect(awDoctorSummary.getByRole('button', { name: 'Update package' })).toHaveCount(0);
-  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-insights?package=aw-doctor');
+  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  const awDoctorCard = page.locator('[data-page-id="packages"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
+  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
+  await awDoctorCard.click({ position: { x: 6, y: 6 } });
+  await expect(page).toHaveURL(/#page-package-detail\?package=aw-doctor$/);
+  await page.evaluate(() => {
+    window.location.hash = '#page-operational-value';
+  });
+  const operationalValue = page.locator('[data-page-id="operational-value"]');
+  await expect(page.getByRole('heading', { name: 'Operational value', level: 1 })).toBeVisible();
+  await expect(operationalValue.locator('[data-view-id="operational-value-by-package"] [data-chart-widget="pie"]')).toBeAttached();
+  await expect(operationalValue.locator('.chart-legend-pie')).toContainText('Ambient Context');
+  await expect(operationalValue.locator('.chart-legend-pie')).toContainText('AW Doctor');
+  await expect(operationalValue.locator('.custom-table tbody tr')).toHaveCount(2);
+  await expect(operationalValue.locator('.custom-table thead tr').first().locator('th')).toHaveText([
+    'Package',
+    'Operational value'
+  ]);
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });
   await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
   await expect(page.locator('[data-nav-page-id="packages"]')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('navigation', { name: 'Ambient Context views' })).toContainText('InsightsWorkflowsDispatchesReports');
+  const packageNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
+  await expect(packageNavigation).toContainText('OverviewWorkflowsRuns');
+  await expect(packageNavigation).toHaveCSS('display', 'flex');
+  await expect(packageNavigation).toHaveCSS('border-bottom-style', 'solid');
+  const currentPackageLink = packageNavigation.getByRole('link', { name: 'Overview' });
+  await expect(currentPackageLink).toHaveAttribute('aria-current', 'page');
+  expect(await currentPackageLink.evaluate((link) => {
+    const token = document.createElement('span');
+    token.style.color = 'var(--accent)';
+    link.append(token);
+    const colors = [getComputedStyle(link, '::after').backgroundColor, getComputedStyle(token).color];
+    token.remove();
+    return colors[0] === colors[1];
+  })).toBe(true);
+  await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
+  await packageNavigation.getByRole('link', { name: 'Workflows' }).click();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
-  const packageWorkflowRows = page.locator('[data-page-id="package-detail"] .custom-table tbody tr');
+  await expect(packageNavigation.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
+  const packageWorkflowRows = page.locator('[data-page-id="package-workflows"] .custom-table tbody tr');
   await expect(packageWorkflowRows).toHaveCount(2);
-  await expect(page.locator('[data-page-id="package-detail"] .custom-table thead tr').first().locator('th')).toHaveText([
+  await expect(page.locator('[data-page-id="package-workflows"] .custom-table thead tr').first().locator('th')).toHaveText([
     'Role',
     'Workflow',
     'Definition',
@@ -3175,6 +3375,31 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(packageWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
   await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
   await expect(packageWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
+  await packageNavigation.getByRole('link', { name: 'Runs' }).click();
+  const packageRunsPage = page.locator('[data-page-id="package-runs"]');
+  await expect(packageRunsPage.locator('.custom-view-grid > .custom-view').first()).toHaveAttribute('data-view-id', 'package-run-navigation');
+  await expect(packageNavigation.getByRole('link', { name: 'Runs' })).toHaveAttribute('aria-current', 'page');
+  await expect(packageRunsPage.locator('[data-view-id="package-run-status"] [data-chart-widget="pie"]')).toBeVisible();
+  await expect(packageRunsPage.locator('[data-view-id="package-failure-reason-distribution"] [data-chart-widget="pie"]')).toBeVisible();
+  await packageRunsPage.getByText('All workflow runs', { exact: true }).click();
+  await expect(packageRunsPage.locator('[data-view-id="package-run-table"] tbody tr')).toHaveCount(5);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(packageNavigation).toHaveCSS('display', 'grid');
+  await expect(packageNavigation).toHaveCSS('gap', '0px');
+  await expect(packageNavigation).toHaveCSS('overflow', 'hidden');
+  const mobilePackageLinks = packageNavigation.locator('a');
+  await expect(mobilePackageLinks).toHaveCount(3);
+  await expect(mobilePackageLinks.first().locator('.tab-trailing-icon')).toBeVisible();
+  expect(await mobilePackageLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
+  await mobilePackageLinks.first().focus();
+  await expect(mobilePackageLinks.first()).toHaveCSS('outline-offset', '-3px');
+  const mobileLinkBoxes = await mobilePackageLinks.evaluateAll((links) => links.map((link) => {
+    const box = link.getBoundingClientRect();
+    return { height: box.height, top: box.top };
+  }));
+  expect(mobileLinkBoxes.every((box) => box.height >= 44)).toBe(true);
+  expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
 });
 
@@ -3229,23 +3454,37 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
           }
         }
       };
-
-      const loadPageSources = (pageId, options) => prepareDashboardViewSources(
-        dashboardDocument,
-        pageId,
-        sources,
-        { queryContext: options.queryContext, routeParameters: options.routeParameters }
-      );
-      const viewSources = await loadPageSources('cost', {});
+      let publishSources = () => {};
+      let initialLoad = true;
+      const loadPageSources = (pageId, options) => {
+        const prepared = prepareDashboardViewSources(
+          dashboardDocument,
+          pageId,
+          sources,
+          { queryContext: options.queryContext, routeParameters: options.routeParameters }
+        );
+        if (!initialLoad) return Promise.resolve(prepared);
+        initialLoad = false;
+        return new Promise((resolve) => {
+          publishSources = () => resolve(prepared);
+        });
+      };
+      window.publishHorizonSources = () => publishSources();
       document.querySelector('#root').append(renderDashboard({
         document: dashboardDocument,
-        sources: viewSources,
+        sources: {},
         loadPageSources
       }));
     </script>
   `);
 
   const filterBar = page.getByLabel('Dashboard filters');
+  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
+  await expect(page.locator('.horizon-toggle')).toHaveAccessibleName(/1 week/);
+  await page.evaluate(() => /** @type {{ publishHorizonSources: () => void }} */ (
+    /** @type {unknown} */ (window)
+  ).publishHorizonSources());
+  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
   await expect(filterBar).toBeVisible();
   await expect(filterBar.locator(':scope > .dashboard-horizon')).toHaveCount(1);
   await expect(page.locator('.report-actions > .dashboard-horizon')).toHaveCount(0);
@@ -3270,7 +3509,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
   await filterBar.locator('.horizon-toggle').click();
 
-  await filterBar.getByRole('checkbox', { name: 'review' }).uncheck();
+  await filterBar.getByRole('checkbox', { name: 'review' }).uncheck({ force: true });
   await expect(filterBar.locator('.count-badge')).toHaveText('2');
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('1');
   await expect.poll(() => page.evaluate(() => JSON.parse(
@@ -3310,21 +3549,7 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
           id: 'built-in-evals-render',
           title: 'Built In Evals Render',
           pages: [
-            {
-              id: 'evals',
-              kind: 'built-in',
-              page: 'evals',
-              title: 'Evals',
-              definition: {
-                'data-state': {
-                  availability: true
-                },
-                views: [
-                  { id: 'evals-source', data: { source: 'evals' } },
-                  { id: 'eval-observations-source', data: { source: 'eval-observations' } }
-                ]
-              }
-            }
+            ${JSON.stringify(builtInPage('evals', { id: 'evals', title: 'Evals' }))}
           ]
         }
       };
@@ -3398,20 +3623,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
           title: 'Security Dashboard',
           repository: 'githubnext/gh-aw-cao',
           pages: [
-            {
-              id: 'findings',
-              kind: 'built-in',
-              page: 'findings',
-              title: 'Findings',
-              definition: {
-                'data-state': {
-                  availability: true
-                },
-                views: [
-                  { id: 'findings-source', data: { source: 'findings' } }
-                ]
-              }
-            }
+            ${JSON.stringify(builtInPage('findings', { id: 'findings', title: 'Findings' }))}
           ]
         }
       };
@@ -4593,6 +4805,20 @@ test('declarative tables expose report-style facets and progressive catalog disc
   await expect(tableRows).toHaveCount(30);
   await expect(visibleRows).toHaveCount(25);
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 25 of 30 results');
+  const tableLayout = await page.locator('.custom-table').evaluate((table) => {
+    const scroll = table.closest('.table-scroll');
+    const cells = table.querySelectorAll('thead tr:first-child th');
+    return {
+      tableWidth: table.getBoundingClientRect().width,
+      scrollWidth: scroll?.getBoundingClientRect().width ?? 0,
+      firstColumnWidth: cells[0]?.getBoundingClientRect().width,
+      lastColumnWidth: cells[cells.length - 1]?.getBoundingClientRect().width,
+      lastColumnAlignment: getComputedStyle(cells[cells.length - 1]).textAlign
+    };
+  });
+  expect(tableLayout.tableWidth).toBeCloseTo(tableLayout.scrollWidth, 0);
+  expect(tableLayout.lastColumnWidth).toBeGreaterThan(tableLayout.firstColumnWidth);
+  expect(tableLayout.lastColumnAlignment).toBe('left');
   await expect(page.locator('thead th').filter({ has: page.locator('[data-table-facet="rollout-mode"]') })).toHaveCount(1);
   const modeFilter = page.getByRole('combobox', { name: 'Filter by Mode' });
   await expect(modeFilter).toHaveValue('');
@@ -4830,4 +5056,231 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   await expect(historyBack).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('phone pages toggle between chart, full-view table, and card-list modes', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      document.querySelector('#root').append(renderDashboard({
+        document: {
+          languageVersion: '0.1.0',
+          dashboard: {
+            id: 'phone-view-mode-dashboard',
+            title: 'Phone View Mode',
+            pages: [{
+              id: 'runs',
+              kind: 'custom',
+              title: 'Runs',
+              views: [
+                {
+                  id: 'runs-chart',
+                  title: 'Run trend',
+                  data: { source: 'runs' },
+                  mark: 'chart',
+                  chart: 'line',
+                  encoding: {
+                    x: { field: 'started-at', type: 'temporal' },
+                    y: { field: 'run-count', type: 'quantitative' }
+                  }
+                },
+                {
+                  id: 'runs-table',
+                  title: 'Runs',
+                  data: { source: 'runs' },
+                  mark: 'table',
+                  controls: 'interactive',
+                  'lazy-list': true,
+                  layout: 'full-view',
+                  encoding: { columns: [{ field: 'run', title: 'Run' }] }
+                }
+              ]
+            }]
+          }
+        },
+        sources: {
+          runs: {
+            source: 'runs',
+            rows: [{ run: '1', 'run-count': 1, 'started-at': '2026-09-16T10:00:00Z' }],
+            metadata: {
+              availability: 'available',
+              completeness: 'complete',
+              freshness: 'fresh'
+            }
+          }
+        }
+      }));
+    </script>
+  `);
+
+  const root = page.locator('.dashboard-root');
+  const chart = page.locator('[data-view-id="runs-chart"]');
+  const table = page.locator('[data-view-id="runs-table"]');
+  const toggle = page.getByRole('button', { name: 'Show table view' });
+  await expect(toggle).toBeVisible();
+  await expect(toggle.locator('.octicon-table')).toBeVisible();
+  await expect(chart).toBeVisible();
+  await expect(table).toBeHidden();
+  await expect(root).not.toHaveClass(/dashboard-full-view/);
+
+  await toggle.click();
+
+  await expect(page.getByRole('button', { name: 'Show card list view' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show card list view' }).locator('.octicon-stack')).toBeVisible();
+  await expect(chart).toBeHidden();
+  await expect(table).toBeVisible();
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('table');
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(page.getByRole('button', { name: 'Show chart view' }).locator('.octicon-graph')).toBeVisible();
+  await expect(chart).toBeHidden();
+  await expect(table.locator('.table-region')).toBeHidden();
+  await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect(table.getByRole('heading', { name: 'Runs', level: 3 })).toBeHidden();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('card');
+});
+
+test('phone Workflows page cycles through chart, table, and card-list views', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const workflowsPage = builtInPage('workflows');
+  await page.evaluate(async ({ presenterModuleUrl, workflowsPage }) => {
+    window.location.hash = '#page-workflows';
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'workflows-view-mode-dashboard',
+          title: 'Workflows View Mode',
+          pages: [workflowsPage]
+        }
+      },
+      sources: {
+        'workflow-inventory': {
+          source: 'workflow-inventory',
+          rows: [{
+            'package-name': 'Maintenance',
+            repository: 'githubnext/gh-aw-cao',
+            workflow: '.github/workflows/aw-maintenance.md',
+            'workflow-name': 'AW Maintenance',
+            'workflow-label': 'githubnext/gh-aw-cao:.github/workflows/aw-maintenance.md',
+            'workflow-role': 'orchestrator',
+            'rollout-mode': 'review',
+            'workflow-active': 'active',
+            aic: 12,
+            runs: 4,
+            ingestion: '100%',
+            'workflow-link': { relation: 'workflow', href: '#page-workflow-runtime', label: 'View AW Maintenance' },
+            'repository-link': { relation: 'repository', href: '#page-repository-detail', label: 'View githubnext/gh-aw-cao' }
+          }],
+          metadata: {
+            availability: 'available',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      }
+    }));
+  }, { presenterModuleUrl: buildPresenterModuleUrl(), workflowsPage });
+
+  const chart = page.locator('[data-view-id="workflows-by-runs"]');
+  const table = page.locator('[data-view-id="workflows-inventory"]');
+  await expect(chart).toBeVisible();
+  await expect(table).toBeHidden();
+
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(chart).toBeHidden();
+  await expect(table.locator('.table-region')).toBeVisible();
+  await expect(table.locator('tbody')).toContainText('AW Maintenance');
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(table.locator('.table-region')).toBeHidden();
+  await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
+  await expect(table.locator('[data-mobile-card-list]')).toContainText('AW Maintenance');
+  await expect(page.getByRole('button', { name: 'Show chart view' })).toBeVisible();
+});
+
+test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      document.querySelector('#root').append(renderDashboard({
+        document: {
+          languageVersion: '0.1.0',
+          dashboard: {
+            id: 'phone-table-card-dashboard',
+            title: 'Phone Table Cards',
+            'card-templates': [{
+              id: 'repository',
+              icon: 'repo',
+              title: { field: 'repository-coordinate' },
+              labels: [],
+              details: [{ field: 'organization', title: 'Organization' }]
+            }],
+            pages: [{
+              id: 'repositories',
+              kind: 'custom',
+              title: 'Repositories',
+              views: [{
+                id: 'repositories-table',
+                title: 'Repositories',
+                data: { source: 'repositories' },
+                mark: 'table',
+                controls: 'interactive',
+                'lazy-list': true,
+                layout: 'full-view',
+                encoding: {
+                  columns: [
+                    { field: 'repository-coordinate', type: 'nominal', title: 'Repository' },
+                    { field: 'organization', type: 'nominal', title: 'Organization' }
+                  ]
+                }
+              }]
+            }]
+          }
+        },
+        sources: {
+          repositories: {
+            source: 'repositories',
+            rows: [{
+              'repository-coordinate': 'githubnext/gh-aw-cao',
+              organization: 'githubnext'
+            }],
+            metadata: {
+              availability: 'available',
+              completeness: 'complete',
+              freshness: 'fresh'
+            }
+          }
+        }
+      }));
+    </script>
+  `);
+
+  const root = page.locator('.dashboard-root');
+  const table = page.locator('[data-view-id="repositories-table"] .table-region');
+  const cards = page.locator('[data-mobile-card-list]');
+  await expect(table).toBeVisible();
+  await expect(cards).toBeHidden();
+  await expect(root).toHaveClass(/dashboard-full-view/);
+
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await expect(table).toBeHidden();
+  await expect(cards).toBeVisible();
+  await expect(cards.locator('.entity-card-list-card')).toContainText('githubnext/gh-aw-cao');
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect(page.getByRole('heading', { name: 'Repositories', level: 3 })).toBeHidden();
+
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(table).toBeVisible();
+  await expect(cards).toBeHidden();
+  await expect(root).toHaveClass(/dashboard-full-view/);
 });

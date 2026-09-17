@@ -1,4 +1,5 @@
 import { h, injectStyleOnce } from './dom.js';
+import { octicon } from './octicons.js';
 import { notificationStylesheet } from './styles.js';
 
 const DEFAULT_DURATION = 5000;
@@ -14,10 +15,13 @@ const services = new WeakMap();
 /**
  * @typedef {{
  *   message: string,
+ *   icon?: 'download',
+ *   detailsSubtitle?: string,
  *   tone?: 'info' | 'success' | 'warning' | 'error',
  *   duration?: number,
  *   details?: string[],
- *   action?: { label: string, run: () => void }
+ *   action?: { label: string, run: () => void, placement?: 'details' },
+ *   dismissOnCollapse?: boolean
  * }} Notification
  */
 
@@ -82,7 +86,7 @@ export function publishNotification(notification, document = globalThis.document
 
 /**
  * @param {string | Notification} input
- * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details'>> & Pick<Notification, 'action'>}
+ * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details' | 'dismissOnCollapse'>> & Pick<Notification, 'action' | 'detailsSubtitle' | 'icon'>}
  */
 function normalizeNotification(input) {
   const candidate = typeof input === 'string' ? { message: input } : input;
@@ -101,13 +105,18 @@ function normalizeNotification(input) {
     && typeof candidate.action.run === 'function'
       ? candidate.action
       : undefined;
+  const dismissOnCollapse = candidate.dismissOnCollapse === true;
   const details = Array.isArray(candidate.details)
     ? candidate.details
         .filter((detail) => typeof detail === 'string' && Boolean(detail.trim()))
         .map((detail) => detail.trim())
         .slice(-MAX_DETAIL_MESSAGES)
     : [];
-  return { message: candidate.message.trim(), tone, duration, details, action };
+  const detailsSubtitle = typeof candidate.detailsSubtitle === 'string' && candidate.detailsSubtitle.trim()
+    ? candidate.detailsSubtitle.trim()
+    : undefined;
+  const icon = candidate.icon === 'download' ? candidate.icon : undefined;
+  return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, icon, action, dismissOnCollapse };
 }
 
 /**
@@ -120,18 +129,28 @@ function renderNotification(initial, container, onRemove) {
     className: 'dashboard-notification-message',
     role: initial.tone === 'error' ? 'alert' : 'status'
   }, initial.message);
+  const icon = h('span', {
+    className: 'dashboard-notification-icon',
+    'aria-hidden': 'true'
+  });
+  const summary = h('span', { className: 'dashboard-notification-summary' }, icon, message);
   const detailId = `dashboard-notification-details-${++nextNotificationDetailId}`;
+  const detailSubtitleId = `${detailId}-subtitle`;
   const toggle = h('button', {
     className: 'dashboard-notification-toggle',
     type: 'button',
     'aria-expanded': 'false',
-    'aria-controls': detailId,
+    'aria-controls': `${detailSubtitleId} ${detailId}`,
     'aria-label': `${initial.message} Show ingestion progress history`
-  }, message, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
+  }, summary, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
   const details = h('ul', {
     className: 'dashboard-notification-details',
     id: detailId,
     hidden: true
+  });
+  const detailsSubtitle = h('p', {
+    className: 'dashboard-notification-details-subtitle',
+    id: detailSubtitleId
   });
   const content = h('div', { className: 'dashboard-notification-content' });
   const action = h('button', {
@@ -148,6 +167,10 @@ function renderNotification(initial, container, onRemove) {
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let removalTimer;
 
+  const setIcon = () => {
+    icon.replaceChildren(...(current.icon ? [octicon(current.icon)] : []));
+    icon.hidden = !current.icon;
+  };
   const setDetails = () => {
     const expanded = toggle.getAttribute('aria-expanded') === 'true';
     const followsLatest = details.scrollTop + details.clientHeight >= details.scrollHeight - 1;
@@ -160,14 +183,19 @@ function renderNotification(initial, container, onRemove) {
     while (details.children.length > current.details.length) details.lastElementChild?.remove();
     details.scrollTop = followsLatest ? details.scrollHeight : scrollTop;
     if (current.details.length > 0) {
-      if (message.parentElement !== toggle) toggle.prepend(message);
+      if (summary.parentElement !== toggle) toggle.prepend(summary);
       if (!toggle.isConnected) content.prepend(toggle);
       details.hidden = !expanded;
+      detailsSubtitle.textContent = current.detailsSubtitle ?? '';
+      detailsSubtitle.hidden = !expanded || !current.detailsSubtitle;
+      if (current.detailsSubtitle && !detailsSubtitle.isConnected) content.append(detailsSubtitle);
+      if (!current.detailsSubtitle) detailsSubtitle.remove();
       if (!details.isConnected) content.append(details);
     } else {
       toggle.remove();
+      detailsSubtitle.remove();
       details.remove();
-      content.prepend(message);
+      content.prepend(summary);
     }
     const expandedState = toggle.getAttribute('aria-expanded') === 'true';
     toggle.setAttribute(
@@ -180,7 +208,9 @@ function renderNotification(initial, container, onRemove) {
     if (!current.action) return;
     action.textContent = current.action.label;
     action.onclick = () => current.action?.run();
-    element.append(action);
+    action.hidden = current.action.placement === 'details'
+      && toggle.getAttribute('aria-expanded') !== 'true';
+    (current.action.placement === 'details' ? content : element).append(action);
   };
   toggle.onclick = () => {
     const expanded = toggle.getAttribute('aria-expanded') === 'true';
@@ -190,7 +220,10 @@ function renderNotification(initial, container, onRemove) {
       `${current.message} ${expanded ? 'Show' : 'Hide'} ingestion progress history`
     );
     details.hidden = expanded;
+    detailsSubtitle.hidden = expanded || !current.detailsSubtitle;
+    action.hidden = Boolean(current.action?.placement === 'details' && expanded);
     if (!expanded) details.scrollTop = details.scrollHeight;
+    if (expanded && current.dismissOnCollapse) dismiss();
   };
   details.addEventListener('wheel', (event) => {
     const maxScrollTop = details.scrollHeight - details.clientHeight;
@@ -230,12 +263,14 @@ function renderNotification(initial, container, onRemove) {
       message.textContent = current.message;
       element.className = `dashboard-notification dashboard-notification-${current.tone}`;
       message.setAttribute('role', current.tone === 'error' ? 'alert' : 'status');
+      setIcon();
       setDetails();
       setAction();
       scheduleDismissal();
     }
   };
 
+  setIcon();
   setDetails();
   setAction();
   container.append(element);

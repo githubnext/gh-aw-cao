@@ -92,7 +92,7 @@ test("ingesting a large synthetic payload terminates and clears its notification
   expect(result.rows).toBe(runs);
   // The parse phase is a small part of a large ingestion, so the storage phase
   // must keep reporting progress instead of freezing the notification.
-  const stored = result.messages.filter((message) => message.startsWith("Storing "));
+  const stored = result.messages.filter((message) => message.includes("Storing "));
   expect(stored.length).toBeGreaterThan(0);
   expect(result.remainingNotifications).toBe(0);
 });

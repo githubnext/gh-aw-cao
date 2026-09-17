@@ -7,13 +7,69 @@ const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const DATA_FILES = new Set(['payload-hashes.json', 'inventory-sources.json']);
+const DEBUG_PREFIX = 'cao';
+const JSONL_SHARD_PATH = /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/;
+const NORMALIZED_SHARD_PATH = /\/gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
+const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
+const EVENT_SHARD_PATH = /\/gh-aw-logs-events\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
+
+/**
+ * Extracts the raw `debug` query parameter from a location search string
+ * without depending on `URLSearchParams`, which the service worker's
+ * `self.location.search` reflects from its own (registered) script URL. The
+ * dashboard forwards the page's `?debug=` value onto that script URL so this
+ * context can see the same debug configuration as the page and data worker.
+ * @param {string} search
+ */
+function debugParameterValue(search) {
+  const match = /(?:^|[?&])debug=([^&]*)/.exec(search || '');
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+/** @param {string} pattern */
+function debugPatternExpression(pattern) {
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped.replaceAll('\\*', '.*')}$`, 'i');
+}
+
+/** @param {string} category */
+function isDebugEnabled(category) {
+  const value = debugParameterValue(self.location?.search ?? '');
+  if (!value) return false;
+  const patterns = value.split(/[\s,]+/).filter(Boolean);
+  const included = patterns
+    .filter((pattern) => !pattern.startsWith('-'))
+    .map((pattern) => debugPatternExpression(pattern === '1' || pattern.toLowerCase() === 'true' ? '*' : pattern));
+  const excluded = patterns
+    .filter((pattern) => pattern.startsWith('-'))
+    .map((pattern) => debugPatternExpression(pattern.slice(1)));
+  if (excluded.some((pattern) => pattern.test(category))) return false;
+  return included.some((pattern) => pattern.test(category));
+}
+
+/**
+ * Category-scoped debug logger mirroring `dashboard/site/src/debug.js`. The
+ * service worker cannot `import` that ES module while it runs as a classic
+ * script, so this is a minimal, dependency-free port of the same behavior.
+ * `test/unit/service-worker.test.js` cross-checks pattern-matching parity
+ * with `debug.js` so the two stay in sync.
+ * @param {string} category
+ * @param {unknown[]} values
+ */
+function debugLog(category, ...values) {
+  if (typeof console === 'undefined' || !isDebugEnabled(category)) return;
+  console.debug(`[${DEBUG_PREFIX}:${category}]`, ...values);
+}
 
 function isDashboardDataUrl(value) {
   try {
     const url = new URL(value, self.location.href);
     return url.origin === self.location.origin
       && (DATA_FILES.has(url.pathname.split('/').at(-1))
-        || /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(url.pathname));
+        || JSONL_SHARD_PATH.test(url.pathname)
+        || NORMALIZED_SHARD_PATH.test(url.pathname)
+        || RUN_SHARD_PATH.test(url.pathname)
+        || EVENT_SHARD_PATH.test(url.pathname));
   } catch {
     return false;
   }
@@ -37,6 +93,7 @@ async function downloadData(urls) {
   if (!requested.some((url) => new URL(url).pathname.endsWith('/payload-hashes.json'))) {
     throw new Error('Dashboard data URL is missing.');
   }
+  debugLog('data:ingestion:sw', 'downloading dashboard data', { urls: requested });
   const cache = await caches.open(DATA_CACHE);
   const hashesUrl = requested.find((url) => new URL(url).pathname.endsWith('/payload-hashes.json'));
   let hashesResponse;
@@ -84,17 +141,45 @@ async function downloadData(urls) {
         ? undefined
         : cache.put(url, response.clone())
   )));
-  const shardEntries = Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
+  const runEntries = Object.entries(currentHashes)
+    .filter(([name, hash]) => /^gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
+  const eventEntries = Object.entries(currentHashes)
+    .filter(([name, hash]) => /^gh-aw-logs-events\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash))
+    .sort(([left], [right]) => left.localeCompare(right));
+  const fileName = ([name]) => name.slice(name.lastIndexOf('/') + 1);
+  const phasedEntries = runEntries.length > 0
+    && runEntries.length === eventEntries.length
+    && runEntries.every((entry, index) => fileName(entry) === fileName(eventEntries[index]))
+    ? [...runEntries, ...eventEntries]
+    : [];
+  const normalizedEntries = Object.entries(currentHashes)
+    .filter(([name, hash]) => /^gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash))
+    .sort(([left], [right]) => left.localeCompare(right));
+  const shardEntries = phasedEntries.length > 0
+    ? phasedEntries
+    : (normalizedEntries.length > 0 ? normalizedEntries : Object.entries(currentHashes)
+      .filter(([name, hash]) => /^gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(name)
+        && typeof hash === 'string'
+        && /^[a-f0-9]{64}$/i.test(hash)))
+      .sort(([left], [right]) => left.localeCompare(right));
   if (shardEntries.length === 0) throw new Error('Dashboard activity shard manifest is empty.');
+  debugLog('data:ingestion:sw', 'published activity manifest', { shardCount: shardEntries.length });
   const currentShardUrls = new Set();
-  for (const [name, hash] of shardEntries) {
+  for (const [index, [name, hash]] of shardEntries.entries()) {
     const url = new URL(`./${name}`, hashesUrl).href;
     currentShardUrls.add(url);
-    if (previousHashes?.[name]?.toLowerCase?.() === hash.toLowerCase()) continue;
+    if (previousHashes?.[name]?.toLowerCase?.() === hash.toLowerCase()) {
+      debugLog('data:ingestion:sw', 'skipping current shard', { name, index: index + 1, shardCount: shardEntries.length });
+      continue;
+    }
+    debugLog('data:ingestion:sw', 'downloading shard', { name, index: index + 1, shardCount: shardEntries.length });
     const response = await fetch(url, {
       cache: 'no-store',
       credentials: 'same-origin',
@@ -102,14 +187,19 @@ async function downloadData(urls) {
     });
     if (!response.ok) throw new Error(`Dashboard data download returned ${response.status}.`);
     await cache.put(url, response);
+    debugLog('data:ingestion:sw', 'cached shard', { name, index: index + 1, shardCount: shardEntries.length });
   }
   for (const request of await cache.keys()) {
-    if (/\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/.test(new URL(request.url).pathname)
+    if ((JSONL_SHARD_PATH.test(new URL(request.url).pathname)
+          || NORMALIZED_SHARD_PATH.test(new URL(request.url).pathname)
+          || RUN_SHARD_PATH.test(new URL(request.url).pathname)
+          || EVENT_SHARD_PATH.test(new URL(request.url).pathname))
         && !currentShardUrls.has(request.url)) {
       await cache.delete(request);
     }
   }
   if (hashesUrl && hashesResponse) await cache.put(hashesUrl, hashesResponse.clone());
+  debugLog('data:ingestion:sw', 'dashboard data download complete');
 }
 
 async function storeDataUrls(urls) {

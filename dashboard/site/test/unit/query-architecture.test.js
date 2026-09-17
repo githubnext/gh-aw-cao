@@ -19,9 +19,12 @@ describe('dashboard query architecture', () => {
     const worker = read('src/data-worker.js');
     const startup = read('src/data/startup.js');
     const presenter = read('src/presenter.js');
-    const factoryOverview = read('src/components/factory-overview.js');
+    const factoryElements = read('src/components/factory-elements.js');
     const workProject = read('src/components/work-project-view.js');
     const presentationQueryFixture = read('test/workflow-inventory-query.js');
+    const canonicalSources = read('src/data/queries/view-sources.js');
+    const dashboard = JSON.parse(read('dashboard.json')).dashboard;
+    const optimizationDashboard = JSON.parse(read('../../optimization/dashboard.json')).dashboard;
 
     expect(worker).toContain('executeDashboardQueries(context.queries, canonicalPayload, directRequests');
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
@@ -29,14 +32,29 @@ describe('dashboard query architecture', () => {
     expect(worker).toContain("operation === 'subscribe-canonical-dashboard'");
     expect(startup).toContain('subscribeCanonicalDashboardView(');
     expect(startup).toContain('signal: pageOptions.signal');
-    expect(startup).toContain('bindContinuations(pageId, sources, lazySources, pageOptions)');
-    expect(startup).toMatch(/loadCanonicalDashboardPage\(requested, dashboardContext, pagination, \{[\s\S]{0,220}pageId,[\s\S]{0,220}routeParameters: pageOptions\.routeParameters,[\s\S]{0,220}queryContext: pageOptions\.queryContext/);
+    expect(startup).toContain('bindContinuations(pageId, sources, paginatedSources, pageOptions)');
+    expect(startup).toContain('const sourceName = bindings[alias]?.sourceName');
+    expect(startup).toContain('dashboardContext,\n        pagination,');
+    expect(startup).toContain('viewId: binding?.viewId');
+    expect(startup).toContain('routeParameters: pageOptions.routeParameters');
+    expect(startup).toContain('queryContext: pageOptions.queryContext');
     expect(presenter).not.toMatch(/filterDashboardSources|filterRowsForView|deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
-    expect(factoryOverview).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
+    expect(factoryElements).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
+    expect(factoryElements).toMatch(/requestSource|publishSource/);
+    expect(factoryElements).not.toMatch(/indexedDB/);
     expect(workProject).not.toMatch(/normalizeState|actorForLifecycle|compareWorkItems|orchestratedPackageNames/);
     expect(read('src/components/ui-elements.js')).not.toContain('filterRows');
     expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");
     expect(presentationQueryFixture).not.toMatch(/executeDashboardQueries|compileDashboardViewPayloadQueries|deriveDashboardLinkSources/);
+    expect(canonicalSources).not.toContain('tokenEfficiencySources');
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities'))
+      .toBeUndefined();
+    expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions'))
+      .toBeUndefined();
+    expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities')?.from)
+      .toBe('events');
+    expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions')?.from)
+      .toBe('events');
     for (const legacyModule of [
       'inferred-sources.js',
       'notification-stories.js',

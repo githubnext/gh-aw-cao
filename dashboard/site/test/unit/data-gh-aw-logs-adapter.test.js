@@ -74,7 +74,7 @@ describe('gh-aw logs adapter', () => {
       },
       {
         schema_version: 2,
-        kind: 'run',
+        kind: 'token_efficiency_run_context',
         run: {
           run_id: 303,
           run_attempt: '1',
@@ -410,6 +410,70 @@ describe('gh-aw logs adapter', () => {
     )).toThrow('Unsupported gh-aw JSONL schema version');
   });
 
+  it('retains lifecycle observations with their append-only optimizer run context', () => {
+    const run = {
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 1186001,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'githubnext/gh-aw-cao',
+        workflow_name: 'AW Optimization / Token Optimizer',
+        workflow_path: '.github/workflows/optimization-token-optimizer.md',
+        status: 'completed',
+        conclusion: 'success',
+        created_at: '2026-09-15T04:00:00Z',
+        updated_at: '2026-09-15T04:02:00Z'
+      }
+    };
+    const lifecycle = {
+      schema_version: 2,
+      kind: 'token_efficiency_lifecycle_observation',
+      observation: {
+        schemaVersion: 1,
+        lifecycleObservationId: 'token-lifecycle:retained',
+        observedAt: '2026-10-17T00:00:00Z',
+        controlRepository: 'githubnext/gh-aw-cao',
+        claimRunId: '1189002',
+        claimRunAttempt: 1,
+        actor: 'maintainer',
+        optimizerRunId: '1186001',
+        optimizerRunAttempt: 1,
+        optimizerWorkflowPath: '.github/workflows/optimization-token-optimizer.md',
+        optimizerWorkflowName: 'AW Optimization / Token Optimizer',
+        targetRepo: 'octo/example',
+        workflowPath: '.github/workflows/review.md',
+        opportunityId: 'token-opportunity:retained',
+        interventionId: 'token-intervention:retained',
+        previousInterventionState: 'accepted',
+        interventionState: 'running',
+        previousRecommendationDisposition: 'unapplied',
+        recommendationDisposition: 'applied',
+        evidenceState: 'complete',
+        safeOutputId: 'github:issue:githubnext/gh-aw-cao:11861',
+        safeOutputUrl: 'https://github.com/githubnext/gh-aw-cao/issues/11861',
+        sourceProvenance: {
+          kind: 'workflow-dispatch-claim',
+          sourceId: 'github-actions-run:githubnext/gh-aw-cao:1189002:attempt:1'
+        }
+      }
+    };
+
+    const content = `${JSON.stringify(run)}\n${JSON.stringify(lifecycle)}\n`;
+    const batch = normalize(adaptCachedGhAwJsonl(content).observations);
+    expect(relationshipErrors(batch)).toEqual([]);
+    expect(batch.runs).toEqual([
+      expect.objectContaining({ githubRunId: '1186001', attempt: 1 })
+    ]);
+    expect(batch.events.find((event) =>
+      event.lifecycleObservationId === 'token-lifecycle:retained'
+    )).toMatchObject({
+      interventionState: 'running',
+      recommendationDisposition: 'applied'
+    });
+  });
+
   it('ignores unsupported cached JSONL kinds in string and binary input', () => {
     const content = [
       '{"schema_version":2,"kind":"unknown","value":"ignored"}',
@@ -422,5 +486,106 @@ describe('gh-aw logs adapter', () => {
         rateLimits: 1
       });
     }
+  });
+
+  it('precomputes immutable run aggregates and gives every event a run identity', () => {
+    const content = `${JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 303,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow_name: 'Activity',
+        workflow_path: '.github/workflows/cao-activity.yml',
+        status: 'completed',
+        created_at: '2026-09-17T00:00:00Z',
+        started_at: '2026-09-17T00:00:01Z',
+        updated_at: '2026-09-17T00:00:11Z',
+        completed_at: '2026-09-17T00:00:06Z',
+        agent_id: 'copilot',
+        model_id: 'gpt-5.4',
+        graders: { results: [{ id: 'operational-value', value: 0.8 }] },
+        audit: {
+          firewall_analysis: { requests_by_domain: { 'api.github.com:443': { allowed: 4, blocked: 2 } } },
+          mcp_tool_usage: { tool_calls: [{ output_size: 128 }, { output_size: 64 }] },
+          key_findings: [{ severity: 'high' }],
+          recommendations: [{ priority: 'medium' }]
+        }
+      }
+    })}\n`;
+    const batch = normalize(adaptCachedGhAwJsonl(content).observations);
+
+    expect(batch.runs[0]).toMatchObject({
+      agentId: 'copilot',
+      modelId: 'gpt-5.4',
+      agenticDurationSeconds: 5,
+      firewallAllowedCalls: 4,
+      firewallBlockedCalls: 2,
+      mcpToolCalls: 2,
+      mcpResponseBytes: 192,
+      operationalValue: 0.8,
+      highPriorityAuditItems: 1,
+      mediumPriorityAuditItems: 1
+    });
+    expect(batch.events.length).toBeGreaterThan(0);
+    expect(batch.events.every((event) => event.runId === batch.runs[0].id)).toBe(true);
+  });
+
+  it('keeps null aggregate evidence unavailable', () => {
+    const batch = normalize(adaptCachedGhAwJsonl(`${JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 304,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow_name: 'Activity',
+        workflow_path: '.github/workflows/cao-activity.yml',
+        status: 'completed',
+        created_at: '2026-09-17T00:00:00Z',
+        updated_at: '2026-09-17T00:00:01Z',
+        firewall_analysis: null,
+        mcp_tool_usage: null,
+        audit: {
+          firewall_analysis: { requests_by_domain: { 'api.github.com:443': { allowed: 4, blocked: 2 } } },
+          mcp_tool_usage: { tool_calls: [{ output_size: 128 }] }
+        }
+      }
+    })}\n`).observations);
+
+    expect(batch.runs[0]).toMatchObject({
+      firewallAllowedCalls: null,
+      firewallBlockedCalls: null,
+      mcpToolCalls: null,
+      mcpResponseBytes: null
+    });
+  });
+
+  it('treats observed empty top-level MCP evidence as zero', () => {
+    const batch = normalize(adaptCachedGhAwJsonl(`${JSON.stringify({
+      schema_version: 2,
+      kind: 'run',
+      run: {
+        run_id: 305,
+        run_attempt: 1,
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow_name: 'Activity',
+        workflow_path: '.github/workflows/cao-activity.yml',
+        status: 'completed',
+        created_at: '2026-09-17T00:00:00Z',
+        updated_at: '2026-09-17T00:00:01Z',
+        mcp_tool_usage: { tool_calls: [] },
+        audit: { mcp_tool_usage: { tool_calls: [{ output_size: 128 }] } }
+      }
+    })}\n`).observations);
+
+    expect(batch.runs[0]).toMatchObject({
+      mcpToolCalls: 0,
+      mcpResponseBytes: 0
+    });
   });
 });

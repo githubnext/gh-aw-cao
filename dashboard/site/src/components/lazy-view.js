@@ -8,6 +8,7 @@ const observers = new WeakMap();
 const scrollCleanups = new WeakMap();
 const activeTransitions = new WeakMap();
 const hydrationQueues = new WeakMap();
+const deferredHydrations = new WeakMap();
 
 /**
  * @param {Document} document
@@ -146,14 +147,42 @@ export function disconnectLazyViews(root) {
   observers.delete(root);
   scrollCleanups.get(root)?.();
   scrollCleanups.delete(root);
+  for (const element of root.querySelectorAll('[data-lazy-view]')) {
+    if (element instanceof HTMLElement) cancelLazyViewHydration(element);
+  }
+}
+
+/**
+ * Hydrates a newly revealed lazy view after its skeleton has had an opportunity to paint.
+ * @param {HTMLElement} element
+ * @returns {Promise<void>}
+ */
+export function hydrateLazyViewAfterPaint(element) {
+  cancelLazyViewHydration(element);
+  const controller = new AbortController();
+  deferredHydrations.set(element, controller);
+  const hydration = hydrateLazyView(element, { afterPaint: true, signal: controller.signal });
+  void hydration.finally(() => {
+    if (deferredHydrations.get(element) === controller) deferredHydrations.delete(element);
+  });
+  return hydration;
+}
+
+/** @param {HTMLElement} element */
+export function cancelLazyViewHydration(element) {
+  const controller = deferredHydrations.get(element);
+  if (!controller) return;
+  controller.abort();
+  deferredHydrations.delete(element);
+  hydrationPromises.delete(element);
 }
 
 /**
  * @param {HTMLElement} element
- * @param {{ immediate?: boolean }} [options]
+ * @param {{ immediate?: boolean, afterPaint?: boolean, signal?: AbortSignal }} [options]
  * @returns {Promise<void>}
  */
-function hydrateLazyView(element, { immediate = false } = {}) {
+function hydrateLazyView(element, { immediate = false, afterPaint = false, signal } = {}) {
   const existing = hydrationPromises.get(element);
   if (existing) return existing;
 
@@ -168,16 +197,35 @@ function hydrateLazyView(element, { immediate = false } = {}) {
   }
 
   const hydration = queueHydration(ownerDocument, async () => {
+    if (afterPaint) await waitForPaint(ownerDocument);
+    if (signal?.aborted) return;
     const transition = activeTransitions.get(ownerDocument);
     if (transition) {
       await transition;
     }
-    if (!element.parentNode) return;
+    if (signal?.aborted || !element.parentNode) return;
     await renderHydratedView(element, render);
   });
 
   hydrationPromises.set(element, hydration);
   return hydration;
+}
+
+/**
+ * @param {Document} ownerDocument
+ * @returns {Promise<void>}
+ */
+function waitForPaint(ownerDocument) {
+  const view = ownerDocument.defaultView;
+  return new Promise((resolve) => {
+    if (typeof view?.requestAnimationFrame === 'function') {
+      view.requestAnimationFrame(() => view.requestAnimationFrame(() => resolve()));
+    } else if (typeof view?.setTimeout === 'function') {
+      view.setTimeout(resolve, 0);
+    } else {
+      resolve();
+    }
+  });
 }
 
 /**

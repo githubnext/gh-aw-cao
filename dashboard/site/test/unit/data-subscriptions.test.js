@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cancelDataProcessing,
   processDashboardQueries,
-  subscribeCanonicalDashboardView
+  subscribeCanonicalDashboardView,
+  subscribeWorkerLoadingProgress
 } from '../../src/data-processor.js';
 import { effect, state } from '../../src/reactive.js';
 
@@ -247,6 +248,8 @@ describe('canonical dashboard view subscriptions', () => {
   it('terminates subscriptions with an error when their worker fails', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     const onError = vi.fn();
+    const onProgress = vi.fn();
+    const stopProgress = subscribeWorkerLoadingProgress(onProgress);
     const unsubscribe = subscribeCanonicalDashboardView(
       'worker-failure',
       ['runs'],
@@ -258,11 +261,17 @@ describe('canonical dashboard view subscriptions', () => {
     const failedWorker = SubscriptionWorker.current;
     expect(failedWorker).toBeDefined();
     if (!failedWorker) throw new Error('Subscription worker was not created.');
+    failedWorker.emit({
+      type: 'loading-progress',
+      state: { id: 'ingestion-1', phase: 'start' }
+    });
 
     failedWorker.emitError('Worker crashed');
 
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'Worker crashed' }));
+    expect(onProgress).toHaveBeenLastCalledWith({ id: 'ingestion-1', phase: 'complete' });
     expect(failedWorker.terminated).toBe(true);
+    stopProgress();
     unsubscribe();
   });
 
@@ -337,5 +346,68 @@ describe('canonical dashboard view subscriptions', () => {
     vi.advanceTimersByTime(180);
     expect(document.querySelector('.dashboard-notification')).toBeNull();
     unsubscribe();
+  });
+
+  it('cancels ingestion from the expanded worker notification and retains it until collapse', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    document.body.replaceChildren();
+    const pending = processDashboardQueries([], {});
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+    const requestId = /** @type {number} */ (worker.messages.at(-1)?.id);
+
+    worker.emit({
+      type: 'notification',
+      notification: {
+        id: 'ingestion-cancel',
+        message: 'Ingesting dashboard data.',
+        duration: 0,
+        details: ['Downloading data.'],
+        action: {
+          label: 'Cancel',
+          operation: 'cancel-data-ingestion',
+          placement: 'details',
+          requestId
+        }
+      }
+    });
+    const toggle = /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-toggle')
+    );
+    toggle.click();
+    /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-action')
+    ).click();
+    const rejection = expect(pending).rejects.toMatchObject({ name: 'DataProcessingCancelledError' });
+
+    expect(document.querySelector('.dashboard-notification-message')?.textContent)
+      .toBe('Data ingestion cancelled.');
+    expect(document.querySelector('.dashboard-notification')).not.toBeNull();
+    worker.emit({
+      type: 'notification',
+      notification: {
+        id: 'ingestion-cancel',
+        message: 'Ingesting dashboard data: 42 records processed.',
+        duration: 0,
+        details: ['Still storing data.']
+      }
+    });
+    worker.emit({ type: 'notification', notification: { id: 'ingestion-cancel', dismiss: true } });
+    expect(document.querySelectorAll('.dashboard-notification')).toHaveLength(1);
+    expect(document.querySelector('.dashboard-notification-message')?.textContent)
+      .toBe('Data ingestion cancelled.');
+    const later = processDashboardQueries([], {});
+    const laterRequestId = /** @type {number} */ (worker.messages.at(-1)?.id);
+    worker.emit({ id: requestId, error: 'Data ingestion was cancelled.', cancelled: true });
+    worker.emit({ id: laterRequestId, data: {} });
+    await rejection;
+    await expect(later).resolves.toEqual({});
+    expect(worker.terminated).toBe(false);
+    expect(document.querySelector('.dashboard-notification')).not.toBeNull();
+
+    toggle.click();
+    vi.advanceTimersByTime(180);
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
   });
 });

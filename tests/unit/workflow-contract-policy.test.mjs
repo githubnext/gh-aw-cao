@@ -210,7 +210,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eslint-rules-librarian.md": { credits: 300, timeout: 25 },
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-package-maintainer.md": { credits: 200, timeout: 20 },
-    "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 4 },
+    "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 5 },
     "self-care.md": { credits: 200, timeout: 15, dispatchMax: 15, workers: 15 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
@@ -225,6 +225,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance-vulnerability-handling-auditor.md": { credits: 100, timeout: 30 },
     "optimization-ai-credit-auditor.md": { credits: 350, timeout: 35 },
     "optimization-ai-credit-optimizer.md": { credits: 500, timeout: 30 },
+    "optimization-token-optimizer.md": { credits: 300, timeout: 20 },
     "software-development-practices.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 2 },
     "software-development-practices-github-well-architected.md": { credits: 400, timeout: 30 },
     "software-development-practices-nist-ssdf.md": { credits: 400, timeout: 30 },
@@ -287,7 +288,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 53, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 56, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -395,6 +396,7 @@ test("live workers use central policy as the activation authority", () => {
     ["optimization.md", "optimization"],
     ["optimization-ai-credit-auditor.md", "optimization"],
     ["optimization-ai-credit-optimizer.md", "optimization"],
+    ["optimization-token-optimizer.md", "optimization"],
     ["software-development-practices.md", "software-development-practices"],
     ["software-development-practices-github-well-architected.md", "software-development-practices"],
     ["software-development-practices-nist-ssdf.md", "software-development-practices"],
@@ -443,7 +445,7 @@ test("orchestrators use checked-in policy with independent manual narrowing", ()
 });
 
 test("operation workflows optionally load per-operation markdown steering", () => {
-  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
 
   assert.match(packageSkill, /Every orchestrator and worker prompt must include[\s\S]*at the bottom of the Markdown body/);
   assert.match(packageSkill, /Never place the runtime import at the top of the Markdown body/);
@@ -474,6 +476,7 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["optimization.md", "optimization"],
     ["optimization-ai-credit-auditor.md", "optimization"],
     ["optimization-ai-credit-optimizer.md", "optimization"],
+    ["optimization-token-optimizer.md", "optimization"],
     ["repo-assist.md", "repo-assist"],
     ["repo-assist-issue-fix.md", "repo-assist"],
     ["repo-assist-issue-triage.md", "repo-assist"],
