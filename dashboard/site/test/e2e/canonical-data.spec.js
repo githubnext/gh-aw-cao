@@ -9,7 +9,9 @@ import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.j
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
-const canonicalEntityTables = ['events', 'packages', 'repositories', 'runs', 'workflows'];
+const canonicalEntityTables = [
+  'audits', 'domains', 'issues', 'packages', 'repositories', 'runs', 'tools', 'workflows'
+];
 
 function ghAwLogInput() {
   const fixtureRoot = join(siteRoot, 'test', 'fixtures', 'gh-aw-logs');
@@ -83,7 +85,7 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
-    events: {
+    audits: {
       rows: [
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
@@ -92,6 +94,23 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
           'event-type': 'agent_turn', 'event-summary': 'Processed the dashboard request',
           'observed-at': '2026-09-09T05:00:00Z'
         },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `github-api-${run}`,
+          'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'github-api',
+          'event-type': 'github-api.response', 'event-summary': 'GET /rate_limit',
+          'event-status': '200', 'correlation-id': 'request-123',
+          'observed-at': '2026-09-09T05:00:00Z'
+        }
+      ],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    domains: {
+      rows: [],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    tools: {
+      rows: [
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, event: `tool-call-${run}`,
@@ -105,16 +124,12 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
           'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
           'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
-        },
-        {
-          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-          'run-attempt': 2, session: `session-${run}`, event: `github-api-${run}`,
-          'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'github-api',
-          'event-type': 'github-api.response', 'event-summary': 'GET /rate_limit',
-          'event-status': '200', 'correlation-id': 'request-123',
-          'observed-at': '2026-09-09T05:00:00Z'
         }
       ],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    issues: {
+      rows: [],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     'job-performance': {
@@ -227,8 +242,8 @@ function canonicalWarningSources() {
   ]) {
     Reflect.deleteProperty(sources, sourceName);
   }
-  const eventRows = /** @type {Array<Record<string, unknown>>} */ (sources.events.rows);
-  eventRows.push(
+  const issueRows = /** @type {Array<Record<string, unknown>>} */ (sources.issues.rows);
+  issueRows.push(
     {
       organization: 'githubnext',
       repository: 'gh-aw-cao',
@@ -245,9 +260,12 @@ function canonicalWarningSources() {
       'correlation-id': 'https://github.com/githubnext/gh-aw-cao/issues/7',
       'safe-output-type': 'create_issue',
       'github-entity-type': 'issue',
+      'is-pull-request': false,
       'observed-at': '2026-09-09T05:00:00Z'
-    },
-    {
+    }
+  );
+  const auditRows = /** @type {Array<Record<string, unknown>>} */ (sources.audits.rows);
+  auditRows.push({
       organization: 'githubnext',
       repository: 'gh-aw-cao',
       workflow: '.github/workflows/dashboard.md',
@@ -261,8 +279,7 @@ function canonicalWarningSources() {
       'event-summary': 'Prompt injection detected',
       'event-status': 'high',
       'observed-at': '2026-09-09T05:00:00Z'
-    }
-  );
+  });
   return sources;
 }
 
@@ -1031,7 +1048,7 @@ test('data worker serves work items and security findings without dedicated cano
   });
 });
 
-test('Chromium ingests gh-aw artifacts as a Run and ordered Events', async ({ page }) => {
+test('Chromium ingests gh-aw artifacts as a Run and ordered run records', async ({ page }) => {
   const result = await page.evaluate(async (input) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
     const queriesUrl = `${location.origin}/src/data/queries/index.js`;
@@ -1042,20 +1059,31 @@ test('Chromium ingests gh-aw artifacts as a Run and ordered Events', async ({ pa
     const ingestion = await ingestGhAwLogs(indexedDB, input);
     const queries = createCanonicalQueries(indexedDB);
     const runs = await queries.runs.list();
-    const events = await queries.events.forRun(String(runs[0].id));
-    return { ingestion, runs, events };
+    const runId = String(runs[0].id);
+    const [domains, tools, audits, issues] = await Promise.all([
+      queries.domains.forRun(runId),
+      queries.tools.forRun(runId),
+      queries.audits.forRun(runId),
+      queries.issues.forRun(runId)
+    ]);
+    return { ingestion, runs, domains, tools, audits, issues };
   }, ghAwLogInput());
 
   expect(result.ingestion).toMatchObject({ updated: true });
   expect(result.runs[0].id).toBe('github:run:303:attempt:1');
-  expect(result.events.map((/** @type {Record<string, unknown>} */ event) => [event.sequence, event.source, event.type])).toEqual([
-    [0, 'agent', 'agent_turn'],
-    [1, 'gateway', 'tool_call'],
-    [2, 'agent', 'agent_tool_start'],
-    [3, 'agent', 'agent_tool_done'],
-    [4, 'firewall', 'net_allowed'],
-    [5, 'agent', 'assistant_message']
+  expect(result.domains.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
+    [0, 'firewall', 'net_allowed']
   ]);
+  expect(result.tools.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
+    [0, 'gateway', 'tool_call'],
+    [1, 'agent', 'agent_tool_start'],
+    [2, 'agent', 'agent_tool_done']
+  ]);
+  expect(result.audits.map((/** @type {Record<string, unknown>} */ record) => [record.sequence, record.source, record.type])).toEqual([
+    [0, 'agent', 'agent_turn'],
+    [1, 'agent', 'assistant_message']
+  ]);
+  expect(result.issues).toEqual([]);
 });
 
 test('SQLite and browser IndexedDB ingestion produce identical populated tables', async ({ page }) => {
@@ -1089,10 +1117,8 @@ test('SQLite and browser IndexedDB ingestion produce identical populated tables'
 
     for (const [backend, tables] of Object.entries({ SQLite: sqliteRows, IndexedDB: browserRows })) {
       expect(Object.keys(tables).sort()).toEqual(canonicalEntityTables);
-      for (const table of canonicalEntityTables) {
-        if (table !== 'packages') {
-          expect(tables[table].length, `${backend} ${table} should contain compliance fixture data`).toBeGreaterThan(0);
-        }
+      for (const table of ['repositories', 'workflows', 'runs', 'domains', 'tools', 'audits']) {
+        expect(tables[table].length, `${backend} ${table} should contain compliance fixture data`).toBeGreaterThan(0);
       }
     }
     expect(browserRows).toEqual(sqliteRows);

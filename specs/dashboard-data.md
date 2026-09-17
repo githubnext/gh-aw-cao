@@ -735,7 +735,10 @@ Version 1 SHALL define:
 Repository
 Workflow
 Run
-Event
+Domain
+Tool
+Audit
+Issue
 ```
 
 The model MAY later add:
@@ -757,7 +760,10 @@ erDiagram
   REPOSITORY ||--o{ WORKFLOW : contains
   REPOSITORY ||--o{ RUN : executes
   WORKFLOW ||--o{ RUN : defines
-  RUN ||--o{ EVENT : records
+  RUN ||--o{ DOMAIN : records
+  RUN ||--o{ TOOL : invokes
+  RUN ||--o{ AUDIT : records
+  RUN ||--o{ ISSUE : creates
 
   PACKAGE {
     string id PK "canonical ID"
@@ -797,16 +803,30 @@ erDiagram
     string startedAt
     string observedAt
   }
-  EVENT {
+  DOMAIN {
     string id PK "deterministic semantic ID"
     string runId FK "required owning run"
-    number sequence
-    string timestamp
-    string source
+    string domain
+    string decision "allowed or blocked"
+  }
+  TOOL {
+    string id PK "deterministic semantic ID"
+    string runId FK "required owning run"
+    string toolType "mcp, bash, or skill"
+    boolean isSkill
+    string name
+  }
+  AUDIT {
+    string id PK "deterministic semantic ID"
+    string runId FK "required owning run"
     string type
     string status
-    string correlationId "nullable operation correlation"
-    string payloadRef "nullable external payload reference"
+  }
+  ISSUE {
+    string id PK "deterministic semantic ID"
+    string runId FK "required owning run"
+    boolean isPullRequest
+    string safeOutputType
   }
 ```
 
@@ -819,7 +839,7 @@ falls back to `(repositoryId, path)` or a source-namespaced
 values are encoded into the canonical string `id`; the individual components
 are not independently unique.
 
-Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. Every Event MUST reference exactly one Run. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
+Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. Every Domain, Tool, Audit, and Issue MUST reference exactly one Run. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
 
 ---
 
@@ -957,54 +977,46 @@ Jobs and sessions MAY remain upstream observations or published logical
 sources, but they are not canonical entities and MUST NOT be persisted in
 canonical SQLite or IndexedDB tables. Job-shaped performance data MAY be
 projected directly from authoritative inputs. Session-shaped summaries MAY be
-projected from Run and Event records.
+projected from Run and its Domain, Tool, Audit, and Issue records.
 
 ---
 
-# 11. Event Producers
+# 11. Run-Owned Record Classification
 
-A Run's Event stream MAY contain observations from:
+A Run's observations SHALL be classified into:
 
 ```text
-user
-agent
-model
-tool
-MCP
-gateway
-firewall
-policy engine
-safe-output processor
-GitHub API
-workflow runtime
-system
+Domain — firewall-allowed and firewall-blocked network activity
+Tool — MCP, Bash, and skill calls
+Audit — lifecycle, agent, policy, grader, and other audit observations
+Issue — issue and pull-request safe outputs
 ```
 
-Events MUST remain independently addressable records and MUST NOT be stored as
-one ever-growing array inside the Run record.
+Records MUST remain independently addressable and MUST NOT be stored as one
+ever-growing array inside the Run record. A skill is a Tool with
+`toolType="skill"`. Issues and pull requests share the Issue table; pull
+requests set `isPullRequest=true`.
 
 ---
 
-# 12. Event
+# 12. Run-Owned Records
 
-## 12.1 Unified Transaction Log
+## 12.1 Shared Record Fields
 
-Every operational occurrence associated with a Run SHOULD become an Event.
-Every Event MUST directly reference its owning Run.
+Every Domain, Tool, Audit, and Issue MUST directly reference its owning Run.
+Records MAY retain common source evidence such as `sequence`, `timestamp`,
+`source`, `type`, `status`, `correlationId`, and `payloadRef`.
 
-Safe-output Events SHALL preserve the safe-output action and, when the affected
-entity is hosted by GitHub, its canonical GitHub entity type. The SQLite
-interchange SHALL expose these values as nullable `safe_output_type` and
-`github_entity_type` columns, and the IndexedDB Event record SHALL expose the
-equivalent nullable `safeOutputType` and `githubEntityType` fields. Missing
-entity-type evidence MUST remain absent rather than be inferred as a generic
-issue.
+Issue records SHALL preserve the safe-output action and canonical GitHub entity
+type. The SQLite interchange SHALL expose these values as nullable
+`safe_output_type` and `github_entity_type` columns. Missing entity-type
+evidence MUST remain absent rather than be inferred as a generic issue.
 
 Example:
 
 ```js
 {
-  id: "event:01J...",
+  id: "domain:01J...",
 
   runId: "github:run:123456789:attempt:1",
 
@@ -1023,14 +1035,15 @@ Example:
 
   correlationId: null,
   payloadRef: null,
-  safeOutputType: null,
-  githubEntityType: null,
+  domain: "example.com",
+  decision: "blocked",
+  requestCount: 1,
 
   generation: "..."
 }
 ```
 
-## 12.2 Canonical Event Types
+## 12.2 Canonical Record Types
 
 Initial event families SHOULD include:
 
@@ -1078,7 +1091,7 @@ runtime.error
 
 ## 12.3 Correlation
 
-Related events SHOULD use `correlationId`.
+Related records SHOULD use `correlationId`.
 
 Example:
 
@@ -1092,7 +1105,7 @@ tool.result    correlationId=abc
 
 ## 12.4 Ordering
 
-Canonical event order MUST NOT depend solely on ingestion order.
+Canonical record order MUST NOT depend solely on ingestion order.
 
 Ordering SHOULD use:
 
@@ -1163,7 +1176,7 @@ gateway.response
 
 ### Debugging
 
-All events.
+All run-owned records.
 
 Views MUST NOT maintain independent copies of these datasets.
 
@@ -1228,11 +1241,11 @@ The version 1 JSON document SHALL contain:
 }
 ```
 
-Each row SHALL contain `entity_kind`, `source_id`, and `observed_at`. The remaining nullable columns are defined by entity kind. GitHub-backed relationships SHALL use immutable GitHub repository, workflow, and run IDs. Events SHALL reference their Run through `github_run_id` and `run_attempt`.
+Each row SHALL contain `entity_kind`, `source_id`, and `observed_at`. The remaining nullable columns are defined by entity kind. GitHub-backed relationships SHALL use immutable GitHub repository, workflow, and run IDs. Domains, Tools, Audits, and Issues SHALL reference their Run through `github_run_id` and `run_attempt`.
 
 The relational interchange SHALL consist of one manifest row and denormalized entity rows. A producer MAY expose these as tables or views. Database-specific extraction queries and credentials remain upstream concerns and MUST NOT be shipped to the browser.
 
-Token-optimization Event rows SHALL additionally follow Section 5.5.5. SQL
+Token-optimization Audit rows SHALL additionally follow Section 5.5.5. SQL
 producers SHALL NOT flatten invocation and Run-aggregate AIC into one repeated
 measure or substitute display names for canonical relationship IDs.
 
@@ -1262,7 +1275,10 @@ Example result:
   repositories: [],
   workflows: [],
   runs: [],
-  events: []
+  domains: [],
+  tools: [],
+  audits: [],
+  issues: []
 }
 ```
 
@@ -1313,7 +1329,7 @@ github:workflow:<id>
 github:run:<id>:attempt:<attempt>
 ```
 
-Events SHOULD use stable source identifiers where available.
+Run-owned records SHOULD use stable source identifiers where available.
 
 Otherwise deterministic IDs MAY be derived from stable source coordinates or content identifiers.
 
@@ -1408,8 +1424,8 @@ Example:
 
   "datasets": [
     {
-      "kind": "events",
-      "path": "events/events-0042.json",
+      "kind": "audits",
+      "path": "audits/audits-0042.json",
       "sha256": "...",
       "bytes": 3920211,
       "records": 5000,
@@ -1464,10 +1480,17 @@ sources/
     runs-0001.json
     runs-0002.json
 
-  events/
-    events-0001.json
-    events-0002.json
-    events-0003.json
+  domains/
+    domains-0001.json
+
+  tools/
+    tools-0001.json
+
+  audits/
+    audits-0001.json
+
+  issues/
+    issues-0001.json
 ```
 
 Published chunks MUST be immutable within a generation.
@@ -1791,11 +1814,11 @@ Example:
 {
   id: [
     "2026-09-09T05:00:00Z",
-    "events/events-0042.json"
+    "audits/audits-0042.json"
   ],
 
   generation: "2026-09-09T05:00:00Z",
-  chunk: "events/events-0042.json",
+  chunk: "audits/audits-0042.json",
 
   digest: "...",
   status: "committed",
@@ -1984,7 +2007,7 @@ Example:
 
 ```text
 HOT
-recent runs/events
+recent runs and run-owned records
 fully indexed
 
 WARM
@@ -2043,9 +2066,10 @@ runs.forRepository(repositoryId);
 runs.forWorkflow(workflowId);
 runs.recentFailures();
 
-events.list();
-events.forRun(runId);
-events.forRunByType(runId, type);
+domains.forRun(runId);
+tools.forRun(runId);
+audits.forRun(runId);
+issues.forRun(runId);
 ```
 
 Dashboard code SHOULD NOT directly scatter IndexedDB transaction logic through views.
@@ -2079,7 +2103,10 @@ dashboard/
       repositories.mjs
       workflows.mjs
       runs.mjs
-      events.mjs
+      domains.mjs
+      tools.mjs
+      audits.mjs
+      issues.mjs
 
     storage/
       indexeddb.mjs
@@ -2098,7 +2125,10 @@ dashboard/
       repositories.mjs
       workflows.mjs
       runs.mjs
-      events.mjs
+      domains.mjs
+      tools.mjs
+      audits.mjs
+      issues.mjs
 ```
 
 Temporary parallel namespaces such as `data-v2` or logical source names such as `canonical-runs` MUST NOT remain after migration. Published source documents MAY remain source inputs at the ingestion boundary, but presentation MUST receive only active-generation query results under stable logical source contracts.
@@ -2226,7 +2256,7 @@ The full new data path is testable without a browser.
 
 Make the canonical query layer authoritative for every view and remove the replaced browser cache, direct-source reads, aliases, and fallback behavior.
 
-The integration MUST NOT fabricate Event records from view-shaped summaries. Adapter-derived identities MUST remain explicitly namespaced when immutable upstream IDs are unavailable.
+The integration MUST NOT fabricate canonical run-owned records from view-shaped summaries. Adapter-derived identities MUST remain explicitly namespaced when immutable upstream IDs are unavailable.
 
 Compare:
 
@@ -2345,21 +2375,20 @@ Workflow path change does not incorrectly duplicate a known workflow.
 
 Reruns are distinguishable.
 
-### T-MODEL-004 — Event composition
+### T-MODEL-004 — Run-owned record composition
 
-One Run's Event stream may contain:
+One Run may own:
 
 ```text
-agent
 tool
-gateway
-firewall
-safe-output
+domain
+audit
+issue
 ```
 
-events.
+records.
 
-### T-MODEL-005 — Event ordering
+### T-MODEL-005 — Record ordering
 
 Out-of-order source observations result in deterministic canonical ordering.
 
@@ -2371,9 +2400,9 @@ Incomplete entities can be enriched by later authoritative observations.
 
 Ingesting identical observations twice does not duplicate logical data.
 
-### T-MODEL-008 — Unknown event
+### T-MODEL-008 — Unknown record
 
-Unknown non-critical events do not invalidate the complete source dataset.
+Unknown non-critical records do not invalidate the complete source dataset.
 
 ### T-MODEL-009 — Token opportunity identity
 
@@ -2543,14 +2572,14 @@ Synthetic tests SHOULD cover progressive scales.
 ```text
 100 repositories
 10,000 runs
-100,000 events
+100,000 run-owned records
 ```
 
 ### Enterprise candidate
 
 ```text
 10,000 repositories
-1,000,000 events
+1,000,000 run-owned records
 ```
 
 Additional tests MAY exceed these numbers.
@@ -2757,7 +2786,7 @@ The foundation is complete when:
 
 * Repository/Workflow/Run/Event exist;
 * canonical IDs are deterministic;
-* run events support multiple producers;
+* run-owned records support multiple producers;
 * real fixtures normalize correctly;
 * duplicate ingestion is idempotent;
 * no dashboard view is required for testing.
@@ -2791,7 +2820,7 @@ chunk integrity rejection
 quota-exceeded recovery
 atomic generation activation
 schema rebuild/upgrade
-out-of-order events
+out-of-order run-owned records
 duplicate ingestion
 repository rename
 workflow rename
@@ -3033,8 +3062,8 @@ The implementation SHALL be guided by the following rules:
 | Deterministic canonical IDs                    | MUST                           |
 | Idempotent normalization                       | MUST                           |
 | Repository → Workflow → Run hierarchy          | MUST                           |
-| Run → Event transaction log                    | MUST                           |
-| Heterogeneous event producers                  | MUST                           |
+| Run → Domain, Tool, Audit, and Issue records   | MUST                           |
+| Deterministic record classification            | MUST                           |
 | IndexedDB derived state                        | MUST                           |
 | Full reconstruction after database deletion    | MUST                           |
 | Query layer between DB and views               | MUST                           |
@@ -3069,11 +3098,18 @@ The implementation SHALL be guided by the following rules:
 
 **[`gh aw logs` schema](https://github.com/github/gh-aw/blob/main/schemas/logs.schema.json)** — The current command output contract SHALL be inspected for observations that can fill missing canonical data through source adapters.
 
-**gh-aw operational artifacts** — Agent, tool, gateway, firewall, safe-output, and execution observations provide candidate Event sources.
+**gh-aw operational artifacts** — Agent, tool, gateway, firewall, safe-output, and execution observations provide candidate run-owned records.
 
 ---
 
 # 72. Change Log
+
+## Version 1.2.0 — Specialized run-owned records
+
+* Replaced the Event table with Domain, Tool, Audit, and Issue tables.
+* Classified MCP, Bash, and skill calls as Tools.
+* Unified issues and pull requests using `isPullRequest`.
+* Bumped derived browser and SQLite cache contracts without legacy recovery.
 
 ## Version 1.1.0 — Run-owned events
 

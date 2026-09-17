@@ -72,7 +72,7 @@ flowchart LR
     Logs["gh aw logs"]
     Shards["Bounded JSONL shards"]
     Runs["Compact run-information shards"]
-    Events["Detailed event shards"]
+    Records["Detailed domain, tool, audit, and issue shards"]
     SQLite["SQLite projection"]
     Publisher["Dashboard publisher"]
     Worker["Browser data Web Worker"]
@@ -84,9 +84,9 @@ flowchart LR
     Logs --> Shards
     Shards --> SQLite --> CLI
     Shards --> Runs
-    Shards --> Events
+    Shards --> Records
     Runs --> Publisher
-    Events --> Publisher --> Worker
+    Records --> Publisher --> Worker
     Worker --> IndexedDB --> Query --> UI
 ```
 

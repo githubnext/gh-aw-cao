@@ -666,7 +666,7 @@ test('Transactions includes local database controls and a responsive transaction
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
+        'database-event-count': { source: 'database-event-count', rows: [{ audits: 13 }], metadata }
       };
       window.location.hash = '#page-overview';
       document.querySelector('#root').append(renderDashboard({ document: ${JSON.stringify(documentModel)}, sources }));
@@ -683,7 +683,7 @@ test('Transactions includes local database controls and a responsive transaction
   const view = transactionsPage.locator('[data-view-layout="full-view"]');
   const scroll = view.locator('.table-scroll');
   await expect(transactionsPage.getByRole('heading', { name: 'Local database' })).toBeVisible();
-  await expect(transactionsPage.locator('.configuration-database-counts')).toContainText('13Events');
+  await expect(transactionsPage.locator('.configuration-database-counts')).toContainText('13Audits');
   await expect(transactionsPage.locator('.reset-dashboard-trigger')).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);

@@ -6,7 +6,7 @@ import { relationshipErrors } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
 
 function fixture() {
-  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v2.json'), 'utf8'));
+  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v3.json'), 'utf8'));
 }
 
 describe('SQL export adapter', () => {

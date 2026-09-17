@@ -20,7 +20,7 @@ import {
 import { estimateCanonicalBatchBytes } from '../../src/data/storage/retention.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
-const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v2.json'), 'utf8'));
+const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v3.json'), 'utf8'));
 const sources = {
   repositories: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': metadata['as-of'] }],

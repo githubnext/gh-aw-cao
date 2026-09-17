@@ -7,7 +7,7 @@ const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'gene
 
 /**
  * @param {string} generation
- * @param {Record<string, unknown>[]} eventRows
+ * @param {Record<string, unknown>[]} toolRows
  */
 function collection(generation, toolRows) {
   const collected = { ...metadata, 'artifact-generation': generation };
