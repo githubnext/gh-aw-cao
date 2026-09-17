@@ -657,6 +657,13 @@ export function processDataRequest(request, signal) {
               });
               completedShardCount += 1;
               progress.reportShardImportProgress(completedShardCount, shardCount);
+              if (ingestion.updated && runPhaseShardCount === 0) {
+                progress.log(`Shard ${index + 1}/${shardCount} is available; refreshing active dashboard queries.`);
+                void refreshDashboardSubscriptions(
+                  /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+                  false
+                );
+              }
             }
           }
           if (inventoryResponse.ok) {
