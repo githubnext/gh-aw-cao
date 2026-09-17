@@ -662,9 +662,9 @@ describe('dashboard document validation', () => {
       }
     });
     expect(domains.encoding.columns).toEqual([
-      { field: 'domain', type: 'nominal' },
-      { field: 'run', type: 'quantitative', title: 'Run' },
-      { field: 'accepted', type: 'quantitative', title: 'Accepted' },
+      { field: 'domain', type: 'nominal', title: 'Domain' },
+      { field: 'run', type: 'quantitative', title: 'Runs' },
+      { field: 'accepted', type: 'quantitative', title: 'Allowed' },
       { field: 'blocked', type: 'quantitative', title: 'Blocked' }
     ]);
     const serialized = JSON.stringify(firewall).toLowerCase();
@@ -1126,7 +1126,7 @@ dashboard:
       chart: 'pie',
       encoding: {
         x: { field: 'package-name', type: 'nominal', title: 'Package' },
-        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Value created', unit: 'grade' }
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Ops Value', unit: 'ops-value' }
       }
     });
     expect(operationalValueChart).toMatchObject({
@@ -1135,7 +1135,7 @@ dashboard:
       chart: 'pie',
       encoding: {
         x: { field: 'package-name', type: 'nominal', title: 'Package' },
-        y: { field: 'value-created', type: 'quantitative', aggregate: 'mean', title: 'Operational value', unit: 'grade' }
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'mean', title: 'Operational value', unit: 'ops-value' }
       }
     });
     expect(operationalValueTable).toMatchObject({
@@ -1159,7 +1159,7 @@ dashboard:
       'Runs',
       'Dispatches',
       'AIC',
-      'Value created',
+      'Ops Value',
       'Registration'
     ]);
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');

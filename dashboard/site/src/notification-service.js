@@ -20,7 +20,8 @@ const services = new WeakMap();
  *   tone?: 'info' | 'success' | 'warning' | 'error',
  *   duration?: number,
  *   details?: string[],
- *   action?: { label: string, run: () => void }
+ *   action?: { label: string, run: () => void, placement?: 'details' },
+ *   dismissOnCollapse?: boolean
  * }} Notification
  */
 
@@ -85,7 +86,7 @@ export function publishNotification(notification, document = globalThis.document
 
 /**
  * @param {string | Notification} input
- * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details'>> & Pick<Notification, 'action' | 'detailsSubtitle' | 'icon'>}
+ * @returns {Required<Pick<Notification, 'message' | 'tone' | 'duration' | 'details' | 'dismissOnCollapse'>> & Pick<Notification, 'action' | 'detailsSubtitle' | 'icon'>}
  */
 function normalizeNotification(input) {
   const candidate = typeof input === 'string' ? { message: input } : input;
@@ -104,6 +105,7 @@ function normalizeNotification(input) {
     && typeof candidate.action.run === 'function'
       ? candidate.action
       : undefined;
+  const dismissOnCollapse = candidate.dismissOnCollapse === true;
   const details = Array.isArray(candidate.details)
     ? candidate.details
         .filter((detail) => typeof detail === 'string' && Boolean(detail.trim()))
@@ -114,7 +116,7 @@ function normalizeNotification(input) {
     ? candidate.detailsSubtitle.trim()
     : undefined;
   const icon = candidate.icon === 'download' ? candidate.icon : undefined;
-  return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, icon, action };
+  return { message: candidate.message.trim(), tone, duration, details, detailsSubtitle, icon, action, dismissOnCollapse };
 }
 
 /**
@@ -206,7 +208,9 @@ function renderNotification(initial, container, onRemove) {
     if (!current.action) return;
     action.textContent = current.action.label;
     action.onclick = () => current.action?.run();
-    element.append(action);
+    action.hidden = current.action.placement === 'details'
+      && toggle.getAttribute('aria-expanded') !== 'true';
+    (current.action.placement === 'details' ? content : element).append(action);
   };
   toggle.onclick = () => {
     const expanded = toggle.getAttribute('aria-expanded') === 'true';
@@ -217,7 +221,9 @@ function renderNotification(initial, container, onRemove) {
     );
     details.hidden = expanded;
     detailsSubtitle.hidden = expanded || !current.detailsSubtitle;
+    action.hidden = Boolean(current.action?.placement === 'details' && expanded);
     if (!expanded) details.scrollTop = details.scrollHeight;
+    if (expanded && current.dismissOnCollapse) dismiss();
   };
   details.addEventListener('wheel', (event) => {
     const maxScrollTop = details.scrollHeight - details.clientHeight;

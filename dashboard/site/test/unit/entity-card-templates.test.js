@@ -40,6 +40,20 @@ describe('entity card templates', () => {
     expect(selected).toEqual(expect.arrayContaining(['run-title', 'branch', 'event', 'duration', 'started-at']));
   });
 
+  it('declares a firewall domain card with allowed and blocked metrics', () => {
+    expect(templates['firewall-domain']).toEqual({
+      id: 'firewall-domain',
+      icon: 'globe',
+      title: { field: 'domain', title: 'Domain' },
+      labels: [],
+      details: [
+        { field: 'accepted', title: 'Allowed' },
+        { field: 'blocked', title: 'Blocked' },
+        { field: 'run', title: 'Runs' }
+      ]
+    });
+  });
+
   it('drills from repositories through workflows and runs to events', () => {
     expect(views['entity-repositories'].list).toMatchObject({
       card: 'repository',

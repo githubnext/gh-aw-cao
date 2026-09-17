@@ -39,10 +39,55 @@ const pending = new Map();
 const subscriptions = new Map();
 /** @type {Map<string, ReturnType<typeof publishNotification>>} */
 const workerNotificationHandles = new Map();
+/** @type {Set<string>} */
+const cancelledWorkerNotificationIds = new Set();
 /** @type {Set<(state: { id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }) => void>} */
 const workerLoadingProgressListeners = new Set();
 /** @type {Set<string>} */
 const workerLoadingProgressOperations = new Set();
+
+/**
+ * Adds supported main-thread behavior to a serializable worker notification.
+ * @param {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} notification
+ * @param {string} id
+ * @param {() => ReturnType<typeof publishNotification>} getHandle
+ */
+function attachWorkerNotificationAction(notification, id, getHandle) {
+  const { action, ...base } = notification;
+  if (!action || typeof action !== 'object' || Array.isArray(action)
+      || action.operation !== 'cancel-data-ingestion') {
+    return base;
+  }
+  const label = typeof action.label === 'string' && action.label.trim() ? action.label : 'Cancel';
+  return {
+    ...base,
+    action: {
+      label,
+      ...(action.placement === 'details' ? { placement: /** @type {'details'} */ ('details') } : {}),
+      run: () => {
+        if (typeof action.requestId !== 'number'
+            || !cancelDataProcessingRequest(action.requestId)) return;
+        getHandle().update({
+          ...base,
+          message: 'Data ingestion cancelled.',
+          tone: 'warning',
+          action: undefined,
+          dismissOnCollapse: true,
+          duration: 0
+        });
+        cancelledWorkerNotificationIds.add(id);
+      }
+    }
+  };
+}
+
+/** @param {number} id */
+function cancelDataProcessingRequest(id) {
+  const request = pending.get(id);
+  if (!request) return 0;
+  request.processor.postMessage({ id: ++nextRequestId, operation: 'cancel-data-processing', ids: [id] });
+  return 1;
+}
 
 /** @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state */
 function emitWorkerLoadingProgress(state) {
@@ -508,13 +553,25 @@ function getWorker() {
         const id = typeof notification?.id === 'string' ? notification.id : undefined;
         if (notification?.dismiss === true) {
           if (id) {
-            workerNotificationHandles.get(id)?.dismiss();
+            if (!cancelledWorkerNotificationIds.has(id)) {
+              workerNotificationHandles.get(id)?.dismiss();
+            }
             workerNotificationHandles.delete(id);
+            cancelledWorkerNotificationIds.delete(id);
           }
         } else if (id) {
+          if (cancelledWorkerNotificationIds.has(id)) return;
+          if (typeof notification.message !== 'string') return;
+          const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} */ (notification);
           const current = workerNotificationHandles.get(id);
-          if (current) current.update(notification);
-          else workerNotificationHandles.set(id, publishNotification(notification));
+          if (current) {
+            current.update(attachWorkerNotificationAction(interactiveNotification, id, () => current));
+          } else {
+            /** @type {ReturnType<typeof publishNotification>} */
+            let handle;
+            handle = publishNotification(attachWorkerNotificationAction(interactiveNotification, id, () => handle));
+            workerNotificationHandles.set(id, handle);
+          }
         } else {
           publishNotification(notification);
         }
@@ -571,8 +628,11 @@ function resetWorker(processor) {
     emitWorkerLoadingProgress({ id, phase: 'complete' });
   }
   workerLoadingProgressOperations.clear();
-  for (const notification of workerNotificationHandles.values()) notification.dismiss();
+  for (const [id, notification] of workerNotificationHandles) {
+    if (!cancelledWorkerNotificationIds.has(id)) notification.dismiss();
+  }
   workerNotificationHandles.clear();
+  cancelledWorkerNotificationIds.clear();
   for (const subscription of subscriptions.values()) subscription.registeredWorker = null;
 }
 

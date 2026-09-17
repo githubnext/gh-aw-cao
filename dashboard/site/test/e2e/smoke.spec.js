@@ -3268,7 +3268,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
     'Runs',
     'Dispatches',
     'AIC',
-    'Value created',
+    'Ops Value',
     'Registration'
   ]);
   const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });

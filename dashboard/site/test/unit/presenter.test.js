@@ -437,8 +437,12 @@ describe('presenter built-in and custom pages', () => {
     expect(text).toContain('new.example');
     expect(text).toContain('blocked.example');
     expect(text).toContain('changed.example');
-    expect(text).toContain('Accepted');
+    expect(text).toContain('Allowed');
     expect(text).toContain('Blocked');
+    const firewallCard = page?.querySelector('[data-view-id="security-firewall-domains"] .entity-card-list-card');
+    expect(firewallCard?.querySelector('.entity-card-list-title')?.textContent).toBe('blocked.example');
+    expect([...firewallCard?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
+      .toEqual(['0Allowed', '3177281Blocked', '1Runs']);
     expect(text).not.toContain('firewall failure');
     rendered.remove();
   });
@@ -2457,7 +2461,7 @@ describe('presenter built-in and custom pages', () => {
       'Operational value'
     ]);
     expect(tables[0]?.textContent).toContain('Ambient Context');
-    expect(tables[0]?.textContent).toContain('1.6');
+    expect(tables[0]?.textContent).toContain('1.60');
     const valueRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
     const valueFilter = /** @type {HTMLInputElement} */ (valueRegion?.querySelector('[data-table-filter]'));
     expect(valueFilter.closest('label')?.textContent).toContain('Filter Packages');

@@ -335,9 +335,10 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
  *
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, previousBatch?: import('../model/schema.js').CanonicalBatch }} [options]
+ * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, previousBatch?: import('../model/schema.js').CanonicalBatch, signal?: AbortSignal }} [options]
  */
 export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
+  options.signal?.throwIfAborted();
   const errors = relationshipErrors(batch);
   if (errors.length > 0) throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
   const batchSize = options.batchSize ?? DEFAULT_WRITE_BATCH_SIZE;
