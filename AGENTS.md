@@ -82,6 +82,13 @@ Run these commands from the `dashboard/site/` directory:
 - Use stable lowercase categories, adding `:` for subcategories. Never log secrets, tokens, prompts, raw records, payloads, or URLs containing credentials.
 - Preserve the existing `?debug=1` DOM-provenance behavior and `dashboard-data` / `dashboard-render` custom events when adding logging.
 
+### Dashboard performance testing
+
+- Measure page-level regressions with `npm run test:performance` from `dashboard/site/`; it builds the site and runs the CFO, CTO, and CSO Lighthouse scenarios, retaining traces for inspection.
+- Profile slow pages against real data with `npm run dashboard:local -- --repo OWNER/REPOSITORY`, then open the page with `?debug=data:query` to emit per-stage and whole-query timings (duration, input/output rows, estimated operations, status) for each declarative query.
+- Narrow noisy sessions with category filters such as `?debug=data:query,-render:*`, and use `?debug-shard-limit=N` to profile with fewer activity shards.
+- Attribute a slow page to its declarative queries before changing view code; query cost belongs to the query engine in the data Web Worker, not to components.
+
 ### CI workflows
 
 | Workflow file | Scope | Trigger |

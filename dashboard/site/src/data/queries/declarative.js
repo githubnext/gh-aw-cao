@@ -12,6 +12,9 @@
  */
 
 import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
+import { createDebug } from '../../debug.js';
+
+const debugQuery = createDebug('data:query');
 
 /**
  * @typedef {Record<string, unknown>} Row
@@ -617,25 +620,37 @@ export function executeDashboardQuery(definition, sources, defect, budget) {
  */
 function materializeDashboardQuery(definition, sources, defect, budget) {
   const inputs = queryInputNames(definition).map((name) => ({ name, source: sources[name] }));
-  const rejected = defect ?? queryStructuralDefect(definition);
-  if (rejected) {
-    return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), rejected);
-  }
-  const requiredInputs = new Set([
-    definition.from,
-    ...(definition.joins ?? []).filter((join) => join.type !== 'left').map((join) => join.source)
-  ]);
-  const optionalInputs = new Set((definition.joins ?? [])
-    .filter((join) => join.type === 'left' && !requiredInputs.has(join.source))
-    .map((join) => join.source));
-  const unavailable = inputs.find((input) => (
-    requiredInputs.has(input.name)
-    && (!input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable')
-  ));
-  if (unavailable) {
-    return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), `input source "${unavailable.name}" is unavailable`);
-  }
+  const startedAt = queryTimestamp();
+  const startingOperations = budget.operations;
+  let status = 'available';
+  let outputRows = 0;
+  let executing = false;
+  /** @type {string | undefined} */
+  let failure;
   try {
+    const rejected = defect ?? queryStructuralDefect(definition);
+    if (rejected) {
+      status = 'unavailable';
+      failure = rejected;
+      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), rejected);
+    }
+    const requiredInputs = new Set([
+      definition.from,
+      ...(definition.joins ?? []).filter((join) => join.type !== 'left').map((join) => join.source)
+    ]);
+    const optionalInputs = new Set((definition.joins ?? [])
+      .filter((join) => join.type === 'left' && !requiredInputs.has(join.source))
+      .map((join) => join.source));
+    const unavailable = inputs.find((input) => (
+      requiredInputs.has(input.name)
+      && (!input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable')
+    ));
+    if (unavailable) {
+      status = 'unavailable';
+      failure = `input source "${unavailable.name}" is unavailable`;
+      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), failure);
+    }
+
     const effectiveSources = { ...sources };
     for (const name of optionalInputs) {
       const source = effectiveSources[name];
@@ -644,19 +659,43 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
       }
     }
 
+    executing = true;
     const rows = runDashboardQuery(definition, effectiveSources, budget);
+    outputRows = rows.length;
     return {
       source: definition.name,
       rows,
       metadata: composedMetadata(definition.name, inputs, rows.length, optionalInputs)
     };
   } catch (error) {
-    if (error instanceof DashboardQueryCancelledError) throw error;
+    failure = error instanceof Error ? error.message : String(error);
+    if (error instanceof DashboardQueryCancelledError) {
+      status = error.kind;
+      throw error;
+    }
+    if (!executing) {
+      status = 'failed';
+      throw error;
+    }
+    status = 'unavailable';
     return unavailableResult(
       definition,
       composedMetadata(definition.name, inputs, 0),
-      error instanceof Error ? error.message : String(error)
+      failure
     );
+  } finally {
+    debugQuery('query', {
+      query: definition.name,
+      durationMs: elapsedQueryMilliseconds(startedAt),
+      inputRows: Object.fromEntries(inputs.map(({ name, source }) => [
+        name,
+        knownSourceRowCount(source)
+      ])),
+      outputRows,
+      operations: budget.operations - startingOperations,
+      status,
+      ...(failure ? { failure } : {})
+    });
   }
 }
 
@@ -711,17 +750,30 @@ function lazyValue(consume) {
 function runDashboardQuery(definition, sources, budget) {
   const input = /** @type {Row[]} */ (sources[definition.from].rows);
   enforceLimit(input.length, 'max-input-rows', definition.from);
-  budget.spend(input.length);
-  let rows = timeQueryStage(definition.name, 'from', () => input.map((row) => ({ ...row })));
+  let rows = timeQueryStage(definition.name, 'from', input.length, budget, () => {
+    budget.spend(input.length);
+    return input.map((row) => ({ ...row }));
+  });
   for (const join of definition.joins ?? []) {
-    rows = timeQueryStage(definition.name, `join:${join.source}`, () => (
-      applyJoin(rows, join, /** @type {Row[]} */ (sources[join.source].rows), join.source, budget)
-    ));
+    const joinedRows = /** @type {Row[]} */ (sources[join.source].rows);
+    rows = timeQueryStage(definition.name, `join:${join.source}`, rows.length, budget, () => (
+      applyJoin(rows, join, joinedRows, join.source, budget)
+    ), {
+      joinedRows: joinedRows.length
+    });
   }
   const operators = compileRowOperators(definition);
   for (const operator of operators) {
-    budget.spend(rows.length * queryOperatorCost(operator));
-    rows = timeQueryStage(definition.name, queryOperatorStage(operator), () => tidy(rows, [operator]));
+    rows = timeQueryStage(
+      definition.name,
+      queryOperatorStage(operator),
+      rows.length,
+      budget,
+      () => {
+        budget.spend(rows.length * queryOperatorCost(operator));
+        return tidy(rows, [operator]);
+      }
+    );
   }
   enforceLimit(rows.length, 'max-output-rows', definition.name);
   return rows;
@@ -754,17 +806,52 @@ function queryOperatorCost(operator) {
  * @template T
  * @param {string} queryName
  * @param {string} stage
+ * @param {number} inputRows
+ * @param {QueryBudget} budget
  * @param {() => T} operation
+ * @param {Record<string, unknown>} [details]
  * @returns {T}
  */
-function timeQueryStage(queryName, stage, operation) {
-  const label = `[dashboard-query:${queryName}] ${stage}`;
-  console.time(label);
+function timeQueryStage(queryName, stage, inputRows, budget, operation, details = {}) {
+  const startedAt = queryTimestamp();
+  const startingOperations = budget.operations;
+  let outputRows = null;
+  let status = 'complete';
   try {
-    return operation();
+    const result = operation();
+    outputRows = Array.isArray(result) ? result.length : null;
+    return result;
+  } catch (error) {
+    status = error instanceof DashboardQueryCancelledError ? error.kind : 'failed';
+    throw error;
   } finally {
-    console.timeEnd(label);
+    debugQuery('stage', {
+      query: queryName,
+      stage,
+      durationMs: elapsedQueryMilliseconds(startedAt),
+      inputRows,
+      outputRows,
+      operations: budget.operations - startingOperations,
+      status,
+      ...details
+    });
   }
+}
+
+function queryTimestamp() {
+  return globalThis.performance?.now() ?? Date.now();
+}
+
+/** @param {number} startedAt */
+function elapsedQueryMilliseconds(startedAt) {
+  return Math.round((queryTimestamp() - startedAt) * 100) / 100;
+}
+
+/** @param {LogicalSourceInput | undefined} source */
+function knownSourceRowCount(source) {
+  if (!source) return null;
+  const rows = Object.getOwnPropertyDescriptor(source, 'rows');
+  return rows && 'value' in rows && Array.isArray(rows.value) ? rows.value.length : null;
 }
 
 /** @param {import('../../data-operations.js').DataOperator} operator */
