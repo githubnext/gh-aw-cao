@@ -1,12 +1,13 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
+import { renderCloseButton } from './ui-primitives.js';
 
 /**
  * @param {() => void} retry
  * @returns {HTMLElement}
  */
 export function renderRefreshError(retry) {
-  return h(
+  const element = h(
     'section',
     { className: 'source-refresh-error', role: 'alert' },
     h(
@@ -16,14 +17,24 @@ export function renderRefreshError(retry) {
       h('p', null, 'Some views may be unavailable. You are seeing the most recent cached data.')
     ),
     h(
-      'button',
-      {
-        type: 'button',
-        className: 'refresh-button source-refresh-retry',
-        onclick: retry
-      },
-      octicon('sync'),
-      h('span', null, 'Retry')
+      'div',
+      { className: 'source-refresh-actions' },
+      h(
+        'button',
+        {
+          type: 'button',
+          className: 'refresh-button source-refresh-retry',
+          onclick: retry
+        },
+        octicon('sync'),
+        h('span', null, 'Retry')
+      ),
+      renderCloseButton({
+        className: 'source-refresh-dismiss',
+        label: 'Dismiss partial data warning',
+        onClick: () => element.remove()
+      })
     )
   );
+  return element;
 }

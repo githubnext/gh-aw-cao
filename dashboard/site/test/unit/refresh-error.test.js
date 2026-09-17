@@ -12,10 +12,22 @@ describe('refresh error', () => {
     expect(error.textContent).toContain('Some views may be unavailable.');
     expect(error.textContent).toContain('most recent cached data');
 
-    const button = error.querySelector('button');
-    expect(button?.textContent).toBe('Retry');
-    expect(button?.type).toBe('button');
-    button?.click();
+    const retryButton = /** @type {HTMLButtonElement | null} */ (error.querySelector('.source-refresh-retry'));
+    expect(retryButton?.textContent).toBe('Retry');
+    expect(retryButton?.type).toBe('button');
+    retryButton?.click();
     expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it('can dismiss the partial data warning', () => {
+    const error = renderRefreshError(vi.fn());
+    document.body.append(error);
+
+    const dismissButton = /** @type {HTMLButtonElement | null} */ (error.querySelector('.source-refresh-dismiss'));
+    expect(dismissButton?.getAttribute('aria-label')).toBe('Dismiss partial data warning');
+    expect(dismissButton?.getAttribute('title')).toBe('Dismiss partial data warning');
+    dismissButton?.click();
+
+    expect(document.body.contains(error)).toBe(false);
   });
 });

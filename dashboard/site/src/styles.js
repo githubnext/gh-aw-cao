@@ -2074,7 +2074,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 .source-refresh-error-message { min-width: 0; }
 .source-refresh-error-message strong { display: block; color: var(--fg); }
 .source-refresh-error-message p { margin: 2px 0 0; color: var(--muted); font-size: .8125rem; }
+.source-refresh-actions { display: flex; flex: none; align-items: center; gap: 6px; }
 .source-refresh-retry { flex: none; background: var(--canvas); }
+.source-refresh-dismiss { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+.source-refresh-dismiss:hover { background: var(--neutral-muted); color: var(--fg); }
 .source-loading-warning { color: var(--attention); }
 .dashboard-loading .dashboard-pages { display: none; }
 .dashboard-loading-skeleton { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
