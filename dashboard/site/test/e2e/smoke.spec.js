@@ -2974,7 +2974,15 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   const operationalValuePage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value'
   );
+  const packageInsightsPage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'package-insights'
+  );
+  const packageIssuesPage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'package-issues'
+  );
   assert(operationalValuePage, 'Missing operational value page');
+  assert(packageInsightsPage, 'Missing package insights page');
+  assert(packageIssuesPage, 'Missing package issues page');
 
   await page.setContent(`
     <div id="root"></div>
@@ -3018,22 +3026,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
               description: 'Activity from centrally managed packages.',
             }))},
             ${JSON.stringify(operationalValuePage)},
-            {
-              id: 'package-insights',
-              kind: 'custom',
-              title: 'Package',
-              route: { 'hash-query-parameter': 'package' },
-              views: [
-                {
-                  id: 'package-operational-value',
-                  title: 'Package operational value',
-                  data: { sources: ['workflows', 'operational-values'] },
-                  mark: 'element',
-                  element: 'package-route',
-                  config: { body: 'insights' }
-                }
-              ]
-            },
+            ${JSON.stringify(packageInsightsPage)},
             {
               id: 'package-detail',
               kind: 'custom',
@@ -3172,6 +3165,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                 }
               ]
             },
+            ${JSON.stringify(packageIssuesPage)},
             {
               id: 'package-reports',
               kind: 'custom',
@@ -3357,10 +3351,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
     return colors[0] === colors[1];
   })).toBe(true);
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
-  await packageNavigation.getByRole('link', { name: 'Insights' }).click();
-  await expect(packageNavigation.getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('[data-page-id="package-insights"] [data-view-id="package-audit-event-summary-buckets"]')).toBeVisible();
-  await expect(page.locator('[data-page-id="package-insights"] [data-view-id="package-audit-events-table"]')).toBeVisible();
   await packageNavigation.getByRole('link', { name: 'Workflows' }).click();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
   await expect(packageNavigation.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
@@ -3396,7 +3386,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(packageNavigation).toHaveCSS('gap', '0px');
   await expect(packageNavigation).toHaveCSS('overflow', 'hidden');
   const mobilePackageLinks = packageNavigation.locator('a');
-  await expect(mobilePackageLinks).toHaveCount(3);
+  await expect(mobilePackageLinks).toHaveCount(5);
   await expect(mobilePackageLinks.first().locator('.tab-trailing-icon')).toBeVisible();
   expect(await mobilePackageLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
   await mobilePackageLinks.first().focus();
@@ -3408,6 +3398,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   expect(mobileLinkBoxes.every((box) => box.height >= 44)).toBe(true);
   expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
+  await packageNavigation.getByRole('link', { name: 'Insights' }).click();
+  await expect(packageNavigation.getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-page-id="package-insights"]')).toBeVisible();
+  await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context package.');
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {
