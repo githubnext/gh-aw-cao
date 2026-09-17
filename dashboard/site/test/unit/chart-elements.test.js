@@ -213,38 +213,6 @@ describe('chart element helpers', () => {
       significant: 1
     });
 
-    it('renders bounded horizontal bars with labels on the left and shared bar colors', () => {
-      const points = [
-        { x: 'Alpha repository', y: 40, color: 'success' },
-        { x: 'Beta repository', y: 20, color: 'failure' }
-      ];
-      const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
-
-      expect(chart.getAttribute('data-chart-widget')).toBe('horizontal-bar');
-      expect(chart.getAttribute('role')).toBe('img');
-      expect(chart.getAttribute('aria-label')).toBe('Horizontal bar chart with 2 bars');
-      expect([...chart.querySelectorAll('.horizontal-bar-chart-label')].map((label) => label.textContent))
-        .toEqual(['Alpha repository', 'Beta repository']);
-      expect(chart.querySelectorAll('.bar-chart-bar')).toHaveLength(2);
-      expect(chart.querySelector('.horizontal-bar-chart-bar')?.getAttribute('style')).toContain('--horizontal-bar-size: 100%');
-      expect([...chart.querySelectorAll('.horizontal-bar-chart-value')].map((value) => value.textContent))
-        .toEqual(['40', '20']);
-      expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
-        .toContain('Alpha repository: 40');
-    });
-
-    it('rejects horizontal bar chart payloads larger than 100 rows', () => {
-      const points = Array.from({ length: 101 }, (_, index) => ({
-        x: `item-${index}`,
-        y: index,
-        color: null
-      }));
-      const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
-
-      expect(chart.querySelector('.horizontal-bar-chart-list')).toBeNull();
-      expect(chart.querySelector('[role="status"]')?.textContent).toBe('Horizontal bar charts support at most 100 bars.');
-    });
-
     expect(chart.getAttribute('data-chart-widget')).toBe('heatmap');
     expect(chart.querySelector('.heatmap-chart caption')?.textContent).toBe('Heatmap of Mean job time');
     expect([...chart.querySelectorAll('thead th')].map((cell) => cell.textContent)).toEqual(['build', 'test']);
@@ -254,6 +222,38 @@ describe('chart element helpers', () => {
     expect(chart.querySelector('.heatmap-cell-empty')?.getAttribute('aria-label')).toBe('test, macos: no observation');
     expect(chart.querySelector('.heatmap-cell-empty')?.getAttribute('tabindex')).toBe('0');
     expect([...chart.querySelectorAll('.heatmap-cell[tabindex="0"]')].map((cell) => cell.textContent)).toContain('62 s');
+  });
+
+  it('renders bounded horizontal bars with labels on the left and shared bar colors', () => {
+    const points = [
+      { x: 'Alpha repository', y: 40, color: 'success' },
+      { x: 'Beta repository', y: 20, color: 'failure' }
+    ];
+    const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
+
+    expect(chart.getAttribute('data-chart-widget')).toBe('horizontal-bar');
+    expect(chart.getAttribute('role')).toBe('img');
+    expect(chart.getAttribute('aria-label')).toBe('Horizontal bar chart with 2 bars');
+    expect([...chart.querySelectorAll('.horizontal-bar-chart-label')].map((label) => label.textContent))
+      .toEqual(['Alpha repository', 'Beta repository']);
+    expect(chart.querySelectorAll('.bar-chart-bar')).toHaveLength(2);
+    expect(chart.querySelector('.horizontal-bar-chart-bar')?.getAttribute('style')).toContain('--horizontal-bar-size: 100%');
+    expect([...chart.querySelectorAll('.horizontal-bar-chart-value')].map((value) => value.textContent))
+      .toEqual(['40', '20']);
+    expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
+      .toContain('Alpha repository: 40');
+  });
+
+  it('rejects horizontal bar chart payloads larger than 100 rows', () => {
+    const points = Array.from({ length: 101 }, (_, index) => ({
+      x: `item-${index}`,
+      y: index,
+      color: null
+    }));
+    const chart = renderChartWidget('horizontal-bar', points, listChartSeries(points));
+
+    expect(chart.querySelector('.horizontal-bar-chart-list')).toBeNull();
+    expect(chart.querySelector('[role="status"]')?.textContent).toBe('Horizontal bar charts support at most 100 bars.');
   });
 
   it('rejects oversized heatmaps with a visible status instead of rendering a dense matrix', () => {
