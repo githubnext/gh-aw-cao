@@ -88,7 +88,8 @@ it('publishes run queries while event ingestion continues', async () => {
     pages: [],
     queries: [
       { name: 'run-summary', from: 'runs', select: [{ field: 'run' }] },
-      { name: 'event-summary', from: 'events', select: [{ field: 'event' }] }
+      { name: 'event-summary', from: 'events', select: [{ field: 'event' }] },
+      { name: 'mixed-summary', from: 'runs', select: [{ field: 'run' }] }
     ]
   };
   listeners.get('message')?.({
@@ -109,6 +110,14 @@ it('publishes run queries while event ingestion continues', async () => {
   });
   listeners.get('message')?.({
     data: {
+      operation: 'subscribe-canonical-dashboard',
+      subscriptionId: 'mixed',
+      sourceNames: ['mixed-summary', 'event-summary'],
+      context
+    }
+  });
+  listeners.get('message')?.({
+    data: {
       id: 1,
       operation: 'load-canonical-dashboard',
       sourceUrl: 'https://dashboard.example/payload-hashes.json',
@@ -117,13 +126,23 @@ it('publishes run queries while event ingestion continues', async () => {
     }
   });
 
-  for (let attempt = 0; attempt < 200 && !posted.some(({ subscriptionId }) => subscriptionId === 'runs'); attempt += 1) {
+  for (let attempt = 0; attempt < 200 && !['runs', 'mixed'].every((subscriptionId) =>
+    posted.some((message) => message.subscriptionId === subscriptionId)); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
   const published = posted.find(({ subscriptionId }) => subscriptionId === 'runs');
   expect(published).toMatchObject({
     data: { 'run-summary': { rows: [{ run: '303' }] } }
   });
+  expect(posted.find(({ subscriptionId }) => subscriptionId === 'mixed')).toMatchObject({
+    data: {
+      'mixed-summary': { rows: [{ run: '303' }] }
+    }
+  });
+  expect(posted.find(({ subscriptionId }) => subscriptionId === 'mixed')?.data)
+    .not.toHaveProperty('event-summary');
+  expect(posted.filter(({ subscriptionId }) => subscriptionId === 'runs')).toHaveLength(1);
+  expect(posted.filter(({ subscriptionId }) => subscriptionId === 'mixed')).toHaveLength(1);
   expect(eventDownloaded).toBe(true);
   expect(posted.some(({ id }) => id === 1)).toBe(false);
   expect(posted.some(({ subscriptionId }) => subscriptionId === 'events')).toBe(false);
@@ -142,12 +161,15 @@ it('publishes run queries while event ingestion continues', async () => {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
   expect(posted.find(({ id }) => id === 1)?.error).toBeUndefined();
-  for (let attempt = 0; attempt < 200 && !['events', 'events-during-run-phase'].every((subscriptionId) =>
-    posted.some((message) => message.subscriptionId === subscriptionId)); attempt += 1) {
+  for (let attempt = 0; attempt < 200 && (!['events', 'events-during-run-phase'].every((subscriptionId) =>
+    posted.some((message) => message.subscriptionId === subscriptionId))
+    || posted.filter(({ subscriptionId }) => subscriptionId === 'mixed').length < 2); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'events')).toBeDefined();
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'events-during-run-phase')).toBeDefined();
+  expect(posted.filter(({ subscriptionId }) => subscriptionId === 'mixed').at(-1)?.data)
+    .toHaveProperty('event-summary');
   expect((await readTransactions(indexedDB))
     .filter(({ kind }) => kind === 'ingest-normalized-json')
     .map(({ payloadScope, payloadHash }) => ({ payloadScope, payloadHash })))

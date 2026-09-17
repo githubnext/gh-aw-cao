@@ -42,10 +42,9 @@ async function* responseChunks(body) {
   }
 }
 
-/** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
+/** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number, runsOnly: boolean } | null} */
 let liveDashboard = null;
 let dashboardActivated = false;
-let runPhaseOnly = false;
 const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
  * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
@@ -70,7 +69,8 @@ async function loadActiveDashboard() {
   if (liveDashboard) return liveDashboard;
   liveDashboard = {
     logicalSources: {},
-    revision: 0
+    revision: 0,
+    runsOnly: false
   };
   return liveDashboard;
 }
@@ -89,14 +89,15 @@ function requestedSourceNames(sourceNames) {
 const RUN_PHASE_CANONICAL_SOURCES = new Set(['packages', 'repositories', 'workflows', 'runs']);
 
 /** @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription */
-function isRunPhaseSubscription(subscription) {
+function runPhaseSourceNames(subscription) {
   const queryNames = new Set(subscription.context.queries
     .filter((definition) => definition && typeof definition === 'object' && !Array.isArray(definition))
     .map((definition) => /** @type {{ name?: unknown }} */ (definition).name)
     .filter((name) => typeof name === 'string'));
-  return resolveDashboardQuerySources(subscription.context.queries, subscription.sourceNames)
-    .filter((name) => !queryNames.has(name))
-    .every((name) => RUN_PHASE_CANONICAL_SOURCES.has(name));
+  return subscription.sourceNames.filter((sourceName) =>
+    resolveDashboardQuerySources(subscription.context.queries, [sourceName])
+      .filter((name) => !queryNames.has(name))
+      .every((name) => RUN_PHASE_CANONICAL_SOURCES.has(name)));
 }
 
 /**
@@ -234,12 +235,16 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
       for (const id of ids) {
         const subscription = dashboardSubscriptions.get(id);
         if (!subscription) continue;
+        const sourceNames = dashboard.runsOnly
+          ? runPhaseSourceNames(subscription)
+          : subscription.sourceNames;
+        if (sourceNames.length === 0) continue;
         try {
           const pagination = subscription.revision === dashboard.revision
             ? subscription.pagination
             : resetPagination(subscription.pagination);
           const data = await queryLiveDashboard(
-            new Set(subscription.sourceNames),
+            new Set(sourceNames),
             subscription.context,
             subscription.requestContext,
             undefined,
@@ -293,13 +298,13 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
 function refreshDashboardSubscriptions(logicalSources, runsOnly) {
   liveDashboard = {
     logicalSources,
-    revision: (liveDashboard?.revision ?? 0) + 1
+    revision: (liveDashboard?.revision ?? 0) + 1,
+    runsOnly
   };
   dashboardActivated = true;
-  runPhaseOnly = runsOnly;
   scheduleDashboardSubscriptions(runsOnly
     ? [...dashboardSubscriptions]
-        .filter(([, subscription]) => isRunPhaseSubscription(subscription))
+        .filter(([, subscription]) => runPhaseSourceNames(subscription).length > 0)
         .map(([id]) => id)
     : dashboardSubscriptions.keys());
   return flushDashboardSubscriptions(true);
@@ -565,7 +570,7 @@ export function processDataRequest(request, signal) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             if (runPhaseShardCount > 0 && index === runPhaseShardCount) {
               const eventPendingShards = pendingShards.filter((state) => state.index >= runPhaseShardCount);
-              if (eventPendingShards.length > 0 && !dashboardActivated) {
+              if (eventPendingShards.length > 0) {
                 progress.log('Run information is available; refreshing active dashboard queries.');
                 await refreshDashboardSubscriptions(
                   /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
@@ -652,13 +657,6 @@ export function processDataRequest(request, signal) {
               });
               completedShardCount += 1;
               progress.reportShardImportProgress(completedShardCount, shardCount);
-              if (ingestion.updated) {
-                progress.log(`Shard ${index + 1}/${shardCount} is available; refreshing active dashboard queries.`);
-                void refreshDashboardSubscriptions(
-                  /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-                  runPhaseShardCount > 0 && index < runPhaseShardCount
-                );
-              }
             }
           }
           if (inventoryResponse.ok) {
@@ -697,10 +695,10 @@ export function processDataRequest(request, signal) {
           + (!dashboardActivated || changed ? 1 : 0);
         liveDashboard = {
           logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-          revision: nextRevision
+          revision: nextRevision,
+          runsOnly: false
         };
         dashboardActivated = true;
-        runPhaseOnly = false;
         scheduleDashboardSubscriptions();
         progress.complete();
         const projected = await queryLiveDashboard(
@@ -812,7 +810,7 @@ if (typeof document === 'undefined' && workerScope) {
       dashboardSubscriptions.set(subscriptionId, subscription);
       if (liveDashboard
         && event.data.emitCurrent !== false
-        && (!runPhaseOnly || isRunPhaseSubscription(subscription))) {
+        && (!liveDashboard.runsOnly || runPhaseSourceNames(subscription).length > 0)) {
         scheduleDashboardSubscriptions([subscriptionId]);
       }
       return;
