@@ -52,8 +52,8 @@ const dashboardQueryMemoization = createDashboardQueryMemoization();
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
-/** @type {Map<number, () => Promise<void>>} */
-const inFlightDashboardSyncs = new Map();
+/** @type {Map<number, Record<string, unknown>>} */
+const inFlightDashboardSources = new Map();
 /** @type {Set<string>} */
 const dirtyDashboardSubscriptions = new Set();
 const SUBSCRIPTION_FLUSH_DELAY_MS = 50;
@@ -441,13 +441,7 @@ export function processDataRequest(request, signal) {
       /** @type {Record<string, unknown>} */
       let sources = {};
       if (typeof request.id === 'number') {
-        inFlightDashboardSyncs.set(request.id, async () => {
-          progress.log('Refreshing active dashboard queries by request.');
-          await refreshDashboardSubscriptions(
-            /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-            false
-          );
-        });
+        inFlightDashboardSources.set(request.id, sources);
       }
       try {
         progress.log(activity ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
@@ -457,6 +451,7 @@ export function processDataRequest(request, signal) {
             progress.log(`Loaded dashboard source shard ${name} (${size}; cache: ${cacheStatus ?? 'unavailable'}).`);
           }
         });
+        if (typeof request.id === 'number') inFlightDashboardSources.set(request.id, sources);
         if (activity) {
           const payloadHashesUrl = sourceUrl;
           const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
@@ -471,6 +466,7 @@ export function processDataRequest(request, signal) {
           });
           if (inventoryResponse.ok) {
             sources = inventorySources;
+            if (typeof request.id === 'number') inFlightDashboardSources.set(request.id, sources);
             progress.log('Inventory metadata refreshed.');
           } else {
             progress.log('No separate inventory metadata was published.');
@@ -716,7 +712,7 @@ export function processDataRequest(request, signal) {
           ? { sources: projected, changed }
           : projected;
       } finally {
-        if (typeof request.id === 'number') inFlightDashboardSyncs.delete(request.id);
+        if (typeof request.id === 'number') inFlightDashboardSources.delete(request.id);
         progress.complete();
         dashboardIngestionCount = Math.max(0, dashboardIngestionCount - 1);
         if (dashboardIngestionCount === 0) scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
@@ -826,8 +822,16 @@ if (typeof document === 'undefined' && workerScope) {
       return;
     }
     if (event.data?.operation === 'sync-dashboard-queries') {
-      const sync = inFlightDashboardSyncs.get(event.data.requestId);
-      if (sync) void sync();
+      const requestId = event.data.requestId;
+      const sources = Number.isSafeInteger(requestId)
+        ? inFlightDashboardSources.get(requestId)
+        : undefined;
+      if (sources) {
+        void refreshDashboardSubscriptions(
+          /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+          false
+        );
+      }
       return;
     }
     if (event.data?.operation === 'cancel-data-processing') {
