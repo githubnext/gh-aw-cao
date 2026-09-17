@@ -513,9 +513,40 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
     });
     const inventory = JSON.parse(readFileSync(outputPath, "utf8"));
     const dependabotBundle = inventory.bundles.find((bundle) => bundle.id === "dependabot");
-    const registeredPackageIds = Object.keys(
-      JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"))["control-plane"].packages,
-    ).sort();
+    const policyPackages = JSON.parse(
+      readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"),
+    )["control-plane"].packages;
+    const registeredPackageIds = Object.keys(policyPackages).sort();
+    const expectedBundles = registeredPackageIds.flatMap((packageId) => {
+      const descriptorPath = join(root, packageId, "cao.json");
+      if (!existsSync(descriptorPath)) {
+        assert.equal(policyPackages[packageId].workers, undefined, `${packageId} workers require a package descriptor`);
+        return [];
+      }
+      const descriptor = JSON.parse(readFileSync(descriptorPath, "utf8"));
+      assert.equal(descriptor.package, packageId, descriptorPath);
+      assert.deepEqual(
+        Object.fromEntries(Object.entries(policyPackages[packageId].workers).map(([worker, config]) => [
+          worker,
+          config.workflow,
+        ])),
+        descriptor.workers,
+        `${packageId} policy workers must match its package descriptor`,
+      );
+      const orchestratorSource = workflow(`${descriptor.orchestrator}.md`);
+      const frontmatter = /^---\n([\s\S]*?)\n---/.exec(orchestratorSource)?.[1];
+      assert.ok(frontmatter, `${descriptor.orchestrator}.md must have frontmatter`);
+      const dispatchWorkflows = parse(frontmatter)["safe-outputs"]["dispatch-workflow"].workflows;
+      assert.deepEqual(
+        [...dispatchWorkflows].sort(),
+        Object.values(descriptor.workers).sort(),
+        `${packageId} dispatch allowlist must match its package descriptor`,
+      );
+      return [{
+        id: packageId,
+        workers: dispatchWorkflows,
+      }];
+    }).sort((left, right) => left.id.localeCompare(right.id));
     assert.deepEqual(inventory.packages.map((entry) => entry.id), registeredPackageIds);
     assert.equal(inventory.packages.find((entry) => entry.id === "repo-assist")?.name, "Repo Assist");
     assert.equal(dependabotBundle.readmePath, "dependabot/README.md");
@@ -524,80 +555,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
     assert.deepEqual(inventory.bundles.map((bundle) => ({
       id: bundle.id,
       workers: bundle.workers.map((worker) => worker.id),
-    })), [
-      { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency", "cao-evolution-catalog-advisor", "cao-evolution-failures-investigator", "cao-evolution-compiler-security"] },
-      { id: "dependabot", workers: ["dependabot-release-train-updater"] },
-      {
-        id: "eslint-rules",
-        workers: [
-          "eslint-rules-inventory",
-          "eslint-rules-miner",
-          "eslint-rules-refiner",
-          "eslint-rules-applier",
-          "eslint-rules-librarian",
-        ],
-      },
-      {
-        id: "eu-cra-compliance",
-        workers: [
-          "eu-cra-compliance-scope-classifier",
-          "eu-cra-compliance-security-requirements-auditor",
-          "eu-cra-compliance-supply-chain-sbom-auditor",
-          "eu-cra-compliance-vulnerability-handling-auditor",
-          "eu-cra-compliance-article-14-reporting-readiness",
-          "eu-cra-compliance-conformity-release-evidence",
-        ],
-      },
-      {
-        id: "optimization",
-        workers: [
-          "optimization-ai-credit-auditor",
-          "optimization-ai-credit-optimizer",
-          "optimization-agents-md-curator",
-          "optimization-skills-curator",
-          "optimization-token-efficiency-auditor",
-          "optimization-token-optimizer",
-          "optimization-token-efficiency-verifier",
-        ],
-      },
-      {
-        id: "repo-assist",
-        workers: [
-          "repo-assist-issue-triage",
-          "repo-assist-issue-fix",
-          "repo-assist-maintenance",
-          "repo-assist-pr-upkeep",
-        ],
-      },
-      {
-        id: "self-care",
-        workers: [
-          "self-care-accessibility-checker",
-          "self-care-code-improvement",
-          "self-care-dashboard-data-schema",
-          "self-care-dashboard-debug-logging",
-          "self-care-dashboard-performance",
-          "self-care-data-acquisition-audit",
-          "self-care-dashboard-language-refactor",
-          "self-care-dashboard-review",
-          "self-care-docs-build-time-investigator",
-          "self-care-experimental-views",
-          "self-care-glossary",
-          "self-care-open-source-failures",
-          "self-care-pages-health",
-          "self-care-primer-brand-checker",
-          "self-care-reactive-ui-expert",
-        ],
-      },
-      {
-        id: "software-development-practices",
-        workers: [
-          "software-development-practices-github-well-architected",
-          "software-development-practices-nist-ssdf",
-        ],
-      },
-      { id: "uk-ai-advisory", workers: ["uk-ai-advisory-operational-resilience"] },
-    ]);
+    })), expectedBundles);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
