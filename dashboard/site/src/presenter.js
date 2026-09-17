@@ -372,6 +372,7 @@ function cloneRouteTabsForPage(page, pageId, parameters) {
  * @param {URLSearchParams} right
  */
 function queryParametersMatch(left, right) {
+  /** @param {URLSearchParams} parameters */
   const entries = (parameters) => [...parameters.entries()]
     .sort(([leftKey, leftValue], [rightKey, rightValue]) => (
       leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue)

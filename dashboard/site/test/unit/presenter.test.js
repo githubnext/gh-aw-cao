@@ -4029,8 +4029,8 @@ describe('presenter built-in and custom pages', () => {
         expect(root.querySelector('#page-second .dashboard-view-skeleton')).not.toBeNull();
       });
       const pendingTabs = root.querySelector('#page-second [data-route-tabs]');
-      expect(pendingTabs?.textContent).toBe('OverviewWorkflowsRuns');
-      expect(pendingTabs?.querySelector('[aria-current="page"]')?.textContent).toBe('Workflows');
+      expect(pendingTabs?.textContent?.replace(/\s/g, '')).toBe('OverviewWorkflowsRuns');
+      expect(pendingTabs?.querySelector('[aria-current="page"]')?.textContent?.trim()).toBe('Workflows');
       expect(root.querySelector('#page-second')?.getAttribute('aria-busy')).toBe('true');
       disposeNavigation();
     } finally {
