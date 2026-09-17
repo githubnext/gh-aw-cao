@@ -883,69 +883,6 @@
         "aggregate": { "values": [{ "field": "event", "as": "events", "reducer": "count" }] }
       },
       {
-        "name": "token-efficiency-interventions",
-        "intent": "Project append-only token-efficiency intervention lifecycle observations from canonical events.",
-        "from": "events",
-        "filter": {
-          "predicates": [{ "field": "event-type", "equals": "token_efficiency.intervention" }]
-        },
-        "compute": [
-          {
-            "as": "target-repository-link",
-            "function": "concat",
-            "args": [{ "value": "https://github.com/" }, { "field": "target-repo" }]
-          },
-          {
-            "as": "target-workflow-link",
-            "function": "concat",
-            "args": [
-              { "value": "https://github.com/" },
-              { "field": "target-repo" },
-              { "value": "/blob/HEAD/" },
-              { "field": "target-workflow-path" }
-            ]
-          }
-        ],
-        "select": [
-          { "field": "target-organization", "as": "organization" },
-          { "field": "target-repository", "as": "repository" },
-          { "field": "target-workflow-path", "as": "workflow" },
-          { "field": "run" },
-          { "field": "opportunity-id" },
-          { "field": "intervention-id" },
-          { "field": "lifecycle-observation-id" },
-          { "field": "previous-intervention-state" },
-          { "field": "intervention-state" },
-          { "field": "previous-recommendation-disposition" },
-          { "field": "recommendation-disposition" },
-          { "field": "supersedes-intervention-id" },
-          { "field": "superseded-by-intervention-id" },
-          { "field": "recommendation-churn-count" },
-          { "field": "recommendation-churn-rate" },
-          { "field": "experiment" },
-          { "field": "control-variant" },
-          { "field": "optimized-variant" },
-          { "field": "proposed-savings-aic" },
-          { "field": "evidence-state" },
-          { "field": "missing-reason" },
-          { "field": "safe-output-id" },
-          { "field": "implementation-change-id" },
-          { "field": "implementation-run-ids" },
-          { "field": "accepted-at" },
-          { "field": "implementation-started-at" },
-          { "field": "implementation-completed-at" },
-          { "field": "rejected-at" },
-          { "field": "superseded-at" },
-          { "field": "event-timestamp", "as": "observed-at" },
-          { "field": "safe-output-url", "as": "issue-link" },
-          { "field": "implementation-pull-request-url", "as": "pull-request-link" },
-          { "field": "payload-ref", "as": "evidence-link" },
-          { "field": "target-repository-link", "as": "repository-link" },
-          { "field": "target-workflow-link", "as": "workflow-link" },
-          { "field": "run-link" }
-        ]
-      },
-      {
         "name": "transactions-table",
         "intent": "List retained ingestion transactions from newest to oldest.",
         "from": "transactions",
