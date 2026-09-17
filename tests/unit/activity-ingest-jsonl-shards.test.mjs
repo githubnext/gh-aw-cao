@@ -191,3 +191,34 @@ test('phased shard names preserve source order and pair exactly', async () => {
   assert.ok(hashes[`gh-aw-logs-runs/${runs[0]}`]);
   assert.ok(hashes[`gh-aw-logs-events/${events[1]}`]);
 });
+
+test('hash-payloads upgrades the legacy cached layout to phased shards', async () => {
+  const { root, shardDirectory } = await fixture();
+  const legacyNormalizedDirectory = path.join(root, 'gh-aw-logs-normalized');
+  await mkdir(legacyNormalizedDirectory);
+  await writeFile(path.join(legacyNormalizedDirectory, 'legacy.json'), '{}');
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+
+  await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'hash-payloads',
+    '--shard-dir',
+    shardDirectory,
+    '--runs-dir',
+    runsDirectory,
+    '--events-dir',
+    eventsDirectory,
+  ]);
+
+  const runs = await readdir(runsDirectory);
+  const events = await readdir(eventsDirectory);
+  assert.equal(runs.length, 1);
+  assert.deepEqual(runs, events);
+  const runPayload = JSON.parse(await readFile(path.join(runsDirectory, runs[0]), 'utf8'));
+  const eventPayload = JSON.parse(await readFile(path.join(eventsDirectory, events[0]), 'utf8'));
+  assert.equal(runPayload.phase, 'runs');
+  assert.equal(eventPayload.phase, 'events');
+  assert.ok(runPayload.batch.runs.length > 0);
+  assert.ok(eventPayload.batch.events.length > 0);
+});
