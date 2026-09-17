@@ -138,6 +138,56 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.activity-artifact-run.outputs.run-id }}
 
+      - name: Upgrade fallback activity data
+        if: steps.activity-cache.outputs.cache-matched-key == ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
+          REPORT_GH_AW_LOGS_NORMALIZED: ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
+          REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
+          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+          REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
+          REPORT_PAYLOAD_HASHES: ${{ runner.temp }}/cao-activity/payload-hashes.json
+        with:
+          script: |
+            const fs = require('fs')
+            const ingestionScript = fs.existsSync('activity/cao.mjs')
+              ? 'activity/cao.mjs'
+              : fs.existsSync('.github/aw/activity/cao.mjs')
+                ? '.github/aw/activity/cao.mjs'
+                : undefined
+            if (!ingestionScript) {
+              throw new Error('Activity fallback upgrader is unavailable')
+            }
+            await exec.exec(process.execPath, [
+              ingestionScript,
+              'hash-payloads',
+              '--shard-dir', process.env.REPORT_GH_AW_LOGS_SHARDS,
+              '--normalized-dir', process.env.REPORT_GH_AW_LOGS_NORMALIZED,
+              '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
+              '--events-dir', process.env.REPORT_GH_AW_LOGS_EVENTS,
+              '--inventory', process.env.REPORT_INVENTORY_SOURCES,
+            ])
+            await exec.exec(process.execPath, [
+              ingestionScript,
+              'ingest-jsonl',
+              '--database', process.env.ACTIVITY_DATABASE,
+              '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
+              '--events-dir', process.env.REPORT_GH_AW_LOGS_EVENTS,
+              '--run-retention-days', 'all',
+            ])
+            await exec.exec(process.execPath, [
+              ingestionScript,
+              'hash-payloads',
+              '--database', process.env.ACTIVITY_DATABASE,
+              '--shard-dir', process.env.REPORT_GH_AW_LOGS_SHARDS,
+              '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
+              '--events-dir', process.env.REPORT_GH_AW_LOGS_EVENTS,
+              '--inventory', process.env.REPORT_INVENTORY_SOURCES,
+              '--output', process.env.REPORT_PAYLOAD_HASHES,
+            ])
+
       - name: Validate restored activity data
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite

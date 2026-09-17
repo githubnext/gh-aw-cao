@@ -429,10 +429,7 @@ describe('data view renderer', () => {
       rows: [{
         'operation-name': 'Doctor',
         'operation-icon': 'gear',
-        'operation-link': {
-          'dashboard-href': '#page-package-detail?package=doctor',
-          'dashboard-label': 'View Doctor'
-        }
+        'operation-link': '#page-package-detail?package=doctor'
       }],
       cardTemplates: {
         operation: {

@@ -627,7 +627,8 @@ function resolveCardLink(row, field, fallbackLabel) {
   const link = findLink(row, field);
   if (link) return link;
   const candidate = row[field];
-  return typeof candidate === 'string' && isSafeHttpsUrl(candidate)
+  return typeof candidate === 'string'
+    && (isSafeHttpsUrl(candidate) || candidate.startsWith('#page-'))
     ? { href: candidate, label: fallbackLabel || candidate }
     : null;
 }
