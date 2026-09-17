@@ -1,4 +1,10 @@
-import { readCollection, readIndex, readRecord, readTransactions } from '../storage/indexeddb.js';
+import {
+  queryCollection,
+  readCollection,
+  readIndex,
+  readRecord,
+  readTransactions
+} from '../storage/indexeddb.js';
 
 /** @param {IDBFactory} indexedDB */
 export function createCanonicalQueries(indexedDB) {
@@ -24,10 +30,16 @@ export function createCanonicalQueries(indexedDB) {
       forWorkflow: (/** @type {string} */ workflowId) =>
         readIndex(indexedDB, 'runs', 'byWorkflow', [workflowId]),
       recentFailures: async () => {
-        const runs = await readCollection(indexedDB, 'runs');
-        return runs
-          .filter((run) => ['failure', 'startup-failure', 'stale', 'timed-out'].includes(String(run.conclusion)))
-          .sort((left, right) => String(right.startedAt).localeCompare(String(left.startedAt)));
+        return queryCollection(indexedDB, 'runs', [
+          {
+            op: 'filter',
+            predicates: [{
+              field: 'conclusion',
+              in: ['failure', 'startup-failure', 'stale', 'timed-out']
+            }]
+          },
+          { op: 'arrange', by: [{ field: 'startedAt', direction: 'desc' }] }
+        ]);
       }
     },
     jobs: {
@@ -47,8 +59,16 @@ export function createCanonicalQueries(indexedDB) {
       forSession: (/** @type {string} */ sessionId) =>
         readIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]),
       forSessionByType: async (/** @type {string} */ sessionId, /** @type {string} */ type) => {
-        const events = await readIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]);
-        return events.filter((event) => event.type === type);
+        return queryCollection(indexedDB, 'events', [{
+          op: 'filter',
+          predicates: [
+            { field: 'sessionId', equals: sessionId },
+            { field: 'type', equals: type }
+          ]
+        }, {
+          op: 'arrange',
+          by: [{ field: 'sequence', direction: 'asc' }]
+        }]);
       }
     },
     transactions: {
