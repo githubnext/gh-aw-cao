@@ -469,7 +469,6 @@ function enableResponsiveReportActions(root, signal) {
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');
   const headerDesktopSlot = overviewHeader?.parentElement;
-  const headerDescription = overviewHeader?.querySelector('[data-page-description]');
   const viewModeToggle = root.querySelector('.mobile-view-mode-toggle');
   const mobileToggleSlot = root.querySelector('.sidebar-header');
   const mobileToggleAnchor = root.querySelector('.mobile-nav-menu');
@@ -487,6 +486,7 @@ function enableResponsiveReportActions(root, signal) {
       } else if (overviewHeader.parentElement !== headerDesktopSlot) {
         headerDesktopSlot.prepend(overviewHeader);
       }
+      const headerDescription = overviewHeader.querySelector('[data-page-description]');
       if (headerDescription instanceof HTMLElement) {
         if (media.matches) headerDescription.setAttribute('aria-hidden', 'true');
         else headerDescription.removeAttribute('aria-hidden');
