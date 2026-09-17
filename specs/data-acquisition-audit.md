@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Audit date:** 2026-09-14
+**Audit date:** 2026-09-17
 
 The control bootstrap checks out the control repository's `.github` tree at `github.workflow_sha`. The CAO package installs the runtime under `.github/workflows/shared`, so installed and source-managed control repositories use that single checkout without fetching a second copy.
 
@@ -22,7 +22,7 @@ The control bootstrap checks out the control repository's `.github` tree at `git
 
 </details>
 
-**Current acquisition state:** The inventory below supersedes historical details in the parenthetical refresh notes above. Activity now requests only compact usage artifacts with audit generation, performs no Actions fallback or Jobs API enrichment, and supplies run attribution to `records.mjs`. Report collection no longer reads repository details, remote workflow inventories, lock sources, gh-aw releases, or Actions run details. Activity's `gh aw logs` invocation now uses `--cached-logs` with a trailing wildcard shard prefix instead of `--cached-jsonl`; new data lands in a freshly named shard rather than a rescanned single growing file, and ingestion processes the carried-forward shard directory one shard at a time, skipping shards whose content hash already matches the transactions table.
+**Current acquisition state:** The inventory below supersedes historical details in the parenthetical refresh notes above. Activity now requests only compact usage artifacts with audit generation, performs no Actions fallback or Jobs API enrichment, and supplies run attribution to `records.mjs`. Report collection no longer reads repository details, remote workflow inventories, lock sources, gh-aw releases, or Actions run details. Activity's `gh aw logs` invocation now uses `--cached-logs` with a trailing wildcard shard prefix instead of `--cached-jsonl`; new data lands in a freshly named shard rather than a rescanned single growing file. Ingestion (`activity/cao.mjs`) was restructured from a single carried-forward shard directory into paired `--runs-dir`/`--events-dir` phased shard directories (compact run properties committed before detailed events), still skipping any shard whose content hash already matches the transactions table. Separately, `activity/collect-logs.sh` (invoked by `cao-activity.yml`) now issues its own bounded but uncached `gh api` sequence per activity run to collect token-efficiency observation and lifecycle-claim artifacts (see §2 and §5.23), which is new API traffic beyond the `gh aw logs` call itself.
 
 **Refresh ledger:** See [Data Acquisition Audit History](./data-acquisition-audit-history.md) for compact dated refresh notes.
 
@@ -45,7 +45,7 @@ The inventory distinguishes:
 
 | Caller | Selection | Persistence | Observation |
 | --- | --- | --- | --- |
-| `.github/workflows/cao-activity.yml` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **5** runs | `gh-aw-logs-shards/` wildcard shards and `gh-aw-logs.sqlite` in the shared `cao-activity-v3` cache | The workflow runs `gh aw logs --cached-logs "<prefix>*" --audit --artifacts usage`, writing new data to a freshly named shard instead of rescanning the carried-forward shard set. Ingestion passes the whole shard directory to `cao ingest-jsonl --input-dir`, which ingests shards one by one and skips any whose content hash already matches its transactions-table record, so only new or changed shards are reprocessed. |
+| `.github/workflows/cao-activity.yml` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **10,000** runs (`REPORT_RUN_LIMIT`, raised from 1,000; the underlying `activity/collect-logs.sh`/`activity/logs.mjs` default and validated ceiling is unchanged at 10/10,000) | `gh-aw-logs-shards/` wildcard shards and `gh-aw-logs.sqlite` in the shared `cao-activity-v3` cache | The workflow (via `activity/collect-logs.sh`) runs `gh aw logs --cached-logs "<prefix>*" --audit --artifacts usage`, writing new data to a freshly named shard instead of rescanning the carried-forward shard set. `cao.mjs`'s `hash-payloads`/`ingest-jsonl` were restructured from one `--input-dir` shard directory into paired `--runs-dir`/`--events-dir` phased shard directories so compact run properties commit before detailed events; each still skips a shard whose content hash already matches the transactions-table record. **New in this refresh:** the same script then issues an uncached `gh api` sequence — one artifact list for `token-efficiency-observation`, one for `token-efficiency-lifecycle-claim` (paginated, up to 100 per page), and per matching artifact a `GET /actions/runs/{id}` (to confirm the producing workflow path) plus a raw archive download and unzip — to ingest token-efficiency worker evidence into the same shard set. This is genuinely new per-run API traffic, not a transport change, and has no independent time-window bound beyond a client-side 30-day filter applied after listing (see §5 item 23 and §6). |
 | `.github/workflows/optimization-ai-credit-auditor.md` | Target repository, two days, at most 100 runs; locally filtered to the preceding 24 hours | `/tmp` for the current run | Overlaps the dashboard usage window and the evaluator's later evidence window. A separate API call first reads the current run's creation time. |
 | `.github/workflows/optimization-ai-credit-optimizer.md` | Target repository, seven days, at most 50 runs | `/tmp` for the current run | Overlaps the auditor and dashboard collections. Monitoring workflows are filtered only after download. |
 | `.github/workflows/graders/optimization-ai-credit-auditor-operational-value.sh` | Evaluator-defined before/after window, up to 10,000 runs | Evaluator temporary directory | Re-fetches evidence rather than consuming the worker's predownload, which is necessary for maturation but duplicates historical portions of earlier scans. |
@@ -152,7 +152,8 @@ The activity snapshot is the shared collection boundary. It persists the bounded
 19. **~~Report collection added repository-state and lock-source follow-ups.~~ (Removed)** Repository visibility/default-branch, commit, contents, raw lock, and latest-release reads have been deleted from `records.mjs`.
 20. **~~The activity collector downloaded broad per-run artifact families.~~ (Fixed)** The bounded `gh aw logs` invocation now requests only the compact `usage` artifact with `--audit`. That bundle supplies the cached run record, `run_summary.json`, `audit.json`, and `aw_info.json`, avoiding heavyweight agent transcripts and separate detection/eval/firewall/MCP artifact families. The report retains bounded normalized audit and agent/runtime/model/version metadata and derives canonical tool-call events from summary data; older caches with raw timeline files remain compatible.
 21. **~~Renamed repository aliases previously affected report enrichment.~~ (Superseded)** `records.mjs` no longer resolves repository identities through metadata calls. Durable-output scope uses reviewed policy names, while the control runtime retains its own repository-ID deduplication where required.
-22. **The default bounded `gh aw logs` run count was lowered from 200 to 10 (validated maximum from 1000 to 200).** `activity/collect-logs.sh`'s `run_limit` default and `activity/logs.mjs`'s `DEFAULT_RUN_LIMIT`/validation ceiling both dropped; this shrinks the per-run collection window (and therefore the shared snapshot's job/AIC/security/operational-value coverage) rather than changing the number of independent collection paths.
+22. **The `gh aw logs` run-count ceiling has been raised twice since the earlier 200-run cap.** After the default was lowered from 200 to 10 and the validation ceiling from 1,000 to 200, both `activity/logs.mjs`'s `DEFAULT_RUN_LIMIT`/validation ceiling and `.github/workflows/cao-activity.yml`'s `REPORT_RUN_LIMIT` were raised again: the default stays 10 but the validated maximum is now 10,000, and the workflow explicitly requests `REPORT_RUN_LIMIT: "10000"` (previously `"1000"`). This widens the effective per-run collection window back toward its earlier size rather than reducing it further.
+23. **`activity/collect-logs.sh` added a new, undocumented `gh api` collection path for token-efficiency worker evidence.** Beyond the single `gh aw logs` call, the script now lists `token-efficiency-observation` and `token-efficiency-lifecycle-claim` Actions artifacts for the control repository (one listing call each, the lifecycle listing paginated at 100/page), then for every matching artifact issues a `GET /actions/runs/{id}` call to confirm the producing workflow path plus a raw archive download. This is N+1 traffic proportional to the number of matching artifacts within the retained window, has no server-side time filter (the 30-day cutoff is applied client-side in `jq` after the full artifact list is returned), and is not deduplicated against the `gh-aw-logs.sqlite` content-hash skip that protects the `gh aw logs` shard path — every activity run re-lists and re-inspects the full artifact history for both artifact names.
 
 ## 6. Rate-limit bottlenecks
 
@@ -162,6 +163,7 @@ The activity snapshot is the shared collection boundary. It persists the bounded
 | P0 | Organization code-search partitioning | Authenticated code search has a much lower rate limit than the core REST API. A large organization or partitions still exceeding 1,000 results can exhaust it before ordinary collection begins. |
 | P1 | Cold, full issue/comment scans in `records.mjs` | Up to 20 core requests per report repository every 15 minutes, plus one artifact-list request. The cost grows linearly with enrolled repositories. |
 | P1 | Repeated `gh aw logs` windows | Dashboard, workers, reports, and graders independently download overlapping Actions/log/artifact data. The 2,000-request reserve causes partial data sooner when they share a credential. |
+| P1 | Uncached token-efficiency artifact collection in `activity/collect-logs.sh` | Every activity run re-lists all `token-efficiency-observation` and `token-efficiency-lifecycle-claim` artifacts, then issues a `GET /actions/runs/{id}` and archive download per matching artifact with no content-hash skip; N+1 growth is proportional to accumulated artifact count within the retained window and is not bounded by the `gh aw logs --max-github-api-rate-limit` reserve. |
 | P1 | Grader N+1 queries | Pull-file, pull-detail, check-run, status, tree, and blob calls grow with candidates and with every regrade. |
 | P2 | Repeated control checkout | One sparse checkout per run is multiplied by every controlled workflow execution; package installation removes the former Contents API bootstrap and external runtime checkout. Admission/precompute reads (policy, rate limit, workflow inventory, repository lookups) now go through the `github-script` Octokit client rather than the `gh` CLI's 60-second cache, so each run's helper reads are direct Octokit calls with no in-process CLI caching layer between them. |
 | P2 | Cold artifact discovery | `records.mjs` and the local server list artifacts independently; operational-value fallback downloads one artifact per run. |
@@ -195,7 +197,8 @@ flowchart LR
     control["control.mjs admission<br/>rate_limit, policy, inventory via github-script Octokit<br/>(monthly budget + disk gates removed)"]
   end
   subgraph Activity
-    logsmjs["collect-logs.sh + activity/logs.mjs<br/>gh aw logs, 30-day window,<br/>10-run default, usage artifacts"]
+    logsmjs["collect-logs.sh + activity/logs.mjs<br/>gh aw logs, 30-day window,<br/>10000-run cap, usage artifacts"]
+    tokenartifacts["collect-logs.sh<br/>uncached gh api: token-efficiency<br/>observation + lifecycle-claim artifacts"]
     indexmjs["activity/index.mjs<br/>local only"]
     runindex[("deployed-workflows.json<br/>logs-derived run index")]
     telemetry["github-telemetry.mjs<br/>rate_limit probes"]
@@ -223,6 +226,7 @@ flowchart LR
     dashviews["dashboard-views.yml<br/>listComments upsert"]
   end
   logsmjs -->|snapshot write| cache
+  tokenartifacts -.->|uncached, re-lists every run| cache
   cache -->|reused by| indexmjs
   indexmjs -->|writes| runindex
   runindex -->|repository + run ID join| records
