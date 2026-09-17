@@ -137,7 +137,8 @@ async function queryLiveDashboard(
           evaluatedAt: queryContext?.timeWindow?.end ?? latestCanonicalInstant(canonicalPayload),
           queries: context.queries,
           views: context.views,
-          viewId
+          viewId,
+          sourceNames: requested
         })
       : { aliases: [], queries: [], replacedSources: [] };
     const replacedSources = new Set(viewPayload.replacedSources);
