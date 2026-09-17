@@ -350,7 +350,8 @@ function renderEntityCardItems(rows, options) {
   const { pageId, title, renderValue, toText, definition, drill = null, keyOffset = 0 } = options;
   return rows.map((row, index) => {
     const titleText = toText(row[definition.title.field]);
-    const subtitleText = definition.subtitle ? toText(row[definition.subtitle.field]) : '';
+    const subtitle = definition.subtitle;
+    const subtitleText = subtitle ? toText(row[subtitle.field]) : '';
     const target = resolveEntityCardDrill(row, drill, titleText);
     const titleContent = target?.external
       ? renderExternalLink(target.link)
@@ -384,12 +385,12 @@ function renderEntityCardItems(rows, options) {
         'div',
         { className: 'issue-list-card-content' },
         h('div', { className: 'issue-list-card-title entity-card-list-title' }, titleContent),
-        subtitleText
+        subtitle && subtitleText
           ? h(
             'div',
             {
               className: 'issue-list-card-subtitle entity-card-list-subtitle',
-              'aria-label': `${fieldTitle(definition.subtitle ?? { field: '' })}: ${subtitleText}`
+              'aria-label': `${fieldTitle(subtitle)}: ${subtitleText}`
             },
             subtitleText
           )
