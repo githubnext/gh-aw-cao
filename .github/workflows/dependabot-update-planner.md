@@ -394,10 +394,10 @@ Create one work issue per actionable atomic group. Its canonical unprefixed subj
 Begin every work issue body with a stable group marker:
 
 ```html
-<!-- dependabot-work-group:repository=<owner>/<repository>;ecosystem=<ecosystem>;group=<first sorted package or action name> -->
+<!-- dependabot-work-group:repository=<owner>/<repository>;ecosystem=<ecosystem>;boundary=<canonical manifest, lockfile, or pin source path of the group> -->
 ```
 
-When group membership changes the subject, match the existing open work issue by that marker rather than by subject, keep using it, and never create a second work issue for the same group.
+The boundary path is the atomic resolution boundary of the group, so it does not change when packages join or leave the group. When membership changes the subject, match the existing open work issue by that marker rather than by subject, keep using it, and never create a second work issue for the same boundary.
 
 Every work issue body must contain, in order:
 
@@ -441,7 +441,7 @@ After identifying an existing canonical issue, ensure its current number is stor
 - If one matching umbrella issue exists and work remains, call `update_issue` once to replace its complete body with the fresh inventory. Then call `add_comment` once on the same issue with a concise message beginning `Dependabot update plan refreshed.` and summarizing what changed. This refresh comment is mandatory even when the resulting plan is materially unchanged.
 - If one matching umbrella issue exists and no work remains, keep the durable issue open and call `update_issue` once with a completed description that preserves the repository marker, states that Dependabot identifies no current updates or actionable blockers, and contains `**Action:** None.` Then call `add_comment` once beginning `Dependabot update plan refreshed.` This clears obsolete unchecked inventory entries without breaking issue continuity.
 - If no matching umbrella issue exists and at least one current update or actionable Dependabot blocker exists, call `create_issue` once with the canonical unprefixed subject and complete body.
-- Call `create_issue` once for each actionable atomic group that has no open work issue, in the priority order of the inventory, up to the remaining `create_issue` budget for this run, which is the configured safe-output maximum minus any umbrella issue created in the same run, and only when the umbrella issue number is already known. On a bootstrap run that creates the umbrella issue, its number is not available yet, so create no work issues and create them on the next refresh once the number is persisted in memory. When more groups remain than the maximum allows, keep the remaining groups visible in the umbrella inventory as queued and create them on the next refresh.
+- Call `create_issue` once for each actionable atomic group that has no open work issue, in the priority order of the inventory, within the shared `create_issue` budget described in `## Completion`, and only when the umbrella issue number is already known. On a bootstrap run that creates the umbrella issue, its number is not available yet, so create no work issues and create them on the next refresh once the number is persisted in memory. When more groups remain than the maximum allows, keep the remaining groups visible in the umbrella inventory as queued and create them on the next refresh.
 - If multiple matching umbrella issues exist, update the oldest canonical issue, mention the duplicate issue numbers in its refresh comment, and do not create another umbrella issue.
 - If no matching issue has ever existed and Dependabot identifies no current update or actionable blocker, call `noop`. Do not create an empty tracking issue.
 

@@ -13,6 +13,13 @@ const fixtures = JSON.parse(readFileSync(
   "utf8",
 ));
 
+function fixture(name) {
+  const match = fixtures.find((entry) => entry.name === name);
+  assert.ok(match, `missing regression fixture: ${name}`);
+
+  return match;
+}
+
 test("Dependabot planner prompt states every contract required by the regression fixtures", () => {
   const source = workflow("dependabot-update-planner.md");
 
@@ -20,25 +27,25 @@ test("Dependabot planner prompt states every contract required by the regression
   assert.ok(fixtures.length > 0, "expected regression fixtures");
   assert.equal(new Set(names).size, names.length, "fixture names must be unique");
 
-  for (const fixture of fixtures) {
-    assert.match(fixture.source, /^github\/gh-aw#(61573|61574)$/, fixture.name);
-    assert.ok(fixture.expected.contract?.length > 0, `${fixture.name} must require contract phrases`);
-    for (const phrase of fixture.expected.contract) {
-      assert.ok(source.includes(phrase), `${fixture.name} requires: ${phrase}`);
+  for (const entry of fixtures) {
+    assert.match(entry.source, /^github\/gh-aw#(61573|61574)$/, entry.name);
+    assert.ok(entry.expected.contract?.length > 0, `${entry.name} must require contract phrases`);
+    for (const phrase of entry.expected.contract) {
+      assert.ok(source.includes(phrase), `${entry.name} requires: ${phrase}`);
     }
   }
 });
 
 test("Dependabot planner splits a combined batch into atomic work issues", () => {
   const source = workflow("dependabot-update-planner.md");
-  const fixture = fixtures.find(({ name }) => name === "mixed ecosystem batch assigned as one issue");
-  const ecosystems = new Set(fixture.evidence.umbrellaUpdates.map(({ ecosystem }) => ecosystem));
+  const combined = fixture("mixed ecosystem batch assigned as one issue");
+  const ecosystems = new Set(combined.evidence.umbrellaUpdates.map(({ ecosystem }) => ecosystem));
 
-  assert.equal(fixture.evidence.assignedIssues, 1);
-  assert.equal(fixture.evidence.producedPullRequests, 1);
-  assert.equal(fixture.expected.atomicWorkIssues, ecosystems.size);
-  assert.equal(fixture.expected.pullRequestsPerWorkIssue, 1);
-  assert.equal(fixture.expected.umbrellaAssignable, false);
+  assert.equal(combined.evidence.assignedIssues, 1);
+  assert.equal(combined.evidence.producedPullRequests, 1);
+  assert.equal(combined.expected.atomicWorkIssues, ecosystems.size);
+  assert.equal(combined.expected.pullRequestsPerWorkIssue, 1);
+  assert.equal(combined.expected.umbrellaAssignable, false);
   assert.match(source, /Place several packages in one work issue only when a hard edge/);
   assert.match(source, /Isolation must be structural: one work issue per boundary/);
   assert.match(source, /complete exactly this atomic group in exactly one pull request, and never widen the scope to other updates/);
@@ -46,7 +53,7 @@ test("Dependabot planner splits a combined batch into atomic work issues", () =>
 
 test("Dependabot planner derives counts from one structured inventory", () => {
   const source = workflow("dependabot-update-planner.md");
-  const { evidence, expected } = fixtures.find(({ name }) => name === "summary counts disagree with checklist");
+  const { evidence, expected } = fixture("summary counts disagree with checklist");
 
   assert.notDeepEqual(evidence.summaryCounts, evidence.checklistCounts);
   assert.equal(expected.countsDerivedFromInventory, true);
@@ -56,7 +63,7 @@ test("Dependabot planner derives counts from one structured inventory", () => {
 
 test("Dependabot planner records repository-specific major-version migration invariants", () => {
   const source = workflow("dependabot-update-planner.md");
-  const { evidence, expected } = fixtures.find(({ name }) => name === "upload-pages-artifact major upgrade drops hidden files");
+  const { evidence, expected } = fixture("upload-pages-artifact major upgrade drops hidden files");
 
   assert.equal(evidence.updateType, "major");
   assert.equal(expected.artifactValidationRequired, true);
@@ -67,7 +74,7 @@ test("Dependabot planner records repository-specific major-version migration inv
 
 test("Dependabot planner requires canonical pin ownership and protects generated consumers", () => {
   const source = workflow("dependabot-update-planner.md");
-  const { evidence, expected } = fixtures.find(({ name }) => name === "duplicated literal action pin outside the canonical registry");
+  const { evidence, expected } = fixture("duplicated literal action pin outside the canonical registry");
 
   assert.equal(expected.canonicalSourceRequired, true);
   assert.equal(expected.duplicateLiteralPinReplaced, true);
@@ -79,7 +86,7 @@ test("Dependabot planner requires canonical pin ownership and protects generated
 
 test("Dependabot planner freezes exact versions and rejects lockfile drift", () => {
   const source = workflow("dependabot-update-planner.md");
-  const { evidence, expected } = fixtures.find(({ name }) => name === "lockfile resolves beyond the reviewed target");
+  const { evidence, expected } = fixture("lockfile resolves beyond the reviewed target");
 
   assert.equal(expected.exactVersionFrozen, true);
   assert.equal(expected.lockfileDriftRejected, true);
@@ -94,7 +101,7 @@ test("Dependabot planner freezes exact versions and rejects lockfile drift", () 
 
 test("Dependabot planner defers candidates that break peer ranges or add advisories", () => {
   const source = workflow("dependabot-update-planner.md");
-  const { evidence, expected } = fixtures.find(({ name }) => name === "candidate breaks peer range and adds advisories");
+  const { evidence, expected } = fixture("candidate breaks peer range and adds advisories");
 
   assert.equal(evidence.openDependabotAlerts, 0);
   assert.ok(evidence.candidateGraphAdvisories.includes("high"));
@@ -106,7 +113,7 @@ test("Dependabot planner defers candidates that break peer ranges or add advisor
 
 test("Dependabot planner keeps partial work from closing the umbrella issue", () => {
   const source = workflow("dependabot-update-planner.md");
-  const { evidence, expected } = fixtures.find(({ name }) => name === "partial batch must not close the umbrella issue");
+  const { evidence, expected } = fixture("partial batch must not close the umbrella issue");
 
   assert.equal(evidence.pullRequestClosingKeyword, "Fixes");
   assert.equal(evidence.pullRequestMetadata, "stale");
