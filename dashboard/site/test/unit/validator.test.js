@@ -1114,7 +1114,7 @@ dashboard:
       chart: 'pie',
       encoding: {
         x: { field: 'package-name', type: 'nominal', title: 'Package' },
-        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Value created', unit: 'grade' }
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Ops Value', unit: 'ops-value' }
       }
     });
     expect(operationalValueChart).toMatchObject({
@@ -1123,7 +1123,7 @@ dashboard:
       chart: 'pie',
       encoding: {
         x: { field: 'package-name', type: 'nominal', title: 'Package' },
-        y: { field: 'value-created', type: 'quantitative', aggregate: 'mean', title: 'Operational value', unit: 'grade' }
+        y: { field: 'value-created', type: 'quantitative', aggregate: 'mean', title: 'Operational value', unit: 'ops-value' }
       }
     });
     expect(operationalValueTable).toMatchObject({
@@ -1147,7 +1147,7 @@ dashboard:
       'Runs',
       'Dispatches',
       'AIC',
-      'Value created',
+      'Ops Value',
       'Registration'
     ]);
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
