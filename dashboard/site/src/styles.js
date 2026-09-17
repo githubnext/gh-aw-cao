@@ -282,6 +282,20 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .mobile-table-card-list-items .entity-card-list-card { border: 1px solid var(--border); border-radius: 0; background: var(--canvas); box-shadow: 0 1px 0 var(--border-muted); }
 .issue-list-labels .entity-card-list-metric { display: inline-flex; align-items: baseline; gap: 4px; border-color: var(--border); background: var(--canvas-subtle); color: var(--muted); font-variant-numeric: tabular-nums; }
 .issue-list-labels .entity-card-list-metric strong { color: var(--fg); }
+.entity-card-list-card:has(.entity-card-list-timing) { grid-template-columns: 20px minmax(0, 1fr) auto auto; }
+.entity-card-list-status { display: flex; align-items: flex-start; color: var(--muted); }
+.entity-card-list-status-success { color: var(--success); }
+.entity-card-list-status-danger { color: var(--danger); }
+.entity-card-list-status-attention { color: var(--attention); }
+.entity-card-list-status-muted { color: var(--cancelled); }
+.issue-list-labels .entity-card-list-ref, .ref-label { max-width: 240px; border-color: var(--accent-muted); background: var(--accent-muted); color: var(--accent); font-family: var(--font-mono, ui-monospace, monospace); font-size: .6875rem; font-weight: 400; }
+.ref-label { display: inline-block; padding: 0 7px; border: 1px solid var(--accent-muted); border-radius: 999px; line-height: 18px; }
+.entity-card-list-timing { display: grid; align-content: start; gap: 2px; margin: 0; padding: 0; color: var(--muted); font-size: .75rem; list-style: none; }
+.entity-card-list-timing-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.entity-card-list-timing-icon { display: inline-flex; color: var(--muted); }
+.entity-card-list-timing-icon .octicon { width: 14px; height: 14px; }
+.entity-card-list-timing-value { font-variant-numeric: tabular-nums; }
+.entity-card-list-timing-value time { color: inherit; }
 .mobile-brand-name { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }
@@ -2423,6 +2437,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .document-list-card > .table-cli-action-control { grid-column: 2; justify-self: start; }
   .issue-list-card { grid-template-columns: 20px minmax(0, 1fr); padding: 10px 14px; }
   .issue-list-labels { grid-column: 2; justify-content: flex-start; }
+  .entity-card-list-card:has(.entity-card-list-timing) { grid-template-columns: 20px minmax(0, 1fr); }
+  .entity-card-list-timing { grid-column: 2; }
   .outcome-meta { grid-template-columns: 1fr; }
   .configuration-editor-toolbar { align-items: stretch; flex-direction: column; }
   .configuration-editor-toolbar > div { justify-content: space-between; }

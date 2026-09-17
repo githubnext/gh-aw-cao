@@ -4,7 +4,9 @@ import {
   AGGREGATE_VALUES,
   BUILT_IN_PAGE_KEYS,
   BUILT_IN_PAGE_VALUES,
+  CARD_STATUS_KEYS,
   CARD_TEMPLATE_KEYS,
+  CARD_TIMING_FIELD_KEYS,
   CUSTOM_PAGE_KEYS,
   DASHBOARD_KEYS,
   DASHBOARD_HORIZON_KEYS,
@@ -565,6 +567,8 @@ function validateCardTemplates(templates, templatesNode, errors) {
       ids.add(template.id);
     }
     validateCardTemplateField(template.title, getValueNodeByKey(templateNode, 'title'), `${path}.title`, errors);
+    validateCardTemplateStatus(template.status, getValueNodeByKey(templateNode, 'status'), `${path}.status`, errors);
+    validateCardTemplateTiming(template.timing, getValueNodeByKey(templateNode, 'timing'), `${path}.timing`, errors);
     for (const key of ['labels', 'details']) {
       const fields = template[key];
       if (!Array.isArray(fields) || (key === 'details' && fields.length === 0)) {
@@ -583,18 +587,69 @@ function validateCardTemplates(templates, templatesNode, errors) {
 }
 
 /**
+ * A card template status declaration names the field whose observed value
+ * selects the card's status icon and tone, with an optional fallback field for
+ * entities whose terminal value is not yet observed.
+ * @param {unknown} status
+ * @param {unknown} statusNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplateStatus(status, statusNode, path, errors) {
+  if (status === undefined) return;
+  if (!isPlainObject(status)) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template status must be a mapping.', path));
+    return;
+  }
+  validateObjectKeys(statusNode, CARD_STATUS_KEYS, path, errors);
+  validateRequiredIdentifier(status.field, `${path}.field`, 'card template status field', errors);
+  if (status['fallback-field'] !== undefined) {
+    validateRequiredIdentifier(status['fallback-field'], `${path}.fallback-field`, 'card template status fallback field', errors);
+  }
+  validateOptionalStringField(status.title, `${path}.title`, errors);
+}
+
+/**
+ * A card template timing declaration is an ordered sequence of icon-labeled
+ * field definitions presented beside the card, such as the start time and the
+ * elapsed duration of a run.
+ * @param {unknown} timing
+ * @param {unknown} timingNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateCardTemplateTiming(timing, timingNode, path, errors) {
+  if (timing === undefined) return;
+  if (!Array.isArray(timing) || timing.length === 0) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template timing must be a non-empty sequence.', path));
+    return;
+  }
+  timing.forEach((field, index) => {
+    const fieldPath = `${path}[${index}]`;
+    const fieldNode = getSequenceItemNode(timingNode, index);
+    validateCardTemplateField(field, fieldNode, fieldPath, errors, CARD_TIMING_FIELD_KEYS);
+    if (!isPlainObject(field)) return;
+    validateStringField(field.icon, `${fieldPath}.icon`, true, errors);
+    if (typeof field.icon === 'string' && !PAGE_ICON_VALUES.includes(field.icon)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template timing icon must use one canonical Octicon name.', `${fieldPath}.icon`));
+    }
+  });
+}
+
+/**
  * @param {unknown} field
  * @param {unknown} fieldNode
  * @param {string} path
  * @param {ValidationError[]} errors
+ * @param {string[]} [allowedKeys]
  */
-function validateCardTemplateField(field, fieldNode, path, errors) {
+function validateCardTemplateField(field, fieldNode, path, errors, allowedKeys = FIELD_DEFINITION_KEYS) {
   if (!isPlainObject(field)) {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'card template field must be a mapping.', path));
     return;
   }
 
-  validateObjectKeys(fieldNode, FIELD_DEFINITION_KEYS, path, errors);
+  validateObjectKeys(fieldNode, allowedKeys, path, errors);
   validateRequiredIdentifier(field.field, `${path}.field`, 'card template field', errors);
   validateOptionalStringField(field.title, `${path}.title`, errors);
   if (field.display !== undefined && (typeof field.display !== 'string' || !FIELD_DISPLAY_VALUES.includes(field.display))) {

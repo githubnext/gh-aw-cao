@@ -26,6 +26,7 @@ export function renderCellDisplay(display, value, toText, unit = null, type, for
   if (display === 'status') return renderStatusBadge(value);
   if (display === 'grader-status') return renderGraderStatusBadge(value);
   if (display === 'label') return formatLabel(value);
+  if (display === 'ref') return h('span', { className: 'ref-label' }, toText(value));
   if (display === 'digest') return renderDigest(value) ?? 'unavailable';
   if (type === 'quantitative' && !Number.isFinite(Number(value))) return '';
   if (type === 'temporal' && typeof value === 'string' && Number.isFinite(Date.parse(value))) {

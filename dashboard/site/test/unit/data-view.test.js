@@ -268,6 +268,74 @@ describe('data view renderer', () => {
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/303');
   });
 
+  it('presents run entity cards with status icon, branch ref, and timing rail', () => {
+    const runCard = {
+      icon: 'play',
+      status: { field: 'run-conclusion', 'fallback-field': 'run-status', title: 'Status' },
+      title: { field: 'run-title', title: 'Run' },
+      labels: [{ field: 'branch', title: 'Branch', display: 'ref' }],
+      details: [
+        { field: 'workflow', title: 'Workflow', format: 'workflow-relative-path' },
+        { field: 'event', title: 'Event' }
+      ],
+      timing: [
+        { field: 'started-at', title: 'Started', icon: 'calendar', type: 'temporal', format: 'human-friendly-timestamp' },
+        { field: 'duration', title: 'Duration', icon: 'stopwatch' }
+      ]
+    };
+    const render = (/** @type {Record<string, unknown>} */ row) => renderDataView('list', {
+      pageId: 'runs',
+      title: 'Runs',
+      sourceName: 'entity-runs',
+      view: {
+        mark: 'list',
+        list: { style: 'entity-cards', card: 'run', drill: { type: 'external', field: 'run-link' } },
+        encoding: { columns: [{ field: 'run-title' }] }
+      },
+      rows: [row],
+      cardTemplates: { run: runCard },
+      metadata,
+      contextDetails: [],
+      headingTag: /** @type {'h3'} */ ('h3'),
+      prepareTableRows: (/** @type {Record<string, unknown>[]} */ rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const completed = render({
+      'run-title': '[optimization:skills-curator] Layer AGENTS.md',
+      'run-status': 'completed',
+      'run-conclusion': 'success',
+      workflow: '.github/workflows/optimization.md',
+      event: 'issue_comment',
+      branch: 'copilot/add-desktop-tabs',
+      'started-at': '2026-09-14T22:00:00Z',
+      duration: '31s'
+    });
+    const running = render({
+      'run-title': 'Running Copilot cloud agent',
+      'run-status': 'in-progress',
+      'run-conclusion': null,
+      workflow: '.github/workflows/optimization.md',
+      event: 'workflow_dispatch',
+      branch: 'copilot/update-firewall',
+      'started-at': '2026-09-14T22:00:00Z'
+    });
+
+    expect(completed?.querySelector('.entity-card-list-status-success .octicon-check-circle-fill')).not.toBeNull();
+    expect(completed?.querySelector('.entity-card-list-status')?.getAttribute('data-card-status')).toBe('success');
+    expect(completed?.querySelector('.entity-card-list-ref')?.textContent).toBe('copilot/add-desktop-tabs');
+    const timing = completed?.querySelectorAll('.entity-card-list-timing-item') ?? [];
+    expect(timing).toHaveLength(2);
+    expect(timing[1]?.textContent).toContain('31s');
+    expect(timing[0]?.querySelector('.octicon-calendar')).not.toBeNull();
+    expect(completed?.querySelector('.issue-list-card-meta')?.textContent).toContain('issue_comment');
+
+    expect(running?.querySelector('.entity-card-list-status-attention .octicon-dot-fill')).not.toBeNull();
+    expect(running?.querySelectorAll('.entity-card-list-timing-item')).toHaveLength(1);
+  });
+
   it('renders reusable entity cards with external and query drill behavior', () => {
     const baseContext = {
       pageId: 'items',

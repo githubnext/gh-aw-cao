@@ -33,16 +33,19 @@
       {
         "id": "run",
         "icon": "play",
-        "title": { "field": "run", "title": "Run" },
-        "labels": [
-          { "field": "run-status", "title": "Status", "display": "status" },
-          { "field": "run-conclusion", "title": "Conclusion", "display": "status" }
-        ],
+        "status": { "field": "run-conclusion", "fallback-field": "run-status", "title": "Status" },
+        "title": { "field": "run-title", "title": "Run" },
+        "labels": [{ "field": "branch", "title": "Branch", "display": "ref" }],
         "details": [
-          { "field": "repository", "title": "Repository" },
           { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
-          { "field": "run-attempt", "title": "Attempt" },
-          { "field": "started-at", "title": "Started", "format": "human-friendly-timestamp" }
+          { "field": "run", "title": "Run", "display": "run-link" },
+          { "field": "event", "title": "Event" },
+          { "field": "repository", "title": "Repository" },
+          { "field": "run-attempt", "title": "Attempt" }
+        ],
+        "timing": [
+          { "field": "started-at", "title": "Started", "icon": "calendar", "type": "temporal", "format": "human-friendly-timestamp" },
+          { "field": "duration", "title": "Duration", "icon": "stopwatch" }
         ]
       },
       {
@@ -237,13 +240,17 @@
         "layout": "full-view",
         "encoding": {
           "columns": [
-            { "field": "run", "type": "nominal", "title": "Run" },
+            { "field": "run-title", "type": "nominal", "title": "Run" },
+            { "field": "run", "type": "nominal", "title": "Run number" },
             { "field": "run-status", "type": "nominal", "title": "Status" },
             { "field": "run-conclusion", "type": "nominal", "title": "Conclusion" },
+            { "field": "event", "type": "nominal", "title": "Event" },
+            { "field": "branch", "type": "nominal", "title": "Branch", "display": "ref" },
             { "field": "repository", "type": "nominal", "title": "Repository" },
             { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
             { "field": "run-attempt", "type": "quantitative", "title": "Attempt" },
             { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" },
+            { "field": "duration", "type": "nominal", "title": "Duration" },
             { "field": "organization", "type": "nominal", "title": "Organization" }
           ]
         }
@@ -283,13 +290,17 @@
         "layout": "full-view",
         "encoding": {
           "columns": [
-            { "field": "run", "type": "nominal", "title": "Run" },
+            { "field": "run-title", "type": "nominal", "title": "Run" },
+            { "field": "run", "type": "nominal", "title": "Run number" },
             { "field": "run-status", "type": "nominal", "title": "Status" },
             { "field": "run-conclusion", "type": "nominal", "title": "Conclusion" },
+            { "field": "event", "type": "nominal", "title": "Event" },
+            { "field": "branch", "type": "nominal", "title": "Branch", "display": "ref" },
             { "field": "repository", "type": "nominal", "title": "Repository" },
             { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
             { "field": "run-attempt", "type": "quantitative", "title": "Attempt" },
             { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" },
+            { "field": "duration", "type": "nominal", "title": "Duration" },
             { "field": "organization", "type": "nominal", "title": "Organization" }
           ]
         }
@@ -752,7 +763,11 @@
           { "field": "run-title" },
           { "field": "run-status" },
           { "field": "run-conclusion" },
+          { "field": "event" },
+          { "field": "branch" },
+          { "field": "duration" },
           { "field": "started-at" },
+          { "field": "ended-at" },
           { "field": "run-link" }
         ],
         "order-by": [{ "field": "started-at", "direction": "desc" }]
