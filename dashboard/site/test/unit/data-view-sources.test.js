@@ -592,7 +592,7 @@ describe('canonical view sources', () => {
       })
     ]);
     expect(projected['token-efficiency-interventions'].rows[0]).not.toHaveProperty('issue-link');
-    const latest = executeDashboardQueries([...dashboardQueries, {
+    const latest = executeDashboardQueries([...dashboardQueries, ...optimizationDashboardQueries, {
       name: 'latest-token-intervention',
       from: 'token-efficiency-interventions',
       select: [
