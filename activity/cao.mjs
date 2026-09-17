@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -51,7 +52,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -64,6 +65,7 @@ const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --events-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
+  cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
@@ -522,9 +524,9 @@ function parseOptions(arguments_) {
     const value = arguments_[index + 1];
     if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
-    if (name === 'where') {
-      const existing = options.where;
-      options.where = [...(Array.isArray(existing) ? existing : []), value];
+    if (name === 'where' || name === 'group') {
+      const existing = options[name];
+      options[name] = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
       throw new UsageError(`Option --${name} may only be specified once`);
     } else {
@@ -729,6 +731,124 @@ async function auditJsonlDirectory(inputDirectory) {
   };
 }
 
+async function* jsonlLines(paths) {
+  for (const filePath of paths) {
+    const lines = createInterface({
+      input: createReadStream(filePath),
+      crlfDelay: Infinity
+    });
+    for await (const line of lines) {
+      if (line) yield line;
+    }
+  }
+}
+
+async function compactJsonlShardGroup(directory, prefix, names) {
+  const sourcePaths = names.map((name) => path.join(directory, name));
+  const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
+    .reduce((sum, size) => sum + size, 0);
+  if (sourcePaths.length <= 1) {
+    let sourceRecords = 0;
+    for await (const line of jsonlLines(sourcePaths)) sourceRecords += 1;
+    return {
+      prefix,
+      sourceFiles: sourcePaths.length,
+      sourceRecords,
+      retainedRecords: sourceRecords,
+      sourceBytes,
+      compactedBytes: sourceBytes,
+      output: sourcePaths[0] ?? null
+    };
+  }
+
+  const temporaryPath = path.join(directory, `.${prefix}${process.pid}.tmp`);
+  const outputHash = createHash('sha256');
+  let retainedRecords = 0;
+  await pipeline(
+    (async function* compactedLines() {
+      for await (const line of jsonlLines(sourcePaths)) {
+        const outputLine = `${line}\n`;
+        outputHash.update(outputLine);
+        retainedRecords += 1;
+        yield outputLine;
+      }
+    })(),
+    createWriteStream(temporaryPath, { flags: 'wx' })
+  );
+  const latestSequence = names.reduce((latest, name) => {
+    const match = name.slice(prefix.length).match(/^(\d+)-/);
+    return match ? Math.max(latest, Number(match[1])) : latest;
+  }, 0);
+  const sequence = Math.max(Math.floor(Date.now() / 1000), latestSequence + 1);
+  const outputName = `${prefix}${sequence}-${outputHash.digest('hex').slice(0, 16)}.jsonl`;
+  const outputPath = path.join(directory, outputName);
+  await rename(temporaryPath, outputPath);
+  await Promise.all(sourcePaths.filter((filePath) => filePath !== outputPath).map((filePath) => rm(filePath)));
+  const compactedBytes = (await stat(outputPath)).size;
+  return {
+    prefix,
+    sourceFiles: sourcePaths.length,
+    sourceRecords: retainedRecords,
+    retainedRecords,
+    sourceBytes,
+    compactedBytes,
+    output: outputPath
+  };
+}
+
+async function shardRepository(filePath) {
+  for await (const line of jsonlLines([filePath])) {
+    const record = JSON.parse(line);
+    const requested = record?.request?.repository;
+    if (typeof requested === 'string' && requested.includes('/')) return requested.toLowerCase();
+    const run = record?.run;
+    if (!run || typeof run !== 'object' || Array.isArray(run)) continue;
+    const repository = run.repository_full_name ?? run.repository;
+    if (typeof repository === 'string' && repository.includes('/')) return repository.toLowerCase();
+    if (typeof run.organization === 'string' && typeof repository === 'string') {
+      return `${run.organization}/${repository}`.toLowerCase();
+    }
+  }
+  return null;
+}
+
+export async function compactJsonlShards(inputDirectory, groupDefinitions) {
+  if (groupDefinitions.length === 0) throw new UsageError('At least one --group is required');
+  const groupsByRepository = new Map();
+  for (const definition of groupDefinitions) {
+    const separator = definition.indexOf('=');
+    const repository = definition.slice(0, separator).toLowerCase();
+    const prefix = definition.slice(separator + 1);
+    if (separator < 1 || !/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(repository)) {
+      throw new UsageError('--group must start with an OWNER/REPOSITORY coordinate');
+    }
+    if (!/^[A-Za-z0-9._-]+$/.test(prefix)) {
+      throw new UsageError('--group shard prefix must contain only letters, numbers, dots, underscores, and hyphens');
+    }
+    if (groupsByRepository.has(repository)) throw new UsageError(`Duplicate compact-jsonl repository: ${repository}`);
+    groupsByRepository.set(repository, { prefix, names: [] });
+  }
+  const directory = path.resolve(inputDirectory);
+  for (const name of (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort()) {
+    const repository = await shardRepository(path.join(directory, name));
+    if (repository && groupsByRepository.has(repository)) {
+      groupsByRepository.get(repository).names.push(name);
+    }
+  }
+  const groups = [];
+  for (const [repository, { prefix, names }] of [...groupsByRepository].sort(([left], [right]) => left.localeCompare(right))) {
+    groups.push({
+      repository,
+      ...await compactJsonlShardGroup(directory, prefix, names)
+    });
+  }
+  return {
+    command: 'compact-jsonl',
+    inputDirectory: directory,
+    groups
+  };
+}
+
 function deployedDataUrl(value) {
   const url = new URL(value);
   if (!['http:', 'https:'].includes(url.protocol)) {
@@ -740,7 +860,7 @@ function deployedDataUrl(value) {
   return url;
 }
 
-async function downloadFile(url, destination) {
+async function downloadFile(url, destination, { allowEmpty = false } = {}) {
   const response = await fetch(url, {
     headers: { accept: 'application/x-ndjson, application/json, text/plain' },
     redirect: 'follow',
@@ -749,9 +869,11 @@ async function downloadFile(url, destination) {
   if (!response.ok) throw new Error(`Unable to download ${url}: HTTP ${response.status}`);
   if (!response.body) throw new Error(`Unable to download ${url}: response body is empty`);
   await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx' }));
-  if ((await stat(destination)).size === 0) {
+  const size = (await stat(destination)).size;
+  if (!allowEmpty && size === 0) {
     throw new Error(`Unable to download ${url}: response body is empty`);
   }
+  return size;
 }
 
 async function replaceFile(source, destination) {
@@ -792,13 +914,18 @@ export async function downloadDeployedDashboardData({
     await mkdir(temporaryShards);
     for (const [name, expectedDigest] of shardEntries) {
       const destination = path.join(temporaryShards, path.basename(name));
-      await downloadFile(new URL(name, manifestUrl), destination);
+      const size = await downloadFile(new URL(name, manifestUrl), destination, { allowEmpty: true });
       const hash = createHash('sha256');
       for await (const chunk of createReadStream(destination)) hash.update(chunk);
       if (hash.digest('hex') !== expectedDigest.toLowerCase()) {
         throw new Error(`Activity shard checksum mismatch: ${name}`);
       }
+      if (size === 0) {
+        delete hashes[name];
+        await rm(destination);
+      }
     }
+    await writeFile(temporaryManifest, `${JSON.stringify(hashes, null, 2)}\n`);
     await rm(shardsPath, { recursive: true, force: true });
     await rename(temporaryShards, shardsPath);
     await replaceFile(temporaryManifest, manifestPath);
@@ -992,6 +1119,11 @@ async function hashActivityPayloads({
     if (eventsDirectory) await mkdir(eventsDirectory, { recursive: true });
     for (const name of shardNames) {
       const shardPath = path.join(shardDirectory, name);
+      if ((await stat(shardPath)).size === 0) {
+        await rm(shardPath);
+        debugHash('dropped empty source shard %s', shardPath);
+        continue;
+      }
       const rawHash = await hashFile(shardPath);
       hashes[`${path.basename(shardDirectory)}/${name}`] = rawHash;
       if (!normalizedDirectory && !runsDirectory && !eventsDirectory) continue;
@@ -1492,6 +1624,16 @@ export async function runCli(arguments_, input = process.stdin) {
   if (command === 'audit-jsonl') {
     rejectUnknownOptions(options, ['input-dir']);
     return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
+  }
+  if (command === 'compact-jsonl') {
+    rejectUnknownOptions(options, ['input-dir', 'group']);
+    const groups = options.group
+      ? Array.isArray(options.group) ? options.group : [options.group]
+      : [];
+    return compactJsonlShards(
+      path.resolve(option(options, 'input-dir')),
+      groups
+    );
   }
   if (command === 'hash-payloads') {
     rejectUnknownOptions(options, ['database', 'shard-dir', 'normalized-dir', 'runs-dir', 'events-dir', 'inventory', 'output']);

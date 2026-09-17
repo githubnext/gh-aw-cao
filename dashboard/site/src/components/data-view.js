@@ -96,7 +96,7 @@ function resolveGithubEntityLink(row, field, fallbackLabel) {
  *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
  *   toText: (value: unknown) => string,
- *   cardTemplates?: Record<string, { icon: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>,
+ *   cardTemplates?: Record<string, { icon: string, 'icon-field'?: string, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[] }>,
  *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
  * }} DataViewContext
  */
@@ -327,7 +327,10 @@ function renderEntityCardListView(options) {
       ...renderViewSectionChrome(metadata, contextDetails),
       h('header', { className: 'document-list-header' }, view.description ? h('p', null, view.description) : null, listAction),
       cards.length > 0
-        ? h('ul', { className: 'document-list issue-list entity-card-list', 'data-custom-view-mark': 'list' }, cards)
+        ? h('ul', {
+          className: `document-list issue-list entity-card-list${isPlainObject(view.list) && view.list.layout === 'grid' ? ' entity-card-list-grid' : ''}`,
+          'data-custom-view-mark': 'list'
+        }, cards)
         : h('p', { className: 'document-list-empty' }, emptyMessage)
     ],
     headingTag,
@@ -342,7 +345,7 @@ function renderEntityCardListView(options) {
  *   title: string,
  *   renderValue: (column: string | TableField, value: unknown, row: Record<string, unknown>) => string | HTMLElement,
  *   toText: (value: unknown) => string,
- *   definition: { icon: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
+ *   definition: { icon: string, 'icon-field'?: string, status?: { field: string, 'fallback-field'?: string, title?: string }, title: TableField, subtitle?: TableField, labels: TableField[], details: TableField[], metrics?: TableField[], timing?: Array<TableField & { icon: string }> },
  *   drill?: Record<string, unknown> | null,
  *   keyOffset?: number
  * }} options
@@ -419,7 +422,11 @@ function renderEntityCardItems(rows, options) {
           octicon(status.icon),
           h('span', { className: 'sr-only' }, `${fieldTitle(definition.status ?? { field: 'status' })}: ${titleCase(status.text)}`)
         )
-        : h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(definition.icon)),
+        : h(
+          'span',
+          { className: 'issue-list-card-icon', 'aria-hidden': 'true' },
+          octicon(toText(definition['icon-field'] ? row[definition['icon-field']] : '') || definition.icon)
+        ),
       h(
         'div',
         { className: 'issue-list-card-content' },

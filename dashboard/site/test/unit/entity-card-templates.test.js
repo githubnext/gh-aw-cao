@@ -21,7 +21,8 @@ describe('entity card templates', () => {
       'workflow',
       'run',
       'session',
-      'event'
+      'event',
+      'operation'
     ]));
   });
 
@@ -51,6 +52,38 @@ describe('entity card templates', () => {
         { field: 'blocked', title: 'Blocked' },
         { field: 'run', title: 'Runs' }
       ]
+    });
+  });
+
+  it('declares the operation marketplace as a worker-queried card grid', () => {
+      expect(templates.operation).toMatchObject({
+        icon: 'workflow',
+        'icon-field': 'operation-icon',
+        title: { field: 'operation-name' },
+        subtitle: { field: 'operation-description' }
+      });
+      const marketplaceQuery = dashboard.queries.find(
+        (/** @type {Record<string, any>} */ query) => query.name === 'marketplace-operations'
+      );
+      expect(marketplaceQuery).toMatchObject({
+        from: 'workflows',
+        aggregate: {
+          by: expect.arrayContaining(['operation-id', 'operation-name', 'operation-link'])
+        },
+        'order-by': [
+          { field: 'operation-kind', direction: 'asc' },
+          { field: 'operation-name', direction: 'asc' }
+        ]
+      });
+      expect(pages.agents.views[0]).toMatchObject({
+        data: { source: 'marketplace-operations' },
+        mark: 'list',
+        list: {
+          style: 'entity-cards',
+          layout: 'grid',
+          card: 'operation',
+          drill: { type: 'external', field: 'operation-link' }
+        }
     });
   });
 

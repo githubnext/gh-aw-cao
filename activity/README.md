@@ -29,13 +29,13 @@ Each `gh aw logs` invocation uses `--cached-logs` with a repository-specific
 trailing wildcard shard prefix instead of a single `--cached-jsonl` file. The wildcard shard
 directory itself is part of the shared activity cache, so `gh aw logs`
 recognizes previously discovered runs across job runs without re-seeding a
-snapshot; new runs are written to a freshly named shard rather than merged
-into an existing one in place, and shards containing only out-of-range dated
-records are pruned automatically. The ingestion step passes the shard directory to
-`cao ingest-jsonl --input-dir`, which ingests every shard one by one and skips
-any shard whose content hash is already recorded in the transactions table, so
-only genuinely new or changed shards are reprocessed instead of the whole
-rolling window every time.
+snapshot. After a successful collection, `cao compact-jsonl` consolidates that
+repository's retained files into one shard without removing or reordering
+records, so observation precedence and dependent-record association are
+unchanged. Failed collections leave the prior files untouched. Shards containing only
+out-of-range dated records are pruned by `gh aw logs --cache-before`. The
+ingestion step passes the shard directory to `cao ingest-jsonl --input-dir`,
+which tracks each compacted shard by content hash.
 
 Collection is serial by repository so audits share refreshed Drain3 weights and
 do not multiply concurrent GitHub API pressure. A cold collection must discover
@@ -127,8 +127,8 @@ accounting does not mistake them for a cached log file.
 
 The scheduled collector is intentionally rolling and bounded. It requests a
 30-day run window and at most 1,000 matching enriched runs from each resolved
-repository. Cached JSONL can contain repeated observations from later
-refreshes; canonical ingestion deduplicates them by stable run identity. Use a
+repository. The compacted JSONL can contain non-identical observations of the same run;
+canonical ingestion merges those observations by stable run identity. Use a
 separate source and SQLite database when a complete historical archive is
 required.
 

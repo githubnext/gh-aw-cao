@@ -19,7 +19,7 @@ export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'card-templates', 'views', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
-export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'status', 'title', 'subtitle', 'labels', 'details', 'timing'];
+export const CARD_TEMPLATE_KEYS = ['id', 'icon', 'icon-field', 'status', 'title', 'subtitle', 'labels', 'details', 'timing'];
 export const CARD_STATUS_KEYS = ['field', 'fallback-field', 'title'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
@@ -98,7 +98,6 @@ export const VIEW_ELEMENT_VALUES = [
   'configuration-actions',
   'local-database',
   'work-project-view',
-  'agent-marketplace-view',
   'insights-overview',
   'factory-header',
   'factory-floor',
@@ -109,8 +108,9 @@ export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'an
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];
 export const VIEW_METRIC_ANIMATION_VALUES = ['number'];
-export const VIEW_LIST_KEYS = ['style', 'icon', 'action', 'card', 'drill'];
+export const VIEW_LIST_KEYS = ['style', 'layout', 'icon', 'action', 'card', 'drill'];
 export const VIEW_LIST_STYLE_VALUES = ['cards', 'issues', 'entity-cards'];
+export const VIEW_LIST_LAYOUT_VALUES = ['rows', 'grid'];
 export const VIEW_LIST_DRILL_KEYS = ['type', 'field', 'page', 'query', 'title-field', 'arguments'];
 export const VIEW_LIST_DRILL_TYPE_VALUES = ['external', 'query'];
 export const VIEW_LIST_DRILL_ARGUMENT_KEYS = ['name', 'field'];

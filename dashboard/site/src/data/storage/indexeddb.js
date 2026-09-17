@@ -1,11 +1,12 @@
 import { relationshipErrors } from '../model/schema.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
+import { tidy } from '../../data-operations.js';
 
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 12;
+export const DATABASE_VERSION = 13;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -43,6 +44,7 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
       byRepository: 'repositoryId',
       byWorkflow: 'workflowId',
       byStatus: 'status',
+      byConclusion: 'conclusion',
       byRepositoryStartedAt: ['repositoryId', 'startedAt'],
       byWorkflowStartedAt: ['workflowId', 'startedAt']
     }
@@ -65,6 +67,7 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
     indexes: {
       bySessionSequence: ['sessionId', 'sequence'],
       bySessionTimestamp: ['sessionId', 'timestamp'],
+      bySessionType: ['sessionId', 'type'],
       byType: 'type',
       bySource: 'source',
       byCorrelation: 'correlationId'
@@ -82,6 +85,21 @@ const INGESTION_LOCK_LEASE_MS = 5 * 60 * 1000;
 const INGESTION_LOCK_ACQUIRE_TIMEOUT_MS = INGESTION_LOCK_LEASE_MS + 30_000;
 const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 const INGESTION_LOCK_WAITING_NOTICE_DELAY_MS = 500;
+const MAX_QUERY_INDEX_LOOKUPS = 32;
+const QUERYABLE_STRING_KEY_PATHS = new Set([
+  'slug',
+  'fullName',
+  'repositoryId',
+  'workflowId',
+  'runId',
+  'jobId',
+  'sessionId',
+  'status',
+  'conclusion',
+  'type',
+  'source',
+  'correlationId'
+]);
 
 /**
  * @template T
@@ -288,6 +306,77 @@ export async function readCollection(indexedDB, storeName) {
   } finally {
     database.close();
   }
+}
+
+/**
+ * Reads a canonical collection through an opportunistically compiled
+ * IndexedDB access plan, then applies the complete operator pipeline in
+ * JavaScript to preserve the declarative query semantics.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {typeof ENTITY_STORES[number]} storeName
+ * @param {import('../../data-operations.js').DataOperator[]} operators
+ */
+export async function queryCollection(indexedDB, storeName, operators) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const transaction = database.transaction(storeName);
+    const store = transaction.objectStore(storeName);
+    const plan = indexedQueryPlan(store, operators);
+    let records;
+    if (!plan) {
+      records = await requestResult(store.getAll());
+    } else {
+      const matches = await Promise.all(plan.keys.map((key) => requestResult(plan.index.getAll(key))));
+      const keyPath = String(store.keyPath);
+      records = [...new Map(matches.flat().map((record) => [record[keyPath], record])).values()]
+        .sort((left, right) => indexedDB.cmp(left[keyPath], right[keyPath]));
+      debug('compiled collection query', {
+        store: storeName,
+        index: plan.index.name,
+        lookups: plan.keys.length,
+        candidateRecords: records.length
+      });
+    }
+    return tidy(records, operators);
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * @param {IDBObjectStore} store
+ * @param {import('../../data-operations.js').DataOperator[]} operators
+ */
+function indexedQueryPlan(store, operators) {
+  const filter = operators[0]?.op === 'filter' ? operators[0] : null;
+  if (!filter || filter.search || !filter.predicates?.length) return null;
+  const predicates = new Map(/** @type {[string, string[]][]} */ (filter.predicates.flatMap((predicate) => {
+    if (predicate.optional || !QUERYABLE_STRING_KEY_PATHS.has(predicate.field)) return [];
+    const values = Array.isArray(predicate.in) ? predicate.in : [predicate.equals];
+    return values.length > 0
+      && values.every((value) => typeof value === 'string' && value !== 'unknown')
+      ? [[predicate.field, /** @type {string[]} */ (values)]]
+      : [];
+  })));
+  /** @type {{ index: IDBIndex, keys: IDBValidKey[] } | null} */
+  let best = null;
+  for (const indexName of store.indexNames) {
+    const index = store.index(indexName);
+    const keyPath = Array.isArray(index.keyPath) ? index.keyPath : [index.keyPath];
+    if (!keyPath.every((field) => typeof field === 'string' && predicates.has(field))) continue;
+    const keys = keyPath.reduce(
+      (combinations, field) => combinations.flatMap((combination) =>
+        (predicates.get(String(field)) ?? []).map((value) => [...combination, value])
+      ),
+      /** @type {string[][]} */ ([[]])
+    ).map((key) => keyPath.length === 1 ? key[0] : key);
+    if (keys.length > MAX_QUERY_INDEX_LOOKUPS) continue;
+    if (!best || keyPath.length > (Array.isArray(best.index.keyPath) ? best.index.keyPath.length : 1)) {
+      best = { index, keys };
+    }
+  }
+  return best;
 }
 
 /**

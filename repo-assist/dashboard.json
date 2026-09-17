@@ -185,9 +185,8 @@
           },
           {
             "id": "repo-assist-value",
-            "title": "Worker decision readiness",
             "description": "Each observation grades the current run's validated request. A value of one means the worker met its structural and target-binding contract; null means no eligible opportunity or unavailable evidence.",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "data": {
               "source": "repo-assist-value-observations",
               "filters": {

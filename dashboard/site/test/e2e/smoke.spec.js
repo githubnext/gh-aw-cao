@@ -1708,14 +1708,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page).toHaveURL(/#page-configuration$/);
   await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Appearance', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'View retained transactions table' }).click();
-  await expect(page).toHaveURL(/#page-transactions$/);
   await page.getByRole('button', { name: 'Reset local data' }).click();
   const resetDialog = page.getByRole('dialog', { name: 'Reset dashboard confirmation' });
   await expect(resetDialog).toBeVisible();
   await expect(resetDialog).toContainText('This action cannot be undone.');
   await resetDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(resetDialog).not.toBeVisible();
+  await page.getByRole('link', { name: 'View retained transactions table' }).click();
+  await expect(page).toHaveURL(/#page-transactions$/);
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.dashboard-root')).not.toHaveAttribute('data-theme');

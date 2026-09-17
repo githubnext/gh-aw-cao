@@ -273,8 +273,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(activityCollector, /--prune-older-runs/);
   assert.equal((activityCollector.match(/gh aw logs/g) || []).length, 1);
   assert.doesNotMatch(activityCollector, /gh api|token-efficiency/);
-  assert.match(activityWorkflow, /optimization\/collect-token-efficiency\.sh/);
-  assert.match(activityWorkflow, /\.github\/aw\/optimization\/collect-token-efficiency\.sh/);
+  assert.doesNotMatch(activityWorkflow, /(?:\.github\/aw\/)?optimization\/collect-token-efficiency\.sh/);
   assert.doesNotMatch(activityLogs, /gh aw logs --audit|runGhAw/);
   assert.doesNotMatch(aicUsage, /spawn|runGhAw|"aw", "logs"|--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
@@ -382,6 +381,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(activityCollector, /mv "\$generated_weights" "\$drain3_weights_path"/);
   assert.match(workflow, /REPORT_GH_AW_LOGS_SHARDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/);
   assert.match(workflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
+  assert.match(workflow, /if \[\[ -f activity\/collect-logs\.sh \]\]; then[\s\S]*?elif \[\[ -f \.github\/aw\/activity\/collect-logs\.sh \]\]; then[\s\S]*?bash "\$collector"/);
   assert.doesNotMatch(workflow, /issues: read/);
   assert.equal((workflow.match(/pull-requests: read/g) || []).length, 3);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
