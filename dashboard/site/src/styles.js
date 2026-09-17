@@ -7,7 +7,7 @@
  */
 export function notificationStylesheet() {
   return `
-.dashboard-notifications { width: min(360px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; position: fixed; z-index: 1001; right: 16px; bottom: 16px; pointer-events: none; }
+.dashboard-notifications { width: min(480px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; position: fixed; z-index: 1001; right: 16px; bottom: 16px; pointer-events: none; }
 .dashboard-notifications[hidden] { display: none; }
 .dashboard-notification { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border: 1px solid var(--border, ButtonBorder); border-left: 3px solid var(--accent, Highlight); border-radius: 6px; background: var(--canvas, Canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset, CanvasText) 45%, transparent); color: var(--fg, CanvasText); font: .8125rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; pointer-events: auto; transition: transform 180ms ease-out, opacity 180ms ease-out; }
 .dashboard-notification-success { border-left-color: var(--success); }
@@ -2105,8 +2105,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .sidebar-brand { display: none; }
   .mobile-page-header { min-width: 0; display: flex; flex: 1 1 auto; flex-direction: column; align-items: flex-start; justify-content: center; overflow: hidden; margin: 0 4px; }
   .mobile-brand-name { max-width: 100%; display: block; overflow: hidden; color: var(--muted); font-size: .75rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
-  .mobile-page-header .overview-header { width: 100%; min-width: 0; flex-basis: auto; }
-  .mobile-page-header .breadcrumb-context, .mobile-page-header .overview-header .lede { display: none; }
+  .mobile-page-header .overview-header { width: 100%; min-width: 0; flex: none; }
+  .mobile-page-header .breadcrumb-context { display: none; }
+  /* Desktop reserves hidden descriptions as a stable spacer; collapse it in the compact mobile title bar without adding another display override. */
+  .mobile-page-header .overview-header .lede { height: 0; min-height: 0; margin: 0; overflow: hidden; line-height: 0; visibility: hidden; }
   .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .mobile-page-header .overview-header h1 { margin: 0; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-nav-menu-actions { min-width: 0; display: flex; margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid var(--border-muted); }
@@ -2161,7 +2163,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .report-actions .tooltip-help { position: static; }
   .report-actions .tooltip-content { width: min(320px, 100%); right: auto; left: 0; }
   .report-footer-provenance { display: none; }
-  .overview-header { flex-basis: 100%; }
+  /* Keep full-width wrapping for the desktop header only; the same header moves into .mobile-page-header where it must stay content-sized. */
+  .app-main .overview-header { flex-basis: 100%; }
   .toolbar { align-items: stretch; flex-wrap: wrap; }
   .filter-control { min-width: 0; flex-basis: 100%; }
   .filter-toggle[aria-expanded="true"] { background: var(--neutral-muted); }

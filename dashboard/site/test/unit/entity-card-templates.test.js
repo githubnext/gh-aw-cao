@@ -61,14 +61,38 @@ describe('entity card templates', () => {
         title: { field: 'operation-name' },
         subtitle: { field: 'operation-description' }
       });
+      const marketplaceGroupQuery = dashboard.queries.find(
+        (/** @type {Record<string, any>} */ query) => query.name === 'marketplace-operation-groups'
+      );
+      expect(marketplaceGroupQuery).toMatchObject({
+        from: 'workflows',
+        aggregate: {
+          by: expect.arrayContaining(['operation-id', 'operation-name', 'operation-dashboard-href'])
+        }
+      });
       const marketplaceQuery = dashboard.queries.find(
         (/** @type {Record<string, any>} */ query) => query.name === 'marketplace-operations'
       );
       expect(marketplaceQuery).toMatchObject({
-        from: 'workflows',
-        aggregate: {
-          by: expect.arrayContaining(['operation-id', 'operation-name', 'operation-link'])
-        },
+        from: 'marketplace-operation-groups',
+        joins: [
+          {
+            source: 'repositories',
+            type: 'left',
+            on: [
+              { left: 'organization', right: 'organization' },
+              { left: 'repository', right: 'repository' }
+            ],
+            fields: [{ field: 'repository-link', as: 'repository-link' }]
+          }
+        ],
+        compute: expect.arrayContaining([
+          expect.objectContaining({
+            as: 'operation-link',
+            function: 'dashboard-link',
+            args: expect.arrayContaining([{ field: 'repository-link' }])
+          })
+        ]),
         'order-by': [
           { field: 'operation-kind', direction: 'asc' },
           { field: 'operation-name', direction: 'asc' }

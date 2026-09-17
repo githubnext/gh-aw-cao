@@ -97,6 +97,42 @@ test('back navigation follows every dashboard browser history entry', async ({ p
   await expect(back).toBeHidden();
 });
 
+test('mobile title bar keeps the dashboard subtitle adjacent to the page title', async ({ page }) => {
+  // Allow sub-pixel font rounding, but no extra row or hidden spacer between title and subtitle.
+  const adjacentTitleGapTolerancePx = 2;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async (presenterModuleUrl) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'mobile-title-dashboard',
+          title: 'gh-aw-cao',
+          repository: 'githubnext/gh-aw-cao',
+          pages: [
+            { id: 'overview', kind: 'custom', title: 'Overview', description: 'Operational dashboard', views: [], sections: [] }
+          ]
+        }
+      },
+      sources: {}
+    }));
+  }, buildPresenterModuleUrl());
+
+  const mobileHeader = page.locator('.mobile-page-header');
+  await expect(mobileHeader.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
+  await expect(mobileHeader.locator('.mobile-brand-name')).toHaveText('gh-aw-cao');
+  await expect(mobileHeader.locator('[data-page-description]')).toHaveAttribute('aria-hidden', 'true');
+
+  const titleGap = await mobileHeader.evaluate((element) => {
+    const title = element.querySelector('h1')?.getBoundingClientRect();
+    const subtitle = element.querySelector('.mobile-brand-name')?.getBoundingClientRect();
+    if (!title || !subtitle) return Number.POSITIVE_INFINITY;
+    return subtitle.top - title.bottom;
+  });
+  expect(titleGap).toBeLessThanOrEqual(adjacentTitleGapTolerancePx);
+});
+
 test('notifications move in at the lower right and center on mobile', async ({ page }) => {
   await page.setContent(`
     <style id="notification-styles"></style>
@@ -111,9 +147,11 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   const notifications = page.locator('.dashboard-notifications');
   await expect(notifications).toBeVisible();
   await expect(notifications).toHaveCSS('right', '16px');
+  await expect(notifications).toHaveCSS('width', '480px');
   await expect(page.locator('.dashboard-notification')).toHaveCSS('opacity', '1');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(notifications).toHaveCSS('width', '358px');
   const bounds = await notifications.boundingBox();
   expect(bounds).not.toBeNull();
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);

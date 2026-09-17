@@ -2,11 +2,19 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "./actions-log.mjs";
+import {
+  compilerVersionFromLock,
+  normalizeVersion,
+  parseVersion,
+  revisionUpdateState,
+  updateState,
+} from "./version.mjs";
 
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
 const POLICY_PATH = ".github/workflows/cao.json";
 const WORKFLOW_PAGE_SIZE = 100;
 const MAX_WORKFLOWS_PER_REPOSITORY = 10_000;
+const RELEASE_PAGE_SIZE = 100;
 
 function objectRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -85,6 +93,26 @@ function repositoryFullName(candidate) {
   return typeof candidate === "string" ? candidate : candidate?.full_name;
 }
 
+function packageRepository(candidate) {
+  const packageName = String(candidate?.package || candidate?.source || "").split("@", 1)[0];
+  const [owner, repository] = packageName.split("/");
+  return owner && repository ? `${owner}/${repository}` : "";
+}
+
+function shortRevision(value) {
+  const revision = String(value || "").trim();
+  return /^[0-9a-f]{40}$/i.test(revision) ? revision.slice(0, 12) : revision;
+}
+
+function contentPath(value) {
+  return String(value || "").split("/").map(encodeURIComponent).join("/");
+}
+
+async function responseJson(response, description) {
+  if (!response.ok) throw Object.assign(new Error(`${description}: ${response.status}`), { status: response.status });
+  return response.json();
+}
+
 function repositoryFailure(repository, status, reason) {
   return {
     repository,
@@ -92,6 +120,18 @@ function repositoryFailure(repository, status, reason) {
     "failure-class": status === 403 ? "permission" : "request",
     status: Number.isInteger(status) ? status : null,
     reason,
+  };
+}
+
+function versionFailure(repository, operation, status, reason, workflow = "") {
+  return {
+    repository,
+    operation,
+    state: "unavailable",
+    "failure-class": status === 403 ? "permission" : "request",
+    status: Number.isInteger(status) ? status : null,
+    reason,
+    ...(workflow ? { workflow } : {}),
   };
 }
 
@@ -228,6 +268,79 @@ export async function discoverRepositories(controlSettings, {
   return repositories;
 }
 
+export async function discoverLatestPackageCommits(inventory = {}, {
+  fetchImplementation = fetch,
+  token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
+  apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
+} = {}) {
+  if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover package versions");
+  const repositories = [...new Set([
+    ...(inventory.packages || []),
+    ...(inventory.bundles || []),
+  ].map(packageRepository).filter(Boolean))];
+  const commits = {};
+  const failures = [];
+  for (const repository of repositories) {
+    try {
+      const repositoryResponse = await githubResponse(fetchImplementation, apiUrl, token, `repos/${repository}`);
+      const repositoryRecord = await responseJson(repositoryResponse, `Unable to inspect package repository ${repository}`);
+      const defaultBranch = String(repositoryRecord?.default_branch || "").trim();
+      if (!defaultBranch) throw new Error(`Package repository ${repository} did not report a default branch`);
+      const commitResponse = await githubResponse(
+        fetchImplementation,
+        apiUrl,
+        token,
+        `repos/${repository}/commits/${contentPath(defaultBranch)}`,
+      );
+      const commit = await responseJson(commitResponse, `Unable to resolve package repository ${repository}`);
+      const sha = String(commit?.sha || "").trim();
+      if (!/^[0-9a-f]{40}$/i.test(sha)) throw new Error(`Package repository ${repository} did not report a commit SHA`);
+      commits[repository] = sha;
+    } catch (error) {
+      failures.push(versionFailure(
+        repository,
+        "package-version-discovery",
+        error?.status,
+        error?.message || String(error),
+      ));
+    }
+  }
+  return {
+    commits,
+    failures,
+    expected: repositories.length,
+    observed: Object.keys(commits).length,
+  };
+}
+
+export async function discoverLatestGhAwVersion({
+  fetchImplementation = fetch,
+  token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
+  apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
+} = {}) {
+  if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover the latest gh-aw version");
+  for (let page = 1; ; page += 1) {
+    const response = await githubResponse(
+      fetchImplementation,
+      apiUrl,
+      token,
+      `repos/github/gh-aw/releases?per_page=${RELEASE_PAGE_SIZE}&page=${page}`,
+    );
+    const releases = await responseJson(response, "Unable to discover the latest gh-aw release");
+    if (!Array.isArray(releases)) throw new Error("gh-aw release discovery returned invalid data");
+    const stable = releases.find((release) => {
+      const parsed = parseVersion(release?.tag_name);
+      return release?.draft !== true
+        && release?.prerelease !== true
+        && parsed
+        && parsed.prerelease.length === 0;
+    });
+    if (stable) return normalizeVersion(stable.tag_name);
+    if (releases.length < RELEASE_PAGE_SIZE) break;
+  }
+  throw new Error("No stable gh-aw release was found");
+}
+
 function workflowPath(value) {
   const path = String(value || "").trim();
   return path.startsWith(".github/workflows/") ? path : "";
@@ -341,16 +454,81 @@ export async function discoverWorkflowRegistries(discoveredRepositories, {
   return registries;
 }
 
+function workflowContent(payload) {
+  if (typeof payload === "string") return payload;
+  if (typeof payload?.content !== "string") return "";
+  return payload.encoding === "base64"
+    ? Buffer.from(payload.content.replace(/\s/g, ""), "base64").toString("utf8")
+    : payload.content;
+}
+
+export async function discoverWorkflowVersions(workflowRegistries, {
+  fetchImplementation = fetch,
+  token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
+  apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
+} = {}) {
+  if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover workflow versions");
+  const enriched = [];
+  for (const registry of workflowRegistries) {
+    const versionFailures = [];
+    const workflows = [];
+    for (const workflow of registry.workflows || []) {
+      if (!workflow.path.toLowerCase().endsWith(".lock.yml")) {
+        workflows.push(workflow);
+        continue;
+      }
+      try {
+        const response = await githubResponse(
+          fetchImplementation,
+          apiUrl,
+          token,
+          `repos/${registry.repository}/contents/${contentPath(workflow.path)}`,
+        );
+        const payload = await responseJson(response, `Unable to read ${workflow.path} from ${registry.repository}`);
+        const source = workflowContent(payload);
+        if (!source) throw new Error(`Workflow ${workflow.path} in ${registry.repository} returned no content`);
+        const ghAwVersion = compilerVersionFromLock(source);
+        if (!ghAwVersion) throw new Error(`Workflow ${workflow.path} in ${registry.repository} has no valid compiler metadata`);
+        workflows.push({
+          ...workflow,
+          ghAwVersion,
+        });
+      } catch (error) {
+        versionFailures.push(versionFailure(
+          registry.repository,
+          "workflow-version-discovery",
+          error?.status,
+          error?.message || String(error),
+          workflow.path,
+        ));
+        workflows.push(workflow);
+      }
+    }
+    enriched.push({
+      ...registry,
+      workflows,
+      versionFailures,
+      versionState: versionFailures.length === 0 ? "complete" : workflows.length > 0 ? "partial" : "unavailable",
+    });
+  }
+  return enriched;
+}
+
 function workflowRegistryHealth(registries, rows) {
-  const failures = registries.flatMap((registry) => registry.failure ? [{
-    ...registry.failure,
-    state: registry.state,
-    expected: registry.expected,
-    observed: registry.observed,
-    pages: registry.pages,
-  }] : []);
+  const failures = registries.flatMap((registry) => [
+    ...(registry.failure ? [{
+      ...registry.failure,
+      state: registry.state,
+      expected: registry.expected,
+      observed: registry.observed,
+      pages: registry.pages,
+    }] : []),
+    ...(registry.versionFailures || []),
+  ]);
   const expected = registries.length;
-  const observed = registries.filter((registry) => registry.state === "complete").length;
+  const observed = registries.filter((registry) => (
+    registry.state === "complete" && (registry.versionFailures || []).length === 0
+  )).length;
   return {
     available: rows.length > 0 || observed > 0 || expected === 0,
     complete: failures.length === 0,
@@ -365,7 +543,25 @@ function workflowRegistryHealth(registries, rows) {
   };
 }
 
-function packageRows(inventory, controlSettings, generatedAt) {
+function packageVersionHealth(resolution, rows) {
+  const failures = resolution?.failures || [];
+  const expected = Number.isFinite(resolution?.expected) ? resolution.expected : undefined;
+  const observed = Number.isFinite(resolution?.observed) ? resolution.observed : undefined;
+  return {
+    available: rows.length > 0 || expected === 0 || expected === undefined,
+    complete: failures.length === 0,
+    expected,
+    observed,
+    operation: "package-version-discovery",
+    state: failures.length === 0 ? "complete" : observed > 0 ? "partial" : "failed",
+    failureClass: failures.some((failure) => failure["failure-class"] === "permission") ? "permission"
+      : failures.length > 0 ? "request" : "",
+    reason: failures.length > 0 ? `${failures.length} package repositories could not be resolved` : "",
+    failures,
+  };
+}
+
+function packageRows(inventory, controlSettings, generatedAt, latestPackageCommits = {}) {
   const bundles = new Map((inventory.bundles || []).map((bundle) => [
     String(bundle.controlPackage || bundle.id || "").trim(),
     bundle,
@@ -382,6 +578,10 @@ function packageRows(inventory, controlSettings, generatedAt) {
     const bundle = bundles.get(id)
       || [...bundles.values()].find((candidate) => candidate.id === id)
       || {};
+    const installed = registered.get(id) || {};
+    const repository = packageRepository(installed) || packageRepository(bundle);
+    const installedRevision = String(installed.resolvedCommit || bundle.version || "").trim();
+    const latestRevision = String(latestPackageCommits[repository] || "").trim();
     const policy = controlSettings.packages?.[id] || {};
     const workers = Object.entries(policy.worker_policies || {}).map(([workflow, worker]) => ({
       id: worker.worker || workflow,
@@ -400,7 +600,7 @@ function packageRows(inventory, controlSettings, generatedAt) {
       .reduce((total, value) => total + value, 0);
     return {
       package: id,
-      "package-name": bundle.name || registered.get(id)?.name || id,
+      "package-name": bundle.name || installed.name || id,
       "package-description": bundle.description || "",
       "package-icon": policy.icon || "package",
       "package-mode": rolloutMode(policy.mode),
@@ -414,6 +614,9 @@ function packageRows(inventory, controlSettings, generatedAt) {
       "package-workers": workers,
       "package-targets": targets,
       "package-min-version": bundle.minVersion || "",
+      "package-version": shortRevision(installedRevision) || "unknown",
+      "package-current-version": shortRevision(latestRevision) || "unknown",
+      "package-update-state": revisionUpdateState(installedRevision, latestRevision),
       "package-experimental": bundle.experimental === true,
       "package-readme-path": bundle.readmePath || "",
       "package-readme": bundle.readme || "",
@@ -444,6 +647,7 @@ function workflowPackageDetails(inventory, controlSettings) {
     details.set(workflow.sourcePath, {
       maxAiCredits: workflow.maxAiCredits,
       inventoryReady: workflow.compiled,
+      ghAwVersion: normalizeVersion(workflow.ghAwVersion),
     });
   }
   for (const bundle of inventory.bundles || []) {
@@ -509,7 +713,7 @@ function workflowLink(workflow) {
     : undefined;
 }
 
-function remoteWorkflowRow(workflow, generatedAt) {
+function remoteWorkflowRow(workflow, generatedAt, latestGhAwVersion) {
   const [organization, repository] = workflow.repository.split("/");
   const active = workflow.state === "active"
     ? "true"
@@ -518,11 +722,14 @@ function remoteWorkflowRow(workflow, generatedAt) {
   return {
     organization,
     repository,
-    workflow: workflow.path,
+    workflow: canonicalWorkflowPath(workflow.path),
     "workflow-name": workflow.name,
     "workflow-role": "standalone",
     "workflow-active": active,
     "workflow-registry-state": workflow.state,
+    "gh-aw-version": workflow.ghAwVersion || "unknown",
+    "gh-aw-current-version": latestGhAwVersion || "unknown",
+    "gh-aw-update-state": updateState(workflow.ghAwVersion, latestGhAwVersion),
     ...(workflow.id !== null ? { "workflow-id": String(workflow.id) } : {}),
     ...(link ? { "workflow-link": link } : {}),
     ...(workflow.createdAt ? { "created-at": workflow.createdAt } : {}),
@@ -532,13 +739,13 @@ function remoteWorkflowRow(workflow, generatedAt) {
   };
 }
 
-function workflowRows(inventory, controlSettings, repository, generatedAt, workflowRegistries = []) {
+function workflowRows(inventory, controlSettings, repository, generatedAt, workflowRegistries = [], latestGhAwVersion = null) {
   const [organization, repositoryName] = repository.split("/");
   const packageDetails = workflowPackageDetails(inventory, controlSettings);
   const rows = new Map();
   for (const registry of workflowRegistries) {
     for (const workflow of registry.workflows) {
-      const row = remoteWorkflowRow(workflow, generatedAt);
+      const row = remoteWorkflowRow(workflow, generatedAt, latestGhAwVersion);
       const key = `${workflow.repository.toLowerCase()}:${canonicalWorkflowPath(workflow.path)}`;
       rows.set(key, row);
     }
@@ -573,6 +780,9 @@ function workflowRows(inventory, controlSettings, repository, generatedAt, workf
       "workflow-name": workflow.name,
       "workflow-role": details?.role || workflow.role || "standalone",
       "workflow-active": workflow.compiled === true ? "true" : "unknown",
+      "gh-aw-version": details?.ghAwVersion || normalizeVersion(workflow.ghAwVersion) || "unknown",
+      "gh-aw-current-version": latestGhAwVersion || "unknown",
+      "gh-aw-update-state": updateState(details?.ghAwVersion || workflow.ghAwVersion, latestGhAwVersion),
       "rollout-mode": details?.packageTargets?.find(
         (target) => target.repository.toLowerCase() === repositoryKey,
       )?.mode || details?.configuredMode || "unknown",
@@ -580,6 +790,9 @@ function workflowRows(inventory, controlSettings, repository, generatedAt, workf
     };
     const key = `${repositoryKey}:${canonicalWorkflowPath(workflow.sourcePath)}`;
     const remoteRow = rows.get(key);
+    const installedGhAwVersion = details?.ghAwVersion
+      || normalizeVersion(workflow.ghAwVersion)
+      || (remoteRow?.["gh-aw-version"] !== "unknown" ? remoteRow?.["gh-aw-version"] : null);
     rows.set(key, {
       ...remoteRow,
       ...localRow,
@@ -594,6 +807,9 @@ function workflowRows(inventory, controlSettings, repository, generatedAt, workf
       ...(remoteRow?.["workflow-link"] ? { "workflow-link": remoteRow["workflow-link"] } : {}),
       ...(remoteRow?.["created-at"] ? { "created-at": remoteRow["created-at"] } : {}),
       ...(remoteRow?.["updated-at"] ? { "updated-at": remoteRow["updated-at"] } : {}),
+      "gh-aw-version": installedGhAwVersion || "unknown",
+      "gh-aw-current-version": latestGhAwVersion || "unknown",
+      "gh-aw-update-state": updateState(installedGhAwVersion, latestGhAwVersion),
     });
   }
   return [...rows.values()].sort((left, right) => (
@@ -653,14 +869,38 @@ export function buildInventoryDashboardSources({
   controlSettings,
   discoveredRepositories = [],
   workflowRegistries = [],
+  latestPackageResolution = {},
+  latestGhAwVersion = null,
+  latestGhAwFailure = null,
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
   const settings = objectRecord(controlSettings);
   const repositories = repositoryRows(discoveredRepositories, repository, generatedAt);
-  const workflows = workflowRows(inventory, settings, repository, generatedAt, workflowRegistries);
+  const workflows = workflowRows(
+    inventory,
+    settings,
+    repository,
+    generatedAt,
+    workflowRegistries,
+    latestGhAwVersion,
+  );
+  const packageInventory = packageRows(inventory, settings, generatedAt, latestPackageResolution.commits);
+  const workflowHealth = workflowRegistryHealth(workflowRegistries, workflows);
+  if (latestGhAwFailure) {
+    workflowHealth.complete = false;
+    workflowHealth.state = workflowHealth.available ? "partial" : "failed";
+    workflowHealth.failureClass = latestGhAwFailure["failure-class"];
+    workflowHealth.reason = "The latest stable gh-aw release could not be resolved";
+    workflowHealth.failures = [...(workflowHealth.failures || []), latestGhAwFailure];
+  }
   return {
-    packages: source("packages", packageRows(inventory, settings, generatedAt), generatedAt),
+    packages: source(
+      "packages",
+      packageInventory,
+      generatedAt,
+      packageVersionHealth(latestPackageResolution, packageInventory),
+    ),
     repositories: source(
       "repositories",
       repositories,
@@ -671,7 +911,7 @@ export function buildInventoryDashboardSources({
       "workflows",
       workflows,
       generatedAt,
-      workflowRegistryHealth(workflowRegistries, workflows),
+      workflowHealth,
     ),
     "configuration-policy": source(
       "configuration-policy",
@@ -697,20 +937,44 @@ export async function main() {
       readFile(controlSettingsPath, "utf8").then(JSON.parse),
     ]);
     const discoveredRepositories = await discoverRepositories(controlSettings);
-    const workflowRegistries = await discoverWorkflowRegistries(discoveredRepositories, {
-      controlRepository: repository,
-    });
+    const [rawWorkflowRegistries, latestPackageResolution, latestGhAwResolution] = await Promise.all([
+      discoverWorkflowRegistries(discoveredRepositories, { controlRepository: repository }),
+      discoverLatestPackageCommits(inventory),
+      discoverLatestGhAwVersion().then((version) => ({ version, failure: null })).catch((error) => ({
+        version: null,
+        failure: versionFailure(
+          "github/gh-aw",
+          "gh-aw-version-discovery",
+          error?.status,
+          error?.message || String(error),
+        ),
+      })),
+    ]);
+    const workflowRegistries = await discoverWorkflowVersions(rawWorkflowRegistries);
     const sources = buildInventoryDashboardSources({
       inventory,
       controlSettings,
       discoveredRepositories,
       workflowRegistries,
+      latestPackageResolution,
+      latestGhAwVersion: latestGhAwResolution.version,
+      latestGhAwFailure: latestGhAwResolution.failure,
       repository,
     });
     await writeFile(path.resolve(outputPath), `${JSON.stringify(sources, null, 2)}\n`);
     const incompleteRegistries = workflowRegistries.filter((registry) => registry.state !== "complete");
     if (incompleteRegistries.length > 0) {
       log.warning`Workflow registry discovery was incomplete for ${incompleteRegistries.length} repositories`;
+    }
+    const workflowVersionFailures = workflowRegistries.flatMap((registry) => registry.versionFailures || []);
+    if (workflowVersionFailures.length > 0) {
+      log.warning`Workflow compiler version discovery was incomplete for ${workflowVersionFailures.length} workflow files`;
+    }
+    if (latestPackageResolution.failures.length > 0) {
+      log.warning`Package version discovery was incomplete for ${latestPackageResolution.failures.length} repositories`;
+    }
+    if (latestGhAwResolution.failure) {
+      log.warning`Latest stable gh-aw version discovery failed: ${latestGhAwResolution.failure.reason}`;
     }
     log.info`Wrote ${sources.repositories.rows.length} repositories, ${sources.packages.rows.length} packages, and ${sources.workflows.rows.length} workflows`;
   } finally {

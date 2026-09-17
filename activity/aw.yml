@@ -25,3 +25,5 @@ resources:
     destination: .github/aw/activity/inventory.mjs
   - source: inventory-sources.mjs
     destination: .github/aw/activity/inventory-sources.mjs
+  - source: version.mjs
+    destination: .github/aw/activity/version.mjs

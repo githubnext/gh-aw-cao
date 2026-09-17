@@ -486,6 +486,11 @@ function enableResponsiveReportActions(root, signal) {
       } else if (overviewHeader.parentElement !== headerDesktopSlot) {
         headerDesktopSlot.prepend(overviewHeader);
       }
+      const headerDescription = overviewHeader.querySelector('[data-page-description]');
+      if (headerDescription instanceof HTMLElement) {
+        if (media.matches) headerDescription.setAttribute('aria-hidden', 'true');
+        else headerDescription.removeAttribute('aria-hidden');
+      }
     }
     if (
       viewModeToggle instanceof HTMLElement

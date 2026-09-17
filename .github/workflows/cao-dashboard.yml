@@ -274,6 +274,8 @@ jobs:
               'doctor',
               '--database',
               process.env.ACTIVITY_DATABASE,
+              '--run-ttl-days',
+              'all',
             ])
             core.info('Activity database health assessment completed')
 

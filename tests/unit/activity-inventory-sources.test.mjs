@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildInventoryDashboardSources,
+  discoverLatestGhAwVersion,
+  discoverLatestPackageCommits,
   discoverRepositories,
   discoverWorkflowRegistries,
+  discoverWorkflowVersions,
 } from "../../activity/inventory-sources.mjs";
 import { adaptDashboardSources } from "../../dashboard/site/src/data/adapters/dashboard-sources.js";
 import { adaptGhAwLogs } from "../../dashboard/site/src/data/adapters/gh-aw-logs.js";
@@ -38,6 +41,193 @@ test("discovers public workflow registry metadata and disabled state", async () 
         ],
       }));
     },
+  });
+
+  test("selects the latest stable gh-aw release instead of a prerelease", async () => {
+    const version = await discoverLatestGhAwVersion({
+      token: "test-token",
+      fetchImplementation: async (url) => {
+        assert.match(String(url), /repos\/github\/gh-aw\/releases\?per_page=100&page=1$/);
+        return new Response(JSON.stringify([
+          { tag_name: "v0.91.0-rc.1", prerelease: false, draft: false },
+          { tag_name: "v0.90.2", prerelease: false, draft: false },
+        ]));
+      },
+    });
+
+    assert.equal(version, "v0.90.2");
+  });
+
+  test("retains successful package revisions when another repository lookup fails", async () => {
+    const currentRevision = "a".repeat(40);
+    const resolution = await discoverLatestPackageCommits({
+      packages: [
+        { package: "acme/catalog/operations" },
+        { package: "acme/broken/operations" },
+      ],
+    }, {
+      token: "test-token",
+      fetchImplementation: async (url) => {
+        const request = String(url);
+        if (request.endsWith("/repos/acme/broken")) return new Response("", { status: 503 });
+        if (request.endsWith("/repos/acme/catalog")) {
+          return new Response(JSON.stringify({ default_branch: "main" }));
+        }
+        if (request.endsWith("/repos/acme/catalog/commits/main")) {
+          return new Response(JSON.stringify({ sha: currentRevision }));
+        }
+        throw new Error(`Unexpected request: ${request}`);
+      },
+    });
+
+    assert.deepEqual(resolution.commits, { "acme/catalog": currentRevision });
+    assert.equal(resolution.expected, 2);
+    assert.equal(resolution.observed, 1);
+    assert.equal(resolution.failures[0].repository, "acme/broken");
+  });
+
+  test("parses remote compiler metadata while retaining missing workflow files and partial repositories", async () => {
+    const registries = [
+      {
+        repository: "acme/app",
+        expected: 2,
+        observed: 2,
+        pages: 1,
+        state: "complete",
+        failure: null,
+        workflows: [
+          workflow(101, ".github/workflows/agent.lock.yml"),
+          workflow(102, ".github/workflows/missing.lock.yml"),
+        ],
+      },
+      {
+        repository: "acme/broken",
+        expected: 1,
+        observed: 1,
+        pages: 1,
+        state: "complete",
+        failure: null,
+        workflows: [
+          { ...workflow(201, ".github/workflows/agent.lock.yml"), repository: "acme/broken" },
+        ],
+      },
+    ];
+    const enriched = await discoverWorkflowVersions(registries, {
+      token: "test-token",
+      fetchImplementation: async (url) => {
+        const request = String(url);
+        if (request.includes("/repos/acme/app/contents/.github/workflows/agent.lock.yml")) {
+          return new Response(JSON.stringify({
+            encoding: "base64",
+            content: Buffer.from('# gh-aw-metadata: {"compiler_version":"v0.89.15"}\n').toString("base64"),
+          }));
+        }
+        if (request.includes("/repos/acme/app/contents/.github/workflows/missing.lock.yml")) {
+          return new Response("", { status: 404 });
+        }
+        if (request.includes("/repos/acme/broken/contents/")) {
+          return new Response("", { status: 503 });
+        }
+        throw new Error(`Unexpected request: ${request}`);
+      },
+    });
+
+    assert.equal(enriched[0].workflows[0].ghAwVersion, "v0.89.15");
+    assert.equal(enriched[0].workflows[1].ghAwVersion, undefined);
+    assert.equal(enriched[0].versionFailures[0].workflow, ".github/workflows/missing.lock.yml");
+    assert.equal(enriched[1].workflows.length, 1);
+    assert.equal(enriched[1].versionFailures[0].repository, "acme/broken");
+  });
+
+  test("emits package and workflow version update state for control and enrolled repositories", () => {
+    const installedPackageRevision = "1".repeat(40);
+    const latestPackageRevision = "2".repeat(40);
+    const generatedAt = "2026-09-17T00:00:00Z";
+    const sources = buildInventoryDashboardSources({
+      repository: "acme/control",
+      generatedAt,
+      inventory: {
+        packages: [{
+          id: "operations",
+          name: "Operations",
+          package: "acme/catalog/operations",
+          resolvedCommit: installedPackageRevision,
+        }],
+        workflows: [{
+          id: "control-agent",
+          name: "Control agent",
+          sourcePath: ".github/workflows/control-agent.md",
+          compiled: true,
+          ghAwVersion: "v0.88.0",
+        }],
+        bundles: [],
+      },
+      controlSettings: {
+        packages: {
+          operations: { enabled: true, mode: "review" },
+        },
+      },
+      discoveredRepositories: [{ full_name: "acme/app", visibility: "public" }],
+      workflowRegistries: [{
+        repository: "acme/app",
+        expected: 1,
+        observed: 1,
+        pages: 1,
+        state: "complete",
+        failure: null,
+        versionFailures: [],
+        workflows: [{
+          repository: "acme/app",
+          id: 101,
+          name: "Agent",
+          path: ".github/workflows/agent.lock.yml",
+          state: "active",
+          htmlUrl: "https://github.com/acme/app/actions/workflows/101",
+          createdAt: null,
+          updatedAt: null,
+          ghAwVersion: "v0.89.0",
+        }],
+      }],
+      latestPackageResolution: {
+        commits: { "acme/catalog": latestPackageRevision },
+        failures: [],
+        expected: 1,
+        observed: 1,
+      },
+      latestGhAwVersion: "v0.89.0",
+    });
+
+    assert.deepEqual({
+      installed: sources.packages.rows[0]["package-version"],
+      latest: sources.packages.rows[0]["package-current-version"],
+      state: sources.packages.rows[0]["package-update-state"],
+    }, {
+      installed: installedPackageRevision.slice(0, 12),
+      latest: latestPackageRevision.slice(0, 12),
+      state: "update-available",
+    });
+    assert.deepEqual(sources.workflows.rows.map((row) => ({
+      repository: `${row.organization}/${row.repository}`,
+      workflow: row.workflow,
+      installed: row["gh-aw-version"],
+      latest: row["gh-aw-current-version"],
+      state: row["gh-aw-update-state"],
+    })), [
+      {
+        repository: "acme/app",
+        workflow: ".github/workflows/agent.md",
+        installed: "v0.89.0",
+        latest: "v0.89.0",
+        state: "up-to-date",
+      },
+      {
+        repository: "acme/control",
+        workflow: ".github/workflows/control-agent.md",
+        installed: "v0.88.0",
+        latest: "v0.89.0",
+        state: "update-available",
+      },
+    ]);
   });
   const sources = buildInventoryDashboardSources({
     repository: "acme/control",
@@ -251,6 +441,9 @@ test("merges control registry metadata without replacing package ownership", () 
     "workflow-name": "Registered Worker",
     "workflow-role": "worker",
     "workflow-active": "false",
+    "gh-aw-version": "unknown",
+    "gh-aw-current-version": "unknown",
+    "gh-aw-update-state": "unknown",
     "rollout-mode": "review",
     "observed-at": generatedAt,
     "workflow-registry-state": "disabled_inactivity",

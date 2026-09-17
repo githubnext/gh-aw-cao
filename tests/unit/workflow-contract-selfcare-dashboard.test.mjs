@@ -127,7 +127,7 @@ test("SelfCare dashboard debug logging worker preserves the logging privacy boun
   assert.match(source, /dashboard-debug-logging-rotation\.json/);
   assert.match(source, /sort their repository-relative paths ascending/);
   assert.match(source, /Begin immediately after `lastPath`, wrapping to the first path/);
-  assert.match(source, /Use `createDebug` from `dashboard\/site\/src\/debug\.mjs`/);
+  assert.match(source, /Use `createDebug` from `dashboard\/site\/src\/debug\.js`/);
   assert.match(source, /production `\.js` and `\.mjs` files/);
   assert.match(source, /remove the final `\.js` or `\.mjs`, lowercase it/);
   assert.match(source, /source-store\.js` and `source-store\.mjs` use `source-store`/);
