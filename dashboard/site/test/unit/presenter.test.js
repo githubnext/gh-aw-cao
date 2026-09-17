@@ -1677,6 +1677,8 @@ describe('presenter built-in and custom pages', () => {
       expect(page?.querySelector('[data-view-id="runs-chart"]')?.getAttribute('data-mobile-view-mode')).toBe('chart');
       expect(page?.querySelector('[data-view-id="runs-table"]')?.getAttribute('data-mobile-view-mode')).toBe('table');
       expect(toggle?.hidden).toBe(false);
+      expect(toggle?.parentElement?.classList.contains('title-area')).toBe(true);
+      expect(rendered.querySelector('.org-sidebar')?.contains(toggle)).toBe(false);
       expect(toggle?.getAttribute('aria-label')).toBe('Show table view');
       expect(toggle?.querySelector('.octicon-table')).not.toBeNull();
 

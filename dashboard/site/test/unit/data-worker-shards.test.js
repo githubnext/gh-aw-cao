@@ -45,15 +45,26 @@ describe('published activity shards', () => {
     expect(publishedPhasedActivityShards(hashes)).toHaveLength(2);
   });
 
-  it('rejects incomplete or mismatched phased manifests', () => {
+  it('accepts independently filtered run and event shard sets', () => {
     const first = `gh-aw-logs-1000-a-${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
     const second = `gh-aw-logs-2000-b-${'c'.repeat(64)}-${'d'.repeat(16)}.json`;
-    expect(publishedPhasedActivityShards({
+    const shards = publishedPhasedActivityShards({
       [`gh-aw-logs-runs/${first}`]: 'e'.repeat(64),
       [`gh-aw-logs-events/${second}`]: 'f'.repeat(64)
-    })).toEqual([]);
+    });
+    expect(shards.map(({ name }) => name)).toEqual([
+      `gh-aw-logs-runs/${first}`,
+      `gh-aw-logs-events/${second}`
+    ]);
     expect(publishedPhasedActivityShards({
       [`gh-aw-logs-runs/${first}`]: 'e'.repeat(64)
+    })).toHaveLength(1);
+  });
+
+  it('rejects phased manifests without run information', () => {
+    const name = `gh-aw-logs-1000-a-${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
+    expect(publishedPhasedActivityShards({
+      [`gh-aw-logs-events/${name}`]: 'f'.repeat(64)
     })).toEqual([]);
   });
 });

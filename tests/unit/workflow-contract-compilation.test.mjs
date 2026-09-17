@@ -4,9 +4,16 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import { generatedJobs, ghAwVersion, root, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Compiled workflow output contracts.
+
+function workflowConfig(name, directory = workflowsDirectory) {
+  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(workflow(name, directory))?.[1];
+  assert.ok(frontmatter, `${name} must have frontmatter`);
+  return parse(frontmatter);
+}
 
 test("compiled workflow expressions do not contain HTML-escaped operators", () => {
   const lockNames = readdirSync(workflowsDirectory).filter((name) => name.endsWith(".lock.yml"));
@@ -41,6 +48,29 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     }
     execFileSync("git", ["init", "--quiet"], { cwd: temporaryRoot });
 
+    const generatedDirectory = join(temporaryRoot, ".github", "workflows");
+    const sourceNames = readdirSync(generatedDirectory)
+      .filter((name) => name.endsWith(".md"))
+      .sort();
+    const expectedLockNames = sourceNames
+      .map((name) => name.replace(/\.md$/, ".lock.yml"))
+      .sort();
+    for (const lockName of readdirSync(generatedDirectory).filter((name) => name.endsWith(".lock.yml"))) {
+      rmSync(join(generatedDirectory, lockName));
+    }
+    const controlContracts = sourceNames.flatMap((sourceName) => {
+      const controlImport = workflowConfig(sourceName, generatedDirectory).imports
+        ?.find((entry) => entry.uses === "shared/control.md");
+      if (!controlImport) return [];
+      return [{
+        sourceName,
+        lockName: sourceName.replace(/\.md$/, ".lock.yml"),
+        packageName: controlImport.with.package,
+        role: controlImport.with.role,
+        workerName: controlImport.with.worker ?? "__none__",
+      }];
+    });
+
     execFileSync("gh", [
       "aw",
       "compile",
@@ -49,82 +79,10 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "githubnext/gh-aw-cao",
     ], { cwd: temporaryRoot, stdio: "pipe" });
 
-    const generatedDirectory = join(temporaryRoot, ".github", "workflows");
     const lockNames = readdirSync(generatedDirectory)
       .filter((name) => name.endsWith(".lock.yml"))
       .sort();
-    const packageLockNames = [
-      "uk-ai-advisory-operational-resilience.lock.yml",
-      "uk-ai-advisory.lock.yml",
-      "optimization-agents-md-curator.lock.yml",
-      "optimization-skills-curator.lock.yml",
-      "cao-evolution-failures-investigator.lock.yml",
-      "cao-evolution-compiler-security.lock.yml",
-      "cao-evolution-catalog-advisor.lock.yml",
-      "cao-evolution-efficiency.lock.yml",
-      "cao-evolution-integrity.lock.yml",
-      "cao-evolution-reliability.lock.yml",
-      "cao-evolution.lock.yml",
-      "dependabot-update-planner.lock.yml",
-      "dependabot.lock.yml",
-      "eslint-rules-applier.lock.yml",
-      "eslint-rules-inventory.lock.yml",
-      "eslint-rules-librarian.lock.yml",
-      "eslint-rules-miner.lock.yml",
-      "eslint-rules-refiner.lock.yml",
-      "eslint-rules.lock.yml",
-      "eu-cra-compliance-article-14-reporting-readiness.lock.yml",
-      "eu-cra-compliance-conformity-release-evidence.lock.yml",
-      "eu-cra-compliance-scope-classifier.lock.yml",
-      "eu-cra-compliance-security-requirements-auditor.lock.yml",
-      "eu-cra-compliance-supply-chain-sbom-auditor.lock.yml",
-      "eu-cra-compliance-vulnerability-handling-auditor.lock.yml",
-      "eu-cra-compliance.lock.yml",
-      "optimization-ai-credit-auditor.lock.yml",
-      "optimization-ai-credit-optimizer.lock.yml",
-      "optimization-token-efficiency-auditor.lock.yml",
-      "optimization-token-efficiency-verifier.lock.yml",
-      "optimization-token-optimizer.lock.yml",
-      "optimization.lock.yml",
-      "repo-assist-issue-fix.lock.yml",
-      "repo-assist-issue-triage.lock.yml",
-      "repo-assist-maintenance.lock.yml",
-      "repo-assist-pr-upkeep.lock.yml",
-      "repo-assist.lock.yml",
-      "self-care-accessibility-checker.lock.yml",
-      "self-care-code-improvement.lock.yml",
-      "self-care-dashboard-data-schema.lock.yml",
-      "self-care-dashboard-debug-logging.lock.yml",
-      "self-care-dashboard-performance.lock.yml",
-      "self-care-data-acquisition-audit.lock.yml",
-      "self-care-dashboard-language-refactor.lock.yml",
-      "self-care-dashboard-review.lock.yml",
-      "self-care-docs-build-time-investigator.lock.yml",
-      "self-care-experimental-views.lock.yml",
-      "self-care-glossary.lock.yml",
-      "self-care-open-source-failures.lock.yml",
-      "self-care-pages-health.lock.yml",
-      "self-care-primer-brand-checker.lock.yml",
-      "self-care-reactive-ui-expert.lock.yml",
-      "self-care.lock.yml",
-      "software-development-practices-github-well-architected.lock.yml",
-      "software-development-practices-nist-ssdf.lock.yml",
-      "software-development-practices.lock.yml",
-    ];
-    const expectedLockNames = [
-      ...packageLockNames,
-      "uk-ai-advisory-package-maintainer.lock.yml",
-      "dashboard-authoring-corpus.lock.yml",
-      "design-decision-gate.lock.yml",
-      "multi-device-docs-tester.lock.yml",
-      "eu-cra-compliance-package-maintainer.lock.yml",
-      "docs-explanatory-diagrams.lock.yml",
-      "mattpocock-skills-reviewer.lock.yml",
-      "pr-reviewer.lock.yml",
-      "pr-sous-chef.lock.yml",
-      "release.lock.yml",
-      "svg-visual-audit.lock.yml",
-    ].sort();
+    const packageLockNames = controlContracts.map(({ lockName }) => lockName);
 
     assert.deepEqual(lockNames, expectedLockNames);
     for (const name of packageLockNames) {
@@ -172,22 +130,12 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.doesNotMatch(generated, /safe_output_mode == 'private'/);
     }
 
-    const orchestratorGates = new Map([
-      ["uk-ai-advisory.lock.yml", "uk-ai-advisory"],
-      ["cao-evolution.lock.yml", "cao-evolution"],
-      ["dependabot.lock.yml", "dependabot"],
-      ["eslint-rules.lock.yml", "eslint-rules"],
-      ["eu-cra-compliance.lock.yml", "eu-cra-compliance"],
-      ["optimization.lock.yml", "optimization"],
-      ["repo-assist.lock.yml", "repo-assist"],
-      ["self-care.lock.yml", "self-care"],
-      ["software-development-practices.lock.yml", "software-development-practices"],
-    ]);
-    for (const [name, packageName] of orchestratorGates) {
-      const generated = workflow(name, generatedDirectory);
+    for (const { lockName, packageName, workerName } of controlContracts.filter(({ role }) => role === "orchestrator")) {
+      const generated = workflow(lockName, generatedDirectory);
       assert.match(generated, new RegExp(`CAO_PACKAGE: ${packageName}`));
       assert.match(generated, /CAO_ROLE: orchestrator/);
-      assert.match(generated, /CAO_WORKER: __none__/);
+      assert.equal(workerName, "__none__", `${lockName}: orchestrators must not declare a worker identity`);
+      assert.match(generated, new RegExp(`CAO_WORKER: ${workerName}`));
       assert.match(generated, /GH_AW_SAFE_OUTPUT_MODE:.*inputs\.safe_output_mode.*\|\| 'review'/);
       assert.match(generated, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ inputs\.rollout_percent \|\| '' \}\}/);
       assert.match(generated, /rollout_percent:\n\s+default: 100\n\s+type: number/);
@@ -196,59 +144,13 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       const outputPlaceholder = generated.indexOf("- name: Write agent output placeholder if missing");
       const dispatcherTelemetry = generated.indexOf("name: Emit control-plane dispatcher telemetry");
       const agentArtifact = generated.indexOf("- name: Upload agent artifacts");
-      assert.ok(outputPlaceholder < dispatcherTelemetry, `${name} emits dispatcher telemetry before output normalization`);
-      assert.ok(dispatcherTelemetry < agentArtifact, `${name} uploads the agent artifact before dispatcher telemetry`);
+      assert.ok(outputPlaceholder < dispatcherTelemetry, `${lockName} emits dispatcher telemetry before output normalization`);
+      assert.ok(dispatcherTelemetry < agentArtifact, `${lockName} uploads the agent artifact before dispatcher telemetry`);
       assert.match(generated, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
     }
 
-    const workerGates = new Map([
-      ["uk-ai-advisory-operational-resilience.lock.yml", ["uk-ai-advisory", "operational-resilience"]],
-      ["optimization-agents-md-curator.lock.yml", ["optimization", "agents-md-curator"]],
-      ["optimization-skills-curator.lock.yml", ["optimization", "skills-curator"]],
-      ["cao-evolution-failures-investigator.lock.yml", ["cao-evolution", "failures-investigator"]],
-      ["cao-evolution-compiler-security.lock.yml", ["cao-evolution", "compiler-security"]],
-      ["cao-evolution-catalog-advisor.lock.yml", ["cao-evolution", "catalog-advisor"]],
-      ["cao-evolution-efficiency.lock.yml", ["cao-evolution", "efficiency"]],
-      ["cao-evolution-integrity.lock.yml", ["cao-evolution", "integrity"]],
-      ["cao-evolution-reliability.lock.yml", ["cao-evolution", "reliability"]],
-      ["dependabot-update-planner.lock.yml", ["dependabot", "update-planner"]],
-      ["eslint-rules-applier.lock.yml", ["eslint-rules", "applier"]],
-      ["eslint-rules-inventory.lock.yml", ["eslint-rules", "inventory"]],
-      ["eslint-rules-librarian.lock.yml", ["eslint-rules", "librarian"]],
-      ["eslint-rules-miner.lock.yml", ["eslint-rules", "miner"]],
-      ["eslint-rules-refiner.lock.yml", ["eslint-rules", "refiner"]],
-      ["eu-cra-compliance-article-14-reporting-readiness.lock.yml", ["eu-cra-compliance", "article-14-reporting-readiness"]],
-      ["eu-cra-compliance-conformity-release-evidence.lock.yml", ["eu-cra-compliance", "conformity-release-evidence"]],
-      ["eu-cra-compliance-scope-classifier.lock.yml", ["eu-cra-compliance", "scope-classifier"]],
-      ["eu-cra-compliance-security-requirements-auditor.lock.yml", ["eu-cra-compliance", "security-requirements-auditor"]],
-      ["eu-cra-compliance-supply-chain-sbom-auditor.lock.yml", ["eu-cra-compliance", "supply-chain-sbom-auditor"]],
-      ["eu-cra-compliance-vulnerability-handling-auditor.lock.yml", ["eu-cra-compliance", "vulnerability-handling-auditor"]],
-      ["optimization-ai-credit-auditor.lock.yml", ["optimization", "ai-credit-auditor"]],
-      ["optimization-ai-credit-optimizer.lock.yml", ["optimization", "ai-credit-optimizer"]],
-      ["optimization-token-optimizer.lock.yml", ["optimization", "token-optimizer"]],
-      ["repo-assist-issue-fix.lock.yml", ["repo-assist", "issue-fix"]],
-      ["repo-assist-issue-triage.lock.yml", ["repo-assist", "issue-triage"]],
-      ["repo-assist-maintenance.lock.yml", ["repo-assist", "maintenance"]],
-      ["repo-assist-pr-upkeep.lock.yml", ["repo-assist", "pr-upkeep"]],
-      ["self-care-accessibility-checker.lock.yml", ["self-care", "accessibility-checker"]],
-      ["self-care-code-improvement.lock.yml", ["self-care", "code-improvement"]],
-      ["self-care-dashboard-data-schema.lock.yml", ["self-care", "dashboard-data-schema"]],
-      ["self-care-dashboard-debug-logging.lock.yml", ["self-care", "dashboard-debug-logging"]],
-      ["self-care-dashboard-performance.lock.yml", ["self-care", "dashboard-performance"]],
-      ["self-care-data-acquisition-audit.lock.yml", ["self-care", "data-acquisition-audit"]],
-      ["self-care-dashboard-language-refactor.lock.yml", ["self-care", "dashboard-language-refactor"]],
-      ["self-care-dashboard-review.lock.yml", ["self-care", "dashboard-review"]],
-      ["self-care-docs-build-time-investigator.lock.yml", ["self-care", "docs-build-time-investigator"]],
-      ["self-care-glossary.lock.yml", ["self-care", "glossary"]],
-      ["self-care-open-source-failures.lock.yml", ["self-care", "open-source-failures"]],
-      ["self-care-pages-health.lock.yml", ["self-care", "pages-health"]],
-      ["self-care-primer-brand-checker.lock.yml", ["self-care", "primer-brand-checker"]],
-      ["self-care-reactive-ui-expert.lock.yml", ["self-care", "reactive-ui-expert"]],
-      ["software-development-practices-github-well-architected.lock.yml", ["software-development-practices", "github-well-architected"]],
-      ["software-development-practices-nist-ssdf.lock.yml", ["software-development-practices", "nist-ssdf"]],
-    ]);
-    for (const [name, [packageName, workerName]] of workerGates) {
-      const generated = workflow(name, generatedDirectory);
+    for (const { lockName, packageName, workerName } of controlContracts.filter(({ role }) => role === "worker")) {
+      const generated = workflow(lockName, generatedDirectory);
       assert.match(generated, new RegExp(`CAO_PACKAGE: ${packageName}`));
       assert.match(generated, /CAO_ROLE: worker/);
       assert.match(generated, new RegExp(`CAO_WORKER: ${workerName}`));

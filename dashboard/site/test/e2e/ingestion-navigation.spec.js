@@ -11,25 +11,7 @@ const pageDefinitions = [
   ['repositories', 'Repositories', 'repositories', 'repository'],
   ['workflows', 'Workflows', 'workflows', 'workflow-name']
 ];
-const dashboard = {
-  'language-version': '0.1.0',
-  dashboard: {
-    id: 'ingestion-navigation',
-    title: 'Ingestion navigation',
-    pages: pageDefinitions.map(([id, title, source, field]) => ({
-      id,
-      kind: 'custom',
-      title,
-      views: [{
-        id: `${id}-table`,
-        title,
-        data: { source },
-        mark: 'table',
-        encoding: { columns: [{ field, type: 'nominal', title }] }
-      }]
-    }))
-  }
-};
+const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
 const inventory = {
   repositories: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
@@ -46,8 +28,52 @@ const inventory = {
   }
 };
 
-test('views remain interactive when queries are synced during activity ingestion', async ({ context, page }) => {
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {number} expectedTotal
+ */
+async function expectRunsLoadOnScroll(page, expectedTotal) {
+  const view = page.locator('[data-view-id="runs-runs-source"]');
+  const rows = view.locator('tbody > tr');
+  const scroll = view.locator('.table-scroll');
+  const loadBoundary = view.locator('[data-table-more]');
+  await expect(rows).toHaveCount(25);
+  await expect(view.locator('.table-filter-result')).toHaveText(`Showing 25 of ${expectedTotal} results`);
+  await scroll.hover();
+  await page.mouse.wheel(0, 10_000);
+  await scroll.evaluate((element) => {
+    const scrollElement = /** @type {HTMLElement} */ (element);
+    scrollElement.scrollTop = scrollElement.scrollHeight;
+  });
+  await scroll.dispatchEvent('scroll');
+  await expect.poll(() => scroll.evaluate((element) => /** @type {HTMLElement} */ (element).scrollTop)).toBeGreaterThan(0);
+  await expect(loadBoundary).toHaveText('Load more rows');
+  await expect.poll(() => rows.count()).toBeGreaterThan(25);
+}
+
+/** @param {import('@playwright/test').Page} page */
+async function storedRunCount(page) {
+  return page.evaluate(async (storageUrl) => {
+    const { readCollection } = await import(storageUrl);
+    return (await readCollection(indexedDB, 'runs')).length;
+  }, `${origin}/src/data/storage/indexeddb.js`);
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} pageId
+ */
+async function navigateToPage(page, pageId) {
+  await page.evaluate((nextPageId) => {
+    const link = document.querySelector(`[data-nav-page-id="${nextPageId}"]`);
+    if (!(link instanceof HTMLAnchorElement)) throw new Error(`Missing navigation link for ${nextPageId}.`);
+    link.click();
+  }, pageId);
+}
+
+test('Runs lazy list loads on scroll during and after activity ingestion', async ({ context, page }) => {
   const shardCount = 12;
+  const runsPerShard = 10;
   let requestedShards = 0;
   let completedShards = 0;
   let releaseFinalShard = () => {};
@@ -95,23 +121,23 @@ test('views remain interactive when queries are synced during activity ingestion
       if (run === shardCount) await finalShardReady;
       await route.fulfill({
         contentType: 'application/x-ndjson',
-        body: `${JSON.stringify({
+        body: `${Array.from({ length: runsPerShard }, (_, index) => JSON.stringify({
           schema_version: 2,
           kind: 'run',
           run: {
-            run_id: 1000 + run,
+            run_id: 1000 + (run - 1) * runsPerShard + index + 1,
             run_attempt: 1,
             organization: 'githubnext',
             repository: 'gh-aw-cao',
             workflow_name: 'Dashboard',
             workflow_path: '.github/workflows/dashboard.md',
-            display_title: `Ingested run ${run}`,
+            display_title: `Ingested run ${run}-${index + 1}`,
             status: 'completed',
             conclusion: 'success',
             created_at: asOf,
             updated_at: asOf
           }
-        })}\n`
+        })).join('\n')}\n`
       });
       completedShards += 1;
       return;
@@ -128,23 +154,27 @@ test('views remain interactive when queries are synced during activity ingestion
   });
 
   await page.goto(`${origin}/`);
-  await expect.poll(() => requestedShards).toBeGreaterThan(0);
-  await expect(page.getByRole('cell', { name: 'Ingested run 1', exact: true })).toHaveCount(0);
+  await expect.poll(() => completedShards).toBe(shardCount - 1);
+  await expect.poll(() => storedRunCount(page)).toBe((shardCount - 1) * runsPerShard);
   await page.locator('.dashboard-notification-toggle').click();
   await page.getByRole('button', { name: 'Sync queries', exact: true }).click();
-  await expect(page.getByRole('cell', { name: 'Ingested run 1', exact: true })).toBeVisible();
+  await navigateToPage(page, 'runs');
+  await page.getByRole('button', { name: 'Show table view' }).click();
+  await expect(page.locator('td[data-field="run"]', { hasText: '1001' })).toBeVisible();
   expect(completedShards).toBeLessThan(shardCount);
   await expect(page.locator('.loading-progress')).toBeVisible();
+  await expectRunsLoadOnScroll(page, completedShards * runsPerShard);
 
   for (let cycle = 0; cycle < 4; cycle += 1) {
-    for (const [, title] of pageDefinitions) {
-      await page.getByRole('link', { name: title, exact: true }).click();
+    for (const [id, title] of pageDefinitions) {
+      await navigateToPage(page, id);
       await expect(page.locator('#page-title')).toHaveText(title);
     }
   }
 
   releaseFinalShard();
-  await page.getByRole('link', { name: 'Runs', exact: true }).click();
-  await expect(page.getByRole('cell', { name: 'Ingested run 12' })).toBeVisible();
+  await expect.poll(() => storedRunCount(page)).toBe(shardCount * runsPerShard);
+  await navigateToPage(page, 'runs');
   expect(requestedShards).toBe(shardCount);
+  await expectRunsLoadOnScroll(page, shardCount * runsPerShard);
 });

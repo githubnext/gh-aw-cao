@@ -120,6 +120,24 @@ export function h(name, props, ...children) {
 }
 
 /**
+ * @param {Record<string, unknown> | null | undefined} [props]
+ * @param {...unknown} children
+ * @returns {HTMLSpanElement}
+ */
+export function span(props, ...children) {
+  return /** @type {HTMLSpanElement} */ (h('span', props, ...children));
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} [props]
+ * @param {...unknown} children
+ * @returns {HTMLButtonElement}
+ */
+export function button(props, ...children) {
+  return /** @type {HTMLButtonElement} */ (h('button', props, ...children));
+}
+
+/**
  * @param {Element} element
  * @param {Record<string, unknown>} props
  */

@@ -173,7 +173,7 @@ async function queryLiveDashboard(
       ...executeDashboardQueries(context.queries, canonicalPayload, directRequests, { signal })
     };
     const viewAliases = viewPayload.queries.length > 0
-      ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal, pagination })
+      ? executeDashboardQueries(viewPayload.queries, querySources, viewPayload.aliases, { signal })
       : {};
     const selected = pageScopedSources(querySources, requested);
     const responseSources = { ...selected, ...viewAliases };
@@ -383,12 +383,7 @@ export function publishedEventShards(hashes) {
 export function publishedPhasedActivityShards(hashes) {
   const runs = publishedRunInformationShards(hashes);
   const events = publishedEventShards(hashes);
-  const fileName = (/** @type {{ name: string }} */ shard) => shard.name.slice(shard.name.lastIndexOf('/') + 1);
-  return runs.length > 0
-    && runs.length === events.length
-    && runs.every((shard, index) => fileName(shard) === fileName(events[index]))
-    ? [...runs, ...events]
-    : [];
+  return runs.length > 0 ? [...runs, ...events] : [];
 }
 
 /**

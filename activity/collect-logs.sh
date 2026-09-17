@@ -17,6 +17,7 @@ max_storage="${REPORT_MAX_STORAGE:-1200}"
 mkdir -p "$output_directory" "$shard_directory" "$(dirname "$exit_code_path")"
 
 repositories=()
+shard_groups=()
 add_repository() {
   local candidate="$1"
   local normalized_candidate
@@ -48,6 +49,7 @@ for target_repository in "${repositories[@]}"; do
   else
     shard_prefix="$shard_directory/${cache_name}-logs-"
   fi
+  shard_groups+=("$target_repository=$(basename "$shard_prefix")")
   set +e
   gh aw logs --audit \
     --repo "$target_repository" \
@@ -75,7 +77,26 @@ for target_repository in "${repositories[@]}"; do
   fi
 done
 
+if [[ $exit_code -eq 0 ]]; then
+  if [[ -f activity/cao.mjs ]]; then
+    cao_script=activity/cao.mjs
+  elif [[ -f .github/aw/activity/cao.mjs ]]; then
+    cao_script=.github/aw/activity/cao.mjs
+  else
+    echo "CAO activity CLI is unavailable" >&2
+    exit_code=1
+  fi
+  if [[ $exit_code -eq 0 ]]; then
+    compact_args=(compact-jsonl --input-dir "$shard_directory")
+    for shard_group in "${shard_groups[@]}"; do
+      compact_args+=(--group "$shard_group")
+    done
+    node "$cao_script" "${compact_args[@]}" || exit_code=$?
+  fi
+fi
+
 printf '%s\n' "$exit_code" > "$exit_code_path"
 
 # The shard directory is persisted by the caller so each repository reuses
-# known runs; out-of-range shards are pruned by `--cache-before`.
+# known runs. Successful collections consolidate each repository's files into
+# one shard; out-of-range records are pruned by `--cache-before`.

@@ -65,18 +65,6 @@ export function renderDashboardNavigation(pages, title, navigation) {
       ),
       h('div', { className: 'mobile-page-header' }, h('span', { className: 'mobile-brand-name' }, title)),
       h(
-        'button',
-        {
-          className: 'mobile-view-mode-toggle',
-          type: 'button',
-          'aria-label': 'Show table view',
-          'aria-pressed': 'false',
-          title: 'Show table view',
-          hidden: true
-        },
-        octicon('table')
-      ),
-      h(
         'details',
         { className: 'mobile-nav-menu' },
         h('summary', { role: 'button', 'aria-label': 'Select view', title: 'Select view' }, octicon('three-bars')),

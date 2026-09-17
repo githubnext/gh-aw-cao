@@ -42,7 +42,19 @@ export function renderDashboardHeader(options) {
           { className: 'title-area' },
           h('h1', { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' }, options.title),
           h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
-          h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
+          h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true }),
+          h(
+            'button',
+            {
+              className: 'mobile-view-mode-toggle',
+              type: 'button',
+              'aria-label': 'Show table view',
+              'aria-pressed': 'false',
+              title: 'Show table view',
+              hidden: true
+            },
+            octicon('table')
+          )
         ),
         h('p', { className: 'lede', 'data-page-description': '', hidden: !options.description }, options.description ?? '')
       ),

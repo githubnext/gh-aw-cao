@@ -1,11 +1,53 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs";
 import { controlPrecompute, generatedJobs, modes, resolvePolicy, root, stepBlock, transitivelyNeeds, workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Central policy resolution, rollout limits, and activation contracts.
+
+function workflowConfig(name) {
+  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(workflow(name))?.[1];
+  assert.ok(frontmatter, `${name} must have frontmatter`);
+  return parse(frontmatter);
+}
+
+function operationPackages() {
+  const policyPackages = JSON.parse(
+    readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"),
+  )["control-plane"].packages;
+  return Object.entries(policyPackages).flatMap(([packageName, policy]) => {
+    const descriptorPath = join(root, packageName, "cao.json");
+    if (!existsSync(descriptorPath)) {
+      assert.equal(policy.workers, undefined, `${packageName} workers require a package descriptor`);
+      return [];
+    }
+    return [{
+      packageName,
+      policy,
+      descriptor: JSON.parse(readFileSync(descriptorPath, "utf8")),
+    }];
+  });
+}
+
+function operationWorkflowRegistrations() {
+  return operationPackages().flatMap(({ packageName, descriptor }) => [
+    {
+      name: `${descriptor.orchestrator}.md`,
+      packageName,
+      role: "orchestrator",
+      workerName: undefined,
+    },
+    ...Object.entries(descriptor.workers).map(([workerName, workflowId]) => ({
+      name: `${workflowId}.md`,
+      packageName,
+      role: "worker",
+      workerName,
+    })),
+  ]);
+}
 
 test("all scheduled configurations and manual selections route safely", () => {
   const cases = policyCases();
@@ -283,12 +325,29 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
 
 test("control workflows deny before activation through one shared admission contract", () => {
   const sharedControl = workflow("shared/control.md");
+  const registrations = operationWorkflowRegistrations();
   const controlled = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && !name.endsWith(".lock.md"))
     .map((name) => [name, workflow(name)])
-    .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
+    .filter(([name]) =>
+      workflowConfig(name).imports?.some((entry) => entry.uses === "shared/control.md"));
 
-  assert.equal(controlled.length, 56, "unexpected shared control workflow count");
+  assert.deepEqual(
+    controlled.map(([name]) => name).sort(),
+    registrations.map(({ name }) => name).sort(),
+    "shared control imports must match the declarative operation inventory",
+  );
+  for (const { packageName, policy, descriptor } of operationPackages()) {
+    assert.equal(descriptor.package, packageName);
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(policy.workers).map(([workerName, config]) => [
+        workerName,
+        config.workflow,
+      ])),
+      descriptor.workers,
+      `${packageName} policy workers must match its package descriptor`,
+    );
+  }
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -324,7 +383,13 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /name: Validate CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
   assert.match(sharedControl, /name: Upload CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
   assert.match(sharedControl, /const reason = 'cannot read or execute the CAO control modules at github\.workflow_sha'/);
-  for (const [name, source] of controlled) {
+  for (const { name, packageName, role, workerName } of registrations) {
+    const source = workflow(name);
+    const controlImport = workflowConfig(name).imports.find((entry) => entry.uses === "shared/control.md");
+
+    assert.equal(controlImport.with.package, packageName, name);
+    assert.equal(controlImport.with.role, role, name);
+    assert.equal(controlImport.with.worker, workerName, name);
     assert.equal(
       [...source.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
       0,
@@ -367,72 +432,13 @@ test("live workers use central policy as the activation authority", () => {
   assert.doesNotMatch(precompute, /validateLiveAuthority|target_authority_source|target default branch/);
   assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*writeWorkerPrecompute\(context\)/);
 
-  for (const [name, bundle] of [
-    ["uk-ai-advisory.md", "uk-ai-advisory"],
-    ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory"],
-    ["optimization-agents-md-curator.md", "optimization"],
-    ["optimization-skills-curator.md", "optimization"],
-    ["cao-evolution-failures-investigator.md", "cao-evolution"],
-    ["cao-evolution.md", "cao-evolution"],
-    ["cao-evolution-efficiency.md", "cao-evolution"],
-    ["cao-evolution-integrity.md", "cao-evolution"],
-    ["cao-evolution-reliability.md", "cao-evolution"],
-    ["cao-evolution-compiler-security.md", "cao-evolution"],
-    ["dependabot.md", "dependabot"],
-    ["dependabot-update-planner.md", "dependabot"],
-    ["eslint-rules.md", "eslint-rules"],
-    ["eslint-rules-inventory.md", "eslint-rules"],
-    ["eslint-rules-miner.md", "eslint-rules"],
-    ["eslint-rules-refiner.md", "eslint-rules"],
-    ["eslint-rules-applier.md", "eslint-rules"],
-    ["eslint-rules-librarian.md", "eslint-rules"],
-    ["eu-cra-compliance.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-article-14-reporting-readiness.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-conformity-release-evidence.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-scope-classifier.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-security-requirements-auditor.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-supply-chain-sbom-auditor.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-vulnerability-handling-auditor.md", "eu-cra-compliance"],
-    ["optimization.md", "optimization"],
-    ["optimization-ai-credit-auditor.md", "optimization"],
-    ["optimization-ai-credit-optimizer.md", "optimization"],
-    ["optimization-token-optimizer.md", "optimization"],
-    ["software-development-practices.md", "software-development-practices"],
-    ["software-development-practices-github-well-architected.md", "software-development-practices"],
-    ["software-development-practices-nist-ssdf.md", "software-development-practices"],
-    ["self-care.md", "self-care"],
-    ["self-care-accessibility-checker.md", "self-care"],
-    ["self-care-code-improvement.md", "self-care"],
-    ["self-care-dashboard-data-schema.md", "self-care"],
-    ["self-care-dashboard-debug-logging.md", "self-care"],
-    ["self-care-dashboard-performance.md", "self-care"],
-    ["self-care-data-acquisition-audit.md", "self-care"],
-    ["self-care-dashboard-language-refactor.md", "self-care"],
-    ["self-care-dashboard-review.md", "self-care"],
-    ["self-care-experimental-views.md", "self-care"],
-    ["self-care-docs-build-time-investigator.md", "self-care"],
-    ["self-care-glossary.md", "self-care"],
-    ["self-care-open-source-failures.md", "self-care"],
-    ["self-care-pages-health.md", "self-care"],
-    ["self-care-primer-brand-checker.md", "self-care"],
-    ["self-care-reactive-ui-expert.md", "self-care"],
-  ]) {
-    assert.match(workflow(name), new RegExp(`package: ${bundle}`));
+  for (const { name, packageName } of operationWorkflowRegistrations()) {
+    assert.match(workflow(name), new RegExp(`package: ${packageName}`));
   }
 });
 
 test("orchestrators use checked-in policy with independent manual narrowing", () => {
-  for (const [name, packageName] of [
-    ["uk-ai-advisory.md", "uk-ai-advisory"],
-    ["cao-evolution.md", "cao-evolution"],
-    ["dependabot.md", "dependabot"],
-    ["eslint-rules.md", "eslint-rules"],
-    ["eu-cra-compliance.md", "eu-cra-compliance"],
-    ["optimization.md", "optimization"],
-    ["repo-assist.md", "repo-assist"],
-    ["software-development-practices.md", "software-development-practices"],
-    ["self-care.md", "self-care"],
-  ]) {
+  for (const { name, packageName } of operationWorkflowRegistrations().filter(({ role }) => role === "orchestrator")) {
     const source = workflow(name);
 
     assert.match(source, /rollout_percent:\n\s+default: 100\n\s+type: number/);
@@ -451,57 +457,7 @@ test("operation workflows optionally load per-operation markdown steering", () =
   assert.match(packageSkill, /Never place the runtime import at the top of the Markdown body/);
   assert.match(packageSkill, /\{\{#runtime-import\? \.github\/cao\/<package-slug>\.md\}\}/);
 
-  for (const [name, operation] of [
-    ["uk-ai-advisory.md", "uk-ai-advisory"],
-    ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory"],
-    ["optimization-agents-md-curator.md", "optimization"],
-    ["optimization-skills-curator.md", "optimization"],
-    ["cao-evolution-failures-investigator.md", "cao-evolution"],
-    ["cao-evolution-compiler-security.md", "cao-evolution"],
-    ["dependabot.md", "dependabot"],
-    ["dependabot-update-planner.md", "dependabot"],
-    ["eslint-rules.md", "eslint-rules"],
-    ["eslint-rules-inventory.md", "eslint-rules"],
-    ["eslint-rules-miner.md", "eslint-rules"],
-    ["eslint-rules-refiner.md", "eslint-rules"],
-    ["eslint-rules-applier.md", "eslint-rules"],
-    ["eslint-rules-librarian.md", "eslint-rules"],
-    ["eu-cra-compliance.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-article-14-reporting-readiness.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-conformity-release-evidence.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-scope-classifier.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-security-requirements-auditor.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-supply-chain-sbom-auditor.md", "eu-cra-compliance"],
-    ["eu-cra-compliance-vulnerability-handling-auditor.md", "eu-cra-compliance"],
-    ["optimization.md", "optimization"],
-    ["optimization-ai-credit-auditor.md", "optimization"],
-    ["optimization-ai-credit-optimizer.md", "optimization"],
-    ["optimization-token-optimizer.md", "optimization"],
-    ["repo-assist.md", "repo-assist"],
-    ["repo-assist-issue-fix.md", "repo-assist"],
-    ["repo-assist-issue-triage.md", "repo-assist"],
-    ["repo-assist-maintenance.md", "repo-assist"],
-    ["repo-assist-pr-upkeep.md", "repo-assist"],
-    ["software-development-practices.md", "software-development-practices"],
-    ["software-development-practices-github-well-architected.md", "software-development-practices"],
-    ["software-development-practices-nist-ssdf.md", "software-development-practices"],
-    ["self-care.md", "self-care"],
-    ["self-care-accessibility-checker.md", "self-care"],
-    ["self-care-code-improvement.md", "self-care"],
-    ["self-care-dashboard-data-schema.md", "self-care"],
-    ["self-care-dashboard-debug-logging.md", "self-care"],
-    ["self-care-dashboard-performance.md", "self-care"],
-    ["self-care-data-acquisition-audit.md", "self-care"],
-    ["self-care-dashboard-language-refactor.md", "self-care"],
-    ["self-care-dashboard-review.md", "self-care"],
-    ["self-care-experimental-views.md", "self-care"],
-    ["self-care-docs-build-time-investigator.md", "self-care"],
-    ["self-care-glossary.md", "self-care"],
-    ["self-care-open-source-failures.md", "self-care"],
-    ["self-care-pages-health.md", "self-care"],
-    ["self-care-primer-brand-checker.md", "self-care"],
-    ["self-care-reactive-ui-expert.md", "self-care"],
-  ]) {
+  for (const { name, packageName: operation } of operationWorkflowRegistrations()) {
     assert.match(
       workflow(name),
       new RegExp(`\\{\\{#runtime-import\\? \\.github/cao/${operation}\\.md\\}\\}\\s*$`),
@@ -555,7 +511,7 @@ test("shared control keeps manual and scheduled routing event-scoped", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  for (const name of ["uk-ai-advisory.md", "cao-evolution.md", "dependabot.md", "eslint-rules.md", "eu-cra-compliance.md", "optimization.md", "repo-assist.md", "self-care.md", "software-development-practices.md"]) {
+  for (const { name } of operationWorkflowRegistrations().filter(({ role }) => role === "orchestrator")) {
     const orchestrator = workflow(name);
     assert.match(orchestrator, /GH_AW_SAFE_OUTPUT_MODE:.*inputs\.safe_output_mode.*\|\| 'review'/);
     assert.match(orchestrator, /REVIEW_OUTPUT_REPO:.*inputs\.safe_output_repo \|\| github\.repository/);

@@ -1,4 +1,4 @@
-import { h, injectStyleOnce } from './dom.js';
+import { button, h, injectStyleOnce, span } from './dom.js';
 import { octicon } from './octicons.js';
 import { notificationStylesheet } from './styles.js';
 
@@ -129,24 +129,24 @@ function normalizeNotification(input) {
  * @param {() => void} onRemove
  */
 function renderNotification(initial, container, onRemove) {
-  const message = h('span', {
+  const message = span({
     className: 'dashboard-notification-message',
     role: initial.tone === 'error' ? 'alert' : 'status'
   }, initial.message);
-  const icon = h('span', {
+  const icon = span({
     className: 'dashboard-notification-icon',
     'aria-hidden': 'true'
   });
-  const summary = h('span', { className: 'dashboard-notification-summary' }, icon, message);
+  const summary = span({ className: 'dashboard-notification-summary' }, icon, message);
   const detailId = `dashboard-notification-details-${++nextNotificationDetailId}`;
   const detailSubtitleId = `${detailId}-subtitle`;
-  const toggle = h('button', {
+  const toggle = button({
     className: 'dashboard-notification-toggle',
     type: 'button',
     'aria-expanded': 'false',
     'aria-controls': `${detailSubtitleId} ${detailId}`,
     'aria-label': `${initial.message} Show ingestion progress history`
-  }, summary, h('span', { className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
+  }, summary, span({ className: 'dashboard-notification-chevron', 'aria-hidden': 'true' }));
   const details = h('ul', {
     className: 'dashboard-notification-details',
     id: detailId,
@@ -209,7 +209,7 @@ function renderNotification(initial, container, onRemove) {
     const placement = current.actions.every((action) => action.placement === 'details')
       ? 'details'
       : 'summary';
-    actions.replaceChildren(...current.actions.map((action) => h('button', {
+    actions.replaceChildren(...current.actions.map((action) => button({
       className: 'dashboard-notification-action',
       type: 'button',
       onclick: action.run

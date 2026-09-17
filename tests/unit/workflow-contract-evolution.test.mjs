@@ -7,44 +7,63 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 // CAO Evolution and AW Optimization operation contracts.
 
+function workflowConfig(name) {
+  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(workflow(name))?.[1];
+  assert.ok(frontmatter, `${name} must have frontmatter`);
+  return parse(frontmatter);
+}
+
 test("AW Optimization combines AI Credit and ambient-context workers", () => {
   const orchestrator = workflow("optimization.md");
+  const orchestratorConfig = workflowConfig("optimization.md");
   const manifest = parse(readFileSync(join(root, "optimization", "aw.yml"), "utf8"));
+  const descriptor = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
   const dashboard = JSON.parse(readFileSync(join(root, "optimization", "dashboard.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
-  const workerNames = [
-    ["optimization-ai-credit-auditor.md", "AW Optimization / AI Credit Audit"],
-    ["optimization-ai-credit-optimizer.md", "AW Optimization / AI Credit Savings"],
-    ["optimization-agents-md-curator.md", "AW Optimization / AGENTS.md"],
-    ["optimization-skills-curator.md", "AW Optimization / Skills"],
-    ["optimization-token-efficiency-auditor.md", "AW Optimization / Token Auditor"],
-    ["optimization-token-optimizer.md", "AW Optimization / Token Optimizer"],
-    ["optimization-token-efficiency-verifier.md", "AW Optimization / Token Efficiency Verifier"],
-  ];
+  const policyWorkers = policy["control-plane"].packages.optimization.workers;
+  const workerEntries = Object.entries(descriptor.workers);
+  const declaredWorkflowIds = [descriptor.orchestrator, ...Object.values(descriptor.workers)].sort();
+  const includedWorkflowIds = manifest.includes
+    .filter((include) => include.endsWith(".md"))
+    .map((include) => include.split("/").at(-1).replace(/\.md$/, ""))
+    .sort();
+  const dispatchWorkflows = orchestratorConfig["safe-outputs"]["dispatch-workflow"].workflows;
+  const controlImport = orchestratorConfig.imports.find((entry) => entry.uses === "shared/control.md");
 
   assert.equal(manifest.name, "AW Optimization");
+  assert.equal(descriptor.package, "optimization");
   assert.equal(dashboard.dashboard.title, "AW Optimization");
-  assert.match(orchestrator, /^name: "AW Optimization"$/m);
+  assert.equal(orchestratorConfig.name, manifest.name);
+  assert.deepEqual(includedWorkflowIds, declaredWorkflowIds);
   assert.match(orchestrator, /worker_credits_per_target: 1950/);
-  assert.match(
-    orchestrator,
-    /workflows: \[optimization-ai-credit-auditor, optimization-ai-credit-optimizer, optimization-agents-md-curator, optimization-skills-curator, optimization-token-efficiency-auditor, optimization-token-optimizer, optimization-token-efficiency-verifier\]/,
-  );
+  assert.deepEqual([...dispatchWorkflows].sort(), Object.values(descriptor.workers).sort());
+  assert.equal(new Set(dispatchWorkflows).size, dispatchWorkflows.length, "dispatch allowlist must not contain duplicates");
+  assert.equal(controlImport.with.package, descriptor.package);
+  assert.equal(controlImport.with.role, "orchestrator");
+  assert.equal(controlImport.with.worker, undefined);
   assert.deepEqual(
-    Object.keys(policy["control-plane"].packages.optimization.workers).sort(),
-    [
-      "ai-credit-auditor",
-      "ai-credit-optimizer",
-      "agents-md-curator",
-      "skills-curator",
-      "token-efficiency-auditor",
-      "token-optimizer",
-      "token-efficiency-verifier",
-    ].sort(),
+    Object.fromEntries(Object.entries(policyWorkers).map(([workerName, config]) => [
+      workerName,
+      config.workflow,
+    ])),
+    descriptor.workers,
   );
   assert.equal(policy["control-plane"].packages["ambient-context"], undefined);
-  for (const [name, displayName] of workerNames) {
-    assert.match(workflow(name), new RegExp(`^name: "${displayName.replace("/", "\\/")}"$`, "m"));
+  for (const [workerName, workflowId] of workerEntries) {
+    const sourceName = `${workflowId}.md`;
+    const config = workflowConfig(sourceName);
+    const generatedConfig = parse(workflow(`${workflowId}.lock.yml`));
+    const workerControlImport = config.imports.find((entry) => entry.uses === "shared/control.md");
+
+    assert.ok(config.name.startsWith(`${manifest.name} / `), `${sourceName} must use the package display-name prefix`);
+    assert.equal(generatedConfig.name, config.name, `${sourceName} display name must match its compiled workflow`);
+    assert.equal(workerControlImport.with.package, descriptor.package);
+    assert.equal(workerControlImport.with.role, "worker");
+    assert.equal(workerControlImport.with.worker, workerName);
+    assert.equal(policyWorkers[workerName].workflow, workflowId);
+    if (policyWorkers[workerName]["max-mode"] !== undefined) {
+      assert.ok(["review", "live"].includes(policyWorkers[workerName]["max-mode"]), `${workerName} has an invalid mode ceiling`);
+    }
   }
 });
 

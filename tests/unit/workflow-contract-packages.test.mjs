@@ -16,6 +16,12 @@ function localJavaScriptDependencies(source) {
   return dependencies;
 }
 
+function workflowConfig(name) {
+  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(workflow(name))?.[1];
+  assert.ok(frontmatter, `${name} must have frontmatter`);
+  return parse(frontmatter);
+}
+
 test("packages and repository workflows pin the supported gh-aw version", () => {
   const manifests = [
     "aw.yml",
@@ -83,14 +89,59 @@ test("catalog packages declare their current experimental maturity", () => {
 
 test("operational workflows use the transitive CAO package bundle", () => {
   const control = workflow("shared/control.md");
+  const policyPackages = JSON.parse(
+    readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"),
+  )["control-plane"].packages;
+  const declaredOperationWorkflows = Object.keys(policyPackages).flatMap((packageName) => {
+    const descriptorPath = join(root, packageName, "cao.json");
+    if (!existsSync(descriptorPath)) {
+      assert.equal(policyPackages[packageName].workers, undefined, `${packageName} workers require a package descriptor`);
+      return [];
+    }
+    const descriptor = JSON.parse(readFileSync(descriptorPath, "utf8"));
+    const manifest = parse(readFileSync(join(root, packageName, "aw.yml"), "utf8"));
+    const declaredWorkflowIds = [descriptor.orchestrator, ...Object.values(descriptor.workers)].sort();
+    const declaredWorkflowPaths = declaredWorkflowIds
+      .map((workflowId) => `.github/workflows/${workflowId}.md`)
+      .sort();
+    const includedWorkflowPaths = manifest.includes
+      .filter((include) => include.endsWith(".md"))
+      .sort();
+
+    assert.equal(descriptor.package, packageName, descriptorPath);
+    if (!manifest.private) {
+      assert.deepEqual(
+        includedWorkflowPaths,
+        declaredWorkflowPaths,
+        `${packageName} public package manifest must include its complete workflow inventory`,
+      );
+    } else {
+      const includedControlledWorkflowPaths = includedWorkflowPaths.filter((includePath) => {
+        assert.match(includePath, /^\.github\/workflows\/[^/]+\.md$/, `${packageName} manifest workflow path`);
+        assert.ok(existsSync(join(root, includePath)), `${packageName} manifest source ${includePath}`);
+        const sourceName = includePath.replace(".github/workflows/", "");
+        return workflowConfig(sourceName).imports?.some((entry) => entry.uses === "shared/control.md");
+      });
+      assert.deepEqual(
+        includedControlledWorkflowPaths.filter((includePath) => !declaredWorkflowPaths.includes(includePath)),
+        [],
+        `${packageName} private package manifest must not include undeclared operation workflows`,
+      );
+    }
+    return declaredWorkflowIds.map((workflowId) => `.github/workflows/${workflowId}.md`);
+  }).sort();
+
   assert.match(control, /dispatch_max:\n\s+type: number/);
   assert.match(control, /orchestrator_credits:\n\s+type: number/);
   assert.match(control, /worker_credits_per_target:\n\s+type: number/);
   assert.match(control, /footer-install: "<!-- -->"/);
 
   const operationWorkflows = readdirSync(workflowsDirectory)
-    .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 56);
+    .filter((name) =>
+      name.endsWith(".md")
+      && workflowConfig(name).imports?.some((entry) => entry.uses === "shared/control.md"))
+    .sort();
+  assert.deepEqual(operationWorkflows.map((name) => `.github/workflows/${name}`), declaredOperationWorkflows);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
