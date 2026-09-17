@@ -133,6 +133,7 @@ import {
   WORKFLOW_ROUTE_BODY_VALUES
 } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
+import { compileDashboardQueryTypes } from './query-type-checker.js';
 
 /**
  * @param {string} command
@@ -774,6 +775,19 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   }
 
   declaredQueries = validateQueries(dashboard.queries, getValueNodeByKey(dashboardNode, 'queries'), errors);
+  const queryTypes = compileDashboardQueryTypes(dashboard.queries);
+  for (const queryError of queryTypes.errors) {
+    const existingIndex = errors.findIndex((candidate) => (
+      candidate.code === queryError.code && candidate.path === queryError.path
+    ));
+    if (existingIndex === -1) {
+      errors.push(queryError);
+    } else {
+      errors[existingIndex] = queryError;
+    }
+  }
+  declaredQueries = queryTypes.queryFields;
+  declaredQuerySources = queryTypes.querySources;
   declaredCardTemplates = validateCardTemplates(
     dashboard['card-templates'],
     getValueNodeByKey(dashboardNode, 'card-templates'),

@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.0.2
+version: 1.0.1
 status: Working Draft
 
 IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
@@ -15,7 +15,7 @@ editors:
 | Browser storage | IndexedDB keeps all available run summaries and expires detailed Job, Session, and Event records after 30 days. |
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.0.2
+**Version:** 1.0.1
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
@@ -1750,17 +1750,17 @@ jobId
 ### events
 
 ```text
+sessionId
+type
+source
+correlationId
 [sessionId, sequence]
+[sessionId, timestamp]
 ```
 
 Indexes SHOULD NOT be added speculatively.
 
 Every secondary index increases storage and write amplification.
-
-The browser query layer currently reads an ordered session event stream through
-`[sessionId, sequence]`. Event type, source, correlation, and timestamp
-predicates are evaluated within that bounded stream and therefore MUST NOT
-require separate event-store indexes unless a measured query path needs them.
 
 ---
 

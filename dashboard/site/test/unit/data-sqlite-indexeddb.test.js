@@ -413,7 +413,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     `).run(DATABASE_NAME, /** @type {{ record_key: string }} */ (malformed).record_key);
     connection.prepare(`
       DELETE FROM __idb_indexes
-      WHERE database_name = ? AND store_name = 'events' AND name = 'bySessionSequence'
+      WHERE database_name = ? AND store_name = 'events' AND name = 'byType'
     `).run(DATABASE_NAME);
     connection.close();
 

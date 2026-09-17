@@ -6,6 +6,7 @@ import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-pri
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import { renderThemeSettings } from './theme-settings.js';
 import { renderSettingsCliActions } from './cli-actions.js';
+import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
@@ -408,12 +409,15 @@ function renderDebuggingSettings() {
   );
 }
 
-function renderTransactionsLink() {
-  return h('a', {
-    href: '#page-transactions',
-    className: 'configuration-transactions-button',
-    'aria-label': 'View retained transactions table'
-  }, 'View retained transactions');
+function renderLocalDataActions() {
+  return h('div', { className: 'configuration-local-data-actions' },
+    h('a', {
+      href: '#page-transactions',
+      className: 'configuration-transactions-button',
+      'aria-label': 'View retained transactions table'
+    }, 'View retained transactions'),
+    renderResetDashboardControl()
+  );
 }
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
@@ -429,7 +433,7 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
-    renderTransactionsLink(),
+    renderLocalDataActions(),
     renderThemeSettings(),
     renderSettingsCliActions(),
     renderAutomaticDataUpdatesSetting(),
