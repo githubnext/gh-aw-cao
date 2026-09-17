@@ -98,6 +98,8 @@ test('back navigation follows every dashboard browser history entry', async ({ p
 });
 
 test('mobile title bar keeps the dashboard subtitle adjacent to the page title', async ({ page }) => {
+  // Allow sub-pixel font rounding, but no extra row or hidden spacer between title and subtitle.
+  const adjacentTitleGapTolerancePx = 2;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(async (presenterModuleUrl) => {
     const { renderDashboard } = await import(presenterModuleUrl);
@@ -127,7 +129,7 @@ test('mobile title bar keeps the dashboard subtitle adjacent to the page title',
     if (!title || !subtitle) return Number.POSITIVE_INFINITY;
     return subtitle.top - title.bottom;
   });
-  expect(titleGap).toBeLessThanOrEqual(2);
+  expect(titleGap).toBeLessThanOrEqual(adjacentTitleGapTolerancePx);
 });
 
 test('notifications move in at the lower right and center on mobile', async ({ page }) => {
