@@ -181,6 +181,7 @@ it('applies route scope after a declared query creates the route field', () => {
   };
   const payload = compileDashboardViewPayloadQueries(page, 'package-runs', {
     routeParameters: { package: 'alpha' },
+    queryContext: { filters: { mode: ['live'] } },
     queries: [{
       name: 'package-runs',
       from: 'runs',
@@ -195,8 +196,9 @@ it('applies route scope after a declared query creates the route field', () => {
     runs: {
       source: 'runs',
       rows: [
-        { run: '1', 'source-package': 'alpha' },
-        { run: '2', 'source-package': 'beta' }
+        { run: '1', 'source-package': 'alpha', 'rollout-mode': 'live' },
+        { run: '2', 'source-package': 'alpha', 'rollout-mode': 'review' },
+        { run: '3', 'source-package': 'beta', 'rollout-mode': 'live' }
       ],
       metadata
     }
