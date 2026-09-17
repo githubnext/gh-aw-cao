@@ -998,6 +998,8 @@
             "operation-kind",
             "operation-description",
             "owner",
+            "organization",
+            "repository",
             "operation-dashboard-href",
             "operation-link-label"
           ],
@@ -1014,6 +1016,8 @@
           { "field": "operation-kind" },
           { "field": "operation-description" },
           { "field": "owner" },
+          { "field": "organization" },
+          { "field": "repository" },
           { "field": "operation-dashboard-href" },
           { "field": "operation-link-label" },
           { "field": "workflow-count" },
@@ -1025,12 +1029,23 @@
         "name": "marketplace-operations",
         "intent": "List operation packages and standalone workflows as reusable Marketplace cards with package membership, ownership, workflow state, and dashboard navigation.",
         "from": "marketplace-operation-groups",
+        "joins": [
+          {
+            "source": "repositories",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [{ "field": "repository-link", "as": "repository-link" }]
+          }
+        ],
         "compute": [
           {
             "as": "operation-link",
             "function": "dashboard-link",
             "args": [
-              { "value": "" },
+              { "field": "repository-link" },
               { "field": "operation-dashboard-href" },
               { "field": "operation-link-label" }
             ]
