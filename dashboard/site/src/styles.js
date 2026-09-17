@@ -1998,7 +1998,7 @@ thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75
 .table-summary-boolean { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 8px; }
 .table-summary-boolean .chart-widget { min-height: 52px; margin: 0; }
 .table-summary-boolean .chart-widget svg { width: 52px; height: 52px; }
-.table-summary-boolean .pie-chart-total-value, .table-summary-boolean .pie-chart-total-label { display: none; }
+.table-summary-boolean .pie-chart-total-value, .table-summary-boolean .pie-chart-total-label, .table-summary-boolean .pie-chart-summary { display: none; }
 .table-summary-boolean .chart-legend { min-width: 0; display: grid; gap: 3px; margin: 0; }
 .table-summary-boolean .chart-legend li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 5px; }
 .table-summary-boolean .chart-legend i { width: 8px; height: 8px; }

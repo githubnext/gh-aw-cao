@@ -107,6 +107,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('.lede { color: var(--muted); }');
     expect(styles).toContain('.pie-chart-total-value { fill: var(--fg); font-size: 5px;');
     expect(styles).toContain('.table-summary-compact-chart .pie-chart-total-label, .table-summary-compact-chart .pie-chart-summary { display: none; }');
+    expect(styles).toContain('.table-summary-boolean .pie-chart-total-label, .table-summary-boolean .pie-chart-summary { display: none; }');
     expect(styles).toContain('.chart-widget { min-height: 230px; display: grid; place-items: center; margin: 12px 0; border: 0; background: transparent; }');
     expect(styles).toContain('.pie-chart-layout .chart-widget { min-width: 0; min-height: 160px; margin: 0; }');
     expect(styles).toContain('.pie-chart-layout .chart-widget svg { width: 100%; max-width: 160px;');
