@@ -5329,31 +5329,6 @@
         },
         "views": [
           {
-            "id": "package-run-status",
-            "title": "Workflow run status",
-            "description": "Observed workflow conclusions provide the package's leading execution signal.",
-            "data": {
-              "source": "package-runs",
-              "route-field": "package"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "started-at",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Runs"
-              }
-            }
-          },
-          {
             "id": "package-run-navigation",
             "title": "Package workflow runs",
             "data": {
@@ -5369,11 +5344,37 @@
             }
           },
           {
+            "id": "package-run-status",
+            "title": "Workflow run status",
+            "description": "Observed workflow conclusions provide the package's leading execution signal.",
+            "data": {
+              "source": "package-runs",
+              "route-field": "package"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No workflow runs were observed for this package in the current run window.",
+            "encoding": {
+              "x": {
+                "field": "status",
+                "type": "nominal",
+                "title": "Status"
+              },
+              "y": {
+                "field": "started-at",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Runs"
+              }
+            }
+          },
+          {
             "id": "package-failure-reason-distribution",
             "title": "Why these dispatches failed",
             "description": "Grouped by the strongest failure reason retained for each dispatch. Select a reason in the table below to open its GitHub Actions evidence.",
             "data": {
-              "source": "package-runs",
+              "source": "dispatches",
               "route-field": "package",
               "filters": {
                 "status": [
@@ -5392,6 +5393,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
             "encoding": {
               "x": {
                 "field": "status-detail",
@@ -5412,7 +5414,7 @@
             "disclosure-label": "Failed dispatches",
             "description": "Failure reasons first. Open a reason for the GitHub Actions run, or copy a debug prompt with retained context.",
             "data": {
-              "source": "package-runs",
+              "source": "dispatches",
               "route-field": "package",
               "filters": {
                 "status": [

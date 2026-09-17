@@ -402,8 +402,12 @@ describe('data view renderer', () => {
 
     expect(external?.querySelector('.entity-card-list-title a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/issues/42');
-    expect(query?.querySelector('.entity-card-list-title a')?.getAttribute('href'))
+    const queryLink = /** @type {HTMLAnchorElement} */ (query?.querySelector('.entity-card-list-title a'));
+    expect(queryLink?.getAttribute('href'))
       .toBe('#page-issue-events?query=issue-events&title=Investigate+failing+compiler+run&issue-id=42');
+    const activate = vi.spyOn(queryLink, 'click');
+    query?.querySelector('.entity-card-list-card')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(activate).toHaveBeenCalledOnce();
   });
 
   it('keeps a list action available when its source is unavailable', () => {
@@ -585,6 +589,7 @@ describe('data view renderer', () => {
         'lazy-list': true,
         layout: 'full-view',
         encoding: {
+          href: { field: 'package-dashboard-link', type: 'nominal' },
           columns: [
             { field: 'package-name', type: 'nominal', title: 'Package' },
             { field: 'workflows', type: 'quantitative', title: 'Workflows' },
@@ -594,7 +599,16 @@ describe('data view renderer', () => {
         }
       },
       sourceName: 'package-inventory',
-      rows: [{ 'package-name': 'Daily ops', workflows: 2, runs: 14, registration: 'active' }],
+      rows: [{
+        'package-name': 'Daily ops',
+        'package-dashboard-link': {
+          'dashboard-href': '#page-package-detail?package=daily-ops',
+          'dashboard-label': 'View Daily ops package dashboard'
+        },
+        workflows: 2,
+        runs: 14,
+        registration: 'active'
+      }],
       cardTemplates: {
         package: {
           icon: 'package',
@@ -623,6 +637,11 @@ describe('data view renderer', () => {
     const labels = card?.querySelector('.issue-list-labels');
     expect(labels?.textContent).toContain('active');
     expect(labels?.getAttribute('aria-label')).toBe('Daily ops labels and metrics');
+    const packageLink = /** @type {HTMLAnchorElement} */ (card?.querySelector('[data-card-drill]'));
+    expect(packageLink.getAttribute('href')).toBe('#page-package-detail?package=daily-ops');
+    const activate = vi.spyOn(packageLink, 'click');
+    card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(activate).toHaveBeenCalledOnce();
   });
 
   it('renders a declared card subtitle beneath the card title', () => {

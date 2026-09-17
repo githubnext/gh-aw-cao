@@ -31,7 +31,9 @@ export function renderReactiveGrid(options) {
   effect(() => {
     items.items = options.items();
     items.render();
-    root.className = `${rootClassName}${options.active?.() && options.activeClassName ? ` ${options.activeClassName}` : ''}`;
+    if (options.activeClassName) {
+      root.classList.toggle(options.activeClassName, options.active?.() ?? false);
+    }
     const ariaLabel = options.ariaLabel?.();
     if (ariaLabel) root.setAttribute('aria-label', ariaLabel);
     else root.removeAttribute('aria-label');

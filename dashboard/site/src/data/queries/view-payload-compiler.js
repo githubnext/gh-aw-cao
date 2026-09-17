@@ -110,6 +110,21 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
     && (!Array.isArray(declared.joins) || declared.joins.every((join) => (
       isPlainObject(join) && typeof join.source === 'string' && !declaredNames.has(join.source)
     )));
+  const postQueryFields = isPlainObject(declared) ? derivedOutputFields(declared) : new Set();
+  const requiresOutputFilter = predicates.some((predicate) => (
+    typeof predicate.field === 'string' && postQueryFields.has(predicate.field)
+  ));
+  if (isPlainObject(declared) && standalone && requiresOutputFilter) {
+    return compileStandaloneOutputScopedQuery(
+      declared,
+      alias,
+      predicates,
+      postQueryFields,
+      search,
+      orderBy,
+      evaluatedAt
+    );
+  }
   if (isPlainObject(declared) && !standalone) {
     return compileScopedQueryGraph(
       sourceName,
@@ -120,6 +135,84 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
       evaluatedAt,
       declaredQueries
     );
+  }
+
+  /**
+   * @param {Record<string, unknown>} definition
+   * @param {string} alias
+   * @param {Array<Record<string, unknown>>} predicates
+   * @param {Set<unknown>} postQueryFields
+   * @param {GlobalQueryContext['search']} search
+   * @param {GlobalQueryContext['orderBy']} orderBy
+   * @param {string | undefined} evaluatedAt
+   */
+  function compileStandaloneOutputScopedQuery(definition, alias, predicates, postQueryFields, search, orderBy, evaluatedAt) {
+    const rootName = `${alias}:root`;
+    const declaredFilter = isPlainObject(definition.filter) ? definition.filter : null;
+    const declaredPredicates = declaredFilter && Array.isArray(declaredFilter.predicates)
+      ? declaredFilter.predicates.filter(isPlainObject)
+      : [];
+    const preQueryPredicates = predicates.filter((predicate) => (
+      predicate.field === '@time' || !postQueryFields.has(predicate.field)
+    ));
+    const rootPredicates = applyQueryTime(
+      [...declaredPredicates, ...preQueryPredicates],
+      definition.time,
+      evaluatedAt
+    );
+    const root = resolveQueryContext({
+      ...definition,
+      name: rootName,
+      'order-by': undefined,
+      limit: undefined,
+      ...(rootPredicates.length > 0 ? { filter: { predicates: rootPredicates } } : { filter: undefined })
+    }, queryTimeEnd(rootPredicates) ?? evaluatedAt);
+    const outputPredicates = predicates.filter((predicate) => (
+      predicate.field !== '@time' && postQueryFields.has(predicate.field)
+    ));
+    const runtimeSearch = search && search.query.trim() && search.fields.length > 0
+      ? { fields: search.fields, query: search.query.trim() }
+      : undefined;
+    const filter = {
+      ...(outputPredicates.length > 0 ? { predicates: outputPredicates } : {}),
+      ...(runtimeSearch ? { search: runtimeSearch } : {})
+    };
+    const effectiveOrder = Array.isArray(orderBy) && orderBy.length > 0
+      ? orderBy
+      : Array.isArray(definition['order-by']) ? definition['order-by'] : undefined;
+    return {
+      replacesSource: true,
+      dependencies: [root],
+      query: {
+        name: alias,
+        from: rootName,
+        ...(Object.keys(filter).length > 0 ? { filter } : {}),
+        ...(effectiveOrder ? { 'order-by': effectiveOrder } : {}),
+        ...(Number.isInteger(definition.limit) ? { limit: definition.limit } : {})
+      }
+    };
+  }
+
+  /** @param {Record<string, unknown>} query */
+  function derivedOutputFields(query) {
+    const fields = new Set();
+    for (const clause of ['compute', 'predict']) {
+      if (!Array.isArray(query[clause])) continue;
+      for (const item of query[clause]) {
+        if (isPlainObject(item) && typeof item.as === 'string') fields.add(item.as);
+      }
+    }
+    if (isPlainObject(query.aggregate) && Array.isArray(query.aggregate.values)) {
+      for (const item of query.aggregate.values) {
+        if (isPlainObject(item) && typeof item.as === 'string') fields.add(item.as);
+      }
+    }
+    if (Array.isArray(query.select)) {
+      for (const item of query.select) {
+        if (isPlainObject(item) && typeof item.as === 'string' && item.as !== item.field) fields.add(item.as);
+      }
+    }
+    return fields;
   }
   const sourceQuery = standalone
     ? /** @type {Record<string, unknown>} */ (declared)
