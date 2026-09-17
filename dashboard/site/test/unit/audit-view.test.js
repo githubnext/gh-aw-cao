@@ -15,6 +15,26 @@ const metadata = {
 };
 
 describe('Audit dashboard view', () => {
+  it('reuses package-filtered Audit views for the package Insights facet', () => {
+    const insights = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'package-insights');
+    const issues = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'package-issues');
+
+    expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
+      'package-insights-navigation',
+      'package-audit-event-summary-buckets',
+      'package-audit-events-table'
+    ]);
+    expect(insights.views.slice(1).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
+      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'package' }),
+      expect.objectContaining({ source: 'audit-events', 'route-field': 'package' })
+    ]);
+    expect(issues.views
+      .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'outcomes')
+      .every((/** @type {{ data: { filters: Record<string, string[]> } }} */ view) => (
+        view.data.filters['workflow-role']?.includes('worker')
+      ))).toBe(true);
+  });
+
   it('declares an aggregate chart before the reorganized event table', () => {
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'audit');
 
