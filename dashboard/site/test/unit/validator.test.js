@@ -6107,6 +6107,7 @@ describe('declarative query validation', () => {
     if (!result.ok) {
       expect(result.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E011',
+        message: 'numeric query operator cannot use field "start" because its inferred type is temporal.',
         path: '$.dashboard.queries[1].compute[0].args[0].field'
       }));
       expect(result.errors.filter(error => (

@@ -777,8 +777,13 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   declaredQueries = validateQueries(dashboard.queries, getValueNodeByKey(dashboardNode, 'queries'), errors);
   const queryTypes = compileDashboardQueryTypes(dashboard.queries);
   for (const queryError of queryTypes.errors) {
-    if (!errors.some((candidate) => candidate.code === queryError.code && candidate.path === queryError.path)) {
+    const existingIndex = errors.findIndex((candidate) => (
+      candidate.code === queryError.code && candidate.path === queryError.path
+    ));
+    if (existingIndex === -1) {
       errors.push(queryError);
+    } else {
+      errors[existingIndex] = queryError;
     }
   }
   declaredQueries = queryTypes.queryFields;

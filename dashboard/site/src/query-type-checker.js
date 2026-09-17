@@ -8,11 +8,12 @@ import {
   QUERY_NUMERIC_REDUCER_VALUES,
   SOURCE_FIELDS,
   SOURCE_VALUES,
-  TEMPORAL_FIELD_NAMES
+  TEMPORAL_FIELD_NAMES,
+  TEXT_COMPUTE_FUNCTIONS
 } from './specification.js';
 
 /**
- * @typedef {'scalar'|'numeric'|'temporal'|'link'|'unknown'} FieldType
+ * @typedef {'scalar'|'text'|'boolean'|'numeric'|'temporal'|'link'|'unknown'} FieldType
  * @typedef {{ code: string, message: string, path: string }} ValidationError
  * @typedef {{ fields: Map<string, FieldType> | undefined, sources: Set<string> }} QueryType
  */
@@ -44,7 +45,9 @@ export function compileDashboardQueryTypes(definitions) {
     if (SOURCE_VALUES.includes(value.name) || symbols.has(value.name)) {
       errors.push(error(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'query name must be unique and must not shadow a canonical source name.',
+        SOURCE_VALUES.includes(value.name)
+          ? `query name "${value.name}" conflicts with a canonical source name.`
+          : `query name "${value.name}" is declared more than once.`,
         `$.dashboard.queries[${index}].name`
       ));
       continue;
@@ -64,15 +67,15 @@ export function compileDashboardQueryTypes(definitions) {
       if (!target) {
         errors.push(error(
           ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'query sources must name one canonical source or one declared query.',
+          `query source "${reference.name}" is not a canonical source or previously declared query.`,
           reference.path
         ));
       } else if (target.index >= symbol.index) {
         errors.push(error(
           ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
           reference.name === name
-            ? 'query must not read itself.'
-            : 'query dependencies must be declared before the consuming query.',
+            ? `query "${name}" cannot read itself.`
+            : `query "${name}" cannot read "${reference.name}" before it is declared.`,
           reference.path
         ));
       }
@@ -113,7 +116,7 @@ export function compileDashboardQueryTypes(definitions) {
     const reference = (dependencies.get(name) ?? []).find((candidate) => cyclic.has(candidate.name));
     errors.push(error(
       ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-      'query dependency graph must not contain cycles.',
+      `query dependency cycle includes "${name}" and "${reference?.name ?? name}".`,
       reference?.path ?? `$.dashboard.queries[${symbol.index}].from`
     ));
   }
@@ -158,14 +161,14 @@ function compileQuery(query, index, symbols, compiled, errors) {
   let fields = input?.fields ? new Map(input.fields) : undefined;
   const sources = new Set(input?.sources ?? []);
 
-  /** @param {unknown} field @param {string} fieldPath @param {'read'|'scalar'|'numeric'} [usage] */
+  /** @param {unknown} field @param {string} fieldPath @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} [usage] */
   const requireField = (field, fieldPath, usage = 'read') => {
     if (typeof field !== 'string') return;
     const type = fields?.get(field);
     if (fields && type === undefined) {
       errors.push(error(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'query field references must name a field produced by the preceding clause.',
+        unavailableFieldMessage(field, fields, 'the preceding query clause'),
         fieldPath
       ));
       return;
@@ -196,14 +199,28 @@ function compileQuery(query, index, symbols, compiled, errors) {
         for (const [pairIndex, pair] of value.on.entries()) {
           if (!isRecord(pair)) continue;
           requireField(pair.left, `${joinPath}.on[${pairIndex}].left`, 'scalar');
-          requireSourceField(joined?.fields, pair.right, `${joinPath}.on[${pairIndex}].right`, 'scalar', errors);
+          requireSourceField(
+            joined?.fields,
+            pair.right,
+            `${joinPath}.on[${pairIndex}].right`,
+            'scalar',
+            errors,
+            typeof value.source === 'string' ? `source "${value.source}"` : 'the joined source'
+          );
         }
       }
       if (Array.isArray(value.fields)) {
         for (const [fieldIndex, selected] of value.fields.entries()) {
           if (!isRecord(selected)) continue;
           const fieldPath = `${joinPath}.fields[${fieldIndex}]`;
-          const type = requireSourceField(joined?.fields, selected.field, `${fieldPath}.field`, 'read', errors);
+          const type = requireSourceField(
+            joined?.fields,
+            selected.field,
+            `${fieldPath}.field`,
+            'read',
+            errors,
+            typeof value.source === 'string' ? `source "${value.source}"` : 'the joined source'
+          );
           declareField(selected.as, type, `${fieldPath}.as`);
         }
       }
@@ -226,19 +243,13 @@ function compileQuery(query, index, symbols, compiled, errors) {
           requireField(
             argument.field,
             `${computePath}.args[${argumentIndex}].field`,
-            typeof computed.function === 'string' && NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function)
-              ? 'numeric'
-              : ['coalesce', 'dashboard-link'].includes(String(computed.function)) ? 'read' : 'scalar'
+            computeArgumentUsage(computed.function, argumentIndex)
           );
         }
       }
       declareField(
         computed.as,
-        computed.function === 'dashboard-link'
-          ? 'link'
-          : typeof computed.function === 'string' && NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function)
-            ? 'numeric'
-            : 'unknown',
+        inferComputeType(computed, fields),
         `${computePath}.as`
       );
     }
@@ -251,7 +262,9 @@ function compileQuery(query, index, symbols, compiled, errors) {
     if (Array.isArray(query.aggregate.by)) {
       query.aggregate.by.forEach((field, fieldIndex) => {
         requireField(field, `${aggregatePath}.by[${fieldIndex}]`, 'scalar');
-        if (typeof field === 'string' && fields?.has(field)) outputs.set(field, /** @type {FieldType} */ (fields.get(field)));
+        if (typeof field === 'string' && !outputs.has(field)) {
+          outputs.set(field, fields?.get(field) ?? intrinsicType(field));
+        }
       });
     }
     if (Array.isArray(query.aggregate.values)) {
@@ -261,7 +274,7 @@ function compileQuery(query, index, symbols, compiled, errors) {
         requireField(
           value.field,
           `${valuePath}.field`,
-          typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer) ? 'numeric' : 'scalar'
+          typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer) ? 'aggregate-numeric' : 'scalar'
         );
         if (isRecord(value.filter) && Array.isArray(value.filter.predicates)) {
           value.filter.predicates.forEach((predicate, predicateIndex) => {
@@ -358,17 +371,18 @@ function resolveSource(source, symbols, compiled) {
  * @param {Map<string, FieldType> | undefined} fields
  * @param {unknown} field
  * @param {string} path
- * @param {'read'|'scalar'|'numeric'} usage
+ * @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} usage
  * @param {ValidationError[]} errors
+ * @param {string} [sourceLabel]
  * @returns {FieldType}
  */
-function requireSourceField(fields, field, path, usage, errors) {
+function requireSourceField(fields, field, path, usage, errors, sourceLabel = 'the referenced source') {
   if (typeof field !== 'string') return 'unknown';
   const type = fields?.get(field);
   if (fields && type === undefined) {
     errors.push(error(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-      'field must be declared by the referenced query or database table.',
+      unavailableFieldMessage(field, fields, sourceLabel),
       path
     ));
     return 'unknown';
@@ -381,7 +395,7 @@ function requireSourceField(fields, field, path, usage, errors) {
 /**
  * @param {string} field
  * @param {FieldType} type
- * @param {'read'|'scalar'|'numeric'} usage
+ * @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} usage
  * @param {string} path
  * @param {ValidationError[]} errors
  */
@@ -398,10 +412,13 @@ function validateUsage(field, type, usage, path, errors) {
       `query operators require a scalar field; "${field}" is a structured link field.`,
       path
     ));
-  } else if (usage === 'numeric' && type === 'temporal') {
+  } else if (
+    ['numeric', 'aggregate-numeric'].includes(usage)
+    && ['text', 'temporal', ...(usage === 'numeric' ? ['boolean'] : [])].includes(type)
+  ) {
     errors.push(error(
       ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-      `numeric query operators require a numeric field; "${field}" is a timestamp field.`,
+      `numeric query operator cannot use field "${field}" because its inferred type is ${type}.`,
       path
     ));
   }
@@ -412,7 +429,84 @@ function aggregateType(reducer, field, fields) {
   if (typeof reducer === 'string' && ['count', 'distinct-count', ...QUERY_NUMERIC_REDUCER_VALUES].includes(reducer)) {
     return 'numeric';
   }
+  if (reducer === 'distinct-list') return 'text';
+  if (reducer === 'distinct-values' || reducer === 'calendar-week-rhythm') return 'unknown';
   return typeof field === 'string' ? fields?.get(field) ?? intrinsicType(field) : 'unknown';
+}
+
+/**
+ * @param {unknown} functionName
+ * @param {number} argumentIndex
+ * @returns {'read'|'scalar'|'numeric'}
+ */
+function computeArgumentUsage(functionName, argumentIndex) {
+  if (
+    typeof functionName === 'string'
+    && (
+      NUMERIC_COMPUTE_FUNCTIONS.includes(functionName)
+      || ['greater-than', 'format-count', 'format-percent'].includes(functionName)
+    )
+  ) return 'numeric';
+  if (
+    functionName === 'coalesce'
+    || (functionName === 'if' && argumentIndex > 0)
+    || (functionName === 'dashboard-link' && argumentIndex === 0)
+  ) return 'read';
+  return 'scalar';
+}
+
+/**
+ * @param {Record<string, unknown>} computed
+ * @param {Map<string, FieldType> | undefined} fields
+ * @returns {FieldType}
+ */
+function inferComputeType(computed, fields) {
+  const functionName = computed.function;
+  if (functionName === 'dashboard-link') return 'link';
+  if (typeof functionName === 'string' && NUMERIC_COMPUTE_FUNCTIONS.includes(functionName)) return 'numeric';
+  if (typeof functionName === 'string' && TEXT_COMPUTE_FUNCTIONS.includes(functionName)) return 'text';
+  if (functionName === 'equals-any' || functionName === 'greater-than') return 'boolean';
+  if (!Array.isArray(computed.args)) return 'unknown';
+  if (functionName === 'coalesce') return commonType(computed.args, fields);
+  if (functionName === 'if') return commonType(computed.args.slice(1), fields);
+  return 'unknown';
+}
+
+/**
+ * @param {unknown[]} args
+ * @param {Map<string, FieldType> | undefined} fields
+ * @returns {FieldType}
+ */
+function commonType(args, fields) {
+  const types = args.map((argument) => argumentType(argument, fields)).filter((type) => type !== 'unknown');
+  return types.length > 0 && types.every((type) => type === types[0]) ? types[0] : 'unknown';
+}
+
+/**
+ * @param {unknown} argument
+ * @param {Map<string, FieldType> | undefined} fields
+ * @returns {FieldType}
+ */
+function argumentType(argument, fields) {
+  if (!isRecord(argument)) return 'unknown';
+  if (typeof argument.field === 'string') return fields?.get(argument.field) ?? intrinsicType(argument.field);
+  if (!Object.hasOwn(argument, 'value') || argument.value === null) return 'unknown';
+  if (typeof argument.value === 'number') return 'numeric';
+  if (typeof argument.value === 'boolean') return 'boolean';
+  if (typeof argument.value === 'string') return 'text';
+  return 'unknown';
+}
+
+/**
+ * @param {string} field
+ * @param {Map<string, FieldType>} fields
+ * @param {string} sourceLabel
+ */
+function unavailableFieldMessage(field, fields, sourceLabel) {
+  const available = [...fields.keys()].sort();
+  const displayed = available.slice(0, 8);
+  const suffix = available.length > displayed.length ? `, and ${available.length - displayed.length} more` : '';
+  return `field "${field}" is not available from ${sourceLabel}; available fields: ${displayed.join(', ') || '(none)'}${suffix}.`;
 }
 
 /** @param {string} field @returns {FieldType} */
