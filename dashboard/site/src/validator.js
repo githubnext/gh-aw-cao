@@ -106,6 +106,7 @@ import {
   VIEW_LIST_DRILL_ARGUMENT_KEYS,
   VIEW_LIST_DRILL_KEYS,
   VIEW_LIST_DRILL_TYPE_VALUES,
+  VIEW_LIST_LAYOUT_VALUES,
   VIEW_DISCLOSURE_VALUES,
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
@@ -562,6 +563,9 @@ function validateCardTemplates(templates, templatesNode, errors) {
     validateStringField(template.icon, `${path}.icon`, true, errors);
     if (typeof template.icon === 'string' && !PAGE_ICON_VALUES.includes(template.icon)) {
       errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'card template icon must use one canonical Octicon name.', `${path}.icon`));
+    }
+    if (template['icon-field'] !== undefined) {
+      validateRequiredIdentifier(template['icon-field'], `${path}.icon-field`, 'card template icon field', errors);
     }
     if (typeof template.id === 'string') {
       if (ids.has(template.id)) errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'card template id must be unique.', `${path}.id`));
@@ -2525,6 +2529,12 @@ function validateView(view, viewNode, path, viewIds, errors) {
       validateStringField(view.list.style, `${listPath}.style`, true, errors);
       if (typeof view.list.style === 'string' && !VIEW_LIST_STYLE_VALUES.includes(view.list.style)) {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.style must be one of ${VIEW_LIST_STYLE_VALUES.join(', ')}.`, `${listPath}.style`));
+      }
+      if (view.list.layout !== undefined) {
+        validateStringField(view.list.layout, `${listPath}.layout`, true, errors);
+        if (typeof view.list.layout === 'string' && !VIEW_LIST_LAYOUT_VALUES.includes(view.list.layout)) {
+          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `list.layout must be one of ${VIEW_LIST_LAYOUT_VALUES.join(', ')}.`, `${listPath}.layout`));
+        }
       }
       validateStringField(view.list.icon, `${listPath}.icon`, true, errors);
       if (typeof view.list.icon === 'string' && !PAGE_ICON_VALUES.includes(view.list.icon)) {

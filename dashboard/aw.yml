@@ -189,8 +189,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/attention-rules.js
   - source: site/src/components/attention-rules.json
     destination: .github/aw/dashboard/site/src/components/attention-rules.json
-  - source: site/src/components/agent-marketplace-view.js
-    destination: .github/aw/dashboard/site/src/components/agent-marketplace-view.js
   - source: site/src/components/badge.js
     destination: .github/aw/dashboard/site/src/components/badge.js
   - source: site/src/components/cell-display.js

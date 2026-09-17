@@ -121,6 +121,22 @@
           { "field": "run", "title": "Run", "display": "run-link" },
           { "field": "observed-at", "title": "Opened", "format": "human-friendly-timestamp" }
         ]
+      },
+      {
+        "id": "operation",
+        "icon": "workflow",
+        "icon-field": "operation-icon",
+        "title": { "field": "operation-name", "title": "Operation" },
+        "subtitle": { "field": "operation-description", "title": "Description" },
+        "labels": [
+          { "field": "operation-kind", "title": "Kind", "display": "label" },
+          { "field": "workflow-states", "title": "Workflow state", "display": "label" }
+        ],
+        "details": [
+          { "field": "owner", "title": "Owner" },
+          { "field": "workflow-count", "title": "Workflows" },
+          { "field": "workflow-roles", "title": "Roles" }
+        ]
       }
     ],
     "views": [
@@ -850,6 +866,170 @@
         "order-by": [
           { "field": "observed-at", "direction": "desc" },
           { "field": "event", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "marketplace-operations",
+        "intent": "List operation packages and standalone workflows as reusable Marketplace cards with package membership, ownership, workflow state, and dashboard navigation.",
+        "from": "workflows",
+        "compute": [
+          {
+            "as": "is-standalone",
+            "function": "equals-any",
+            "args": [
+              { "field": "package" },
+              { "value": "standalone" },
+              { "value": "unknown" }
+            ]
+          },
+          {
+            "as": "operation-id",
+            "function": "if",
+            "args": [
+              { "field": "is-standalone" },
+              { "field": "workflow" },
+              { "field": "package" }
+            ]
+          },
+          {
+            "as": "operation-name",
+            "function": "coalesce",
+            "args": [
+              { "field": "package-name" },
+              { "field": "workflow-name" },
+              { "field": "workflow" }
+            ]
+          },
+          {
+            "as": "operation-icon",
+            "function": "coalesce",
+            "args": [
+              { "field": "package-icon" },
+              { "value": "workflow" }
+            ]
+          },
+          {
+            "as": "operation-kind",
+            "function": "if",
+            "args": [
+              { "field": "is-standalone" },
+              { "value": "Standalone" },
+              { "value": "Package" }
+            ]
+          },
+          {
+            "as": "operation-description",
+            "function": "if",
+            "args": [
+              { "field": "is-standalone" },
+              { "value": "Standalone agentic workflow." },
+              { "value": "Centrally managed operation package." }
+            ]
+          },
+          {
+            "as": "owner",
+            "function": "concat",
+            "args": [
+              { "field": "organization" },
+              { "value": "/" },
+              { "field": "repository" }
+            ]
+          },
+          {
+            "as": "workflow-coordinate",
+            "function": "concat",
+            "args": [
+              { "field": "organization" },
+              { "value": "/" },
+              { "field": "repository" },
+              { "value": ":" },
+              { "field": "workflow" }
+            ]
+          },
+          {
+            "as": "encoded-operation-id",
+            "function": "url-encode",
+            "args": [{ "field": "operation-id" }]
+          },
+          {
+            "as": "encoded-workflow-coordinate",
+            "function": "url-encode",
+            "args": [{ "field": "workflow-coordinate" }]
+          },
+          {
+            "as": "package-dashboard-href",
+            "function": "concat",
+            "args": [
+              { "value": "#page-package-detail?package=" },
+              { "field": "encoded-operation-id" }
+            ]
+          },
+          {
+            "as": "workflow-dashboard-href",
+            "function": "concat",
+            "args": [
+              { "value": "#page-workflow-runtime?workflow=" },
+              { "field": "encoded-workflow-coordinate" }
+            ]
+          },
+          {
+            "as": "operation-dashboard-href",
+            "function": "if",
+            "args": [
+              { "field": "is-standalone" },
+              { "field": "workflow-dashboard-href" },
+              { "field": "package-dashboard-href" }
+            ]
+          },
+          {
+            "as": "operation-link-label",
+            "function": "concat",
+            "args": [
+              { "value": "View " },
+              { "field": "operation-name" }
+            ]
+          },
+          {
+            "as": "operation-link",
+            "function": "dashboard-link",
+            "args": [
+              { "field": "repository-link" },
+              { "field": "operation-dashboard-href" },
+              { "field": "operation-link-label" }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "operation-id",
+            "operation-name",
+            "operation-icon",
+            "operation-kind",
+            "operation-description",
+            "owner",
+            "operation-link"
+          ],
+          "values": [
+            { "field": "workflow", "as": "workflow-count", "reducer": "count" },
+            { "field": "workflow-role", "as": "workflow-roles", "reducer": "distinct-values" },
+            { "field": "workflow-active", "as": "workflow-states", "reducer": "distinct-values" }
+          ]
+        },
+        "select": [
+          { "field": "operation-id" },
+          { "field": "operation-name" },
+          { "field": "operation-icon" },
+          { "field": "operation-kind" },
+          { "field": "operation-description" },
+          { "field": "owner" },
+          { "field": "workflow-count" },
+          { "field": "workflow-roles" },
+          { "field": "workflow-states" },
+          { "field": "operation-link" }
+        ],
+        "order-by": [
+          { "field": "operation-kind", "direction": "asc" },
+          { "field": "operation-name", "direction": "asc" }
         ]
       },
       {
@@ -8633,18 +8813,36 @@
             "id": "agents-marketplace",
             "locked": true,
             "title": "Operations",
-            "description": "Operation package or standalone workflow name, description, permissions, and runtime.",
+            "description": "Operation packages and standalone workflows with ownership, membership, and declared workflow state.",
             "data": {
-              "sources": [
-                "agent-assignments",
-                "workflows",
-                "agent-smells",
-                "security-observations"
-              ]
+              "source": "marketplace-operations"
             },
-            "mark": "element",
-            "element": "agent-marketplace-view",
-            "layout": "full"
+            "mark": "list",
+            "list": {
+              "style": "entity-cards",
+              "layout": "grid",
+              "card": "operation",
+              "icon": "workflow",
+              "drill": {
+                "type": "external",
+                "field": "operation-link"
+              }
+            },
+            "empty-message": "No operation packages or standalone workflows are available in the selected scope.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                { "field": "operation-name", "type": "nominal", "title": "Operation" },
+                { "field": "operation-description", "type": "nominal", "title": "Description" },
+                { "field": "operation-kind", "type": "nominal", "title": "Kind" },
+                { "field": "operation-icon", "type": "nominal", "title": "Icon" },
+                { "field": "owner", "type": "nominal", "title": "Owner" },
+                { "field": "workflow-count", "type": "quantitative", "title": "Workflows" },
+                { "field": "workflow-roles", "type": "nominal", "title": "Roles" },
+                { "field": "workflow-states", "type": "nominal", "title": "Workflow state" },
+                { "field": "operation-link", "type": "nominal", "title": "Operation link" }
+              ]
+            }
           }
         ]
       },
