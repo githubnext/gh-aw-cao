@@ -2107,6 +2107,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-brand-name { max-width: 100%; display: block; overflow: hidden; color: var(--muted); font-size: .75rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-page-header .overview-header { width: 100%; min-width: 0; flex: none; }
   .mobile-page-header .breadcrumb-context { display: none; }
+  /* Desktop reserves hidden descriptions as a stable spacer; collapse it in the compact mobile title bar without adding another display override. */
   .mobile-page-header .overview-header .lede { height: 0; min-height: 0; margin: 0; overflow: hidden; line-height: 0; visibility: hidden; }
   .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .mobile-page-header .overview-header h1 { margin: 0; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
