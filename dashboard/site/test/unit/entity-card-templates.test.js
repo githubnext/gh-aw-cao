@@ -76,6 +76,24 @@ describe('entity card templates', () => {
       );
       expect(marketplaceQuery).toMatchObject({
         from: 'marketplace-operation-groups',
+        joins: [
+          {
+            source: 'repositories',
+            type: 'left',
+            on: [
+              { left: 'organization', right: 'organization' },
+              { left: 'repository', right: 'repository' }
+            ],
+            fields: [{ field: 'repository-link', as: 'repository-link' }]
+          }
+        ],
+        compute: expect.arrayContaining([
+          expect.objectContaining({
+            as: 'operation-link',
+            function: 'dashboard-link',
+            args: expect.arrayContaining([{ field: 'repository-link' }])
+          })
+        ]),
         'order-by': [
           { field: 'operation-kind', direction: 'asc' },
           { field: 'operation-name', direction: 'asc' }
