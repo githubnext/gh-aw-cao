@@ -76,7 +76,7 @@ test('views remain interactive while activity shards are ingested', async ({ con
         contentType: 'application/json',
         body: JSON.stringify(Object.fromEntries(
           Array.from({ length: shardCount }, (_, index) => [
-            `gh-aw-logs-shards/logs-${index + 1}.jsonl`,
+           `gh-aw-logs-shards/logs-${String(index + 1).padStart(2, '0')}.jsonl`,
             String(index + 1).padStart(64, 'a')
           ])
         ))
