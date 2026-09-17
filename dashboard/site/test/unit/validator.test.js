@@ -1269,7 +1269,7 @@ dashboard:
           mark: element
           element: package-route
           config:
-            body: dispatches
+            body: pull-requests
 `);
     expect(accepted.ok).toBe(true);
 
@@ -1290,7 +1290,7 @@ dashboard:
           mark: element
           element: package-route
           config:
-            body: runs
+            body: workflows
 `);
     expect(invalidBody.ok).toBe(false);
     if (!invalidBody.ok) {

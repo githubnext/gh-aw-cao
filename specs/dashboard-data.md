@@ -323,6 +323,24 @@ JSONL shards when normalized payloads are unavailable.
 
 ## 5.4 Canonical join contract
 
+### 5.4.1 Package resource navigation projections
+
+Package resource pages SHALL resolve one package slug from the active route and
+apply it as an equality predicate inside the dashboard query worker. Generated
+issue and pull-request views SHALL select retained Outcome observations by
+`outcome-category`; workflow-run views SHALL join canonical Run and Workflow
+records through Workflow identity; repository views SHALL group the canonical
+Repositories reached through package-classified Workflows. Missing package
+relationships MUST produce an honest empty or unavailable result and MUST NOT
+fall back to unscoped records.
+
+The local SQLite projection and browser IndexedDB projection SHALL expose
+equivalent Package-to-Workflow, Workflow-to-Run, and Workflow-to-Repository
+relationships to these queries. Package resource navigation is presentation
+configuration, not canonical operational evidence, and MUST NOT be persisted as
+mutable browser state. Both projections remain disposable and reconstructable;
+no schema migration is required for navigation-only changes.
+
 The cached JSONL source does not expose immutable Repository and Workflow IDs
 for every envelope. Until it does, Repository identity SHALL use normalized
 `OWNER/REPOSITORY`; Workflow identity SHALL be scoped to that Repository and

@@ -828,12 +828,12 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .metric-link a, .custom-table a { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; transition: background-color 120ms ease, color 120ms ease; }
 .metric-link a:hover, .custom-table a:hover { background: var(--neutral-muted); }
 .metric-link .octicon, .custom-table a .octicon { width: 12px; height: 12px; }
-.package-dispatches-page .table-status-detail, .dispatches-page .table-status-detail { min-width: 360px; max-width: 560px; padding: 14px 16px; font-size: .875rem; white-space: normal; line-height: 1.5; }
-.package-dispatches-page .table-status-detail[data-status="failure"], .package-dispatches-page .table-status-detail[data-status="startup-failure"], .package-dispatches-page .table-status-detail[data-status="timed-out"],
+.package-runs-page .table-status-detail, .dispatches-page .table-status-detail { min-width: 360px; max-width: 560px; padding: 14px 16px; font-size: .875rem; white-space: normal; line-height: 1.5; }
+.package-runs-page .table-status-detail[data-status="failure"], .package-runs-page .table-status-detail[data-status="startup-failure"], .package-runs-page .table-status-detail[data-status="timed-out"],
 .dispatches-page .table-status-detail[data-status="failure"], .dispatches-page .table-status-detail[data-status="startup-failure"], .dispatches-page .table-status-detail[data-status="timed-out"] { border-left: 3px solid var(--danger); background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); color: var(--danger); font-weight: 600; }
-.package-dispatches-page .table-status-detail[data-status="action-required"], .dispatches-page .table-status-detail[data-status="action-required"] { border-left: 3px solid var(--attention); background: var(--attention-muted); color: var(--attention); font-weight: 600; }
-.package-dispatches-page .table-status-detail > a, .dispatches-page .table-status-detail > a { color: inherit; font-weight: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.package-dispatches-page .chart-view-pie:first-of-type .pie-chart-total-value { fill: var(--danger); }
+.package-runs-page .table-status-detail[data-status="action-required"], .dispatches-page .table-status-detail[data-status="action-required"] { border-left: 3px solid var(--attention); background: var(--attention-muted); color: var(--attention); font-weight: 600; }
+.package-runs-page .table-status-detail > a, .dispatches-page .table-status-detail > a { color: inherit; font-weight: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.package-runs-page .chart-view-pie:first-of-type .pie-chart-total-value { fill: var(--danger); }
 .table-intent-action { width: 1%; text-align: left; white-space: nowrap; }
 .custom-table :is(th.table-compact-column, td.table-cli-action-cell) { width: 44px; min-width: 44px; max-width: 44px; padding-right: 6px; padding-left: 6px; text-align: center; }
 .table-intent-control { display: inline-grid; place-items: center; }
@@ -2070,6 +2070,11 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 }
 @media (max-width: 700px) {
   body, .dashboard-root { font-size: 1rem; }
+  .package-tabs { display: grid; gap: 8px; overflow: visible; border-bottom: 0; }
+  .package-tabs a { min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
+  .package-tabs a:hover { border-color: var(--accent); }
+  .package-tabs a[aria-current="page"] { border-color: var(--accent); background: var(--canvas-subtle); color: var(--accent); }
+  .package-tabs a[aria-current="page"]::after { display: none; }
   :root[data-navigation-direction="forward"]::view-transition-old(root) { z-index: 1; animation-name: dashboard-view-slide-out-left; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="forward"]::view-transition-new(root) { z-index: 2; animation-name: dashboard-view-slide-in-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   :root[data-navigation-direction="backward"]::view-transition-old(root) { z-index: 2; animation-name: dashboard-view-slide-out-right; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }

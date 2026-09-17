@@ -92,7 +92,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `package-summary-table` | Presents the package summary table. |
 | `package-insights` | Presents the insights variant of a routed package page. |
 | `package-detail` | Presents the workflows variant of a routed package page. |
-| `package-dispatches` | Presents the dispatches variant of a routed package page. |
+| `package-dispatches` | Compatibility element that presents the workflow-runs variant of a routed package page. |
 | `package-reports` | Presents the reports variant of a routed package page. |
 | `package-route` | Resolves and composes a route-selected package experience. |
 | `workflow-route` | Resolves a route-selected workflow experience. |
