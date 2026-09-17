@@ -85,6 +85,17 @@
         ]
       },
       {
+        "id": "firewall-domain",
+        "icon": "globe",
+        "title": { "field": "domain", "title": "Domain" },
+        "labels": [],
+        "details": [
+          { "field": "accepted", "title": "Allowed" },
+          { "field": "blocked", "title": "Blocked" },
+          { "field": "run", "title": "Runs" }
+        ]
+      },
+      {
         "id": "issue",
         "icon": "issue-opened",
         "title": { "field": "event-summary", "title": "Issue" },
@@ -684,10 +695,11 @@
         "significant": 0.001,
         "format": "number"
       },
-      "grade": {
-        "name": "Grade",
-        "symbol": "grade",
-        "significant": 0.01
+      "ops-value": {
+        "name": "Ops Value",
+        "symbol": "ops",
+        "significant": 0.01,
+        "format": "number"
       },
       "percent": {
         "name": "Percent",
@@ -3942,17 +3954,18 @@
               "columns": [
                 {
                   "field": "domain",
-                  "type": "nominal"
+                  "type": "nominal",
+                  "title": "Domain"
                 },
                 {
                   "field": "run",
                   "type": "quantitative",
-                  "title": "Run"
+                  "title": "Runs"
                 },
                 {
                   "field": "accepted",
                   "type": "quantitative",
-                  "title": "Accepted"
+                  "title": "Allowed"
                 },
                 {
                   "field": "blocked",
@@ -4861,7 +4874,7 @@
           "views": [
             {
               "id": "packages-value-created",
-              "title": "Value created by package",
+              "title": "Ops Value by package",
               "description": "The share of observed operational value created by each centrally managed package.",
               "data": {
                 "source": "package-inventory"
@@ -4881,8 +4894,8 @@
                   "type": "quantitative",
                   "aggregate": "sum",
                   "as": "total-value-created",
-                  "title": "Value created",
-                  "unit": "grade"
+                  "title": "Ops Value",
+                  "unit": "ops-value"
                 },
                 "href": {
                   "field": "package-dashboard-link",
@@ -4949,8 +4962,8 @@
                   {
                     "field": "value-created",
                     "type": "quantitative",
-                    "title": "Value created",
-                    "unit": "grade"
+                    "title": "Ops Value",
+                    "unit": "ops-value"
                   },
                   {
                     "field": "registration",
@@ -6973,7 +6986,7 @@
                 "aggregate": "mean",
                 "as": "total-value-created",
                 "title": "Operational value",
-                "unit": "grade"
+                "unit": "ops-value"
               }
             }
           },
@@ -7001,7 +7014,7 @@
                   "field": "value-created",
                   "type": "quantitative",
                   "title": "Operational value",
-                  "unit": "grade"
+                  "unit": "ops-value"
                 }
               ]
             }

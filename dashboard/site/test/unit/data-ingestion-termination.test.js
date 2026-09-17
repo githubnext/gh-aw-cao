@@ -71,6 +71,16 @@ beforeEach(async () => {
 });
 
 describe('canonical ingestion termination', () => {
+  it('does not start storage after ingestion is cancelled', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(ingestDashboardSources(indexedDB, sourcesWithRuns(5), {
+      signal: controller.signal
+    })).rejects.toMatchObject({ name: 'AbortError' });
+    expect(replaceCanonicalBatch).not.toHaveBeenCalled();
+  });
+
   it('reports storage progress so long writes never look stalled', async () => {
     /** @type {{ storedRecords: number, totalRecords: number }[]} */
     const progress = [];

@@ -27,6 +27,7 @@ export function notificationStylesheet() {
 .dashboard-notification-details { max-height: min(320px, 45vh); margin: 10px 0 0; padding: 8px; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--border, ButtonBorder); color: var(--muted, GrayText); font: .6875rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; list-style: none; }
 .dashboard-notification-details li + li { margin-top: 4px; }
 .dashboard-notification-action { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--border, ButtonBorder); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.dashboard-notification-content > .dashboard-notification-action { width: 100%; margin-top: 10px; }
 .dashboard-notification-action:hover { border-color: var(--accent, Highlight); background: var(--neutral-muted, color-mix(in srgb, CanvasText 12%, transparent)); }
 .dashboard-notification-action:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 2px; }
 @media (max-width: 700px) {
@@ -1982,7 +1983,7 @@ thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75
 .table-summary-boolean .chart-legend i.chart-series-semantic-failure { border-color: var(--danger); color: var(--danger); }
 .table-summary-count { font-weight: 400; }
 .table-summary-quantitative { display: grid; gap: 6px; }
-.table-summary-histogram { width: 100%; height: 32px; overflow: visible; }
+.table-summary-histogram { width: 100%; max-width: 120px; height: 32px; overflow: visible; } /* cap at the SVG's natural viewBox width (histogram.js) so wide columns don't stretch the bars */
 .table-summary-histogram rect { fill: var(--accent); opacity: .75; }
 .table-output-evidence { display: block; max-width: 80ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tree-table-cell { display: block; padding-inline-start: calc(var(--tree-depth) * 1.25rem); }
