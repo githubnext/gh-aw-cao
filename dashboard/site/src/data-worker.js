@@ -52,6 +52,8 @@ const dashboardQueryMemoization = createDashboardQueryMemoization();
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
+/** @type {Map<number, () => Promise<void>>} */
+const inFlightDashboardSyncs = new Map();
 /** @type {Set<string>} */
 const dirtyDashboardSubscriptions = new Set();
 const SUBSCRIPTION_FLUSH_DELAY_MS = 50;
@@ -436,9 +438,17 @@ export function processDataRequest(request, signal) {
       const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       if (!activity) progress.start();
       let changed = false;
+      /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */
+      let sources = {};
+      if (typeof request.id === 'number') {
+        inFlightDashboardSyncs.set(request.id, async () => {
+          progress.log('Refreshing active dashboard queries by request.');
+          await refreshDashboardSubscriptions(sources, false);
+        });
+      }
       try {
         progress.log(activity ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
-        let sources = activity ? {} : await loadDashboardSources(ingestionFetch, sourceUrl.href, {
+        sources = activity ? {} : await loadDashboardSources(ingestionFetch, sourceUrl.href, {
           onShardLoaded: ({ name, sizeBytes, cacheStatus }) => {
             const size = sizeBytes === null ? 'size unavailable' : `${sizeBytes.toLocaleString()} bytes`;
             progress.log(`Loaded dashboard source shard ${name} (${size}; cache: ${cacheStatus ?? 'unavailable'}).`);
@@ -565,14 +575,6 @@ export function processDataRequest(request, signal) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             if (runPhaseShardCount > 0 && index === runPhaseShardCount) {
               const eventPendingShards = pendingShards.filter((state) => state.index >= runPhaseShardCount);
-              if (eventPendingShards.length > 0 && !dashboardActivated) {
-                progress.log('Run information is available; refreshing active dashboard queries.');
-                await refreshDashboardSubscriptions(
-                  /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-                  true
-                );
-                if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
-              }
               await measureShards(eventPendingShards);
               workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
                 ? pendingShards.reduce((sum, state) => sum + (state.sizeBytes ?? 0), 0)
@@ -652,13 +654,6 @@ export function processDataRequest(request, signal) {
               });
               completedShardCount += 1;
               progress.reportShardImportProgress(completedShardCount, shardCount);
-              if (ingestion.updated) {
-                progress.log(`Shard ${index + 1}/${shardCount} is available; refreshing active dashboard queries.`);
-                void refreshDashboardSubscriptions(
-                  /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-                  runPhaseShardCount > 0 && index < runPhaseShardCount
-                );
-              }
             }
           }
           if (inventoryResponse.ok) {
@@ -718,6 +713,7 @@ export function processDataRequest(request, signal) {
           ? { sources: projected, changed }
           : projected;
       } finally {
+        if (typeof request.id === 'number') inFlightDashboardSyncs.delete(request.id);
         progress.complete();
         dashboardIngestionCount = Math.max(0, dashboardIngestionCount - 1);
         if (dashboardIngestionCount === 0) scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
@@ -824,6 +820,11 @@ if (typeof document === 'undefined' && workerScope) {
         clearTimeout(subscriptionFlushTimer);
         subscriptionFlushTimer = null;
       }
+      return;
+    }
+    if (event.data?.operation === 'sync-dashboard-queries') {
+      const sync = inFlightDashboardSyncs.get(event.data.requestId);
+      if (sync) void sync();
       return;
     }
     if (event.data?.operation === 'cancel-data-processing') {
