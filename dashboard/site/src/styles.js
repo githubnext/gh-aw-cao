@@ -373,6 +373,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .issue-list-card { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border); list-style: none; }
 .issue-list-card:first-child { border-top: 0; }
 .issue-list-card:hover { background: var(--canvas-subtle); }
+.entity-card-list-card:has([data-card-drill]) { cursor: pointer; }
 .issue-list-card-icon { padding-top: 2px; color: var(--success); }
 .issue-list-card-icon .octicon { width: 16px; height: 16px; }
 .issue-list-card-content { min-width: 0; display: grid; gap: 4px; }
