@@ -4000,6 +4000,45 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('keeps route tabs visible while a sibling view loads', async () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first?package=ambient-context">First</a>
+      <a data-nav-page-id="second" href="#page-second?package=ambient-context">Second</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first">
+          <nav data-route-tabs aria-label="Ambient Context views">
+            <a href="#page-first?package=ambient-context" aria-current="page">Overview</a>
+            <a href="#page-second?package=ambient-context">Workflows</a>
+            <a href="#page-third?package=ambient-context">Runs</a>
+          </nav>
+          <p>Overview content</p>
+        </section>
+        <section class="dashboard-page" id="page-second" data-page-id="second" data-page-pending></section>
+      </main>
+    `;
+    document.body.append(root);
+    const renderPage = vi.fn((pageId) => pageId === 'second'
+      ? new Promise(() => {})
+      : null);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="second"]')).click();
+
+      await vi.waitFor(() => {
+        expect(root.querySelector('#page-second .dashboard-view-skeleton')).not.toBeNull();
+      });
+      const pendingTabs = root.querySelector('#page-second [data-route-tabs]');
+      expect(pendingTabs?.textContent).toBe('OverviewWorkflowsRuns');
+      expect(pendingTabs?.querySelector('[aria-current="page"]')?.textContent).toBe('Workflows');
+      expect(root.querySelector('#page-second')?.getAttribute('aria-busy')).toBe('true');
+      disposeNavigation();
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('aborts the active page subscription when the dashboard is disposed', async () => {
     /** @type {AbortSignal | undefined} */
     let pageSignal;

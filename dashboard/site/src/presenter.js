@@ -330,7 +330,62 @@ export function disposeDashboard(root) {
 async function enableDashboardDomProvenanceWhenDebugging(root, document) {
   if (!isDomProvenanceDebugRequested(root)) return;
   const { enableDashboardDomProvenance } = await import('./dom-provenance.js');
-  enableDashboardDomProvenance(root, document, getBuiltInPagePayload);
+  enableDashboardDomProvenance(root, document, getBuiltInPagePayload  );
+}
+
+/**
+ * Retains route tabs while moving between sibling views so only the selected
+ * view body enters its loading state.
+ * @param {HTMLElement} page
+ * @param {string} pageId
+ * @param {URLSearchParams} parameters
+ * @returns {HTMLElement | null}
+ */
+function cloneRouteTabsForPage(page, pageId, parameters) {
+  const tabs = page.querySelector('[data-route-tabs]');
+  if (!(tabs instanceof HTMLElement)) return null;
+  const target = [...tabs.querySelectorAll('a')].find((link) => {
+    const href = link.getAttribute('href') ?? '';
+    const [route, query = ''] = href.split('?');
+    if (!route.startsWith('#page-')) return false;
+    try {
+      return decodeURIComponent(route.slice('#page-'.length)) === pageId
+        && queryParametersMatch(new URLSearchParams(query), parameters);
+    } catch {
+      return false;
+    }
+  });
+  if (!target) return null;
+  const clone = /** @type {HTMLElement} */ (tabs.cloneNode(true));
+  for (const link of clone.querySelectorAll('a')) {
+    if (link.getAttribute('href') === target.getAttribute('href')) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  }
+  return clone;
+}
+
+/**
+ * @param {URLSearchParams} left
+ * @param {URLSearchParams} right
+ */
+function queryParametersMatch(left, right) {
+  const entries = (parameters) => [...parameters.entries()]
+    .sort(([leftKey, leftValue], [rightKey, rightValue]) => (
+      leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue)
+    ));
+  return JSON.stringify(entries(left)) === JSON.stringify(entries(right));
+}
+
+/**
+ * @param {HTMLElement} page
+ * @param {HTMLElement | null} routeTabs
+ */
+function showPageSkeleton(page, routeTabs) {
+  page.replaceChildren(...(routeTabs ? [routeTabs, renderPageSkeleton()] : [renderPageSkeleton()]));
+  page.setAttribute('aria-busy', 'true');
 }
 
 /**
@@ -1064,9 +1119,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
     };
     let populationDeferred = false;
+    /** @type {HTMLElement | null} */
+    let retainedRouteTabs = null;
     if (activePageId && activePageId !== pageId) {
       const activePage = pages.find((candidate) => candidate.dataset.pageId === activePageId);
       if (activePage) {
+        retainedRouteTabs = cloneRouteTabsForPage(activePage, pageId, parameters);
         const horizonDetails = activeFilterBar?.querySelector('.horizon-details');
         if (dashboardHorizon && horizonDetails) dashboardHorizon.append(horizonDetails);
         if (dashboardHorizon && activeFilterBar?.contains(dashboardHorizon)) dashboardHorizon.remove();
@@ -1136,8 +1194,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         if (!rendered) return;
         if (rendered instanceof Promise) {
           if (pendingPage.hasAttribute('data-page-pending')) {
-            pendingPage.replaceChildren(renderPageSkeleton());
-            pendingPage.setAttribute('aria-busy', 'true');
+            showPageSkeleton(pendingPage, retainedRouteTabs);
           }
           void rendered.then(replacePage).catch(() => {
             if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
@@ -1150,8 +1207,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       };
       if (deferPopulation) {
         populationDeferred = true;
-        pendingPage.replaceChildren(renderPageSkeleton());
-        pendingPage.setAttribute('aria-busy', 'true');
+        showPageSkeleton(pendingPage, retainedRouteTabs);
         schedulePopulation(populate);
       } else {
         populate();
