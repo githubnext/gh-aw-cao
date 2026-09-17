@@ -39,7 +39,7 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
     "cao-evolution-efficiency",
     "cao-evolution-integrity",
     "cao-evolution-reliability",
-    "dependabot-release-train-updater",
+    "dependabot-update-planner",
     "dependabot",
     "optimization-ai-credit-auditor",
     "optimization-ai-credit-optimizer",

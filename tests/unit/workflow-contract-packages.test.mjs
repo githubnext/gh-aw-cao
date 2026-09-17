@@ -322,8 +322,8 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
     .replaceAll("<target-owner>", "acme")
     .replaceAll("<target-repository>", "service")
     .replaceAll("<package-slug>", "dependabot")
-    .replaceAll("<worker-slug>", "release-train-updater")
-    .replaceAll("<worker-workflow-slug>", "dependabot-release-train-updater"));
+    .replaceAll("<worker-slug>", "update-planner")
+    .replaceAll("<worker-workflow-slug>", "dependabot-update-planner"));
   assert.deepEqual(initialPolicy, {
     version: 1,
     "gh-aw-version": ghAwVersion,
@@ -335,8 +335,8 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
       packages: {
         dependabot: {
           workers: {
-            "release-train-updater": {
-              workflow: "dependabot-release-train-updater",
+            "update-planner": {
+              workflow: "dependabot-update-planner",
             },
           },
         },

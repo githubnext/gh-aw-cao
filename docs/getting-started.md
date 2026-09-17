@@ -117,8 +117,8 @@ Create `.github/workflows/cao.json` with the target owner and package. The omitt
 		"packages": {
 			"dependabot": {
 				"workers": {
-					"release-train-updater": {
-						"workflow": "dependabot-release-train-updater"
+					"update-planner": {
+						"workflow": "dependabot-update-planner"
 					}
 				}
 			}

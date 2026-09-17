@@ -27,8 +27,8 @@ export function controlPolicy({
           ...packagePolicy,
           ...(workerPolicy === null ? {} : {
             workers: {
-              "release-train-updater": {
-                workflow: "dependabot-release-train-updater",
+              "update-planner": {
+                workflow: "dependabot-update-planner",
                 ...workerPolicy,
               },
             },
@@ -44,7 +44,7 @@ export function controlEnvironment(overrides = {}) {
     ...process.env,
     BUNDLE: "dependabot",
     ROLE: "worker",
-    WORKER: "release-train-updater",
+    WORKER: "update-planner",
     TARGET_REPO: "acme/target",
     REQUESTED_MODE: "review",
     REQUESTED_MAX_REPOS: "",

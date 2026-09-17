@@ -1385,8 +1385,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         'agent-assignments': {
           source: 'agent-assignments',
           rows: [{
-            'assignment-id': 'assignment:release-train-updater:74',
-            'agent-name': 'Release train updater',
+            'assignment-id': 'assignment:update-planner:74',
+            'agent-name': 'Dependabot update planner',
             'agent-state': 'waiting',
             objective: 'Update the Dependabot release train',
             'handoff-state': 'waiting-for-review',

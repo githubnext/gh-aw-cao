@@ -23,7 +23,7 @@ case "$BUNDLE" in
     ;;
   dependabot)
     workflow_file=dependabot.lock.yml
-    worker_files=(dependabot-release-train-updater.lock.yml)
+    worker_files=(dependabot-update-planner.lock.yml)
     ;;
   eu-cra-compliance)
     workflow_file=eu-cra-compliance.lock.yml

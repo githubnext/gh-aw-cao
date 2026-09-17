@@ -72,8 +72,8 @@ const minimalPolicy = JSON.stringify({
         mode: "live",
         "max-repositories": 8,
         workers: {
-          "release-train-updater": {
-            workflow: "dependabot-release-train-updater",
+          "update-planner": {
+            workflow: "dependabot-update-planner",
             "max-mode": "live",
           },
         },
@@ -199,8 +199,8 @@ test("control policy applies schema defaults and package values", () => {
   assert.equal(result.output.rollout_percent, 100);
   assert.equal(result.output.monthly_ai_credit_budget, 0);
   assert.deepEqual(result.output.worker_policies, {
-    "dependabot-release-train-updater": {
-      worker: "release-train-updater",
+    "dependabot-update-planner": {
+      worker: "update-planner",
       enabled: true,
       max_mode: "live",
     },
@@ -226,8 +226,8 @@ test("control policy exposes scope and publishing defaults to deterministic add-
         icon: null,
         deploy: true,
         worker_policies: {
-          "dependabot-release-train-updater": {
-            worker: "release-train-updater",
+          "dependabot-update-planner": {
+            worker: "update-planner",
             enabled: true,
             max_mode: "live",
           },
@@ -319,15 +319,15 @@ test("control policy validates and exposes package deployment settings", () => {
 
 test("control policy validates config-defined worker workflow identities", () => {
   const missingWorkflow = JSON.parse(minimalPolicy);
-  delete missingWorkflow["control-plane"].packages.dependabot.workers["release-train-updater"].workflow;
+  delete missingWorkflow["control-plane"].packages.dependabot.workers["update-planner"].workflow;
   const duplicateWorkflow = JSON.parse(minimalPolicy);
   duplicateWorkflow["control-plane"].packages.dependabot.workers.secondary = {
-    workflow: "dependabot-release-train-updater",
+    workflow: "dependabot-update-planner",
   };
 
   const missingResult = validate(JSON.stringify(missingWorkflow));
   assert.notEqual(missingResult.status, 0);
-  assert.match(missingResult.stderr, /workers\.release-train-updater\.workflow has an invalid value/);
+  assert.match(missingResult.stderr, /workers\.update-planner\.workflow has an invalid value/);
 
   const duplicateResult = validate(JSON.stringify(duplicateWorkflow));
   assert.notEqual(duplicateResult.status, 0);
@@ -346,18 +346,18 @@ test("control policy disables packages by absence and requires declared workers"
   const absentPackage = effective(minimalPolicy, { packageName: "optimization" });
   const declaredWorker = effective(minimalPolicy, {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
     packageName: "dependabot",
   });
   const policyWithoutWorker = JSON.parse(minimalPolicy);
   delete policyWithoutWorker["control-plane"].packages.dependabot.workers;
   const undeclaredWorker = effective(JSON.stringify(policyWithoutWorker), {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
   });
   const disabledWorker = effective(minimalPolicy.replace('"max-mode":"live"', '"enabled":false'), {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
   });
   const disabledWorkerOrchestrator = effective(
     minimalPolicy.replace('"max-mode":"live"', '"enabled":false'),
@@ -366,15 +366,15 @@ test("control policy disables packages by absence and requires declared workers"
   disabledPackageWithoutWorker["control-plane"].packages.dependabot = { enabled: false };
   const disabledPackageWorker = effective(JSON.stringify(disabledPackageWithoutWorker), {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
   });
 
   assert.equal(absentPackage.output.reason, "package-undeclared");
   assert.equal(declaredWorker.output.authorized, true);
   assert.notEqual(undeclaredWorker.status, 0);
-  assert.match(undeclaredWorker.stderr, /unknown worker: dependabot\/release-train-updater/);
+  assert.match(undeclaredWorker.stderr, /unknown worker: dependabot\/update-planner/);
   assert.equal(
-    disabledWorkerOrchestrator.output.worker_policies["dependabot-release-train-updater"].enabled,
+    disabledWorkerOrchestrator.output.worker_policies["dependabot-update-planner"].enabled,
     false,
   );
   assert.equal(disabledWorker.output.reason, "worker-disabled");
@@ -384,17 +384,17 @@ test("control policy disables packages by absence and requires declared workers"
 test("control policy intersects package mode, dispatch request, and worker ceiling", () => {
   const reviewRequest = effective(minimalPolicy, {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
     requestedMode: "review",
   });
   const reviewCeilingPolicy = minimalPolicy.replace('"max-mode":"live"', '"max-mode":"review"');
   const reviewCeiling = effective(reviewCeilingPolicy, {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
   });
   const widening = effective(reviewCeilingPolicy, {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
     requestedMode: "live",
   });
 
@@ -415,8 +415,8 @@ test("workers inherit the resolved mode when max-mode is omitted", () => {
           mode: "review",
           targets: { "acme/payments-api": { mode: "live" } },
           workers: {
-            "release-train-updater": {
-              workflow: "dependabot-release-train-updater",
+            "update-planner": {
+              workflow: "dependabot-update-planner",
             },
           },
         },
@@ -426,12 +426,12 @@ test("workers inherit the resolved mode when max-mode is omitted", () => {
 
   const liveWorker = effective(policy, {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
     targetRepository: "acme/payments-api",
   });
   const reviewWorker = effective(policy, {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
     targetRepository: "acme/storefront",
   });
 
@@ -455,8 +455,8 @@ test("control policy resolves exact package target modes", () => {
             "acme/payments-api": { mode: "live" },
           },
           workers: {
-            "release-train-updater": {
-              workflow: "dependabot-release-train-updater",
+            "update-planner": {
+              workflow: "dependabot-update-planner",
               "max-mode": "live",
             },
           },
@@ -469,12 +469,12 @@ test("control policy resolves exact package target modes", () => {
   const liveTarget = effective(policy, { targetRepository: "ACME/payments-api" });
   const liveWorker = effective(policy, {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
     targetRepository: "acme/payments-api",
   });
   const reviewCeilingWorker = effective(policy.replace('"max-mode":"live"', '"max-mode":"review"'), {
     role: "worker",
-    worker: "release-train-updater",
+    worker: "update-planner",
     targetRepository: "acme/payments-api",
   });
   const narrowedTarget = effective(policy, {

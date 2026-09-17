@@ -65,8 +65,8 @@
         "icon": "dependabot",
         "mode": "live",
         "workers": {
-          "release-train-updater": {
-            "workflow": "dependabot-release-train-updater"
+          "update-planner": {
+            "workflow": "dependabot-update-planner"
           }
         }
       },

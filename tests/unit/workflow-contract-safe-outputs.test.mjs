@@ -83,7 +83,7 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
     const issue = safeOutputs["create-issue"];
     if (issue) {
       assert.equal(issue["deduplicate-by-title"], true, name);
-      if (name === "dependabot-release-train-updater.md") {
+      if (name === "dependabot-update-planner.md") {
         assert.equal(issue.expires, undefined, `${name} keeps one durable issue across refreshes`);
       } else {
         assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
@@ -115,7 +115,7 @@ test("self-care pages health worker creates a fix PR instead of a report issue",
 });
 
 test("Dependabot worker maintains one agent-ready issue and never writes pull requests", () => {
-  const source = workflow("dependabot-release-train-updater.md");
+  const source = workflow("dependabot-update-planner.md");
   const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
   assert.ok(frontmatter, "Dependabot worker must have frontmatter");
   const outputs = parse(frontmatter)["safe-outputs"];
@@ -132,6 +132,11 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
   assert.match(source, /Dependabot update plan refreshed\./);
   assert.match(source, /<summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(source, /complete every unchecked item/);
+  assert.match(source, /repo-memory:/);
+  assert.match(source, /issue-index\/<safe-output-owner>/);
+  assert.match(source, /Do not call `search_issues`/);
+  assert.match(source, /target\/\.github\/dependabot\.md/);
+  assert.match(source, /Repository guidance/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
 

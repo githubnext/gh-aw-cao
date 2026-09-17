@@ -3,12 +3,12 @@
   "dashboard": {
     "id": "dependabot-dashboard",
     "title": "Dependabot",
-    "description": "Track Dependabot plan runs, agent-ready repository issues, and validated plan outcomes.",
+    "description": "See whether Dependabot planning works, what it produced, and whether people or coding agents consume its issues.",
     "repository": "githubnext/gh-aw-cao",
     "queries": [
       {
         "name": "dependabot-run-observations",
-        "intent": "Show Dependabot orchestrator and release-train worker runs so operators can verify activation and investigate execution failures.",
+        "intent": "Show Dependabot orchestrator and update-planner runs so operators can verify activation and investigate execution failures.",
         "from": "runs",
         "filter": {
           "predicates": [
@@ -16,7 +16,7 @@
               "field": "workflow",
               "in": [
                 ".github/workflows/dependabot.md",
-                ".github/workflows/dependabot-release-train-updater.md"
+                ".github/workflows/dependabot-update-planner.md"
               ]
             }
           ]
@@ -29,8 +29,8 @@
         ]
       },
       {
-        "name": "dependabot-release-train-outcomes",
-        "intent": "List retained Dependabot plan issues so maintainers can inspect their disposition and repository evidence.",
+        "name": "dependabot-update-planner-outcomes",
+        "intent": "Show the durable plan issue produced for each repository so operators can inspect the concrete output.",
         "from": "outcomes",
         "filter": {
           "predicates": [
@@ -48,14 +48,14 @@
         ]
       },
       {
-        "name": "dependabot-resolution-attainment",
-        "intent": "Show validated observations for agent-ready Dependabot plan issues without treating missing or immature evidence as zero.",
+        "name": "dependabot-plan-consumption",
+        "intent": "Show whether each durable Dependabot plan issue was assigned, discussed, progressed, linked to a pull request, or closed without treating missing or immature evidence as zero.",
         "from": "operational-values",
         "filter": {
           "predicates": [
             {
               "field": "workflow",
-              "equals": ".github/workflows/dependabot-release-train-updater.md"
+              "equals": ".github/workflows/dependabot-update-planner.md"
             }
           ]
         },
@@ -72,12 +72,13 @@
         "id": "dependabot-dashboard",
         "kind": "custom",
         "title": "Dependabot",
-        "description": "Track Dependabot plan runs, agent-ready repository issues, and validated plan outcomes.",
+        "description": "See whether Dependabot planning works, what it produced, and whether people or coding agents consume its issues.",
         "icon": "dependabot",
         "views": [
           {
             "id": "dependabot-runs",
-            "title": "Release-train runs by conclusion",
+            "title": "Does Dependabot work?",
+            "description": "Orchestrator and update-planner conclusions over the last 30 days.",
             "disclosure": "essential",
             "data": {
               "source": "dependabot-run-observations",
@@ -87,7 +88,7 @@
               "filters": {
                 "workflow": [
                   ".github/workflows/dependabot.md",
-                  ".github/workflows/dependabot-release-train-updater.md"
+                  ".github/workflows/dependabot-update-planner.md"
                 ]
               }
             },
@@ -108,11 +109,11 @@
           },
           {
             "id": "dependabot-outcomes",
-            "title": "Dependency update plans",
+            "title": "What did Dependabot produce?",
             "description": "Each repository keeps one human-reviewed issue with a complete checklist for an assigned coding agent.",
             "disclosure": "essential",
             "data": {
-              "source": "dependabot-release-train-outcomes",
+              "source": "dependabot-update-planner-outcomes",
               "filters": {
                 "package": [
                   "dependabot"
@@ -174,14 +175,14 @@
           },
           {
             "id": "dependabot-attainment",
-            "disclosure-label": "Validated resolution evidence",
-            "description": "Each opportunity is an agent-ready Dependabot plan issue; validated outcome evidence matures after 14 days.",
+            "disclosure-label": "Are plan issues being consumed?",
+            "description": "Consumption means assignment, outside participation, checklist progress, a linked pull request, or closure. Unconsumed issues mature after 14 days; missing evidence remains unknown.",
             "disclosure": "supplemental",
             "data": {
-              "source": "dependabot-resolution-attainment",
+              "source": "dependabot-plan-consumption",
               "filters": {
                 "workflow": [
-                  ".github/workflows/dependabot-release-train-updater.md"
+                  ".github/workflows/dependabot-update-planner.md"
                 ]
               },
               "limit": 50
@@ -204,12 +205,12 @@
                 {
                   "field": "operational-case",
                   "type": "nominal",
-                  "title": "Opportunity"
+                  "title": "Plan issue"
                 },
                 {
                   "field": "operational-value",
                   "type": "quantitative",
-                  "title": "Validated resolution share"
+                  "title": "Consumed"
                 },
                 {
                   "field": "maturity-status",
@@ -228,17 +229,17 @@
           },
           {
             "id": "dependabot-value-trend",
-            "title": "Validated resolution trend",
-            "description": "Mean attainment groups only the release-train evaluator definition and does not imply causal impact.",
+            "title": "Plan issue consumption trend",
+            "description": "Mean consumption across mature plan issues; interim and missing evidence is not treated as zero.",
             "disclosure": "essential",
             "data": {
-              "source": "dependabot-resolution-attainment",
+              "source": "dependabot-plan-consumption",
               "time": {
                 "range": "90d"
               },
               "filters": {
                 "workflow": [
-                  ".github/workflows/dependabot-release-train-updater.md"
+                  ".github/workflows/dependabot-update-planner.md"
                 ]
               }
             },

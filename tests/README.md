@@ -152,7 +152,7 @@ Compilation checks prove the source policy reaches the generated GitHub Actions 
 | --- | --- | --- |
 | 🟢 Pass | Dependabot orchestrator workflow | Mode, rollout percentage, and `workflow_dispatch` inputs compile. |
 | 🟢 Pass | AW Optimization orchestrator workflow | Mode, rollout percentage, and `workflow_dispatch` inputs compile. |
-| 🟢 Pass | Release Train Updater | Standard dispatch envelope and safe output settings compile. |
+| 🟢 Pass | Dependabot / Update Planner | Standard dispatch envelope and safe output settings compile. |
 | 🟢 Pass | AI Credit Auditor | Standard dispatch envelope and safe output settings compile. |
 | 🟢 Pass | AI Credit Optimizer | Standard dispatch envelope and safe output settings compile. |
 | 🟢 Pass | All worker workflow safe outputs | Review/live routing vocabulary checked. |

@@ -16,7 +16,7 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     ["root", "CAO Evolution", "dashboard", "Dependabot"],
   );
   assert.deepEqual(
-    names([".github/workflows/graders/dependabot-release-train-updater-operational-value.sh"]),
+    names([".github/workflows/graders/dependabot-update-planner-operational-value.sh"]),
     ["root", "Dependabot"],
   );
   assert.deepEqual(
@@ -28,7 +28,7 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     ["root"],
   );
   assert.deepEqual(
-    names([".github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh"]),
+    names([".github/aw/dependabot/graders/dependabot-update-planner-operational-value.sh"]),
     [],
   );
   assert.deepEqual(
@@ -40,7 +40,7 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     [],
   );
   assert.deepEqual(
-    names(["dependabot/.github/graders/dependabot-release-train-updater-operational-value.sh"]),
+    names(["dependabot/.github/graders/dependabot-update-planner-operational-value.sh"]),
     ["Dependabot"],
   );
   assert.deepEqual(

@@ -64,7 +64,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "cao-evolution-integrity.lock.yml",
       "cao-evolution-reliability.lock.yml",
       "cao-evolution.lock.yml",
-      "dependabot-release-train-updater.lock.yml",
+      "dependabot-update-planner.lock.yml",
       "dependabot.lock.yml",
       "eslint-rules-applier.lock.yml",
       "eslint-rules-inventory.lock.yml",
@@ -207,7 +207,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["cao-evolution-efficiency.lock.yml", ["cao-evolution", "efficiency"]],
       ["cao-evolution-integrity.lock.yml", ["cao-evolution", "integrity"]],
       ["cao-evolution-reliability.lock.yml", ["cao-evolution", "reliability"]],
-      ["dependabot-release-train-updater.lock.yml", ["dependabot", "release-train-updater"]],
+      ["dependabot-update-planner.lock.yml", ["dependabot", "update-planner"]],
       ["eslint-rules-applier.lock.yml", ["eslint-rules", "applier"]],
       ["eslint-rules-inventory.lock.yml", ["eslint-rules", "inventory"]],
       ["eslint-rules-librarian.lock.yml", ["eslint-rules", "librarian"]],
@@ -253,7 +253,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /GH_AW_SAFE_OUTPUTS_CONFIG:/);
     }
 
-    const generatedDependabotPlan = workflow("dependabot-release-train-updater.lock.yml", generatedDirectory);
+    const generatedDependabotPlan = workflow("dependabot-update-planner.lock.yml", generatedDirectory);
     assert.match(generatedDependabotPlan, /create_issue/);
     assert.match(generatedDependabotPlan, /update_issue/);
     assert.match(generatedDependabotPlan, /add_comment/);

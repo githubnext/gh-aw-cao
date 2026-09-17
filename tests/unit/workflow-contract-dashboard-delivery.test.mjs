@@ -507,7 +507,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
       workers: bundle.workers.map((worker) => worker.id),
     })), [
       { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency", "cao-evolution-catalog-advisor", "cao-evolution-failures-investigator", "cao-evolution-compiler-security"] },
-      { id: "dependabot", workers: ["dependabot-release-train-updater"] },
+      { id: "dependabot", workers: ["dependabot-update-planner"] },
       {
         id: "eslint-rules",
         workers: [
