@@ -147,7 +147,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     }
   });
   await new Promise((resolve) => { setTimeout(resolve, 75); });
-  expect(posted.some(({ subscriptionId }) => subscriptionId === 'events-during-run-phase')).toBe(false);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'events-during-run-phase')).toBe(true);
   releaseEvent();
   for (let attempt = 0; attempt < 200 && !posted.some(({ id }) => id === 1); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });

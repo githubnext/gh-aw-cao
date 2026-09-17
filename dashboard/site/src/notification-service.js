@@ -101,11 +101,13 @@ function normalizeNotification(input) {
     ? Number(candidate.duration)
     : DEFAULT_DURATION;
   const actionCandidates = Array.isArray(candidate.actions) ? candidate.actions : [candidate.action];
-  const actions = actionCandidates.filter((action) =>
+  const actions = actionCandidates.flatMap((action) =>
     action
       && typeof action.label === 'string'
       && Boolean(action.label.trim())
       && typeof action.run === 'function'
+      ? [action]
+      : []
   );
   const dismissOnCollapse = candidate.dismissOnCollapse === true;
   const details = Array.isArray(candidate.details)

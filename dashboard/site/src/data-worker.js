@@ -438,12 +438,15 @@ export function processDataRequest(request, signal) {
       const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       if (!activity) progress.start();
       let changed = false;
-      /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */
+      /** @type {Record<string, unknown>} */
       let sources = {};
       if (typeof request.id === 'number') {
         inFlightDashboardSyncs.set(request.id, async () => {
           progress.log('Refreshing active dashboard queries by request.');
-          await refreshDashboardSubscriptions(sources, false);
+          await refreshDashboardSubscriptions(
+            /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+            false
+          );
         });
       }
       try {

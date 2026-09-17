@@ -116,9 +116,13 @@ describe('dashboard notification service', () => {
       document.querySelectorAll('.dashboard-notification-action')
     );
 
-    expect(document.querySelector('.dashboard-notification-actions')?.hidden).toBe(true);
+    expect(/** @type {HTMLElement | null} */ (
+      document.querySelector('.dashboard-notification-actions')
+    )?.hidden).toBe(true);
     toggle.click();
-    expect(document.querySelector('.dashboard-notification-actions')?.hidden).toBe(false);
+    expect(/** @type {HTMLElement | null} */ (
+      document.querySelector('.dashboard-notification-actions')
+    )?.hidden).toBe(false);
     expect(actions).toHaveLength(2);
     expect(actions[0].parentElement?.parentElement?.classList.contains('dashboard-notification-content')).toBe(true);
     actions[1].click();
