@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
 import { adaptCachedGhAwJsonl } from '../../src/data/adapters/gh-aw-logs.js';
 import { normalize } from '../../src/data/normalize/index.js';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
 
 beforeEach(async () => {
   await new Promise((resolve, reject) => {
@@ -53,6 +53,8 @@ it('publishes run queries while event ingestion continues', async () => {
   const shardStem = `gh-aw-logs-1000-a-${'c'.repeat(64)}-${'d'.repeat(16)}.json`;
   const runsName = `gh-aw-logs-runs/${shardStem}`;
   const eventsName = `gh-aw-logs-events/${shardStem}`;
+  /** @type {string[]} */
+  const downloadedShards = [];
   let eventDownloaded = false;
   /** @type {() => void} */
   let releaseEvent = () => {};
@@ -66,10 +68,12 @@ it('publishes run queries while event ingestion continues', async () => {
       return Response.json({ [runsName]: 'a'.repeat(64), [eventsName]: 'b'.repeat(64) });
     }
     if (url.endsWith(`/${runsName}`)) {
+      if (init?.method !== 'HEAD') downloadedShards.push(url);
       return init?.method === 'HEAD'
         ? new Response(null, { headers: { 'content-length': '1' } })
         : Response.json(normalized('runs', { ...batch, jobs: [], sessions: [], events: [] }));
     }
+    if (init?.method !== 'HEAD') downloadedShards.push(url);
     eventDownloaded ||= init?.method !== 'HEAD';
     if (init?.method !== 'HEAD') await eventReady;
     return init?.method === 'HEAD'
@@ -143,8 +147,22 @@ it('publishes run queries while event ingestion continues', async () => {
   }
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'events')).toBeDefined();
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'events-during-run-phase')).toBeDefined();
+  expect((await readTransactions(indexedDB))
+    .filter(({ kind }) => kind === 'ingest-normalized-json')
+    .map(({ payloadScope, payloadHash }) => ({ payloadScope, payloadHash })))
+    .toEqual(expect.arrayContaining([
+      {
+        payloadScope: `https://dashboard.example/${runsName}`,
+        payloadHash: 'a'.repeat(64)
+      },
+      {
+        payloadScope: `https://dashboard.example/${eventsName}`,
+        payloadHash: 'b'.repeat(64)
+      }
+    ]));
 
   posted.length = 0;
+  downloadedShards.length = 0;
   listeners.get('message')?.({
     data: {
       id: 2,
@@ -159,4 +177,5 @@ it('publishes run queries while event ingestion continues', async () => {
   }
   await new Promise((resolve) => { setTimeout(resolve, 75); });
   expect(posted.filter(({ subscriptionId }) => subscriptionId === 'runs')).toHaveLength(1);
+  expect(downloadedShards).toEqual([]);
 });
