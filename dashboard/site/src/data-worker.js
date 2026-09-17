@@ -235,7 +235,8 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
       for (const id of ids) {
         const subscription = dashboardSubscriptions.get(id);
         if (!subscription) continue;
-        const sourceNames = dashboard.runsOnly
+        const partial = dashboard.runsOnly && subscription.emitted;
+        const sourceNames = partial
           ? runPhaseSourceNames(subscription)
           : subscription.sourceNames;
         if (sourceNames.length === 0) continue;
@@ -259,7 +260,7 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
             subscription.emitted = true;
             subscription.revision = dashboard.revision;
             subscription.pagination = pagination;
-            workerScope?.postMessage({ subscriptionId: id, data, partial: dashboard.runsOnly });
+            workerScope?.postMessage({ subscriptionId: id, data, partial });
           }
         } catch (error) {
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
@@ -725,6 +726,14 @@ export function processDataRequest(request, signal) {
       } finally {
         progress.complete();
         dashboardIngestionCount = Math.max(0, dashboardIngestionCount - 1);
+        if (dashboardIngestionCount === 0 && liveDashboard?.runsOnly) {
+          liveDashboard = {
+            ...liveDashboard,
+            revision: liveDashboard.revision + 1,
+            runsOnly: false
+          };
+          scheduleDashboardSubscriptions();
+        }
         if (dashboardIngestionCount === 0) scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
       }
     })();

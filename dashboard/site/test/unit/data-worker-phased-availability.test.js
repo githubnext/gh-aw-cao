@@ -135,13 +135,12 @@ it('publishes run queries while event ingestion continues', async () => {
     data: { 'run-summary': { rows: [{ run: '303' }] } }
   });
   expect(posted.find(({ subscriptionId }) => subscriptionId === 'mixed')).toMatchObject({
-    partial: true,
+    partial: false,
     data: {
-      'mixed-summary': { rows: [{ run: '303' }] }
+      'mixed-summary': { rows: [{ run: '303' }] },
+      'event-summary': { rows: [] }
     }
   });
-  expect(posted.find(({ subscriptionId }) => subscriptionId === 'mixed')?.data)
-    .not.toHaveProperty('event-summary');
   expect(posted.filter(({ subscriptionId }) => subscriptionId === 'runs')).toHaveLength(1);
   expect(posted.filter(({ subscriptionId }) => subscriptionId === 'mixed')).toHaveLength(1);
   expect(eventDownloaded).toBe(true);
