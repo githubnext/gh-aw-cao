@@ -722,7 +722,7 @@ function remoteWorkflowRow(workflow, generatedAt, latestGhAwVersion) {
   return {
     organization,
     repository,
-    workflow: workflow.path,
+    workflow: canonicalWorkflowPath(workflow.path),
     "workflow-name": workflow.name,
     "workflow-role": "standalone",
     "workflow-active": active,

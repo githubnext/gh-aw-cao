@@ -208,18 +208,21 @@ test("discovers public workflow registry metadata and disabled state", async () 
     });
     assert.deepEqual(sources.workflows.rows.map((row) => ({
       repository: `${row.organization}/${row.repository}`,
+      workflow: row.workflow,
       installed: row["gh-aw-version"],
       latest: row["gh-aw-current-version"],
       state: row["gh-aw-update-state"],
     })), [
       {
         repository: "acme/app",
+        workflow: ".github/workflows/agent.md",
         installed: "v0.89.0",
         latest: "v0.89.0",
         state: "up-to-date",
       },
       {
         repository: "acme/control",
+        workflow: ".github/workflows/control-agent.md",
         installed: "v0.88.0",
         latest: "v0.89.0",
         state: "update-available",
