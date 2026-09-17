@@ -63,7 +63,7 @@
       },
       "dependabot": {
         "icon": "dependabot",
-        "mode": "live",
+        "mode": "review",
         "max-repositories": 1,
         "rollout-percent": 100,
         "targets": {

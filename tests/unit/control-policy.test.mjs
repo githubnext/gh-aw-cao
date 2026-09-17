@@ -128,7 +128,7 @@ test("control policy requires a gh-aw compiler version for control planes", () =
   assert.match(result.stderr, /gh-aw-version is required for a control plane/);
 });
 
-test("checked-in control policy selects six repositories with review Dependabot and local SelfCare authority", () => {
+test("checked-in control policy keeps Dependabot scoped with live gh-aw target and local SelfCare authority", () => {
   const policy = parsePolicy(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const repositories = [
     "github/gh-aw",
@@ -143,7 +143,26 @@ test("checked-in control policy selects six repositories with review Dependabot 
   assert.equal(policy["control-plane"].defaults["max-repositories"], 6);
   assert.equal(policy["control-plane"].packages.dashboard.deploy, false);
 
-  for (const targetRepository of repositories) {
+  const dependabotPackage = policy["control-plane"].packages.dependabot;
+  assert.equal(dependabotPackage.mode, "review");
+  assert.equal(dependabotPackage["max-repositories"], 1);
+  assert.equal(dependabotPackage["rollout-percent"], 100);
+  assert.deepEqual(dependabotPackage.targets, {
+    "github/gh-aw": {
+      mode: "live",
+    },
+  });
+
+  const dependabotGhAw = effectivePolicy(policy, {
+    packageName: "dependabot",
+    role: "orchestrator",
+    controlRepository: "githubnext/gh-aw-cao",
+    targetRepository: "github/gh-aw",
+  });
+  assert.equal(dependabotGhAw.safe_output_mode, "live");
+  assert.equal(dependabotGhAw.max_repositories, 1);
+
+  for (const targetRepository of repositories.filter((repository) => repository !== "github/gh-aw")) {
     const effective = effectivePolicy(policy, {
       packageName: "dependabot",
       role: "orchestrator",
@@ -151,7 +170,7 @@ test("checked-in control policy selects six repositories with review Dependabot 
       targetRepository,
     });
     assert.equal(effective.safe_output_mode, "review");
-    assert.equal(effective.max_repositories, 6);
+    assert.equal(effective.max_repositories, 1);
   }
 
   const selfCare = effectivePolicy(policy, {
