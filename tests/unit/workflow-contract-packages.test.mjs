@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readlinkSync, readdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
@@ -309,6 +310,56 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
   assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
   assert.match(admission, /Bash installer installs the root CAO package and creates the consumer-owned policy/i);
+});
+
+test("root package CAO helper stays portable across POSIX-family shells", () => {
+  const helper = readFileSync(join(root, "cao.sh"), "utf8");
+  assert.match(helper, /^#!\/bin\/sh/);
+  assert.doesNotMatch(helper, /\bBASH_SOURCE\b|\[\[|pipefail/);
+
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "cao-helper-shell-"));
+  try {
+    const helperPath = join(temporaryRoot, "cao.sh");
+    const activityDirectory = join(temporaryRoot, "activity");
+    const binDirectory = join(temporaryRoot, "bin");
+    const nodeArgsPath = join(temporaryRoot, "node-args.txt");
+    mkdirSync(activityDirectory);
+    mkdirSync(binDirectory);
+    writeFileSync(helperPath, helper);
+    writeFileSync(join(activityDirectory, "cao.mjs"), "");
+    writeFileSync(join(binDirectory, "node"), `#!/bin/sh
+printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
+`);
+    chmodSync(join(binDirectory, "node"), 0o755);
+
+    const shells = ["sh", "bash", "zsh"].filter((shell) => {
+      try {
+        execFileSync("sh", ["-c", `command -v "${shell}"`], { stdio: "ignore" });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    assert.ok(shells.includes("sh"));
+
+    for (const shell of shells) {
+      execFileSync(shell, [helperPath, "status", "with spaces"], {
+        cwd: temporaryRoot,
+        env: {
+          ...process.env,
+          CAO_NODE_ARGS: nodeArgsPath,
+          PATH: `${binDirectory}:${process.env.PATH}`,
+        },
+      });
+      assert.deepEqual(
+        readFileSync(nodeArgsPath, "utf8").trimEnd().split("\n"),
+        [join(temporaryRoot, "activity", "cao.mjs"), "status", "with spaces"],
+        shell,
+      );
+    }
+  } finally {
+    rmSync(temporaryRoot, { force: true, recursive: true });
+  }
 });
 
 test("root package composes its operational packages through manifests", () => {
