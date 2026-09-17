@@ -3343,7 +3343,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
   await expect(page.locator('[data-nav-page-id="packages"]')).toHaveAttribute('aria-current', 'page');
   const packageNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
-  await expect(packageNavigation).toContainText('OverviewWorkflowsRuns');
+  await expect(packageNavigation).toContainText('OverviewInsightsWorkflowsRunsIssues');
   await expect(packageNavigation).toHaveCSS('display', 'flex');
   await expect(packageNavigation).toHaveCSS('border-bottom-style', 'solid');
   const currentPackageLink = packageNavigation.getByRole('link', { name: 'Overview' });
@@ -3357,6 +3357,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
     return colors[0] === colors[1];
   })).toBe(true);
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
+  await packageNavigation.getByRole('link', { name: 'Insights' }).click();
+  await expect(packageNavigation.getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-page-id="package-insights"] [data-view-id="package-audit-event-summary-buckets"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="package-insights"] [data-view-id="package-audit-events-table"]')).toBeVisible();
   await packageNavigation.getByRole('link', { name: 'Workflows' }).click();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
   await expect(packageNavigation.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
@@ -3383,6 +3387,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(packageRunsPage.locator('[data-view-id="package-failure-reason-distribution"] [data-chart-widget="pie"]')).toBeVisible();
   await packageRunsPage.getByText('All workflow runs', { exact: true }).click();
   await expect(packageRunsPage.locator('[data-view-id="package-run-table"] tbody tr')).toHaveCount(5);
+  await packageNavigation.getByRole('link', { name: 'Issues' }).click();
+  await expect(packageNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"]')).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(packageNavigation).toHaveCSS('display', 'grid');
