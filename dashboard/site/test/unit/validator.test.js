@@ -2221,6 +2221,8 @@ dashboard:
       kind: custom
       views:
         - id: primary-table
+          title: Primary table
+          disclosure: essential
           data: { source: runs }
           mark: table
           encoding:
