@@ -294,6 +294,18 @@ Include all current identified updates, even when they should not be applied tog
 
 Identify exact repository-declared validation commands for each checklist item. Prefer manifest and lockfile consistency, dependency resolution, targeted tests, type checks, lint, then broader checks. Do not claim a command passed because this planning worker did not apply the updates. Flag missing credentials, private registries, services, toolchains, and runtime verification as conditions the assigned agent must report rather than bypass.
 
+## Issue quality eval loop
+
+Before calling a safe-output tool, keep the draft private and run at most two review-and-revision passes. In each pass, answer each question with `YES` or `NO` from the draft and collected evidence:
+
+1. **Evidence fidelity:** Is every checklist item backed by current Dependabot evidence, and are its package, manifest, current version, target version, advisory, and pull request references mutually consistent?
+2. **Source of truth:** Does every task distinguish editable source files from generated, vendored, or compiled artifacts, name the owning source when known, and give the repository-declared regeneration command instead of asking for a hand edit?
+3. **Executable scope:** Does every task state the required change, relevant constraints or migration work, exact validation commands, and an observable completion condition without inventing unavailable evidence?
+4. **Safe grouping:** Are updates grouped only across a proven hard edge, with unrelated major or high-risk work kept in separate pull requests?
+5. **Agent handoff:** Does the `Agent prompt` agree with the checklist, execution order, blockers, source-of-truth mapping, and validation commands, without requiring the assigned agent to rediscover information already available to this planner?
+
+Revise the draft after each `NO`, then evaluate it again. Stop after all answers are `YES` or after the second pass. After the second pass, convert every unresolved factual or execution uncertainty into an explicit blocked checklist item with the evidence needed to unblock it; never fill a gap with a guess. Do not publish review answers or intermediate drafts.
+
 ## Plan issue contract
 
 The issue is the single durable Dependabot plan for the target repository. Its canonical unprefixed subject is `Dependency update plan for <owner>/<repository>`. Use that exact subject on every run so `deduplicate-by-title` remains effective. Begin the body with:
@@ -306,7 +318,7 @@ Then write the complete issue using this progressive-disclosure structure:
 
 1. Start directly with a short executive summary stating the total updates, security count, blocked count, and highest risk. Do not add a heading before it.
 2. Immediately add `**Action:** Assign this issue to Copilot or another coding agent to complete every unchecked item below, open the required pull request or pull requests, and report validation results on this issue.`
-3. Add `### Update checklist`. Create one unchecked task per current Dependabot-identified update. Each task must name the package or action, ecosystem, manifest path, current and target versions when known, update type, security severity when applicable, and its Dependabot alert or pull request link.
+3. Add `### Update checklist`. Create one unchecked task per current Dependabot-identified update. Each task must name the package or action, ecosystem, editable source manifest path, generated or compiled artifacts that must be regenerated rather than hand-edited, current and target versions when known, update type, security severity when applicable, its Dependabot alert or pull request link, required migration or constraint, exact validation commands, and an observable completion condition.
 4. Keep only the executive summary, action, and checklist visible. Put all supporting material in collapsed `<details><summary><b>...</b></summary>` blocks named `Execution order and grouping`, `Risk and migration notes`, `Validation commands`, `Blocked updates`, `Evidence`, `Agent prompt`, and `Control Plane`. Omit a block only when it has no content, except `Agent prompt`, which is always required.
 5. Use GitHub warning or caution callouts for blockers and high-risk updates. Do not use emoji severity markers.
 
@@ -319,8 +331,9 @@ The single `<details><summary><b>Agent prompt</b></summary> ... </details>` bloc
 - group only updates that share a manifest-resolution or test boundary, and use separate pull requests for unrelated major or high-risk updates;
 - update or supersede existing Dependabot pull requests without duplicating equivalent work;
 - use repository-declared package-manager and toolchain versions, update manifests and lockfiles together, and make only migration changes required by release notes, compilation, or tests;
+- verify each task against the current default branch before editing, follow the repository's source-to-generated-file relationship, and never hand-edit generated or compiled artifacts;
 - run the exact validation commands listed in the issue, never bypass protections or expose credentials, and stop and report any unresolved blocker;
-- update the checklist and report pull request links, commands run, results, limitations, and remaining work on the issue.
+- report stale or contradictory issue evidence instead of improvising, update the checklist, and report pull request links, commands run, results, limitations, and remaining work on the issue.
 
 End the agent prompt with the exact validation commands, not generic placeholders. Include rollback guidance and sensitive-surface review requirements in the relevant update tasks.
 

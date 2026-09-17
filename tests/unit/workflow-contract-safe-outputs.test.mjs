@@ -145,6 +145,11 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
   assert.match(source, /Repository guidance/);
   assert.match(source, /List open issues in `SAFE_OUTPUT_REPO` without requiring labels/);
   assert.match(source, /not all live targets allow this workflow to create missing labels/);
+  assert.match(source, /run at most two review-and-revision passes/);
+  assert.match(source, /\*\*Source of truth:\*\*/);
+  assert.match(source, /generated or compiled artifacts/);
+  assert.match(source, /convert every unresolved factual or execution uncertainty into an explicit blocked checklist item/);
+  assert.match(source, /verify each task against the current default branch before editing/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
 
