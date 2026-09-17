@@ -180,7 +180,7 @@ it('applies route scope after a declared query creates the route field', () => {
     }]
   };
   const payload = compileDashboardViewPayloadQueries(page, 'package-runs', {
-    routeParameters: { package: 'alpha' },
+    routeParameters: { package: 'beta' },
     queryContext: { filters: { mode: ['live'] } },
     queries: [{
       name: 'package-runs',
@@ -189,7 +189,8 @@ it('applies route scope after a declared query creates the route field', () => {
       select: [
         { field: 'run' },
         { field: 'declared-package', as: 'package' }
-      ]
+      ],
+      limit: 1
     }]
   });
   const results = executeDashboardQueries(payload.queries, {
@@ -204,7 +205,7 @@ it('applies route scope after a declared query creates the route field', () => {
     }
   }, payload.aliases);
 
-  expect(results[payload.aliases[0]].rows).toEqual([{ run: '1', package: 'alpha' }]);
+  expect(results[payload.aliases[0]].rows).toEqual([{ run: '3', package: 'beta' }]);
 });
 
 it('applies the selected horizon before derived repository totals aggregate runs', () => {

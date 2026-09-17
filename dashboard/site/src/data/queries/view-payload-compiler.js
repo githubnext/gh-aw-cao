@@ -163,6 +163,8 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
     const root = resolveQueryContext({
       ...definition,
       name: rootName,
+      'order-by': undefined,
+      limit: undefined,
       ...(rootPredicates.length > 0 ? { filter: { predicates: rootPredicates } } : { filter: undefined })
     }, queryTimeEnd(rootPredicates) ?? evaluatedAt);
     const outputPredicates = predicates.filter((predicate) => (
@@ -175,6 +177,9 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
       ...(outputPredicates.length > 0 ? { predicates: outputPredicates } : {}),
       ...(runtimeSearch ? { search: runtimeSearch } : {})
     };
+    const effectiveOrder = Array.isArray(orderBy) && orderBy.length > 0
+      ? orderBy
+      : Array.isArray(definition['order-by']) ? definition['order-by'] : undefined;
     return {
       replacesSource: true,
       dependencies: [root],
@@ -182,7 +187,8 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
         name: alias,
         from: rootName,
         ...(Object.keys(filter).length > 0 ? { filter } : {}),
-        ...(Array.isArray(orderBy) && orderBy.length > 0 ? { 'order-by': orderBy } : {})
+        ...(effectiveOrder ? { 'order-by': effectiveOrder } : {}),
+        ...(Number.isInteger(definition.limit) ? { limit: definition.limit } : {})
       }
     };
   }
