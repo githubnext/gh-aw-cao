@@ -373,12 +373,13 @@ describe('canonical dashboard view subscriptions', () => {
     /** @type {HTMLButtonElement} */ (
       document.querySelector('.dashboard-notification-action')
     ).click();
+    const rejection = expect(pending).rejects.toMatchObject({ name: 'DataProcessingCancelledError' });
 
     expect(document.querySelector('.dashboard-notification-message')?.textContent)
       .toBe('Data ingestion cancelled.');
     expect(document.querySelector('.dashboard-notification')).not.toBeNull();
     await vi.advanceTimersByTimeAsync(251);
-    await expect(pending).rejects.toMatchObject({ name: 'DataProcessingCancelledError' });
+    await rejection;
     expect(document.querySelector('.dashboard-notification')).not.toBeNull();
 
     toggle.click();
