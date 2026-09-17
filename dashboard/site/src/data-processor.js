@@ -44,6 +44,40 @@ const workerLoadingProgressListeners = new Set();
 /** @type {Set<string>} */
 const workerLoadingProgressOperations = new Set();
 
+/**
+ * Adds supported main-thread behavior to a serializable worker notification.
+ * @param {Record<string, unknown>} notification
+ * @param {string} id
+ * @param {ReturnType<typeof publishNotification>} handle
+ */
+function attachWorkerNotificationAction(notification, id, handle) {
+  const action = notification.action;
+  if (!action || typeof action !== 'object' || Array.isArray(action)
+      || action.operation !== 'cancel-data-ingestion') {
+    return notification;
+  }
+  const label = typeof action.label === 'string' && action.label.trim() ? action.label : 'Cancel';
+  return {
+    ...notification,
+    action: {
+      label,
+      placement: action.placement === 'details' ? 'details' : undefined,
+      run: () => {
+        if (!cancelDataProcessing('Data ingestion was cancelled.')) return;
+        handle.update({
+          ...notification,
+          message: 'Data ingestion cancelled.',
+          tone: 'warning',
+          action: undefined,
+          dismissOnCollapse: true,
+          duration: 0
+        });
+        workerNotificationHandles.delete(id);
+      }
+    }
+  };
+}
+
 /** @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state */
 function emitWorkerLoadingProgress(state) {
   for (const listener of workerLoadingProgressListeners) {
@@ -513,8 +547,17 @@ function getWorker() {
           }
         } else if (id) {
           const current = workerNotificationHandles.get(id);
-          if (current) current.update(notification);
-          else workerNotificationHandles.set(id, publishNotification(notification));
+          if (current) {
+            current.update(attachWorkerNotificationAction(notification, id, current));
+          } else {
+            /** @type {ReturnType<typeof publishNotification>} */
+            let handle;
+            handle = publishNotification(attachWorkerNotificationAction(notification, id, {
+              dismiss: () => handle.dismiss(),
+              update: (next) => handle.update(next)
+            }));
+            workerNotificationHandles.set(id, handle);
+          }
         } else {
           publishNotification(notification);
         }

@@ -7,7 +7,7 @@ let nextIngestionProgressId = 0;
 
 /**
  * Publishes a user-facing notification from the data worker.
- * @param {{ id?: string, message?: string, icon?: 'download', detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], dismiss?: boolean }} notification
+ * @param {{ id?: string, message?: string, icon?: 'download', detailsSubtitle?: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number, details?: string[], action?: { label: string, operation: 'cancel-data-ingestion', placement: 'details' }, dismiss?: boolean }} notification
  * @param {{ postMessage: (message: unknown) => void }} [target]
  */
 export function publishWorkerNotification(notification, target = self) {
@@ -66,6 +66,7 @@ export function startIngestionProgress(target = self) {
         icon: 'download',
         detailsSubtitle: 'Downloading and processing a local copy in this browser can take several minutes. Cached shards are reused.',
         details: snapshot.history,
+        action: { label: 'Cancel', operation: 'cancel-data-ingestion', placement: 'details' },
         tone: 'info',
         duration: 0
       }, target);

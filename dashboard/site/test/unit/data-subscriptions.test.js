@@ -347,4 +347,42 @@ describe('canonical dashboard view subscriptions', () => {
     expect(document.querySelector('.dashboard-notification')).toBeNull();
     unsubscribe();
   });
+
+  it('cancels ingestion from the expanded worker notification and retains it until collapse', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    document.body.replaceChildren();
+    const pending = processDashboardQueries([], {});
+    const worker = SubscriptionWorker.current;
+    if (!worker) throw new Error('Subscription worker was not created.');
+
+    worker.emit({
+      type: 'notification',
+      notification: {
+        id: 'ingestion-cancel',
+        message: 'Ingesting dashboard data.',
+        duration: 0,
+        details: ['Downloading data.'],
+        action: { label: 'Cancel', operation: 'cancel-data-ingestion', placement: 'details' }
+      }
+    });
+    const toggle = /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-toggle')
+    );
+    toggle.click();
+    /** @type {HTMLButtonElement} */ (
+      document.querySelector('.dashboard-notification-action')
+    ).click();
+
+    expect(document.querySelector('.dashboard-notification-message')?.textContent)
+      .toBe('Data ingestion cancelled.');
+    expect(document.querySelector('.dashboard-notification')).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(251);
+    await expect(pending).rejects.toMatchObject({ name: 'DataProcessingCancelledError' });
+    expect(document.querySelector('.dashboard-notification')).not.toBeNull();
+
+    toggle.click();
+    vi.advanceTimersByTime(180);
+    expect(document.querySelector('.dashboard-notification')).toBeNull();
+  });
 });
