@@ -197,16 +197,6 @@ jobs:
             echo "One or more repository log collections failed" >&2
             exit "$collection_exit_code"
           fi
-          if [[ -f optimization/collect-token-efficiency.sh ]]; then
-            token_efficiency_collector=optimization/collect-token-efficiency.sh
-          elif [[ -f .github/aw/optimization/collect-token-efficiency.sh ]]; then
-            token_efficiency_collector=.github/aw/optimization/collect-token-efficiency.sh
-          else
-            token_efficiency_collector=
-          fi
-          if [[ -n "$token_efficiency_collector" ]]; then
-            bash "$token_efficiency_collector"
-          fi
 
       - name: Generate phased activity shards
         env:

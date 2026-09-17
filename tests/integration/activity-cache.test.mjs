@@ -78,8 +78,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(collector, /--repo "\$target_repository"/);
   assert.match(collector, /--cached-logs "\$\{shard_prefix\}\*"/);
   assert.doesNotMatch(collector, /gh api|token-efficiency/);
-  assert.match(workflow, /optimization\/collect-token-efficiency\.sh/);
-  assert.match(workflow, /\.github\/aw\/optimization\/collect-token-efficiency\.sh/);
+  assert.doesNotMatch(workflow, /collect-token-efficiency\.sh/);
   assert.match(
     workflow,
     /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"/,
