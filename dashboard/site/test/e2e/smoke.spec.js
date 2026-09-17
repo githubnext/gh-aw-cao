@@ -97,6 +97,39 @@ test('back navigation follows every dashboard browser history entry', async ({ p
   await expect(back).toBeHidden();
 });
 
+test('mobile title bar keeps the dashboard subtitle adjacent to the page title', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async (presenterModuleUrl) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'mobile-title-dashboard',
+          title: 'gh-aw-cao',
+          repository: 'githubnext/gh-aw-cao',
+          pages: [
+            { id: 'overview', kind: 'custom', title: 'Overview', views: [], sections: [] }
+          ]
+        }
+      },
+      sources: {}
+    }));
+  }, buildPresenterModuleUrl());
+
+  const mobileHeader = page.locator('.mobile-page-header');
+  await expect(mobileHeader.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
+  await expect(mobileHeader.locator('.mobile-brand-name')).toHaveText('gh-aw-cao');
+
+  const titleGap = await mobileHeader.evaluate((element) => {
+    const title = element.querySelector('h1')?.getBoundingClientRect();
+    const subtitle = element.querySelector('.mobile-brand-name')?.getBoundingClientRect();
+    if (!title || !subtitle) return Number.POSITIVE_INFINITY;
+    return subtitle.top - title.bottom;
+  });
+  expect(titleGap).toBeLessThanOrEqual(2);
+});
+
 test('notifications move in at the lower right and center on mobile', async ({ page }) => {
   await page.setContent(`
     <style id="notification-styles"></style>

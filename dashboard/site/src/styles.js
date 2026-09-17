@@ -2105,8 +2105,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .sidebar-brand { display: none; }
   .mobile-page-header { min-width: 0; display: flex; flex: 1 1 auto; flex-direction: column; align-items: flex-start; justify-content: center; overflow: hidden; margin: 0 4px; }
   .mobile-brand-name { max-width: 100%; display: block; overflow: hidden; color: var(--muted); font-size: .75rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
-  .mobile-page-header .overview-header { width: 100%; min-width: 0; flex-basis: auto; }
-  .mobile-page-header .breadcrumb-context, .mobile-page-header .overview-header .lede { display: none; }
+  .mobile-page-header .overview-header { width: 100%; min-width: 0; flex: none; }
+  .mobile-page-header .breadcrumb-context, .mobile-page-header .overview-header .lede { display: none !important; }
   .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .mobile-page-header .overview-header h1 { margin: 0; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-nav-menu-actions { min-width: 0; display: flex; margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid var(--border-muted); }
@@ -2161,7 +2161,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .report-actions .tooltip-help { position: static; }
   .report-actions .tooltip-content { width: min(320px, 100%); right: auto; left: 0; }
   .report-footer-provenance { display: none; }
-  .overview-header { flex-basis: 100%; }
+  .app-main .overview-header { flex-basis: 100%; }
   .toolbar { align-items: stretch; flex-wrap: wrap; }
   .filter-control { min-width: 0; flex-basis: 100%; }
   .filter-toggle[aria-expanded="true"] { background: var(--neutral-muted); }

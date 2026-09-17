@@ -219,6 +219,8 @@ describe('DLS-CONF-004 scaffold gates', () => {
       '.breadcrumb-context > :is([data-breadcrumb-root], [data-breadcrumb-dashboard]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
       '.overview-header { min-width: 0; flex: 1; }',
       '.overview-header .lede { min-height: 1.25rem; margin: 3px 0 0; overflow: hidden; font-size: .875rem; line-height: 1.25rem; text-overflow: ellipsis; white-space: nowrap; }',
+      '.mobile-page-header .overview-header { width: 100%; min-width: 0; flex: none; }',
+      '.mobile-page-header .breadcrumb-context, .mobile-page-header .overview-header .lede { display: none !important; }',
       '.workflow-runtime-summary { max-width: 920px; margin-bottom: 24px; }',
       'footer { min-height: 44px; display: flex; flex: none; align-items: center; justify-content: space-between;'
     ]) {
