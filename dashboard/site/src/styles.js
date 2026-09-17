@@ -615,7 +615,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 18px; height: 0; border-top-width: 2px; border-top-style: solid; }
 .chart-legend-scatter i.chart-grid-key { border-color: var(--border); border-top-style: dashed; }
-.chart-legend-bar i, .chart-legend-pie i { height: 10px; border-top-width: 0; border-radius: 999px; background: currentColor; }
+.chart-legend-bar i, .chart-legend-horizontal-bar i, .chart-legend-pie i { height: 10px; border-top-width: 0; border-radius: 999px; background: currentColor; }
 .chart-legend-pie strong { color: var(--fg); font-variant-numeric: tabular-nums; }
 .chart-legend-pie small { color: var(--muted); }
 .chart-axis { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); font-size: .6875rem; }
@@ -638,6 +638,13 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .heatmap-cell { min-width: 72px; height: 44px; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border)); border-radius: 6px; background: color-mix(in srgb, var(--accent) var(--heatmap-intensity, 18%), var(--canvas)); color: var(--fg); font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
 .heatmap-cell-empty { border-color: var(--border-muted); background: var(--canvas-subtle); color: var(--muted); font-weight: 400; }
 .heatmap-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.horizontal-bar-chart-widget { min-width: 0; max-height: 560px; place-items: stretch; overflow-y: auto; padding: 8px 4px; }
+.horizontal-bar-chart-list { display: grid; gap: 6px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.horizontal-bar-chart-row { min-width: 0; display: grid; grid-template-columns: minmax(80px, 32%) minmax(80px, 1fr) auto; align-items: center; gap: 8px; }
+.horizontal-bar-chart-label { overflow: hidden; color: var(--fg); font-size: .75rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.horizontal-bar-chart-track { height: 14px; overflow: hidden; border-radius: 3px; background: var(--canvas-subtle); }
+.horizontal-bar-chart-bar { display: block; width: var(--horizontal-bar-size); height: 100%; transform-origin: left center; background: var(--accent); animation-name: horizontal-bar-chart-entry; }
+.horizontal-bar-chart-value { min-width: 4ch; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; }
 .chart-series-1 { stroke: var(--success); }
 .chart-series-2 { stroke: var(--attention); }
 .chart-series-3 { stroke: var(--danger); }
@@ -718,18 +725,18 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-widget .chart-series-10 { stroke: var(--cyan); }
 .chart-widget .chart-series-11 { stroke: var(--lime); }
 .chart-widget .chart-series-12 { stroke: var(--violet); }
-.bar-chart-bar.chart-series-1 { fill: var(--success); }
-.bar-chart-bar.chart-series-2 { fill: var(--attention); }
-.bar-chart-bar.chart-series-3 { fill: var(--danger); }
-.bar-chart-bar.chart-series-4 { fill: var(--accent); }
-.bar-chart-bar.chart-series-5 { fill: var(--muted); }
-.bar-chart-bar.chart-series-6 { fill: var(--purple); }
-.bar-chart-bar.chart-series-7 { fill: var(--pink); }
-.bar-chart-bar.chart-series-8 { fill: var(--coral); }
-.bar-chart-bar.chart-series-9 { fill: var(--yellow); }
-.bar-chart-bar.chart-series-10 { fill: var(--cyan); }
-.bar-chart-bar.chart-series-11 { fill: var(--lime); }
-.bar-chart-bar.chart-series-12 { fill: var(--violet); }
+.bar-chart-bar.chart-series-1 { fill: var(--success); background: var(--success); }
+.bar-chart-bar.chart-series-2 { fill: var(--attention); background: var(--attention); }
+.bar-chart-bar.chart-series-3 { fill: var(--danger); background: var(--danger); }
+.bar-chart-bar.chart-series-4 { fill: var(--accent); background: var(--accent); }
+.bar-chart-bar.chart-series-5 { fill: var(--muted); background: var(--muted); }
+.bar-chart-bar.chart-series-6 { fill: var(--purple); background: var(--purple); }
+.bar-chart-bar.chart-series-7 { fill: var(--pink); background: var(--pink); }
+.bar-chart-bar.chart-series-8 { fill: var(--coral); background: var(--coral); }
+.bar-chart-bar.chart-series-9 { fill: var(--yellow); background: var(--yellow); }
+.bar-chart-bar.chart-series-10 { fill: var(--cyan); background: var(--cyan); }
+.bar-chart-bar.chart-series-11 { fill: var(--lime); background: var(--lime); }
+.bar-chart-bar.chart-series-12 { fill: var(--violet); background: var(--violet); }
 .histogram-chart-bar.chart-series-1 { fill: var(--success); }
 .chart-legend i.chart-series-1 { border-color: var(--success); color: var(--success); }
 .chart-legend i.chart-series-2 { border-color: var(--attention); color: var(--attention); }
@@ -747,10 +754,10 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-widget .chart-series-semantic-success, .chart-widget .chart-series-semantic-waiting { stroke: var(--accent); }
 .chart-widget .chart-series-semantic-attention { stroke: var(--attention); }
 .chart-widget .chart-series-semantic-neutral { stroke: var(--muted); }
-.bar-chart-bar.chart-series-semantic-failure { fill: var(--danger); }
-.bar-chart-bar.chart-series-semantic-success, .bar-chart-bar.chart-series-semantic-waiting { fill: var(--accent); }
-.bar-chart-bar.chart-series-semantic-attention { fill: var(--attention); }
-.bar-chart-bar.chart-series-semantic-neutral { fill: var(--muted); }
+.bar-chart-bar.chart-series-semantic-failure { fill: var(--danger); background: var(--danger); }
+.bar-chart-bar.chart-series-semantic-success, .bar-chart-bar.chart-series-semantic-waiting { fill: var(--accent); background: var(--accent); }
+.bar-chart-bar.chart-series-semantic-attention { fill: var(--attention); background: var(--attention); }
+.bar-chart-bar.chart-series-semantic-neutral { fill: var(--muted); background: var(--muted); }
 .chart-legend i.chart-series-semantic-failure { border-color: var(--danger); color: var(--danger); }
 .chart-legend i.chart-series-semantic-success, .chart-legend i.chart-series-semantic-waiting { border-color: var(--accent); color: var(--accent); }
 .chart-legend i.chart-series-semantic-attention { border-color: var(--attention); color: var(--attention); }
@@ -771,6 +778,9 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 }
 @keyframes histogram-chart-entry {
   from { opacity: 0; transform: scaleY(0); }
+}
+@keyframes horizontal-bar-chart-entry {
+  from { opacity: 0; transform: scaleX(0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .pie-chart-segment, .line-chart-series, .line-chart-point, .dot-chart-point, .scatter-chart-point, .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect, .metric-number-animated { animation: none; }

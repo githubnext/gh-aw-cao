@@ -1733,6 +1733,35 @@ dashboard:
         color: { field: 'job-duration-seconds', type: 'quantitative', aggregate: 'mean' }
       }
     });
+
+    it('DLS-VIEW-005 accepts bounded horizontal bars and rejects invalid axes and limits', () => {
+      const document = JSON.parse(authoritativeDashboardSource);
+      const performance = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'performance');
+      const horizontalBar = {
+        id: 'workflow-run-counts',
+        data: { source: 'workflow-performance', limit: 100 },
+        mark: 'chart',
+        chart: 'horizontal-bar',
+        encoding: {
+          x: { field: 'workflow', type: 'nominal' },
+          y: { field: 'run-count', type: 'quantitative' }
+        }
+      };
+      performance.views.push(horizontalBar);
+
+      expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+      horizontalBar.data.limit = 101;
+      horizontalBar.encoding.x.type = 'temporal';
+      const rejected = validateDashboardDocument(JSON.stringify(document));
+      expect(rejected.ok).toBe(false);
+      if (!rejected.ok) {
+        expect(rejected.errors).toEqual(expect.arrayContaining([
+          expect.objectContaining({ path: expect.stringContaining('.data.limit') }),
+          expect.objectContaining({ path: expect.stringContaining('.encoding.x.type') })
+        ]));
+      }
+    });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     heatmap.data.limit = 101;
