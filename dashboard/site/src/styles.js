@@ -1559,7 +1559,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-capacity { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; margin: 0; padding: 20px 0 0 24px; border-left: 1px solid var(--border); }
 .factory-capacity > div:last-child { grid-column: 1 / -1; }
 .factory-capacity dt { color: var(--muted); font-size: .6875rem; font-weight: 600; text-transform: uppercase; }
-.factory-capacity dd { margin: 4px 0 0; font-size: 1.35rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.factory-capacity dd { margin: 4px 0 0; font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .factory-capacity > div:last-child dd { font-size: .8125rem; }
 .factory-floor { min-height: 250px; position: relative; display: grid; align-items: center; padding: 38px 48px; overflow: hidden; border-block: 1px solid var(--border); background: var(--canvas-subtle); }
 .factory-floor::before { content: ""; width: round(down, 100%, 32px); height: round(down, 100%, 32px); position: absolute; top: 50%; left: 50%; border-right: 1px solid color-mix(in srgb, var(--border) 50%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); background-image: linear-gradient(color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px); background-size: 32px 32px; transform: translate(-50%, -50%); }
