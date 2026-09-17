@@ -1986,7 +1986,7 @@ thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75
 .table-summary-compact .table-summary-histogram { height: 24px; display: block; }
 .table-summary-compact-chart .chart-widget { min-height: 26px; margin: 0; }
 .table-summary-compact-chart .chart-widget svg { width: 26px; height: 26px; }
-.table-summary-compact-chart .pie-chart-total-value, .table-summary-compact-chart .pie-chart-total-label { display: none; }
+.table-summary-compact-chart .pie-chart-total-value, .table-summary-compact-chart .pie-chart-total-label, .table-summary-compact-chart .pie-chart-summary { display: none; }
 .table-summary-skeleton { display: grid; gap: 6px; padding-block: 2px; }
 .table-summary-skeleton span { height: 10px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .table-summary-skeleton span:first-child { height: 32px; }
