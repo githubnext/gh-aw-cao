@@ -2455,7 +2455,7 @@ describe('presenter built-in and custom pages', () => {
       'Operational value'
     ]);
     expect(tables[0]?.textContent).toContain('Ambient Context');
-    expect(tables[0]?.textContent).toContain('2');
+    expect(tables[0]?.textContent).toContain('1.60');
     const valueRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
     const valueFilter = /** @type {HTMLInputElement} */ (valueRegion?.querySelector('[data-table-filter]'));
     expect(valueFilter.closest('label')?.textContent).toContain('Filter Packages');
