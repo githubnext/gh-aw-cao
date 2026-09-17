@@ -2,19 +2,17 @@
  * Shared Dashboard Language config.body values for route-bound elements.
  */
 
+import packageResourceNavigation from './package-resource-navigation.json' with { type: 'json' };
+
 export const WORKFLOW_ROUTE_BODY_VALUES = ['insights', 'reports', 'runs'];
 export const WORKFLOW_ROUTE_PAGE_BODY_VALUES = ['insights', 'reports', 'runs'];
-export const PACKAGE_ROUTE_TABS = Object.freeze([
-  { id: 'overview', label: 'Overview', icon: 'package', page: 'package-detail' },
-  { id: 'issues', label: 'Issues', icon: 'issue-opened', page: 'package-issues' },
-  { id: 'pull-requests', label: 'Pull requests', icon: 'git-pull-request', page: 'package-pull-requests' },
-  { id: 'runs', label: 'Actions', icon: 'play', page: 'package-runs' },
-  { id: 'repositories', label: 'Repositories', icon: 'repo', page: 'package-repositories' },
-  { id: 'insights', label: 'Insights', icon: 'graph', page: 'package-insights' },
-  { id: 'reports', label: 'Reports', icon: 'file', page: 'package-reports' }
+export const PACKAGE_ROUTE_TABS = Object.freeze(packageResourceNavigation.tabs);
+export const PACKAGE_ROUTE_DEFAULT_BODY = packageResourceNavigation.default;
+export const PACKAGE_ROUTE_ALIASES = Object.freeze(packageResourceNavigation.aliases);
+export const PACKAGE_ROUTE_BODY_VALUES = Object.freeze([
+  ...PACKAGE_ROUTE_TABS.map((tab) => tab.id),
+  ...Object.keys(PACKAGE_ROUTE_ALIASES)
 ]);
-export const PACKAGE_ROUTE_BODY_VALUES = PACKAGE_ROUTE_TABS.map((tab) => tab.id);
-PACKAGE_ROUTE_BODY_VALUES.push('workflows', 'dispatches');
 export const OUTCOME_DETAIL_SECTION_BODY_VALUES = ['discussion', 'metadata'];
 export const PACKAGE_ROUTE_VARIANT_VALUES = PACKAGE_ROUTE_BODY_VALUES;
 export const WORK_VIEW_BODY_VALUES = ['board', 'tasks', 'roadmap'];

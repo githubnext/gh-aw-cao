@@ -5,7 +5,12 @@
 import { h } from '../dom.js';
 import { titleCase } from './count-formatters.js';
 import { createRouteBodyConfig } from './route-body-config.js';
-import { PACKAGE_ROUTE_BODY_VALUES, PACKAGE_ROUTE_VARIANT_VALUES } from './route-body-specification.js';
+import {
+  PACKAGE_ROUTE_ALIASES,
+  PACKAGE_ROUTE_BODY_VALUES,
+  PACKAGE_ROUTE_DEFAULT_BODY,
+  PACKAGE_ROUTE_VARIANT_VALUES
+} from './route-body-specification.js';
 import { renderPackageReadme } from './package-readme.js';
 import { renderWorkflowValueReport } from './workflow-runtime.js';
 
@@ -36,7 +41,7 @@ import { renderWorkflowValueReport } from './workflow-runtime.js';
  * }) => HTMLElement | null} PackageRouteBodyRenderer
  */
 
-/** @type {Readonly<Record<PackageRouteBody, PackageRouteComposition>>} */
+/** @type {Readonly<Record<PackageRouteTab, PackageRouteComposition>>} */
 const PACKAGE_ROUTE_COMPOSITIONS = {
   overview: {
     rootClassName: 'package-detail',
@@ -94,26 +99,12 @@ const PACKAGE_ROUTE_COMPOSITIONS = {
     description: 'Durable reports produced by the {packageName} package.',
     currentTab: 'reports',
     bodyRenderer: undefined
-  },
-  workflows: {
-    rootClassName: 'package-detail',
-    selectMessage: 'Select a package to view its overview.',
-    description: 'Overview of the {packageName} package.',
-    currentTab: 'overview',
-    bodyRenderer: ({ packageId, packageName, workflows }) => renderPackageReadme({ packageId, packageName, workflows })
-  },
-  dispatches: {
-    rootClassName: 'package-runs',
-    selectMessage: 'Select a package to view its workflow runs.',
-    description: 'Workflow runs for the {packageName} package.',
-    currentTab: 'runs',
-    bodyRenderer: undefined
   }
 };
 
 export const PACKAGE_ROUTE_BODY_CONFIG = createRouteBodyConfig(
-  /** @type {readonly PackageRouteBody[]} */ (PACKAGE_ROUTE_BODY_VALUES),
-  /** @type {PackageRouteBody} */ ('overview')
+  /** @type {readonly PackageRouteTab[]} */ (PACKAGE_ROUTE_BODY_VALUES.filter((body) => !Object.hasOwn(PACKAGE_ROUTE_ALIASES, body))),
+  /** @type {PackageRouteTab} */ (PACKAGE_ROUTE_DEFAULT_BODY)
 );
 
 /**
@@ -121,7 +112,10 @@ export const PACKAGE_ROUTE_BODY_CONFIG = createRouteBodyConfig(
  * @returns {PackageRouteComposition}
  */
 export function packageRouteComposition(body) {
-  return /** @type {PackageRouteComposition} */ (PACKAGE_ROUTE_BODY_CONFIG.composition(PACKAGE_ROUTE_COMPOSITIONS, body));
+  const selected = typeof body === 'string' && Object.hasOwn(PACKAGE_ROUTE_ALIASES, body)
+    ? PACKAGE_ROUTE_ALIASES[/** @type {keyof typeof PACKAGE_ROUTE_ALIASES} */ (body)]
+    : body;
+  return /** @type {PackageRouteComposition} */ (PACKAGE_ROUTE_BODY_CONFIG.composition(PACKAGE_ROUTE_COMPOSITIONS, selected));
 }
 
 /**
@@ -129,7 +123,10 @@ export function packageRouteComposition(body) {
  * @returns {PackageRouteBody}
  */
 export function packageRouteVariant(body) {
-  return PACKAGE_ROUTE_BODY_CONFIG.body(body);
+  const selected = typeof body === 'string' && Object.hasOwn(PACKAGE_ROUTE_ALIASES, body)
+    ? PACKAGE_ROUTE_ALIASES[/** @type {keyof typeof PACKAGE_ROUTE_ALIASES} */ (body)]
+    : body;
+  return PACKAGE_ROUTE_BODY_CONFIG.body(selected);
 }
 
 /**

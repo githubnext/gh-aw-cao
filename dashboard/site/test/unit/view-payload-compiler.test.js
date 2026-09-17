@@ -121,14 +121,16 @@ it('fails closed when a route-scoped view has no route value', () => {
       source: 'outcomes',
       rows: [
         { package: 'alpha', 'safe-output': 'issue-1' },
-        { package: 'beta', 'safe-output': 'issue-2' }
+        { package: 'beta', 'safe-output': 'issue-2' },
+        { package: '', 'safe-output': 'unattributed' }
       ],
       metadata
     }
   }, payload.aliases);
 
   expect(/** @type {any} */ (payload.queries[0]).filter.predicates).toEqual([
-    { field: 'package', equals: '' }
+    { field: 'package', equals: '' },
+    { field: 'package', equals: '\0' }
   ]);
   expect(results[payload.aliases[0]].rows).toEqual([]);
 });

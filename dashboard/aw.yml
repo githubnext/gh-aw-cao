@@ -267,6 +267,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/package-detail.js
   - source: site/src/components/package-readme.js
     destination: .github/aw/dashboard/site/src/components/package-readme.js
+  - source: site/src/components/package-resource-navigation.json
+    destination: .github/aw/dashboard/site/src/components/package-resource-navigation.json
   - source: site/src/components/package-route-composition.js
     destination: .github/aw/dashboard/site/src/components/package-route-composition.js
   - source: site/src/components/package-route-shell.js
