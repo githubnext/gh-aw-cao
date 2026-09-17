@@ -54,12 +54,23 @@ describe('canonical dashboard worker ingestion order', () => {
         metadata: { 'as-of': '2026-09-09T05:00:00Z' }
       }
     };
-    globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {
+    /** @type {string[]} */
+    const requestedUrls = [];
+    /** @type {(RequestInit | undefined)[]} */
+    const inventoryRequests = [];
+    let inventoryAttempts = 0;
+    globalThis.fetch = /** @type {typeof fetch} */ (async (input, init) => {
       const url = String(input);
+      requestedUrls.push(url);
+      if (url.endsWith('/inventory-sources.json')) {
+        inventoryRequests.push(init);
+        inventoryAttempts += 1;
+        if (inventoryAttempts < 3) throw new TypeError('temporary network failure');
+        return Response.json(inventory);
+      }
       if (url.endsWith('/payload-hashes.json')) {
         return Response.json({ 'gh-aw-logs-shards/logs-1.jsonl': 'a'.repeat(64) });
       }
-      if (url.endsWith('/inventory-sources.json')) return Response.json(inventory);
       return new Response(`${JSON.stringify(run)}\n`);
     });
 
@@ -88,6 +99,17 @@ describe('canonical dashboard worker ingestion order', () => {
     }
 
     expect(posted.find((message) => message.id === 1)?.error).toBeUndefined();
+    expect(requestedUrls.slice(0, 4)).toEqual([
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/payload-hashes.json'
+    ]);
+    expect(inventoryRequests).toEqual([
+      { cache: 'no-store' },
+      { cache: 'no-store' },
+      { cache: 'no-store' }
+    ]);
     expect(storedRunIds).toEqual(['github:run:303:attempt:1']);
   }, 30_000);
 });

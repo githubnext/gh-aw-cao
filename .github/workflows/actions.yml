@@ -58,6 +58,8 @@ jobs:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      MOBILE_DEBUG_SHARD_LIMIT: 10
     strategy:
       fail-fast: false
       matrix:

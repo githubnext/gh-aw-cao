@@ -226,3 +226,23 @@ test('deep links and redirect routes fetch only the requested initial page chunk
   await expect.poll(() => pageText(page, 'repositories')).toMatch(/Ingestion %|No repositories discovered\.|gh-aw-cao/);
   await expect.poll(() => [...new Set(routeChunkRequests)].sort()).toEqual(['repositories']);
 });
+
+test('Settings remains useful when its delayed policy source is unavailable', async ({ context, page }) => {
+  const inventoryWithoutPolicy = Object.fromEntries(
+    Object.entries(inventory).filter(([name]) => name !== 'configuration-policy')
+  );
+  await context.route(`${origin}/inventory-sources.json`, (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify(inventoryWithoutPolicy),
+  }));
+
+  await page.goto(`${origin}/#page-configuration`);
+
+  await expect(page.locator('[data-page-id="configuration"] .configuration-view')).toBeVisible();
+  await expect(page.locator('[data-page-id="configuration"]')).toContainText(
+    'The policy cannot be edited until it contains valid JSON.'
+  );
+  await expect(page.locator('[data-page-id="configuration"]')).not.toContainText(
+    'Affected source: configuration-policy'
+  );
+});

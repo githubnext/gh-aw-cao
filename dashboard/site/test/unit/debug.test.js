@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDebug, fullDebugUrl, isDebugEnabled, withDebugParameter } from '../../src/debug.js';
+import { createDebug, debugShardLimit, fullDebugUrl, isDebugEnabled, withDebugParameter } from '../../src/debug.js';
 
 describe('dashboard debug logging', () => {
   it('builds a full-debug reload URL without losing the current route', () => {
@@ -22,13 +22,20 @@ describe('dashboard debug logging', () => {
   });
 
   it('forwards the debug parameter onto a worker or service worker script URL', () => {
-    const url = withDebugParameter(new URL('https://example.test/data-worker.js'), '?debug=data:*&mode=live');
-    expect(url.href).toBe('https://example.test/data-worker.js?debug=data%3A*');
+    const url = withDebugParameter(new URL('https://example.test/data-worker.js'), '?debug=data:*&debug-shard-limit=10&mode=live');
+    expect(url.href).toBe('https://example.test/data-worker.js?debug=data%3A*&debug-shard-limit=10');
   });
 
   it('leaves a worker script URL untouched when debug is not set', () => {
     const url = withDebugParameter(new URL('https://example.test/data-worker.js'), '?mode=live');
     expect(url.href).toBe('https://example.test/data-worker.js');
+  });
+
+  it('accepts only positive safe integer debug shard limits', () => {
+    expect(debugShardLimit('?debug-shard-limit=10')).toBe(10);
+    expect(debugShardLimit('?debug-shard-limit=0')).toBeUndefined();
+    expect(debugShardLimit('?debug-shard-limit=1.5')).toBeUndefined();
+    expect(debugShardLimit('?debug-shard-limit=9007199254740992')).toBeUndefined();
   });
 
   it('checks the query once when created and prefixes matching output', () => {

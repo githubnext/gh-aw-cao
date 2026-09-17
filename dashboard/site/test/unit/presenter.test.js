@@ -139,6 +139,18 @@ describe('dashboard DOM provenance', () => {
     expect(lazySourceNames).toContain('runs-table');
   });
 
+  it('keeps Settings useful while the policy source is unavailable', async () => {
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    const page = await activatePage(rendered, 'configuration');
+
+    expect(page?.querySelector('.configuration-view')).not.toBeNull();
+    expect(page?.textContent).toContain('The policy cannot be edited until it contains valid JSON.');
+    expect(page?.textContent).not.toContain('Affected source: configuration-policy');
+  });
+
   it('maps every rendered element and dynamic descendant to its owning JSON view when ?debug=1 is set', async () => {
     window.history.pushState(null, '', '?debug=1');
     try {
@@ -801,8 +813,8 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
     expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml');
-    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('dependabot.yml (githubnext/gh-aw-cao)');
+    expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('ci.yml (github/target-service)');
     expect([...(page?.querySelectorAll('[data-view-id="workflows-by-runs"] .chart-legend-pie strong') ?? [])].map((value) => value.textContent)).toEqual(['2', '1']);
     expect(page?.querySelector('[data-view-id="workflows-inventory"][data-view-layout="full-view"]')).not.toBeNull();
     const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket');
@@ -3059,7 +3071,7 @@ describe('presenter built-in and custom pages', () => {
         chart: 'pie',
         layout: 'horizontal',
         encoding: {
-          x: { field: 'workflow-label', type: 'nominal', title: 'Workflow' },
+          x: { field: 'workflow-label', type: 'nominal', format: 'workflow-identity-label', title: 'Workflow' },
           y: { field: 'runs', type: 'quantitative', title: 'Runs' },
           href: { field: 'workflow-link', type: 'nominal' }
         }

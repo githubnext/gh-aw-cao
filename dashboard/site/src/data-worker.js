@@ -17,9 +17,11 @@ import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
-import { createDebug } from './debug.js';
+import { createDebug, debugShardLimit } from './debug.js';
+import { withRetries } from './retry.js';
 
 const debugIngestion = createDebug('data:ingestion');
+const workerScope = typeof self !== 'undefined' && 'postMessage' in self ? self : null;
 
 /** @param {ReadableStream<Uint8Array>} body */
 async function* responseChunks(body) {
@@ -45,16 +47,23 @@ let liveDashboard = null;
 let dashboardActivated = false;
 const dashboardQueryMemoization = createDashboardQueryMemoization();
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null, emitted: boolean, pageId?: string, viewId?: string, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
 /** @type {Set<string>} */
 const dirtyDashboardSubscriptions = new Set();
-let subscriptionFlushScheduled = false;
+const SUBSCRIPTION_FLUSH_DELAY_MS = 50;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let subscriptionFlushTimer = null;
 let subscriptionFlushRunning = false;
+let dashboardIngestionCount = 0;
 
 const INGESTION_LOCK_WAIT_MESSAGE = 'Waiting for another dashboard ingestion to finish.';
+
+function hasUnrenderedDashboardSubscription() {
+  return [...dirtyDashboardSubscriptions].some((id) => dashboardSubscriptions.get(id)?.emitted === false);
+}
 
 async function loadActiveDashboard() {
   if (liveDashboard) return liveDashboard;
@@ -183,16 +192,21 @@ function scheduleDashboardSubscriptions(ids = dashboardSubscriptions.keys()) {
   for (const id of ids) {
     if (dashboardSubscriptions.has(id)) dirtyDashboardSubscriptions.add(id);
   }
-  if (subscriptionFlushScheduled || subscriptionFlushRunning || dirtyDashboardSubscriptions.size === 0) return;
-  subscriptionFlushScheduled = true;
-  queueMicrotask(() => {
-    subscriptionFlushScheduled = false;
+  const hasUnrenderedSubscription = hasUnrenderedDashboardSubscription();
+  if (subscriptionFlushRunning
+      || dirtyDashboardSubscriptions.size === 0
+      || (dashboardIngestionCount > 0 && !hasUnrenderedSubscription)) return;
+  if (subscriptionFlushTimer !== null) clearTimeout(subscriptionFlushTimer);
+  const delay = hasUnrenderedSubscription && dashboardIngestionCount === 0 ? 0 : SUBSCRIPTION_FLUSH_DELAY_MS;
+  subscriptionFlushTimer = setTimeout(() => {
+    subscriptionFlushTimer = null;
     void flushDashboardSubscriptions();
-  });
+  }, delay);
 }
 
 async function flushDashboardSubscriptions() {
-  if (subscriptionFlushRunning) return;
+  if (subscriptionFlushRunning
+      || (dashboardIngestionCount > 0 && !hasUnrenderedDashboardSubscription())) return;
   subscriptionFlushRunning = true;
   try {
     while (dirtyDashboardSubscriptions.size > 0) {
@@ -203,9 +217,9 @@ async function flushDashboardSubscriptions() {
         for (const id of ids) dirtyDashboardSubscriptions.add(id);
         break;
       }
-      await Promise.all(ids.map(async (id) => {
+      for (const id of ids) {
         const subscription = dashboardSubscriptions.get(id);
-        if (!subscription) return;
+        if (!subscription) continue;
         try {
           const pagination = subscription.revision === dashboard.revision
             ? subscription.pagination
@@ -223,20 +237,21 @@ async function flushDashboardSubscriptions() {
             dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
+            subscription.emitted = true;
             subscription.revision = dashboard.revision;
             subscription.pagination = pagination;
-            self.postMessage({ subscriptionId: id, data });
+            workerScope?.postMessage({ subscriptionId: id, data });
           }
         } catch (error) {
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
-            self.postMessage({
+            workerScope?.postMessage({
               subscriptionId: id,
               error: error instanceof Error ? error.message : String(error)
             });
           }
         }
 
-      }));
+      }
     }
 
     /** @param {Record<string, { limit: number, continuationToken?: string }>} pagination */
@@ -336,6 +351,7 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
+      dashboardIngestionCount += 1;
       const progress = startIngestionProgress();
       const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       if (!activity) progress.start();
@@ -350,34 +366,42 @@ export function processDataRequest(request, signal) {
         });
         if (activity) {
           const payloadHashesUrl = sourceUrl;
+          const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
+          progress.log('Refreshing workflow and repository inventory.');
+          const { response: inventoryResponse, value: inventorySources } = await withRetries(async () => {
+            const response = await fetch(inventoryUrl, { cache: 'no-store' });
+            if (!response.ok) {
+              if (response.status === 404) return { response, value: {} };
+              throw new Error(`Unable to load dashboard inventory sources: ${response.status}`);
+            }
+            return { response, value: await response.json() };
+          });
+          if (inventoryResponse.ok) {
+            sources = inventorySources;
+            progress.log('Inventory metadata refreshed.');
+          } else {
+            progress.log('No separate inventory metadata was published.');
+          }
           progress.log('Checking the published payload identity.');
           const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
           const payloadHashes = payloadHashesResponse?.ok
             ? await payloadHashesResponse.json().catch(() => null)
             : null;
           const normalizedShards = publishedNormalizedShards(payloadHashes);
-          const shards = normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
+          const publishedShards = normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
+          const shardLimit = debugShardLimit();
+          const shards = shardLimit === undefined ? publishedShards : publishedShards.slice(0, shardLimit);
           const normalized = normalizedShards.length > 0;
           const shardCount = shards.length;
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,
             shardCount,
+            shardLimit,
             manifestAvailable: payloadHashesResponse?.ok === true
           });
           if (shardCount > 0) {
             progress.log(`Published activity data includes ${shardCount.toLocaleString('en-US')} `
               + `${shardCount === 1 ? 'shard' : 'shards'}.`);
-          }
-          const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
-          progress.log('Loading workflow and repository inventory.');
-          const inventoryResponse = await fetch(inventoryUrl);
-          if (inventoryResponse.ok) {
-            sources = await inventoryResponse.json();
-            progress.log('Inventory metadata loaded.');
-          } else if (inventoryResponse.status !== 404) {
-            throw new Error(`Unable to load dashboard inventory sources: ${inventoryResponse.status}`);
-          } else {
-            progress.log('No separate inventory metadata was published.');
           }
           const workflowSource = sources.workflows && typeof sources.workflows === 'object'
             ? /** @type {{ rows?: unknown }} */ (sources.workflows)
@@ -569,6 +593,8 @@ export function processDataRequest(request, signal) {
           : projected;
       } finally {
         progress.complete();
+        dashboardIngestionCount = Math.max(0, dashboardIngestionCount - 1);
+        if (dashboardIngestionCount === 0) scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
       }
     })();
   }
@@ -638,8 +664,8 @@ function cancelInFlight(ids) {
   return targets.length;
 }
 
-if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessage' in self) {
-  self.addEventListener('message', (event) => {
+if (typeof document === 'undefined' && workerScope) {
+  workerScope.addEventListener('message', (event) => {
     const id = event.data?.id;
     if (event.data?.operation === 'subscribe-canonical-dashboard') {
       const subscriptionId = event.data.subscriptionId;
@@ -654,7 +680,8 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
         viewId: typeof event.data.viewId === 'string' ? event.data.viewId : undefined,
         routeParameters: routeParameters(event.data.routeParameters),
         queryContext: queryContext(event.data.queryContext),
-        revision: liveDashboard?.revision ?? null
+        revision: liveDashboard?.revision ?? null,
+        emitted: false
       });
       if (liveDashboard && event.data.emitCurrent !== false) {
         scheduleDashboardSubscriptions([subscriptionId]);
@@ -664,11 +691,15 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
     if (event.data?.operation === 'unsubscribe-canonical-dashboard') {
       dashboardSubscriptions.delete(event.data.subscriptionId);
       dirtyDashboardSubscriptions.delete(event.data.subscriptionId);
+      if (dirtyDashboardSubscriptions.size === 0 && subscriptionFlushTimer !== null) {
+        clearTimeout(subscriptionFlushTimer);
+        subscriptionFlushTimer = null;
+      }
       return;
     }
     if (event.data?.operation === 'cancel-data-processing') {
       const cancelled = cancelInFlight(event.data.ids);
-      self.postMessage({ id, data: { cancelled } });
+      workerScope.postMessage({ id, data: { cancelled } });
       return;
     }
     const controller = new AbortController();
@@ -681,9 +712,9 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
     const settle = (/** @type {Record<string, unknown>} */ message) => {
       inFlight.delete(id);
       try {
-        self.postMessage({ id, ...message });
+        workerScope.postMessage({ id, ...message });
       } catch (error) {
-        self.postMessage({ id, ...failure(error) });
+        workerScope.postMessage({ id, ...failure(error) });
       }
     };
     try {

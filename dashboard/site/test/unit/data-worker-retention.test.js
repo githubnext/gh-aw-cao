@@ -199,12 +199,12 @@ describe('canonical dashboard worker retention updates', () => {
     ))).toEqual([]);
     expect(jsonlRequests).toEqual([{ method: 'HEAD' }, undefined]);
     expect(requestUrls).toEqual([
-      'https://dashboard.example/payload-hashes.json',
       'https://dashboard.example/inventory-sources.json',
-      `https://dashboard.example/${normalizedName}`,
-      `https://dashboard.example/${normalizedName}`,
       'https://dashboard.example/payload-hashes.json',
-      'https://dashboard.example/inventory-sources.json'
+      `https://dashboard.example/${normalizedName}`,
+      `https://dashboard.example/${normalizedName}`,
+      'https://dashboard.example/inventory-sources.json',
+      'https://dashboard.example/payload-hashes.json'
     ]);
     expect((await readTransactions(indexedDB))
       .filter((transaction) => transaction.kind === 'ingest-normalized-json'))

@@ -157,6 +157,8 @@ resources:
     destination: .github/aw/dashboard/site/src/presenter.js
   - source: site/src/reactive.js
     destination: .github/aw/dashboard/site/src/reactive.js
+  - source: site/src/retry.js
+    destination: .github/aw/dashboard/site/src/retry.js
   - source: site/src/scatter-clustering.js
     destination: .github/aw/dashboard/site/src/scatter-clustering.js
   - source: site/src/smells.svg
