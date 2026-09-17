@@ -26,9 +26,10 @@ describe('dashboard query architecture', () => {
     const dashboard = JSON.parse(read('dashboard.json')).dashboard;
     const optimizationDashboard = JSON.parse(read('../../optimization/dashboard.json')).dashboard;
 
-    expect(worker).toContain('executeDashboardQueries(context.queries, canonicalPayload, directRequests');
+    expect(worker).toMatch(/executeDashboardQueries\(\s*context\.queries,\s*\{ \.\.\.canonicalPayload, \.\.\.healthPayload \},\s*directRequests/);
     expect(worker).toContain('const replacedSources = new Set(viewPayload.replacedSources)');
-    expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources|deriveDataHealthCalloutSources/);
+    expect(worker).toContain('deriveDataHealthCalloutSources(canonicalPayload)');
+    expect(worker).not.toMatch(/deriveOverviewSources|deriveRepositorySources|deriveRuntimeSources|deriveWorkflowSources/);
     expect(worker).toContain("operation === 'subscribe-canonical-dashboard'");
     expect(startup).toContain('subscribeCanonicalDashboardView(');
     expect(startup).toContain('signal: pageOptions.signal');
