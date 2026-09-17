@@ -2816,7 +2816,7 @@
       },
       {
         "name": "token-efficiency-portfolio-candidates",
-        "intent": "Classify exact evidence-backed Run candidates and order them by measured AIC, then repository, workflow, assignment Run, and candidate identity.",
+        "intent": "Classify exact evidence-backed Run candidates and order them by measured AIC, then repository, workflow, assignment Run, and candidate identity. candidate-readiness is ready only at 21, the sum of every gate score in token-efficiency-portfolio-candidate-evaluation (8 readiness-head + 8 readiness-tail + 4 readiness-run + 1 graded-score); update this threshold alongside candidate-readiness whenever a gate score is added or removed.",
         "from": "token-efficiency-portfolio-candidate-evaluation",
         "compute": [
           {

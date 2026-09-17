@@ -280,10 +280,13 @@ jobs:
                         and ($matched[0] as $run
                           | (($run.startedAt // $run.createdAt // "") == $candidate["evidence-window-start"])
                           and (($run.completedAt // $run.updatedAt // "") == $candidate["evidence-window-end"])
-                          and ($run.usage | map(select(.aic != null and (.aic | type == "number"))) as $usageRows
-                            | ($usageRows | length) > 0
-                            and (($usageRows | map(.aic) | add) == $candidate["measured-aic"])
-                          )
+                          and ($run.usage
+                               | map(select(.aic != null and (.aic | type == "number")))
+                               | unique_by(.id // .sessionId)
+                               as $usageRows
+                             | ($usageRows | length) > 0
+                             and (($usageRows | map(.aic) | add) == $candidate["measured-aic"])
+                           )
                           and any($run.graders[]?;
                             .grader == "operational-value"
                             and (.status == "pass")
