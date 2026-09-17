@@ -28,7 +28,7 @@ import { createDebug } from '../../debug.js';
 const debug = createDebug('data:ingestion');
 
 const DASHBOARD_SOURCE_INGESTION_VERSION = 4;
-const GH_AW_JSONL_INGESTION_VERSION = 3;
+const GH_AW_JSONL_INGESTION_VERSION = 4;
 export const NORMALIZED_JSON_INGESTION_VERSION = 2;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
@@ -431,6 +431,19 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
   try {
     options.signal?.throwIfAborted();
     const adaptationContext = cachedJsonlAdaptationContext(options);
+    const scope = options.payloadScope ?? 'gh-aw-jsonl';
+    const publishedIdentity = options.payloadIdentity;
+    if (publishedIdentity) {
+      const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
+      if (current?.payloadHash === publishedIdentity
+          && current.adaptationContext === adaptationContext
+          && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {
+        if (options.payloadEtag && current.payloadEtag !== options.payloadEtag) {
+          await recordTransaction(indexedDB, { ...current, payloadEtag: options.payloadEtag });
+        }
+        return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+      }
+    }
     const streamed = typeof content !== 'string'
       && !ArrayBuffer.isView(content)
       && Symbol.asyncIterator in Object(content)
@@ -448,8 +461,9 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       ?? streamed?.payloadIdentity
       ?? cachedJsonlPayloadIdentity(/** @type {string | Uint8Array} */ (content));
     const parsingMs = monotonicNow() - startedAt;
-    const scope = options.payloadScope ?? 'gh-aw-jsonl';
-    const current = await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
+    const current = publishedIdentity
+      ? null
+      : await readCurrentIngestion(indexedDB, 'ingest-jsonl', scope);
     if (current?.payloadHash === payloadIdentity
         && current.adaptationContext === adaptationContext
         && current.ingestionVersion === GH_AW_JSONL_INGESTION_VERSION) {

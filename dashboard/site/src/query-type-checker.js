@@ -160,6 +160,17 @@ function compileQuery(query, index, symbols, compiled, errors) {
   /** @type {Map<string, FieldType> | undefined} */
   let fields = input?.fields ? new Map(input.fields) : undefined;
   const sources = new Set(input?.sources ?? []);
+  for (const sourceName of Array.isArray(query.union) ? query.union : []) {
+    const unionInput = resolveSource(sourceName, symbols, compiled);
+    for (const source of unionInput?.sources ?? []) sources.add(source);
+    if (fields && unionInput?.fields) {
+      for (const [field, type] of unionInput.fields) {
+        if (!fields.has(field)) fields.set(field, type);
+      }
+    } else {
+      fields = undefined;
+    }
+  }
 
   /** @param {unknown} field @param {string} fieldPath @param {'read'|'scalar'|'numeric'|'aggregate-numeric'} [usage] */
   const requireField = (field, fieldPath, usage = 'read') => {
@@ -520,6 +531,11 @@ function intrinsicType(field) {
 /** @param {Record<string, unknown>} query @param {number} index */
 function queryInputs(query, index) {
   const inputs = [{ name: query.from, path: `$.dashboard.queries[${index}].from` }];
+  if (Array.isArray(query.union)) {
+    query.union.forEach((source, sourceIndex) => {
+      inputs.push({ name: source, path: `$.dashboard.queries[${index}].union[${sourceIndex}]` });
+    });
+  }
   if (Array.isArray(query.joins)) {
     query.joins.forEach((join, joinIndex) => {
       inputs.push({

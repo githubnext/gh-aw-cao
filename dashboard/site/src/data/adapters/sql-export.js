@@ -185,7 +185,7 @@ export function adaptSqlExport(input) {
           isPullRequest: row.is_pull_request === true,
           url: requiredString(row.url, 'url'),
           safeOutputType: optionalString(row.safe_output_type),
-          githubEntityType: row.is_pull_request === true ? 'pull_request' : 'issue'
+          githubEntityType: optionalString(row.github_entity_type)
         };
         break;
       case 'audit': {

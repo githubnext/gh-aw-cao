@@ -699,8 +699,9 @@
       },
       {
         "name": "entity-events",
-        "intent": "Project event entities for reusable event cards and run drill-down.",
+        "intent": "Project all run-owned records for reusable cards and run drill-down.",
         "from": "audits",
+        "union": ["domains", "tools", "issues"],
         "compute": [
           {
             "as": "event-url",
@@ -959,10 +960,28 @@
         "aggregate": { "values": [{ "field": "run", "as": "runs", "reducer": "count" }] }
       },
       {
-        "name": "database-event-count",
+        "name": "database-domain-count",
+        "intent": "Count domains in the dashboard database.",
+        "from": "domains",
+        "aggregate": { "values": [{ "field": "event", "as": "domains", "reducer": "count" }] }
+      },
+      {
+        "name": "database-tool-count",
+        "intent": "Count tools in the dashboard database.",
+        "from": "tools",
+        "aggregate": { "values": [{ "field": "event", "as": "tools", "reducer": "count" }] }
+      },
+      {
+        "name": "database-audit-count",
         "intent": "Count audits in the dashboard database.",
         "from": "audits",
         "aggregate": { "values": [{ "field": "event", "as": "audits", "reducer": "count" }] }
+      },
+      {
+        "name": "database-issue-count",
+        "intent": "Count issues and pull requests in the dashboard database.",
+        "from": "issues",
+        "aggregate": { "values": [{ "field": "event", "as": "issues", "reducer": "count" }] }
       },
       {
         "name": "transactions-table",
@@ -1889,18 +1908,19 @@
       },
       {
         "name": "event-runs",
-        "intent": "Identify each workflow run that has one or more imported events.",
-        "description": "Distinct workflow runs represented by imported events.",
+        "intent": "Identify each workflow run that has one or more imported run-owned records.",
+        "description": "Distinct workflow runs represented by imported domain, tool, audit, or issue records.",
         "from": "audits",
+        "union": ["domains", "tools", "issues"],
         "aggregate": {
-          "by": ["organization", "repository", "workflow", "run"],
+          "by": ["organization", "repository", "workflow", "run", "run-attempt"],
           "values": [{ "field": "event", "as": "events", "reducer": "count" }]
         }
       },
       {
         "name": "run-import-status",
-        "intent": "Identify observed runs that have one or more imported events.",
-        "description": "Observed runs enriched with imported-event status.",
+        "intent": "Identify observed runs that have one or more imported run-owned records.",
+        "description": "Observed runs enriched with imported-record status.",
         "from": "runs",
         "joins": [
           {
@@ -1910,7 +1930,8 @@
               { "left": "organization", "right": "organization" },
               { "left": "repository", "right": "repository" },
               { "left": "workflow", "right": "workflow" },
-              { "left": "run", "right": "run" }
+              { "left": "run", "right": "run" },
+              { "left": "run-attempt", "right": "run-attempt" }
             ],
             "fields": [{ "field": "events", "as": "imported-events" }]
           }
@@ -2217,9 +2238,10 @@
       },
       {
         "name": "event-inspection",
-        "intent": "Inspect observed workflow events with their execution context and run navigation.",
-        "description": "Observed workflow events ordered from newest to oldest with their source, status, identity, and run context.",
+        "intent": "Inspect all observed run-owned records with their execution context and run navigation.",
+        "description": "Observed domain, tool, audit, and issue records ordered from newest to oldest with their source, status, identity, and run context.",
         "from": "audits",
+        "union": ["domains", "tools", "issues"],
         "joins": [
           {
             "source": "runs",
@@ -2257,6 +2279,7 @@
         "intent": "List observed audit events so experiment reviewers can inspect agent audit findings, recommendations, gaps, and activations.",
         "description": "Audit-sourced events ordered from newest to oldest with their audit kind, status, summary, and run context.",
         "from": "audits",
+        "union": ["tools"],
         "filter": {
           "predicates": [
             {
@@ -2319,6 +2342,7 @@
         "intent": "Aggregate high- and medium-severity audit events with the same summary by workflow.",
         "description": "The 20 most frequent high- and medium-severity audit event counts grouped by workflow and shared summary.",
         "from": "audits",
+        "union": ["tools"],
         "filter": {
           "predicates": [
             {
@@ -2436,6 +2460,8 @@
         "intent": "Inspect safe-output items with their GitHub entity type and producing workflow run.",
         "description": "Safe-output item events retain entity, action, repository, workflow, and run provenance.",
         "from": "issues",
+        "union": ["audits"],
+        "filter": { "predicates": [{ "field": "event-type", "equals": "safe_output.created" }] },
         "joins": [
           {
             "source": "runs",
@@ -7442,7 +7468,10 @@
                 "database-repository-count",
                 "database-workflow-count",
                 "database-run-count",
-                "database-event-count"
+                "database-domain-count",
+                "database-tool-count",
+                "database-audit-count",
+                "database-issue-count"
               ]
             },
             "mark": "element",
@@ -7452,7 +7481,7 @@
           {
             "id": "transaction-ingestion-trend",
             "title": "Run ingestion coverage",
-            "description": "Known factory runs compared with runs that include imported event data at each ingestion transaction.",
+            "description": "Known factory runs compared with runs that include imported run-owned record data at each ingestion transaction.",
             "data": {
               "source": "transactions-table"
             },
@@ -7475,7 +7504,7 @@
                 {
                   "field": "agentic-runs",
                   "type": "quantitative",
-                  "title": "Runs with event data"
+                  "title": "Runs with record data"
                 }
               ]
             }

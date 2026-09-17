@@ -56,6 +56,8 @@ export function createCanonicalQueries(indexedDB) {
 function runLinkedQueries(indexedDB, collection) {
   return {
     list: () => readCollection(indexedDB, collection),
-    forRun: (/** @type {string} */ runId) => readIndex(indexedDB, collection, 'byRun', [runId])
+    forRun: async (/** @type {string} */ runId) => (
+      await readIndex(indexedDB, collection, 'byRun', [runId])
+    ).sort((left, right) => Number(left.sequence) - Number(right.sequence))
   };
 }

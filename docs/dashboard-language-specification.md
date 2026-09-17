@@ -224,7 +224,7 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
-| Query definition | `name`, `intent`, `description`, `from`, `time`, `joins`, `filter`, `compute`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
+| Query definition | `name`, `intent`, `description`, `from`, `union`, `time`, `joins`, `filter`, `compute`, `aggregate`, `predict`, `select`, `order-by`, `limit` |
 | Query `joins` entry | `source`, `type`, `on`, `fields` |
 | Query join key | `left`, `right` |
 | Query join field | `field`, `as` |
@@ -437,13 +437,13 @@ An aggregate value may declare a `filter` containing `predicates`. This filter s
 
 ```yaml
 queries:
-  - name: event-and-blocked-request-counts
-    intent: Count all events and sum firewall-blocked requests by repository.
-    from: events
+  - name: domain-and-blocked-request-counts
+    intent: Count all domain observations and sum firewall-blocked requests by repository.
+    from: domains
     aggregate:
       by: [organization, repository]
       values:
-        - { field: event, as: all-events, reducer: count }
+        - { field: event, as: all-domain-observations, reducer: count }
         - field: request-count
           as: blocked-requests
           reducer: sum
@@ -545,10 +545,10 @@ The built-in methods require no registry or external configuration. Future langu
 
 #### 5.5.3 Normative Query Requirements
 
-- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` source; **MAY** declare `description`, `time`, `joins`, `filter`, `compute`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005**, a non-empty `intent` containing its original natural-language specification, and one `from` source; **MAY** declare `description`, `union`, `time`, `joins`, `filter`, `compute`, `aggregate`, `predict`, `select`, `order-by`, and `limit`; and **MUST NOT** declare any other key. A presenter and query execution layer **MUST** treat `intent` as inert authoring metadata.
 - **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 source name. A declared query name **MAY** be used wherever a view selects a logical source.
-- **DLS-QUERY-003:** `from` and every `joins[].source` **MUST** name one Section 5.1 source or one query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected.
-- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `joins` in declaration order, then `filter`, `compute` in declaration order, `aggregate`, `predict` in declaration order, `select`, `order-by`, and finally `limit`.
+- **DLS-QUERY-003:** `from`, every `union[]`, and every `joins[].source` **MUST** name one Section 5.1 source or one query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected. `union`, when present, **MUST** be a non-empty sequence; its rows are appended in declaration order, fields from every unioned source are available to later clauses, and a field absent from one row has a null value for query operations.
+- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `union` in declaration order, then `joins` in declaration order, then `filter`, `compute` in declaration order, `aggregate`, `predict` in declaration order, `select`, `order-by`, and finally `limit`.
 - **DLS-QUERY-005:** A join **MUST** declare `source`, a non-empty `on` sequence of `left`/`right` equality key pairs, and a non-empty `fields` sequence of aliased fields imported from the joined source. `type` **MUST** be `inner` or `left` and defaults to `inner`. Version 0.1.0 defines no other join type, no join expressions, and no cross joins. A query **MUST NOT** declare more than four joins.
 - **DLS-QUERY-006:** Join keys **MUST** address logical-source fields, not canonical entity identities. `left` **MUST** name a field available after the preceding clauses and `right` **MUST** name a field declared by the joined source. Key values **MUST** be compared as trimmed text; a null, missing, empty, or structured key value **MUST NOT** match any row.
 - **DLS-QUERY-007:** The joined source **MUST** contain at most one row per join key. A duplicate join key **MUST** fail the query rather than expand rows, so many-to-many expansion cannot occur.
@@ -558,7 +558,7 @@ The built-in methods require no registry or external configuration. Future langu
 - **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. Query aggregates additionally permit `distinct-list`, which returns distinct non-null scalar values sorted as text and joined with `, `, and `calendar-week-rhythm`, which consumes `calendar-week-point` values and returns seven Monday-to-Sunday UTC slots containing current-week and matching previous-week counts. An aggregate value **MAY** declare the aggregate-local `filter` defined above. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
 - **DLS-QUERY-012:** The output field schema of a query **MUST** be statically derivable from its declaration so encodings, filters, and `order-by` references can be validated before execution. A reference to a field the preceding clauses do not produce **MUST** be rejected with `DLS-E010`.
 - **DLS-QUERY-013:** A query **MUST NOT** read more than 200000 input rows per source, produce more than 200000 joined rows, or produce more than 100000 output rows; `limit` **MUST NOT** exceed 100000. Exceeding a limit **MUST** fail the query closed and **MUST NOT** truncate results silently.
-- **DLS-QUERY-014:** A derived source's metadata **MUST** compose its inputs' provenance: it **MUST** report `source-kind` `derived`, the oldest input `as-of` and `retrieved-at`, and the weakest input completeness and freshness. A missing or unavailable `from` or `inner`-join input **MUST** produce `unavailable` availability. A missing or unavailable `left`-join input **MUST** be evaluated as an empty enrichment, preserve the primary rows with null imported fields under **DLS-QUERY-008**, and degrade completeness without making a non-empty result unavailable. An executed query with zero output rows **MUST** report `empty` availability under **DLS-DATA-004**.
+- **DLS-QUERY-014:** A derived source's metadata **MUST** compose its inputs' provenance: it **MUST** report `source-kind` `derived`, the oldest input `as-of` and `retrieved-at`, and the weakest input completeness and freshness. A missing or unavailable `from`, `union`, or `inner`-join input **MUST** produce `unavailable` availability. A missing or unavailable `left`-join input **MUST** be evaluated as an empty enrichment, preserve the primary rows with null imported fields under **DLS-QUERY-008**, and degrade completeness without making a non-empty result unavailable. An executed query with zero output rows **MUST** report `empty` availability under **DLS-DATA-004**.
 - **DLS-QUERY-015:** A failed query **MUST** produce zero rows, `unavailable` availability, and one explicit diagnostic identifying the dashboard path of the failing query. A diagnostic **MUST NOT** contain source payloads, row values, credentials, or secrets.
 - **DLS-QUERY-016:** A presenter **MUST** resolve the query dependency graph before requesting a page projection so every input source required by a requested derived source is loaded while unrelated sources remain excluded, and **MUST** execute queries in the data-processing layer defined by Section 7.5 without a main-thread fallback.
 - **DLS-QUERY-017:** An execution layer **MUST NOT** assume its query definitions were validated. Before it reads any rows it **MUST** reject a query that reads itself, participates in a dependency cycle, reads a query declared later in the sequence, shares its name with another query, declares a join without equality keys, declares more joins than **DLS-QUERY-005** permits, or declares a `limit` outside **DLS-QUERY-013**. Every query that reads a rejected query **MUST** also be rejected. Rejected queries **MUST** fail closed under **DLS-QUERY-015**, and a query that does not depend on a rejected query **MUST** still execute.

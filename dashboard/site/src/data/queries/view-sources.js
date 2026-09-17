@@ -1131,7 +1131,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (needed.has('safe-output-performance')) needed.add('outcomes');
   if (needed.has('security-findings') || needed.has('detection-observations')) needed.add('findings');
   const queries = createCanonicalQueries(indexedDB);
-  const needsFirewall = needed.has('firewall-observations');
+  const needsFirewall = needed.has('firewall-observations')
+    && sourceRows(logicalSources['firewall-observations']).length === 0;
   const needsGraders = [
     'grader-observations',
     'operational-values',
@@ -1141,10 +1142,16 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     'eval-observations'
   ].some((name) => needed.has(name));
   const needsMcpCalls = needed.has('mcp-calls') && !sourceRows(logicalSources['mcp-calls']).length;
-  const needsOutcomeRecords = ['outcomes', 'findings', 'security-findings', 'detection-observations']
-    .some((name) => needed.has(name));
-  const needsRunLinkedRecords = ['domains', 'tools', 'audits', 'issues']
-    .some((name) => needed.has(name)) || needsFirewall || needsGraders || needsMcpCalls || needsOutcomeRecords;
+  const needsDerivedFindings = needed.has('findings')
+    || (['security-findings', 'detection-observations'].some((name) => needed.has(name))
+      && sourceRows(logicalSources['security-findings']).length === 0);
+  const needsFindingRecords = needsDerivedFindings && sourceRows(logicalSources.findings).length === 0;
+  const needsOutcomeRecords = needed.has('outcomes') && sourceRows(logicalSources.outcomes).length === 0;
+  const needsDomains = needed.has('domains') || needsFirewall;
+  const needsTools = needed.has('tools') || needsMcpCalls;
+  const needsAudits = needed.has('audits') || needsGraders || needsFindingRecords || needsOutcomeRecords;
+  const needsIssues = needed.has('issues') || needsOutcomeRecords;
+  const needsRunLinkedRecords = needsDomains || needsTools || needsAudits || needsIssues;
   const needsRuns = needed.has('runs') || needed.has('usage') || needsRunLinkedRecords;
   const needsWorkflows = needed.has('workflows') || needsRuns || needed.has('outcomes') || needed.has('work-items');
   const needsRepositories = needed.has('repositories') || needsWorkflows;
@@ -1154,10 +1161,10 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     needsWorkflows ? queries.workflows.list() : [],
     needsRuns ? queries.runs.list() : [],
     needed.has('failed-runs') ? queries.runs.recentFailures() : [],
-    needsRunLinkedRecords ? queries.domains.list() : [],
-    needsRunLinkedRecords ? queries.tools.list() : [],
-    needsRunLinkedRecords ? queries.audits.list() : [],
-    needsRunLinkedRecords ? queries.issues.list() : [],
+    needsDomains ? queries.domains.list() : [],
+    needsTools ? queries.tools.list() : [],
+    needsAudits ? queries.audits.list() : [],
+    needsIssues ? queries.issues.list() : [],
     needed.has('transactions') ? queries.transactions.list() : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
@@ -1171,7 +1178,12 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const outcomes = needed.has('outcomes')
     ? publishedOutcomes.length > 0
       ? /** @type {import('../../presenter.js').LogicalSourceInput} */ (sources.outcomes)
-      : outcomesSource(issues, runsById, workflowsById, sources)
+      : outcomesSource(
+          [...issues, ...audits.filter((record) => record.type === 'safe_output.created')],
+          runsById,
+          workflowsById,
+          sources
+        )
     : null;
   const publishedFindings = sourceRows(sources.findings);
   const findings = needed.has('findings')

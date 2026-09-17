@@ -1006,7 +1006,7 @@ export function transactionLogRows(usage) {
     if (event["event-type"] === "safe_output.created"
       && ["issue", "pull_request"].includes(event["github-entity-type"])) return "issues";
     if (event["event-source"] === "mcp"
-      || ["tool_call", "agent_tool_start", "agent_tool_done", "audit.skill_activation"]
+      || ["tool_call", "agent_tool_start", "agent_tool_done", "guard_blocked", "difc_filtered", "audit.skill_activation"]
         .includes(event["event-type"])) return "tools";
     return "audits";
   };

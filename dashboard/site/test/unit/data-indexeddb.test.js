@@ -91,7 +91,7 @@ describe('canonical IndexedDB', () => {
     expect([...database.transaction('domains').objectStore('domains').indexNames]).toEqual(['byDomain', 'byRun']);
     expect([...database.transaction('tools').objectStore('tools').indexNames]).toEqual(['byRun', 'byType']);
     expect([...database.transaction('audits').objectStore('audits').indexNames]).toEqual(['byRun', 'byType']);
-    expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byPullRequest', 'byRun']);
+    expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byRun']);
     database.close();
   });
 

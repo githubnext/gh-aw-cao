@@ -637,7 +637,7 @@ savings as gross or net realized value.
 
 ### 5.5.5 Canonical projection, SQL, and IndexedDB parity
 
-Token-optimization observations SHALL use compact canonical Events in the
+Token-optimization observations SHALL use compact canonical Audit records in the
 optimizer Run rather than new source-shaped object stores:
 
 ```text
@@ -646,7 +646,7 @@ optimization.intervention.updated
 optimization.comparison.observed
 ```
 
-The Event payload SHALL contain only the stable IDs, enums, numeric measures,
+The Audit payload SHALL contain only the stable IDs, enums, numeric measures,
 evidence state, missing reason, timestamps, and relationship IDs defined above.
 Repository, Workflow, Run, Outcome, experiment assignment, usage, and
 operational-value facts remain in their existing canonical domains. Dashboard
@@ -1666,7 +1666,7 @@ status
 domains: runId, domain
 tools: runId, toolType
 audits: runId, type
-issues: runId, isPullRequest
+issues: runId
 ```
 
 Indexes SHOULD NOT be added speculatively.

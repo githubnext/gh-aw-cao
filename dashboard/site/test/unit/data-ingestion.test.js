@@ -459,7 +459,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-jsonl',
-        ingestionVersion: 3,
+        ingestionVersion: 4,
         records: 3,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       })
@@ -563,11 +563,12 @@ describe('canonical source ingestion and queries', () => {
       linesProcessed: 2,
       recordsIngested: 1
     });
-    await expect(ingestCachedGhAwJsonl(
-      indexedDB,
-      new TextDecoder().decode(content),
-      { payloadIdentity: 'published-shard-identity' }
-    )).resolves.toMatchObject({
+    const duplicate = async function* () {
+      yield await Promise.reject(new Error('current streams must not be consumed'));
+    };
+    await expect(ingestCachedGhAwJsonl(indexedDB, duplicate(), {
+      payloadIdentity: 'published-shard-identity'
+    })).resolves.toMatchObject({
       updated: false,
       skipped: true
     });

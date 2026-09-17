@@ -30,7 +30,7 @@ export const MAX_CLI_ACTIONS = 20;
 export const MAX_CLI_ACTION_ARGUMENTS = 10;
 export const MAX_CLI_ACTION_COMMAND_LENGTH = 1000;
 
-export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'time', 'joins', 'filter', 'compute', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
+export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'union', 'time', 'joins', 'filter', 'compute', 'aggregate', 'predict', 'select', 'order-by', 'limit'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
 export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
 export const QUERY_JOIN_ON_KEYS = ['left', 'right'];

@@ -114,6 +114,13 @@ describe('Audit dashboard view', () => {
           ],
           metadata
         },
+        tools: {
+          source: 'tools',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '6', 'event-type': 'audit.skill_activation', 'event-status': 'medium', 'event-summary': 'Skill activation' }
+          ],
+          metadata
+        },
         workflows: {
           source: 'workflows',
           rows: [
@@ -131,6 +138,12 @@ describe('Audit dashboard view', () => {
         workflow: '.github/workflows/audit.md',
         'event-summary': 'Repeated finding',
         events: 2
+      },
+      {
+        package: 'audit-package',
+        workflow: '.github/workflows/audit.md',
+        'event-summary': 'Skill activation',
+        events: 1
       },
       {
         package: 'review-package',

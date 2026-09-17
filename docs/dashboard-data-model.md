@@ -43,9 +43,9 @@ The current dashboard publication does not include immutable GitHub repository o
 
 A Run owns one ordered Event stream combining observations from agents, tools, MCP servers, gateways, firewalls, policy engines, safe-output processing, GitHub APIs, and the workflow runtime.
 
-Events use a source sequence when one exists. Otherwise, source timestamp plus a deterministic ID tie-breaker defines order. Related calls, policy checks, responses, and results share a `correlationId` where available.
+Run-owned records use a source sequence when one exists. Otherwise, source timestamp plus a deterministic ID tie-breaker defines order. Related calls, policy checks, responses, and results share a `correlationId` where available.
 
-The activity collector requests the compact gh-aw `usage` artifact with audit generation enabled. The offline adapter prefers authoritative agent `events.jsonl`, MCP Gateway `gateway.jsonl` or `rpc-messages.jsonl`, and firewall `audit.jsonl` records when an older cache contains them; otherwise it derives tool-call Events from `run_summary.json`. It also retains normalized audit aggregates and `aw_info.json` agent, model, runtime, compiler, firewall, and gateway versions. Run evidence is scanned once, checkout and prompt trees are excluded, and raw messages, prompts, arguments, response bodies, and artifact bodies are not shipped to Pages.
+The activity collector requests the compact gh-aw `usage` artifact with audit generation enabled. The offline adapter prefers authoritative agent `events.jsonl`, MCP Gateway `gateway.jsonl` or `rpc-messages.jsonl`, and firewall `audit.jsonl` records when an older cache contains them; otherwise it derives tool records from `run_summary.json`. It also retains normalized audit aggregates and `aw_info.json` agent, model, runtime, compiler, firewall, and gateway versions. Run evidence is scanned once, checkout and prompt trees are excluded, and raw messages, prompts, arguments, response bodies, and artifact bodies are not shipped to Pages.
 
 SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Database owners map their schema to the contract and export static JSON before deployment. Local and deployed environments use the same contract, validator, adapter, and canonical queries; the static dashboard never opens a database connection.
 
@@ -53,20 +53,20 @@ SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Da
 
 Observations can arrive at different times and enrich an existing entity. Explicit source precedence and observation time resolve conflicting fields; arrival order alone never decides the result.
 
-The activity shard manifest is the dashboard's published operational input. The worker accepts phased ingestion only when every run-information shard has one event shard with the same filename stem. It imports every compact run-information shard before downloading the larger event shards. Run records include immutable agent, model, duration, firewall, MCP, operational-value, and audit-priority aggregates; every Event includes its owning `runId`. Run queries may refresh between phases, but that intermediate state is not a complete snapshot and event-dependent queries remain stale until event ingestion succeeds. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
+The activity shard manifest is the dashboard's published operational input. The worker accepts phased ingestion only when every run-information shard has one record shard with the same filename stem. It imports every compact run-information shard before downloading the larger record shards. Run records include immutable agent, model, duration, firewall, MCP, operational-value, and audit-priority aggregates; every Domain, Tool, Audit, and Issue includes its owning `runId`. Run queries may refresh between phases, but that intermediate state is not a complete snapshot and record-dependent queries remain stale until record ingestion succeeds. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Audits only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 10. It has stores for `packages`, `repositories`, `workflows`, `runs`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
+The canonical database is `gh-aw-cao-dashboard-data`, schema version 11. It has stores for `packages`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`, and `issues`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 
 Browser storage remains disposable derived state rather than a generation-atomic
 authority. Writes use bounded transactions, so interruption can leave a
 partially updated database; transaction identities cause the missing shards to
-retry, and event-dependent subscriptions remain on their prior result until a
-complete event phase succeeds. Storage capping drops complete run subtrees,
-including event detail whose owning run was evicted. Removing a published shard
+retry, and record-dependent subscriptions remain on their prior result until a
+complete record phase succeeds. Storage capping drops complete run subtrees,
+including run-owned detail whose owning run was evicted. Removing a published shard
 does not itself tombstone an indefinitely retained Run; source retractions need
 an explicit deletion contract or a schema rebuild.
 
@@ -74,9 +74,9 @@ Every merged batch must satisfy these mandatory relationships:
 
 - Workflow → Repository
 - Run → Repository and Workflow
-- Event → Run
+- Domain, Tool, Audit, and Issue → Run
 
-Work items and findings are represented by Events rather than separate canonical tables. Independent domains, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them.
+Work items and findings are projected from Issue and Audit records rather than stored in separate canonical tables. Independent logical sources, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them.
 
 Source download, adaptation, normalization, IndexedDB writes, and page queries run in a dedicated Web Worker, keeping large object graphs and conversions off the rendering thread. A successful JSONL ingestion writes an `ingest-jsonl` transaction containing its timestamp, input-record count, and retained-record count. A failed JSONL ingestion writes an `ingest-jsonl-failed` transaction with the error type when possible, and does not write a partial incoming batch. The audit trail is diagnostic derived state, not an authoritative log.
 

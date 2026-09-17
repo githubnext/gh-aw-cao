@@ -45,6 +45,24 @@ describe('SQL export adapter', () => {
       .toThrow('Unsupported SQL export schema version: 1');
   });
 
+  it('does not infer missing issue entity-type evidence', () => {
+    const input = fixture();
+    input.rows.push({
+      entity_kind: 'issue',
+      source_id: 'safe-output-without-entity-type',
+      observed_at: '2026-09-09T04:00:00Z',
+      github_run_id: '303',
+      run_attempt: 1,
+      is_pull_request: false,
+      url: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+    });
+
+    const [issue] = normalize(adaptSqlExport(input).observations).issues;
+
+    expect(issue).toMatchObject({ isPullRequest: false });
+    expect(issue).not.toHaveProperty('githubEntityType');
+  });
+
   it('preserves token intervention lifecycle identity and evidence', () => {
     const input = fixture();
     input.rows.push({

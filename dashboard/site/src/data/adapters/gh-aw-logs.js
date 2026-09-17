@@ -343,13 +343,14 @@ function recordKind(type, fields) {
     || type === 'tool_call'
     || type === 'agent_tool_start'
     || type === 'agent_tool_done'
+    || type === 'guard_blocked'
+    || type === 'difc_filtered'
     || type === 'audit.skill_activation') return 'tool';
   return 'audit';
 }
 
-/** @param {string} type @param {Record<string, unknown>} fields */
-function specializedFields(type, fields) {
-  const kind = recordKind(type, fields);
+/** @param {string} type @param {Record<string, unknown>} fields @param {'domain' | 'tool' | 'audit' | 'issue'} kind */
+function specializedFields(type, fields, kind) {
   if (kind === 'issue') {
     return {
       isPullRequest: fields.githubEntityType === 'pull_request',
@@ -419,8 +420,9 @@ function logFiles(input) {
  */
 function eventObservation(runId, filePath, line, eventTimestamp, eventSource, type, fields = {}) {
   const recordFields = { source: eventSource, ...fields };
+  const kind = recordKind(type, recordFields);
   return {
-    kind: recordKind(type, recordFields),
+    kind,
     source: OBSERVATION_SOURCE,
     sourceId: `${runId}:${filePath}:${line}`,
     observedAt: eventTimestamp,
@@ -432,7 +434,7 @@ function eventObservation(runId, filePath, line, eventTimestamp, eventSource, ty
       payloadRef: `${filePath}#L${line}`,
       sourceSequence: line,
       ...fields,
-      ...specializedFields(type, recordFields)
+      ...specializedFields(type, recordFields, kind)
     }
   };
 }
@@ -1185,8 +1187,9 @@ function createCachedGhAwJsonlAccumulator(options) {
         summary,
         ...fields
       };
+      const kind = recordKind(type, recordFields);
       observations.push({
-        kind: recordKind(type, recordFields),
+        kind,
         source: OBSERVATION_SOURCE,
         sourceId: `${eventScopeId}:${type}:${stableDigest(identity)}`,
         observedAt: enriched.observedAt,
@@ -1201,7 +1204,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           payloadRef: `gh-aw-logs-shards#L${enriched.line}`,
           sourceSequence,
           ...fields,
-          ...specializedFields(type, recordFields)
+          ...specializedFields(type, recordFields, kind)
         })
       });
       sourceSequence += 1;
@@ -1871,10 +1874,13 @@ function createCachedGhAwJsonlAccumulator(options) {
     duplicateRawRunObservations: rawPayloadRecords - rawRuns.size,
     duplicateAgenticRunObservations: agenticRunRecords - enrichedRuns.size,
     unenrichedRuns: runIds.size - enrichedRuns.size,
-    recordsByKind: Object.fromEntries(['domain', 'tool', 'audit', 'issue'].map((kind) => [
-      `${kind}s`,
-      observations.filter((observation) => observation.kind === kind).length
-    ])),
+    recordsByKind: observations.reduce((counts, observation) => {
+      if (observation.kind === 'domain') counts.domains += 1;
+      if (observation.kind === 'tool') counts.tools += 1;
+      if (observation.kind === 'audit') counts.audits += 1;
+      if (observation.kind === 'issue') counts.issues += 1;
+      return counts;
+    }, { domains: 0, tools: 0, audits: 0, issues: 0 }),
     safeOutputItems,
     mappedSafeOutputItems: [...safeOutputItemsByRun.values()]
       .reduce((total, items) => total + items.length, 0),

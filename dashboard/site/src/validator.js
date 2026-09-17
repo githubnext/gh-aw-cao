@@ -3195,7 +3195,11 @@ function validateQueries(queries, queriesNode, errors) {
     const fields = validateQueryClauses(query, queryNode, path, declared, errors);
     if (name) {
       declared.set(name, fields);
-      const inputs = [query.from, ...(Array.isArray(query.joins) ? query.joins.map((join) => join?.source) : [])];
+      const inputs = [
+        query.from,
+        ...(Array.isArray(query.union) ? query.union : []),
+        ...(Array.isArray(query.joins) ? query.joins.map((join) => join?.source) : [])
+      ];
       const sources = new Set();
       for (const input of inputs) {
         if (typeof input !== 'string') continue;
@@ -3233,8 +3237,25 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
   };
 
   const fromFields = inputFields(query.from, `${path}.from`);
+  /** @type {Array<string[] | undefined>} */
+  const unionFields = [];
+  if (query.union !== undefined) {
+    if (!Array.isArray(query.union) || query.union.length === 0) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'query union must be a non-empty sequence of source names.',
+        `${path}.union`
+      ));
+    } else {
+      query.union.forEach((source, index) => {
+        unionFields.push(inputFields(source, `${path}.union[${index}]`));
+      });
+    }
+  }
   /** @type {string[] | undefined} */
-  let fields = fromFields ? [...fromFields] : undefined;
+  let fields = fromFields
+    ? [...new Set([...fromFields, ...unionFields.flatMap((candidate) => candidate ?? [])])]
+    : undefined;
   /** @param {unknown} field @param {string} fieldPath */
   const requireField = (field, fieldPath) => {
     if (typeof field === 'string' && fields && !fields.includes(field)) {

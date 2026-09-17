@@ -37,6 +37,22 @@ describe('gh-aw logs adapter', () => {
     expect(batch.tools.filter((record) => record.correlationId === 'call-1')).toHaveLength(3);
   });
 
+  it('stores gateway-denied tool calls in the tools table', () => {
+    const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'));
+    const content = [
+      { timestamp: '2026-09-09T04:00:02Z', type: 'DIFC_FILTERED', server_name: 'github', tool_name: 'get_file' },
+      { timestamp: '2026-09-09T04:00:03Z', type: 'GUARD_POLICY_BLOCKED', server_name: 'github', tool_name: 'create_issue' }
+    ].map((record) => JSON.stringify(record)).join('\n');
+
+    const batch = normalize(adaptGhAwLogs({
+      ...context,
+      files: [{ path: 'run-303/mcp-logs/gateway.jsonl', content }]
+    }).observations);
+
+    expect(batch.tools.map((record) => record.type)).toEqual(['difc_filtered', 'guard_blocked']);
+    expect(batch.audits).toEqual([]);
+  });
+
   it('maps cached raw runs and agentic runs into unified runs and events', () => {
     const content = [
       {
