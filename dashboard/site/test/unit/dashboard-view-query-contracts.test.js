@@ -64,7 +64,7 @@ describe('dashboard view query contracts', () => {
     expect(views[0]?.id).toBe('package-run-navigation');
     for (const viewId of ['package-failure-reason-distribution', 'package-failed-dispatch-table']) {
       const view = views.find((candidate) => candidate.id === viewId);
-      expect(/** @type {Record<string, unknown>} */ (view?.data).source).toBe('dispatches');
+      expect(/** @type {Record<string, unknown> | undefined} */ (view?.data)?.source).toBe('dispatches');
     }
   });
 
