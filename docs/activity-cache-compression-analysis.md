@@ -1,3 +1,8 @@
+---
+title: Activity cache compression analysis
+description: Measurements and remediation for repeated Activity cache shard data.
+---
+
 # Activity cache compression analysis
 
 On 2026-09-17, the deployed `cao-activity-index` snapshot was downloaded and
