@@ -3094,7 +3094,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                   data: { source: 'package-runs', 'route-field': 'package' },
                   mark: 'chart',
                   chart: 'pie',
-                  empty-message: 'No workflow runs were observed for this package in the current run window.',
+                  'empty-message': 'No workflow runs were observed for this package in the current run window.',
                   encoding: {
                     x: { field: 'status', type: 'nominal', title: 'Status' },
                     y: { field: 'started-at', type: 'quantitative', aggregate: 'count', title: 'Runs' }
@@ -3111,7 +3111,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                   },
                   mark: 'chart',
                   chart: 'pie',
-                  empty-message: 'No failed workflow dispatch runs were observed for this package in the current run window.',
+                  'empty-message': 'No failed workflow dispatch runs were observed for this package in the current run window.',
                   encoding: {
                     x: { field: 'status-detail', type: 'nominal', title: 'Failure reason' },
                     y: { field: 'status-detail', type: 'quantitative', aggregate: 'count', title: 'Failed dispatches' }

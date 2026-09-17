@@ -110,7 +110,11 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
     && (!Array.isArray(declared.joins) || declared.joins.every((join) => (
       isPlainObject(join) && typeof join.source === 'string' && !declaredNames.has(join.source)
     )));
-  if (isPlainObject(declared) && !standalone) {
+  const postQueryFields = isPlainObject(declared) ? derivedOutputFields(declared) : new Set();
+  const requiresOutputFilter = predicates.some((predicate) => (
+    typeof predicate.field === 'string' && postQueryFields.has(predicate.field)
+  ));
+  if (isPlainObject(declared) && (!standalone || requiresOutputFilter)) {
     return compileScopedQueryGraph(
       sourceName,
       alias,
@@ -120,6 +124,28 @@ function compileAliasedQuery(sourceName, alias, predicates, search, orderBy, eva
       evaluatedAt,
       declaredQueries
     );
+  }
+
+  /** @param {Record<string, unknown>} query */
+  function derivedOutputFields(query) {
+    const fields = new Set();
+    for (const clause of ['compute', 'predict']) {
+      if (!Array.isArray(query[clause])) continue;
+      for (const item of query[clause]) {
+        if (isPlainObject(item) && typeof item.as === 'string') fields.add(item.as);
+      }
+    }
+    if (isPlainObject(query.aggregate) && Array.isArray(query.aggregate.values)) {
+      for (const item of query.aggregate.values) {
+        if (isPlainObject(item) && typeof item.as === 'string') fields.add(item.as);
+      }
+    }
+    if (Array.isArray(query.select)) {
+      for (const item of query.select) {
+        if (isPlainObject(item) && typeof item.as === 'string' && item.as !== item.field) fields.add(item.as);
+      }
+    }
+    return fields;
   }
   const sourceQuery = standalone
     ? /** @type {Record<string, unknown>} */ (declared)
