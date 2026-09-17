@@ -3,6 +3,17 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 
+vi.mock('../../src/retry.js', async (importOriginal) => {
+  const retry = /** @type {typeof import('../../src/retry.js')} */ (await importOriginal());
+  return {
+    ...retry,
+    withRetries: (
+      /** @type {(attempt: number) => Promise<unknown>} */ operation,
+      /** @type {{ attempts?: number, delayMs?: number }} */ options = {}
+    ) => retry.withRetries(operation, { ...options, delayMs: 0 })
+  };
+});
+
 beforeEach(async () => {
   await new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DATABASE_NAME);
