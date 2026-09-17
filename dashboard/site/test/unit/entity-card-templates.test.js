@@ -62,14 +62,20 @@ describe('entity card templates', () => {
         title: { field: 'operation-name' },
         subtitle: { field: 'operation-description' }
       });
+      const marketplaceGroupQuery = dashboard.queries.find(
+        (/** @type {Record<string, any>} */ query) => query.name === 'marketplace-operation-groups'
+      );
+      expect(marketplaceGroupQuery).toMatchObject({
+        from: 'workflows',
+        aggregate: {
+          by: expect.arrayContaining(['operation-id', 'operation-name', 'operation-dashboard-href'])
+        }
+      });
       const marketplaceQuery = dashboard.queries.find(
         (/** @type {Record<string, any>} */ query) => query.name === 'marketplace-operations'
       );
       expect(marketplaceQuery).toMatchObject({
-        from: 'workflows',
-        aggregate: {
-          by: expect.arrayContaining(['operation-id', 'operation-name', 'operation-link'])
-        },
+        from: 'marketplace-operation-groups',
         'order-by': [
           { field: 'operation-kind', direction: 'asc' },
           { field: 'operation-name', direction: 'asc' }
