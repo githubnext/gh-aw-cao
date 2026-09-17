@@ -29,6 +29,7 @@ import { renderDashboardFrame } from './components/dashboard-frame.js';
 import { scopedStorageKey } from './storage-scope.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
+import { publishSource } from './source-store.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 import {
@@ -83,7 +84,7 @@ import {
  */
 
 /**
- * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
+ * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
  */
 
 /**
@@ -231,6 +232,14 @@ export function renderDashboard(input) {
         }
       };
       /** @param {Record<string, LogicalSourceInput>} pageSources */
+      const updateIndependentElements = (pageSources) => {
+        updateHorizon(pageSources);
+        for (const [bindingKey, source] of Object.entries(pageSources)) {
+          publishSource(bindingKey, source, bindingKey);
+        }
+        options.syncPageChrome?.();
+      };
+      /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => {
         const page = resolvedPage();
         if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
@@ -240,11 +249,13 @@ export function renderDashboard(input) {
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
       };
       if (input.loadPageSources) {
-        options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
+        options.onUpdate = rendersBeforePageSources
+          ? updateIndependentElements
+          : (pageSources) => options.renderUpdate(render(pageSources));
         if (rendersBeforePageSources) {
           const renderedPage = render(sources);
           void input.loadPageSources(pageId, options)
-            .then(updateHorizon)
+            .then(updateIndependentElements)
             .catch((error) => {
               if (!options.signal?.aborted) {
                 console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -1114,6 +1125,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         const rendered = renderPageById?.(pageId, {
           signal: pageOwner.signal,
           onUpdate: () => {},
+          syncPageChrome: () => {
+            const horizonDetails = dashboardHorizon?.querySelector('.horizon-details');
+            const tuningControls = activeFilterBar?.querySelector('.filter-tuning-controls');
+            if (horizonDetails && tuningControls) tuningControls.append(horizonDetails);
+            syncFullViewMode(currentPage);
+          },
           routeParameters,
           queryContext,
           renderUpdate: replacePage
