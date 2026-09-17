@@ -3770,6 +3770,7 @@
         "name": "maintenance-repository-versions",
         "intent": "Group installed and current gh-aw compiler versions and upgrade evidence by repository.",
         "from": "workflows",
+        "filter": { "predicates": [{ "field": "workflow", "includes": ".md" }] },
         "compute": [
           {
             "as": "repository-coordinate",

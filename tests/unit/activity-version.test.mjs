@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareVersions, normalizeVersion, updateState } from "../../activity/version.mjs";
+import {
+  compareVersions,
+  compilerVersionFromLock,
+  normalizeVersion,
+  revisionUpdateState,
+  updateState,
+} from "../../activity/version.mjs";
 
 test("gh-aw versions normalize optional prefixes and build metadata", () => {
   assert.equal(normalizeVersion("0.88.2"), "v0.88.2");
@@ -23,4 +29,15 @@ test("gh-aw update state treats normalized current and newer versions as up to d
   assert.equal(updateState("v0.89.0-rc.1", "v0.89.0"), "update-available");
   assert.equal(updateState("v0.90.0", "v0.89.0"), "up-to-date");
   assert.equal(updateState(null, "v0.89.0"), "unknown");
+});
+
+test("compiler metadata parsing and revision update state fail closed", () => {
+  assert.equal(
+    compilerVersionFromLock('# gh-aw-metadata: {"compiler_version":"0.89.15"}\n'),
+    "v0.89.15",
+  );
+  assert.equal(compilerVersionFromLock("# gh-aw-metadata: not-json\n"), null);
+  assert.equal(revisionUpdateState("A".repeat(40), "a".repeat(40)), "up-to-date");
+  assert.equal(revisionUpdateState("a".repeat(40), "b".repeat(40)), "update-available");
+  assert.equal(revisionUpdateState("", "b".repeat(40)), "unknown");
 });

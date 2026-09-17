@@ -366,6 +366,14 @@ describe('declarative dashboard queries', () => {
         },
         {
           organization: 'acme',
+          repository: 'current',
+          workflow: 'ci.yml',
+          'gh-aw-version': null,
+          'gh-aw-current-version': null,
+          'gh-aw-update-state': 'unknown'
+        },
+        {
+          organization: 'acme',
           repository: 'unknown',
           workflow: 'd.md',
           'gh-aw-version': null,
