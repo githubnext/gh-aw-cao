@@ -34,7 +34,9 @@ describe("live Dashboard Language sources", () => {
     expect(startup).toContain("refreshCanonicalDashboardSources(\n      sourceUrl,\n      []");
     expect(startup).not.toContain("loadInitialSources");
     expect(startup).toContain('render({}, "cached", loadPageSources)');
-    expect(startup).toContain('render({}, "stale", loadPageSources, refreshSources)');
+    expect(startup).toContain('updateState("stale", refreshSources)');
+    expect(startup).toContain('updateState("ready")');
+    expect(preview).toContain("updateState: updateDashboardDataState");
     expect(startup).not.toContain("initialPageLoaded");
     expect(startup.indexOf('render({}, "cached"')).toBeLessThan(startup.indexOf("await settleUi()"));
     expect(startup.indexOf("await settleUi()")).toBeLessThan(startup.indexOf("startAutomaticUpdates();", startup.indexOf("await settleUi()")));
