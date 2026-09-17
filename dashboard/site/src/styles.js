@@ -1640,8 +1640,18 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-bars { height: 74px; position: relative; display: grid; grid-template-columns: repeat(7, minmax(18px, 1fr)); align-items: end; gap: 9px; }
 .factory-rhythm-bars > .factory-rhythm-day { height: 100%; position: relative; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 5px; border: 0; border-radius: 3px; background: transparent; text-align: center; cursor: default; }
 .factory-rhythm-bar-pair { height: 100%; display: flex; align-items: end; justify-content: center; gap: 2px; }
-.factory-rhythm-bar-pair i { min-width: 4px; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; }
+.factory-rhythm-bar-pair i { min-width: 4px; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; transform-origin: center bottom; animation: factory-rhythm-bar-grow 360ms cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc((var(--factory-rhythm-day, 1) - 1) * 35ms); }
 .factory-rhythm-bar-pair i[hidden] { display: none; }
+.factory-rhythm-day:nth-child(2) { --factory-rhythm-day: 2; }
+.factory-rhythm-day:nth-child(3) { --factory-rhythm-day: 3; }
+.factory-rhythm-day:nth-child(4) { --factory-rhythm-day: 4; }
+.factory-rhythm-day:nth-child(5) { --factory-rhythm-day: 5; }
+.factory-rhythm-day:nth-child(6) { --factory-rhythm-day: 6; }
+.factory-rhythm-day:nth-child(7) { --factory-rhythm-day: 7; }
+.factory-rhythm-pending .factory-rhythm-bar-pair i { animation-play-state: paused; }
+@keyframes factory-rhythm-bar-grow {
+  from { opacity: .4; transform: scaleY(0); }
+}
 .factory-rhythm-baseline { width: 82%; border: 1px solid var(--border); background: var(--canvas-subtle); }
 .factory-rhythm-current { width: 82%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
 .factory-rhythm-bars small { color: var(--muted); font-size: .625rem; font-style: normal; }
@@ -1680,7 +1690,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   .factory-status { align-items: flex-start; flex-direction: column; gap: 12px; padding: 16px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .factory-running-active > span::after, .factory-station { animation: none; }
+  .factory-running-active > span::after, .factory-station, .factory-rhythm-bar-pair i { animation: none; }
 }
 .dashboard-next-work-page .custom-view-grid { display: block; }
 .dashboard-next-insights-page .custom-view-grid { display: block; }
