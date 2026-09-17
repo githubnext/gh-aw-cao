@@ -52,6 +52,9 @@ const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
 const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
+// Intentional CLI misuse that should print usage without an internal stack trace.
+class UsageError extends Error {}
+
 const USAGE = `Usage:
   cao init
   cao add PACKAGE [GH_AW_ADD_OPTIONS...]
@@ -367,7 +370,7 @@ export async function addCaoPackage(packageSpec, ghAwOptions = [], {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
-  if (!packageSpec || packageSpec.startsWith('-')) throw new Error('cao add requires a package');
+  if (!packageSpec || packageSpec.startsWith('-')) throw new UsageError('cao add requires a package');
   const install = execute('gh', ['aw', 'add', packageSpec, ...ghAwOptions], {
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024
@@ -446,23 +449,23 @@ export async function setCaoPackageMode(mode, packageNames, {
   policyPath = DEFAULT_POLICY_PATH
 } = {}) {
   if (mode !== 'live' && mode !== 'preview') {
-    throw new Error('cao mode requires live or preview');
+    throw new UsageError('cao mode requires live or preview');
   }
   if (!Array.isArray(packageNames) || packageNames.length === 0) {
-    throw new Error(`cao mode ${mode} requires at least one package`);
+    throw new UsageError(`cao mode ${mode} requires at least one package`);
   }
 
   const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
   const invalidPackage = packageNames.find((packageName) => typeof packageName !== 'string' || !slug.test(packageName));
   if (invalidPackage !== undefined) {
-    throw new Error(`Invalid CAO package name: ${invalidPackage}`);
+    throw new UsageError(`Invalid CAO package name: ${invalidPackage}`);
   }
 
   const policy = await readCaoPolicy(policyPath, 'mode');
   const packages = policy['control-plane']?.packages ?? {};
   const unknownPackages = [...new Set(packageNames)].filter((packageName) => !Object.hasOwn(packages, packageName));
   if (unknownPackages.length > 0) {
-    throw new Error(`Unknown CAO package${unknownPackages.length === 1 ? '' : 's'}: ${unknownPackages.join(', ')}`);
+    throw new UsageError(`Unknown CAO package${unknownPackages.length === 1 ? '' : 's'}: ${unknownPackages.join(', ')}`);
   }
   for (const packageName of packageNames) {
     if (!isMapping(packages[packageName])) {
@@ -509,20 +512,20 @@ function parseOptions(arguments_) {
   const options = {};
   for (let index = 0; index < arguments_.length; index += 1) {
     const argument = arguments_[index];
-    if (!argument.startsWith('--') && !aliases[argument]) throw new Error(`Unexpected argument: ${argument}`);
+    if (!argument.startsWith('--') && !aliases[argument]) throw new UsageError(`Unexpected argument: ${argument}`);
     const name = aliases[argument] ?? argument.slice(2);
     if (name === 'help' || name === 'stdin' || name === 'keep') {
       options[name] = 'true';
       continue;
     }
     const value = arguments_[index + 1];
-    if (!value || value.startsWith('--')) throw new Error(`Missing value for --${name}`);
+    if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
     if (name === 'where') {
       const existing = options.where;
       options.where = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
-      throw new Error(`Option --${name} may only be specified once`);
+      throw new UsageError(`Option --${name} may only be specified once`);
     } else {
       options[name] = value;
     }
@@ -533,13 +536,13 @@ function parseOptions(arguments_) {
 async function rawQueryFromStdin(options, input) {
   for (const name of ['collection', 'id', 'where', 'limit']) {
     if (options[name] !== undefined) {
-      throw new Error(`Option --${name} cannot be combined with --stdin`);
+      throw new UsageError(`Option --${name} cannot be combined with --stdin`);
     }
   }
 
   let content = '';
   for await (const chunk of input) content += chunk;
-  if (!content.trim()) throw new Error('--stdin requires a JSON object');
+  if (!content.trim()) throw new UsageError('--stdin requires a JSON object');
 
   let query;
   try {
@@ -548,24 +551,24 @@ async function rawQueryFromStdin(options, input) {
     throw new Error(`Invalid query JSON from stdin: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (!query || typeof query !== 'object' || Array.isArray(query)) {
-    throw new Error('--stdin requires a JSON object');
+    throw new UsageError('--stdin requires a JSON object');
   }
   if (typeof query.name !== 'string' || typeof query.from !== 'string') {
-    throw new Error('--stdin query requires string fields "name" and "from"');
+    throw new UsageError('--stdin query requires string fields "name" and "from"');
   }
   return query;
 }
 
 function option(options, name, required = true) {
   const value = options[name];
-  if (Array.isArray(value)) throw new Error(`Option --${name} may only be specified once`);
-  if (required && !value) throw new Error(`Missing required option --${name}`);
+  if (Array.isArray(value)) throw new UsageError(`Option --${name} may only be specified once`);
+  if (required && !value) throw new UsageError(`Missing required option --${name}`);
   return value;
 }
 
 function rejectUnknownOptions(options, allowed) {
   for (const name of Object.keys(options)) {
-    if (!allowed.includes(name)) throw new Error(`Unknown option --${name}`);
+    if (!allowed.includes(name)) throw new UsageError(`Unknown option --${name}`);
   }
 }
 
@@ -582,7 +585,7 @@ function filters(options) {
   if (!values) return [];
   return (Array.isArray(values) ? values : [values]).map((filter) => {
     const separator = filter.indexOf('=');
-    if (separator < 1) throw new Error(`Invalid --where value: ${filter}`);
+    if (separator < 1) throw new UsageError(`Invalid --where value: ${filter}`);
     return {
       field: filter.slice(0, separator),
       value: filter.slice(separator + 1)
@@ -594,7 +597,7 @@ function queryLimit(options) {
   const value = option(options, 'limit', false);
   if (!value) return undefined;
   const limit = Number(value);
-  if (!Number.isInteger(limit) || limit < 1) throw new Error('--limit must be a positive integer');
+  if (!Number.isInteger(limit) || limit < 1) throw new UsageError('--limit must be a positive integer');
   return limit;
 }
 
@@ -606,7 +609,7 @@ function timeBoundary(options, name) {
   const value = option(options, name, false);
   if (!value) return undefined;
   const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) throw new Error(`--${name} must be a valid ISO 8601 time`);
+  if (!Number.isFinite(timestamp)) throw new UsageError(`--${name} must be a valid ISO 8601 time`);
   if (name === 'until' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return timestamp + DAY_MS - 1;
   return timestamp;
 }
@@ -615,7 +618,7 @@ function ghTimeRange(options) {
   const since = timeBoundary(options, 'since');
   const until = timeBoundary(options, 'until');
   if (since !== undefined && until !== undefined && since > until) {
-    throw new Error('--since must not be later than --until');
+    throw new UsageError('--since must not be later than --until');
   }
   return { since, until };
 }
@@ -625,7 +628,7 @@ function ttlDays(options) {
   if (!value) return undefined;
   if (value === 'all') return 'all';
   const days = Number(value);
-  if (!Number.isFinite(days) || days <= 0) throw new Error('--ttl-days must be a positive number or all');
+  if (!Number.isFinite(days) || days <= 0) throw new UsageError('--ttl-days must be a positive number or all');
   return days;
 }
 
@@ -636,7 +639,7 @@ function retentionWindowMs(options) {
   const days = Number(value);
   const milliseconds = days * DAY_MS;
   if (!Number.isFinite(days) || days <= 0 || !Number.isSafeInteger(milliseconds)) {
-    throw new Error('--retention-days must be a positive number or all');
+    throw new UsageError('--retention-days must be a positive number or all');
   }
   return milliseconds;
 }
@@ -648,7 +651,7 @@ function runRetentionWindowMs(options) {
   const days = Number(value);
   const milliseconds = days * DAY_MS;
   if (!Number.isFinite(days) || days <= 0 || !Number.isSafeInteger(milliseconds)) {
-    throw new Error('--run-retention-days must be a positive number or all');
+    throw new UsageError('--run-retention-days must be a positive number or all');
   }
   return milliseconds;
 }
@@ -659,7 +662,7 @@ function runTtlDays(options) {
   if (value === 'all') return 'all';
   const days = Number(value);
   if (!Number.isFinite(days) || days <= 0) {
-    throw new Error('--run-ttl-days must be a positive number or all');
+    throw new UsageError('--run-ttl-days must be a positive number or all');
   }
   return days;
 }
@@ -1081,9 +1084,9 @@ export async function activityWorkflowStats({
   limit = DEFAULT_ACTIVITY_STATS_LIMIT,
   keep = false
 } = {}, execute = spawnSync) {
-  if (!repo) throw new Error('Missing required option --repo (or GITHUB_REPOSITORY environment variable)');
+  if (!repo) throw new UsageError('Missing required option --repo (or GITHUB_REPOSITORY environment variable)');
   const limitCount = Number(limit);
-  if (!Number.isInteger(limitCount) || limitCount < 1) throw new Error('--limit must be a positive integer');
+  if (!Number.isInteger(limitCount) || limitCount < 1) throw new UsageError('--limit must be a positive integer');
 
   const list = execute('gh', [
     'run', 'list',
@@ -1359,7 +1362,7 @@ export async function runCli(arguments_, input = process.stdin) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (command === 'init') {
-    if (optionArguments.length > 0) throw new Error(`Unexpected argument: ${optionArguments[0]}`);
+    if (optionArguments.length > 0) throw new UsageError(`Unexpected argument: ${optionArguments[0]}`);
     return initializeCaoPolicy();
   }
   if (command === 'add') {
@@ -1436,7 +1439,7 @@ export async function runCli(arguments_, input = process.stdin) {
   if (command === 'gh') {
     rejectUnknownOptions(options, ['database', 'repo', 'workflow', 'status', 'since', 'until', 'limit']);
     if (ghResource !== 'runs' && options.status) {
-      throw new Error('--status is only supported for cao gh runs');
+      throw new UsageError('--status is only supported for cao gh runs');
     }
     return queryGhData(indexedDB, ghResource, options);
   }
@@ -1458,7 +1461,7 @@ export async function runCli(arguments_, input = process.stdin) {
     rejectUnknownOptions(options, ['database', 'input', 'input-dir', 'context', 'retention-days', 'run-retention-days']);
     const inputPath = option(options, 'input', false);
     const inputDirectory = option(options, 'input-dir', false);
-    if (inputPath && inputDirectory) throw new Error('Options --input and --input-dir cannot be combined');
+    if (inputPath && inputDirectory) throw new UsageError('Options --input and --input-dir cannot be combined');
     const contextPath = option(options, 'context', false);
     const context = contextPath
       ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
@@ -1479,7 +1482,7 @@ export async function runCli(arguments_, input = process.stdin) {
       ? queryRawCanonicalData(indexedDB, rawQuery)
       : queryCanonicalData(indexedDB, options);
   }
-  throw new Error(`Unknown command: ${command}`);
+  throw new UsageError(`Unknown command: ${command}`);
 }
 
 async function main() {
@@ -1490,7 +1493,12 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n\n${USAGE}\n`);
+    const message = error instanceof UsageError
+      ? `Error: ${error.message}`
+      : error instanceof Error
+        ? error.stack || `${error.name}: ${error.message}`
+        : String(error);
+    process.stderr.write(`${message}\n\n${USAGE}\n`);
     process.exitCode = 1;
   });
 }
