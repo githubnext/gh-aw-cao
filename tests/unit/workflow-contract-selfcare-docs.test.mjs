@@ -68,13 +68,14 @@ test("SelfCare runs every 20 minutes", () => {
   const compiled = workflow("self-care.lock.yml");
 
   assert.match(source, /schedule: every 20 minutes/);
-  assert.match(source, /engine: copilot\nmodel: copilot\/gpt-5\.4/);
+  assert.match(source, /engine: copilot/);
+  assert.doesNotMatch(source, /model: copilot\/gpt-5\.4/);
   assert.match(source, /self-care-dashboard-data-schema` and `self-care-glossary`.*preceding 24 hours/);
   assert.match(source, /ten most recent runs of each workflow/);
   assert.match(source, /self-care-pages-health.*no run of that workflow is queued, in progress, or started during the preceding six hours/);
   assert.match(source, /at most the 20 most recent Pages Health workflow runs/);
   assert.match(compiled, /cron: "[0-5]?\d\/20 \* \* \* \*"  # Friendly format: every 20 minutes \(scattered\)/);
-  assert.match(compiled, /GH_AW_INFO_MODEL: "copilot\/gpt-5\.4"/);
+  assert.doesNotMatch(compiled, /GH_AW_INFO_MODEL: "copilot\/gpt-5\.4"/);
 });
 
 test("SelfCare accessibility checker audits the served docs site with axe-core evidence", () => {
