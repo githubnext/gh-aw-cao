@@ -52,6 +52,8 @@ const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
 const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
+class UsageError extends Error {}
+
 const USAGE = `Usage:
   cao init
   cao add PACKAGE [GH_AW_ADD_OPTIONS...]
@@ -367,7 +369,7 @@ export async function addCaoPackage(packageSpec, ghAwOptions = [], {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
-  if (!packageSpec || packageSpec.startsWith('-')) throw new Error('cao add requires a package');
+  if (!packageSpec || packageSpec.startsWith('-')) throw new UsageError('cao add requires a package');
   const install = execute('gh', ['aw', 'add', packageSpec, ...ghAwOptions], {
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024
@@ -1490,7 +1492,11 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
-    const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    const message = error instanceof UsageError
+      ? `Error: ${error.message}`
+      : error instanceof Error
+        ? error.stack || `${error.name}: ${error.message}`
+        : String(error);
     process.stderr.write(`${message}\n\n${USAGE}\n`);
     process.exitCode = 1;
   });
