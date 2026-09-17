@@ -1,5 +1,5 @@
 import { scopedStorageKey } from './storage-scope.js';
-import { createDebug, withDebugParameter } from './debug.js';
+import { createDebug, withDebugParameter } from './debug.mjs';
 
 const debugServiceWorker = createDebug('data:ingestion:sw-client');
 

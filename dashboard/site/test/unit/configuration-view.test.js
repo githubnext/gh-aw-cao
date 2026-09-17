@@ -7,7 +7,7 @@ import { renderConfigurationView } from '../../src/components/configuration-view
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
-import { fullDebugUrl } from '../../src/debug.js';
+import { fullDebugUrl } from '../../src/debug.mjs';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'configuration-fixture',

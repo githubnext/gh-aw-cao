@@ -23,7 +23,7 @@ import {
   requestPersistentStorage
 } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
-import { createDebug } from '../../debug.js';
+import { createDebug } from '../../debug.mjs';
 
 const debug = createDebug('data:ingestion');
 

@@ -61,9 +61,9 @@ describe('dashboard cancel command', () => {
 
   it('stays silent by default and logs only scalar metadata under its predictable category', async () => {
     const output = { debug: vi.fn() };
-    vi.doMock('../../src/debug.js', async () => {
-      const actual = /** @type {typeof import('../../src/debug.js')} */ (
-        await vi.importActual('../../src/debug.js')
+    vi.doMock('../../src/debug.mjs', async () => {
+      const actual = /** @type {typeof import('../../src/debug.mjs')} */ (
+        await vi.importActual('../../src/debug.mjs')
       );
       return {
         ...actual,
@@ -90,15 +90,15 @@ describe('dashboard cancel command', () => {
       expect(Object.values(metadata).every((value) => typeof value !== 'object')).toBe(true);
     }
 
-    vi.doUnmock('../../src/debug.js');
+    vi.doUnmock('../../src/debug.mjs');
     vi.resetModules();
   });
 
   it('is disabled by default (no debug output) when the debug query is absent', async () => {
     const output = { debug: vi.fn() };
-    vi.doMock('../../src/debug.js', async () => {
-      const actual = /** @type {typeof import('../../src/debug.js')} */ (
-        await vi.importActual('../../src/debug.js')
+    vi.doMock('../../src/debug.mjs', async () => {
+      const actual = /** @type {typeof import('../../src/debug.mjs')} */ (
+        await vi.importActual('../../src/debug.mjs')
       );
       return {
         ...actual,
@@ -115,7 +115,7 @@ describe('dashboard cancel command', () => {
 
     expect(output.debug).not.toHaveBeenCalled();
 
-    vi.doUnmock('../../src/debug.js');
+    vi.doUnmock('../../src/debug.mjs');
     vi.resetModules();
   });
 });

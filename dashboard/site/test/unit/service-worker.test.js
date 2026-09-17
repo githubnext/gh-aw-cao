@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import vm from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
-import { isDebugEnabled as pageIsDebugEnabled } from '../../src/debug.js';
+import { isDebugEnabled as pageIsDebugEnabled } from '../../src/debug.mjs';
 
 const source = readFileSync(resolve('service-worker.js'), 'utf8');
 

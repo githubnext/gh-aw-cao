@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
 import { capturedConsoleLogText } from '../console-log-capture.js';
-import { fullDebugUrl } from '../debug.js';
+import { fullDebugUrl } from '../debug.mjs';
 import { copyTextToClipboard, createCopyControl, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import { renderThemeSettings } from './theme-settings.js';

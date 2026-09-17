@@ -17,7 +17,7 @@ import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { formatDataSize, startIngestionProgress } from './ingestion-progress.js';
 import { loadDashboardSources } from './source-loader.js';
-import { createDebug, debugShardLimit } from './debug.js';
+import { createDebug, debugShardLimit } from './debug.mjs';
 import { withRetries } from './retry.js';
 
 const debugIngestion = createDebug('data:ingestion');

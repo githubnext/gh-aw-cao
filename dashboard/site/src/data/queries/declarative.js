@@ -12,7 +12,7 @@
  */
 
 import { PREDICTION_METHODS, tidy } from '../../data-operations.js';
-import { createDebug } from '../../debug.js';
+import { createDebug } from '../../debug.mjs';
 
 const debugQuery = createDebug('data:query');
 

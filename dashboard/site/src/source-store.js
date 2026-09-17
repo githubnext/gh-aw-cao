@@ -5,7 +5,7 @@
  */
 
 import { batch, state, untracked } from './reactive.js';
-import { createDebug } from './debug.js';
+import { createDebug } from './debug.mjs';
 
 const debug = createDebug('data:source-store');
 

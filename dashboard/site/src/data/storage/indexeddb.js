@@ -1,6 +1,6 @@
 import { relationshipErrors } from '../model/schema.js';
 import { scopedStorageKey } from '../../storage-scope.js';
-import { createDebug } from '../../debug.js';
+import { createDebug } from '../../debug.mjs';
 
 const debug = createDebug('data:indexeddb');
 

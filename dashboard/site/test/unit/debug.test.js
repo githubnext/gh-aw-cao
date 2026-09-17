@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDebug, debugShardLimit, fullDebugUrl, isDebugEnabled, withDebugParameter } from '../../src/debug.js';
+import { createDebug, debugShardLimit, fullDebugUrl, isDebugEnabled, withDebugParameter } from '../../src/debug.mjs';
 
 describe('dashboard debug logging', () => {
   it('builds a full-debug reload URL without losing the current route', () => {

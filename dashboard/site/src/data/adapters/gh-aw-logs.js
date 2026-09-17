@@ -8,7 +8,7 @@ import {
 } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
-import { createDebug } from '../../debug.js';
+import { createDebug } from '../../debug.mjs';
 
 const debug = createDebug('data:ingestion:jsonl');
 

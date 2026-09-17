@@ -1,4 +1,4 @@
-import { createDebug } from './debug.js';
+import { createDebug } from './debug.mjs';
 
 export const DASHBOARD_RENDER_EVENT = 'dashboard-render';
 export const DASHBOARD_DATA_EVENT = 'dashboard-data';
