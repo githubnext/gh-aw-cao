@@ -13,7 +13,7 @@ const fixtures = JSON.parse(readFileSync(
   "utf8",
 ));
 
-test("Dependabot planner issues stay atomic, revalidated, and canonically sourced", () => {
+test("Dependabot planner prompt states every contract required by the regression fixtures", () => {
   const source = workflow("dependabot-update-planner.md");
 
   assert.deepEqual(fixtures.map(({ name }) => name), [
@@ -27,93 +27,101 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
   ]);
 
   for (const fixture of fixtures) {
-    let handled = false;
-    if (fixture.expected.atomicWorkIssues) {
-      handled = true;
-      assert.equal(fixture.expected.pullRequestsPerWorkIssue, 1, fixture.name);
-      assert.ok(fixture.expected.atomicWorkIssues > fixture.evidence.assignedIssues, fixture.name);
-      assert.match(source, /Every assignable work issue must correspond to exactly one independently mergeable pull request boundary/);
-      assert.match(source, /Never place GitHub Actions pin updates, ecosystem dependency updates for different package managers, or unrelated major upgrades in the same work issue/);
-      assert.match(source, /auth, crypto, payment, database, serialization, deserialization, telemetry, build tooling, CI runners, package managers, or container bases in the same work issue as routine updates/);
-      assert.match(source, /Never tell one assigned agent to produce more than one pull request, and never express isolation only as prose inside a combined issue/);
+    assert.match(fixture.source, /^github\/gh-aw#(61573|61574)$/, fixture.name);
+    assert.ok(fixture.expected.contract?.length > 0, `${fixture.name} must require contract phrases`);
+    for (const phrase of fixture.expected.contract) {
+      assert.ok(source.includes(phrase), `${fixture.name} requires: ${phrase}`);
     }
-
-    if (fixture.expected.umbrellaAssignable === false) {
-      handled = true;
-      assert.match(source, /The umbrella plan issue is an inventory and index only\. It must never be assigned to a coding agent/);
-      assert.match(source, /\*\*Action:\*\* Assign the linked work issues below to Copilot or another coding agent\. Do not assign this umbrella issue\./);
-    }
-
-    if (fixture.expected.countsDerivedFromInventory) {
-      handled = true;
-      assert.notDeepEqual(fixture.evidence.summaryCounts, fixture.evidence.checklistCounts, fixture.name);
-      assert.match(source, /Build one structured inventory before writing any issue text/);
-      assert.match(source, /Derive every count in every issue from that final inventory/);
-      assert.match(source, /never publish a summary whose per-ecosystem counts do not sum to the stated total or disagree with the checklist/);
-    }
-
-    if (fixture.expected.migrationInvariant) {
-      handled = true;
-      assert.match(source, /## Major-version migration review/);
-      assert.match(source, /read the upstream release notes, changelog, and migration guide before declaring the update actionable/);
-      assert.ok(source.includes(`\`${fixture.expected.migrationInvariant}\``), fixture.name);
-      assert.match(source, /`actions\/upload-pages-artifact` v4 and later exclude hidden files by default/);
-      assert.match(source, /docs\/public\/\.well-known\/ai\.txt/);
-      assert.equal(fixture.expected.artifactValidationRequired, true, fixture.name);
-      assert.match(source, /published artifacts still containing intentionally published paths/);
-    }
-
-    if (fixture.expected.canonicalSourceRequired) {
-      handled = true;
-      assert.match(source, /## Canonical ownership of pins and manifests/);
-      assert.match(source, /Name the canonical manifest, lockfile, pin registry, or helper that produces the value/);
-      assert.equal(fixture.expected.generatedFilesEditedDirectly, false, fixture.name);
-      assert.match(source, /Prohibit direct edits to generated files and require regeneration through the repository's documented generator command/);
-      assert.equal(fixture.expected.duplicateLiteralPinReplaced, true, fixture.name);
-      assert.match(source, /require the assigned agent to replace the duplicate with the shared mechanism instead of updating another literal copy/);
-    }
-
-    if (fixture.expected.lockfileDriftRejected) {
-      handled = true;
-      const [first] = fixture.evidence.resolutions;
-      assert.notEqual(first.reviewedTarget, first.resolved, fixture.name);
-      assert.equal(fixture.expected.exactVersionFrozen, true, fixture.name);
-      assert.match(source, /## Version and lockfile discipline/);
-      assert.match(source, /The assigned agent may install only the exact target version unless the work issue explicitly authorizes a newer target/);
-      assert.ok(
-        source.includes(
-          `require rejecting and repairing any lockfile that resolves a reviewed package beyond its exact reviewed target, for example \`${first.resolved}\` when \`${first.reviewedTarget}\` was reviewed`,
-        ),
-        fixture.name,
-      );
-      assert.match(source, /require inspecting the lockfile diff and reverting unrelated resolver churn before requesting review/);
-    }
-
-    if (fixture.expected.classification === "blocked") {
-      handled = true;
-      assert.equal(fixture.evidence.openDependabotAlerts, 0, fixture.name);
-      assert.equal(fixture.expected.workIssueCreated, false, fixture.name);
-      assert.match(source, /## Candidate compatibility and security preflight/);
-      assert.match(source, /The absence of current Dependabot alerts is not sufficient evidence that a candidate version is safe or compatible/);
-      assert.match(source, /If the candidate falls outside a declared peer range, mark it `blocked`/);
-      assert.match(source, /If the candidate introduces a new high or critical severity advisory, mark it `blocked`/);
-      assert.match(source, /Never create a work issue for a candidate whose peer ranges or resolved graph disprove it/);
-    }
-
-    if (fixture.expected.closingKeyword) {
-      handled = true;
-      assert.equal(fixture.evidence.pullRequestClosingKeyword, "Fixes", fixture.name);
-      assert.equal(fixture.expected.umbrellaClosedByPartialWork, false, fixture.name);
-      assert.match(source, /use `Part of #<issue>` when the pull request implements only part of this issue, and use `Fixes #<issue>` only when the pull request completely fulfills it/);
-      assert.match(source, /never use `Fixes` against the umbrella inventory issue, because a partial batch must never close it/);
-      assert.equal(fixture.expected.metadataSynchronized, true, fixture.name);
-      assert.match(source, /keep the pull request title, description, checklist, and validation report synchronized with the final diff whenever review changes the scope/);
-      assert.equal(fixture.expected.deferredRemainOpen, true, fixture.name);
-      assert.match(source, /leave every unresolved or deferred update out of the pull request, keep its issue open, and report the deferral reason and remaining work on the issue/);
-    }
-
-    assert.ok(handled, `${fixture.name} matched no contract assertion`);
   }
+});
+
+test("Dependabot planner splits a combined batch into atomic work issues", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const fixture = fixtures.find(({ name }) => name === "mixed ecosystem batch assigned as one issue");
+  const ecosystems = new Set(fixture.evidence.umbrellaUpdates.map(({ ecosystem }) => ecosystem));
+
+  assert.equal(fixture.evidence.assignedIssues, 1);
+  assert.equal(fixture.evidence.producedPullRequests, 1);
+  assert.equal(fixture.expected.atomicWorkIssues, ecosystems.size);
+  assert.equal(fixture.expected.pullRequestsPerWorkIssue, 1);
+  assert.equal(fixture.expected.umbrellaAssignable, false);
+  assert.match(source, /Place several packages in one work issue only when a hard edge/);
+  assert.match(source, /Isolation must be structural: one work issue per boundary/);
+  assert.match(source, /complete exactly this atomic group in exactly one pull request, and never widen the scope to other updates/);
+});
+
+test("Dependabot planner derives counts from one structured inventory", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const { evidence, expected } = fixtures.find(({ name }) => name === "summary counts disagree with checklist");
+
+  assert.notDeepEqual(evidence.summaryCounts, evidence.checklistCounts);
+  assert.equal(expected.countsDerivedFromInventory, true);
+  assert.match(source, /### Structured inventory and derived counts/);
+  assert.match(source, /Never state a count that was produced independently of the inventory/);
+});
+
+test("Dependabot planner records repository-specific major-version migration invariants", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const { evidence, expected } = fixtures.find(({ name }) => name === "upload-pages-artifact major upgrade drops hidden files");
+
+  assert.equal(evidence.updateType, "major");
+  assert.equal(expected.artifactValidationRequired, true);
+  assert.ok(source.includes(`\`${expected.migrationInvariant}\``));
+  assert.ok(source.includes(evidence.repositoryArtifact));
+  assert.match(source, /the repository-specific invariant that must still hold after the upgrade, and the command or artifact check that proves it/);
+});
+
+test("Dependabot planner requires canonical pin ownership and protects generated consumers", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const { evidence, expected } = fixtures.find(({ name }) => name === "duplicated literal action pin outside the canonical registry");
+
+  assert.equal(expected.canonicalSourceRequired, true);
+  assert.equal(expected.duplicateLiteralPinReplaced, true);
+  assert.equal(expected.generatedFilesEditedDirectly, false);
+  assert.ok(evidence.generatedConsumers.length > 0);
+  assert.match(source, /Detect duplicated literal pins of the same action or dependency/);
+  assert.match(source, /change values only at the canonical source, never edit generated files directly/);
+});
+
+test("Dependabot planner freezes exact versions and rejects lockfile drift", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const { evidence, expected } = fixtures.find(({ name }) => name === "lockfile resolves beyond the reviewed target");
+
+  assert.equal(expected.exactVersionFrozen, true);
+  assert.equal(expected.lockfileDriftRejected, true);
+  for (const { reviewedTarget, resolved } of evidence.resolutions) {
+    assert.notEqual(reviewedTarget, resolved);
+  }
+  const [first] = evidence.resolutions;
+  assert.ok(source.includes(
+    `require rejecting and repairing any lockfile that resolves a reviewed package beyond its exact reviewed target, for example \`${first.resolved}\` when \`${first.reviewedTarget}\` was reviewed`,
+  ));
+});
+
+test("Dependabot planner defers candidates that break peer ranges or add advisories", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const { evidence, expected } = fixtures.find(({ name }) => name === "candidate breaks peer range and adds advisories");
+
+  assert.equal(evidence.openDependabotAlerts, 0);
+  assert.ok(evidence.candidateGraphAdvisories.includes("high"));
+  assert.equal(expected.classification, "blocked");
+  assert.equal(expected.workIssueCreated, false);
+  assert.match(source, /Resolve the declared peer dependency ranges of the candidate and of the packages that depend on it/);
+  assert.match(source, /Record deferred candidates in the umbrella inventory with their blocking reason/);
+});
+
+test("Dependabot planner keeps partial work from closing the umbrella issue", () => {
+  const source = workflow("dependabot-update-planner.md");
+  const { evidence, expected } = fixtures.find(({ name }) => name === "partial batch must not close the umbrella issue");
+
+  assert.equal(evidence.pullRequestClosingKeyword, "Fixes");
+  assert.equal(evidence.pullRequestMetadata, "stale");
+  assert.equal(expected.closingKeyword, "Part of");
+  assert.equal(expected.umbrellaClosedByPartialWork, false);
+  assert.equal(expected.metadataSynchronized, true);
+  assert.equal(expected.deferredRemainOpen, true);
+  assert.ok(evidence.deferredUpdates.length > 0);
+  assert.match(source, /An agent must never close it; only complete fulfillment of every inventory entry allows a maintainer to close it/);
 });
 
 test("Dependabot planner revalidates every candidate against target HEAD", () => {

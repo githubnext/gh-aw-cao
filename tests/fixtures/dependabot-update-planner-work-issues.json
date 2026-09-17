@@ -14,7 +14,15 @@
     "expected": {
       "umbrellaAssignable": false,
       "atomicWorkIssues": 3,
-      "pullRequestsPerWorkIssue": 1
+      "pullRequestsPerWorkIssue": 1,
+      "contract": [
+        "Every assignable work issue must correspond to exactly one independently mergeable pull request boundary",
+        "Never place GitHub Actions pin updates, ecosystem dependency updates for different package managers, or unrelated major upgrades in the same work issue",
+        "auth, crypto, payment, database, serialization, deserialization, telemetry, build tooling, CI runners, package managers, or container bases in the same work issue as routine updates",
+        "Never tell one assigned agent to produce more than one pull request, and never express isolation only as prose inside a combined issue",
+        "The umbrella plan issue is an inventory and index only. It must never be assigned to a coding agent",
+        "**Action:** Assign the linked work issues below to Copilot or another coding agent. Do not assign this umbrella issue."
+      ]
     }
   },
   {
@@ -25,7 +33,12 @@
       "checklistCounts": { "total": 16, "actions": 5, "go": 4, "npm": 7 }
     },
     "expected": {
-      "countsDerivedFromInventory": true
+      "countsDerivedFromInventory": true,
+      "contract": [
+        "Build one structured inventory before writing any issue text",
+        "Derive every count in every issue from that final inventory",
+        "never publish a summary whose per-ecosystem counts do not sum to the stated total or disagree with the checklist"
+      ]
     }
   },
   {
@@ -39,7 +52,13 @@
     },
     "expected": {
       "migrationInvariant": "include-hidden-files: true",
-      "artifactValidationRequired": true
+      "artifactValidationRequired": true,
+      "contract": [
+        "## Major-version migration review",
+        "read the upstream release notes, changelog, and migration guide before declaring the update actionable",
+        "`actions/upload-pages-artifact` v4 and later exclude hidden files by default",
+        "published artifacts still containing intentionally published paths"
+      ]
     }
   },
   {
@@ -54,7 +73,13 @@
     "expected": {
       "canonicalSourceRequired": true,
       "duplicateLiteralPinReplaced": true,
-      "generatedFilesEditedDirectly": false
+      "generatedFilesEditedDirectly": false,
+      "contract": [
+        "## Canonical ownership of pins and manifests",
+        "Name the canonical manifest, lockfile, pin registry, or helper that produces the value",
+        "Prohibit direct edits to generated files and require regeneration through the repository's documented generator command",
+        "require the assigned agent to replace the duplicate with the shared mechanism instead of updating another literal copy"
+      ]
     }
   },
   {
@@ -68,7 +93,13 @@
     },
     "expected": {
       "exactVersionFrozen": true,
-      "lockfileDriftRejected": true
+      "lockfileDriftRejected": true,
+      "contract": [
+        "## Version and lockfile discipline",
+        "The assigned agent may install only the exact target version unless the work issue explicitly authorizes a newer target",
+        "require the regenerated lockfile to resolve the reviewed packages to the exact reviewed versions",
+        "require inspecting the lockfile diff and reverting unrelated resolver churn before requesting review"
+      ]
     }
   },
   {
@@ -84,7 +115,14 @@
     },
     "expected": {
       "classification": "blocked",
-      "workIssueCreated": false
+      "workIssueCreated": false,
+      "contract": [
+        "## Candidate compatibility and security preflight",
+        "The absence of current Dependabot alerts is not sufficient evidence that a candidate version is safe or compatible",
+        "If the candidate falls outside a declared peer range, mark it `blocked`",
+        "If the candidate introduces a new high or critical severity advisory, mark it `blocked`",
+        "Never create a work issue for a candidate whose peer ranges or resolved graph disprove it"
+      ]
     }
   },
   {
@@ -102,7 +140,13 @@
       "closingKeyword": "Part of",
       "umbrellaClosedByPartialWork": false,
       "metadataSynchronized": true,
-      "deferredRemainOpen": true
+      "deferredRemainOpen": true,
+      "contract": [
+        "use `Part of #<issue>` when the pull request implements only part of this issue, and use `Fixes #<issue>` only when the pull request completely fulfills it",
+        "never use `Fixes` against the umbrella inventory issue, because a partial batch must never close it",
+        "keep the pull request title, description, checklist, and validation report synchronized with the final diff whenever review changes the scope",
+        "leave every unresolved or deferred update out of the pull request, keep its issue open, and report the deferral reason and remaining work on the issue"
+      ]
     }
   }
 ]
