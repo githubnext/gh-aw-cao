@@ -17,7 +17,7 @@ max_storage="${REPORT_MAX_STORAGE:-1200}"
 mkdir -p "$output_directory" "$shard_directory" "$(dirname "$exit_code_path")"
 
 repositories=()
-shard_prefixes=()
+shard_groups=()
 add_repository() {
   local candidate="$1"
   local normalized_candidate
@@ -49,7 +49,7 @@ for target_repository in "${repositories[@]}"; do
   else
     shard_prefix="$shard_directory/${cache_name}-logs-"
   fi
-  shard_prefixes+=("$(basename "$shard_prefix")")
+  shard_groups+=("$target_repository=$(basename "$shard_prefix")")
   set +e
   gh aw logs --audit \
     --repo "$target_repository" \
@@ -88,8 +88,8 @@ if [[ $exit_code -eq 0 ]]; then
   fi
   if [[ $exit_code -eq 0 ]]; then
     compact_args=(compact-jsonl --input-dir "$shard_directory")
-    for shard_prefix in "${shard_prefixes[@]}"; do
-      compact_args+=(--prefix "$shard_prefix")
+    for shard_group in "${shard_groups[@]}"; do
+      compact_args+=(--group "$shard_group")
     done
     node "$cao_script" "${compact_args[@]}" || exit_code=$?
   fi

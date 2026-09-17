@@ -65,7 +65,7 @@ const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --events-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
-  cao compact-jsonl --input-dir SHARD_DIRECTORY --prefix SHARD_PREFIX [--prefix SHARD_PREFIX...]
+  cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...]
   cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
@@ -524,7 +524,7 @@ function parseOptions(arguments_) {
     const value = arguments_[index + 1];
     if (!value || value.startsWith('--')) throw new UsageError(`Missing value for --${name}`);
     index += 1;
-    if (name === 'where' || name === 'prefix') {
+    if (name === 'where' || name === 'group') {
       const existing = options[name];
       options[name] = [...(Array.isArray(existing) ? existing : []), value];
     } else if (options[name] !== undefined) {
@@ -796,25 +796,51 @@ async function compactJsonlShardGroup(directory, prefix, names) {
   };
 }
 
-export async function compactJsonlShards(inputDirectory, prefixes) {
-  const uniquePrefixes = [...new Set(prefixes)];
-  if (uniquePrefixes.length === 0) throw new UsageError('At least one --prefix is required');
-  for (const prefix of uniquePrefixes) {
-    if (!/^[A-Za-z0-9._-]+$/.test(prefix)) {
-      throw new UsageError('--prefix must contain only letters, numbers, dots, underscores, and hyphens');
+async function shardRepository(filePath) {
+  for await (const line of jsonlLines([filePath])) {
+    const record = JSON.parse(line);
+    const requested = record?.request?.repository;
+    if (typeof requested === 'string' && requested.includes('/')) return requested.toLowerCase();
+    const run = record?.run;
+    if (!run || typeof run !== 'object' || Array.isArray(run)) continue;
+    const repository = run.repository_full_name ?? run.repository;
+    if (typeof repository === 'string' && repository.includes('/')) return repository.toLowerCase();
+    if (typeof run.organization === 'string' && typeof repository === 'string') {
+      return `${run.organization}/${repository}`.toLowerCase();
     }
   }
-  uniquePrefixes.sort((left, right) => right.length - left.length || left.localeCompare(right));
+  return null;
+}
+
+export async function compactJsonlShards(inputDirectory, groupDefinitions) {
+  if (groupDefinitions.length === 0) throw new UsageError('At least one --group is required');
+  const groupsByRepository = new Map();
+  for (const definition of groupDefinitions) {
+    const separator = definition.indexOf('=');
+    const repository = definition.slice(0, separator).toLowerCase();
+    const prefix = definition.slice(separator + 1);
+    if (separator < 1 || !/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(repository)) {
+      throw new UsageError('--group must start with an OWNER/REPOSITORY coordinate');
+    }
+    if (!/^[A-Za-z0-9._-]+$/.test(prefix)) {
+      throw new UsageError('--group shard prefix must contain only letters, numbers, dots, underscores, and hyphens');
+    }
+    if (groupsByRepository.has(repository)) throw new UsageError(`Duplicate compact-jsonl repository: ${repository}`);
+    groupsByRepository.set(repository, { prefix, names: [] });
+  }
   const directory = path.resolve(inputDirectory);
-  const groupedNames = new Map(uniquePrefixes.map((prefix) => [prefix, []]));
-  for (const name of (await readdir(directory)).sort()) {
-    const owner = uniquePrefixes.find((prefix) => name.startsWith(prefix)
-      && /^\d+-[A-Za-z0-9._-]+\.jsonl$/.test(name.slice(prefix.length)));
-    if (owner) groupedNames.get(owner).push(name);
+  for (const name of (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort()) {
+    const repository = await shardRepository(path.join(directory, name));
+    if (repository && groupsByRepository.has(repository)) {
+      groupsByRepository.get(repository).names.push(name);
+    }
   }
   const groups = [];
-  for (const prefix of uniquePrefixes.toSorted()) {
-    groups.push(await compactJsonlShardGroup(directory, prefix, groupedNames.get(prefix)));
+  for (const [repository, { prefix, names }] of [...groupsByRepository].sort(([left], [right]) => left.localeCompare(right))) {
+    groups.push({
+      repository,
+      ...await compactJsonlShardGroup(directory, prefix, names)
+    });
   }
   return {
     command: 'compact-jsonl',
@@ -1600,13 +1626,13 @@ export async function runCli(arguments_, input = process.stdin) {
     return auditJsonlDirectory(option(options, 'input-dir', false) || DEFAULT_SHARDS_PATH);
   }
   if (command === 'compact-jsonl') {
-    rejectUnknownOptions(options, ['input-dir', 'prefix']);
-    const prefixes = options.prefix
-      ? Array.isArray(options.prefix) ? options.prefix : [options.prefix]
+    rejectUnknownOptions(options, ['input-dir', 'group']);
+    const groups = options.group
+      ? Array.isArray(options.group) ? options.group : [options.group]
       : [];
     return compactJsonlShards(
       path.resolve(option(options, 'input-dir')),
-      prefixes
+      groups
     );
   }
   if (command === 'hash-payloads') {

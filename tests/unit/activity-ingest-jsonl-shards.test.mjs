@@ -127,12 +127,13 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
   const unrelatedPath = path.join(root, 'github-gh-aw-logs-1000-cccc.jsonl');
   const overlappingPrefix = `${prefix}123-logs-`;
   const overlappingPrefixPath = path.join(root, `${overlappingPrefix}1000-dddd.jsonl`);
-  const first = '{"schema_version":2,"kind":"run","run":{"run_id":1}}';
-  const second = '{"schema_version":2,"kind":"run","run":{"run_id":2}}';
-  const third = '{"schema_version":2,"kind":"run","run":{"run_id":3}}';
+  const first = '{"schema_version":2,"kind":"run","run":{"run_id":1,"repository":"githubnext/gh-aw-cao"}}';
+  const second = '{"schema_version":2,"kind":"run","run":{"run_id":2,"repository":"githubnext/gh-aw-cao"}}';
+  const third = '{"schema_version":2,"kind":"run","run":{"run_id":3,"repository":"githubnext/gh-aw-cao-logs-123"}}';
+  const unrelated = '{"schema_version":2,"kind":"run","run":{"run_id":4,"repository":"github/gh-aw"}}';
   await writeFile(firstPath, `${first}\n${second}\n`);
   await writeFile(secondPath, `${first}\n${third}\n`);
-  await writeFile(unrelatedPath, `${first}\n`);
+  await writeFile(unrelatedPath, `${unrelated}\n`);
   await writeFile(overlappingPrefixPath, `${third}\n`);
 
   const { stdout } = await execFileAsync(process.execPath, [
@@ -140,10 +141,10 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
     'compact-jsonl',
     '--input-dir',
     root,
-    '--prefix',
-    prefix,
-    '--prefix',
-    overlappingPrefix,
+    '--group',
+    `githubnext/gh-aw-cao=${prefix}`,
+    '--group',
+    `githubnext/gh-aw-cao-logs-123=${overlappingPrefix}`,
   ]);
   const result = JSON.parse(stdout);
   const compacted = result.groups.find((group) => group.prefix === prefix);
@@ -160,7 +161,7 @@ test('compact-jsonl consolidates exact-prefix shards without reordering observat
     (await readFile(path.join(root, compactedName), 'utf8')).trim().split('\n'),
     [first, second, first, third],
   );
-  assert.equal(await readFile(unrelatedPath, 'utf8'), `${first}\n`);
+  assert.equal(await readFile(unrelatedPath, 'utf8'), `${unrelated}\n`);
   assert.equal(await readFile(overlappingPrefixPath, 'utf8'), `${third}\n`);
 });
 
