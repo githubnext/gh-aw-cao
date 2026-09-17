@@ -119,18 +119,20 @@ test('ingest-jsonl --input ingests a single JSONL file', async () => {
   assert.equal(transactions[0].payloadScope, 'gh-aw-jsonl');
 });
 
-test('compact-jsonl consolidates matching shards and keeps the last exact observation', async () => {
+test('compact-jsonl consolidates exact-prefix shards without reordering observations', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'activity-compact-jsonl-'));
   const prefix = 'githubnext-gh-aw-cao-logs-';
   const firstPath = path.join(root, `${prefix}1000-aaaa.jsonl`);
   const secondPath = path.join(root, `${prefix}2000-bbbb.jsonl`);
   const unrelatedPath = path.join(root, 'github-gh-aw-logs-1000-cccc.jsonl');
+  const overlappingPrefixPath = path.join(root, `${prefix}other-logs-1000-dddd.jsonl`);
   const first = '{"schema_version":2,"kind":"run","run":{"run_id":1}}';
   const second = '{"schema_version":2,"kind":"run","run":{"run_id":2}}';
   const third = '{"schema_version":2,"kind":"run","run":{"run_id":3}}';
   await writeFile(firstPath, `${first}\n${second}\n`);
   await writeFile(secondPath, `${first}\n${third}\n`);
   await writeFile(unrelatedPath, `${first}\n`);
+  await writeFile(overlappingPrefixPath, `${third}\n`);
 
   const { stdout } = await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
@@ -143,17 +145,17 @@ test('compact-jsonl consolidates matching shards and keeps the last exact observ
   const result = JSON.parse(stdout);
   assert.equal(result.sourceFiles, 2);
   assert.equal(result.sourceRecords, 4);
-  assert.equal(result.duplicateRecords, 1);
-  assert.equal(result.retainedRecords, 3);
+  assert.equal(result.retainedRecords, 4);
 
   const names = (await readdir(root)).sort();
   const compactedName = names.find((name) => name.startsWith(prefix));
   assert.ok(compactedName);
   assert.deepEqual(
     (await readFile(path.join(root, compactedName), 'utf8')).trim().split('\n'),
-    [second, first, third],
+    [first, second, first, third],
   );
   assert.equal(await readFile(unrelatedPath, 'utf8'), `${first}\n`);
+  assert.equal(await readFile(overlappingPrefixPath, 'utf8'), `${third}\n`);
 });
 
 test('ingest-jsonl injects every run shard before event shards', async () => {

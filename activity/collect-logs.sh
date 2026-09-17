@@ -94,5 +94,5 @@ done
 printf '%s\n' "$exit_code" > "$exit_code_path"
 
 # The shard directory is persisted by the caller so each repository reuses
-# known runs. Successful collections collapse exact duplicate records into one
-# repository shard; out-of-range records are pruned by `--cache-before`.
+# known runs. Successful collections consolidate each repository's files into
+# one shard; out-of-range records are pruned by `--cache-before`.

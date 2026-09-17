@@ -749,26 +749,21 @@ export async function compactJsonlShards(inputDirectory, prefix) {
   }
   const directory = path.resolve(inputDirectory);
   const names = (await readdir(directory))
-    .filter((name) => name.startsWith(prefix) && name.endsWith('.jsonl'))
+    .filter((name) => name.startsWith(prefix)
+      && /^\d+-[A-Za-z0-9._-]+\.jsonl$/.test(name.slice(prefix.length)))
     .sort();
   const sourcePaths = names.map((name) => path.join(directory, name));
   const sourceBytes = (await Promise.all(sourcePaths.map(async (filePath) => (await stat(filePath)).size)))
     .reduce((sum, size) => sum + size, 0);
-  const lastOccurrence = new Map();
-  let sourceRecords = 0;
-  for await (const line of jsonlLines(sourcePaths)) {
-    lastOccurrence.set(createHash('sha256').update(line).digest('hex'), sourceRecords);
-    sourceRecords += 1;
-  }
-  const duplicateRecords = sourceRecords - lastOccurrence.size;
-  if (sourcePaths.length <= 1 && duplicateRecords === 0) {
+  if (sourcePaths.length <= 1) {
+    let sourceRecords = 0;
+    for await (const line of jsonlLines(sourcePaths)) sourceRecords += 1;
     return {
       command: 'compact-jsonl',
       inputDirectory: directory,
       prefix,
       sourceFiles: sourcePaths.length,
       sourceRecords,
-      duplicateRecords,
       retainedRecords: sourceRecords,
       sourceBytes,
       compactedBytes: sourceBytes,
@@ -778,19 +773,14 @@ export async function compactJsonlShards(inputDirectory, prefix) {
 
   const temporaryPath = path.join(directory, `.${prefix}${process.pid}.tmp`);
   const outputHash = createHash('sha256');
-  let ordinal = 0;
   let retainedRecords = 0;
   await pipeline(
     (async function* compactedLines() {
       for await (const line of jsonlLines(sourcePaths)) {
-        const lineHash = createHash('sha256').update(line).digest('hex');
-        if (lastOccurrence.get(lineHash) === ordinal) {
-          const outputLine = `${line}\n`;
-          outputHash.update(outputLine);
-          retainedRecords += 1;
-          yield outputLine;
-        }
-        ordinal += 1;
+        const outputLine = `${line}\n`;
+        outputHash.update(outputLine);
+        retainedRecords += 1;
+        yield outputLine;
       }
     })(),
     createWriteStream(temporaryPath, { flags: 'wx' })
@@ -810,8 +800,7 @@ export async function compactJsonlShards(inputDirectory, prefix) {
     inputDirectory: directory,
     prefix,
     sourceFiles: sourcePaths.length,
-    sourceRecords,
-    duplicateRecords,
+    sourceRecords: retainedRecords,
     retainedRecords,
     sourceBytes,
     compactedBytes,

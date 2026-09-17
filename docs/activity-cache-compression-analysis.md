@@ -81,23 +81,25 @@ duplicate IndexedDB writes, or uncompressed cache size.
 
 ## Fix and measured effect
 
-The collector now consolidates each repository prefix after a successful
-`gh aw logs` call. It removes byte-identical JSONL lines, retains their last
-occurrence to preserve precedence, writes atomically, and leaves the previous
-cache untouched when collection fails. Payload generation removes empty source
-shards, and `cao download` tolerates and omits empty shards from older deployed
-manifests.
+The collector now consolidates each repository's exact shard prefix after a
+successful `gh aw logs` call. It preserves every source record in its original
+order so precedence and dependent-record association remain unchanged, writes
+atomically, and leaves the previous cache untouched when collection fails.
+Payload generation removes empty source shards, and `cao download` tolerates
+and omits empty shards from older deployed manifests.
 
 Replaying the deployed snapshot through this compaction reduced:
 
 | Measurement | Before | After | Reduction |
 | --- | ---: | ---: | ---: |
-| Source JSONL | 1,018,050,345 B | 614,736,164 B | 39.6% |
-| Run-information shards | 830,439,845 B | 38,411,654 B | 95.4% |
-| Event shards | 596,008,119 B | 89,245,428 B | 85.0% |
-| Combined source and phased data | 2,444,498,309 B | 742,393,246 B | 69.6% |
-| Representative ZIP including SQLite | 202,156,751 B | 86,051,814 B | 57.4% |
+| Source JSONL | 1,018,050,345 B | 1,018,050,345 B | 0% |
+| Run-information shards | 830,439,845 B | 38,411,656 B | 95.4% |
+| Event shards | 596,008,119 B | 113,290,469 B | 81.0% |
+| Combined source and phased data | 2,444,498,309 B | 1,169,752,470 B | 52.2% |
+| Representative ZIP including SQLite | 202,156,751 B | 133,801,932 B | 33.8% |
 
-The larger phased-shard reduction comes from normalizing one consolidated
-source per repository: stable canonical IDs are then deduplicated across
-refresh generations before the transport shard is serialized.
+The phased-shard reduction comes from normalizing one consolidated source per
+repository: stable canonical IDs are then deduplicated across refresh
+generations before the transport shard is serialized. Exact source duplicates
+remain because removing either occurrence can change relative ordering with
+non-identical run revisions or dependent safe-output records.
