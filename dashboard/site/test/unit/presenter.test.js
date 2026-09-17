@@ -2040,7 +2040,7 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('renders job performance as one full-view lazy table', async () => {
+  it('renders job performance as an SVG heatmap and a full-view lazy table', async () => {
     const metadata = {
       'source-id': 'performance-fixture',
       'source-kind': 'fixture',
@@ -2082,7 +2082,10 @@ describe('presenter built-in and custom pages', () => {
       .toEqual(configuredPage?.views.map(({ id }) => id));
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelector('[data-chart-widget]')).toBeNull();
+    expect(page?.querySelector('[data-chart-widget="heatmap"] svg')).not.toBeNull();
+    expect(page?.querySelectorAll('[data-chart-widget="heatmap"] rect')).toHaveLength(1);
+    expect(page?.querySelector('[data-chart-widget="heatmap"] .heatmap-cell')?.getAttribute('aria-label'))
+      .toBe('agent, ubuntu-latest, Mean duration: 1m 38s');
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(page?.textContent).toContain('45s');
     expect(page?.textContent).toContain('2m 30s');

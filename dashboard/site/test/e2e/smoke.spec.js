@@ -2032,7 +2032,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
-test('performance page renders one full-view lazy job table', async ({ page }) => {
+test('performance page renders an SVG heatmap before its full-view lazy job table', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 844 });
@@ -2075,8 +2075,12 @@ test('performance page renders one full-view lazy job table', async ({ page }) =
   const pageRegion = page.locator('[data-page-id="performance"]');
   await expect(pageRegion).toBeVisible();
   await expect(pageRegion.locator('[data-view-layout="full-view"]')).toHaveCount(1);
+  await expect(pageRegion.locator('[data-chart-widget="heatmap"] svg')).toBeVisible();
+  await expect(pageRegion.locator('[data-chart-widget="heatmap"] rect')).toHaveCount(1);
+  await expect(pageRegion.locator('[data-chart-widget="heatmap"] .heatmap-cell'))
+    .toHaveAttribute('aria-label', 'agent, ubuntu-latest, Mean duration: 45s');
+  await page.getByRole('button', { name: 'Show table view' }).click();
   await expect(pageRegion.locator('[data-lazy-list]')).toBeVisible();
-  await expect(pageRegion.locator('[data-chart-widget]')).toHaveCount(0);
   await expect(pageRegion.locator('tbody tr')).toHaveCount(1);
   await expect(pageRegion).toContainText('gvisor');
   await expect(pageRegion).toContainText('45s');
@@ -2117,7 +2121,7 @@ test('mobile navigation menu paints above a full-view page instead of being clip
     </script>
   `);
 
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view/);
   const menu = page.locator('.mobile-nav-menu');
   await menu.locator('summary').click();
   const menuList = menu.locator('.mobile-nav-menu-list');
