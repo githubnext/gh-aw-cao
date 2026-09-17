@@ -18,8 +18,8 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 - Reads major-version release notes, records repository-specific migration invariants, and preflights candidate peer ranges and candidate dependency-graph advisories before declaring an update actionable.
 - Freezes exact target versions, states the permitted lockfile and transitive changes, and requires rejecting resolver drift beyond the reviewed update.
 - Requires `Part of #...` for partial batches, reserves `Fixes #...` for complete fulfillment, and requires pull request metadata to stay synchronized with the final diff.
-- Refreshes the durable existing issue, posts a confirmation comment on later runs, and replaces obsolete tasks with a completed description when no work remains.
-- Remembers the issue number in repository memory and reads that issue directly on later runs instead of repeatedly using GitHub search.
+- Refreshes the durable umbrella issue, posts a confirmation comment on later runs, and replaces obsolete inventory entries with a completed description when no work remains.
+- Remembers the umbrella issue number in repository memory and reads that issue directly on later runs instead of repeatedly using GitHub search.
 - Reads optional target-maintainer guidance from `.github/dependabot.md` and tells issue readers how to use that feedback channel.
 - Uses progressive disclosure, a visible human call to action, and a complete prompt for an assigned coding agent.
 - Measures whether each plan issue is consumed through assignment, outside participation, checklist progress, a linked pull request, or closure within 14 days.

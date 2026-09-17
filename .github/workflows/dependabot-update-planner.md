@@ -359,7 +359,7 @@ Include all current identified updates, even when they should not be applied tog
 
 Build one structured inventory before writing any issue text. Each entry records the ecosystem, package or action, canonical source path, current version at HEAD, exact target version, update type, severity, classification from the HEAD revalidation, its atomic work-group identifier, and its evidence links.
 
-Derive every count in every issue from that final inventory. Totals, per-ecosystem counts, security counts, blocked counts, and the number of checklist items must all be computed from the same entries after deduplication and classification. Never state a count that was produced independently of the inventory, and never publish a summary whose per-ecosystem counts do not sum to the stated total or disagree with the checklist.
+Derive every count in every issue from that final inventory. Totals, per-ecosystem counts, security counts, blocked counts, and the number of `### Update inventory` entries must all be computed from the same entries after deduplication and classification. Never state a count that was produced independently of the inventory, and never publish a summary whose per-ecosystem counts do not sum to the stated total or disagree with the inventory.
 
 ## Validation guidance
 
@@ -379,7 +379,7 @@ Then write the complete issue using this progressive-disclosure structure:
 
 1. Start directly with a short executive summary stating the total updates, security count, blocked count, and highest risk, all derived from the structured inventory. Do not add a heading before it.
 2. Immediately add `**Action:** Assign the linked work issues below to Copilot or another coding agent. Do not assign this umbrella issue.`
-3. Add `### Update inventory`. Create one unchecked task per current Dependabot-identified update. Each task must name the package or action, ecosystem, canonical manifest path, current and target versions when known, update type, security severity when applicable, its HEAD classification, its work-issue link when one exists, and its Dependabot alert or pull request link.
+3. Add `### Update inventory`. Create one unchecked entry per current Dependabot-identified update. Each task must name the package or action, ecosystem, canonical manifest path, current and target versions when known, update type, security severity when applicable, its HEAD classification, its work-issue link when one exists, and its Dependabot alert or pull request link.
 4. Keep only the executive summary, action, and inventory visible. Put all supporting material in collapsed `<details><summary><b>...</b></summary>` blocks named `Work issues`, `Execution order and grouping`, `Risk and migration notes`, `Validation commands`, `Blocked updates`, `Evidence`, and `Control Plane`. Omit a block only when it has no content.
 5. Use GitHub warning or caution callouts for blockers and high-risk updates. Do not use emoji severity markers.
 
@@ -389,7 +389,7 @@ In the `Evidence` block, include the revalidated target HEAD commit SHA and a br
 
 ## Work issue contract
 
-Create one work issue per actionable atomic group. Its canonical unprefixed subject is `Dependency update: <atomic group summary> in <owner>/<repository>`, which must be stable across runs so `deduplicate-by-title` prevents duplicates.
+Create one work issue per actionable atomic group. Its canonical unprefixed subject is `Dependency update: <atomic group summary> in <owner>/<repository>`. Build `<atomic group summary>` deterministically as the ecosystem name followed by the alphabetically sorted package or action names in the group, separated by `, `, and never include versions, counts, severities, dates, or run identifiers. The same group therefore produces the same subject on every run so `deduplicate-by-title` prevents duplicates.
 
 Every work issue body must contain, in order:
 
@@ -431,7 +431,7 @@ When memory is missing, malformed, or stale, bootstrap once with `list_issues` i
 After identifying an existing canonical issue, ensure its current number is stored in the memory file before finishing. A newly created issue number is not available until safe-output processing completes; on the next run, perform the bounded `list_issues` bootstrap once and persist the resulting number. Never guess an issue number.
 
 - If one matching umbrella issue exists and work remains, call `update_issue` once to replace its complete body with the fresh inventory. Then call `add_comment` once on the same issue with a concise message beginning `Dependabot update plan refreshed.` and summarizing what changed. This refresh comment is mandatory even when the resulting plan is materially unchanged.
-- If one matching umbrella issue exists and no work remains, keep the durable issue open and call `update_issue` once with a completed description that preserves the repository marker, states that Dependabot identifies no current updates or actionable blockers, and contains `**Action:** None.` Then call `add_comment` once beginning `Dependabot update plan refreshed.` This clears obsolete unchecked tasks without breaking issue continuity.
+- If one matching umbrella issue exists and no work remains, keep the durable issue open and call `update_issue` once with a completed description that preserves the repository marker, states that Dependabot identifies no current updates or actionable blockers, and contains `**Action:** None.` Then call `add_comment` once beginning `Dependabot update plan refreshed.` This clears obsolete unchecked inventory entries without breaking issue continuity.
 - If no matching umbrella issue exists and at least one current update or actionable Dependabot blocker exists, call `create_issue` once with the canonical unprefixed subject and complete body.
 - Call `create_issue` once for each actionable atomic group that has no open work issue, in the priority order of the inventory, up to the remaining `create_issue` budget for this run, which is the configured safe-output maximum minus any umbrella issue created in the same run, and only when the umbrella issue number is already known. On a bootstrap run that creates the umbrella issue, its number is not available yet, so create no work issues and create them on the next refresh once the number is persisted in memory. When more groups remain than the maximum allows, keep the remaining groups visible in the umbrella inventory as queued and create them on the next refresh.
 - If multiple matching umbrella issues exist, update the oldest canonical issue, mention the duplicate issue numbers in its refresh comment, and do not create another umbrella issue.
@@ -444,9 +444,12 @@ Never create more than one umbrella plan issue for the target repository, and ne
 At the end of every run, produce exactly one of these terminal outcome sequences:
 
 - one `create_issue` for the umbrella issue, and no work issues, for a repository that has current Dependabot work but no plan issue, because the umbrella issue number is not available in the same run;
+- `update_issue` followed by `add_comment` for an umbrella issue recovered through the bounded `list_issues` bootstrap, whose number is persisted in the memory file during the same run, plus one `create_issue` per actionable atomic group that has no open work issue;
 - `update_issue` followed by `add_comment` for an existing umbrella issue with remaining work, plus one `create_issue` per actionable atomic group that has no open work issue;
 - `update_issue` with a completed description followed by `add_comment`, and no work issues, for an existing umbrella issue when no work remains;
 - `noop` when Dependabot identifies no current work and no plan issue exists.
+
+Every `create_issue` call in a run shares one budget: the umbrella issue and all work issues together must never exceed the configured `create_issue` maximum, because outputs beyond that maximum are dropped.
 
 For `create_issue`, provide only the canonical unprefixed subject. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 

@@ -37,7 +37,7 @@
       "contract": [
         "Build one structured inventory before writing any issue text",
         "Derive every count in every issue from that final inventory",
-        "never publish a summary whose per-ecosystem counts do not sum to the stated total or disagree with the checklist"
+        "never publish a summary whose per-ecosystem counts do not sum to the stated total or disagree with the inventory"
       ]
     }
   },
