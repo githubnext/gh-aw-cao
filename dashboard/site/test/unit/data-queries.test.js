@@ -2080,6 +2080,17 @@ describe('declarative dashboard queries', () => {
       .toBe('unavailable');
   });
 
+  it('accepts repeated identical query definitions as the same declaration', () => {
+    const definitions = [
+      { name: 'inventory', from: 'workflows', select: [{ field: 'workflow' }] },
+      { select: [{ field: 'workflow' }], from: 'workflows', name: 'inventory' }
+    ];
+
+    expect(dashboardQueryDefects(definitions).has('inventory')).toBe(false);
+    expect(executeDashboardQueries(definitions, { workflows }).inventory.rows)
+      .toEqual([{ workflow: 'a.md' }, { workflow: 'b.md' }]);
+  });
+
   it('rejects keyless joins that would expand without bound', () => {
     const result = executeDashboardQuery(
       { name: 'cartesian', from: 'workflows', joins: [{ source: 'usage', on: [], fields: [{ field: 'aic', as: 'aic' }] }] },

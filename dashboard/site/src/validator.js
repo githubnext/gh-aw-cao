@@ -3146,6 +3146,8 @@ function validateQueries(queries, queriesNode, errors) {
     return declared;
   }
 
+  /** @type {Map<string, string>} */
+  const declaredQuerySignatures = new Map();
   for (const [index, query] of queries.entries()) {
     const path = `$.dashboard.queries[${index}]`;
     const queryNode = getSequenceItemNode(queriesNode, index);
@@ -3161,7 +3163,14 @@ function validateQueries(queries, queriesNode, errors) {
       validateTime(getValueNodeByKey(queryNode, 'time'), query.time, `${path}.time`, errors);
     }
     const name = typeof query.name === 'string' ? query.name : null;
-    if (name && (SOURCE_VALUES.includes(name) || declared.has(name))) {
+    const signature = stableJson(query);
+    if (
+      name
+      && (
+        SOURCE_VALUES.includes(name)
+        || (declared.has(name) && declaredQuerySignatures.get(name) !== signature)
+      )
+    ) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
         'query name must be unique and must not shadow a canonical source name.',
@@ -3170,6 +3179,7 @@ function validateQueries(queries, queriesNode, errors) {
     }
     const fields = validateQueryClauses(query, queryNode, path, declared, errors);
     if (name) {
+      declaredQuerySignatures.set(name, signature);
       declared.set(name, fields);
       const inputs = [query.from, ...(Array.isArray(query.joins) ? query.joins.map((join) => join?.source) : [])];
       const sources = new Set();
@@ -5391,6 +5401,18 @@ function createError(code, message, path) {
  */
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {unknown} value @returns {string} */
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (isPlainObject(value)) {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
 }
 
 /** @param {unknown} value */

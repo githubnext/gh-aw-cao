@@ -288,14 +288,15 @@ export function dashboardQueryDefects(definitions) {
   const list = Array.isArray(definitions) ? definitions : [];
   const index = dashboardQueryIndex(definitions);
 
-  /** @type {Set<string>} */
-  const seen = new Set();
+  /** @type {Map<string, string>} */
+  const seen = new Map();
   for (const definition of list) {
     if (!isPlainObject(definition) || typeof definition.name !== 'string') continue;
-    if (seen.has(definition.name)) {
+    const signature = stableJson(definition);
+    if (seen.has(definition.name) && seen.get(definition.name) !== signature) {
       defects.set(definition.name, `query name "${definition.name}" is declared more than once`);
     }
-    seen.add(definition.name);
+    seen.set(definition.name, signature);
   }
 
   /** @type {Set<string>} */

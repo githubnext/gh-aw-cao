@@ -1638,6 +1638,48 @@ dashboard:
     }
   });
 
+  it('accepts repeated identical query declarations but rejects conflicting duplicates', () => {
+    const acceptedSource = `language-version: "0.1.0"
+dashboard:
+  id: duplicate-query-contract
+  title: Duplicate query contract
+  queries:
+    - name: run-summary
+      intent: Project workflow runs.
+      from: runs
+      select:
+        - field: run
+    - select:
+        - field: run
+      from: runs
+      intent: Project workflow runs.
+      name: run-summary
+  pages:
+    - id: custom-summary
+      kind: custom
+      title: Custom Summary
+      views:
+        - id: run-count
+          data:
+            source: run-summary
+          mark: metric
+          encoding:
+            value:
+              field: run
+              aggregate: count
+`;
+    expect(validateDashboardDocument(acceptedSource).ok).toBe(true);
+
+    const rejected = validateDashboardDocument(acceptedSource.replace('from: runs\n      intent', 'from: usage\n      intent'));
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.queries[1].name'
+      }));
+    }
+  });
+
   it('DLS-VIEW-005 accepts automatically binned histograms and rejects ambiguous histogram channels', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
