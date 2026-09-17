@@ -88,7 +88,7 @@
     }
   },
   {
-    "name": "partial batch closes the umbrella issue",
+    "name": "partial batch must not close the umbrella issue",
     "source": "github/gh-aw#61574",
     "evidence": {
       "umbrellaIssue": 61573,

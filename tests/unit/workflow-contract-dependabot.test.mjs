@@ -23,7 +23,7 @@ test("Dependabot planner issues stay atomic, revalidated, and canonically source
     "duplicated literal action pin outside the canonical registry",
     "lockfile resolves beyond the reviewed target",
     "candidate breaks peer range and adds advisories",
-    "partial batch closes the umbrella issue",
+    "partial batch must not close the umbrella issue",
   ]);
 
   for (const fixture of fixtures) {
@@ -135,6 +135,8 @@ test("Dependabot planner creates bounded deduplicated work issues alongside the 
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
   assert.equal(outputs["update-issue"].max, 1);
   assert.match(source, /Call `create_issue` once for each actionable atomic group that has no open work issue/);
+  assert.match(source, /only when the umbrella issue number is already known/);
+  assert.match(source, /On a bootstrap run that creates the umbrella issue, its number is not available yet, so create no work issues/);
   assert.match(source, /keep the remaining groups visible in the umbrella inventory as queued and create them on the next refresh/);
   assert.match(source, /never create more than one work issue for the same atomic group/);
   assert.match(source, /The umbrella issue must never contain an agent prompt and must never be assigned to a coding agent/);
