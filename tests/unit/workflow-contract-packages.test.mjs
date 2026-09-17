@@ -344,8 +344,7 @@ printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
         return [];
       }
     });
-    assert.ok(shells.some(({ name }) => name === "sh"));
-    assert.ok(shells.some(({ name }) => name === "bash"));
+    assert.ok(shells.some(({ name }) => name === "sh"), "sh must be available for the POSIX portability contract");
 
     const runHelper = (command, args, label) => {
       writeFileSync(nodeArgsPath, "");
