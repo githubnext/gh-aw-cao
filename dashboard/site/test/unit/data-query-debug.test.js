@@ -1,6 +1,24 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+/**
+ * @param {string} id
+ * @returns {import('../../src/presenter.js').SourceMetadata}
+ */
+function metadata(id) {
+  return /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
+    'source-id': id,
+    'source-kind': 'published',
+    'as-of': '2026-09-01T00:00:00Z',
+    'retrieved-at': '2026-09-01T01:00:00Z',
+    completeness: 'complete',
+    freshness: 'fresh',
+    availability: 'available'
+  });
+}
+
 afterEach(() => {
+  window.history.replaceState(null, '', '/');
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.resetModules();
@@ -8,7 +26,7 @@ afterEach(() => {
 
 describe('dashboard query debug logging', () => {
   it('reports structured stage and query timings when data query debugging is enabled', async () => {
-    vi.stubGlobal('location', { search: '?debug=data:query' });
+    window.history.replaceState(null, '', '/?debug=data:query');
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
     const timestamps = [0, 1, 2, 4, 5, 8, 9, 13];
     vi.stubGlobal('performance', { now: vi.fn(() => timestamps.shift() ?? 13) });
@@ -29,7 +47,7 @@ describe('dashboard query debug logging', () => {
           { repository: 'alpha', 'run-status': 'completed' },
           { repository: 'beta', 'run-status': 'queued' }
         ],
-        metadata: { availability: 'available' }
+        metadata: metadata('runs')
       }
     });
 
@@ -70,12 +88,12 @@ describe('dashboard query debug logging', () => {
       runs: {
         source: 'runs',
         rows: [{ run: '1' }],
-        metadata: { availability: 'available' }
+        metadata: metadata('runs')
       },
       usage: {
         source: 'usage',
         rows: [{ run: '1', aic: 1 }, { run: '1', aic: 2 }],
-        metadata: { availability: 'available' }
+        metadata: metadata('usage')
       }
     });
 
@@ -96,7 +114,7 @@ describe('dashboard query debug logging', () => {
   });
 
   it('does not emit query timings unless the debug category is enabled', async () => {
-    vi.stubGlobal('location', { search: '' });
+    window.history.replaceState(null, '', '/');
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
     const time = vi.spyOn(console, 'time').mockImplementation(() => {});
     const timeEnd = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});
@@ -109,7 +127,7 @@ describe('dashboard query debug logging', () => {
       runs: {
         source: 'runs',
         rows: [{ run: '1' }],
-        metadata: { availability: 'available' }
+        metadata: metadata('runs')
       }
     });
     result.rows;

@@ -624,6 +624,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
   const startingOperations = budget.operations;
   let status = 'available';
   let outputRows = 0;
+  let executing = false;
   /** @type {string | undefined} */
   let failure;
   try {
@@ -658,6 +659,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
       }
     }
 
+    executing = true;
     const rows = runDashboardQuery(definition, effectiveSources, budget);
     outputRows = rows.length;
     return {
@@ -669,6 +671,10 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     failure = error instanceof Error ? error.message : String(error);
     if (error instanceof DashboardQueryCancelledError) {
       status = error.kind;
+      throw error;
+    }
+    if (!executing) {
+      status = 'failed';
       throw error;
     }
     status = 'unavailable';
@@ -754,7 +760,7 @@ function runDashboardQuery(definition, sources, budget) {
       applyJoin(rows, join, joinedRows, join.source, budget)
     ), {
       joinedRows: joinedRows.length
-    ));
+    });
   }
   const operators = compileRowOperators(definition);
   for (const operator of operators) {
