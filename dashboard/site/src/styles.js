@@ -2163,6 +2163,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .report-actions .tooltip-help { position: static; }
   .report-actions .tooltip-content { width: min(320px, 100%); right: auto; left: 0; }
   .report-footer-provenance { display: none; }
+  /* Keep full-width wrapping for the desktop header only; the same header moves into .mobile-page-header where it must stay content-sized. */
   .app-main .overview-header { flex-basis: 100%; }
   .toolbar { align-items: stretch; flex-wrap: wrap; }
   .filter-control { min-width: 0; flex-basis: 100%; }

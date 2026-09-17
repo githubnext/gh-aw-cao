@@ -484,10 +484,12 @@ function enableResponsiveReportActions(root, signal) {
     if (overviewHeader instanceof HTMLElement && mobileHeaderSlot instanceof HTMLElement && headerDesktopSlot) {
       if (media.matches) {
         if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.prepend(overviewHeader);
-        if (headerDescription instanceof HTMLElement) headerDescription.setAttribute('aria-hidden', 'true');
       } else if (overviewHeader.parentElement !== headerDesktopSlot) {
         headerDesktopSlot.prepend(overviewHeader);
-        if (headerDescription instanceof HTMLElement) headerDescription.removeAttribute('aria-hidden');
+      }
+      if (headerDescription instanceof HTMLElement) {
+        if (media.matches) headerDescription.setAttribute('aria-hidden', 'true');
+        else headerDescription.removeAttribute('aria-hidden');
       }
     }
     if (
