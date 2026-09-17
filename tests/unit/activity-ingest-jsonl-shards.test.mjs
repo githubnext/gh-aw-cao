@@ -159,7 +159,7 @@ test('ingest-jsonl injects every run shard before event shards', async () => {
   );
 });
 
-test('phased shard names preserve source order and pair exactly', async () => {
+test('phased shard names preserve source order for non-empty phase pairs', async () => {
   const { root, shardDirectory } = await fixture();
   const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
   const source = await readFile(sourcePath, 'utf8');
@@ -198,21 +198,10 @@ test('hash-payloads drops empty phased shards from files and hashes', async () =
   const runsDirectory = path.join(root, 'gh-aw-logs-runs');
   const eventsDirectory = path.join(root, 'gh-aw-logs-events');
   await mkdir(shardDirectory, { recursive: true });
-  await writeFile(path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'), `${JSON.stringify({
-    schema_version: 2,
-    kind: 'run',
-    run: {
-      run_id: 303,
-      run_attempt: 1,
-      organization: 'githubnext',
-      repository: 'gh-aw-cao',
-      workflow_name: 'Dashboard',
-      workflow_path: '.github/workflows/dashboard.md',
-      status: 'completed',
-      classification: 'success',
-      created_at: '2026-09-17T00:00:00Z'
-    }
-  })}\n`);
+  await writeFile(
+    path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'),
+    `${JSON.stringify({ schema_version: 2, kind: 'unknown' })}\n`,
+  );
 
   const { stdout } = await execFileAsync(process.execPath, [
     path.resolve('activity/cao.mjs'),
@@ -226,9 +215,9 @@ test('hash-payloads drops empty phased shards from files and hashes', async () =
   ]);
 
   const hashes = JSON.parse(stdout);
-  assert.equal((await readdir(runsDirectory)).length, 1);
+  assert.deepEqual(await readdir(runsDirectory), []);
   assert.deepEqual(await readdir(eventsDirectory), []);
-  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 1);
+  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 0);
   assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-events/')).length, 0);
 });
 

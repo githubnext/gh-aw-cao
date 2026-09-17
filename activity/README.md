@@ -88,10 +88,10 @@ $RUNNER_TEMP/cao-activity/drain3_weights.json
 `gh-aw-logs-runs/` run-information shards, and `gh-aw-logs-events/` event
 shards to their SHA-256 checksums. Run-information shards contain immutable
 agent/model identity and duration, firewall, MCP, operational-value, and audit
-priority aggregates. Every event includes its owning run identity. The
-run and event directories contain exactly matching filename stems. The
-dashboard validates that pairing and imports all run-information shards before
-event shards so clients can query runs while detailed ingestion continues.
+priority aggregates. Every event includes its owning run identity. Empty phase
+shards are omitted, so the run and event directories can contain different
+filename stems. The dashboard imports all run-information shards before event
+shards so clients can query runs while detailed ingestion continues.
 Each phase filename retains the source shard's sortable prefix before its
 content and normalization hashes, preserving observation precedence across
 repeated records.
@@ -116,7 +116,7 @@ reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. When the current layout misses, Activity restores the preceding
 layout containing `gh-aw-logs-normalized/`; `hash-payloads` processes its
-retained JSONL shard directory to generate the new paired run and event shards.
+retained JSONL shard directory to generate non-empty run and event shards.
 The cache is an evictable transport optimization, not durable
 historical authority.
 
