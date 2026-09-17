@@ -1,6 +1,6 @@
 {
   "contract": "gh-aw-cao.dashboard-sql-export",
-  "schema_version": 2,
+  "schema_version": 3,
   "source": "enterprise-warehouse",
   "generation": "warehouse-2026-09-09-05",
   "exported_at": "2026-09-09T05:00:00Z",
@@ -37,18 +37,17 @@
       "run_conclusion": "success"
     },
     {
-      "entity_kind": "event",
+      "entity_kind": "domain",
       "source_id": "event-2",
       "observed_at": "2026-09-09T05:00:00Z",
       "github_run_id": "303",
       "run_attempt": 1,
-      "event_timestamp": "2026-09-09T04:00:02Z",
-      "event_source": "firewall",
-      "event_type": "firewall.request.allowed",
-      "source_sequence": 2
+      "domain": "api.github.com",
+      "decision": "allowed",
+      "request_count": 1
     },
     {
-      "entity_kind": "event",
+      "entity_kind": "audit",
       "source_id": "event-1",
       "observed_at": "2026-09-09T05:00:00Z",
       "github_run_id": "303",

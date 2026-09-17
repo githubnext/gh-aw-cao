@@ -6,7 +6,7 @@ const cachePaths = [
   "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-shards",
   "${{ runner.temp }}/cao-activity/gh-aw-logs-runs",
-  "${{ runner.temp }}/cao-activity/gh-aw-logs-events",
+  "${{ runner.temp }}/cao-activity/gh-aw-logs-records",
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
@@ -63,7 +63,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     cacheJob,
     /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
   );
-  assert.doesNotMatch(cacheJob, /Activity run and event shard sets do not match/);
+  assert.doesNotMatch(cacheJob, /Activity run and record shard sets do not match/);
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,
@@ -81,15 +81,15 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.doesNotMatch(workflow, /collect-token-efficiency\.sh/);
   assert.match(
     workflow,
-    /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"/,
+    /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--records-dir "\$REPORT_GH_AW_LOGS_RECORDS"/,
   );
   assert.match(
     workflow,
-    /ingest-jsonl[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
+    /ingest-jsonl[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--records-dir "\$REPORT_GH_AW_LOGS_RECORDS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
   );
   assert.match(
     workflow,
-    /Hash activity payloads[\s\S]*?REPORT_GH_AW_LOGS_RUNS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-runs[\s\S]*?REPORT_GH_AW_LOGS_EVENTS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-events[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
+    /Hash activity payloads[\s\S]*?REPORT_GH_AW_LOGS_RUNS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-runs[\s\S]*?REPORT_GH_AW_LOGS_RECORDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-records[\s\S]*?hash-payloads[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--shard-dir "\$REPORT_GH_AW_LOGS_SHARDS"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--records-dir "\$REPORT_GH_AW_LOGS_RECORDS"[\s\S]*?--output "\$RUNNER_TEMP\/cao-activity\/payload-hashes\.json"/,
   );
   assert.match(
     cacheJob,

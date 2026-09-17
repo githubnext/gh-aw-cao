@@ -36,14 +36,14 @@ describe('canonical data identities', () => {
   });
 
   it('derives stable source-coordinate identities without random values', () => {
-    expect(sourceId('event', 'gh-aw-log', 'run-12/event-4')).toBe(
-      'event:gh-aw-log:run-12%2Fevent-4'
+    expect(sourceId('audit', 'gh-aw-log', 'run-12/audit-4')).toBe(
+      'audit:gh-aw-log:run-12%2Faudit-4'
     );
   });
 
   it('rejects missing IDs and invalid run attempts', () => {
     expect(() => repositoryId(' ')).toThrow('repository ID is required');
     expect(() => runId(123, 0)).toThrow('Run attempt must be a positive integer');
-    expect(() => sourceId('event', '', '42')).toThrow('event source and coordinate are required');
+    expect(() => sourceId('audit', '', '42')).toThrow('audit source and coordinate are required');
   });
 });

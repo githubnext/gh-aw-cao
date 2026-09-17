@@ -99,14 +99,14 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-records
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
-          key: cao-activity-v4-lookup-${{ github.run_id }}-${{ github.run_attempt }}
+          key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            cao-activity-v4-
+            cao-activity-v5-
 
       - name: Resolve fallback activity run
         id: activity-artifact-run
@@ -146,7 +146,7 @@ jobs:
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
           REPORT_GH_AW_LOGS_NORMALIZED: ${{ runner.temp }}/cao-activity/gh-aw-logs-normalized
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+          REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
           REPORT_PAYLOAD_HASHES: ${{ runner.temp }}/cao-activity/payload-hashes.json
         with:
@@ -166,7 +166,7 @@ jobs:
               '--shard-dir', process.env.REPORT_GH_AW_LOGS_SHARDS,
               '--normalized-dir', process.env.REPORT_GH_AW_LOGS_NORMALIZED,
               '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
-              '--events-dir', process.env.REPORT_GH_AW_LOGS_EVENTS,
+              '--records-dir', process.env.REPORT_GH_AW_LOGS_RECORDS,
               '--inventory', process.env.REPORT_INVENTORY_SOURCES,
             ])
             await exec.exec(process.execPath, [
@@ -174,7 +174,7 @@ jobs:
               'ingest-jsonl',
               '--database', process.env.ACTIVITY_DATABASE,
               '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
-              '--events-dir', process.env.REPORT_GH_AW_LOGS_EVENTS,
+              '--records-dir', process.env.REPORT_GH_AW_LOGS_RECORDS,
               '--run-retention-days', 'all',
             ])
             await exec.exec(process.execPath, [
@@ -183,7 +183,7 @@ jobs:
               '--database', process.env.ACTIVITY_DATABASE,
               '--shard-dir', process.env.REPORT_GH_AW_LOGS_SHARDS,
               '--runs-dir', process.env.REPORT_GH_AW_LOGS_RUNS,
-              '--events-dir', process.env.REPORT_GH_AW_LOGS_EVENTS,
+              '--records-dir', process.env.REPORT_GH_AW_LOGS_RECORDS,
               '--inventory', process.env.REPORT_INVENTORY_SOURCES,
               '--output', process.env.REPORT_PAYLOAD_HASHES,
             ])
@@ -323,7 +323,7 @@ jobs:
               )
               core.info(`Copied ${fileName} (${formatFileSize(fs.statSync(destination).size)})`)
             }
-            for (const directory of ['gh-aw-logs-shards', 'gh-aw-logs-runs', 'gh-aw-logs-events']) {
+            for (const directory of ['gh-aw-logs-shards', 'gh-aw-logs-runs', 'gh-aw-logs-records']) {
               fs.cpSync(
                 path.join(process.env.RUNNER_TEMP, 'cao-activity', directory),
                 path.join(process.env.REPORT_OUTPUT, directory),

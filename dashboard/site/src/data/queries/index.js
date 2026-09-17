@@ -42,25 +42,20 @@ export function createCanonicalQueries(indexedDB) {
         ]);
       }
     },
-    events: {
-      list: () => readCollection(indexedDB, 'events'),
-      forRun: (/** @type {string} */ runId) =>
-        readIndex(indexedDB, 'events', 'byRunSequence', [runId]),
-      forRunByType: async (/** @type {string} */ runId, /** @type {string} */ type) => {
-        return queryCollection(indexedDB, 'events', [{
-          op: 'filter',
-          predicates: [
-            { field: 'runId', equals: runId },
-            { field: 'type', equals: type }
-          ]
-        }, {
-          op: 'arrange',
-          by: [{ field: 'sequence', direction: 'asc' }]
-        }]);
-      }
-    },
+    domains: runLinkedQueries(indexedDB, 'domains'),
+    tools: runLinkedQueries(indexedDB, 'tools'),
+    audits: runLinkedQueries(indexedDB, 'audits'),
+    issues: runLinkedQueries(indexedDB, 'issues'),
     transactions: {
       list: () => readTransactions(indexedDB)
     }
+  };
+}
+
+/** @param {IDBFactory} indexedDB @param {'domains' | 'tools' | 'audits' | 'issues'} collection */
+function runLinkedQueries(indexedDB, collection) {
+  return {
+    list: () => readCollection(indexedDB, collection),
+    forRun: (/** @type {string} */ runId) => readIndex(indexedDB, collection, 'byRun', [runId])
   };
 }

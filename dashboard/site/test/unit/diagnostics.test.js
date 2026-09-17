@@ -28,10 +28,10 @@ describe('full dashboard diagnostics', () => {
 
     expect(report.passed).toBe(false);
     expect(report.database.counts.packages).toBe(0);
-    expect(report.database.counts.events).toBe(0);
+    expect(report.database.counts.audits).toBe(0);
     expect(report.ui.activePageId).toBe('events');
     expect(report.checks).toContainEqual(expect.objectContaining({
-      name: 'events populated',
+      name: 'audits populated',
       passed: false
     }));
   });

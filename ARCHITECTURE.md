@@ -93,7 +93,7 @@ flowchart LR
 Activity collects a bounded snapshot once and publishes immutable cache
 artifacts. SQLite and IndexedDB are independently rebuildable projections of
 the authoritative inputs. It deterministically separates compact, immutable run
-information from detailed events so the browser data worker loads every run
+information from detailed run-linked records so the browser data worker loads every run
 before continuing with event shards. Browser download, normalization,
 persistence, and queries run in a dedicated Web Worker. The main thread receives
 only bounded view payloads.

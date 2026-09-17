@@ -43,8 +43,8 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       created_at: '2026-09-09T05:00:00Z'
     }
   })}\n`).observations);
-  const normalized = (/** @type {'runs' | 'events'} */ phase, /** @type {typeof batch} */ phaseBatch) => ({
-    schemaVersion: 10,
+  const normalized = (/** @type {'runs' | 'records'} */ phase, /** @type {typeof batch} */ phaseBatch) => ({
+    schemaVersion: 11,
     ingestionVersion: 2,
     sourceRecords: 1,
     phase,
@@ -52,10 +52,10 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
   });
   const shardStem = `gh-aw-logs-1000-a-${'c'.repeat(64)}-${'d'.repeat(16)}.json`;
   const runsName = `gh-aw-logs-runs/${shardStem}`;
-  const eventsName = `gh-aw-logs-events/${shardStem}`;
+  const recordsName = `gh-aw-logs-records/${shardStem}`;
   /** @type {string[]} */
   const downloadedShards = [];
-  let eventDownloaded = false;
+  let recordsDownloaded = false;
   /** @type {() => void} */
   let releaseEvent = () => {};
   const eventReady = new Promise((resolve) => {
@@ -65,22 +65,24 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     const url = String(input);
     if (url.endsWith('/inventory-sources.json')) return new Response(null, { status: 404 });
     if (url.endsWith('/payload-hashes.json')) {
-      return Response.json({ [runsName]: 'a'.repeat(64), [eventsName]: 'b'.repeat(64) });
+      return Response.json({ [runsName]: 'a'.repeat(64), [recordsName]: 'b'.repeat(64) });
     }
     if (url.endsWith(`/${runsName}`)) {
       if (init?.method !== 'HEAD') downloadedShards.push(url);
       return init?.method === 'HEAD'
         ? new Response(null, { headers: { 'content-length': '1' } })
-        : Response.json(normalized('runs', { ...batch, events: [] }));
+        : Response.json(normalized('runs', {
+            ...batch, domains: [], tools: [], audits: [], issues: []
+          }));
     }
     if (init?.method !== 'HEAD') downloadedShards.push(url);
-    eventDownloaded ||= init?.method !== 'HEAD';
+    recordsDownloaded ||= init?.method !== 'HEAD';
     if (init?.method !== 'HEAD') await eventReady;
     return init?.method === 'HEAD'
       ? new Response(null, { headers: { 'content-length': '1' } })
-      : Response.json(normalized('events', {
+      : Response.json(normalized('records', {
           packages: [], repositories: [], workflows: [], runs: [],
-          events: batch.events
+          domains: batch.domains, tools: batch.tools, audits: batch.audits, issues: batch.issues
         }));
   });
 
@@ -88,14 +90,14 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     pages: [],
     queries: [
       { name: 'run-summary', from: 'runs', select: [{ field: 'run' }] },
-      { name: 'event-summary', from: 'events', select: [{ field: 'event' }] }
+      { name: 'audit-summary', from: 'audits', select: [{ field: 'audit' }] }
     ]
   };
   listeners.get('message')?.({
     data: {
       operation: 'subscribe-canonical-dashboard',
-      subscriptionId: 'events',
-      sourceNames: ['event-summary'],
+      subscriptionId: 'audits',
+      sourceNames: ['audit-summary'],
       context
     }
   });
@@ -117,7 +119,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     }
   });
 
-  for (let attempt = 0; attempt < 200 && !eventDownloaded; attempt += 1) {
+  for (let attempt = 0; attempt < 200 && !recordsDownloaded; attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
   await new Promise((resolve) => { setTimeout(resolve, 75); });
@@ -135,30 +137,30 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
   expect(published).toMatchObject({
     data: { 'run-summary': { rows: [{ run: '303' }] } }
   });
-  expect(eventDownloaded).toBe(true);
+  expect(recordsDownloaded).toBe(true);
   expect(posted.some(({ id }) => id === 1)).toBe(false);
-  expect(posted.some(({ subscriptionId }) => subscriptionId === 'events')).toBe(true);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'audits')).toBe(true);
   listeners.get('message')?.({
     data: {
       operation: 'subscribe-canonical-dashboard',
-      subscriptionId: 'events-during-run-phase',
-      sourceNames: ['event-summary'],
+      subscriptionId: 'audits-during-run-phase',
+      sourceNames: ['audit-summary'],
       context
     }
   });
   await new Promise((resolve) => { setTimeout(resolve, 75); });
-  expect(posted.some(({ subscriptionId }) => subscriptionId === 'events-during-run-phase')).toBe(true);
+  expect(posted.some(({ subscriptionId }) => subscriptionId === 'audits-during-run-phase')).toBe(true);
   releaseEvent();
   for (let attempt = 0; attempt < 200 && !posted.some(({ id }) => id === 1); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
   expect(posted.find(({ id }) => id === 1)?.error).toBeUndefined();
-  for (let attempt = 0; attempt < 200 && !['events', 'events-during-run-phase'].every((subscriptionId) =>
+  for (let attempt = 0; attempt < 200 && !['audits', 'audits-during-run-phase'].every((subscriptionId) =>
     posted.some((message) => message.subscriptionId === subscriptionId)); attempt += 1) {
     await new Promise((resolve) => { setTimeout(resolve, 5); });
   }
-  expect(posted.find(({ subscriptionId }) => subscriptionId === 'events')).toBeDefined();
-  expect(posted.find(({ subscriptionId }) => subscriptionId === 'events-during-run-phase')).toBeDefined();
+  expect(posted.find(({ subscriptionId }) => subscriptionId === 'audits')).toBeDefined();
+  expect(posted.find(({ subscriptionId }) => subscriptionId === 'audits-during-run-phase')).toBeDefined();
   expect((await readTransactions(indexedDB))
     .filter(({ kind }) => kind === 'ingest-normalized-json')
     .map(({ payloadScope, payloadHash }) => ({ payloadScope, payloadHash })))
@@ -168,7 +170,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
         payloadHash: 'a'.repeat(64)
       },
       {
-        payloadScope: `https://dashboard.example/${eventsName}`,
+        payloadScope: `https://dashboard.example/${recordsName}`,
         payloadHash: 'b'.repeat(64)
       }
     ]));

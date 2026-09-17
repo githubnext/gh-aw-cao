@@ -59,7 +59,12 @@ export function adaptDashboardSources(sources) {
   const packages = sourceDocument(sources.packages);
   const workflows = sourceDocument(sources.workflows);
   const runs = sourceDocument(sources.runs);
-  const events = sourceDocument(sources.events);
+  const runLinkedSources = [
+    { kind: /** @type {const} */ ('domain'), document: sourceDocument(sources.domains) },
+    { kind: /** @type {const} */ ('tool'), document: sourceDocument(sources.tools) },
+    { kind: /** @type {const} */ ('audit'), document: sourceDocument(sources.audits) },
+    { kind: /** @type {const} */ ('issue'), document: sourceDocument(sources.issues) }
+  ];
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
   const publishedRunIds = new Set();
@@ -216,22 +221,23 @@ export function adaptDashboardSources(sources) {
     });
   }
 
-  for (const candidate of events.rows) {
+  for (const { kind, document } of runLinkedSources) {
+    for (const candidate of document.rows) {
     const row = objectRow(candidate);
     if (!row) continue;
-    const githubRunId = requiredString(row.run, 'event.run');
+    const githubRunId = requiredString(row.run, `${kind}.run`);
     const sourceAttempt = row['run-attempt'];
     const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1;
     const canonicalRunId = runId(githubRunId, attempt);
     if (!publishedRunIds.has(canonicalRunId)) continue;
     const sourceSequence = Number(row['source-sequence']);
     observations.push({
-      kind: 'event',
+      kind,
       source: SOURCE,
-      sourceId: requiredString(row.event, 'event.event'),
-      observedAt: requiredString(row['observed-at'] ?? row['event-timestamp'] ?? metadataTimestamp(events.metadata), 'event observed time'),
+      sourceId: requiredString(row.event, `${kind}.event`),
+      observedAt: requiredString(row['observed-at'] ?? row['event-timestamp'] ?? metadataTimestamp(document.metadata), `${kind} observed time`),
       data: {
-        id: requiredString(row.event, 'event.event'),
+        id: requiredString(row.event, `${kind}.event`),
         runId: canonicalRunId,
         timestamp: requiredString(row['event-timestamp'], 'event.event-timestamp'),
         source: requiredString(row['event-source'], 'event.event-source'),
@@ -245,6 +251,10 @@ export function adaptDashboardSources(sources) {
         mcpTool: row['mcp-tool'],
         safeOutputType: row['safe-output-type'],
         githubEntityType: row['github-entity-type'],
+        isPullRequest: row['is-pull-request'] === true,
+        toolType: row['tool-type'],
+        isSkill: row['is-skill'] === true,
+        name: row.name,
         targetRepo: row['target-repo'],
         targetOrganization: row['target-organization'],
         targetRepository: row['target-repository'],
@@ -294,6 +304,7 @@ export function adaptDashboardSources(sources) {
         sourceSequence: Number.isInteger(sourceSequence) && sourceSequence >= 0 ? sourceSequence : undefined
       }
     });
+    }
   }
 
   return { observations };

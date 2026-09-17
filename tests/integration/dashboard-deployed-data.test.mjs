@@ -24,25 +24,24 @@ async function ingestDeployedShards() {
   }
 }
 
-test("deployed dashboard cache populates canonical workflows, runs, and events", async () => {
+test("deployed dashboard cache populates canonical workflows, runs, and run records", async () => {
   await deleteCanonicalDatabase(indexedDB);
   try {
     await ingestDeployedShards();
-    const [repositories, workflows, runs, events] = await Promise.all([
+    const [repositories, workflows, runs, domains, tools, audits, issues] = await Promise.all([
       readCollection(indexedDB, "repositories"),
       readCollection(indexedDB, "workflows"),
       readCollection(indexedDB, "runs"),
-      readCollection(indexedDB, "events"),
+      readCollection(indexedDB, "domains"),
+      readCollection(indexedDB, "tools"),
+      readCollection(indexedDB, "audits"),
+      readCollection(indexedDB, "issues"),
     ]);
-    for (const [table, entries] of Object.entries({
-      repositories,
-      workflows,
-      runs,
-      events,
-    })) {
+    for (const [table, entries] of Object.entries({ repositories, workflows, runs })) {
       console.error(`Canonical ${table} rows: ${entries.length}`);
       assert.ok(entries.length > 0, `canonical ${table} table must contain an entry`);
     }
+    assert.ok(domains.length + tools.length + audits.length + issues.length > 0);
   } finally {
     await deleteCanonicalDatabase(indexedDB);
   }
@@ -52,7 +51,7 @@ test("deployed dashboard cache ingests its firewall analysis", async () => {
   await deleteCanonicalDatabase(indexedDB);
   try {
     await ingestDeployedShards();
-    const ingestedFirewallEvents = (await readCollection(indexedDB, "events")).filter(
+    const ingestedFirewallEvents = (await readCollection(indexedDB, "domains")).filter(
       (event) => event.source === "firewall" && /^net_/.test(String(event.type)),
     );
     assert.ok(ingestedFirewallEvents.length > 0, "deployed gh-aw logs must ingest firewall events");

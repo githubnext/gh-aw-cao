@@ -42,7 +42,7 @@ function batch(events) {
       }
     },
     ...events.map((event) => ({
-      kind: /** @type {const} */ ('event'),
+      kind: /** @type {const} */ ('audit'),
       source: 'fixture',
       sourceId: event.eventId,
       observedAt: event.timestamp,
@@ -70,9 +70,9 @@ describe('canonical retention merge', () => {
 
     const merged = mergeRetainedRecords(previous, incoming, { now: NOW });
 
-    expect(merged.events.map((event) => event.id)).toEqual(['event:1', 'event:2', 'event:3']);
-    expect(merged.events.map((event) => event.sequence)).toEqual([0, 1, 2]);
-    expect(merged.events[0]).toBe(previous.events[0]);
+    expect(merged.audits.map((event) => event.id)).toEqual(['event:1', 'event:2', 'event:3']);
+    expect(merged.audits.map((event) => event.sequence)).toEqual([0, 1, 2]);
+    expect(merged.audits[0]).toBe(previous.audits[0]);
   });
 
   it(`prunes retained events observed before the ${RETENTION_WINDOW_DAYS}-day window`, () => {
@@ -86,7 +86,7 @@ describe('canonical retention merge', () => {
 
     const merged = mergeRetainedRecords(previous, incoming, { now: NOW });
 
-    expect(merged.events.map((event) => event.id)).toEqual(['event:retained', 'event:current']);
+    expect(merged.audits.map((event) => event.id)).toEqual(['event:retained', 'event:current']);
   });
 
   it('keeps historical run summaries while pruning historical detail in the browser', () => {
@@ -102,7 +102,7 @@ describe('canonical retention merge', () => {
     });
 
     expect(merged.runs.map((run) => run.id)).toEqual(['run:1']);
-    expect(merged.events).toEqual([]);
+    expect(merged.audits).toEqual([]);
     expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
   });
@@ -111,21 +111,21 @@ describe('canonical retention merge', () => {
     const previous = batch([
       { eventId: 'event:orphan', timestamp: '2026-09-01T04:00:00Z' }
     ]);
-    previous.events[0].runId = 'run:missing';
+    previous.audits[0].runId = 'run:missing';
     const incoming = batch([
       { eventId: 'event:current', timestamp: '2026-09-09T04:00:00Z' }
     ]);
 
     const merged = mergeRetainedRecords(previous, incoming, { now: NOW });
 
-    expect(merged.events.map((event) => event.id)).toEqual(['event:current']);
+    expect(merged.audits.map((event) => event.id)).toEqual(['event:current']);
   });
 
   it('expires retained records that carry no usable observation time', () => {
     const previous = batch([
       { eventId: 'event:untimed', timestamp: '2026-09-01T04:00:00Z' }
     ]);
-    for (const event of previous.events) {
+    for (const event of previous.audits) {
       delete event.timestamp;
       delete event.observedAt;
     }
@@ -135,7 +135,7 @@ describe('canonical retention merge', () => {
 
     const merged = mergeRetainedRecords(previous, incoming, { now: NOW });
 
-    expect(merged.events.map((event) => event.id)).toEqual(['event:current']);
+    expect(merged.audits.map((event) => event.id)).toEqual(['event:current']);
   });
 
   it('collects structural parents that no retained record still references', () => {
@@ -169,7 +169,7 @@ describe('canonical retention merge', () => {
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
     expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
     expect(merged.runs.map((run) => run.id)).toEqual(['run:1']);
-    expect(merged.events.map((event) => event.id)).toEqual(['event:1']);
+    expect(merged.audits.map((event) => event.id)).toEqual(['event:1']);
   });
 
   it('drops the oldest whole run subtree to fit a byte cap', () => {
@@ -182,8 +182,8 @@ describe('canonical retention merge', () => {
       id: 'run:new',
       startedAt: '2026-09-09T04:00:00Z'
     });
-    records.events.push({
-      ...records.events[0],
+    records.audits.push({
+      ...records.audits[0],
       id: 'event:new',
       runId: 'run:new',
       timestamp: '2026-09-09T04:00:00Z'
@@ -192,6 +192,6 @@ describe('canonical retention merge', () => {
     const capped = capCanonicalBatchSize(records, estimateCanonicalBatchBytes(records) - 1);
 
     expect(capped.runs.map((run) => run.id)).toEqual(['run:new']);
-    expect(capped.events.map((event) => event.id)).toEqual(['event:new']);
+    expect(capped.audits.map((event) => event.id)).toEqual(['event:new']);
   });
 });

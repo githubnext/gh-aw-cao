@@ -11,7 +11,7 @@ const DEBUG_PREFIX = 'cao';
 const JSONL_SHARD_PATH = /\/gh-aw-logs-shards\/[A-Za-z0-9._-]+\.jsonl$/;
 const NORMALIZED_SHARD_PATH = /\/gh-aw-logs-normalized\/[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
 const RUN_SHARD_PATH = /\/gh-aw-logs-runs\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
-const EVENT_SHARD_PATH = /\/gh-aw-logs-events\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
+const RECORD_SHARD_PATH = /\/gh-aw-logs-records\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i;
 
 /**
  * Extracts the raw `debug` query parameter from a location search string
@@ -69,7 +69,7 @@ function isDashboardDataUrl(value) {
         || JSONL_SHARD_PATH.test(url.pathname)
         || NORMALIZED_SHARD_PATH.test(url.pathname)
         || RUN_SHARD_PATH.test(url.pathname)
-        || EVENT_SHARD_PATH.test(url.pathname));
+        || RECORD_SHARD_PATH.test(url.pathname));
   } catch {
     return false;
   }
@@ -147,7 +147,7 @@ async function downloadData(urls) {
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
   const eventEntries = Object.entries(currentHashes)
-    .filter(([name, hash]) => /^gh-aw-logs-events\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
+    .filter(([name, hash]) => /^gh-aw-logs-records\/(?:[a-zA-Z0-9._-]+-)?[a-f0-9]{64}-[a-f0-9]{16}\.json$/i.test(name)
       && typeof hash === 'string'
       && /^[a-f0-9]{64}$/i.test(hash))
     .sort(([left], [right]) => left.localeCompare(right));
@@ -193,7 +193,7 @@ async function downloadData(urls) {
     if ((JSONL_SHARD_PATH.test(new URL(request.url).pathname)
           || NORMALIZED_SHARD_PATH.test(new URL(request.url).pathname)
           || RUN_SHARD_PATH.test(new URL(request.url).pathname)
-          || EVENT_SHARD_PATH.test(new URL(request.url).pathname))
+          || RECORD_SHARD_PATH.test(new URL(request.url).pathname))
         && !currentShardUrls.has(request.url)) {
       await cache.delete(request);
     }

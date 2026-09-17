@@ -331,7 +331,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'events', signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onLockWait?: () => void, payloadIdentity: string, payloadScope: string, expectedPhase?: 'runs' | 'records', signal?: AbortSignal }} options
  */
 export function ingestNormalizedJson(indexedDB, input, options) {
   return serializeIngestion(indexedDB, async () => {
@@ -351,7 +351,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
         throw new TypeError('Normalized activity payload must include a canonical batch');
       }
       const batch = /** @type {import('../model/schema.js').CanonicalBatch} */ (payload.batch);
-      for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'events']) {
+      for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues']) {
         if (!Array.isArray(batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)])) {
           throw new TypeError(`Normalized activity payload is missing ${collection}`);
         }
@@ -361,7 +361,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
           throw new TypeError(`Normalized activity payload phase must be ${options.expectedPhase}`);
         }
         const excluded = options.expectedPhase === 'runs'
-          ? ['events']
+          ? ['domains', 'tools', 'audits', 'issues']
           : ['packages', 'repositories', 'workflows', 'runs'];
         for (const collection of excluded) {
           if (batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)].length > 0) {
@@ -479,7 +479,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     debug('normalized JSONL stream', {
       sourceRecords: adapted.records,
       runs: batch.runs.length,
-      events: batch.events.length
+      domains: batch.domains.length,
+      tools: batch.tools.length,
+      audits: batch.audits.length,
+      issues: batch.issues.length
     });
     phase = 'writing';
     const storageStartedAt = monotonicNow();
@@ -526,7 +529,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       duplicateRawRunObservations: adapted.duplicateRawRunObservations,
       duplicateAgenticRunObservations: adapted.duplicateAgenticRunObservations,
       unenrichedRuns: adapted.unenrichedRuns,
-      events: adapted.events,
+      recordsByKind: adapted.recordsByKind,
       rateLimits: adapted.rateLimits,
       mappedRateLimits: adapted.mappedRateLimits,
       timings

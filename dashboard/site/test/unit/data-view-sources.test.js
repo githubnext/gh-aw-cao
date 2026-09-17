@@ -85,7 +85,7 @@ const sources = {
     }],
     metadata
   },
-  events: {
+  tools: {
     rows: [
       {
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
@@ -95,7 +95,12 @@ const sources = {
         'request-count': 7,
         'correlation-id': 'call-1', 'safe-output-type': 'create_issue',
         'github-entity-type': 'issue', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
-      },
+      }
+    ],
+    metadata
+  },
+  audits: {
+    rows: [
       {
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
         run: '42', 'run-attempt': 2, event: 'event:agent-turn',
@@ -105,6 +110,8 @@ const sources = {
     ],
     metadata
   },
+  domains: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
+  issues: { rows: /** @type {Record<string, unknown>[]} */ ([]), metadata },
   usage: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42', aic: 17 }],
     metadata
@@ -113,13 +120,13 @@ const sources = {
 
 /**
  * @param {string} generation
- * @param {Record<string, unknown>[]} eventRows
+ * @param {Record<string, unknown>[]} auditRows
  */
-function collection(generation, eventRows) {
+function collection(generation, auditRows) {
   const collected = { 'as-of': metadata['as-of'], 'artifact-generation': generation };
   return Object.fromEntries(Object.entries(sources).map(([name, source]) => [
     name,
-    { rows: name === 'events' ? eventRows : source.rows, metadata: collected }
+    { rows: name === 'audits' ? auditRows : source.rows, metadata: collected }
   ]));
 }
 
@@ -320,21 +327,21 @@ describe('canonical view sources', () => {
     ]);
   });
 
-  it('projects event-backed view sources from retained canonical events', async () => {
+  it('projects run-linked view sources from their canonical tables', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
     const projected = await queryCanonicalViewSources(
       indexedDB,
       sources,
-      ['events']
+      ['tools', 'audits']
     );
 
-    expect(Object.keys(projected)).toEqual(['events']);
-    expect(projected.events).toMatchObject({
-      source: 'events',
+    expect(Object.keys(projected)).toEqual(['tools', 'audits']);
+    expect(projected.tools).toMatchObject({
+      source: 'tools',
       metadata: { 'source-kind': 'canonical-query', availability: 'available' }
     });
-    expect(projected.events.rows).toEqual([
+    expect(projected.tools.rows).toEqual([
       expect.objectContaining({
         organization: 'githubnext',
         repository: 'gh-aw-cao',
@@ -349,23 +356,26 @@ describe('canonical view sources', () => {
         'correlation-id': 'call-1',
         'safe-output-type': 'create_issue',
         'github-entity-type': 'issue'
-      }),
+      })
+    ]);
+    expect(projected.audits.rows).toEqual([
       expect.objectContaining({ event: 'event:agent-turn', 'event-source': 'agent', 'event-type': 'agent_turn' })
     ]);
   });
 
   it('projects firewall event arity with canonical event types', async () => {
     const firewallSources = structuredClone(sources);
-    const firewallEvent = firewallSources.events.rows[0];
+    const firewallEvent = structuredClone(firewallSources.tools.rows[0]);
     firewallEvent.event = 'event:firewall-blocked';
     firewallEvent['event-source'] = 'firewall';
     firewallEvent['event-type'] = 'net_blocked';
-    firewallSources.events.rows = [firewallEvent];
+    firewallSources.tools.rows = [];
+    firewallSources.domains.rows = [firewallEvent];
     await loadCanonicalViewSources(indexedDB, firewallSources, { ingest: true });
 
-    const projected = await queryCanonicalViewSources(indexedDB, firewallSources, ['events']);
+    const projected = await queryCanonicalViewSources(indexedDB, firewallSources, ['domains']);
 
-    expect(projected.events.rows).toEqual([
+    expect(projected.domains.rows).toEqual([
       expect.objectContaining({
         event: 'event:firewall-blocked',
         'event-source': 'firewall',
@@ -552,7 +562,7 @@ describe('canonical view sources', () => {
     const canonical = await queryCanonicalViewSources(
       indexedDB,
       {},
-      ['events']
+      ['audits']
     );
     const projected = executeDashboardQueries(
       optimizationDashboardQueries,
@@ -618,14 +628,14 @@ describe('canonical view sources', () => {
   });
 
   it('keeps retained events available to event-backed views after a partial collection', async () => {
-    await loadCanonicalViewSources(indexedDB, collection('generation-a', sources.events.rows), { ingest: true });
-    const partial = collection('generation-b', sources.events.rows.filter((row) => row.event === 'event:agent-turn'));
+    await loadCanonicalViewSources(indexedDB, collection('generation-a', sources.audits.rows), { ingest: true });
+    const partial = collection('generation-b', []);
 
     const projected = await loadCanonicalViewSources(indexedDB, partial, { ingest: true });
-    const rows = /** @type {{ rows: Record<string, unknown>[] }} */ (projected.events).rows;
+    const rows = /** @type {{ rows: Record<string, unknown>[] }} */ (projected.audits).rows;
 
-    expect(rows.map((row) => row.event)).toEqual(['event:tool-call', 'event:agent-turn']);
-    expect(rows.map((row) => row['event-type'])).toEqual(['tool.call', 'agent_turn']);
+    expect(rows.map((row) => row.event)).toEqual(['event:agent-turn']);
+    expect(rows.map((row) => row['event-type'])).toEqual(['agent_turn']);
   });
 
   it('queries an empty database before fresh data is ingested', async () => {
@@ -645,7 +655,7 @@ describe('canonical view sources', () => {
         'run-link': { relation: 'run', href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}`, label: `Run ${run}` }
       }));
       input['job-performance'].rows = [];
-      input.events.rows = [];
+      input.audits.rows = [];
       return input;
     };
     const definitions = [{

@@ -29,13 +29,13 @@ describe('Local database view', () => {
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
-        'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
+        'database-event-count': { source: 'database-event-count', rows: [{ audits: 13 }], metadata }
       },
       contextDetails: [],
       headingTag: 'h3'
     }));
 
-    expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
+    expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Audits');
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
   });
 });

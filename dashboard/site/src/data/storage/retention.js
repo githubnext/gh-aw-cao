@@ -1,4 +1,4 @@
-import { orderEvents } from '../normalize/index.js';
+import { orderRunRecords } from '../normalize/index.js';
 
 export const RETENTION_WINDOW_DAYS = 30;
 export const RETENTION_WINDOW_MS = RETENTION_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -14,7 +14,10 @@ export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
  */
 const RETENTION_TIMESTAMPS = {
   runs: ['completedAt', 'startedAt', 'observedAt'],
-  events: ['timestamp', 'observedAt']
+  domains: ['timestamp', 'observedAt'],
+  tools: ['timestamp', 'observedAt'],
+  audits: ['timestamp', 'observedAt'],
+  issues: ['timestamp', 'observedAt']
 };
 
 const STORES = /** @type {const} */ ([
@@ -22,8 +25,12 @@ const STORES = /** @type {const} */ ([
   'repositories',
   'workflows',
   'runs',
-  'events'
+  'domains',
+  'tools',
+  'audits',
+  'issues'
 ]);
+const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
   'packageId',
   'package',
@@ -71,7 +78,10 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     }
     return grouped;
   };
-  const eventsByRun = groupBy(batch.events, 'runId');
+  const recordsByRun = Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
+    storeName,
+    groupBy(batch[storeName], 'runId')
+  ]));
   const evictedRuns = new Set();
   const oldestRuns = [...batch.runs].sort((left, right) =>
     (recordTimestamp('runs', left) ?? Number.NEGATIVE_INFINITY)
@@ -83,16 +93,21 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     const runId = String(run.id);
     evictedRuns.add(runId);
     estimatedBytes -= recordSize(run);
-    for (const event of eventsByRun.get(runId) ?? []) estimatedBytes -= recordSize(event);
+    for (const storeName of RUN_LINKED_STORES) {
+      for (const record of recordsByRun[storeName].get(runId) ?? []) estimatedBytes -= recordSize(record);
+    }
   }
 
-  return {
+  return /** @type {import('../model/schema.js').CanonicalBatch} */ ({
     packages: batch.packages,
     repositories: batch.repositories,
     workflows: batch.workflows,
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
-    events: batch.events.filter((record) => !evictedRuns.has(String(record.runId)))
-  };
+    ...Object.fromEntries(RUN_LINKED_STORES.map((storeName) => [
+      storeName,
+      batch[storeName].filter((record) => !evictedRuns.has(String(record.runId)))
+    ]))
+  });
 }
 
 /**
@@ -216,8 +231,10 @@ function pruneOrphans(merged) {
       || !workflow
       || workflow.repositoryId !== run.repositoryId) runs.delete(id);
   }
-  for (const [id, event] of merged.events) {
-    if (!runs.has(String(event.runId))) merged.events.delete(id);
+  for (const storeName of RUN_LINKED_STORES) {
+    for (const [id, record] of merged[storeName]) {
+      if (!runs.has(String(record.runId))) merged[storeName].delete(id);
+    }
   }
 }
 
@@ -296,6 +313,8 @@ export function mergeRetainedRecords(previous, incoming, options = {}) {
       [...merged[storeName].values()].sort((left, right) => String(left.id).localeCompare(String(right.id)))
     ])
   ));
-  batch.events = orderEvents(batch.events);
+  for (const storeName of RUN_LINKED_STORES) {
+    batch[storeName] = orderRunRecords(batch[storeName]);
+  }
   return batch;
 }

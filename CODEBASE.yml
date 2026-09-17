@@ -93,10 +93,10 @@ components:
     responsibility: bounded, authoritative Activity evidence snapshots
   activity_run_information_shards:
     path: activity/
-    responsibility: compact immutable run identity and aggregate payloads loaded before events
-  activity_event_shards:
+    responsibility: compact immutable run identity and aggregate payloads loaded before run-linked records
+  activity_record_shards:
     path: activity/
-    responsibility: detailed event payloads with direct canonical run identity
+    responsibility: detailed domain, tool, audit, and issue payloads with direct canonical run identity
   sqlite_projection:
     path: activity/
     responsibility: rebuildable local query projection for the cao CLI and agents
@@ -129,9 +129,9 @@ dependencies:
   - gh_aw_logs -> activity_jsonl_shards
   - activity_jsonl_shards -> sqlite_projection
   - activity_jsonl_shards -> activity_run_information_shards
-  - activity_jsonl_shards -> activity_event_shards
+  - activity_jsonl_shards -> activity_record_shards
   - activity_run_information_shards -> dashboard_publisher
-  - activity_event_shards -> dashboard_publisher
+  - activity_record_shards -> dashboard_publisher
   - dashboard_publisher -> browser_data_worker
   - browser_data_worker -> indexeddb_projection
   - browser_data_worker -> dashboard_language_queries
@@ -176,7 +176,7 @@ invariants:
   - "Dispatch envelopes include identity, mode, review destination, and provenance; they MUST NOT include credentials."
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
-  - "Dashboard ingestion MUST load every run-information shard before event shards; every event MUST identify its owning run."
+  - "Dashboard ingestion MUST load every run-information shard before record shards; every domain, tool, audit, and issue MUST identify its owning run."
   - "Missing, stale, partial, and zero evidence are distinct states."
   - "Dashboard data operations MUST be declared in Dashboard Language and execute in the data Web Worker."
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
@@ -202,7 +202,7 @@ flows:
     - gh_aw_logs
     - activity_jsonl_shards
     - activity_run_information_shards
-    - activity_event_shards
+    - activity_record_shards
     - dashboard_publisher
     - browser_data_worker
     - indexeddb_projection

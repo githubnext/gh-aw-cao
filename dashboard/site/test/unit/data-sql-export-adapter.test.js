@@ -23,15 +23,18 @@ describe('SQL export adapter', () => {
         repositoryId: 'github:repository:101',
         workflowId: 'github:workflow:202'
       }],
-      events: expect.arrayContaining([
+      audits: expect.arrayContaining([
         expect.objectContaining({ runId: 'github:run:303:attempt:1' })
-      ])
+      ]),
+      domains: [expect.objectContaining({
+        runId: 'github:run:303:attempt:1',
+        domain: 'api.github.com'
+      })]
     });
-    expect(batch.events.map((event) => [event.sequence, event.type])).toEqual([
-      [0, 'message.user'],
-      [1, 'firewall.request.allowed']
+    expect(batch.audits.map((audit) => [audit.sequence, audit.type])).toEqual([
+      [0, 'message.user']
     ]);
-    expect(batch.events[0]).toMatchObject({
+    expect(batch.audits[0]).toMatchObject({
       safeOutputType: 'create_issue',
       githubEntityType: 'issue'
     });
@@ -45,7 +48,7 @@ describe('SQL export adapter', () => {
   it('preserves token intervention lifecycle identity and evidence', () => {
     const input = fixture();
     input.rows.push({
-      entity_kind: 'event',
+      entity_kind: 'audit',
       source_id: 'event-token-lifecycle',
       observed_at: '2026-09-09T05:00:00Z',
       github_run_id: '303',
@@ -92,7 +95,7 @@ describe('SQL export adapter', () => {
       optimization_implementation_completed_at: '2026-09-09T04:00:00Z'
     });
 
-    const event = normalize(adaptSqlExport(input).observations).events
+    const event = normalize(adaptSqlExport(input).observations).audits
       .find((candidate) => candidate.type === 'token_efficiency.intervention');
     expect(event).toMatchObject({
       targetRepo: 'octo/example',

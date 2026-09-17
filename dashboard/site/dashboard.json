@@ -395,7 +395,7 @@
         "title": "Issues",
         "description": "Open an issue or its producing workflow run from retained safe-output item evidence.",
         "data": {
-          "source": "issues",
+          "source": "issue-safe-outputs",
           "limit": 100,
           "order-by": [
             {
@@ -700,7 +700,7 @@
       {
         "name": "entity-events",
         "intent": "Project event entities for reusable event cards and run drill-down.",
-        "from": "events",
+        "from": "audits",
         "compute": [
           {
             "as": "event-url",
@@ -960,9 +960,9 @@
       },
       {
         "name": "database-event-count",
-        "intent": "Count events in the dashboard database.",
-        "from": "events",
-        "aggregate": { "values": [{ "field": "event", "as": "events", "reducer": "count" }] }
+        "intent": "Count audits in the dashboard database.",
+        "from": "audits",
+        "aggregate": { "values": [{ "field": "event", "as": "audits", "reducer": "count" }] }
       },
       {
         "name": "transactions-table",
@@ -1891,7 +1891,7 @@
         "name": "event-runs",
         "intent": "Identify each workflow run that has one or more imported events.",
         "description": "Distinct workflow runs represented by imported events.",
-        "from": "events",
+        "from": "audits",
         "aggregate": {
           "by": ["organization", "repository", "workflow", "run"],
           "values": [{ "field": "event", "as": "events", "reducer": "count" }]
@@ -2001,7 +2001,7 @@
         "name": "cost-workflow-mcp-tool-call-totals",
         "intent": "Count observed MCP tool calls for each declared workflow.",
         "description": "Observed MCP tool-call totals by workflow.",
-        "from": "events",
+        "from": "tools",
         "filter": {
           "predicates": [{ "field": "event-source", "equals": "mcp" }, { "field": "event-type", "equals": "tool.call" }]
         },
@@ -2014,7 +2014,7 @@
         "name": "cost-workflow-denied-tool-call-totals",
         "intent": "Count observed tool calls denied by gateway guard policy or information-flow filtering for each declared workflow.",
         "description": "Observed denied tool-call totals by workflow.",
-        "from": "events",
+        "from": "tools",
         "filter": {
           "predicates": [
             { "field": "event-source", "equals": "gateway" },
@@ -2219,7 +2219,7 @@
         "name": "event-inspection",
         "intent": "Inspect observed workflow events with their execution context and run navigation.",
         "description": "Observed workflow events ordered from newest to oldest with their source, status, identity, and run context.",
-        "from": "events",
+        "from": "audits",
         "joins": [
           {
             "source": "runs",
@@ -2256,7 +2256,7 @@
         "name": "audit-events",
         "intent": "List observed audit events so experiment reviewers can inspect agent audit findings, recommendations, gaps, and activations.",
         "description": "Audit-sourced events ordered from newest to oldest with their audit kind, status, summary, and run context.",
-        "from": "events",
+        "from": "audits",
         "filter": {
           "predicates": [
             {
@@ -2318,7 +2318,7 @@
         "name": "audit-event-summary-buckets",
         "intent": "Aggregate high- and medium-severity audit events with the same summary by workflow.",
         "description": "The 20 most frequent high- and medium-severity audit event counts grouped by workflow and shared summary.",
-        "from": "events",
+        "from": "audits",
         "filter": {
           "predicates": [
             {
@@ -2370,7 +2370,7 @@
         "name": "engines-models-usage",
         "intent": "Summarize agent events by the run-level agent and model identifiers.",
         "description": "Observed agent events grouped by agent ID and model ID.",
-        "from": "events",
+        "from": "audits",
         "joins": [
           {
             "source": "runs",
@@ -2401,7 +2401,7 @@
         "name": "github-api-events",
         "intent": "List canonical GitHub API request, response, rate-limit, and error events.",
         "description": "Observed GitHub API events with run and correlation context.",
-        "from": "events",
+        "from": "audits",
         "joins": [
           {
             "source": "runs",
@@ -2435,7 +2435,7 @@
         "name": "safe-output-items",
         "intent": "Inspect safe-output items with their GitHub entity type and producing workflow run.",
         "description": "Safe-output item events retain entity, action, repository, workflow, and run provenance.",
-        "from": "events",
+        "from": "issues",
         "joins": [
           {
             "source": "runs",
@@ -2450,10 +2450,10 @@
             "fields": [{ "field": "run-link", "as": "linked-run" }]
           }
         ],
-        "filter": { "predicates": [{ "field": "event-type", "equals": "safe_output.created" }] },
         "select": [
           { "field": "event-timestamp", "as": "observed-at" },
           { "field": "github-entity-type" },
+          { "field": "is-pull-request" },
           { "field": "safe-output-type" },
           { "field": "event-summary" },
           { "field": "correlation-id", "as": "entity-url" },
@@ -2466,14 +2466,15 @@
         "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "entity-url", "direction": "asc" }]
       },
       {
-        "name": "issues",
+        "name": "issue-safe-outputs",
         "intent": "List retained GitHub issue safe outputs.",
         "description": "Issue-only projection of retained safe-output items.",
         "from": "safe-output-items",
-        "filter": { "predicates": [{ "field": "github-entity-type", "equals": "issue" }] },
+        "filter": { "predicates": [{ "field": "is-pull-request", "equals": false }] },
         "select": [
           { "field": "observed-at" },
           { "field": "github-entity-type" },
+          { "field": "is-pull-request" },
           { "field": "safe-output-type" },
           { "field": "event-summary" },
           { "field": "entity-url" },
@@ -2490,10 +2491,11 @@
         "intent": "List retained GitHub pull request safe outputs.",
         "description": "Pull-request-only projection of retained safe-output items.",
         "from": "safe-output-items",
-        "filter": { "predicates": [{ "field": "github-entity-type", "equals": "pull_request" }] },
+        "filter": { "predicates": [{ "field": "is-pull-request", "equals": true }] },
         "select": [
           { "field": "observed-at" },
           { "field": "github-entity-type" },
+          { "field": "is-pull-request" },
           { "field": "safe-output-type" },
           { "field": "event-summary" },
           { "field": "entity-url" },

@@ -349,7 +349,7 @@ describe('dashboard document validation', () => {
     issueList.list.drill = {
       type: 'query',
       page: 'issues',
-      query: 'issues',
+      query: 'issue-safe-outputs',
       'title-field': 'event-summary',
       arguments: [{ name: 'entity-url', field: 'entity-url' }]
     };
@@ -5658,7 +5658,7 @@ describe('declarative query validation', () => {
   it('accepts bounded aggregate-local filters over pre-aggregation scalar fields', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',
-      from: 'events',
+      from: 'audits',
       aggregate: {
         by: ['workflow'],
         values: [{
@@ -5681,7 +5681,7 @@ describe('declarative query validation', () => {
   it('accepts aggregate-local filters at every declared size ceiling', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',
-      from: 'events',
+      from: 'audits',
       aggregate: {
         by: ['workflow'],
         values: Array.from(

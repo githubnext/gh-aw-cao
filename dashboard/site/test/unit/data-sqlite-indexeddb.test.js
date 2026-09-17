@@ -48,9 +48,9 @@ function batch() {
     workflowId: 'workflow:1',
     conclusion: 'success'
   });
-  canonical.events.push(
-    { id: 'event:2', runId: 'run:1', sequence: 2 },
-    { id: 'event:1', runId: 'run:1', sequence: 1 }
+  canonical.audits.push(
+    { id: 'audit:2', runId: 'run:1', sequence: 2 },
+    { id: 'audit:1', runId: 'run:1', sequence: 1 }
   );
   return canonical;
 }
@@ -69,7 +69,9 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     const filename = temporaryDatabase();
     const indexedDB = installSqliteIndexedDB(filename);
     const database = await openCanonicalDatabase(indexedDB);
-    expect([...database.objectStoreNames]).toContain('events');
+    expect([...database.objectStoreNames]).toEqual(expect.arrayContaining([
+      'domains', 'tools', 'audits', 'issues'
+    ]));
     expect([...database.objectStoreNames]).toContain('packages');
     database.close();
 
@@ -84,18 +86,18 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(await readCollection(reopened, 'runs')).toEqual([
       expect.objectContaining({ id: 'run:1', conclusion: 'success' })
     ]);
-    expect(await readIndex(reopened, 'events', 'byRunSequence', ['run:1'])).toEqual([
-      expect.objectContaining({ id: 'event:1' }),
-      expect.objectContaining({ id: 'event:2' })
+    expect(await readIndex(reopened, 'audits', 'byRun', ['run:1'])).toEqual([
+      expect.objectContaining({ id: 'audit:1' }),
+      expect.objectContaining({ id: 'audit:2' })
     ]);
     expect(await readTransactions(reopened)).toEqual([
       expect.objectContaining({ id: 'transaction:1' })
     ]);
 
     const replacement = batch();
-    replacement.events = [];
+    replacement.audits = [];
     await replaceCanonicalBatch(reopened, replacement);
-    expect(await readCollection(reopened, 'events')).toEqual([]);
+    expect(await readCollection(reopened, 'audits')).toEqual([]);
     expect(readFileSync(filename, 'utf8').slice(0, 15)).toBe('SQLite format 3');
   });
 
@@ -152,7 +154,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--context', context,
       '--logs', logs
     ], { encoding: 'utf8' }));
-    expect(ingestion.counts).toMatchObject({ runs: 1, events: 6 });
+    expect(ingestion.counts).toMatchObject({ runs: 1, domains: 1, tools: 3, audits: 2, issues: 0 });
 
     const runs = JSON.parse(execFileSync(process.execPath, [
       script,
@@ -174,7 +176,11 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(diagnosis).toMatchObject({
       command: 'doctor',
       healthy: true,
-      after: { counts: { repositories: 1, workflows: 1, runs: 1, events: 6 } }
+      after: {
+        counts: {
+          repositories: 1, workflows: 1, runs: 1, domains: 1, tools: 3, audits: 2, issues: 0
+        }
+      }
     });
   });
 
@@ -227,25 +233,28 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       [`normalized/${normalizedName}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
     });
     expect(JSON.parse(readFileSync(join(normalizedDirectory, normalizedName), 'utf8'))).toMatchObject({
-      schemaVersion: 10,
+      schemaVersion: 11,
       ingestionVersion: 2,
       sourceRecords: 3,
       batch: {
         repositories: expect.any(Array),
         workflows: expect.any(Array),
         runs: expect.any(Array),
-        events: expect.any(Array)
+        domains: expect.any(Array),
+        tools: expect.any(Array),
+        audits: expect.any(Array),
+        issues: expect.any(Array)
       }
     });
 
-    const events = JSON.parse(execFileSync(process.execPath, [
+    const audits = JSON.parse(execFileSync(process.execPath, [
       script,
       'query',
       '--database', filename,
-      '--collection', 'events',
+      '--collection', 'audits',
       '--where', 'type=github_api_rate_limit'
     ], { encoding: 'utf8' }));
-    expect(events).toEqual([
+    expect(audits).toEqual([
       expect.objectContaining({
         source: 'github-api',
         type: 'github_api_rate_limit',
@@ -343,8 +352,8 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     for (const records of Object.values(current)) {
       for (const record of records) record.observedAt = '2026-09-09T00:00:00Z';
     }
-    current.events.forEach((event) => {
-      event.timestamp = '2026-09-09T00:00:00Z';
+    current.audits.forEach((audit) => {
+      audit.timestamp = '2026-09-09T00:00:00Z';
     });
     await upsertCanonicalBatch(indexedDB, current);
 
@@ -359,9 +368,9 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     stale.workflows[0].repositoryId = stale.repositories[0].id;
     stale.runs[0].repositoryId = stale.repositories[0].id;
     stale.runs[0].workflowId = stale.workflows[0].id;
-    stale.events.forEach((event) => {
-      event.runId = stale.runs[0].id;
-      event.timestamp = '2020-01-01T00:00:00Z';
+    stale.audits.forEach((audit) => {
+      audit.runId = stale.runs[0].id;
+      audit.timestamp = '2020-01-01T00:00:00Z';
     });
     await upsertCanonicalBatch(indexedDB, stale);
 
@@ -385,8 +394,8 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     insert.run(DATABASE_NAME, 'annotations', JSON.stringify('annotation:1'), JSON.stringify({
       id: 'annotation:1'
     }));
-    insert.run(DATABASE_NAME, 'events', JSON.stringify('event:orphan'), JSON.stringify({
-      id: 'event:orphan',
+    insert.run(DATABASE_NAME, 'audits', JSON.stringify('audit:orphan'), JSON.stringify({
+      id: 'audit:orphan',
       runId: 'run:missing',
       observedAt: '2026-09-09T00:00:00Z'
     }));
@@ -397,17 +406,17 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     }));
     const malformed = connection.prepare(`
       SELECT record_key FROM __idb_records
-      WHERE database_name = ? AND store_name = 'events' AND record_key != ?
+      WHERE database_name = ? AND store_name = 'audits' AND record_key != ?
       ORDER BY record_key LIMIT 1
-    `).get(DATABASE_NAME, JSON.stringify('event:orphan'));
+    `).get(DATABASE_NAME, JSON.stringify('audit:orphan'));
     expect(malformed).toBeDefined();
     connection.prepare(`
       UPDATE __idb_records SET value = 'not-json'
-      WHERE database_name = ? AND store_name = 'events' AND record_key = ?
+      WHERE database_name = ? AND store_name = 'audits' AND record_key = ?
     `).run(DATABASE_NAME, /** @type {{ record_key: string }} */ (malformed).record_key);
     connection.prepare(`
       DELETE FROM __idb_indexes
-      WHERE database_name = ? AND store_name = 'events' AND name = 'byType'
+      WHERE database_name = ? AND store_name = 'audits' AND name = 'byType'
     `).run(DATABASE_NAME);
     connection.close();
 
@@ -423,7 +432,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
         transactionsRemoved: 1
       },
       after: {
-        counts: { repositories: 2, workflows: 2, runs: 1, events: 1 },
+        counts: { repositories: 2, workflows: 2, runs: 1, audits: 1 },
         transactions: 0,
         invalidRecords: {},
         relationshipErrors: []

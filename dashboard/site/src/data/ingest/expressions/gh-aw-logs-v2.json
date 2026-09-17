@@ -11,32 +11,32 @@
     },
     "run": {
       "payloadPath": "run",
-      "emits": ["repository", "workflow", "run", "job", "session", "event"],
+      "emits": ["repository", "workflow", "run", "domain", "tool", "audit", "issue"],
       "identity": ["run_id", "run_attempt"]
     },
     "token_efficiency_run_context": {
       "payloadPath": "run",
-      "emits": ["repository", "workflow", "run", "session", "event"],
+      "emits": ["repository", "workflow", "run", "domain", "tool", "audit", "issue"],
       "identity": ["run_id", "run_attempt"]
     },
     "safe_output_item": {
       "payloadPath": "safe_output",
-      "emits": ["event"],
+      "emits": ["issue", "audit"],
       "identity": ["run_id", "type", "url", "timestamp"]
     },
     "token_efficiency_observation": {
       "payloadPath": "observation",
-      "emits": ["event"],
+      "emits": ["audit"],
       "identity": ["optimizerRunId", "runAttempt", "opportunityId", "interventionId"]
     },
     "token_efficiency_lifecycle_observation": {
       "payloadPath": "observation",
-      "emits": ["event"],
+      "emits": ["audit"],
       "identity": ["optimizerRunId", "lifecycleObservationId"]
     },
     "github_api_rate_limit": {
       "payloadPath": "rate_limit",
-      "emits": ["event"],
+      "emits": ["audit"],
       "requiresContext": ["repository", "workflow", "run", "observedAt"]
     }
   }

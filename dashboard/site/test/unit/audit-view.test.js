@@ -103,8 +103,8 @@ describe('Audit dashboard view', () => {
       queries: dashboard.queries,
       sourceNames: ['audit-event-summary-buckets'],
       sources: {
-        events: {
-          source: 'events',
+        audits: {
+          source: 'audits',
           rows: [
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },

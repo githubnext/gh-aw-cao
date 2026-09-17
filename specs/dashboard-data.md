@@ -1,21 +1,21 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.1.0
+version: 1.2.0
 status: Working Draft
 
 IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
 summaries so dashboard trends and run history can cover the complete published
-source. It SHALL retain detailed Event records for the bounded 30-day
-operational window. Expiring Events MUST NOT remove their retained Run or
+source. It SHALL retain detailed Domain, Tool, Audit, and Issue records for the
+bounded 30-day operational window. Expiring run-linked records MUST NOT remove their retained Run or
 the Run's structural parents.
 editors:
   - GitHub Next
 ---
-| Browser storage | IndexedDB keeps all available run summaries and expires detailed Event records after 30 days. |
+| Browser storage | IndexedDB keeps all available run summaries and expires detailed run-linked records after 30 days. |
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
@@ -37,14 +37,22 @@ The dashboard SHALL normalize those sources into a new canonical domain model:
 Repository
   └── Workflow
        └── Run
-            └── Event
+            ├── Domain
+            ├── Tool
+            ├── Audit
+            └── Issue
 ```
 
 The browser SHALL maintain this canonical model in IndexedDB.
 
 IndexedDB SHALL be treated exclusively as disposable, reconstructable, derived state and MUST NOT become authoritative storage.
 
-Events SHALL form heterogeneous operational transaction logs for their owning Run, containing agent messages, tool activity, gateway activity, firewall decisions, safe-output processing, GitHub API operations, runtime events, and other execution observations in one ordered stream.
+Domain records SHALL contain allowed and blocked firewall observations. Tool
+records SHALL contain MCP, Bash, and skill calls, with skills identified as a
+special tool type. Audit records SHALL contain all other execution observations.
+Issue records SHALL contain both issues and pull requests, distinguished by an
+`isPullRequest` flag. Every record in these four tables SHALL reference its
+owning Run.
 
 The architecture SHALL support eventual consistency, idempotent conversion, large datasets, bounded-memory ingestion, immutable source generations, integrity verification, interruption recovery, staging generations, atomic generation activation, browser storage failures, schema evolution, Node.js testing, and real-browser testing.
 
@@ -180,7 +188,7 @@ Identical authoritative observations MUST normalize to identical logical entitie
 
 ## INV-007 — Idempotent ingestion
 
-Reprocessing identical input MUST NOT create duplicate entities or events.
+Reprocessing identical input MUST NOT create duplicate entities or run-linked records.
 
 ## INV-008 — Eventual consistency
 
@@ -1577,14 +1585,17 @@ After the old data path is removed, the name MAY be simplified.
 
 # 27. Object Stores
 
-Version 1 SHOULD define:
+Version 1.2 SHOULD define:
 
 ```text
 packages
 repositories
 workflows
 runs
-events
+domains
+tools
+audits
+issues
 transactions
 ```
 
@@ -1626,15 +1637,13 @@ status
 [workflowId, startedAt]
 ```
 
-### events
+### run-linked tables
 
 ```text
-runId
-type
-source
-correlationId
-[runId, sequence]
-[runId, timestamp]
+domains: runId, domain
+tools: runId, toolType
+audits: runId, type
+issues: runId, isPullRequest
 ```
 
 Indexes SHOULD NOT be added speculatively.

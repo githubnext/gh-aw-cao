@@ -53,9 +53,9 @@ describe('dashboard query architecture', () => {
     expect(dashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions'))
       .toBeUndefined();
     expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-opportunities')?.from)
-      .toBe('events');
+      .toBe('audits');
     expect(optimizationDashboard.queries.find((/** @type {{ name?: string }} */ query) => query.name === 'token-efficiency-interventions')?.from)
-      .toBe('events');
+      .toBe('audits');
     for (const legacyModule of [
       'inferred-sources.js',
       'notification-stories.js',

@@ -366,7 +366,7 @@ export function publishedNormalizedShards(hashes) {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-/** @param {unknown} hashes @param {'runs' | 'events'} phase */
+/** @param {unknown} hashes @param {'runs' | 'records'} phase */
 function publishedPhaseShards(hashes, phase) {
   if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
   const pattern = new RegExp(
@@ -387,15 +387,15 @@ export function publishedRunInformationShards(hashes) {
 }
 
 /** @param {unknown} hashes */
-export function publishedEventShards(hashes) {
-  return publishedPhaseShards(hashes, 'events');
+export function publishedRunRecordShards(hashes) {
+  return publishedPhaseShards(hashes, 'records');
 }
 
 /** @param {unknown} hashes */
 export function publishedPhasedActivityShards(hashes) {
   const runs = publishedRunInformationShards(hashes);
-  const events = publishedEventShards(hashes);
-  return runs.length > 0 ? [...runs, ...events] : [];
+  const records = publishedRunRecordShards(hashes);
+  return runs.length > 0 ? [...runs, ...records] : [];
 }
 
 /**
@@ -615,8 +615,8 @@ export function processDataRequest(request, signal) {
                 ? `Shard ${index + 1} received; parsing.`
                 : `Shard ${index + 1} received (${formatDataSize(payloadBytes)}`
                   + `${compressed ? ' compressed' : ''}); parsing.`);
-              const expectedPhase = 'phase' in shard && (shard.phase === 'runs' || shard.phase === 'events')
-                ? /** @type {'runs' | 'events'} */ (shard.phase)
+              const expectedPhase = 'phase' in shard && (shard.phase === 'runs' || shard.phase === 'records')
+                ? /** @type {'runs' | 'records'} */ (shard.phase)
                 : undefined;
               const ingestionOptions = {
                 storage: globalThis.navigator?.storage,

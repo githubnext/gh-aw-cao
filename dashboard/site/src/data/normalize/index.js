@@ -7,8 +7,12 @@ const COLLECTIONS = {
   repository: 'repositories',
   workflow: 'workflows',
   run: 'runs',
-  event: 'events'
+  domain: 'domains',
+  tool: 'tools',
+  audit: 'audits',
+  issue: 'issues'
 };
+const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 
 /**
  * @param {unknown} value
@@ -39,7 +43,10 @@ function identityFor(observation) {
       requiredIdentifier(data.githubRunId, 'run.githubRunId'),
       requiredIdentifier(data.attempt, 'run.attempt')
     );
-    case 'event':
+    case 'domain':
+    case 'tool':
+    case 'audit':
+    case 'issue':
       return sourceId(observation.kind, observation.source, observation.sourceId);
   }
 }
@@ -61,23 +68,23 @@ function compareObservations(left, right, precedence) {
 }
 
 /**
- * Assigns deterministic per-run sequence numbers to canonical events.
+ * Assigns deterministic per-run sequence numbers to run-linked records.
  *
- * @param {Record<string, unknown>[]} events
+ * @param {Record<string, unknown>[]} records
  * @returns {Record<string, unknown>[]}
  */
-export function orderEvents(events) {
+export function orderRunRecords(records) {
   /** @type {Map<string, Record<string, unknown>[]>} */
   const byRun = new Map();
-  for (const event of events) {
-    const runId = requiredString(event.runId, 'event.runId');
-    const runEvents = byRun.get(runId) ?? [];
-    runEvents.push(event);
-    byRun.set(runId, runEvents);
+  for (const record of records) {
+    const runId = requiredString(record.runId, 'record.runId');
+    const runRecords = byRun.get(runId) ?? [];
+    runRecords.push(record);
+    byRun.set(runId, runRecords);
   }
   return [...byRun.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .flatMap(([, runEvents]) => runEvents
+    .flatMap(([, runRecords]) => runRecords
       .sort((left, right) => {
         const sameSource = left.source === right.source;
         const leftSequence = Number(left.sourceSequence);
@@ -89,7 +96,7 @@ export function orderEvents(events) {
         return String(left.timestamp).localeCompare(String(right.timestamp))
           || String(left.id).localeCompare(String(right.id));
       })
-      .map((event, sequence) => event.sequence === sequence ? event : { ...event, sequence }));
+      .map((record, sequence) => record.sequence === sequence ? record : { ...record, sequence }));
 }
 
 /**
@@ -108,7 +115,10 @@ export function normalize(observations, options = {}) {
     repositories: new Map(),
     workflows: new Map(),
     runs: new Map(),
-    events: new Map()
+    domains: new Map(),
+    tools: new Map(),
+    audits: new Map(),
+    issues: new Map()
   };
 
   const sorted = [...observations].sort((left, right) => compareObservations(left, right, sourcePrecedence));
@@ -137,6 +147,8 @@ export function normalize(observations, options = {}) {
       [...records.values()].sort((left, right) => String(left.id).localeCompare(String(right.id)))
     ])
   ));
-  batch.events = orderEvents(batch.events);
+  for (const collection of RUN_LINKED_COLLECTIONS) {
+    batch[collection] = orderRunRecords(batch[collection]);
+  }
   return batch;
 }

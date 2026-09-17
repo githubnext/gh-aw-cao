@@ -84,7 +84,7 @@ describe('GitHub API event dashboard', () => {
     expect(apiPage.views[0].data.limit).toBeUndefined();
     expect(dashboard.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'github-api-events',
-      from: 'events',
+      from: 'audits',
       filter: { predicates: [{ field: 'event-type', includes: 'github-api.' }] }
     }));
   });

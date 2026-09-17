@@ -8,7 +8,7 @@ export function renderLocalDatabaseView(context) {
     ['database-repository-count', 'repositories', 'Repositories'],
     ['database-workflow-count', 'workflows', 'Workflows'],
     ['database-run-count', 'runs', 'Runs'],
-    ['database-event-count', 'events', 'Events']
+    ['database-event-count', 'audits', 'Audits']
   ]);
   const available = fields.every(([sourceName, field]) => context.sources[sourceName]?.rows?.[0]?.[field] !== undefined);
   return h('div', { className: 'configuration-view local-database-view' },

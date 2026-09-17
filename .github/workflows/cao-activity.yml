@@ -49,7 +49,7 @@ jobs:
 
       - name: Resolve activity cache key
         id: activity-cache-key
-        run: echo "value=cao-activity-v4-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+        run: echo "value=cao-activity-v5-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore activity cache
         id: activity-cache
@@ -59,14 +59,14 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-records
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
-            cao-activity-v4-
+            cao-activity-v5-
 
       - name: Restore legacy activity cache layout
         if: steps.activity-cache.outputs.cache-matched-key == ''
@@ -202,7 +202,7 @@ jobs:
         env:
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+          REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
         run: |
           if [[ -f activity/cao.mjs ]]; then
             ingestion_script=activity/cao.mjs
@@ -215,14 +215,14 @@ jobs:
           node "$ingestion_script" hash-payloads \
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
-            --events-dir "$REPORT_GH_AW_LOGS_EVENTS" \
+            --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json"
 
       - name: Ingest activity database
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+          REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
         run: |
           if [[ -f activity/cao.mjs ]]; then
             ingestion_script=activity/cao.mjs
@@ -237,7 +237,7 @@ jobs:
           node "$ingestion_script" ingest-jsonl \
             --database "$ACTIVITY_DATABASE" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
-            --events-dir "$REPORT_GH_AW_LOGS_EVENTS" \
+            --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --run-retention-days all
           node "$ingestion_script" doctor \
             --database "$ACTIVITY_DATABASE" \
@@ -248,7 +248,7 @@ jobs:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS_SHARDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
           REPORT_GH_AW_LOGS_RUNS: ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-          REPORT_GH_AW_LOGS_EVENTS: ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+          REPORT_GH_AW_LOGS_RECORDS: ${{ runner.temp }}/cao-activity/gh-aw-logs-records
         run: |
           if [[ -f activity/cao.mjs ]]; then
             ingestion_script=activity/cao.mjs
@@ -262,7 +262,7 @@ jobs:
             --database "$ACTIVITY_DATABASE" \
             --shard-dir "$REPORT_GH_AW_LOGS_SHARDS" \
             --runs-dir "$REPORT_GH_AW_LOGS_RUNS" \
-            --events-dir "$REPORT_GH_AW_LOGS_EVENTS" \
+            --records-dir "$REPORT_GH_AW_LOGS_RECORDS" \
             --inventory "$RUNNER_TEMP/cao-activity/inventory-sources.json" \
             --output "$RUNNER_TEMP/cao-activity/payload-hashes.json"
 
@@ -276,7 +276,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-records
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
@@ -300,7 +300,7 @@ jobs:
           snapshot_root="$RUNNER_TEMP/cao-activity"
           mkdir -p "$snapshot_root/gh-aw-logs-shards"
           mkdir -p "$snapshot_root/gh-aw-logs-runs"
-          mkdir -p "$snapshot_root/gh-aw-logs-events"
+          mkdir -p "$snapshot_root/gh-aw-logs-records"
           missing=0
           for file in gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json drain3_weights.json; do
             if [[ ! -s "$snapshot_root/$file" ]]; then
@@ -332,7 +332,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/gh-aw-logs-shards
             ${{ runner.temp }}/cao-activity/gh-aw-logs-runs
-            ${{ runner.temp }}/cao-activity/gh-aw-logs-events
+            ${{ runner.temp }}/cao-activity/gh-aw-logs-records
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
