@@ -73,7 +73,7 @@ describe('data-worker ingestion progress', () => {
         icon: 'download',
         details: [
           'Preparing data... +0s',
-          'Parsing activity shards: 1,000 rec and 750 KB/1.5 MB processed overall. +0s',
+          'Parsing overall: 1,000 rec, 750 KB/1.5 MB. +0s',
           'Normalizing parsed records. +0s',
           'Storing 250/1,000 rec. +3s'
         ],
