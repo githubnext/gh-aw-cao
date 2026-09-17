@@ -96,10 +96,15 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /dashboard\/site\/src\/reactive\.js/);
   assert.match(source, /stable keyed rendering/);
   assert.match(source, /state`, `derived`, `effect`, `batch`, `onCleanup`/);
-  assert.match(source, /migrate one JavaScript-produced view source to a request-scoped Dashboard Language query/);
-  assert.match(source, /Consider the other task types only when no eligible migration exists/);
-  assert.match(source, /Define the query in `dashboard\.queries`/);
-  assert.match(source, /data-processor\.js` and `data-worker\.js/);
+  assert.match(source, /migrate one JavaScript-produced view source to a pure declarative JSON Dashboard Language query and view/);
+  assert.match(source, /JavaScript is a last resort/);
+  assert.match(source, /pure declarative JSON query-and-view change/);
+  assert.match(source, /without adding or changing production JavaScript/);
+  assert.match(source, /all selection, filtering, searching, joins, grouping, aggregation, computation, ordering, pagination, and source derivation must be declared in JSON under `dashboard\.queries`/);
+  assert.match(source, /Do not implement or preserve JavaScript query callbacks, derived source modules, view-specific projections, main-thread row processing, or test-only JavaScript source synthesis as compatibility paths/);
+  assert.match(source, /Define the complete transformation in `dashboard\.queries`/);
+  assert.match(source, /do not add a compatibility fallback/);
+  assert.match(source, /first record the specific Dashboard Language or shared-presenter limitation/);
   assert.match(source, /Run the focused impacted JavaScript tests/);
   assert.match(source, /npm --prefix dashboard\/site run lint/);
   assert.match(source, /npm run docs:build/);
@@ -312,7 +317,7 @@ test("SelfCare view reuse worker generalizes one Dashboard Language view", () =>
   assert.match(source, /npm --prefix dashboard\/site run validate:corpus/);
   assert.match(source, /uses: actions\/cache@/);
   assert.match(source, /path: ~\/\.cache\/ms-playwright/);
-  assert.match(source, /npm exec --prefix dashboard\/site -- playwright install --with-deps chromium/);
+  assert.match(source, /npm exec --prefix dashboard\/site -- playwright install --with-deps chromium webkit/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-language-refactor\]/);
   assert.match(source, /title-prefix: "\[self-care:dashboard-language-refactor\] "/);
   assert.equal(source.split(liveGuard).length - 1, 4);

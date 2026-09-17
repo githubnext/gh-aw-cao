@@ -2,7 +2,6 @@
  * Package route composition registry shared by declarative route views.
  */
 
-import { h } from '../dom.js';
 import { titleCase } from './count-formatters.js';
 import { createRouteBodyConfig } from './route-body-config.js';
 import {
@@ -12,7 +11,6 @@ import {
   PACKAGE_ROUTE_VARIANT_VALUES
 } from './route-body-specification.js';
 import { renderPackageReadme } from './package-readme.js';
-import { renderWorkflowValueReport } from './workflow-runtime.js';
 
 /**
  * @typedef {'overview'|'workflows'|'runs'|'issues'|'pull-requests'|'repositories'|'insights'|'reports'|'dispatches'} PackageRouteBody
@@ -87,18 +85,10 @@ const PACKAGE_ROUTE_COMPOSITIONS = {
   },
   insights: {
     rootClassName: 'package-insights',
-    selectMessage: 'Select a package to view its operational value.',
-    description: 'Operational value attained by workers in the {packageName} package.',
+    selectMessage: 'Select a package to view its audit insights.',
+    description: 'Audit events observed for the {packageName} package.',
     currentTab: 'insights',
-    bodyRenderer: ({ context, workflows }) => {
-      const workers = workflows.filter((workflow) => workflow['workflow-role'] !== 'orchestrator');
-      return h(
-        'div',
-        { className: 'package-insights-content' },
-        ...workers.map((workflow) => renderWorkflowValueReport(context, workflow)),
-        workers.length === 0 ? h('p', { className: 'value-details-unavailable' }, 'No worker workflows are configured for this package.') : null
-      );
-    }
+    bodyRenderer: undefined
   },
   reports: {
     rootClassName: 'package-reports',

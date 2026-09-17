@@ -29,6 +29,7 @@ import { renderDashboardFrame } from './components/dashboard-frame.js';
 import { scopedStorageKey } from './storage-scope.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
+import { publishSource } from './source-store.js';
 
 export { enableDashboardKeyboardNavigation, updateWithViewTransition };
 import {
@@ -83,7 +84,7 @@ import {
  */
 
 /**
- * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
+ * @typedef {{ signal: AbortSignal, onUpdate: (sources: Record<string, LogicalSourceInput>) => void, syncPageChrome?: () => void, routeParameters?: Record<string, string>, queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } } }} PageSourceLoadOptions
  */
 
 /**
@@ -126,6 +127,30 @@ export function dashboardPageSourceNames(document, pageId) {
  */
 export function dashboardPageLazySourceNames(document, pageId) {
   return collectDashboardPageLazySourceNames(document, pageId);
+}
+
+/**
+ * Maps each paginated view alias to the authored source and view that can
+ * reproduce it for continuation requests.
+ * @param {PresentationDocument} document
+ * @param {string} pageId
+ * @returns {Record<string, { sourceName: string, viewId: string }>}
+ */
+export function dashboardPagePaginatedSourceBindings(document, pageId) {
+  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
+  if (!page) return {};
+  const payload = getBuiltInPagePayload(page, document.dashboard.views);
+  return Object.fromEntries((payload.views ?? []).flatMap((view, viewIndex) => {
+    if (!isPlainObject(view)
+        || typeof view.id !== 'string'
+        || (view['lazy-list'] !== true && !supportsIncrementalChartContinuation(view))) {
+      return [];
+    }
+    return getViewSources(view).map((sourceName, sourceIndex) => [
+      dashboardViewAliasName(pageId, view, viewIndex, sourceName, sourceIndex),
+      { sourceName, viewId: view.id }
+    ]);
+  }));
 }
 
 /** @param {PresentationDocument} document */
@@ -220,9 +245,7 @@ export function renderDashboard(input) {
       if (!resolvedPage()) return null;
       const rendersBeforePageSources = pageUsesIndependentSourceElements(resolvedPage(), reusableViews);
       /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const render = (pageSources) => {
-        const page = resolvedPage();
-        if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
+      const updateHorizon = (pageSources) => {
         if (options.signal?.aborted !== true) {
           dashboardHorizon.update(resolveDashboardHorizonViewModel(
             pageSources,
@@ -231,16 +254,32 @@ export function renderDashboard(input) {
             evaluatedAt
           ));
         }
+      };
+      /** @param {Record<string, LogicalSourceInput>} pageSources */
+      const updateIndependentElements = (pageSources) => {
+        updateHorizon(pageSources);
+        for (const [bindingKey, source] of Object.entries(pageSources)) {
+          publishSource(bindingKey, source, bindingKey);
+        }
+        options.syncPageChrome?.();
+      };
+      /** @param {Record<string, LogicalSourceInput>} pageSources */
+      const render = (pageSources) => {
+        const page = resolvedPage();
+        if (!page) throw new Error(`Dashboard page "${pageId}" is not available.`);
+        updateHorizon(pageSources);
         return showInitialLoadingSkeleton && !rendersBeforePageSources
           ? renderPageLoadingSkeleton(page)
           : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults, cardTemplates, reusableViews, options.queryContext);
       };
       if (input.loadPageSources) {
-        options.onUpdate = (pageSources) => options.renderUpdate(render(pageSources));
+        options.onUpdate = rendersBeforePageSources
+          ? updateIndependentElements
+          : (pageSources) => options.renderUpdate(render(pageSources));
         if (rendersBeforePageSources) {
           const renderedPage = render(sources);
           void input.loadPageSources(pageId, options)
-            .then((pageSources) => options.renderUpdate(render(pageSources)))
+            .then(updateIndependentElements)
             .catch((error) => {
               if (!options.signal?.aborted) {
                 console.error(`Unable to load dashboard page ${pageId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -315,7 +354,63 @@ export function disposeDashboard(root) {
 async function enableDashboardDomProvenanceWhenDebugging(root, document) {
   if (!isDomProvenanceDebugRequested(root)) return;
   const { enableDashboardDomProvenance } = await import('./dom-provenance.js');
-  enableDashboardDomProvenance(root, document, getBuiltInPagePayload);
+  enableDashboardDomProvenance(root, document, getBuiltInPagePayload  );
+}
+
+/**
+ * Retains route tabs while moving between sibling views so only the selected
+ * view body enters its loading state.
+ * @param {HTMLElement} page
+ * @param {string} pageId
+ * @param {URLSearchParams} parameters
+ * @returns {HTMLElement | null}
+ */
+function cloneRouteTabsForPage(page, pageId, parameters) {
+  const tabs = page.querySelector('[data-route-tabs]');
+  if (!(tabs instanceof HTMLElement)) return null;
+  const target = [...tabs.querySelectorAll('a')].find((link) => {
+    const href = link.getAttribute('href') ?? '';
+    const [route, query = ''] = href.split('?');
+    if (!route.startsWith('#page-')) return false;
+    try {
+      return decodeURIComponent(route.slice('#page-'.length)) === pageId
+        && queryParametersMatch(new URLSearchParams(query), parameters);
+    } catch {
+      return false;
+    }
+  });
+  if (!target) return null;
+  const clone = /** @type {HTMLElement} */ (tabs.cloneNode(true));
+  for (const link of clone.querySelectorAll('a')) {
+    if (link.getAttribute('href') === target.getAttribute('href')) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  }
+  return clone;
+}
+
+/**
+ * @param {URLSearchParams} left
+ * @param {URLSearchParams} right
+ */
+function queryParametersMatch(left, right) {
+  /** @param {URLSearchParams} parameters */
+  const entries = (parameters) => [...parameters.entries()]
+    .sort(([leftKey, leftValue], [rightKey, rightValue]) => (
+      leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue)
+    ));
+  return JSON.stringify(entries(left)) === JSON.stringify(entries(right));
+}
+
+/**
+ * @param {HTMLElement} page
+ * @param {HTMLElement | null} routeTabs
+ */
+function showPageSkeleton(page, routeTabs) {
+  page.replaceChildren(...(routeTabs ? [routeTabs, renderPageSkeleton()] : [renderPageSkeleton()]));
+  page.setAttribute('aria-busy', 'true');
 }
 
 /**
@@ -422,8 +517,6 @@ function enableResponsiveReportActions(root, signal) {
  * @returns {{ available: boolean, evaluatedAt: string, duration: string, start: string, end: string }}
  */
 function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRange, fallbackEvaluatedAt) {
-  const available = Object.values(sources)
-    .some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
   const dataHorizon = resolveDataHorizon(sources);
   const evaluatedAt = dataHorizon?.end ?? latestRetrievedAt(sources) ?? fallbackEvaluatedAt;
   const duration = dataHorizon
@@ -435,7 +528,7 @@ function resolveDashboardHorizonViewModel(sources, dashboardDefaults, horizonRan
   const end = dataHorizon?.end ?? (isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.end === 'string'
     ? dashboardDefaults.time.end
     : evaluatedAt);
-  return { available, evaluatedAt, duration, start, end };
+  return { available: true, evaluatedAt, duration, start, end };
 }
 
 /**
@@ -1051,9 +1144,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
     };
     let populationDeferred = false;
+    /** @type {HTMLElement | null} */
+    let retainedRouteTabs = null;
     if (activePageId && activePageId !== pageId) {
       const activePage = pages.find((candidate) => candidate.dataset.pageId === activePageId);
       if (activePage) {
+        retainedRouteTabs = cloneRouteTabsForPage(activePage, pageId, parameters);
         const horizonDetails = activeFilterBar?.querySelector('.horizon-details');
         if (dashboardHorizon && horizonDetails) dashboardHorizon.append(horizonDetails);
         if (dashboardHorizon && activeFilterBar?.contains(dashboardHorizon)) dashboardHorizon.remove();
@@ -1110,6 +1206,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         const rendered = renderPageById?.(pageId, {
           signal: pageOwner.signal,
           onUpdate: () => {},
+          syncPageChrome: () => {
+            const horizonDetails = dashboardHorizon?.querySelector('.horizon-details');
+            const tuningControls = activeFilterBar?.querySelector('.filter-tuning-controls');
+            if (horizonDetails && tuningControls) tuningControls.append(horizonDetails);
+            syncFullViewMode(currentPage);
+          },
           routeParameters,
           queryContext,
           renderUpdate: replacePage
@@ -1117,8 +1219,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         if (!rendered) return;
         if (rendered instanceof Promise) {
           if (pendingPage.hasAttribute('data-page-pending')) {
-            pendingPage.replaceChildren(renderPageSkeleton());
-            pendingPage.setAttribute('aria-busy', 'true');
+            showPageSkeleton(pendingPage, retainedRouteTabs);
           }
           void rendered.then(replacePage).catch(() => {
             if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
@@ -1131,8 +1232,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       };
       if (deferPopulation) {
         populationDeferred = true;
-        pendingPage.replaceChildren(renderPageSkeleton());
-        pendingPage.setAttribute('aria-busy', 'true');
+        showPageSkeleton(pendingPage, retainedRouteTabs);
         schedulePopulation(populate);
       } else {
         populate();

@@ -63,10 +63,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     cacheJob,
     /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
   );
-  assert.match(
-    cacheJob,
-    /find "\$snapshot_root\/gh-aw-logs-runs"[\s\S]*?find "\$snapshot_root\/gh-aw-logs-events"[\s\S]*?cmp -s "\$run_shards" "\$event_shards"[\s\S]*?Activity run and event shard sets do not match/,
-  );
+  assert.doesNotMatch(cacheJob, /Activity run and event shard sets do not match/);
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,
@@ -80,6 +77,9 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(collector, /jq -r '\.allowed_repositories\[\]\?'/);
   assert.match(collector, /--repo "\$target_repository"/);
   assert.match(collector, /--cached-logs "\$\{shard_prefix\}\*"/);
+  assert.doesNotMatch(collector, /gh api|token-efficiency/);
+  assert.match(workflow, /optimization\/collect-token-efficiency\.sh/);
+  assert.match(workflow, /\.github\/aw\/optimization\/collect-token-efficiency\.sh/);
   assert.match(
     workflow,
     /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--events-dir "\$REPORT_GH_AW_LOGS_EVENTS"/,

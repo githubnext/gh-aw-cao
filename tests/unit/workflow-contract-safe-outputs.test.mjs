@@ -48,6 +48,7 @@ test("issue-creating workers use package and worker title prefixes and labels", 
   for (const name of readdirSync(workflowsDirectory).filter((entry) => entry.endsWith(".md"))) {
     const source = workflow(name);
     if (!/role: worker/.test(source) || !/create-issue:/.test(source)) continue;
+    if (name === "dependabot-update-planner.md") continue;
 
     const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
     assert.ok(frontmatter, `${name} must have frontmatter`);
@@ -83,7 +84,7 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
     const issue = safeOutputs["create-issue"];
     if (issue) {
       assert.equal(issue["deduplicate-by-title"], true, name);
-      if (name === "dependabot-release-train-updater.md") {
+      if (name === "dependabot-update-planner.md") {
         assert.equal(issue.expires, undefined, `${name} keeps one durable issue across refreshes`);
       } else {
         assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
@@ -115,7 +116,7 @@ test("self-care pages health worker creates a fix PR instead of a report issue",
 });
 
 test("Dependabot worker maintains one agent-ready issue and never writes pull requests", () => {
-  const source = workflow("dependabot-release-train-updater.md");
+  const source = workflow("dependabot-update-planner.md");
   const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
   assert.ok(frontmatter, "Dependabot worker must have frontmatter");
   const outputs = parse(frontmatter)["safe-outputs"];
@@ -124,14 +125,26 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
   assert.equal(outputs["create-issue"].max, 1);
   assert.equal(outputs["create-issue"]["deduplicate-by-title"], true);
   assert.equal(outputs["create-issue"].expires, undefined);
+  assert.equal(outputs["create-issue"].labels, undefined);
   assert.equal(outputs["update-issue"].body, true);
   assert.equal(outputs["update-issue"].max, 1);
+  assert.equal(outputs["update-issue"]["required-labels"], undefined);
+  assert.equal(outputs["update-issue"]["required-title-prefix"], "[dependabot:update-planner] ");
   assert.equal(outputs["add-comment"]["pull-requests"], false);
   assert.equal(outputs["add-comment"].max, 1);
+  assert.equal(outputs["add-comment"]["required-labels"], undefined);
+  assert.equal(outputs["add-comment"]["required-title-prefix"], "[dependabot:update-planner] ");
   assert.match(source, /Dependency update plan for <owner>\/<repository>/);
   assert.match(source, /Dependabot update plan refreshed\./);
   assert.match(source, /<summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(source, /complete every unchecked item/);
+  assert.match(source, /repo-memory:/);
+  assert.match(source, /issue-index\/<safe-output-owner>/);
+  assert.match(source, /Do not call `search_issues`/);
+  assert.match(source, /target\/\.github\/dependabot\.md/);
+  assert.match(source, /Repository guidance/);
+  assert.match(source, /List open issues in `SAFE_OUTPUT_REPO` without requiring labels/);
+  assert.match(source, /not all live targets allow this workflow to create missing labels/);
   assert.match(source, /Never create, update, push to, comment on, or otherwise mutate a pull request/);
 });
 

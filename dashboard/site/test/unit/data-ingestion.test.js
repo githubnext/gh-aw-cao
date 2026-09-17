@@ -626,14 +626,24 @@ describe('canonical source ingestion and queries', () => {
         rows: [{
           ...sources.workflows.rows[0],
           package: 'dashboard',
-          'package-name': 'CAO Dashboard'
+          'package-name': 'CAO Dashboard',
+          'workflow-id': '501',
+          'workflow-name': 'Current registry name',
+          'workflow-active': 'unknown',
+          'workflow-registry-state': 'unknown',
+          'workflow-link': {
+            relation: 'workflow',
+            href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
+          },
+          'created-at': '2026-09-01T00:00:00Z',
+          'updated-at': '2026-09-08T00:00:00Z'
         }],
         metadata
       }
     });
     const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
       run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
-      workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
+      workflow_name: 'Stale run name', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at: '2026-09-09T05:00:00Z'
     } })}\n`;
 
@@ -645,7 +655,17 @@ describe('canonical source ingestion and queries', () => {
       expect.objectContaining({
         packageId: 'package:dashboard-sources:dashboard',
         package: 'dashboard',
-        packageName: 'CAO Dashboard'
+        packageName: 'CAO Dashboard',
+        githubId: '501',
+        name: 'Current registry name',
+        state: 'unknown',
+        registryState: 'unknown',
+        workflowLink: {
+          relation: 'workflow',
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/workflows/501'
+        },
+        createdAt: '2026-09-01T00:00:00Z',
+        updatedAt: '2026-09-08T00:00:00Z'
       })
     ]);
   });

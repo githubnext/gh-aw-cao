@@ -359,6 +359,9 @@ function renderEntityCardItems(rows, options) {
       : target
         ? h('a', { href: target.link.href, 'data-card-drill': 'query' }, target.link.label)
         : titleText;
+    if (target && titleContent instanceof HTMLAnchorElement) {
+      titleContent.dataset.cardDrill = target.external ? 'external' : 'query';
+    }
     const status = definition.status
       ? resolveCardStatus(row[definition.status.field])
         ?? (typeof definition.status['fallback-field'] === 'string'
@@ -400,7 +403,11 @@ function renderEntityCardItems(rows, options) {
     ].join(' and ');
     return h(
       'li',
-      { className: 'issue-list-card entity-card-list-card', 'data-custom-row-key': `${pageId}-${title}-${keyOffset + index}` },
+      {
+        className: 'issue-list-card entity-card-list-card',
+        'data-custom-row-key': `${pageId}-${title}-${keyOffset + index}`,
+        ...(target ? { onClick: activateCardDrill } : {})
+      },
       status
         ? h(
           'span',
@@ -453,6 +460,14 @@ function renderEntityCardItems(rows, options) {
         : null
     );
   });
+}
+
+/** @param {MouseEvent} event */
+function activateCardDrill(event) {
+  if (!(event.currentTarget instanceof HTMLElement) || !(event.target instanceof Element)) return;
+  if (event.target.closest('a, button, input, select, textarea, summary')) return;
+  const link = event.currentTarget.querySelector('[data-card-drill]');
+  if (link instanceof HTMLAnchorElement) link.click();
 }
 
 /**
@@ -845,6 +860,11 @@ function renderTableView(context) {
  */
 function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit) {
   const { pageId, title, view, toText, cardTemplates = {}, prepareTableRows } = context;
+  const hrefDefinition = isPlainObject(view.encoding) && isPlainObject(view.encoding.href)
+    ? view.encoding.href
+    : null;
+  const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null;
+  const drill = hrefField ? { type: 'external', field: hrefField } : null;
   const pageSize = 25;
   const availableRows = [...rows];
   const initialRows = availableRows.slice(0, pageSize);
@@ -891,7 +911,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const list = h('ul', {
     className: 'document-list issue-list entity-card-list mobile-table-card-list-items',
     'data-custom-view-mark': 'list'
-  }, ...renderEntityCardItems(initialRows, { pageId, title, renderValue, toText, definition: visibleDefinition }));
+  }, ...renderEntityCardItems(initialRows, { pageId, title, renderValue, toText, definition: visibleDefinition, drill }));
   const empty = availableRows.length === 0
     ? h('p', { className: 'document-list-empty' }, typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.')
     : null;
@@ -928,6 +948,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
         renderValue,
         toText,
         definition: visibleDefinition,
+        drill,
         keyOffset: renderedCount
       }));
       renderedCount += nextRows.length;

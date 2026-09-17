@@ -52,6 +52,8 @@ const dashboardQueryMemoization = createDashboardQueryMemoization();
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
+/** @type {Map<number, Record<string, unknown>>} */
+const inFlightDashboardSources = new Map();
 /** @type {Set<string>} */
 const dirtyDashboardSubscriptions = new Set();
 const SUBSCRIPTION_FLUSH_DELAY_MS = 50;
@@ -281,6 +283,30 @@ async function flushDashboardSubscriptions(allowDuringIngestion = false) {
   }
 }
 
+/**
+ * Publishes the latest committed canonical projection without blocking the next
+ * shard download. The subscription flusher coalesces commits that arrive while
+ * an earlier refresh is still running.
+ *
+ * @param {Record<string, import('./presenter.js').LogicalSourceInput>} logicalSources
+ * @param {boolean} runsOnly
+ * @returns {Promise<void>}
+ */
+function refreshDashboardSubscriptions(logicalSources, runsOnly) {
+  liveDashboard = {
+    logicalSources,
+    revision: (liveDashboard?.revision ?? 0) + 1
+  };
+  dashboardActivated = true;
+  runPhaseOnly = runsOnly;
+  scheduleDashboardSubscriptions(runsOnly
+    ? [...dashboardSubscriptions]
+        .filter(([, subscription]) => isRunPhaseSubscription(subscription))
+        .map(([id]) => id)
+    : dashboardSubscriptions.keys());
+  return flushDashboardSubscriptions(true);
+}
+
 /** @param {unknown} value */
 function dashboardContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -357,12 +383,7 @@ export function publishedEventShards(hashes) {
 export function publishedPhasedActivityShards(hashes) {
   const runs = publishedRunInformationShards(hashes);
   const events = publishedEventShards(hashes);
-  const fileName = (/** @type {{ name: string }} */ shard) => shard.name.slice(shard.name.lastIndexOf('/') + 1);
-  return runs.length > 0
-    && runs.length === events.length
-    && runs.every((shard, index) => fileName(shard) === fileName(events[index]))
-    ? [...runs, ...events]
-    : [];
+  return runs.length > 0 ? [...runs, ...events] : [];
 }
 
 /**
@@ -412,14 +433,20 @@ export function processDataRequest(request, signal) {
       const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       if (!activity) progress.start();
       let changed = false;
+      /** @type {Record<string, unknown>} */
+      let sources = {};
+      if (typeof request.id === 'number') {
+        inFlightDashboardSources.set(request.id, sources);
+      }
       try {
         progress.log(activity ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
-        let sources = activity ? {} : await loadDashboardSources(ingestionFetch, sourceUrl.href, {
+        sources = activity ? {} : await loadDashboardSources(ingestionFetch, sourceUrl.href, {
           onShardLoaded: ({ name, sizeBytes, cacheStatus }) => {
             const size = sizeBytes === null ? 'size unavailable' : `${sizeBytes.toLocaleString()} bytes`;
             progress.log(`Loaded dashboard source shard ${name} (${size}; cache: ${cacheStatus ?? 'unavailable'}).`);
           }
         });
+        if (typeof request.id === 'number') inFlightDashboardSources.set(request.id, sources);
         if (activity) {
           const payloadHashesUrl = sourceUrl;
           const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
@@ -434,6 +461,7 @@ export function processDataRequest(request, signal) {
           });
           if (inventoryResponse.ok) {
             sources = inventorySources;
+            if (typeof request.id === 'number') inFlightDashboardSources.set(request.id, sources);
             progress.log('Inventory metadata refreshed.');
           } else {
             progress.log('No separate inventory metadata was published.');
@@ -541,20 +569,6 @@ export function processDataRequest(request, signal) {
             if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             if (runPhaseShardCount > 0 && index === runPhaseShardCount) {
               const eventPendingShards = pendingShards.filter((state) => state.index >= runPhaseShardCount);
-              if (eventPendingShards.length > 0 && (!dashboardActivated || changed)) {
-                progress.log('Run information is available; refreshing active dashboard queries.');
-                liveDashboard = {
-                  logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-                  revision: (liveDashboard?.revision ?? 0) + 1
-                };
-                dashboardActivated = true;
-                runPhaseOnly = true;
-                scheduleDashboardSubscriptions([...dashboardSubscriptions]
-                  .filter(([, subscription]) => isRunPhaseSubscription(subscription))
-                  .map(([id]) => id));
-                await flushDashboardSubscriptions(true);
-                if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
-              }
               await measureShards(eventPendingShards);
               workloadBytes = pendingShards.every(({ sizeBytes }) => typeof sizeBytes === 'number')
                 ? pendingShards.reduce((sum, state) => sum + (state.sizeBytes ?? 0), 0)
@@ -693,6 +707,7 @@ export function processDataRequest(request, signal) {
           ? { sources: projected, changed }
           : projected;
       } finally {
+        if (typeof request.id === 'number') inFlightDashboardSources.delete(request.id);
         progress.complete();
         dashboardIngestionCount = Math.max(0, dashboardIngestionCount - 1);
         if (dashboardIngestionCount === 0) scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
@@ -798,6 +813,19 @@ if (typeof document === 'undefined' && workerScope) {
       if (dirtyDashboardSubscriptions.size === 0 && subscriptionFlushTimer !== null) {
         clearTimeout(subscriptionFlushTimer);
         subscriptionFlushTimer = null;
+      }
+      return;
+    }
+    if (event.data?.operation === 'sync-dashboard-queries') {
+      const requestId = event.data.requestId;
+      const sources = Number.isSafeInteger(requestId)
+        ? inFlightDashboardSources.get(requestId)
+        : undefined;
+      if (sources) {
+        void refreshDashboardSubscriptions(
+          /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+          false
+        );
       }
       return;
     }

@@ -1,4 +1,4 @@
-      import { dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
+      import { dashboardPagePaginatedSourceBindings, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { setLoadingProgressState } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
       import { processDashboardQueries, subscribeWorkerLoadingProgress } from "./data-processor.js";
@@ -503,7 +503,7 @@
           source: "workflows",
           rows: [
             { organization: "githubnext", repository: "gh-aw-cao", package: "dependabot", "package-name": "Dependabot", "workflow-role": "orchestrator", workflow: ".github/workflows/dependabot.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "package-targets": packageTargets("github/gh-aw"), "max-ai-credits": 250, "package-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "dependabot", "package-name": "Dependabot", "workflow-role": "worker", workflow: ".github/workflows/dependabot-release-train-updater.md", "workflow-name": "Release train updater", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 600, "package-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", package: "dependabot", "package-name": "Dependabot", "workflow-role": "worker", workflow: ".github/workflows/dependabot-update-planner.md", "workflow-name": "Dependabot update planner", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 600, "package-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
             { organization: "githubnext", repository: "gh-aw-cao", package: "cao-evolution", "package-name": "CAO Evolution", "workflow-role": "orchestrator", workflow: ".github/workflows/cao-evolution.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "package-targets": packageTargets(), "max-ai-credits": 250, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
             { organization: "githubnext", repository: "gh-aw-cao", package: "cao-evolution", "package-name": "CAO Evolution", "workflow-role": "worker", workflow: ".github/workflows/cao-evolution-compiler-security.md", "workflow-name": "AW compiler security", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
             { organization: "githubnext", repository: "gh-aw-cao", package: "cao-evolution", "package-name": "CAO Evolution", "workflow-role": "worker", workflow: ".github/workflows/cao-evolution-failures-investigator.md", "workflow-name": "AW failures investigator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
@@ -529,7 +529,7 @@
             { organization: "octo-org", repository: "octo-repo", workflow: ".github/workflows/nightly.yml", run: "2001", "started-at": "2026-08-29T08:00:00Z", "run-status": "in-progress", "run-conclusion": "unknown", "rollout-mode": "live", engine: "claude", "requested-model": "claude-3.5", "resolved-model": "claude-3.5", "run-link": { relation: "run", href: "https://github.com/octo-org/octo-repo/actions/runs/2001", label: "View run 2001" } },
             { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/dependabot.md", run: "2002", event: "workflow_dispatch", "run-title": "Dependabot", "started-at": "2026-08-29T08:30:00Z", "run-status": "completed", "run-conclusion": "action-required", "rollout-mode": "review", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2002", label: "View run 2002" } },
             { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/cao-evolution.md", run: "2003", event: "workflow_dispatch", "run-title": "CAO Evolution", "started-at": "2026-08-29T07:30:00Z", "run-status": "completed", "run-conclusion": "success", "rollout-mode": "review", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2003", label: "View run 2003" } },
-            { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/dependabot-release-train-updater.md", run: "2004", event: "workflow_dispatch", "run-title": "Release train updater", "started-at": "2026-08-20T08:30:00Z", "run-status": "completed", "run-conclusion": "failure", "rollout-mode": "live", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2004", label: "View run 2004" } },
+            { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/dependabot-update-planner.md", run: "2004", event: "workflow_dispatch", "run-title": "Dependabot update planner", "started-at": "2026-08-20T08:30:00Z", "run-status": "completed", "run-conclusion": "failure", "rollout-mode": "live", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2004", label: "View run 2004" } },
             { organization: "githubnext", repository: "gh-aw-cao", workflow: ".github/workflows/cao-evolution-compiler-security.md", run: "2005", event: "workflow_dispatch", "run-title": "AW Compiler Security", "started-at": "2026-08-10T07:30:00Z", "run-status": "completed", "run-conclusion": "cancelled", "rollout-mode": "review", engine: "gpt", "requested-model": "gpt-4o-mini", "resolved-model": "gpt-4o-mini", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2005", label: "View run 2005" } },
           ],
           metadata: metadata("runs-fixture"),
@@ -659,9 +659,9 @@
           source: "agent-assignments",
           rows: [
             {
-              "assignment-id": "assignment:release-train-updater:74",
-              "agent-id": "dependabot-release-train-updater",
-              "agent-name": "Release train updater",
+              "assignment-id": "assignment:update-planner:74",
+              "agent-id": "dependabot-update-planner",
+              "agent-name": "Dependabot update planner",
               "agent-state": "waiting",
               "work-item-id": "dependabot:github/gh-aw:release-train-2026-09-05",
               objective: "Update the Dependabot release train",
@@ -722,7 +722,7 @@
             "smell-recommendation": "Move repository and alert collection into deterministic pre-steps.",
             organization: "githubnext",
             repository: "gh-aw-cao",
-            workflow: ".github/workflows/dependabot-release-train-updater.md",
+            workflow: ".github/workflows/dependabot-update-planner.md",
             run: "2004",
             "observed-at": "2026-08-29T09:40:00Z",
             "run-link": runLink("2004"),
@@ -903,7 +903,7 @@
               "evaluator-digest": "sha256:dependabot123",
               organization: "githubnext",
               repository: "gh-aw-cao",
-              workflow: ".github/workflows/dependabot-release-train-updater.md",
+              workflow: ".github/workflows/dependabot-update-planner.md",
               run: "3001",
               "requested-evidence-at": "2026-07-27T08:30:00Z",
               "evidence-cutoff": "2026-08-10T08:30:00Z",
@@ -920,7 +920,7 @@
               "evaluator-digest": "sha256:dependabot123",
               organization: "githubnext",
               repository: "gh-aw-cao",
-              workflow: ".github/workflows/dependabot-release-train-updater.md",
+              workflow: ".github/workflows/dependabot-update-planner.md",
               run: "3002",
               "requested-evidence-at": "2026-08-03T08:30:00Z",
               "evidence-cutoff": "2026-08-17T08:30:00Z",
@@ -937,7 +937,7 @@
               "evaluator-digest": "sha256:dependabot123",
               organization: "githubnext",
               repository: "gh-aw-cao",
-              workflow: ".github/workflows/dependabot-release-train-updater.md",
+              workflow: ".github/workflows/dependabot-update-planner.md",
               run: "3003",
               "requested-evidence-at": "2026-08-10T08:30:00Z",
               "evidence-cutoff": "2026-08-24T08:30:00Z",
@@ -954,7 +954,7 @@
               "evaluator-digest": "sha256:dependabot123",
               organization: "githubnext",
               repository: "gh-aw-cao",
-              workflow: ".github/workflows/dependabot-release-train-updater.md",
+              workflow: ".github/workflows/dependabot-update-planner.md",
               run: "3004",
               "requested-evidence-at": "2026-08-17T08:30:00Z",
               "evidence-cutoff": "2026-08-31T08:30:00Z",
@@ -1071,7 +1071,7 @@
             dashboardContext,
             preparePage: ensureDashboardPageLoaded,
             pageSourceNames: (pageId) => dashboardPageSourceNames(dashboardDocument, pageId),
-            pageLazySourceNames: (pageId) => dashboardPageLazySourceNames(dashboardDocument, pageId),
+            pagePaginatedSourceBindings: (pageId) => dashboardPagePaginatedSourceBindings(dashboardDocument, pageId),
             render: (sources, state, loadPageSources, retryRefresh) => {
               renderSources(sources, state, true, loadPageSources, retryRefresh);
             },

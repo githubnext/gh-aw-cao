@@ -31,6 +31,7 @@ const PIE_CHART_CENTER = 21;
 const PIE_CHART_RADIUS = 15.9155;
 const PIE_CHART_STROKE_WIDTH = 6;
 const PIE_CHART_SEGMENT_GAP = 0.03;
+const PIE_CHART_CENTER_TEXT_LENGTH = 21;
 const MAX_SWIMLANE_SECTIONS_PER_LANE = 120;
 const SWIMLANE_DEFINITIONS = [
   ['action-required', 'Action required'],
@@ -432,6 +433,13 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
   if (chartType === 'pie') {
     const { entries, total } = /** @type {{ entries: Array<[string, number]>, total: number }} */ (pieData);
     const safeTotal = Number.isFinite(total) && total > 0 ? total : 0;
+    const formattedTotal = formatPieValue(total, unit, false);
+    const totalValueLengthAttrs = formattedTotal.length > 7
+      ? { textLength: PIE_CHART_CENTER_TEXT_LENGTH, lengthAdjust: 'spacingAndGlyphs' }
+      : null;
+    const totalLabelLengthAttrs = totalLabel.length > 12
+      ? { textLength: PIE_CHART_CENTER_TEXT_LENGTH, lengthAdjust: 'spacingAndGlyphs' }
+      : null;
     const separated = entries.filter(([, value]) => Number.isFinite(value) && value > 0).length > 1;
     let cumulativeValue = 0;
     return renderChartWidgetShell(
@@ -475,8 +483,8 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             }
           });
         }),
-        h('text', { className: 'pie-chart-total-value', x: 21, y: 20, 'text-anchor': 'middle', 'aria-hidden': 'true' }, formatPieValue(total, unit, false)),
-        h('text', { className: 'pie-chart-total-label', x: 21, y: 25.5, 'text-anchor': 'middle', 'aria-hidden': 'true' }, totalLabel)
+        h('text', { className: 'pie-chart-total-value', x: 21, y: 20, 'text-anchor': 'middle', 'aria-hidden': 'true', ...(totalValueLengthAttrs ?? {}) }, formattedTotal),
+        h('text', { className: 'pie-chart-total-label', x: 21, y: 25.5, 'text-anchor': 'middle', 'aria-hidden': 'true', ...(totalLabelLengthAttrs ?? {}) }, totalLabel)
       )
     );
   }

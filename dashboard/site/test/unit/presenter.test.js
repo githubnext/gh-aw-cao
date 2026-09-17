@@ -134,6 +134,43 @@ describe('dashboard DOM provenance', () => {
     disposeDashboard(rendered);
   });
 
+  it('keeps independently bound Overview elements mounted when the page subscription resolves', async () => {
+    let resolvePageSources = () => {};
+    const loadPageSources = vi.fn(() => new Promise((resolve) => {
+      resolvePageSources = () => resolve({
+        'data-health-collections': {
+          source: 'data-health-collections',
+          rows: [],
+          metadata: {
+            'source-id': 'data-health-collections',
+            'source-kind': 'canonical-query',
+            'as-of': '2026-09-17T00:00:00Z',
+            'retrieved-at': '2026-09-17T00:00:00Z',
+            availability: 'empty',
+            completeness: 'complete',
+            freshness: 'fresh'
+          }
+        }
+      });
+    }));
+    const rendered = renderDashboardView({
+      document: authoritativeDashboardDocument,
+      sources: {},
+      loadPageSources
+    });
+    const overviewBefore = rendered.querySelector('[data-page-id="overview"]');
+    const floorBefore = overviewBefore?.querySelector('.factory-floor');
+
+    await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
+    resolvePageSources();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(rendered.querySelector('[data-page-id="overview"]')).toBe(overviewBefore);
+    expect(rendered.querySelector('.factory-floor')).toBe(floorBefore);
+    disposeDashboard(rendered);
+  });
+
   it('reports the paginated source shared by the runs page views', () => {
     const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
     expect(lazySourceNames).toContain('runs-table');
@@ -763,7 +800,7 @@ describe('presenter built-in and custom pages', () => {
           source: 'workflows',
           rows: [
             { organization: 'githubnext', repository: 'gh-aw-cao', package: 'dependabot', 'package-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'review' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'dependabot', 'package-name': 'Dependabot', workflow: '.github/workflows/dependabot-release-train-updater.yml', 'workflow-name': 'Release Train Updater', 'workflow-role': 'worker', 'workflow-active': 'true', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'dependabot', 'package-name': 'Dependabot', workflow: '.github/workflows/dependabot-update-planner.yml', 'workflow-name': 'Dependabot / Update Planner', 'workflow-role': 'worker', 'workflow-active': 'true', 'rollout-mode': 'review' },
             { organization: 'github', repository: 'target-service', workflow: '.github/workflows/ci.yml', 'workflow-name': 'CI', 'workflow-role': 'standalone', 'workflow-active': 'true', 'rollout-mode': 'live' }
           ],
           metadata: {
@@ -1972,14 +2009,15 @@ describe('presenter built-in and custom pages', () => {
     });
 
     expect(authoritativeDashboardDocument.dashboard.defaults?.time).toBeUndefined();
-    expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('aria-label')).toBe('Horizon unavailable');
-    expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(true);
+    expect(rendered.querySelector('.dashboard-horizon')?.hasAttribute('aria-label')).toBe(false);
+    expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(false);
+    expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 week');
     expect(rendered.querySelectorAll('.dashboard-horizon')).toHaveLength(1);
     expect(rendered.querySelector('.freshness')).toBeNull();
     const horizonHelp = rendered.querySelector('.dashboard-horizon .tooltip-trigger');
     const horizonTooltip = rendered.querySelector('.dashboard-horizon .tooltip-content');
     expect(horizonHelp).toBeNull();
-    expect(horizonTooltip).toBeNull();
+    expect(horizonTooltip?.textContent).toContain('1 week');
 
     for (const pageId of ['runtime', 'security', 'firewall', 'operational-value']) {
       await activatePage(rendered, pageId);
@@ -2119,7 +2157,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.horizon-tooltip-counts')).toBeNull();
   });
 
-  it('reactively replaces the Horizon skeleton when page sources load', async () => {
+  it('renders the configured Horizon immediately and updates it when page sources load', async () => {
     let publishUpdate = () => {};
     const loadPageSources = vi.fn(async (_pageId, options) => {
       publishUpdate = () => options.onUpdate({
@@ -2147,7 +2185,8 @@ describe('presenter built-in and custom pages', () => {
       loadPageSources
     });
 
-    expect(rendered.querySelector('.dashboard-horizon-skeleton')).not.toBeNull();
+    expect(rendered.querySelector('.dashboard-horizon-skeleton')).toBeNull();
+    expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('1 week');
     await vi.waitFor(() => expect(loadPageSources).toHaveBeenCalled());
     publishUpdate();
 
@@ -3955,6 +3994,45 @@ describe('presenter built-in and custom pages', () => {
       const page = /** @type {HTMLElement} */ (root.querySelector('#page-second'));
       expect(page.getAttribute('aria-busy')).toBeNull();
       expect(page.querySelector('.empty')?.getAttribute('role')).toBe('alert');
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
+  it('keeps route tabs visible while a sibling view loads', async () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first?package=ambient-context">First</a>
+      <a data-nav-page-id="second" href="#page-second?package=ambient-context">Second</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first">
+          <nav data-route-tabs aria-label="Ambient Context views">
+            <a href="#page-first?package=ambient-context" aria-current="page">Overview</a>
+            <a href="#page-second?package=ambient-context">Workflows</a>
+            <a href="#page-third?package=ambient-context">Runs</a>
+          </nav>
+          <p>Overview content</p>
+        </section>
+        <section class="dashboard-page" id="page-second" data-page-id="second" data-page-pending></section>
+      </main>
+    `;
+    document.body.append(root);
+    const renderPage = vi.fn((pageId) => pageId === 'second'
+      ? new Promise(() => {})
+      : null);
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="second"]')).click();
+
+      await vi.waitFor(() => {
+        expect(root.querySelector('#page-second .dashboard-view-skeleton')).not.toBeNull();
+      });
+      const pendingTabs = root.querySelector('#page-second [data-route-tabs]');
+      expect(pendingTabs?.textContent?.replace(/\s/g, '')).toBe('OverviewWorkflowsRuns');
+      expect(pendingTabs?.querySelector('[aria-current="page"]')?.textContent?.trim()).toBe('Workflows');
+      expect(root.querySelector('#page-second')?.getAttribute('aria-busy')).toBe('true');
+      disposeNavigation();
     } finally {
       root.remove();
       window.history.replaceState(null, '', '/');

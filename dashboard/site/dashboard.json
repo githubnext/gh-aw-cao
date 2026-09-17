@@ -1712,6 +1712,47 @@
         "limit": 10
       },
       {
+        "name": "firewall-attribution-details",
+        "intent": "Attribute each observed firewall decision to its workflow run, run-level agent metadata, and matched policy rule.",
+        "description": "Observed allowed and denied requests with workflow, run, agent or engine, model, and policy-rule provenance.",
+        "from": "firewall-observations",
+        "filter": { "predicates": [{ "field": "decision", "in": ["allowed", "denied"] }] },
+        "select": [
+          { "field": "domain" },
+          { "field": "decision-label" },
+          { "field": "request-count" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "engine" },
+          { "field": "resolved-model" },
+          { "field": "policy-rule-action" },
+          { "field": "policy-domain-pattern" },
+          { "field": "policy-rule-description" },
+          { "field": "protocol" },
+          { "field": "last-seen-at" },
+          { "field": "run-link" },
+          { "field": "evidence-link" }
+        ],
+        "order-by": [
+          { "field": "decision-label", "direction": "desc" },
+          { "field": "request-count", "direction": "desc" },
+          { "field": "domain", "direction": "asc" },
+          { "field": "workflow", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "firewall-policy-inventory",
+        "intent": "List the effective firewall allow and deny rules with workflow, run, and observed hit counts.",
+        "description": "Effective policy rules show configured decisions even when a rule has no observed requests.",
+        "from": "firewall-policy-rules",
+        "order-by": [
+          { "field": "action", "direction": "desc" },
+          { "field": "hit-count", "direction": "desc" },
+          { "field": "domain-pattern", "direction": "asc" },
+          { "field": "workflow", "direction": "asc" }
+        ]
+      },
+      {
         "name": "safe-output-usage",
         "intent": "Show every retained safe output with its identity, disposition, workflow, repository, rollout mode, timestamps, and provenance.",
         "description": "Canonical safe-output outcomes ordered from newest to oldest.",
@@ -2154,6 +2195,16 @@
         },
         "joins": [
           {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "package", "as": "declared-package" }]
+          },
+          {
             "source": "runs",
             "type": "left",
             "on": [
@@ -2171,6 +2222,7 @@
           { "field": "event-type", "as": "audit-kind" },
           { "field": "event-status" },
           { "field": "event-summary" },
+          { "field": "declared-package", "as": "package" },
           { "field": "organization" },
           { "field": "repository" },
           { "field": "workflow" },
@@ -2205,11 +2257,24 @@
             { "field": "event-status", "in": ["high", "medium"] }
           ]
         },
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "package", "as": "package" }]
+          }
+        ],
         "aggregate": {
-          "by": ["workflow", "event-summary"],
+          "by": ["package", "workflow", "event-summary"],
           "values": [{ "field": "event", "as": "events", "reducer": "count" }]
         },
         "select": [
+          { "field": "package" },
           { "field": "workflow" },
           { "field": "event-summary" },
           { "field": "events" }
@@ -2664,6 +2729,46 @@
           { "field": "external-link" }
         ],
         "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "outcome-title", "direction": "asc" }]
+      },
+      {
+        "name": "package-worker-issues",
+        "intent": "Project issue outcomes created by package worker workflows.",
+        "description": "Package-addressable issue outcomes restricted to declared worker workflows.",
+        "from": "outcomes",
+        "joins": [
+          {
+            "source": "workflows",
+            "type": "inner",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [{ "field": "workflow-role", "as": "declared-workflow-role" }]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            { "field": "outcome-category", "equals": "issue" },
+            { "field": "declared-workflow-role", "equals": "worker" }
+          ]
+        },
+        "select": [
+          { "field": "package" },
+          { "field": "safe-output" },
+          { "field": "outcome-number" },
+          { "field": "outcome-title" },
+          { "field": "outcome-summary" },
+          { "field": "outcome-status" },
+          { "field": "outcome-state" },
+          { "field": "workflow" },
+          { "field": "workflow-name" },
+          { "field": "observed-at" },
+          { "field": "issue-link" },
+          { "field": "external-link" },
+          { "field": "run-link" }
+        ],
+        "order-by": [{ "field": "observed-at", "direction": "desc" }]
       },
       {
         "name": "package-runs",
@@ -3869,7 +3974,7 @@
         "navigation-label": "Firewall",
         "icon": "globe",
         "class-name": "firewall-page",
-        "description": "Observed firewall domains and aggregate request activity for agent egress.",
+        "description": "Observed firewall domains, workflow and run-level agent attribution, and effective allow or deny policy for agent egress.",
         "views": [
           {
             "id": "security-firewall-most-blocked-domains",
@@ -3936,6 +4041,62 @@
                   "type": "quantitative",
                   "title": "Blocked"
                 }
+              ]
+            }
+          },
+          {
+            "id": "security-firewall-attribution",
+            "disclosure-label": "Workflow and agent attribution",
+            "description": "Maps observed decisions to the workflow, run, run-level agent or engine, model, and matched policy rule. Firewall audit events do not identify the individual skill or tool that initiated a request.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "firewall-attribution-details"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No attributable allowed or denied firewall requests are available for this selection.",
+            "encoding": {
+              "columns": [
+                { "field": "domain", "type": "nominal", "title": "Domain" },
+                { "field": "decision-label", "type": "nominal", "title": "Decision", "display": "label" },
+                { "field": "request-count", "type": "quantitative", "title": "Requests" },
+                { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+                { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+                { "field": "engine", "type": "nominal", "title": "Agent / engine" },
+                { "field": "resolved-model", "type": "nominal", "title": "Resolved model" },
+                { "field": "policy-domain-pattern", "type": "nominal", "title": "Matched policy" },
+                { "field": "policy-rule-description", "type": "nominal", "title": "Policy reason" },
+                { "field": "protocol", "type": "nominal", "title": "Protocol" },
+                { "field": "last-seen-at", "type": "temporal", "title": "Last observed", "format": "human-friendly-timestamp" }
+              ]
+            }
+          },
+          {
+            "id": "security-firewall-policy",
+            "disclosure-label": "Effective allow and deny policy",
+            "description": "Shows every effective domain rule, its allow or deny action, explanation, workflow run, and observed hit count, including rules with zero traffic.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "firewall-policy-inventory"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No effective firewall policy manifest is available for this selection.",
+            "encoding": {
+              "columns": [
+                { "field": "action", "type": "nominal", "title": "Action", "display": "label" },
+                { "field": "domain-pattern", "type": "nominal", "title": "Domain pattern" },
+                { "field": "description", "type": "nominal", "title": "Reason" },
+                { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
+                { "field": "run", "type": "nominal", "title": "Run", "display": "run-link" },
+                { "field": "engine", "type": "nominal", "title": "Agent / engine" },
+                { "field": "resolved-model", "type": "nominal", "title": "Resolved model" },
+                { "field": "protocol", "type": "nominal", "title": "Protocol" },
+                { "field": "hit-count", "type": "quantitative", "title": "Observed requests" }
               ]
             }
           }
@@ -4945,7 +5106,7 @@
         "id": "package-insights",
         "kind": "custom",
         "title": "Package",
-        "description": "Operational value attained by workers in this package.",
+        "description": "Audit events observed for this package.",
         "icon": "graph",
         "class-name": "package-insights-page",
         "route": {
@@ -4953,51 +5114,124 @@
         },
         "views": [
           {
-            "id": "package-insights-by-workflow",
-            "title": "AI Credit usage by workflow",
-            "description": "Measured workflow allocation highlights the package's dominant operating activity.",
+            "id": "package-insights-navigation",
+            "title": "Package insights",
             "data": {
-              "source": "packaged-workflows",
-              "route-field": "package"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "workflow-name",
-                "type": "nominal",
-                "format": "workflow-relative-path",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "as": "total-aic",
-                "title": "Total AIC",
-                "unit": "aic"
-              },
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "package-operational-value",
-            "title": "Package operational value",
-            "data": {
-              "sources": [
-                "workflows",
-                "operational-values"
-              ]
+              "sources": ["workflows"]
             },
             "mark": "element",
             "element": "package-route",
             "layout": "full",
             "config": {
               "body": "insights"
+            }
+          },
+          {
+            "id": "package-audit-event-summary-buckets",
+            "title": "High and medium severity audit events",
+            "description": "The 20 most frequent audit-event buckets for this package, grouped by workflow and shared summary after info-level events are excluded.",
+            "data": {
+              "source": "audit-event-summary-buckets",
+              "route-field": "package"
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "empty-message": "No high- or medium-severity audit events were observed for this package in the current run window.",
+            "encoding": {
+              "x": {
+                "field": "workflow",
+                "type": "nominal",
+                "format": "workflow-relative-path",
+                "title": "Workflow"
+              },
+              "y": {
+                "field": "events",
+                "type": "quantitative",
+                "title": "Events"
+              },
+              "color": {
+                "field": "event-summary",
+                "type": "nominal",
+                "title": "Summary"
+              }
+            }
+          },
+          {
+            "id": "package-audit-events-table",
+            "title": "Audit events",
+            "description": "Observed audit events for this package ordered from newest to oldest with their audit kind, status, summary, and run context.",
+            "data": {
+              "source": "audit-events",
+              "route-field": "package"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No audit events were observed for this package in the current run window.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Summary"
+                },
+                {
+                  "field": "event-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "format": "workflow-relative-path",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "audit-kind",
+                  "type": "nominal",
+                  "title": "Audit event",
+                  "display": "label"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Observed"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run",
+                  "display": "run-link"
+                },
+                {
+                  "field": "run-attempt",
+                  "type": "quantitative",
+                  "title": "Attempt"
+                },
+                {
+                  "field": "session",
+                  "type": "nominal",
+                  "title": "Session"
+                },
+                {
+                  "field": "event",
+                  "type": "nominal",
+                  "title": "Event"
+                }
+              ]
             }
           }
         ]
@@ -5135,11 +5369,8 @@
             "title": "Generated issue status",
             "description": "Current disposition of retained issue outcomes generated by this package.",
             "data": {
-              "source": "outcomes",
-              "route-field": "package",
-              "filters": {
-                "outcome-category": ["issue"]
-              }
+              "source": "package-worker-issues",
+              "route-field": "package"
             },
             "mark": "chart",
             "chart": "pie",
@@ -5175,11 +5406,8 @@
             "id": "package-issue-table",
             "title": "Generated issues",
             "data": {
-              "source": "outcomes",
+              "source": "package-worker-issues",
               "route-field": "package",
-              "filters": {
-                "outcome-category": ["issue"]
-              },
               "order-by": [
                 { "field": "observed-at", "direction": "desc" }
               ]
@@ -5329,31 +5557,6 @@
         },
         "views": [
           {
-            "id": "package-run-status",
-            "title": "Workflow run status",
-            "description": "Observed workflow conclusions provide the package's leading execution signal.",
-            "data": {
-              "source": "package-runs",
-              "route-field": "package"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "started-at",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Runs"
-              }
-            }
-          },
-          {
             "id": "package-run-navigation",
             "title": "Package workflow runs",
             "data": {
@@ -5369,11 +5572,37 @@
             }
           },
           {
+            "id": "package-run-status",
+            "title": "Workflow run status",
+            "description": "Observed workflow conclusions provide the package's leading execution signal.",
+            "data": {
+              "source": "package-runs",
+              "route-field": "package"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "empty-message": "No workflow runs were observed for this package in the current run window.",
+            "encoding": {
+              "x": {
+                "field": "status",
+                "type": "nominal",
+                "title": "Status"
+              },
+              "y": {
+                "field": "started-at",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Runs"
+              }
+            }
+          },
+          {
             "id": "package-failure-reason-distribution",
             "title": "Why these dispatches failed",
             "description": "Grouped by the strongest failure reason retained for each dispatch. Select a reason in the table below to open its GitHub Actions evidence.",
             "data": {
-              "source": "package-runs",
+              "source": "dispatches",
               "route-field": "package",
               "filters": {
                 "status": [
@@ -5392,6 +5621,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
             "encoding": {
               "x": {
                 "field": "status-detail",
@@ -5412,7 +5642,7 @@
             "disclosure-label": "Failed dispatches",
             "description": "Failure reasons first. Open a reason for the GitHub Actions run, or copy a debug prompt with retained context.",
             "data": {
-              "source": "package-runs",
+              "source": "dispatches",
               "route-field": "package",
               "filters": {
                 "status": [

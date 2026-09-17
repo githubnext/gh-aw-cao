@@ -58,9 +58,11 @@ does not grant authority.
 ## 3. Collection boundary
 
 An Activity refresh MUST create a coherent snapshot from the inputs available
-to the same workflow run. Inputs are limited to compiled workflow metadata in the checked-out control
-repository, a compatible prior JSONL cache entry, and the bounded run metadata,
-audits, and declared artifacts acquired by one `gh aw logs` invocation.
+to the same workflow run. Inputs are limited to compiled workflow metadata in
+the checked-out control repository, the bounded GitHub Actions workflow
+registries for repositories resolved by the reviewed control policy, a
+compatible prior JSONL cache entry, and the bounded run metadata, audits, and
+declared artifacts acquired by one `gh aw logs` invocation.
 
 The prior JSONL cache entry MAY be maintained internally as a carried-forward
 set of wildcard shard files rather than one growing file. Shard-based caching
@@ -70,13 +72,23 @@ allow a shard's data to be skipped from the published snapshot merely because
 it was skipped from re-ingestion.
 
 The publisher MUST bound remote acquisition by repository scope, evidence
-window, pagination, or another explicit limit. It MUST NOT discover workflows
-in target repositories merely because those repositories appear in rollout
-policy. Installed workflow discovery is bounded to the checked-out control
-repository.
+window, pagination, or another explicit limit. For each repository already
+resolved into the allowed collection scope, the publisher MAY enumerate the
+GitHub Actions workflow registry to obtain authoritative workflow path, display
+name, active or disabled state, stable link, and native identifier evidence.
+Repository-owned workflows discovered this way MUST remain standalone runtime
+inventory and MUST NOT be attributed to a CAO package, registered as a package
+worker, or treated as rollout authority. Package ownership and admission
+evidence remain bounded to declarations in the checked-out control repository.
 
-Activity MUST NOT invoke a post-processing indexer, GitHub APIs, or another
-remote collector to fill missing fields.
+Registry enumeration MUST be paginated and report availability, completeness,
+and per-repository failures. A failed registry read MUST remain partial or
+unavailable evidence and MUST NOT be represented as a complete empty registry.
+Deleted registry entries MUST NOT be represented as current Workflows, and an
+unknown registry state MUST remain unknown rather than being inferred from
+local compilation status.
+Activity MUST NOT invoke per-workflow run-list, per-run detail, Jobs, or another
+remote fallback collector to fill missing runtime fields.
 
 ## 4. Snapshot contract
 
@@ -93,12 +105,11 @@ records. Event shards MUST contain only Job, Session, and Event records. Every
 Event transport record MUST carry its canonical Run identity in addition to its
 Session identity.
 
-The two phases MUST be a complete one-to-one partition of the same source shard
-set: each run-information filename stem MUST have exactly one matching event
-filename stem and vice versa. Publishers MUST fail rather than publish
-unmatched phase sets. Consumers MUST validate the pairing and phase labels
-before phased ingestion, and MUST fall back to a complete compatible transport
-or fail closed when the phased set is invalid.
+The two phases MUST be a complete partition of the source records. Publishers
+MUST omit a phase shard when it contains no records, so the run-information and
+event shard sets MAY contain different filename stems. Consumers MUST validate
+the phase labels before phased ingestion and MUST fall back to a complete
+compatible transport or fail closed when the phased set is invalid.
 
 Phase filenames MUST preserve the source-shard ordering prefix before their
 content and normalization hashes. Publishers and consumers MUST process both
@@ -115,11 +126,10 @@ missing event phase rather than mark the snapshot complete. Consumers MUST
 determine availability, completeness, freshness, and scope for their own use
 and MUST NOT infer those properties from row counts.
 
-The phase split optimizes time to first useful Run query and avoids rewriting
-unchanged canonical records. It does not reduce the total bytes required for a
-complete refresh: phase metadata and direct Event-to-Run identity add bounded
-overhead. Consumers SHOULD avoid background event transfer on metered or
-data-saver connections.
+The phase split optimizes time to first useful Run query, avoids rewriting
+unchanged canonical records, and omits empty phase payloads. Phase metadata and
+direct Event-to-Run identity add bounded overhead. Consumers SHOULD avoid
+background event transfer on metered or data-saver connections.
 
 The concrete cache file and identity rule are defined by
 [`activity/README.md`](../activity/README.md). Changing the file or identity

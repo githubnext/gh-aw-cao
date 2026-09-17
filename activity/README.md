@@ -11,7 +11,13 @@ for each repository in the distinct union of the control repository and the
 allowed repositories resolved from `cao.json`. `cao.json` bounds collection; it
 does not declare runtime workflow or run identities. The collector then ingests
 the JSONL shards through the canonical Node.js data pipeline and consolidates
-them for publication. It uploads the completed snapshot as a one-day artifact.
+them for publication. Before log collection, it also enumerates each resolved
+repository's paginated GitHub Actions workflow registry. Those registry rows
+provide workflow paths, names, active or disabled state, and links; target-owned
+workflows remain standalone and never become CAO package workers or rollout
+authority. Per-repository registry failures are published as partial or
+unavailable source evidence rather than complete empty inventories. It uploads
+the completed snapshot as a one-day artifact.
 A dependent job downloads
 that artifact, verifies every snapshot file is present and non-empty, and
 publishes the source JSONL and its local SQLite projection to the shared cache,
@@ -43,7 +49,7 @@ Activity has two source classes:
 
 | Input | Authority | Canonical contribution |
 | --- | --- | --- |
-| `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, package configuration, declared control workflows, and maintenance evidence | Package, Repository, and declared Workflow observations |
+| `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, package configuration, declared control workflows, paginated Actions workflow registries, and maintenance evidence | Package, Repository, declared control Workflow, and standalone repository Workflow observations |
 | `gh-aw-logs-shards/*.jsonl` | Observed GitHub Actions execution and agentic audit evidence | Repository, Workflow, Run, Job, Session, and Event observations |
 
 The SQLite database and browser IndexedDB are
@@ -82,10 +88,10 @@ $RUNNER_TEMP/cao-activity/drain3_weights.json
 `gh-aw-logs-runs/` run-information shards, and `gh-aw-logs-events/` event
 shards to their SHA-256 checksums. Run-information shards contain immutable
 agent/model identity and duration, firewall, MCP, operational-value, and audit
-priority aggregates. Every event includes its owning run identity. The
-run and event directories contain exactly matching filename stems. The
-dashboard validates that pairing and imports all run-information shards before
-event shards so clients can query runs while detailed ingestion continues.
+priority aggregates. Every event includes its owning run identity. Empty phase
+shards are omitted, so the run and event directories can contain different
+filename stems. The dashboard imports all run-information shards before event
+shards so clients can query runs while detailed ingestion continues.
 Each phase filename retains the source shard's sortable prefix before its
 content and normalization hashes, preserving observation precedence across
 repeated records.
@@ -110,7 +116,7 @@ reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. When the current layout misses, Activity restores the preceding
 layout containing `gh-aw-logs-normalized/`; `hash-payloads` processes its
-retained JSONL shard directory to generate the new paired run and event shards.
+retained JSONL shard directory to generate non-empty run and event shards.
 The cache is an evictable transport optimization, not durable
 historical authority.
 

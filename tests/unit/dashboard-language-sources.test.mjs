@@ -2152,7 +2152,7 @@ test("dashboard source bridge carries package memberships, allowance, and invent
 });
 
 test("dashboard source bridge exposes an issue search link for workflows that create labeled issues", () => {
-  const workflowPath = ".github/workflows/dependabot-release-train-updater.lock.yml";
+  const workflowPath = ".github/workflows/dependabot-update-planner.lock.yml";
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-09T12:00:00Z",
@@ -2161,7 +2161,7 @@ test("dashboard source bridge exposes an issue search link for workflows that cr
       workflows: [{
         repository: "githubnext/gh-aw-cao",
         path: workflowPath,
-        name: "Dependabot / Release Trains",
+        name: "Dependabot / Update Planner",
         role: "worker",
         state: "active",
         runHealth: { runRecords: [] },
@@ -2172,10 +2172,10 @@ test("dashboard source bridge exposes an issue search link for workflows that cr
     report: { generatedAt: "2026-09-09T12:00:00Z", records: [] },
     inventory: {
       workflows: [{
-        sourcePath: ".github/workflows/dependabot-release-train-updater.md",
+        sourcePath: ".github/workflows/dependabot-update-planner.md",
         lockPath: workflowPath,
         compiled: true,
-        issueLabels: ["dependabot", "dependabot:release-train-updater"],
+        issueLabels: ["dependabot", "dependabot:update-planner"],
       }],
       bundles: [{
         id: "dependabot",
@@ -2185,10 +2185,10 @@ test("dashboard source bridge exposes an issue search link for workflows that cr
         compiled: true,
         missingWorkers: [],
         workers: [{
-          sourcePath: ".github/workflows/dependabot-release-train-updater.md",
+          sourcePath: ".github/workflows/dependabot-update-planner.md",
           lockPath: workflowPath,
           role: "worker",
-          issueLabels: ["dependabot", "dependabot:release-train-updater"],
+          issueLabels: ["dependabot", "dependabot:update-planner"],
         }],
       }],
     },
@@ -2199,9 +2199,9 @@ test("dashboard source bridge exposes an issue search link for workflows that cr
   assert.equal(row["external-link"].relation, "external");
   assert.equal(
     row["external-link"].href,
-    'https://github.com/search?q=org%3Agithubnext%20is%3Aissue%20label%3A%22dependabot%3Arelease-train-updater%22&type=issues',
+    'https://github.com/search?q=org%3Agithubnext%20is%3Aissue%20label%3A%22dependabot%3Aupdate-planner%22&type=issues',
   );
-  assert.match(row["external-link"].label, /Dependabot \/ Release Trains/);
+  assert.match(row["external-link"].label, /Dependabot \/ Update Planner/);
 });
 
 
@@ -3064,6 +3064,10 @@ test("dashboard source bridge preserves firewall evidence states, policy attribu
       workflowPath: ".github/workflows/security.lock.yml",
       conclusion: "success",
       mode: "review",
+      engine: "copilot",
+      engineVersion: "1.0.0",
+      requestedModel: "gpt-5",
+      resolvedModel: "gpt-5.1",
     };
     const sources = buildDashboardLanguageSources({
       deployed: {
@@ -3158,7 +3162,9 @@ test("dashboard source bridge preserves firewall evidence states, policy attribu
       && row.domain === "api.github.com"
       && row["drift-state"] === "decision-changed"
       && row["previous-decision"] === "allowed"
-      && row["current-decision"] === "denied"));
+      && row["current-decision"] === "denied"
+      && row.engine === "copilot"
+      && row["resolved-model"] === "gpt-5.1"));
     assert.ok(observations.rows.some((row) => row.run === "41"
       && row.domain === "new.example"
       && row["drift-state"] === "newly-allowed"
@@ -3174,5 +3180,7 @@ test("dashboard source bridge preserves firewall evidence states, policy attribu
       && row["request-count"] === null));
     assert.ok(sources["firewall-policy-rules"].rows.some((row) => row["rule-id"] === "new-domain"
       && row["domain-pattern"] === "new.example"
-      && row["hit-count"] === 1));
+      && row["hit-count"] === 1
+      && row.engine === "copilot"
+      && row["resolved-model"] === "gpt-5.1"));
 });

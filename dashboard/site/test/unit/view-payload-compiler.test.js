@@ -171,6 +171,43 @@ it('fails closed when a route-scoped view has no route value', () => {
   expect(results[payload.aliases[0]].rows).toEqual([]);
 });
 
+it('applies route scope after a declared query creates the route field', () => {
+  const page = {
+    route: { 'hash-query-parameter': 'package' },
+    views: [{
+      id: 'package-runs',
+      data: { source: 'package-runs', 'route-field': 'package' }
+    }]
+  };
+  const payload = compileDashboardViewPayloadQueries(page, 'package-runs', {
+    routeParameters: { package: 'beta' },
+    queryContext: { filters: { mode: ['live'] } },
+    queries: [{
+      name: 'package-runs',
+      from: 'runs',
+      compute: [{ as: 'declared-package', function: 'coalesce', args: [{ field: 'source-package' }] }],
+      select: [
+        { field: 'run' },
+        { field: 'declared-package', as: 'package' }
+      ],
+      limit: 1
+    }]
+  });
+  const results = executeDashboardQueries(payload.queries, {
+    runs: {
+      source: 'runs',
+      rows: [
+        { run: '1', 'source-package': 'alpha', 'rollout-mode': 'live' },
+        { run: '2', 'source-package': 'alpha', 'rollout-mode': 'review' },
+        { run: '3', 'source-package': 'beta', 'rollout-mode': 'live' }
+      ],
+      metadata
+    }
+  }, payload.aliases);
+
+  expect(results[payload.aliases[0]].rows).toEqual([{ run: '3', package: 'beta' }]);
+});
+
 it('applies the selected horizon before derived repository totals aggregate runs', () => {
   const page = {
     views: [{ id: 'repositories', data: { source: 'repository-activity' } }]

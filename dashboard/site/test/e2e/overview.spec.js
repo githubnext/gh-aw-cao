@@ -105,6 +105,9 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
     await expect(factory.locator('.factory-running-active')).toBeVisible();
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
+    const rhythmBars = factory.locator('.factory-rhythm-bar-pair i:not([hidden])');
+    await expect(rhythmBars.first()).toHaveCSS('animation-name', 'factory-rhythm-bar-grow');
+    expect(await rhythmBars.last().evaluate((element) => getComputedStyle(element).animationDelay)).toBe('0.21s');
     await expect(factory.locator('.factory-station')).toHaveCount(4);
     expect(await factory.locator('.factory-station a').count()).toBeGreaterThan(0);
     expect(await page.locator('.factory-intro').evaluate((element) =>
@@ -115,6 +118,28 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     )).toBe(viewport.stationColumns);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
+});
+
+test('disables Overview rhythm animation when reduced motion is preferred', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.evaluate(async ({ documentModel, sourceData, presenterModuleUrl }) => {
+    const { renderDashboard } = await import(presenterModuleUrl);
+    const rendered = renderDashboard({ document: documentModel, sources: sourceData });
+    document.querySelector('#root')?.replaceChildren(rendered);
+  }, {
+    documentModel: {
+      'language-version': dashboardDocument['language-version'],
+      dashboard: {
+        id: 'overview-reduced-motion',
+        title: 'Overview reduced motion',
+        pages: [overviewPage]
+      }
+    },
+    sourceData: sources,
+    presenterModuleUrl: 'http://dashboard.test/src/presenter.js'
+  });
+
+  await expect(page.locator('.factory-rhythm-bar-pair i:not([hidden])').first()).toHaveCSS('animation-name', 'none');
 });
 
 test('renders the factory structure immediately with only unresolved widgets pending', async ({ page }) => {

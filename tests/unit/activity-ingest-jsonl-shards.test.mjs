@@ -159,7 +159,7 @@ test('ingest-jsonl injects every run shard before event shards', async () => {
   );
 });
 
-test('phased shard names preserve source order and pair exactly', async () => {
+test('phased shard names preserve source order for non-empty phase pairs', async () => {
   const { root, shardDirectory } = await fixture();
   const sourcePath = path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl');
   const source = await readFile(sourcePath, 'utf8');
@@ -190,6 +190,35 @@ test('phased shard names preserve source order and pair exactly', async () => {
   assert.match(runs[1], /^gh-aw-logs-2000000000-bbbb-/);
   assert.ok(hashes[`gh-aw-logs-runs/${runs[0]}`]);
   assert.ok(hashes[`gh-aw-logs-events/${events[1]}`]);
+});
+
+test('hash-payloads drops empty phased shards from files and hashes', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'activity-empty-phased-shards-'));
+  const shardDirectory = path.join(root, 'gh-aw-logs-shards');
+  const runsDirectory = path.join(root, 'gh-aw-logs-runs');
+  const eventsDirectory = path.join(root, 'gh-aw-logs-events');
+  await mkdir(shardDirectory, { recursive: true });
+  await writeFile(
+    path.join(shardDirectory, 'gh-aw-logs-1000000000-aaaa.jsonl'),
+    `${JSON.stringify({ schema_version: 2, kind: 'unknown' })}\n`,
+  );
+
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.resolve('activity/cao.mjs'),
+    'hash-payloads',
+    '--shard-dir',
+    shardDirectory,
+    '--runs-dir',
+    runsDirectory,
+    '--events-dir',
+    eventsDirectory,
+  ]);
+
+  const hashes = JSON.parse(stdout);
+  assert.deepEqual(await readdir(runsDirectory), []);
+  assert.deepEqual(await readdir(eventsDirectory), []);
+  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-runs/')).length, 0);
+  assert.equal(Object.keys(hashes).filter((name) => name.startsWith('gh-aw-logs-events/')).length, 0);
 });
 
 test('hash-payloads upgrades the legacy cached layout to phased shards', async () => {

@@ -300,13 +300,19 @@ and repository scope. They MUST NOT be treated as evidence that a Workflow or
 Run exists, executed, or executed in a package target repository.
 
 Inventory inputs SHALL provide static declarations and maintenance evidence:
-Package configuration, enrolled Repository metadata, and declared control-plane
-Workflow metadata. Cached gh-aw JSONL SHALL provide observed runtime evidence:
-Repository, Workflow, Run, Job, Session, and Event observations. A declared
-Workflow MAY exist without an observed Run. A runtime Workflow in a remote
-repository MAY be known only after a retained `workflow_runs` or enriched `run`
-observation. Queries MUST preserve that distinction rather than fabricate
-runtime completeness from inventory.
+Package configuration, enrolled Repository metadata, declared control-plane
+Workflow metadata, and bounded GitHub Actions workflow registry metadata for
+each resolved Repository. Registry metadata MAY enrich Workflow path, display
+name, active or disabled state, native identifier, and link without an observed
+Run. Repository-owned registry Workflows MUST remain standalone and MUST NOT
+inherit Package membership, worker status, admission, or rollout authority from
+repository enrollment. Cached gh-aw JSONL SHALL provide observed runtime
+evidence: Repository, Workflow, Run, Job, Session, and Event observations. A
+declared or registered Workflow MAY exist without an observed Run. Queries MUST
+preserve that distinction and registry coverage metadata rather than fabricate
+runtime or inventory completeness. Deleted registry entries SHALL NOT appear as
+current Workflows, and local compilation SHALL NOT convert missing or unknown
+registry evidence into an active runtime state.
 
 Each resolved Repository SHALL have an independent `--cached-logs` wildcard
 prefix in the shared shard directory. Repeated collection SHALL reuse known

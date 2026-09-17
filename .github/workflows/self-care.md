@@ -71,7 +71,6 @@ permissions:
   copilot-requests: write
 
 engine: copilot
-model: copilot/gpt-5.4
 
 strict: true
 

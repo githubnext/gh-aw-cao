@@ -155,25 +155,19 @@ function context() {
 }
 
 describe('renderPackageNavigation', () => {
-  it('renders weekly operational-value plots for only the selected package workers', () => {
+  it('renders the Insights facet for the selected package', () => {
     const rendered = renderPackageRouteView({
       ...context(),
       pageId: 'package-insights',
-      sourceNames: ['workflows', 'operational-values'],
+      sourceNames: ['workflows'],
       elementConfig: { body: 'insights' }
     });
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'package', value: 'ambient-context' }
     }));
 
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')).toBeNull();
-    expect(rendered.querySelector('.value-report h2')?.textContent).toBe('Ambient Context / AGENTS.md');
-    expect(rendered.querySelector('.value-score')?.textContent).toContain('75%');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Outcome change from first observation');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Primary operational value+25.0 pts');
-    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('Weekly operational attainment');
-    expect(rendered.querySelector('.value-attainment .primary-weekly')).not.toBeNull();
-    expect(rendered.textContent).not.toContain('github/other');
+    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.textContent).toBe('Insights');
+    expect(rendered.querySelector('.package-insights-content')).toBeNull();
   });
 
   it('renders reusable navigation for the selected package workflow view', () => {
@@ -183,12 +177,14 @@ describe('renderPackageNavigation', () => {
     }));
 
     expect(rendered.dataset.package).toBe('ambient-context');
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewWorkflowsRuns');
+    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
     expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context');
     expect([...rendered.querySelectorAll('.package-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-package-detail?package=ambient-context',
+      '#page-package-insights?package=ambient-context',
       '#page-package-workflows?package=ambient-context',
-      '#page-package-runs?package=ambient-context'
+      '#page-package-runs?package=ambient-context',
+      '#page-package-issues?package=ambient-context'
     ]);
     expect(rendered.querySelector('.package-readme h1')?.textContent).toBe('Ambient Context');
     expect(rendered.querySelector('.package-readme h2')?.textContent).toBe('Capabilities');
@@ -215,7 +211,7 @@ describe('renderPackageNavigation', () => {
     }));
 
     expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-workflows?package=ambient-context');
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewWorkflowsRuns');
+    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
   });
 
   describe('workflow run navigation', () => {

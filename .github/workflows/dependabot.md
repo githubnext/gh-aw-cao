@@ -88,7 +88,7 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [dependabot-release-train-updater]
+    workflows: [dependabot-update-planner]
     max: 50
   threat-detection: false
 
@@ -97,7 +97,7 @@ source: githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
 
 # Dependabot
 
-Package orchestrator for organization-wide Dependabot plan maintenance. Use the shared control plane to select target repositories and dispatch `dependabot-release-train-updater`; keep dispatch repository-scoped and let the updater maintain one agent-ready issue covering all current Dependabot updates for each selected repository.
+Package orchestrator for organization-wide Dependabot plan maintenance. Use the shared control plane to select target repositories and dispatch the `dependabot-update-planner` update planner; keep dispatch repository-scoped and let the planner maintain one agent-ready issue covering all current Dependabot updates for each selected repository.
 
 ## Inputs and scope
 
@@ -111,7 +111,7 @@ Package orchestrator for organization-wide Dependabot plan maintenance. Use the 
 Prefer repositories with evidence of security risk or dependency repair need:
 
 1. Open dependency alerts, especially critical/high alerts, direct dependencies, and runtime-exposed packages.
-2. Existing dependency update PRs or prior release-train PRs that are conflicted, stale, duplicated, or failing because lockfiles or manifests drifted from the base branch.
+2. Existing Dependabot update PRs that are conflicted, stale, duplicated, or failing because lockfiles or manifests drifted from the base branch.
 3. Recognizable manifests, lockfiles, workspace or solution roots, and CI paths that indicate a manageable manifest topology.
 4. Recent dependency-update failures, actionable Dependabot errors, or registry/toolchain/configuration defects blocking safe updates.
 5. Recent dependency maintenance activity showing the repository is active and worth servicing now.
@@ -121,7 +121,7 @@ Deprioritize repositories with no recognized dependency ecosystem, unreadable ma
 Prioritize work in this order:
 
 1. **P0 security** — reachable or plausibly reachable critical/high alerts with a known patched version.
-2. **P0 repair** — an existing dependency update or release-train PR is conflicted, stale, broken by lockfile drift, or no longer matches the base branch.
+2. **P0 repair** — an existing Dependabot update PR is conflicted, stale, broken by lockfile drift, or no longer matches the base branch.
 3. **P1 security** — medium/low alerts, transitive fixes, or cases with uncertain reachability but a clear path to a safer state.
 4. **P1 reliability/configuration** — registry, toolchain, permissions, grouping, or Dependabot configuration defects that block safe updates.
 5. **P2 routine** — compatible patch/minor maintenance, oldest and lowest-risk first.
@@ -130,15 +130,15 @@ Use age, exploitability evidence, dependency directness, runtime use, deployment
 
 ## Dispatch model
 
-- This package uses the shared control plane, so dispatch stays repository-scoped: select the best candidate repositories first, then dispatch one `dependabot-release-train-updater` run per selected repository.
-- Do not try to fan out one dispatch per dependency or per bundle from the orchestrator. Instead, select repositories where the updater can produce the highest-value manifest-aware dependency work.
+- This package uses the shared control plane, so dispatch stays repository-scoped: select the best candidate repositories first, then dispatch one `dependabot-update-planner` run per selected repository.
+- Do not try to fan out one dispatch per dependency or per bundle from the orchestrator. Instead, select repositories where the update planner can produce the highest-value manifest-aware dependency work.
 - If a repository already has a saturated dependency PR queue with no higher-priority repair or security need, prefer another candidate.
 
-## Updater
+## Update planner
 
-- `dependabot-release-train-updater`: reads manifests, lockfiles, Dependabot PRs and alerts, CI evidence, package usage, tests, and observability configuration; builds one complete repository plan while preserving independently testable update groups.
-- The updater maintains one stable, agent-ready issue per repository, refreshes its full description on later runs, and comments after every refresh.
-- The updater never creates or changes a pull request. Its issue tells a human how to assign the complete checklist to a coding agent; it refreshes the durable issue to a completed description when work reaches zero and emits a no-op only when no plan exists.
+- The `dependabot-update-planner` workflow, displayed as **Dependabot / Update Planner**, reads manifests, lockfiles, Dependabot PRs and alerts, CI evidence, package usage, tests, and observability configuration; it builds one complete repository plan while preserving independently testable update groups.
+- The update planner maintains one stable, agent-ready issue per repository, refreshes its full description on later runs, and comments after every refresh.
+- The update planner never creates or changes a pull request. Its issue tells a human how to assign the complete checklist to a coding agent; it refreshes the durable issue to a completed description when work reaches zero and emits a no-op only when no plan exists.
 
 ## Completion
 

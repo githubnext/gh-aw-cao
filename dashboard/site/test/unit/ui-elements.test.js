@@ -895,7 +895,7 @@ describe('UI elements', () => {
     }));
 
     expect(rendered?.querySelector('.package-tabs [aria-current="page"]')?.textContent).toBe('Overview');
-    expect(rendered?.querySelector('.package-tabs')?.textContent).toBe('OverviewWorkflowsRuns');
+    expect(rendered?.querySelector('.package-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
   });
 
   it('renders the packages page shell through one declarative element composition', () => {

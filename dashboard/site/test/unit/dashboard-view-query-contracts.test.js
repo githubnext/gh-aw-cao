@@ -57,6 +57,17 @@ function sourceNamesOf(view) {
 }
 
 describe('dashboard view query contracts', () => {
+  it('keeps package run navigation first and failure views scoped to dispatches', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'package-runs');
+    const views = viewsOf(page);
+
+    expect(views[0]?.id).toBe('package-run-navigation');
+    for (const viewId of ['package-failure-reason-distribution', 'package-failed-dispatch-table']) {
+      const view = views.find((candidate) => candidate.id === viewId);
+      expect(/** @type {Record<string, unknown> | undefined} */ (view?.data)?.source).toBe('dispatches');
+    }
+  });
+
   it('resolves every authored view source through canonical data or Dashboard Language', () => {
     const unresolved = dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap((view) => (
       sourceNamesOf(view)

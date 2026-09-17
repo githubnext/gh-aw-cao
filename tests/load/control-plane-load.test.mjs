@@ -15,7 +15,7 @@ const program = controlProgram();
 const workflowSource = `---
 safe-outputs:
   dispatch-workflow:
-    workflows: [dependabot-release-train-updater]
+    workflows: [dependabot-update-planner]
 ---
 `;
 
@@ -31,14 +31,14 @@ elif [[ "$arguments" == *"repos/acme/control/contents/.github/workflows/cao.json
 elif [[ "$arguments" == *"contents/.github/workflows/dependabot.md"* ]]; then
   printf '%s\\n' "$CONTROL_SOURCE_B64"
 elif [[ "$arguments" == *"actions/workflows?per_page=100"* ]]; then
-  printf '%s\\n' '{"id":1,"name":"Dependabot / Release Trains","path":".github/workflows/dependabot-release-train-updater.lock.yml","state":"active"}'
+  printf '%s\\n' '{"id":1,"name":"Dependabot / Update Planner","path":".github/workflows/dependabot-update-planner.lock.yml","state":"active"}'
 elif [[ "$arguments" == aw\\ logs\\ dependabot\\ --start-date* ]]; then
   if [[ "\${MOCK_FAIL_BUDGET:-false}" == "true" ]]; then
     printf 'invalid budget data\n'
     exit 1
   fi
   printf '%s\\n' '{"runs":[{"run_id":1,"status":"completed","aic":100}]}'
-elif [[ "$arguments" == aw\\ logs\\ dependabot-release-train-updater* ]]; then
+elif [[ "$arguments" == aw\\ logs\\ dependabot-update-planner* ]]; then
   if [[ "\${MOCK_FAIL_BUDGET:-false}" == "true" ]]; then
     printf 'invalid budget data\n'
     exit 1
@@ -202,14 +202,14 @@ test("control precompute attaches package target modes to candidates", () => {
     const output = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
     assert.equal(output.safe_output_mode, "review");
     assert.deepEqual(output.worker_workflows[0], {
-      configured: "dependabot-release-train-updater",
+      configured: "dependabot-update-planner",
       matched: true,
-      worker: "release-train-updater",
+      worker: "update-planner",
       policy_enabled: true,
       max_mode: "live",
       id: 1,
-      name: "Dependabot / Release Trains",
-      path: ".github/workflows/dependabot-release-train-updater.lock.yml",
+      name: "Dependabot / Update Planner",
+      path: ".github/workflows/dependabot-update-planner.lock.yml",
       state: "active",
       eligible: true,
       skip_reason: null,

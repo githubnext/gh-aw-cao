@@ -1,13 +1,15 @@
 name: Dependabot
-description: Immutable workflow for repository-scoped, agent-ready Dependabot update plans.
+description: Durable repository-scoped Dependabot update planning with human-consumption evidence.
 min-version: v0.89.15
 experimental: true
 includes:
   - ../aw.yml
   - .github/workflows/dependabot.md
-  - .github/workflows/dependabot-release-train-updater.md
+  - .github/workflows/dependabot-update-planner.md
 resources:
   - source: cao.json
     destination: .github/aw/dependabot/cao.json
   - source: dashboard.json
     destination: .github/aw/dashboards/dependabot.json
+  - source: .github/graders/dependabot-update-planner-operational-value.sh
+    destination: .github/aw/dependabot/graders/dependabot-update-planner-operational-value.sh

@@ -1541,8 +1541,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         'agent-assignments': {
           source: 'agent-assignments',
           rows: [{
-            'assignment-id': 'assignment:release-train-updater:74',
-            'agent-name': 'Release train updater',
+            'assignment-id': 'assignment:update-planner:74',
+            'agent-name': 'Dependabot update planner',
             'agent-state': 'waiting',
             objective: 'Update the Dependabot release train',
             'handoff-state': 'waiting-for-review',
@@ -2873,7 +2873,7 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
               chart: 'pie',
               encoding: {
                 x: { field: 'repository', type: 'nominal', title: 'Repository' },
-                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'Total AIC' }
+                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'Blocked requests' }
               }
             }]
           }],
@@ -2884,8 +2884,8 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
         usage: {
           source: 'usage',
           rows: [
-            { repository: 'a-very-long-repository-name-that-must-wrap-within-the-legend', aic: 5 },
-            { repository: 'service', aic: 3 }
+            { repository: 'a-very-long-repository-name-that-must-wrap-within-the-legend', aic: 4_280_186 },
+            { repository: 'service', aic: 2_568_112 }
           ],
           metadata: {
             'source-id': 'pie-layout-fixture',
@@ -2942,6 +2942,15 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   expect(segmentGeometry.lineCaps).toEqual(['round', 'round']);
   expect(segmentGeometry.transforms).toEqual(['none', 'none']);
   expect(segmentGeometry.vectorEffects).toEqual(['none', 'none']);
+  const centerTextGeometry = await chart.locator('svg').evaluate((svg) => {
+    const total = /** @type {SVGGraphicsElement} */ (svg.querySelector('.pie-chart-total-value'));
+    const label = /** @type {SVGGraphicsElement} */ (svg.querySelector('.pie-chart-total-label'));
+    return [total.getBBox(), label.getBBox()].map(({ x, width }) => ({ x, width }));
+  });
+  for (const { x, width } of centerTextGeometry) {
+    expect(x).toBeGreaterThanOrEqual(9);
+    expect(x + width).toBeLessThanOrEqual(33);
+  }
 
   const firstMark = chart.locator('.pie-chart-mark').first();
   expect(await firstMark.evaluate((mark) => {
@@ -2965,7 +2974,15 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   const operationalValuePage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value'
   );
+  const packageInsightsPage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'package-insights'
+  );
+  const packageIssuesPage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'package-issues'
+  );
   assert(operationalValuePage, 'Missing operational value page');
+  assert(packageInsightsPage, 'Missing package insights page');
+  assert(packageIssuesPage, 'Missing package issues page');
 
   await page.setContent(`
     <div id="root"></div>
@@ -3009,22 +3026,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
               description: 'Activity from centrally managed packages.',
             }))},
             ${JSON.stringify(operationalValuePage)},
-            {
-              id: 'package-insights',
-              kind: 'custom',
-              title: 'Package',
-              route: { 'hash-query-parameter': 'package' },
-              views: [
-                {
-                  id: 'package-operational-value',
-                  title: 'Package operational value',
-                  data: { sources: ['workflows', 'operational-values'] },
-                  mark: 'element',
-                  element: 'package-route',
-                  config: { body: 'insights' }
-                }
-              ]
-            },
+            ${JSON.stringify(packageInsightsPage)},
             {
               id: 'package-detail',
               kind: 'custom',
@@ -3090,6 +3092,18 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                   config: { body: 'runs' }
                 },
                 {
+                  id: 'package-run-status',
+                  title: 'Workflow run status',
+                  data: { source: 'package-runs', 'route-field': 'package' },
+                  mark: 'chart',
+                  chart: 'pie',
+                  'empty-message': 'No workflow runs were observed for this package in the current run window.',
+                  encoding: {
+                    x: { field: 'status', type: 'nominal', title: 'Status' },
+                    y: { field: 'started-at', type: 'quantitative', aggregate: 'count', title: 'Runs' }
+                  }
+                },
+                {
                   id: 'package-failure-reason-distribution',
                   title: 'Why these dispatches failed',
                   data: {
@@ -3100,6 +3114,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                   },
                   mark: 'chart',
                   chart: 'pie',
+                  'empty-message': 'No failed workflow dispatch runs were observed for this package in the current run window.',
                   encoding: {
                     x: { field: 'status-detail', type: 'nominal', title: 'Failure reason' },
                     y: { field: 'status-detail', type: 'quantitative', aggregate: 'count', title: 'Failed dispatches' }
@@ -3130,9 +3145,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                   }
                 },
                 {
-                  id: 'package-dispatch-table',
-                  title: 'All dispatches',
-                  data: { source: 'dispatches', 'route-field': 'package' },
+                  id: 'package-run-table',
+                  title: 'All workflow runs',
+                  data: { source: 'package-runs', 'route-field': 'package' },
                   mark: 'table',
                   controls: 'interactive',
                   encoding: {
@@ -3150,6 +3165,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                 }
               ]
             },
+            ${JSON.stringify(packageIssuesPage)},
             {
               id: 'package-reports',
               kind: 'custom',
@@ -3233,8 +3249,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
         outcomes: {
           source: 'outcomes',
           rows: [
-            { package: 'ambient-context', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', run: '3', 'run-conclusion': 'success', 'safe-output': 'ambient-review', 'outcome-title': 'Review ambient context proposal', 'outcome-summary': 'A review proposal is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-29T18:00:00Z', 'observed-at': '2026-08-29T18:05:00Z' },
-            { package: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-live', 'outcome-title': 'Reconcile ambient context', 'outcome-summary': 'Updated durable guidance.', 'outcome-category': 'pull-request', 'outcome-status': 'closed', 'outcome-state': 'lifecycle-close', 'rollout-mode': 'live', 'published-at': '2026-08-28T18:00:00Z', 'observed-at': '2026-08-28T18:05:00Z' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', run: '3', 'run-conclusion': 'success', 'safe-output': 'ambient-review', 'outcome-title': 'Review ambient context proposal', 'outcome-summary': 'A review proposal is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-29T18:00:00Z', 'observed-at': '2026-08-29T18:05:00Z' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-worker-issue', 'outcome-title': 'Review worker finding', 'outcome-summary': 'A worker finding is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-28T19:00:00Z', 'observed-at': '2026-08-28T19:05:00Z' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-live', 'outcome-title': 'Reconcile ambient context', 'outcome-summary': 'Updated durable guidance.', 'outcome-category': 'pull-request', 'outcome-status': 'closed', 'outcome-state': 'lifecycle-close', 'rollout-mode': 'live', 'published-at': '2026-08-28T18:00:00Z', 'observed-at': '2026-08-28T18:05:00Z' },
             { package: 'aw-doctor', workflow: '.github/workflows/aw-doctor.md', run: '1', 'run-conclusion': 'success', 'safe-output': 'maintenance-review', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' },
             { package: 'aw-doctor', workflow: '.github/workflows/aw-doctor.md', run: '2', 'run-conclusion': 'failure', 'safe-output': 'maintenance-live', 'rollout-mode': 'live', 'published-at': '2026-08-29T10:00:00Z', 'observed-at': '2026-08-29T10:00:00Z' }
           ],
@@ -3296,6 +3313,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
+  await page.getByRole('button', { name: 'Show card list view' }).click();
+  const awDoctorCard = page.locator('[data-page-id="packages"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
+  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
+  await awDoctorCard.click({ position: { x: 6, y: 6 } });
+  await expect(page).toHaveURL(/#page-package-detail\?package=aw-doctor$/);
   await page.evaluate(() => {
     window.location.hash = '#page-operational-value';
   });
@@ -3316,7 +3338,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
   await expect(page.locator('[data-nav-page-id="packages"]')).toHaveAttribute('aria-current', 'page');
   const packageNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
-  await expect(packageNavigation).toContainText('OverviewWorkflowsRuns');
+  await expect(packageNavigation).toContainText('OverviewInsightsWorkflowsRunsIssues');
   await expect(packageNavigation).toHaveCSS('display', 'flex');
   await expect(packageNavigation).toHaveCSS('border-bottom-style', 'solid');
   const currentPackageLink = packageNavigation.getByRole('link', { name: 'Overview' });
@@ -3348,13 +3370,27 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   await expect(packageWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
   await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
   await expect(packageWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
+  await packageNavigation.getByRole('link', { name: 'Runs' }).click();
+  const packageRunsPage = page.locator('[data-page-id="package-runs"]');
+  await expect(packageRunsPage.locator('.custom-view-grid > .custom-view').first()).toHaveAttribute('data-view-id', 'package-run-navigation');
+  await expect(packageNavigation.getByRole('link', { name: 'Runs' })).toHaveAttribute('aria-current', 'page');
+  await expect(packageRunsPage.locator('[data-view-id="package-run-status"] [data-chart-widget="pie"]')).toBeVisible();
+  await expect(packageRunsPage.locator('[data-view-id="package-failure-reason-distribution"] [data-chart-widget="pie"]')).toBeVisible();
+  await packageRunsPage.getByText('All workflow runs', { exact: true }).click();
+  await expect(packageRunsPage.locator('[data-view-id="package-run-table"] tbody tr')).toHaveCount(5);
+  await packageNavigation.getByRole('link', { name: 'Issues' }).click();
+  await expect(packageNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"] tbody tr')).toHaveCount(1);
+  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"]')).toContainText('Review worker finding');
+  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"]')).not.toContainText('Review ambient context proposal');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(packageNavigation).toHaveCSS('display', 'grid');
   await expect(packageNavigation).toHaveCSS('gap', '0px');
   await expect(packageNavigation).toHaveCSS('overflow', 'hidden');
   const mobilePackageLinks = packageNavigation.locator('a');
-  await expect(mobilePackageLinks).toHaveCount(3);
+  await expect(mobilePackageLinks).toHaveCount(5);
   await expect(mobilePackageLinks.first().locator('.tab-trailing-icon')).toBeVisible();
   expect(await mobilePackageLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
   await mobilePackageLinks.first().focus();
@@ -3366,6 +3402,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   expect(mobileLinkBoxes.every((box) => box.height >= 44)).toBe(true);
   expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
+  await packageNavigation.getByRole('link', { name: 'Insights' }).click();
+  await expect(packageNavigation.getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-page-id="package-insights"]')).toBeVisible();
+  await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context package.');
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {
@@ -3444,7 +3484,8 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   `);
 
   const filterBar = page.getByLabel('Dashboard filters');
-  await expect(page.locator('.dashboard-horizon-skeleton')).toBeVisible();
+  await expect(page.locator('.dashboard-horizon-skeleton')).toHaveCount(0);
+  await expect(page.locator('.horizon-toggle')).toHaveAccessibleName(/1 week/);
   await page.evaluate(() => /** @type {{ publishHorizonSources: () => void }} */ (
     /** @type {unknown} */ (window)
   ).publishHorizonSources());
@@ -3473,7 +3514,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
   await filterBar.locator('.horizon-toggle').click();
 
-  await filterBar.getByRole('checkbox', { name: 'review' }).uncheck();
+  await filterBar.getByRole('checkbox', { name: 'review' }).uncheck({ force: true });
   await expect(filterBar.locator('.count-badge')).toHaveText('2');
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('1');
   await expect.poll(() => page.evaluate(() => JSON.parse(

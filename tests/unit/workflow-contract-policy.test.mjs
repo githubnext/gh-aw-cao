@@ -258,7 +258,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
     "cao-evolution-failures-investigator.md": { credits: 500, timeout: 30 },
     "cao-evolution-compiler-security.md": { credits: 500, timeout: 45 },
-    "dependabot-release-train-updater.md": { credits: 600, timeout: 60 },
+    "dependabot-update-planner.md": { credits: 600, timeout: 60 },
     "eu-cra-compliance-article-14-reporting-readiness.md": { credits: 100, timeout: 30 },
     "eu-cra-compliance-conformity-release-evidence.md": { credits: 100, timeout: 30 },
     "eu-cra-compliance-scope-classifier.md": { credits: 100, timeout: 25 },

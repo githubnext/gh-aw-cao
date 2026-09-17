@@ -160,7 +160,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /GH_AW_SAFE_OUTPUTS_CONFIG:/);
     }
 
-    const generatedDependabotPlan = workflow("dependabot-release-train-updater.lock.yml", generatedDirectory);
+    const generatedDependabotPlan = workflow("dependabot-update-planner.lock.yml", generatedDirectory);
     assert.match(generatedDependabotPlan, /create_issue/);
     assert.match(generatedDependabotPlan, /update_issue/);
     assert.match(generatedDependabotPlan, /add_comment/);

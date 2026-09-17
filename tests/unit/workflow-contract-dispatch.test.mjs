@@ -136,7 +136,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["cao-evolution-efficiency.md", "cao-evolution", "efficiency"],
     ["cao-evolution-integrity.md", "cao-evolution", "integrity"],
     ["cao-evolution-reliability.md", "cao-evolution", "reliability"],
-    ["dependabot-release-train-updater.md", "dependabot", "release-train-updater"],
+    ["dependabot-update-planner.md", "dependabot", "update-planner"],
     ["eslint-rules-inventory.md", "eslint-rules", "inventory"],
     ["eslint-rules-miner.md", "eslint-rules", "miner"],
     ["eslint-rules-refiner.md", "eslint-rules", "refiner"],

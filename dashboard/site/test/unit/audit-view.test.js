@@ -15,6 +15,58 @@ const metadata = {
 };
 
 describe('Audit dashboard view', () => {
+  it('reuses package-filtered Audit views for the package Insights facet', () => {
+    const insights = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'package-insights');
+    const issues = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'package-issues');
+
+    expect(insights.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
+      'package-insights-navigation',
+      'package-audit-event-summary-buckets',
+      'package-audit-events-table'
+    ]);
+    expect(insights.views.slice(1).map((/** @type {{ data: Record<string, string> }} */ view) => view.data)).toEqual([
+      expect.objectContaining({ source: 'audit-event-summary-buckets', 'route-field': 'package' }),
+      expect.objectContaining({ source: 'audit-events', 'route-field': 'package' })
+    ]);
+    expect(issues.views
+      .filter((/** @type {{ data?: { source?: string } }} */ view) => view.data?.source === 'package-worker-issues')
+      .map((/** @type {{ data: Record<string, string> }} */ view) => view.data['route-field'])).toEqual([
+      'package',
+      'package'
+    ]);
+  });
+
+  it('projects only issue outcomes produced by package workers', () => {
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: dashboard.queries,
+      sourceNames: ['package-worker-issues'],
+      sources: {
+        outcomes: {
+          source: 'outcomes',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/orchestrator.md', 'safe-output': 'orchestrator-issue', 'outcome-category': 'issue' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/worker.md', 'safe-output': 'worker-issue', 'outcome-category': 'issue' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/worker.md', 'safe-output': 'worker-pr', 'outcome-category': 'pull-request' }
+          ],
+          metadata
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/orchestrator.md', 'workflow-role': 'orchestrator' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/worker.md', 'workflow-role': 'worker' }
+          ],
+          metadata
+        }
+      }
+    }));
+
+    expect(result['package-worker-issues'].rows).toEqual([
+      expect.objectContaining({ package: 'ambient-context', 'safe-output': 'worker-issue' })
+    ]);
+  });
+
   it('declares an aggregate chart before the reorganized event table', () => {
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'audit');
 
@@ -54,11 +106,19 @@ describe('Audit dashboard view', () => {
         events: {
           source: 'events',
           rows: [
-            { workflow: '.github/workflows/audit.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
-            { workflow: '.github/workflows/audit.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
-            { workflow: '.github/workflows/audit.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'info', 'event-summary': 'Repeated finding' },
-            { workflow: '.github/workflows/review.md', event: '4', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
-            { workflow: '.github/workflows/audit.md', event: '5', 'event-type': 'tool.call', 'event-status': 'high', 'event-summary': 'Repeated finding' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '1', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '2', 'event-type': 'audit.recommendation', 'event-status': 'medium', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '3', 'event-type': 'audit.finding', 'event-status': 'info', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/review.md', event: '4', 'event-type': 'audit.finding', 'event-status': 'high', 'event-summary': 'Repeated finding' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', event: '5', 'event-type': 'tool.call', 'event-status': 'high', 'event-summary': 'Repeated finding' }
+          ],
+          metadata
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.md', package: 'audit-package' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/review.md', package: 'review-package' }
           ],
           metadata
         }
@@ -67,11 +127,13 @@ describe('Audit dashboard view', () => {
 
     expect(result['audit-event-summary-buckets'].rows).toEqual([
       {
+        package: 'audit-package',
         workflow: '.github/workflows/audit.md',
         'event-summary': 'Repeated finding',
         events: 2
       },
       {
+        package: 'review-package',
         workflow: '.github/workflows/review.md',
         'event-summary': 'Repeated finding',
         events: 1

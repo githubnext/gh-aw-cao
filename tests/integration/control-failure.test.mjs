@@ -35,8 +35,8 @@ const failures = [
 
 const invalidPolicies = [
   ["invalid package kill switch", controlPolicy({ packagePolicy: { enabled: "invalid" } }), "control-plane.packages.dependabot.enabled must be a Boolean"],
-  ["invalid worker kill switch", controlPolicy({ workerPolicy: { enabled: "False" } }), "control-plane.packages.dependabot.workers.release-train-updater.enabled must be a Boolean"],
-  ["removed worker ceiling", controlPolicy({ workerPolicy: { "max-mode": "preview" } }), "control-plane.packages.dependabot.workers.release-train-updater.max-mode must be review or live"],
+  ["invalid worker kill switch", controlPolicy({ workerPolicy: { enabled: "False" } }), "control-plane.packages.dependabot.workers.update-planner.enabled must be a Boolean"],
+  ["removed worker ceiling", controlPolicy({ workerPolicy: { "max-mode": "preview" } }), "control-plane.packages.dependabot.workers.update-planner.max-mode must be review or live"],
   ["oversized scan cap", controlPolicy({ inventory: { "max-scan-repositories": 100001 } }), "control-plane.inventory.max-scan-repositories must be an integer in 1..100000"],
   ["invalid cell count", controlPolicy({ inventory: { "cell-count": 0 } }), "control-plane.inventory.cell-count must be an integer in 1..1000"],
   ["invalid cell index", controlPolicy({ inventory: { "cell-count": 4, "cell-index": 4 } }), "control-plane.inventory.cell-index must be smaller than cell-count"],
@@ -160,7 +160,7 @@ test("control precompute loads declared worker workflows from policy", () => {
   assert.equal(result.status, 0, result.stderr);
   const precompute = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
   assert.equal(precompute.authorized, true);
-  assert.equal(precompute.worker, "release-train-updater");
+  assert.equal(precompute.worker, "update-planner");
   assert.equal(precompute.worker_enabled, true);
   assert.equal(precompute.safe_output_mode, "review");
 });
@@ -185,7 +185,7 @@ test("control precompute writes a complete review worker envelope", () => {
     control_role: "worker",
     package: "dependabot",
     bundle: "dependabot",
-    worker: "release-train-updater",
+    worker: "update-planner",
     enabled: true,
     worker_enabled: true,
     worker_max_mode: "review",
@@ -251,11 +251,11 @@ case "$*" in
     printf '%s\\n' '---
 safe-outputs:
   dispatch-workflow:
-    workflows: [dependabot-release-train-updater]
+    workflows: [dependabot-update-planner]
 ---' | base64 | tr -d '\\n'
     ;;
   *actions/workflows*)
-    printf '{"id":1,"name":"Dependabot worker","path":".github/workflows/dependabot-release-train-updater.lock.yml","state":"active"}\\n'
+    printf '{"id":1,"name":"Dependabot worker","path":".github/workflows/dependabot-update-planner.lock.yml","state":"active"}\\n'
     ;;
   *repos/acme/target*)
     printf '{"id":1,"full_name":"acme/target","archived":false,"disabled":false,"private":true,"pushed_at":"2026-09-03T00:00:00Z","default_branch":"main"}\\n'
@@ -284,11 +284,11 @@ case "$*" in
     printf '%s\\n' '---
 safe-outputs:
   dispatch-workflow:
-    workflows: [dependabot-release-train-updater]
+    workflows: [dependabot-update-planner]
 ---' | base64 | tr -d '\\n'
     ;;
   *actions/workflows*)
-    printf '{"id":1,"name":"Dependabot worker","path":".github/workflows/dependabot-release-train-updater.lock.yml","state":"active"}\\n'
+    printf '{"id":1,"name":"Dependabot worker","path":".github/workflows/dependabot-update-planner.lock.yml","state":"active"}\\n'
     ;;
   *repos/acme/old-target*|*repos/acme/target*)
     printf '{"id":7,"full_name":"acme/target","archived":false,"disabled":false,"private":true,"pushed_at":"2026-09-03T00:00:00Z","default_branch":"main"}\\n'

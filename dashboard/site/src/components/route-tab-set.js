@@ -18,7 +18,7 @@ import { renderLinkTabs } from './tab-nav.js';
  * @returns {HTMLElement}
  */
 export function renderRouteTabSet(options) {
-  return renderLinkTabs({
+  const tabs = renderLinkTabs({
     className: options.className,
     ariaLabel: options.ariaLabel,
     tabs: options.tabs.map((tab) => ({
@@ -29,4 +29,6 @@ export function renderRouteTabSet(options) {
       current: tab.id === options.currentTab
     }))
   });
+  tabs.dataset.routeTabs = '';
+  return tabs;
 }

@@ -41,6 +41,13 @@ function normalizedId(value, fallback) {
     : fallback;
 }
 
+/** @param {unknown} value */
+function optionalString(value) {
+  return value !== undefined && value !== null && String(value).trim()
+    ? String(value).trim()
+    : undefined;
+}
+
 /**
  * Adapts the current published dashboard source document without exposing its
  * view-shaped field names beyond this boundary.
@@ -141,11 +148,15 @@ export function adaptDashboardSources(sources) {
       observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(workflows.metadata), 'workflow.observed-at'),
       data: {
         id: workflowCoordinateId(owner, repository, canonicalPath),
+        githubId: optionalString(row['workflow-id']),
         repositoryId: repositoryCoordinateId(owner, repository),
         name: row['workflow-name'] ?? path,
         path: canonicalPath,
         state: row['workflow-active'] === 'true' ? 'active'
           : row['workflow-active'] === 'false' ? 'disabled' : 'unknown',
+        registryState: optionalString(row['workflow-registry-state']),
+        createdAt: optionalString(row['created-at']),
+        updatedAt: optionalString(row['updated-at']),
         ghAwVersion: row['gh-aw-version'] ?? 'unknown',
         ghAwCurrentVersion: row['gh-aw-current-version'] ?? 'unknown',
         ghAwUpdateState: row['gh-aw-update-state'] ?? 'unknown',

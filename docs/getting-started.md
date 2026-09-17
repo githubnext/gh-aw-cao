@@ -116,8 +116,8 @@ Add the target owner to the generated `.github/workflows/cao.json`. The package 
 		"packages": {
 			"dependabot": {
 				"workers": {
-					"release-train-updater": {
-						"workflow": "dependabot-release-train-updater"
+					"update-planner": {
+						"workflow": "dependabot-update-planner"
 					}
 				}
 			}

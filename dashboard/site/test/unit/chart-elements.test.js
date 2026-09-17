@@ -142,7 +142,19 @@ describe('chart element helpers', () => {
 
     expect(legend.querySelector('strong')?.textContent).toBe('3,177,281');
     expect(chart.querySelector('.pie-chart-total-value')?.textContent).toBe('3,177,281');
+    expect(chart.querySelector('.pie-chart-total-value')?.getAttribute('textLength')).toBe('21');
+    expect(chart.querySelector('.pie-chart-total-value')?.getAttribute('lengthAdjust')).toBe('spacingAndGlyphs');
     expect(chart.querySelector('svg')?.getAttribute('aria-label')).toContain('blocked.example 3,177,281');
+  });
+
+  it('constrains long pie labels to the center of the chart', () => {
+    const chart = renderChartWidget('pie', [], [], {
+      entries: [['blocked.example', 6_848_298]],
+      total: 6_848_298
+    }, 'Blocked requests');
+
+    expect(chart.querySelector('.pie-chart-total-label')?.getAttribute('textLength')).toBe('21');
+    expect(chart.querySelector('.pie-chart-total-label')?.getAttribute('lengthAdjust')).toBe('spacingAndGlyphs');
   });
 
   it('toggles the pie table when the chart is tapped', () => {

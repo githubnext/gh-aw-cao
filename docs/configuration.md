@@ -25,8 +25,8 @@ This minimal policy enables the installed Dependabot package and its workers in 
     "packages": {
       "dependabot": {
         "workers": {
-          "release-train-updater": {
-            "workflow": "dependabot-release-train-updater"
+          "update-planner": {
+            "workflow": "dependabot-update-planner"
           }
         }
       }
@@ -83,8 +83,8 @@ For example, this policy keeps Dependabot in review across its scope while promo
           }
         },
         "workers": {
-          "release-train-updater": {
-            "workflow": "dependabot-release-train-updater"
+          "update-planner": {
+            "workflow": "dependabot-update-planner"
           }
         }
       }

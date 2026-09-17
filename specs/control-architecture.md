@@ -380,8 +380,8 @@ The effective record SHOULD contain only identifiers and provenance required for
     "packages": {
       "dependabot": {
         "workers": {
-          "release-train-updater": {
-            "workflow": "dependabot-release-train-updater"
+          "update-planner": {
+            "workflow": "dependabot-update-planner"
           }
         }
       }

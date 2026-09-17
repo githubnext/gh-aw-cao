@@ -25,7 +25,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.deepEqual(graders.sort(), [
     "cao-evolution-compiler-security-operational-value.sh",
     "cao-evolution-failures-investigator-operational-value.sh",
-    "dependabot-release-train-updater-operational-value.sh",
+    "dependabot-update-planner-operational-value.sh",
     "eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
     "eu-cra-compliance-conformity-release-evidence-operational-value.sh",
     "eu-cra-compliance-package-maintainer-operational-value.sh",
@@ -46,7 +46,6 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "software-development-practices-nist-ssdf-operational-value.sh",
   ]);
   const oneShotGraders = new Set([
-    "dependabot-release-train-updater-operational-value.sh",
     "repo-assist-issue-fix-operational-value.sh",
     "repo-assist-issue-triage-operational-value.sh",
     "repo-assist-maintenance-operational-value.sh",
@@ -57,7 +56,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     const workflowName = name.replace(/-operational-value\.sh$/, ".md");
     assert.match(
       workflow(workflowName),
-      new RegExp(`graders:\\s+operational-value:\\s+run: ${`./graders/${name}`.replaceAll(".", "\\.")}`),
+      new RegExp(`graders:\\s+operational-value:[\\s\\S]*?run: ${`./graders/${name}`.replaceAll(".", "\\.")}`),
       `${name}: workflow must execute the frozen operational-value evaluator`,
     );
     const definition = JSON.parse(execFileSync(executable, ["--definition"], { encoding: "utf8" }));
@@ -112,23 +111,10 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     );
   }
 
-  const dependabotWorker = workflow("dependabot-release-train-updater.md");
-  const dependabotName = "dependabot-release-train-updater-operational-value.sh";
-  const dependabotExecutable = join(gradersDirectory, dependabotName);
-  const dependabotEvaluator = readFileSync(dependabotExecutable, "utf8");
-  const dependabotFixtures = JSON.parse(readFileSync(
-    join(gradersDirectory, "dependabot-release-train-updater-operational-value.fixtures.json"),
-    "utf8",
-  ));
+  const dependabotWorker = workflow("dependabot-update-planner.md");
+  const dependabotName = "dependabot-update-planner-operational-value.sh";
+  const dependabotEvaluator = readFileSync(join(gradersDirectory, dependabotName), "utf8");
   assert.match(dependabotWorker, new RegExp(`graders:\\s+operational-value:[\\s\\S]*run: \\.\\/graders\\/${dependabotName}`));
-  for (const fixture of dependabotFixtures) {
-    const evaluate = () => JSON.parse(execFileSync(dependabotExecutable, {
-      encoding: "utf8",
-      input: JSON.stringify(fixture.request),
-    }));
-    assert.deepEqual(evaluate(), fixture.expected, fixture.name);
-    assert.deepEqual(evaluate(), fixture.expected, `${fixture.name}: deterministic rerun`);
-  }
   const auditorWorker = workflow("optimization-ai-credit-auditor.md");
   const auditorEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-auditor-operational-value.sh"), "utf8");
   const optimizerWorker = workflow("optimization-ai-credit-optimizer.md");
@@ -138,8 +124,12 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
   assert.match(dependabotWorker, /canonical unprefixed subject/i);
   assert.match(dependabotWorker, /Use that exact subject on every run/);
-  assert.match(dependabotEvaluator, /agent-ready-dependency-plan/);
-  assert.doesNotMatch(dependabotEvaluator, /--definition|--metric|--grade-run|MATURATION_SECONDS|gh api/);
+  assert.match(dependabotWorker, /repo-memory:/);
+  assert.match(dependabotWorker, /Do not call `search_issues`/);
+  assert.match(dependabotWorker, /target\/\.github\/dependabot\.md/);
+  assert.match(dependabotEvaluator, /dependabot-plan-consumption/);
+  assert.match(dependabotEvaluator, /--definition\|--metric\|--grade-run/);
+  assert.match(dependabotEvaluator, /repos\/\$evidence_repo\/issues\/\$issue_number/);
   assert.match(auditorWorker, /window_start: \$windowStart/);
   assert.match(auditorWorker, /window_end: \$windowEnd/);
   assert.match(auditorEvaluator, /workflow_path \/\/ \.workflow_name/);

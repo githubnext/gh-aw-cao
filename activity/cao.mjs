@@ -960,6 +960,12 @@ async function hashActivityPayloads({
     debugHash('hashed %s -> %s', filePath, digest);
     return digest;
   };
+  const payloadHasRecords = async (filePath) => {
+    const payload = JSON.parse(await readFile(filePath, 'utf8'));
+    return payload?.batch
+      && typeof payload.batch === 'object'
+      && Object.values(payload.batch).some((records) => Array.isArray(records) && records.length > 0);
+  };
   const hashes = {};
   if (databasePath) hashes[path.basename(databasePath)] = await hashFile(databasePath);
   if (shardDirectory) {
@@ -996,9 +1002,6 @@ async function hashActivityPayloads({
         runsDirectory ? ['runs', path.join(runsDirectory, phasedPayloadName)] : null,
         eventsDirectory ? ['events', path.join(eventsDirectory, phasedPayloadName)] : null
       ].filter(Boolean);
-      for (const [phase, outputPath] of outputPaths) {
-        retainedPayloads[phase].add(path.basename(outputPath));
-      }
       const missing = [];
       for (const output of outputPaths) {
         try {
@@ -1054,7 +1057,13 @@ async function hashActivityPayloads({
           await rename(temporaryPath, outputPath);
         }));
       }
-      for (const [, outputPath] of outputPaths) {
+      for (const [phase, outputPath] of outputPaths) {
+        if (!await payloadHasRecords(outputPath)) {
+          await rm(outputPath, { force: true });
+          debugHash('dropped empty %s shard %s', phase, outputPath);
+          continue;
+        }
+        retainedPayloads[phase].add(path.basename(outputPath));
         hashes[`${path.basename(path.dirname(outputPath))}/${path.basename(outputPath)}`] = await hashFile(outputPath);
       }
     }

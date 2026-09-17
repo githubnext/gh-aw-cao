@@ -65,7 +65,6 @@ permissions:
   pull-requests: read
 
 engine: copilot
-model: copilot/gpt-5.4
 strict: true
 max-ai-credits: 400
 max-daily-ai-credits: -1
@@ -117,15 +116,15 @@ pre-agent-steps:
   - name: Install dashboard dependencies
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: npm ci --prefix dashboard/site --ignore-scripts
-  - name: Cache Chromium
+  - name: Cache Playwright browsers
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
     with:
       path: ~/.cache/ms-playwright
-      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium
-  - name: Install Chromium
+      key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium-webkit
+  - name: Install Chromium and WebKit
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
-    run: npm exec --prefix dashboard/site -- playwright install --with-deps chromium
+    run: npm exec --prefix dashboard/site -- playwright install --with-deps chromium webkit
   - name: Validate dashboard baseline
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: |

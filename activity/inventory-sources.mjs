@@ -5,6 +5,8 @@ import { actionsLog as log } from "./actions-log.mjs";
 
 const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
 const POLICY_PATH = ".github/workflows/cao.json";
+const WORKFLOW_PAGE_SIZE = 100;
+const MAX_WORKFLOWS_PER_REPOSITORY = 10_000;
 
 function objectRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -14,20 +16,30 @@ function rolloutMode(value) {
   return ["review", "live"].includes(value) ? value : "unknown";
 }
 
-function metadata(name, generatedAt) {
-  return {
+function metadata(name, generatedAt, health = {}) {
+  const result = {
     "source-id": `central-agentic-ops-${name}`,
     "source-kind": "github",
     "as-of": generatedAt,
     "retrieved-at": generatedAt,
-    completeness: "complete",
+    completeness: health.complete === false ? "partial" : "complete",
     freshness: "fresh",
-    availability: "available",
+    availability: health.available === false ? "unavailable" : "available",
   };
+  if (Number.isFinite(health.expected)) result["coverage-expected"] = health.expected;
+  if (Number.isFinite(health.observed)) result["coverage-observed"] = health.observed;
+  if (health.operation) result["collection-operation"] = health.operation;
+  if (health.state) result["collection-state"] = health.state;
+  if (health.failureClass) result["failure-class"] = health.failureClass;
+  if (health.reason) result["collection-reason"] = health.reason;
+  if (Array.isArray(health.failures) && health.failures.length > 0) {
+    result["repository-failures"] = health.failures;
+  }
+  return result;
 }
 
-function source(name, rows, generatedAt) {
-  return { source: name, rows, metadata: metadata(name, generatedAt) };
+function source(name, rows, generatedAt, health) {
+  return { source: name, rows, metadata: metadata(name, generatedAt, health) };
 }
 
 function repositoryRows(discoveredRepositories, repository, generatedAt) {
@@ -69,6 +81,40 @@ async function githubResponse(fetchImplementation, apiUrl, token, path) {
   return response;
 }
 
+function repositoryFullName(candidate) {
+  return typeof candidate === "string" ? candidate : candidate?.full_name;
+}
+
+function repositoryFailure(repository, status, reason) {
+  return {
+    repository,
+    state: "unavailable",
+    "failure-class": status === 403 ? "permission" : "request",
+    status: Number.isInteger(status) ? status : null,
+    reason,
+  };
+}
+
+function repositoryHealth(discoveredRepositories, rows) {
+  const failures = discoveredRepositories
+    .map((repository) => repository?.inventoryDiscovery)
+    .filter(Boolean);
+  const expected = discoveredRepositories.length;
+  const observed = expected - failures.length;
+  return {
+    available: rows.length > 0 || expected === 0,
+    complete: failures.length === 0,
+    expected,
+    observed,
+    operation: "repository-discovery",
+    state: failures.length === 0 ? "complete" : rows.length > 0 ? "partial" : "failed",
+    failureClass: failures.some((failure) => failure["failure-class"] === "permission") ? "permission"
+      : failures.length > 0 ? "request" : "",
+    reason: failures.length > 0 ? `${failures.length} repositories could not be inspected` : "",
+    failures,
+  };
+}
+
 export async function discoverRepositories(controlSettings, {
   fetchImplementation = fetch,
   token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
@@ -86,9 +132,32 @@ export async function discoverRepositories(controlSettings, {
     }
     const repositories = [];
     for (const repository of allowedRepositories) {
-      const response = await githubResponse(fetchImplementation, apiUrl, token, `repos/${repository}`);
-      if (!response.ok) throw new Error(`Unable to discover allowed repository ${repository}: ${response.status}`);
-      repositories.push(await response.json());
+      try {
+        const response = await githubResponse(fetchImplementation, apiUrl, token, `repos/${repository}`);
+        if (!response.ok) {
+          repositories.push({
+            full_name: repository,
+            visibility: "unknown",
+            inventoryDiscovery: repositoryFailure(
+              repository,
+              response.status,
+              `Unable to discover allowed repository ${repository}: ${response.status}`,
+            ),
+          });
+          continue;
+        }
+        repositories.push(await response.json());
+      } catch (error) {
+        repositories.push({
+          full_name: repository,
+          visibility: "unknown",
+          inventoryDiscovery: repositoryFailure(
+            repository,
+            null,
+            `Unable to discover allowed repository ${repository}: ${error?.message || error}`,
+          ),
+        });
+      }
     }
     return repositories;
   }
@@ -157,6 +226,143 @@ export async function discoverRepositories(controlSettings, {
     if (repositories.length >= maximum) break;
   }
   return repositories;
+}
+
+function workflowPath(value) {
+  const path = String(value || "").trim();
+  return path.startsWith(".github/workflows/") ? path : "";
+}
+
+function canonicalWorkflowPath(value) {
+  const path = workflowPath(value).toLowerCase();
+  return path.endsWith(".lock.yml")
+    ? `${path.slice(0, -".lock.yml".length)}.md`
+    : path;
+}
+
+function workflowRegistryRecord(repository, candidate) {
+  const path = workflowPath(candidate?.path);
+  const name = String(candidate?.name || "").trim();
+  if (candidate?.state === "deleted") return null;
+  if (!path || !name) return null;
+  return {
+    repository,
+    id: candidate.id ?? null,
+    name,
+    path,
+    state: String(candidate.state || "unknown"),
+    htmlUrl: String(candidate.html_url || ""),
+    createdAt: candidate.created_at || null,
+    updatedAt: candidate.updated_at || null,
+  };
+}
+
+export async function discoverWorkflowRegistries(discoveredRepositories, {
+  fetchImplementation = fetch,
+  token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
+  apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
+  controlRepository = "",
+} = {}) {
+  if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover workflows");
+  const repositoryCandidates = new Map();
+  for (const candidate of discoveredRepositories) {
+    const repository = String(repositoryFullName(candidate) || "").trim();
+    if (repository) repositoryCandidates.set(repository.toLowerCase(), candidate);
+  }
+  const controlRepositoryName = String(controlRepository || "").trim();
+  if (controlRepositoryName && !repositoryCandidates.has(controlRepositoryName.toLowerCase())) {
+    repositoryCandidates.set(controlRepositoryName.toLowerCase(), { full_name: controlRepositoryName });
+  }
+  const registries = [];
+  for (const candidate of repositoryCandidates.values()) {
+    const repository = String(repositoryFullName(candidate) || "").trim();
+    if (!repository) continue;
+    const workflows = [];
+    let expected = null;
+    let observed = 0;
+    let pages = 0;
+    let failure = null;
+    for (let page = 1; observed < MAX_WORKFLOWS_PER_REPOSITORY; page += 1) {
+      try {
+        const response = await githubResponse(
+          fetchImplementation,
+          apiUrl,
+          token,
+          `repos/${repository}/actions/workflows?per_page=${WORKFLOW_PAGE_SIZE}&page=${page}`,
+        );
+        if (!response.ok) {
+          failure = repositoryFailure(
+            repository,
+            response.status,
+            `Unable to discover workflows for ${repository}: ${response.status}`,
+          );
+          break;
+        }
+        const payload = await response.json();
+        if (!Array.isArray(payload?.workflows)) {
+          failure = repositoryFailure(repository, response.status, `Workflow discovery returned invalid data for ${repository}`);
+          break;
+        }
+        pages += 1;
+        if (Number.isFinite(Number(payload.total_count))) expected = Number(payload.total_count);
+        const pageRecords = payload.workflows.slice(0, MAX_WORKFLOWS_PER_REPOSITORY - observed);
+        observed += pageRecords.length;
+        const pageWorkflows = pageRecords
+          .map((workflow) => workflowRegistryRecord(repository, workflow))
+          .filter(Boolean);
+        workflows.push(...pageWorkflows);
+        if (payload.workflows.length < WORKFLOW_PAGE_SIZE || (expected !== null && observed >= expected)) break;
+      } catch (error) {
+        failure = repositoryFailure(
+          repository,
+          null,
+          `Unable to discover workflows for ${repository}: ${error?.message || error}`,
+        );
+        break;
+      }
+    }
+    if (!failure && expected !== null && observed < expected) {
+      failure = repositoryFailure(
+        repository,
+        200,
+        `Workflow discovery for ${repository} stopped after ${observed} of ${expected} workflows`,
+      );
+    }
+    registries.push({
+      repository,
+      workflows,
+      expected,
+      observed,
+      pages,
+      state: failure ? workflows.length > 0 ? "partial" : "unavailable" : "complete",
+      failure,
+    });
+  }
+  return registries;
+}
+
+function workflowRegistryHealth(registries, rows) {
+  const failures = registries.flatMap((registry) => registry.failure ? [{
+    ...registry.failure,
+    state: registry.state,
+    expected: registry.expected,
+    observed: registry.observed,
+    pages: registry.pages,
+  }] : []);
+  const expected = registries.length;
+  const observed = registries.filter((registry) => registry.state === "complete").length;
+  return {
+    available: rows.length > 0 || observed > 0 || expected === 0,
+    complete: failures.length === 0,
+    expected,
+    observed,
+    operation: "workflow-registry-discovery",
+    state: failures.length === 0 ? "complete" : observed > 0 || rows.length > 0 ? "partial" : "failed",
+    failureClass: failures.some((failure) => failure["failure-class"] === "permission") ? "permission"
+      : failures.length > 0 ? "request" : "",
+    reason: failures.length > 0 ? `${failures.length} repository workflow registries were unavailable or incomplete` : "",
+    failures,
+  };
 }
 
 function packageRows(inventory, controlSettings, generatedAt) {
@@ -297,16 +503,53 @@ function workflowPackageDetails(inventory, controlSettings) {
   return details;
 }
 
-function workflowRows(inventory, controlSettings, repository, generatedAt) {
+function workflowLink(workflow) {
+  return workflow.htmlUrl.startsWith("https://github.com/")
+    ? { relation: "workflow", href: workflow.htmlUrl, label: `View ${workflow.name}` }
+    : undefined;
+}
+
+function remoteWorkflowRow(workflow, generatedAt) {
+  const [organization, repository] = workflow.repository.split("/");
+  const active = workflow.state === "active"
+    ? "true"
+    : workflow.state.startsWith("disabled_") ? "false" : "unknown";
+  const link = workflowLink(workflow);
+  return {
+    organization,
+    repository,
+    workflow: workflow.path,
+    "workflow-name": workflow.name,
+    "workflow-role": "standalone",
+    "workflow-active": active,
+    "workflow-registry-state": workflow.state,
+    ...(workflow.id !== null ? { "workflow-id": String(workflow.id) } : {}),
+    ...(link ? { "workflow-link": link } : {}),
+    ...(workflow.createdAt ? { "created-at": workflow.createdAt } : {}),
+    ...(workflow.updatedAt ? { "updated-at": workflow.updatedAt } : {}),
+    "rollout-mode": "unknown",
+    "observed-at": generatedAt,
+  };
+}
+
+function workflowRows(inventory, controlSettings, repository, generatedAt, workflowRegistries = []) {
   const [organization, repositoryName] = repository.split("/");
   const packageDetails = workflowPackageDetails(inventory, controlSettings);
-  return (inventory.workflows || []).map((workflow) => {
+  const rows = new Map();
+  for (const registry of workflowRegistries) {
+    for (const workflow of registry.workflows) {
+      const row = remoteWorkflowRow(workflow, generatedAt);
+      const key = `${workflow.repository.toLowerCase()}:${canonicalWorkflowPath(workflow.path)}`;
+      rows.set(key, row);
+    }
+  }
+  for (const workflow of inventory.workflows || []) {
     const details = packageDetails.get(workflow.sourcePath);
     const repositoryKey = repository.toLowerCase();
     const targets = (details?.packageTargets || [])
       .filter((target) => target.explicit || target.repository.toLowerCase() !== repositoryKey)
       .map(({ repository: targetRepository, mode }) => ({ repository: targetRepository, mode }));
-    return {
+    const localRow = {
       organization,
       repository: repositoryName,
       ...(details ? {
@@ -335,7 +578,28 @@ function workflowRows(inventory, controlSettings, repository, generatedAt) {
       )?.mode || details?.configuredMode || "unknown",
       "observed-at": generatedAt,
     };
-  });
+    const key = `${repositoryKey}:${canonicalWorkflowPath(workflow.sourcePath)}`;
+    const remoteRow = rows.get(key);
+    rows.set(key, {
+      ...remoteRow,
+      ...localRow,
+      "workflow-name": remoteRow?.["workflow-name"] || localRow["workflow-name"],
+      "workflow-active": remoteRow
+        ? remoteRow["workflow-active"]
+        : workflowRegistries.length > 0 ? "unknown" : localRow["workflow-active"],
+      ...(remoteRow?.["workflow-registry-state"]
+        ? { "workflow-registry-state": remoteRow["workflow-registry-state"] }
+        : {}),
+      ...(remoteRow?.["workflow-id"] ? { "workflow-id": remoteRow["workflow-id"] } : {}),
+      ...(remoteRow?.["workflow-link"] ? { "workflow-link": remoteRow["workflow-link"] } : {}),
+      ...(remoteRow?.["created-at"] ? { "created-at": remoteRow["created-at"] } : {}),
+      ...(remoteRow?.["updated-at"] ? { "updated-at": remoteRow["updated-at"] } : {}),
+    });
+  }
+  return [...rows.values()].sort((left, right) => (
+    `${left.organization}/${left.repository}:${left.workflow}`
+      .localeCompare(`${right.organization}/${right.repository}:${right.workflow}`)
+  ));
 }
 
 function configurationPolicyRows(controlSettings) {
@@ -388,17 +652,26 @@ export function buildInventoryDashboardSources({
   inventory = {},
   controlSettings,
   discoveredRepositories = [],
+  workflowRegistries = [],
   repository = "",
   generatedAt = inventory.generatedAt || new Date().toISOString(),
 }) {
   const settings = objectRecord(controlSettings);
+  const repositories = repositoryRows(discoveredRepositories, repository, generatedAt);
+  const workflows = workflowRows(inventory, settings, repository, generatedAt, workflowRegistries);
   return {
     packages: source("packages", packageRows(inventory, settings, generatedAt), generatedAt),
-    repositories: source("repositories", repositoryRows(discoveredRepositories, repository, generatedAt), generatedAt),
+    repositories: source(
+      "repositories",
+      repositories,
+      generatedAt,
+      repositoryHealth(discoveredRepositories, repositories),
+    ),
     workflows: source(
       "workflows",
-      workflowRows(inventory, settings, repository, generatedAt),
+      workflows,
       generatedAt,
+      workflowRegistryHealth(workflowRegistries, workflows),
     ),
     "configuration-policy": source(
       "configuration-policy",
@@ -424,8 +697,21 @@ export async function main() {
       readFile(controlSettingsPath, "utf8").then(JSON.parse),
     ]);
     const discoveredRepositories = await discoverRepositories(controlSettings);
-    const sources = buildInventoryDashboardSources({ inventory, controlSettings, discoveredRepositories, repository });
+    const workflowRegistries = await discoverWorkflowRegistries(discoveredRepositories, {
+      controlRepository: repository,
+    });
+    const sources = buildInventoryDashboardSources({
+      inventory,
+      controlSettings,
+      discoveredRepositories,
+      workflowRegistries,
+      repository,
+    });
     await writeFile(path.resolve(outputPath), `${JSON.stringify(sources, null, 2)}\n`);
+    const incompleteRegistries = workflowRegistries.filter((registry) => registry.state !== "complete");
+    if (incompleteRegistries.length > 0) {
+      log.warning`Workflow registry discovery was incomplete for ${incompleteRegistries.length} repositories`;
+    }
     log.info`Wrote ${sources.repositories.rows.length} repositories, ${sources.packages.rows.length} packages, and ${sources.workflows.rows.length} workflows`;
   } finally {
     log.endGroup();
