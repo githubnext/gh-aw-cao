@@ -143,6 +143,10 @@ export function normalize(observations, options = {}) {
       [...records.values()].sort((left, right) => String(left.id).localeCompare(String(right.id)))
     ])
   ));
+  const sessionRuns = new Map(batch.sessions.map((session) => [session.id, session.runId]));
+  batch.events = batch.events.map((event) => event.runId === undefined
+    ? { ...event, runId: sessionRuns.get(event.sessionId) }
+    : event);
   batch.events = orderEvents(batch.events);
   return batch;
 }

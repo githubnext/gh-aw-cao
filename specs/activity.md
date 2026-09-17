@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Activity Specification
 description: Normative collection, snapshot, data-quality, authority, and consumer requirements for CAO Activity.
-version: 1.1.0
+version: 1.2.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Activity Specification
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Status:** Working Draft
 **Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/activity.md
 **Editors:** GitHub Next
@@ -38,8 +38,9 @@ Activity consumer conforms when it satisfies Section 8.
 ## 2. Role and authority
 
 CAO Activity is deterministic collection infrastructure. It MUST collect one
-bounded `gh aw logs` JSONL snapshot for reuse. It MUST NOT normalize, index, or
-derive additional records from that snapshot.
+bounded `gh aw logs` JSONL snapshot for reuse. It MAY produce deterministic,
+rebuildable run-information and event transport shards from that snapshot, but
+MUST NOT supplement or reinterpret the collected evidence.
 
 Activity:
 
@@ -85,9 +86,12 @@ immutable identity derived from the publisher's workflow run ID and run
 attempt. A consumer that dispatches Activity MUST restore the exact snapshot
 for the completed run and attempt rather than an unspecified latest snapshot.
 
-The snapshot consists only of the JSONL produced by `gh aw logs`. Consumers
-MUST determine availability, completeness, freshness, and scope for their own
-use and MUST NOT infer those properties from row counts.
+The snapshot consists of the JSONL produced by `gh aw logs`, compact
+run-information shards, detailed event shards, and rebuildable projections.
+Every event transport record MUST carry its canonical run identity. A consumer
+MUST load all run-information shards before event shards. Consumers MUST
+determine availability, completeness, freshness, and scope for their own use
+and MUST NOT infer those properties from row counts.
 
 The concrete cache file and identity rule are defined by
 [`activity/README.md`](../activity/README.md). Changing the file or identity

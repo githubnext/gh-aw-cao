@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 8;
+export const CANONICAL_SCHEMA_VERSION = 9;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'package',
@@ -136,6 +136,7 @@ export function relationshipErrors(batch) {
   }
   for (const event of batch.events) {
     requireReference(event, 'sessionId', 'sessions');
+    requireReference(event, 'runId', 'runs');
   }
 
   return errors;

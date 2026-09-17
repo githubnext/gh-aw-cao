@@ -38,7 +38,7 @@ relationships.
 | **Run** | `github:run:<run-id>:attempt:<attempt>` | Repository and Workflow | Distinguishes every attempt of a GitHub Actions run. |
 | **Job** | `github:job:<github-id>` | Run | Represents one execution job within a run. |
 | **Session** | Stable source ID or deterministic source coordinate | Run; optionally Job | Groups one coherent operational execution context. |
-| **Event** | Stable source ID or deterministic source coordinate | Session | Records messages, tools, network, policy, safe-output, API, and runtime activity. |
+| **Event** | Stable source ID or deterministic source coordinate | Run and Session | Records messages, tools, network, policy, safe-output, API, and runtime activity. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
@@ -58,7 +58,7 @@ SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Da
 
 Observations can arrive at different times and enrich an existing entity. Explicit source precedence and observation time resolve conflicting fields; arrival order alone never decides the result.
 
-The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic agentic Sessions and Events. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
+The activity shard manifest is the dashboard's published operational input. The worker imports every compact run-information shard before downloading the larger event shards. Run records include immutable agent, model, duration, firewall, MCP, operational-value, and audit-priority aggregates; every Event includes its owning `runId` in addition to `sessionId`. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 

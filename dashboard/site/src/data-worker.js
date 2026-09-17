@@ -308,6 +308,28 @@ export function publishedNormalizedShards(hashes) {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+/** @param {unknown} hashes @param {'runs' | 'events'} phase */
+function publishedPhasedShards(hashes, phase) {
+  if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return [];
+  const pattern = new RegExp(`^gh-aw-logs-${phase}/[a-f0-9]{64}-[a-f0-9]{16}\\.json$`, 'i');
+  return Object.entries(/** @type {Record<string, unknown>} */ (hashes))
+    .filter(([name, hash]) => pattern.test(name)
+      && typeof hash === 'string'
+      && /^[a-f0-9]{64}$/i.test(hash))
+    .map(([name, hash]) => ({ name, hash: /** @type {string} */ (hash).toLowerCase(), phase }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+/** @param {unknown} hashes */
+export function publishedRunInformationShards(hashes) {
+  return publishedPhasedShards(hashes, 'runs');
+}
+
+/** @param {unknown} hashes */
+export function publishedEventShards(hashes) {
+  return publishedPhasedShards(hashes, 'events');
+}
+
 /**
  * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
@@ -380,11 +402,18 @@ export function processDataRequest(request, signal) {
           const payloadHashes = payloadHashesResponse?.ok
             ? await payloadHashesResponse.json().catch(() => null)
             : null;
+          const runInformationShards = publishedRunInformationShards(payloadHashes);
+          const eventShards = publishedEventShards(payloadHashes);
+          const phasedShards = runInformationShards.length > 0 && eventShards.length > 0
+            ? [...runInformationShards, ...eventShards]
+            : [];
           const normalizedShards = publishedNormalizedShards(payloadHashes);
-          const publishedShards = normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
+          const publishedShards = phasedShards.length > 0
+            ? phasedShards
+            : normalizedShards.length > 0 ? normalizedShards : publishedJsonlShards(payloadHashes);
           const shardLimit = debugShardLimit();
           const shards = shardLimit === undefined ? publishedShards : publishedShards.slice(0, shardLimit);
-          const normalized = normalizedShards.length > 0;
+          const normalized = phasedShards.length > 0 || normalizedShards.length > 0;
           const shardCount = shards.length;
           debugIngestion('loaded activity manifest', {
             source: sourceUrl.pathname,

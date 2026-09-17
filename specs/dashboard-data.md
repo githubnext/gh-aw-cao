@@ -792,6 +792,7 @@ erDiagram
   }
   EVENT {
     string id PK "deterministic semantic ID"
+    string runId FK "required owning run"
     string sessionId FK "required owning session"
     number sequence
     string timestamp
@@ -812,7 +813,7 @@ falls back to `(repositoryId, path)` or a source-namespaced
 values are encoded into the canonical string `id`; the individual components
 are not independently unique.
 
-Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. A Session MUST reference a Run and MAY reference a Job. Every Event MUST reference exactly one Session. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
+Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. A Session MUST reference a Run and MAY reference a Job. Every Event MUST reference exactly one Run and one Session. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
 
 ---
 
