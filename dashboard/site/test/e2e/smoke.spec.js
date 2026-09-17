@@ -2873,7 +2873,7 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
               chart: 'pie',
               encoding: {
                 x: { field: 'repository', type: 'nominal', title: 'Repository' },
-                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'Total AIC' }
+                y: { field: 'aic', type: 'quantitative', aggregate: 'sum', title: 'Blocked requests' }
               }
             }]
           }],
@@ -2884,8 +2884,8 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
         usage: {
           source: 'usage',
           rows: [
-            { repository: 'a-very-long-repository-name-that-must-wrap-within-the-legend', aic: 5 },
-            { repository: 'service', aic: 3 }
+            { repository: 'a-very-long-repository-name-that-must-wrap-within-the-legend', aic: 4_280_186 },
+            { repository: 'service', aic: 2_568_112 }
           ],
           metadata: {
             'source-id': 'pie-layout-fixture',
@@ -2942,6 +2942,15 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   expect(segmentGeometry.lineCaps).toEqual(['round', 'round']);
   expect(segmentGeometry.transforms).toEqual(['none', 'none']);
   expect(segmentGeometry.vectorEffects).toEqual(['none', 'none']);
+  const centerTextGeometry = await chart.locator('svg').evaluate((svg) => {
+    const total = /** @type {SVGGraphicsElement} */ (svg.querySelector('.pie-chart-total-value'));
+    const label = /** @type {SVGGraphicsElement} */ (svg.querySelector('.pie-chart-total-label'));
+    return [total.getBBox(), label.getBBox()].map(({ x, width }) => ({ x, width }));
+  });
+  for (const { x, width } of centerTextGeometry) {
+    expect(x).toBeGreaterThanOrEqual(9);
+    expect(x + width).toBeLessThanOrEqual(33);
+  }
 
   const firstMark = chart.locator('.pie-chart-mark').first();
   expect(await firstMark.evaluate((mark) => {
