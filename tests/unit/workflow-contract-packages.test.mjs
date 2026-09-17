@@ -326,6 +326,7 @@ test("root package CAO helper stays portable across POSIX-family shells", () => 
     mkdirSync(activityDirectory);
     mkdirSync(binDirectory);
     writeFileSync(helperPath, helper);
+    chmodSync(helperPath, 0o755);
     writeFileSync(join(activityDirectory, "cao.mjs"), "");
     writeFileSync(join(binDirectory, "node"), `#!/bin/sh
 : "\${CAO_NODE_ARGS:?}"
@@ -333,18 +334,22 @@ printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
 `);
     chmodSync(join(binDirectory, "node"), 0o755);
 
-    const shells = ["sh", "bash", "zsh"].filter((shell) => {
+    const shells = ["sh", "bash", "zsh"].flatMap((shell) => {
       try {
-        execFileSync(shell, ["-c", "exit 0"], { stdio: "ignore" });
-        return true;
+        const shellPath = execFileSync("sh", ["-c", "command -v \"$1\"", "shell-probe", shell], {
+          encoding: "utf8",
+        }).trim();
+        return shellPath === "" ? [] : [{ name: shell, path: shellPath }];
       } catch {
-        return false;
+        return [];
       }
     });
-    assert.ok(shells.includes("sh"));
+    assert.ok(shells.some(({ name }) => name === "sh"));
+    assert.ok(shells.some(({ name }) => name === "bash"));
 
-    for (const shell of shells) {
-      execFileSync(shell, [helperPath, "status", "with spaces"], {
+    const runHelper = (command, args, label) => {
+      writeFileSync(nodeArgsPath, "");
+      execFileSync(command, args, {
         cwd: temporaryRoot,
         env: {
           ...process.env,
@@ -355,8 +360,13 @@ printf '%s\\n' "$@" > "$CAO_NODE_ARGS"
       assert.deepEqual(
         readFileSync(nodeArgsPath, "utf8").trimEnd().split("\n"),
         [join(temporaryRoot, "activity", "cao.mjs"), "status", "with spaces"],
-        shell,
+        label,
       );
+    };
+
+    runHelper(helperPath, ["status", "with spaces"], "shebang");
+    for (const shell of shells) {
+      runHelper(shell.path, [helperPath, "status", "with spaces"], shell.name);
     }
   } finally {
     rmSync(temporaryRoot, { force: true, recursive: true });
