@@ -650,7 +650,7 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
-  await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with session data');
+  await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with event data');
   expect(await page.getByRole('button', { name: 'Show table view' }).evaluate(
     (toggle) => toggle.parentElement?.classList.contains('title-area')
   )).toBe(true);

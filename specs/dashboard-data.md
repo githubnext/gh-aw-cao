@@ -1,25 +1,25 @@
 ---
 title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
-version: 1.0.1
+version: 1.1.0
 status: Working Draft
 
 IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
 summaries so dashboard trends and run history can cover the complete published
-source. It SHALL retain detailed Job, Session, and Event records for the bounded
-30-day operational window. Expiring detail MUST NOT remove its retained Run or
+source. It SHALL retain detailed Event records for the bounded 30-day
+operational window. Expiring Events MUST NOT remove their retained Run or
 the Run's structural parents.
 editors:
   - GitHub Next
 ---
-| Browser storage | IndexedDB keeps all available run summaries and expires detailed Job, Session, and Event records after 30 days. |
+| Browser storage | IndexedDB keeps all available run summaries and expires detailed Event records after 30 days. |
 # Central Agentic Ops Dashboard Data Architecture Specification
 
-**Version:** 1.0.1
+**Version:** 1.1.0
 **Status:** Working Draft
 **Repository:** `githubnext/gh-aw-cao`
 **Target implementation:** Dashboard data subsystem
-**Date:** 2026-09-15
+**Date:** 2026-09-17
 
 ---
 
@@ -37,16 +37,14 @@ The dashboard SHALL normalize those sources into a new canonical domain model:
 Repository
   └── Workflow
        └── Run
-            └── Job
-                 └── Session
-                      └── Event
+            └── Event
 ```
 
 The browser SHALL maintain this canonical model in IndexedDB.
 
 IndexedDB SHALL be treated exclusively as disposable, reconstructable, derived state and MUST NOT become authoritative storage.
 
-Sessions SHALL represent heterogeneous operational transaction logs containing agent messages, tool activity, gateway activity, firewall decisions, safe-output processing, GitHub API operations, runtime events, and other execution observations in a unified ordered stream.
+Events SHALL form heterogeneous operational transaction logs for their owning Run, containing agent messages, tool activity, gateway activity, firewall decisions, safe-output processing, GitHub API operations, runtime events, and other execution observations in one ordered stream.
 
 The architecture SHALL support eventual consistency, idempotent conversion, large datasets, bounded-memory ingestion, immutable source generations, integrity verification, interruption recovery, staging generations, atomic generation activation, browser storage failures, schema evolution, Node.js testing, and real-browser testing.
 
@@ -229,9 +227,9 @@ SQLite can serve a historical archive while IndexedDB remains a bounded browser
 cache.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
-Repository, Workflow, and Run summaries. They SHALL retain detailed Job,
-Session, and Event records for the bounded 30-day operational window. Expiring
-detail MUST NOT remove its retained Run or the Run's structural parents.
+Repository, Workflow, and Run summaries. They SHALL retain detailed Event
+records for the bounded 30-day operational window. Expiring Events MUST NOT
+remove their retained Run or the Run's structural parents.
 
 ## 5.1 Completeness and archives
 
@@ -307,7 +305,7 @@ name, active or disabled state, native identifier, and link without an observed
 Run. Repository-owned registry Workflows MUST remain standalone and MUST NOT
 inherit Package membership, worker status, admission, or rollout authority from
 repository enrollment. Cached gh-aw JSONL SHALL provide observed runtime
-evidence: Repository, Workflow, Run, Job, Session, and Event observations. A
+evidence: Repository, Workflow, Run, and Event observations. A
 declared or registered Workflow MAY exist without an observed Run. Queries MUST
 preserve that distinction and registry coverage metadata rather than fabricate
 runtime or inventory completeness. Deleted registry entries SHALL NOT appear as
@@ -359,10 +357,7 @@ The mandatory execution joins are:
 Workflow.repositoryId -> Repository.id
 Run.repositoryId      -> Repository.id
 Run.workflowId        -> Workflow.id
-Job.runId             -> Run.id
-Session.runId         -> Run.id
 Event.runId           -> Run.id
-Event.sessionId       -> Session.id
 ```
 
 `Run.repositoryId` SHALL identify the repository where GitHub Actions executed
@@ -635,7 +630,7 @@ savings as gross or net realized value.
 ### 5.5.5 Canonical projection, SQL, and IndexedDB parity
 
 Token-optimization observations SHALL use compact canonical Events in the
-optimizer Run's Session rather than new source-shaped object stores:
+optimizer Run rather than new source-shaped object stores:
 
 ```text
 optimization.opportunity.observed
@@ -668,7 +663,7 @@ The IndexedDB Event representation SHALL use camel-case fields:
 
 The `gh-aw-cao.dashboard-sql-export` representation SHALL emit the same Events
 with equivalent snake-case columns. Each SQL-export row SHALL retain
-`entity_kind=event`, `source_id`, `observed_at`, `session_source_id`, and the
+`entity_kind=event`, `source_id`, `observed_at`, `github_run_id`, `run_attempt`, and the
 applicable `optimization_*` columns. SQL and IndexedDB adapters SHALL normalize
 to byte-identical canonical IDs and equivalent units, nullability, enums,
 relationships, and query results. SQL tables, SQL text, and database credentials
@@ -732,8 +727,6 @@ Version 1 SHALL define:
 Repository
 Workflow
 Run
-Job
-Session
 Event
 ```
 
@@ -756,10 +749,7 @@ erDiagram
   REPOSITORY ||--o{ WORKFLOW : contains
   REPOSITORY ||--o{ RUN : executes
   WORKFLOW ||--o{ RUN : defines
-  RUN ||--o{ JOB : contains
-  RUN ||--o{ SESSION : observes
-  JOB o|--o{ SESSION : scopes
-  SESSION ||--o{ EVENT : records
+  RUN ||--o{ EVENT : records
 
   PACKAGE {
     string id PK "canonical ID"
@@ -799,26 +789,9 @@ erDiagram
     string startedAt
     string observedAt
   }
-  JOB {
-    string id PK "canonical ID"
-    string runId FK "required owning run"
-    number githubJobId UK "immutable GitHub job ID"
-    string status
-    string conclusion
-    string startedAt
-  }
-  SESSION {
-    string id PK "deterministic source ID"
-    string runId FK "required owning run"
-    string jobId FK "nullable job scope"
-    string kind
-    string status
-    string startedAt
-  }
   EVENT {
     string id PK "deterministic semantic ID"
     string runId FK "required owning run"
-    string sessionId FK "required owning session"
     number sequence
     string timestamp
     string source
@@ -838,7 +811,7 @@ falls back to `(repositoryId, path)` or a source-namespaced
 values are encoded into the canonical string `id`; the individual components
 are not independently unique.
 
-Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. A Session MUST reference a Run and MAY reference a Job. Every Event MUST reference exactly one Run and one Session. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
+Repository and Workflow references on Run MAY be denormalized for browser query efficiency, but remain mandatory canonical relationships. Every Event MUST reference exactly one Run. Partial observations MAY exist during normalization; all mandatory relationships MUST resolve before a generation is activated.
 
 ---
 
@@ -970,79 +943,19 @@ measured in seconds, and MCP response size is measured in bytes.
 
 ---
 
-# 10. Job
+# 10. Run Detail
 
-Example:
-
-```js
-{
-  id: "github:job:445566",
-
-  repositoryId: "...",
-  workflowId: "...",
-  runId: "...",
-
-  githubJobId: 445566,
-
-  name: "build",
-
-  status: "completed",
-  conclusion: "success",
-
-  startedAt: "...",
-  completedAt: "...",
-
-  generation: "..."
-}
-```
-
-### Requirements
-
-**JOB-001** — Job MUST reference Run.
-
-**JOB-002** — Repository and Workflow references MAY be denormalized for efficient browser queries.
+Jobs and sessions MAY remain upstream observations or published logical
+sources, but they are not canonical entities and MUST NOT be persisted in
+canonical SQLite or IndexedDB tables. Job-shaped performance data MAY be
+projected directly from authoritative inputs. Session-shaped summaries MAY be
+projected from Run and Event records.
 
 ---
 
-# 11. Session
+# 11. Event Producers
 
-## 11.1 Definition
-
-A Session represents one coherent operational execution context.
-
-A Session MUST NOT be defined solely as an AI conversation.
-
-A Session SHALL be the parent of a heterogeneous operational event stream.
-
-Example:
-
-```js
-{
-  id: "session:abc123",
-
-  repositoryId: "...",
-  workflowId: "...",
-  runId: "...",
-  jobId: "...",
-
-  kind: "agent",
-
-  status: "completed",
-
-  startedAt: "...",
-  completedAt: "...",
-
-  firstSequence: 0,
-  lastSequence: 207,
-  eventCount: 208,
-
-  generation: "..."
-}
-```
-
-## 11.2 Session Producers
-
-A Session MAY contain observations from:
+A Run's Event stream MAY contain observations from:
 
 ```text
 user
@@ -1059,11 +972,8 @@ workflow runtime
 system
 ```
 
-## 11.3 Session Storage
-
-Session records SHOULD remain compact.
-
-Events MUST NOT be stored as one ever-growing array inside the Session record.
+Events MUST remain independently addressable records and MUST NOT be stored as
+one ever-growing array inside the Run record.
 
 ---
 
@@ -1071,9 +981,8 @@ Events MUST NOT be stored as one ever-growing array inside the Session record.
 
 ## 12.1 Unified Transaction Log
 
-Every operational occurrence associated with a Session SHOULD become an Event.
-Every Event MUST reference both its owning Run and Session, and the referenced
-Session MUST belong to that same Run.
+Every operational occurrence associated with a Run SHOULD become an Event.
+Every Event MUST directly reference its owning Run.
 
 Safe-output Events SHALL preserve the safe-output action and, when the affected
 entity is hosted by GitHub, its canonical GitHub entity type. The SQLite
@@ -1090,7 +999,6 @@ Example:
   id: "event:01J...",
 
   runId: "github:run:123456789:attempt:1",
-  sessionId: "session:abc123",
 
   sequence: 17,
   timestamp: "...",
@@ -1200,7 +1108,7 @@ MUST be used.
 
 # 13. Transaction Log Principle
 
-A Session timeline MAY resemble:
+A Run timeline MAY resemble:
 
 ```text
 001 runtime.started
@@ -1304,7 +1212,7 @@ The version 1 JSON document SHALL contain:
 ```js
 {
   contract: "gh-aw-cao.dashboard-sql-export",
-  schema_version: 1,
+  schema_version: 2,
   source: "stable-source-name",
   generation: "immutable-generation-id",
   exported_at: "RFC3339 timestamp",
@@ -1312,7 +1220,7 @@ The version 1 JSON document SHALL contain:
 }
 ```
 
-Each row SHALL contain `entity_kind`, `source_id`, and `observed_at`. The remaining nullable columns are defined by entity kind. GitHub-backed relationships SHALL use immutable GitHub repository, workflow, run, and job IDs. Sessions SHALL use stable source IDs, and Events SHALL reference `session_source_id`.
+Each row SHALL contain `entity_kind`, `source_id`, and `observed_at`. The remaining nullable columns are defined by entity kind. GitHub-backed relationships SHALL use immutable GitHub repository, workflow, and run IDs. Events SHALL reference their Run through `github_run_id` and `run_attempt`.
 
 The relational interchange SHALL consist of one manifest row and denormalized entity rows. A producer MAY expose these as tables or views. Database-specific extraction queries and credentials remain upstream concerns and MUST NOT be shipped to the browser.
 
@@ -1346,8 +1254,6 @@ Example result:
   repositories: [],
   workflows: [],
   runs: [],
-  jobs: [],
-  sessions: [],
   events: []
 }
 ```
@@ -1397,11 +1303,9 @@ github:repository:<id>
 github:workflow:<id>
 
 github:run:<id>:attempt:<attempt>
-
-github:job:<id>
 ```
 
-Sessions and Events SHOULD use stable source identifiers where available.
+Events SHOULD use stable source identifiers where available.
 
 Otherwise deterministic IDs MAY be derived from stable source coordinates or content identifiers.
 
@@ -1446,12 +1350,11 @@ The system MUST support observation sequences such as:
 
 ```text
 T0 run discovered
-T1 job discovered
-T2 session discovered
-T3 firewall data discovered
-T4 usage discovered
-T5 run completes
-T6 safe-output result arrives
+T1 runtime event discovered
+T2 firewall data discovered
+T3 usage discovered
+T4 run completes
+T5 safe-output result arrives
 ```
 
 No source MUST provide a fully populated logical entity in one operation.
@@ -1553,12 +1456,6 @@ sources/
     runs-0001.json
     runs-0002.json
 
-  jobs/
-    jobs-0001.json
-
-  sessions/
-    sessions-0001.json
-
   events/
     events-0001.json
     events-0002.json
@@ -1625,12 +1522,12 @@ Prefer:
 ```js
 {
   id: "...",
-  sessionId: "...",
+  runId: "...",
   type: "tool.result",
   summary: "...",
 
   payloadRef: {
-    chunk: "payloads/session-123-004.json",
+    chunk: "payloads/run-123-004.json",
     key: "event-442"
   }
 }
@@ -1683,14 +1580,12 @@ After the old data path is removed, the name MAY be simplified.
 Version 1 SHOULD define:
 
 ```text
-meta
+packages
 repositories
 workflows
 runs
-jobs
-sessions
 events
-ingestionCheckpoints
+transactions
 ```
 
 Future stores MAY include:
@@ -1731,31 +1626,15 @@ status
 [workflowId, startedAt]
 ```
 
-### jobs
-
-```text
-runId
-[runId, startedAt]
-```
-
-### sessions
-
-```text
-runId
-jobId
-[runId, startedAt]
-[jobId, startedAt]
-```
-
 ### events
 
 ```text
-sessionId
+runId
 type
 source
 correlationId
-[sessionId, sequence]
-[sessionId, timestamp]
+[runId, sequence]
+[runId, timestamp]
 ```
 
 Indexes SHOULD NOT be added speculatively.
@@ -2009,9 +1888,7 @@ Verify required relationships such as:
 ```text
 Workflow -> Repository
 Run -> Workflow
-Job -> Run
-Session -> Run/Job
-Event -> Session
+Event -> Run
 ```
 
 Where eventually consistent partial relationships are intentionally allowed, that behavior MUST be explicit.
@@ -2098,7 +1975,7 @@ Example:
 
 ```text
 HOT
-recent runs/sessions/events
+recent runs/events
 fully indexed
 
 WARM
@@ -2157,15 +2034,9 @@ runs.forRepository(repositoryId);
 runs.forWorkflow(workflowId);
 runs.recentFailures();
 
-jobs.forRun(runId);
-
-sessions.list();
-sessions.forRun(runId);
-sessions.forJob(jobId);
-
 events.list();
-events.forSession(sessionId);
-events.forSessionByType(sessionId, type);
+events.forRun(runId);
+events.forRunByType(runId, type);
 ```
 
 Dashboard code SHOULD NOT directly scatter IndexedDB transaction logic through views.
@@ -2199,8 +2070,6 @@ dashboard/
       repositories.mjs
       workflows.mjs
       runs.mjs
-      jobs.mjs
-      sessions.mjs
       events.mjs
 
     storage/
@@ -2220,8 +2089,6 @@ dashboard/
       repositories.mjs
       workflows.mjs
       runs.mjs
-      jobs.mjs
-      sessions.mjs
       events.mjs
 ```
 
@@ -2241,8 +2108,6 @@ Implement only:
 Repository
 Workflow
 Run
-Job
-Session
 Event
 
 canonical IDs
@@ -2352,7 +2217,7 @@ The full new data path is testable without a browser.
 
 Make the canonical query layer authoritative for every view and remove the replaced browser cache, direct-source reads, aliases, and fallback behavior.
 
-The integration MUST NOT fabricate Job, Session, or Event records from view-shaped summaries. Adapter-derived identities MUST remain explicitly namespaced when immutable upstream IDs are unavailable.
+The integration MUST NOT fabricate Event records from view-shaped summaries. Adapter-derived identities MUST remain explicitly namespaced when immutable upstream IDs are unavailable.
 
 Compare:
 
@@ -2471,9 +2336,9 @@ Workflow path change does not incorrectly duplicate a known workflow.
 
 Reruns are distinguishable.
 
-### T-MODEL-004 — Session composition
+### T-MODEL-004 — Event composition
 
-One session may contain:
+One Run's Event stream may contain:
 
 ```text
 agent
@@ -2881,9 +2746,9 @@ model
 
 The foundation is complete when:
 
-* Repository/Workflow/Run/Job/Session/Event exist;
+* Repository/Workflow/Run/Event exist;
 * canonical IDs are deterministic;
-* session events support multiple producers;
+* run events support multiple producers;
 * real fixtures normalize correctly;
 * duplicate ingestion is idempotent;
 * no dashboard view is required for testing.
@@ -3102,13 +2967,7 @@ One coherent dashboard surface at a time.
                        v
             canonical domain model
 
-       Repository → Workflow → Run → Job
-                              |
-                              v
-                           Session
-                              |
-                              v
-                            Event*
+       Repository → Workflow → Run → Event*
                        |
                        v
               generation ingestion
@@ -3144,7 +3003,7 @@ The implementation SHALL be guided by the following rules:
 
 > **Authoritative data must remain capable of rebuilding the browser completely.**
 
-> **Sessions are unified operational transaction logs, not agent-chat-only records.**
+> **Each Run owns one unified operational Event stream.**
 
 > **Never replace known-good data with an incomplete generation.**
 
@@ -3164,8 +3023,8 @@ The implementation SHALL be guided by the following rules:
 | Source adapters                                | MUST                           |
 | Deterministic canonical IDs                    | MUST                           |
 | Idempotent normalization                       | MUST                           |
-| Repository → Workflow → Run → Job hierarchy    | MUST                           |
-| Session → Event transaction log                | MUST                           |
+| Repository → Workflow → Run hierarchy          | MUST                           |
+| Run → Event transaction log                    | MUST                           |
 | Heterogeneous event producers                  | MUST                           |
 | IndexedDB derived state                        | MUST                           |
 | Full reconstruction after database deletion    | MUST                           |
@@ -3201,18 +3060,24 @@ The implementation SHALL be guided by the following rules:
 
 **[`gh aw logs` schema](https://github.com/github/gh-aw/blob/main/schemas/logs.schema.json)** — The current command output contract SHALL be inspected for observations that can fill missing canonical data through source adapters.
 
-**gh-aw operational artifacts** — Agent, tool, gateway, firewall, safe-output, and execution observations provide candidate Session Event sources.
+**gh-aw operational artifacts** — Agent, tool, gateway, firewall, safe-output, and execution observations provide candidate Event sources.
 
 ---
 
 # 72. Change Log
 
+## Version 1.1.0 — Run-owned events
+
+* Removed Job and Session from the canonical domain model and persistence.
+* Linked every Event directly to its owning Run.
+* Updated SQL export, IndexedDB, retention, query, and ingestion contracts.
+
 ## Version 1.0.0 — Draft
 
 * Established clean dashboard-side data boundary.
 * Classified current dashboard schemas as source inputs.
-* Defined canonical Repository → Workflow → Run → Job → Session → Event hierarchy.
-* Defined Session as heterogeneous operational transaction log.
+* Defined the initial canonical execution hierarchy.
+* Defined heterogeneous operational transaction logs.
 * Defined deterministic source adapters and normalization layer.
 * Defined missing-data discovery and normalization from the `gh aw logs` schema.
 * Defined IndexedDB as disposable derived state.

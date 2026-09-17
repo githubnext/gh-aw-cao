@@ -17,7 +17,7 @@ Agentic workflows produce Actions logs. The Activity workflow collects a bounded
   <img class="docs-theme-diagram-dark" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-aw-cao/assets/dashboard-data-flow-dark.svg">
 </div>
 
-SQLite and IndexedDB are rebuildable copies. Neither is the source for the other. Both use the same conversion rules and keep all run summaries available in the published JSONL. Detailed jobs, sessions, and events remain bounded to 30 days unless a separate full-detail SQLite archive is requested.
+SQLite and IndexedDB are rebuildable copies. Neither is the source for the other. Both use the same conversion rules and keep all run summaries available in the published JSONL. Detailed events remain bounded to 30 days unless a separate full-detail SQLite archive is requested.
 
 See [Data model](/gh-aw-cao/dashboard-data-model/) for the canonical entities, identities, and relationships produced by ingestion.
 
@@ -31,7 +31,7 @@ The scheduled Activity workflow is a rolling operational snapshot, not a full hi
 | Enrichment | The scheduled command downloads at most five matching usage artifacts across all workflow targets per Activity invocation. |
 | GitHub retention | Expired or unavailable artifacts cannot provide agent, usage, job, or audit detail. The run summary may still exist. |
 | Mapping | GitHub API rate-limit records without collection context are intentionally not attached to a run. |
-| Browser storage | IndexedDB keeps all published run summaries and expires detailed Job, Session, and Event records after 30 days. |
+| Browser storage | IndexedDB keeps all published run summaries and expires detailed Event records after 30 days. |
 
 Cached JSONL can repeat the same run in later snapshots. These are repeated observations, not duplicate database records. Raw runs are deduplicated by GitHub run ID and attempt. Enriched runs are deduplicated by run ID and attempt, with the newest observation winning.
 
@@ -65,11 +65,11 @@ cao doctor \
 
 ## Browser data pipeline
 
-The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic agentic Sessions and Events. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
+The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic Events owned directly by those Runs. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 10. It has stores for `packages`, `repositories`, `workflows`, `runs`, `jobs`, `sessions`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
+The canonical database is `gh-aw-cao-dashboard-data`, schema version 10. It has stores for `packages`, `repositories`, `workflows`, `runs`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection, deleting records absent from the retained batch and writing every retained record.
 
@@ -77,9 +77,7 @@ Every merged batch must satisfy these relationships:
 
 - Workflow to Repository
 - Run to Repository and Workflow
-- Job to Run
-- Session to Run and, when present, Job
-- Event to Session
+- Event to Run
 
 Work items and findings are represented by Events rather than separate canonical tables. Independent domains, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory and are selected only when a page requests them.
 

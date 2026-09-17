@@ -61,14 +61,14 @@ describe('canonical normalization', () => {
     ]);
   });
 
-  it('orders heterogeneous session events independently of ingestion order', () => {
+  it('orders heterogeneous run events independently of ingestion order', () => {
     const events = [
       ['result', '2026-09-09T03:00:03Z', 'tool.result', 30],
       ['firewall', '2026-09-09T03:00:02Z', 'firewall.request.allowed', 20],
       ['call', '2026-09-09T03:00:01Z', 'tool.call', 10],
       ['future', '2026-09-09T03:00:04Z', 'vendor.new-event', 40]
     ].map(([sourceId, timestamp, type, sourceSequence]) => observation('event', String(sourceId), String(timestamp), {
-      sessionId: 'session:gh-aw-log:session-1',
+      runId: 'github:run:456:attempt:1',
       timestamp: String(timestamp),
       type: String(type),
       source: 'runtime',
@@ -86,12 +86,14 @@ describe('canonical normalization', () => {
   });
 
   it('uses explicit source precedence rather than input order for conflicts', () => {
-    const lower = observation('job', 'job-dashboard', '2026-09-09T04:00:00Z', {
-      githubJobId: 99,
+    const lower = observation('run', 'run-dashboard', '2026-09-09T04:00:00Z', {
+      githubRunId: 99,
+      attempt: 1,
       status: 'in_progress'
     });
-    const authoritative = observation('job', 'job-github', '2026-09-09T03:00:00Z', {
-      githubJobId: 99,
+    const authoritative = observation('run', 'run-github', '2026-09-09T03:00:00Z', {
+      githubRunId: 99,
+      attempt: 1,
       status: 'completed',
       conclusion: 'success'
     }, 'github');
@@ -100,6 +102,6 @@ describe('canonical normalization', () => {
       sourcePrecedence: { 'dashboard-source': 10, github: 100 }
     });
 
-    expect(batch.jobs[0]).toMatchObject({ status: 'completed', conclusion: 'success' });
+    expect(batch.runs[0]).toMatchObject({ status: 'completed', conclusion: 'success' });
   });
 });

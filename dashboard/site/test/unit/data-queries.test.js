@@ -234,13 +234,13 @@ describe('declarative dashboard queries', () => {
           ],
           metadata: metadata('firewall-observations')
         },
-        sessions: {
-          source: 'sessions',
+        events: {
+          source: 'events',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', session: 'session-1' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', session: 'session-2' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', event: 'event-1' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', event: 'event-2' }
           ],
-          metadata: metadata('sessions')
+          metadata: metadata('events')
         }
       },
       [
@@ -1179,14 +1179,14 @@ describe('declarative dashboard queries', () => {
       ],
       metadata: metadata('runs')
     };
-    const sessions = {
-      source: 'sessions',
+    const events = {
+      source: 'events',
       rows: [
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', session: 'session-1' },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: 'unobserved', session: 'session-2' },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', session: 'session-3' }
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', event: 'event-1' },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: 'unobserved', event: 'event-2' },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md', run: '3', event: 'event-3' }
       ],
-      metadata: metadata('sessions')
+      metadata: metadata('events')
     };
     const outcomes = {
       source: 'outcomes',
@@ -1201,7 +1201,7 @@ describe('declarative dashboard queries', () => {
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { packages, repositories, workflows: queryWorkflows, runs, sessions, outcomes, 'operational-values': operationalValues, usage },
+      { packages, repositories, workflows: queryWorkflows, runs, events, outcomes, 'operational-values': operationalValues, usage },
       ['repository-activity', 'workflow-inventory', 'package-operational-value-totals', 'package-inventory']
     );
 

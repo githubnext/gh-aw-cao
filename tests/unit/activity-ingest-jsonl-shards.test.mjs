@@ -284,6 +284,8 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
     'hash-payloads',
     '--shard-dir',
     shardDirectory,
+    '--normalized-dir',
+    legacyNormalizedDirectory,
     '--runs-dir',
     runsDirectory,
     '--events-dir',
@@ -292,12 +294,19 @@ test('hash-payloads upgrades the legacy cached layout to phased shards', async (
 
   const runs = await readdir(runsDirectory);
   const events = await readdir(eventsDirectory);
+  const normalized = await readdir(legacyNormalizedDirectory);
   assert.equal(runs.length, 1);
   assert.deepEqual(runs, events);
+  assert.equal(normalized.length, 1);
   const runPayload = JSON.parse(await readFile(path.join(runsDirectory, runs[0]), 'utf8'));
   const eventPayload = JSON.parse(await readFile(path.join(eventsDirectory, events[0]), 'utf8'));
+  const normalizedPayload = JSON.parse(await readFile(path.join(legacyNormalizedDirectory, normalized[0]), 'utf8'));
   assert.equal(runPayload.phase, 'runs');
   assert.equal(eventPayload.phase, 'events');
   assert.ok(runPayload.batch.runs.length > 0);
   assert.ok(eventPayload.batch.events.length > 0);
+  for (const payload of [normalizedPayload, runPayload, eventPayload]) {
+    assert.equal(Object.hasOwn(payload.batch, 'jobs'), false);
+    assert.equal(Object.hasOwn(payload.batch, 'sessions'), false);
+  }
 });

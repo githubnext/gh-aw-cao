@@ -20,7 +20,6 @@ describe('entity card templates', () => {
       'repository',
       'workflow',
       'run',
-      'session',
       'event',
       'operation'
     ]));
@@ -112,21 +111,14 @@ describe('entity card templates', () => {
       page: 'run-events',
       query: 'entity-events'
     });
-    expect(pages['run-events'].views).toEqual(['run-sessions', 'run-events']);
+    expect(pages['run-events'].views).toEqual(['run-events']);
   });
 
-  it('drills from sessions to events and specializes GitHub entity events', () => {
-    expect(views['entity-sessions'].list.drill).toEqual({
-      type: 'query',
-      page: 'session-events',
-      query: 'entity-events',
-      'title-field': 'session',
-      arguments: [{ name: 'session', field: 'session' }]
-    });
-    expect(views['session-events']).toMatchObject({
+  it('specializes GitHub entity events', () => {
+    expect(views['run-events']).toMatchObject({
       data: {
         source: 'entity-events',
-        arguments: [{ name: 'session', field: 'session' }]
+        arguments: expect.arrayContaining([{ name: 'run', field: 'run' }])
       },
       list: {
         card: 'event',

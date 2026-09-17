@@ -37,20 +37,9 @@ function completeGraph() {
       repositoryId: 'github:repository:1',
       workflowId: 'github:workflow:2'
     }),
-    observation('job', 'job-4', {
-      githubJobId: 4,
-      runId: 'github:run:3:attempt:1',
-      name: 'build'
-    }),
-    observation('session', 'session-5', {
-      id: 'session:5',
-      runId: 'github:run:3:attempt:1',
-      jobId: 'github:job:4',
-      kind: 'agent'
-    }),
     observation('event', 'event-6', {
       id: 'event:6',
-      sessionId: 'session:5',
+      runId: 'github:run:3:attempt:1',
       timestamp: observedAt,
       source: 'runtime',
       type: 'runtime.started'
@@ -76,17 +65,8 @@ describe('canonical entity relationships', () => {
         repositoryId: 'github:repository:1',
         workflowId: 'github:workflow:2'
       }],
-      jobs: [{ id: 'github:job:4', runId: 'github:run:3:attempt:1' }],
-      sessions: [{ id: 'session:5', runId: 'github:run:3:attempt:1', jobId: 'github:job:4' }],
-      events: [{ id: 'event:6', sessionId: 'session:5', sequence: 0 }]
+      events: [{ id: 'event:6', runId: 'github:run:3:attempt:1', sequence: 0 }]
     });
-  });
-
-  it('allows a session to belong directly to a run without a job', () => {
-    const batch = completeGraph();
-    delete batch.sessions[0].jobId;
-
-    expect(relationshipErrors(batch)).toEqual([]);
   });
 
   it('reports every dangling mandatory relationship before activation', () => {
@@ -94,17 +74,13 @@ describe('canonical entity relationships', () => {
     batch.workflows[0].repositoryId = 'github:repository:missing';
     batch.workflows[0].packageId = 'package:fixture:missing';
     batch.runs[0].workflowId = 'github:workflow:missing';
-    batch.jobs[0].runId = 'github:run:missing:attempt:1';
-    batch.sessions[0].jobId = 'github:job:missing';
-    batch.events[0].sessionId = 'session:missing';
+    batch.events[0].runId = 'github:run:missing:attempt:1';
 
     expect(relationshipErrors(batch)).toEqual([
       'github:workflow:2.repositoryId does not reference an existing repository',
       'github:workflow:2.packageId does not reference an existing package',
       'github:run:3:attempt:1.workflowId does not reference an existing workflow',
-      'github:job:4.runId does not reference an existing run',
-      'session:5.jobId does not reference an existing job',
-      'event:6.sessionId does not reference an existing session'
+      'event:6.runId does not reference an existing run'
     ]);
   });
 
@@ -118,13 +94,10 @@ describe('canonical entity relationships', () => {
       repositoryId: 'github:repository:1',
       workflowId: 'github:workflow:2'
     });
-    batch.jobs[0].runId = 'github:run:9:attempt:1';
     batch.events[0].runId = 'github:run:9:attempt:1';
 
     expect(relationshipErrors(batch)).toEqual([
-      'github:run:3:attempt:1.workflowId references a workflow from another repository',
-      'session:5.jobId references a job from another run',
-      'event:6.sessionId references a session from another run'
+      'github:run:3:attempt:1.workflowId references a workflow from another repository'
     ]);
   });
 });

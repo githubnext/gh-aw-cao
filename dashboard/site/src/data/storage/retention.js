@@ -14,8 +14,6 @@ export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
  */
 const RETENTION_TIMESTAMPS = {
   runs: ['completedAt', 'startedAt', 'observedAt'],
-  jobs: ['completedAt', 'startedAt', 'observedAt'],
-  sessions: ['completedAt', 'startedAt', 'observedAt'],
   events: ['timestamp', 'observedAt']
 };
 
@@ -24,8 +22,6 @@ const STORES = /** @type {const} */ ([
   'repositories',
   'workflows',
   'runs',
-  'jobs',
-  'sessions',
   'events'
 ]);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
@@ -75,9 +71,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     }
     return grouped;
   };
-  const jobsByRun = groupBy(batch.jobs, 'runId');
-  const sessionsByRun = groupBy(batch.sessions, 'runId');
-  const eventsBySession = groupBy(batch.events, 'sessionId');
+  const eventsByRun = groupBy(batch.events, 'runId');
   const evictedRuns = new Set();
   const oldestRuns = [...batch.runs].sort((left, right) =>
     (recordTimestamp('runs', left) ?? Number.NEGATIVE_INFINITY)
@@ -89,23 +83,15 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     const runId = String(run.id);
     evictedRuns.add(runId);
     estimatedBytes -= recordSize(run);
-    for (const job of jobsByRun.get(runId) ?? []) estimatedBytes -= recordSize(job);
-    for (const session of sessionsByRun.get(runId) ?? []) {
-      estimatedBytes -= recordSize(session);
-      for (const event of eventsBySession.get(String(session.id)) ?? []) estimatedBytes -= recordSize(event);
-    }
+    for (const event of eventsByRun.get(runId) ?? []) estimatedBytes -= recordSize(event);
   }
 
-  const retainedSessions = batch.sessions.filter((record) => !evictedRuns.has(String(record.runId)));
-  const retainedSessionIds = new Set(retainedSessions.map((record) => String(record.id)));
   return {
     packages: batch.packages,
     repositories: batch.repositories,
     workflows: batch.workflows,
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
-    jobs: batch.jobs.filter((record) => !evictedRuns.has(String(record.runId))),
-    sessions: retainedSessions,
-    events: batch.events.filter((record) => retainedSessionIds.has(String(record.sessionId)))
+    events: batch.events.filter((record) => !evictedRuns.has(String(record.runId)))
   };
 }
 
@@ -217,8 +203,6 @@ function pruneOrphans(merged) {
   const repositories = merged.repositories;
   const workflows = merged.workflows;
   const runs = merged.runs;
-  const jobs = merged.jobs;
-  const sessions = merged.sessions;
 
   for (const [id, workflow] of workflows) {
     if (!repositories.has(String(workflow.repositoryId))
@@ -232,24 +216,8 @@ function pruneOrphans(merged) {
       || !workflow
       || workflow.repositoryId !== run.repositoryId) runs.delete(id);
   }
-  for (const [id, job] of jobs) {
-    if (!runs.has(String(job.runId))) jobs.delete(id);
-  }
-  for (const [id, session] of sessions) {
-    if (!runs.has(String(session.runId))) {
-      sessions.delete(id);
-      continue;
-    }
-    if (session.jobId === undefined || session.jobId === null) continue;
-    const job = jobs.get(String(session.jobId));
-    if (!job || job.runId !== session.runId) {
-      const withoutJob = { ...session };
-      delete withoutJob.jobId;
-      sessions.set(id, withoutJob);
-    }
-  }
   for (const [id, event] of merged.events) {
-    if (!sessions.has(String(event.sessionId))) merged.events.delete(id);
+    if (!runs.has(String(event.runId))) merged.events.delete(id);
   }
 }
 

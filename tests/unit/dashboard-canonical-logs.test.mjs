@@ -17,7 +17,7 @@ test('Node CLI ingests a gh-aw artifact directory through IndexedDB queries', as
 
   assert.equal(output.result.updated, true);
   assert.equal(output.runs[0].id, 'github:run:303:attempt:1');
-  assert.equal(output.sessions[0].kind, 'unified-operational-log');
+  assert.equal(output.events.every((event) => event.runId === output.runs[0].id), true);
   assert.deepEqual(output.events.map((event) => event.type), [
     'agent_turn',
     'tool_call',

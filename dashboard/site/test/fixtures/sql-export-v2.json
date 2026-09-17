@@ -1,6 +1,6 @@
 {
   "contract": "gh-aw-cao.dashboard-sql-export",
-  "schema_version": 1,
+  "schema_version": 2,
   "source": "enterprise-warehouse",
   "generation": "warehouse-2026-09-09-05",
   "exported_at": "2026-09-09T05:00:00Z",
@@ -37,31 +37,11 @@
       "run_conclusion": "success"
     },
     {
-      "entity_kind": "job",
-      "source_id": "job-404",
-      "observed_at": "2026-09-09T05:00:00Z",
-      "github_run_id": "303",
-      "run_attempt": 1,
-      "github_job_id": "404",
-      "job_name": "agent",
-      "job_status": "completed",
-      "job_conclusion": "success"
-    },
-    {
-      "entity_kind": "session",
-      "source_id": "session-505",
-      "observed_at": "2026-09-09T05:00:00Z",
-      "github_run_id": "303",
-      "run_attempt": 1,
-      "github_job_id": "404",
-      "session_kind": "agent",
-      "session_status": "completed"
-    },
-    {
       "entity_kind": "event",
       "source_id": "event-2",
       "observed_at": "2026-09-09T05:00:00Z",
-      "session_source_id": "session-505",
+      "github_run_id": "303",
+      "run_attempt": 1,
       "event_timestamp": "2026-09-09T04:00:02Z",
       "event_source": "firewall",
       "event_type": "firewall.request.allowed",
@@ -71,7 +51,8 @@
       "entity_kind": "event",
       "source_id": "event-1",
       "observed_at": "2026-09-09T05:00:00Z",
-      "session_source_id": "session-505",
+      "github_run_id": "303",
+      "run_attempt": 1,
       "event_timestamp": "2026-09-09T04:00:01Z",
       "event_source": "agent",
       "event_type": "message.user",

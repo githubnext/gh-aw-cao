@@ -49,20 +49,6 @@
         ]
       },
       {
-        "id": "session",
-        "icon": "terminal",
-        "title": { "field": "session", "title": "Session" },
-        "labels": [
-          { "field": "session-kind", "title": "Kind", "display": "label" },
-          { "field": "session-status", "title": "Status", "display": "status" }
-        ],
-        "details": [
-          { "field": "run", "title": "Run" },
-          { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
-          { "field": "started-at", "title": "Started", "format": "human-friendly-timestamp" }
-        ]
-      },
-      {
         "id": "event",
         "icon": "pulse",
         "title": { "field": "event-summary", "title": "Event" },
@@ -72,7 +58,7 @@
         ],
         "details": [
           { "field": "event-source", "title": "Source" },
-          { "field": "session", "title": "Session" },
+          { "field": "run", "title": "Run" },
           { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
         ]
       },
@@ -253,7 +239,7 @@
       {
         "id": "entity-runs",
         "title": "Runs",
-        "description": "Select a run to inspect its sessions and events.",
+        "description": "Select a run to inspect its events.",
         "data": { "source": "entity-runs" },
         "mark": "list",
         "list": {
@@ -344,77 +330,6 @@
         }
       },
       {
-        "id": "entity-sessions",
-        "title": "Sessions",
-        "description": "Select a session to inspect its events.",
-        "data": { "source": "entity-sessions" },
-        "mark": "list",
-        "list": {
-          "style": "entity-cards",
-          "card": "session",
-          "icon": "terminal",
-          "drill": {
-            "type": "query",
-            "page": "session-events",
-            "query": "entity-events",
-            "title-field": "session",
-            "arguments": [{ "name": "session", "field": "session" }]
-          }
-        },
-        "empty-message": "No sessions observed.",
-        "layout": "full-view",
-        "encoding": {
-          "columns": [
-            { "field": "session", "type": "nominal", "title": "Session" },
-            { "field": "session-kind", "type": "nominal", "title": "Kind" },
-            { "field": "session-status", "type": "nominal", "title": "Status" },
-            { "field": "run", "type": "nominal", "title": "Run" },
-            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
-            { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" }
-          ]
-        }
-      },
-      {
-        "id": "run-sessions",
-        "title": "Sessions",
-        "description": "Imported sessions for the selected run.",
-        "data": {
-          "source": "entity-sessions",
-          "arguments": [
-            { "name": "organization", "field": "organization" },
-            { "name": "repository", "field": "repository" },
-            { "name": "workflow", "field": "workflow" },
-            { "name": "run", "field": "run" },
-            { "name": "run-attempt", "field": "run-attempt" }
-          ]
-        },
-        "mark": "list",
-        "list": {
-          "style": "entity-cards",
-          "card": "session",
-          "icon": "terminal",
-          "drill": {
-            "type": "query",
-            "page": "session-events",
-            "query": "entity-events",
-            "title-field": "session",
-            "arguments": [{ "name": "session", "field": "session" }]
-          }
-        },
-        "empty-message": "No sessions were retained for this run.",
-        "layout": "full",
-        "encoding": {
-          "columns": [
-            { "field": "session", "type": "nominal", "title": "Session" },
-            { "field": "session-kind", "type": "nominal", "title": "Kind" },
-            { "field": "session-status", "type": "nominal", "title": "Status" },
-            { "field": "run", "type": "nominal", "title": "Run" },
-            { "field": "workflow", "type": "nominal", "title": "Workflow", "format": "workflow-relative-path" },
-            { "field": "started-at", "type": "temporal", "title": "Started", "format": "human-friendly-timestamp" }
-          ]
-        }
-      },
-      {
         "id": "entity-events",
         "title": "Events",
         "description": "Observed events with type-specific links when an external entity is available.",
@@ -434,7 +349,7 @@
             { "field": "event-type", "type": "nominal", "title": "Type" },
             { "field": "event-status", "type": "nominal", "title": "Status" },
             { "field": "event-source", "type": "nominal", "title": "Source" },
-            { "field": "session", "type": "nominal", "title": "Session" },
+            { "field": "run", "type": "nominal", "title": "Run" },
             { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
             { "field": "event-url", "type": "nominal", "title": "External URL" }
           ]
@@ -469,36 +384,7 @@
             { "field": "event-type", "type": "nominal", "title": "Type" },
             { "field": "event-status", "type": "nominal", "title": "Status" },
             { "field": "event-source", "type": "nominal", "title": "Source" },
-            { "field": "session", "type": "nominal", "title": "Session" },
-            { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
-            { "field": "event-url", "type": "nominal", "title": "External URL" }
-          ]
-        }
-      },
-      {
-        "id": "session-events",
-        "title": "Events",
-        "description": "Observed events for the selected session.",
-        "data": {
-          "source": "entity-events",
-          "arguments": [{ "name": "session", "field": "session" }]
-        },
-        "mark": "list",
-        "list": {
-          "style": "entity-cards",
-          "card": "event",
-          "icon": "pulse",
-          "drill": { "type": "external", "field": "event-url" }
-        },
-        "empty-message": "No events were retained for this session.",
-        "layout": "full-view",
-        "encoding": {
-          "columns": [
-            { "field": "event-summary", "type": "nominal", "title": "Event" },
-            { "field": "event-type", "type": "nominal", "title": "Type" },
-            { "field": "event-status", "type": "nominal", "title": "Status" },
-            { "field": "event-source", "type": "nominal", "title": "Source" },
-            { "field": "session", "type": "nominal", "title": "Session" },
+            { "field": "run", "type": "nominal", "title": "Run" },
             { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
             { "field": "event-url", "type": "nominal", "title": "External URL" }
           ]
@@ -812,27 +698,8 @@
         "order-by": [{ "field": "started-at", "direction": "desc" }]
       },
       {
-        "name": "entity-sessions",
-        "intent": "Project session entities for reusable session cards and run drill-down.",
-        "from": "sessions",
-        "select": [
-          { "field": "organization" },
-          { "field": "repository" },
-          { "field": "workflow" },
-          { "field": "run" },
-          { "field": "run-attempt" },
-          { "field": "session" },
-          { "field": "session-kind" },
-          { "field": "session-status" },
-          { "field": "started-at" },
-          { "field": "ended-at" },
-          { "field": "observed-at" }
-        ],
-        "order-by": [{ "field": "started-at", "direction": "desc" }]
-      },
-      {
         "name": "entity-events",
-        "intent": "Project event entities for reusable event cards and run or session drill-down.",
+        "intent": "Project event entities for reusable event cards and run drill-down.",
         "from": "events",
         "compute": [
           {
@@ -851,7 +718,6 @@
           { "field": "workflow" },
           { "field": "run" },
           { "field": "run-attempt" },
-          { "field": "session" },
           { "field": "event" },
           { "field": "event-source" },
           { "field": "event-type" },
@@ -973,7 +839,7 @@
             ]
           },
           {
-            "as": "operation-dashboard-href",
+            "as": "operation-link",
             "function": "if",
             "args": [
               { "field": "is-standalone" },
@@ -987,15 +853,6 @@
             "args": [
               { "value": "View " },
               { "field": "operation-name" }
-            ]
-          },
-          {
-            "as": "operation-link",
-            "function": "dashboard-link",
-            "args": [
-              { "field": "repository-link" },
-              { "field": "operation-dashboard-href" },
-              { "field": "operation-link-label" }
             ]
           }
         ],
@@ -1986,23 +1843,23 @@
         "order-by": [{ "field": "started-at", "direction": "desc" }]
       },
       {
-        "name": "session-runs",
-        "intent": "Identify each workflow run that has one or more imported sessions.",
-        "description": "Distinct workflow runs represented by imported sessions.",
-        "from": "sessions",
+        "name": "event-runs",
+        "intent": "Identify each workflow run that has one or more imported events.",
+        "description": "Distinct workflow runs represented by imported events.",
+        "from": "events",
         "aggregate": {
           "by": ["organization", "repository", "workflow", "run"],
-          "values": [{ "field": "session", "as": "sessions", "reducer": "count" }]
+          "values": [{ "field": "event", "as": "events", "reducer": "count" }]
         }
       },
       {
         "name": "run-import-status",
-        "intent": "Identify observed runs that have one or more imported sessions.",
-        "description": "Observed runs enriched with imported-session status.",
+        "intent": "Identify observed runs that have one or more imported events.",
+        "description": "Observed runs enriched with imported-event status.",
         "from": "runs",
         "joins": [
           {
-            "source": "session-runs",
+            "source": "event-runs",
             "type": "left",
             "on": [
               { "left": "organization", "right": "organization" },
@@ -2010,19 +1867,19 @@
               { "left": "workflow", "right": "workflow" },
               { "left": "run", "right": "run" }
             ],
-            "fields": [{ "field": "sessions", "as": "imported-sessions" }]
+            "fields": [{ "field": "events", "as": "imported-events" }]
           }
         ],
         "compute": [
           {
-            "as": "imported-session-count",
+            "as": "imported-event-count",
             "function": "coalesce",
-            "args": [{ "field": "imported-sessions" }, { "value": 0 }]
+            "args": [{ "field": "imported-events" }, { "value": 0 }]
           },
           {
             "as": "imported",
             "function": "greater-than",
-            "args": [{ "field": "imported-session-count" }, { "value": 0 }]
+            "args": [{ "field": "imported-event-count" }, { "value": 0 }]
           }
         ]
       },
@@ -2343,7 +2200,6 @@
           { "field": "workflow" },
           { "field": "run" },
           { "field": "run-attempt" },
-          { "field": "session" },
           { "field": "event" },
           { "field": "correlation-id" },
           { "field": "source-sequence" },
@@ -2408,7 +2264,6 @@
           { "field": "workflow" },
           { "field": "run" },
           { "field": "run-attempt" },
-          { "field": "session" },
           { "field": "event" },
           { "field": "linked-run", "as": "run-link" }
         ],
@@ -5402,11 +5257,6 @@
                   "title": "Attempt"
                 },
                 {
-                  "field": "session",
-                  "type": "nominal",
-                  "title": "Session"
-                },
-                {
                   "field": "event",
                   "type": "nominal",
                   "title": "Event"
@@ -7314,36 +7164,16 @@
         }
       },
       {
-        "id": "sessions",
-        "kind": "custom",
-        "title": "Sessions",
-        "icon": "terminal",
-        "description": "Inspect imported execution sessions and drill into their retained events.",
-        "views": ["entity-sessions"]
-      },
-      {
         "id": "run-events",
         "kind": "custom",
         "title": "Run",
         "icon": "pulse",
-        "description": "Imported sessions and observed events for the selected workflow run.",
+        "description": "Observed events for the selected workflow run.",
         "route": {
           "hash-query-parameter": "run",
           "navigation-page": "runs"
         },
-        "views": ["run-sessions", "run-events"]
-      },
-      {
-        "id": "session-events",
-        "kind": "custom",
-        "title": "Session",
-        "icon": "pulse",
-        "description": "Observed events for the selected execution session.",
-        "route": {
-          "hash-query-parameter": "session",
-          "navigation-page": "sessions"
-        },
-        "views": ["session-events"]
+        "views": ["run-events"]
       },
       {
         "id": "events",
@@ -7415,11 +7245,6 @@
                   "field": "run-attempt",
                   "type": "quantitative",
                   "title": "Attempt"
-                },
-                {
-                  "field": "session",
-                  "type": "nominal",
-                  "title": "Session"
                 },
                 {
                   "field": "event",
@@ -7543,11 +7368,6 @@
                   "title": "Attempt"
                 },
                 {
-                  "field": "session",
-                  "type": "nominal",
-                  "title": "Session"
-                },
-                {
                   "field": "event",
                   "type": "nominal",
                   "title": "Event"
@@ -7584,7 +7404,7 @@
           {
             "id": "transaction-ingestion-trend",
             "title": "Run ingestion coverage",
-            "description": "Known factory runs compared with runs that include imported session data at each ingestion transaction.",
+            "description": "Known factory runs compared with runs that include imported event data at each ingestion transaction.",
             "data": {
               "source": "transactions-table"
             },
@@ -7607,7 +7427,7 @@
                 {
                   "field": "agentic-runs",
                   "type": "quantitative",
-                  "title": "Runs with session data"
+                  "title": "Runs with event data"
                 }
               ]
             }
@@ -8914,7 +8734,6 @@
         "experimental": true,
         "pages": [
           "events",
-          "sessions",
           "runtime",
           "performance",
           "security",

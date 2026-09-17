@@ -20,7 +20,7 @@ import {
 import { estimateCanonicalBatchBytes } from '../../src/data/storage/retention.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
-const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'));
+const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v2.json'), 'utf8'));
 const sources = {
   repositories: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': metadata['as-of'] }],
@@ -78,7 +78,7 @@ beforeEach(async () => {
 describe('canonical source ingestion and queries', () => {
   it('imports pre-normalized JSON with a published identity and skips repeats', async () => {
     const payload = {
-      schemaVersion: 9,
+      schemaVersion: 10,
       ingestionVersion: 2,
       sourceRecords: 1,
       batch: {
@@ -90,8 +90,6 @@ describe('canonical source ingestion and queries', () => {
         }],
         workflows: [],
         runs: [],
-        jobs: [],
-        sessions: [],
         events: []
       }
     };
@@ -114,7 +112,7 @@ describe('canonical source ingestion and queries', () => {
 
   it('rejects mislabeled or mixed phased payloads', async () => {
     const payload = {
-      schemaVersion: 9,
+      schemaVersion: 10,
       ingestionVersion: 2,
       sourceRecords: 1,
       phase: 'events',
@@ -123,8 +121,6 @@ describe('canonical source ingestion and queries', () => {
         repositories: [],
         workflows: [],
         runs: [{ id: 'run:unexpected' }],
-        jobs: [],
-        sessions: [],
         events: []
       }
     };
@@ -148,12 +144,10 @@ describe('canonical source ingestion and queries', () => {
     const repositories = await queries.repositories.list();
     const workflows = await queries.workflows.forRepository(String(repositories[0].id));
     const runs = await queries.runs.forWorkflow(String(workflows[0].id));
-    const jobs = await queries.jobs.forRun(String(runs[0].id));
 
     expect(repositories).toHaveLength(1);
     expect(workflows).toHaveLength(1);
     expect(runs).toEqual([expect.objectContaining({ id: 'github:run:12345:attempt:2' })]);
-    expect(jobs).toEqual([expect.objectContaining({ id: 'github:job:67890' })]);
     expect(await queries.runs.recentFailures()).toHaveLength(1);
   });
 
@@ -218,7 +212,6 @@ describe('canonical source ingestion and queries', () => {
 
     const capped = await readCanonicalBatch(indexedDB);
     expect(capped.runs).toEqual([]);
-    expect(capped.jobs).toEqual([]);
     expect(capped.repositories).toHaveLength(1);
     expect(capped.workflows).toHaveLength(1);
   });
@@ -266,10 +259,7 @@ describe('canonical source ingestion and queries', () => {
       'github:run:12345:attempt:2',
       'github:run:303:attempt:1'
     ]);
-    expect(await queries.sessions.forRun('github:run:303:attempt:1')).toEqual([
-      expect.objectContaining({ id: 'session:sql%3Aenterprise-warehouse:session-505' })
-    ]);
-    expect(await queries.events.forSession('session:sql%3Aenterprise-warehouse:session-505'))
+    expect(await queries.events.forRun('github:run:303:attempt:1'))
       .toHaveLength(2);
   });
 
@@ -314,7 +304,6 @@ describe('canonical source ingestion and queries', () => {
 
     const queries = createCanonicalQueries(indexedDB);
     const activeRuns = await queries.runs.list();
-    const activeSessions = await queries.sessions.forRun('github:run:303:attempt:1');
     expect(await queries.workflows.list()).toEqual([
       expect.objectContaining({
         packageId: packagedWorkflow.packageId,
@@ -327,7 +316,7 @@ describe('canonical source ingestion and queries', () => {
       'github:run:12345:attempt:2',
       'github:run:303:attempt:1'
     ]);
-    expect(await queries.events.forSession(String(activeSessions[0].id))).toEqual([
+    expect(await queries.events.forRun('github:run:303:attempt:1')).toEqual([
       expect.objectContaining({ source: 'agent', type: 'agent_turn', sequence: 0 })
     ]);
   });
@@ -429,7 +418,6 @@ describe('canonical source ingestion and queries', () => {
       records: 3,
       rawRuns: 1,
       agenticRuns: 1,
-      sessions: 2,
       mappedRateLimits: 1
     });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
@@ -444,17 +432,7 @@ describe('canonical source ingestion and queries', () => {
         aicTotal: 2.5
       })
     ]);
-    await expect(createCanonicalQueries(indexedDB).jobs.forRun('github:run:303:attempt:1')).resolves.toEqual([
-      expect.objectContaining({
-        id: 'github:job:404',
-        name: 'agent',
-        status: 'completed',
-        conclusion: 'success',
-        durationSeconds: 50
-      })
-    ]);
-    const [session] = await createCanonicalQueries(indexedDB).sessions.forRun('github:run:303:attempt:1');
-    await expect(createCanonicalQueries(indexedDB).events.forSession(String(session.id))).resolves.toEqual(
+    await expect(createCanonicalQueries(indexedDB).events.forRun('github:run:303:attempt:1')).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: 'mcp',

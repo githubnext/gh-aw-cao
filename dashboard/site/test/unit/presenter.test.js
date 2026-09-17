@@ -713,7 +713,7 @@ describe('presenter built-in and custom pages', () => {
       expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
       expect(page?.querySelectorAll('.line-chart-series')).toHaveLength(2);
       expect(page?.querySelector('.chart-legend')?.textContent).toContain('Known runs');
-      expect(page?.querySelector('.chart-legend')?.textContent).toContain('Runs with session data');
+      expect(page?.querySelector('.chart-legend')?.textContent).toContain('Runs with event data');
       expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
       expect(page?.querySelector('input[type="search"]')).not.toBeNull();
       expect(page?.textContent).toContain('ingest-jsonl');
@@ -1257,7 +1257,6 @@ describe('presenter built-in and custom pages', () => {
       'Insights',
       'Operational health',
       'Events',
-      'Sessions',
       'Runtime',
       'Performance',
       'Security',
@@ -1818,7 +1817,6 @@ describe('presenter built-in and custom pages', () => {
       'Insights',
       'Operational health',
       'Events',
-      'Sessions',
       'Runtime',
       'Performance',
       'Security',

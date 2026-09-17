@@ -54,11 +54,6 @@ export function runId(githubRunId, attempt) {
   return `${githubId('run', githubRunId)}:attempt:${normalizedAttempt}`;
 }
 
-/** @param {string | number} githubJobId */
-export function jobId(githubJobId) {
-  return githubId('job', githubJobId);
-}
-
 /**
  * Produces a deterministic ID for source records without a native stable ID.
  * Coordinates must be stable identifiers, not display names or timestamps.

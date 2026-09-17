@@ -42,27 +42,15 @@ export function createCanonicalQueries(indexedDB) {
         ]);
       }
     },
-    jobs: {
-      list: () => readCollection(indexedDB, 'jobs'),
-      forRun: (/** @type {string} */ runId) =>
-        readIndex(indexedDB, 'jobs', 'byRun', [runId])
-    },
-    sessions: {
-      list: () => readCollection(indexedDB, 'sessions'),
-      forRun: (/** @type {string} */ runId) =>
-        readIndex(indexedDB, 'sessions', 'byRun', [runId]),
-      forJob: (/** @type {string} */ jobId) =>
-        readIndex(indexedDB, 'sessions', 'byJob', [jobId])
-    },
     events: {
       list: () => readCollection(indexedDB, 'events'),
-      forSession: (/** @type {string} */ sessionId) =>
-        readIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]),
-      forSessionByType: async (/** @type {string} */ sessionId, /** @type {string} */ type) => {
+      forRun: (/** @type {string} */ runId) =>
+        readIndex(indexedDB, 'events', 'byRunSequence', [runId]),
+      forRunByType: async (/** @type {string} */ runId, /** @type {string} */ type) => {
         return queryCollection(indexedDB, 'events', [{
           op: 'filter',
           predicates: [
-            { field: 'sessionId', equals: sessionId },
+            { field: 'runId', equals: runId },
             { field: 'type', equals: type }
           ]
         }, {

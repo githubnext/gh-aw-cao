@@ -1,5 +1,4 @@
 import {
-  jobId,
   repositoryCoordinateId,
   runId,
   sourceId,
@@ -371,7 +370,7 @@ function logFiles(input) {
 }
 
 /**
- * @param {string} sessionId
+ * @param {string} runId
  * @param {string} filePath
  * @param {number} line
  * @param {string} eventTimestamp
@@ -379,14 +378,14 @@ function logFiles(input) {
  * @param {string} type
  * @param {Record<string, unknown>} [fields]
  */
-function eventObservation(sessionId, filePath, line, eventTimestamp, eventSource, type, fields = {}) {
+function eventObservation(runId, filePath, line, eventTimestamp, eventSource, type, fields = {}) {
   return {
     kind: /** @type {const} */ ('event'),
     source: OBSERVATION_SOURCE,
-    sourceId: `${sessionId}:${filePath}:${line}`,
+    sourceId: `${runId}:${filePath}:${line}`,
     observedAt: eventTimestamp,
     data: {
-      sessionId,
+      runId,
       timestamp: eventTimestamp,
       source: eventSource,
       type,
@@ -397,8 +396,8 @@ function eventObservation(sessionId, filePath, line, eventTimestamp, eventSource
   };
 }
 
-/** @param {string} sessionId @param {{ path: string, content: string }} file */
-function agentEvents(sessionId, file) {
+/** @param {string} runId @param {{ path: string, content: string }} file */
+function agentEvents(runId, file) {
   let turn = 0;
   return parseJsonl(file.content, file.path).flatMap(({ value, line }) => {
     const eventTimestamp = timestamp(value.timestamp);
@@ -409,21 +408,21 @@ function agentEvents(sessionId, file) {
     switch (value.type) {
       case 'user.message':
         turn += 1;
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'agent_turn', {
+        return [eventObservation(runId, file.path, line, eventTimestamp, 'agent', 'agent_turn', {
           summary: `turn ${turn}`
         })];
       case 'assistant.message':
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'assistant_message')];
+        return [eventObservation(runId, file.path, line, eventTimestamp, 'agent', 'assistant_message')];
       case 'reasoning':
       case 'assistant.reasoning':
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'reasoning')];
+        return [eventObservation(runId, file.path, line, eventTimestamp, 'agent', 'reasoning')];
       case 'tool.execution_start':
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'agent_tool_start', {
+        return [eventObservation(runId, file.path, line, eventTimestamp, 'agent', 'agent_tool_start', {
           summary: detail([text(data.mcpServerName), text(data.toolName)]),
           correlationId: optionalString(data.toolCallId)
         })];
       case 'tool.execution_complete':
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'agent_tool_done', {
+        return [eventObservation(runId, file.path, line, eventTimestamp, 'agent', 'agent_tool_done', {
           summary: detail([text(data.mcpServerName), text(data.toolName)]),
           status: data.success === true ? 'success' : 'error',
           correlationId: optionalString(data.toolCallId)
@@ -434,39 +433,39 @@ function agentEvents(sessionId, file) {
   });
 }
 
-/** @param {string} sessionId @param {{ path: string, content: string }} file @param {boolean} rpc */
-function gatewayEvents(sessionId, file, rpc) {
+/** @param {string} runId @param {{ path: string, content: string }} file @param {boolean} rpc */
+function gatewayEvents(runId, file, rpc) {
   return parseJsonl(file.content, file.path).flatMap(({ value, line }) => {
     const eventTimestamp = timestamp(value.timestamp);
     if (!eventTimestamp) return [];
     if (rpc) {
       if (value.type === 'DIFC_FILTERED') {
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'difc_filtered', {
+        return [eventObservation(runId, file.path, line, eventTimestamp, 'gateway', 'difc_filtered', {
           summary: detail([text(value.server_id), text(value.tool_name)]),
           status: optionalString(value.reason)
         })];
       }
       if (value.type === 'REQUEST' && value.direction === 'OUT') {
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'tool_call', {
+        return [eventObservation(runId, file.path, line, eventTimestamp, 'gateway', 'tool_call', {
           summary: optionalString(value.method)
         })];
       }
       return [];
     }
     if (value.type === 'DIFC_FILTERED') {
-      return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'difc_filtered', {
+      return [eventObservation(runId, file.path, line, eventTimestamp, 'gateway', 'difc_filtered', {
         summary: detail([text(value.server_id ?? value.server_name), text(value.tool_name)]),
         status: optionalString(value.reason)
       })];
     }
     if (value.type === 'GUARD_POLICY_BLOCKED') {
-      return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'guard_blocked', {
+      return [eventObservation(runId, file.path, line, eventTimestamp, 'gateway', 'guard_blocked', {
         summary: detail([text(value.server_id ?? value.server_name), text(value.tool_name)]),
         status: optionalString(value.reason)
       })];
     }
     if (value.event === 'tool_call') {
-      return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'tool_call', {
+      return [eventObservation(runId, file.path, line, eventTimestamp, 'gateway', 'tool_call', {
         summary: detail([text(value.server_name), text(value.tool_name)]),
         status: value.error ? 'error' : optionalString(value.status),
         correlationId: optionalString(value.tool_call_id)
@@ -476,8 +475,8 @@ function gatewayEvents(sessionId, file, rpc) {
   });
 }
 
-/** @param {string} sessionId @param {{ path: string, content: string }} file */
-function firewallEvents(sessionId, file) {
+/** @param {string} runId @param {{ path: string, content: string }} file */
+function firewallEvents(runId, file) {
   return parseJsonl(file.content, file.path).flatMap(({ value, line }) => {
     const eventTimestamp = timestamp(value.ts);
     const host = text(value.host ?? value.domain);
@@ -487,7 +486,7 @@ function firewallEvents(sessionId, file) {
     const status = Number(value.status ?? value.http_status);
     const blocked = /denied|blocked|reject/i.test(decision)
       || (Number.isFinite(status) && status >= 400 && status < 600);
-    return [eventObservation(sessionId, file.path, line, eventTimestamp, 'firewall', blocked ? 'net_blocked' : 'net_allowed', {
+    return [eventObservation(runId, file.path, line, eventTimestamp, 'firewall', blocked ? 'net_blocked' : 'net_allowed', {
       summary: [host, text(value.method)].filter(Boolean).join(' '),
       status: Number.isFinite(status) && status > 0 ? String(status) : blocked ? 'blocked' : 'allowed',
       domain,
@@ -499,21 +498,21 @@ function firewallEvents(sessionId, file) {
 
 /**
  * Converts gh-aw's raw agent, gateway, and firewall JSONL files into its
- * unified timeline vocabulary for one canonical Session.
+ * unified timeline vocabulary for one canonical Run.
  *
  * @param {unknown} input
- * @param {string} sessionId
+ * @param {string} runId
  * @returns {import('../model/schema.js').CanonicalObservation[]}
  */
-export function adaptGhAwTimelineFiles(input, sessionId) {
-  const canonicalSessionId = requiredString(sessionId, 'gh-aw logs sessionId');
+export function adaptGhAwTimelineFiles(input, runId) {
+  const canonicalRunId = requiredString(runId, 'gh-aw logs runId');
   const files = logFiles(input);
   const gateway = files.find((file) => /(^|\/)gateway\.jsonl$/.test(file.path));
   const rpc = gateway ? undefined : files.find((file) => /(^|\/)rpc-messages\.jsonl$/.test(file.path));
   return [
-    ...(gateway ? gatewayEvents(canonicalSessionId, gateway, false) : rpc ? gatewayEvents(canonicalSessionId, rpc, true) : []),
-    ...files.filter((file) => /firewall.*\/audit\.jsonl$/.test(file.path)).flatMap((file) => firewallEvents(canonicalSessionId, file)),
-    ...files.filter((file) => /copilot-session-state\/[^/]+\/events\.jsonl$/.test(file.path)).flatMap((file) => agentEvents(canonicalSessionId, file))
+    ...(gateway ? gatewayEvents(canonicalRunId, gateway, false) : rpc ? gatewayEvents(canonicalRunId, rpc, true) : []),
+    ...files.filter((file) => /firewall.*\/audit\.jsonl$/.test(file.path)).flatMap((file) => firewallEvents(canonicalRunId, file)),
+    ...files.filter((file) => /copilot-session-state\/[^/]+\/events\.jsonl$/.test(file.path)).flatMap((file) => agentEvents(canonicalRunId, file))
   ];
 }
 
@@ -531,7 +530,6 @@ export function adaptGhAwLogs(input) {
   const repository = objectValue(document.repository, 'gh-aw logs repository');
   const workflow = objectValue(document.workflow, 'gh-aw logs workflow');
   const run = objectValue(document.run, 'gh-aw logs run');
-  const job = document.job === undefined || document.job === null ? null : objectValue(document.job, 'gh-aw logs job');
 
   const repositoryGithubId = identifier(repository.githubId, 'repository.githubId');
   const repositoryOwner = requiredString(repository.owner, 'repository.owner');
@@ -543,9 +541,7 @@ export function adaptGhAwLogs(input) {
   const githubRunId = identifier(run.githubRunId, 'run.githubRunId');
   const attempt = positiveInteger(run.attempt, 'run.attempt');
   const canonicalRunId = runId(githubRunId, attempt);
-  const sessionSourceId = `${canonicalRunId}:unified`;
-  const canonicalSessionId = sourceId('session', OBSERVATION_SOURCE, sessionSourceId);
-  const events = adaptGhAwTimelineFiles(document.files, canonicalSessionId);
+  const events = adaptGhAwTimelineFiles(document.files, canonicalRunId);
 
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [
@@ -588,37 +584,7 @@ export function adaptGhAwLogs(input) {
       }
     }
   ];
-  if (job) {
-    const githubJobId = identifier(job.githubJobId, 'job.githubJobId');
-    observations.push({
-      kind: 'job', source: OBSERVATION_SOURCE, sourceId: `job:${githubJobId}`, observedAt,
-      data: {
-        githubJobId,
-        runId: canonicalRunId,
-        name: requiredString(job.name, 'job.name'),
-        status: optionalString(job.status) ?? 'unknown',
-        conclusion: optionalString(job.conclusion) ?? null,
-        startedAt: optionalString(job.startedAt) ?? null,
-        completedAt: optionalString(job.completedAt) ?? null
-      }
-    });
-  }
-  if (events.length > 0) {
-    const orderedTimestamps = events.map((event) => String(event.data.timestamp)).sort();
-    observations.push({
-      kind: 'session', source: OBSERVATION_SOURCE, sourceId: sessionSourceId, observedAt,
-      data: {
-        id: canonicalSessionId,
-        runId: canonicalRunId,
-        jobId: job ? jobId(identifier(job.githubJobId, 'job.githubJobId')) : undefined,
-        kind: 'unified-operational-log',
-        status: optionalString(run.status) ?? 'unknown',
-        startedAt: orderedTimestamps[0],
-        completedAt: run.status === 'completed' ? orderedTimestamps.at(-1) : null
-      }
-    });
-    observations.push(...events);
-  }
+  observations.push(...events);
   return { observations };
 }
 
@@ -635,7 +601,6 @@ export function adaptGhAwLogs(input) {
  *   duplicateRawRunObservations: number,
  *   duplicateAgenticRunObservations: number,
  *   unenrichedRuns: number,
- *   sessions: number,
  *   events: number,
  *   safeOutputItems: number,
  *   mappedSafeOutputItems: number,
@@ -1149,35 +1114,6 @@ function createCachedGhAwJsonlAccumulator(options) {
         auditPath: optionalString(enrichedValue.audit_path)
       })
     });
-    if (Array.isArray(enrichedValue.job_details)) {
-      for (const [jobIndex, candidate] of enrichedValue.job_details.entries()) {
-        const job = objectValue(candidate, `${id}.job_details[${jobIndex}]`);
-        const githubJobId = identifier(job.id, `${id}.job_details[${jobIndex}].id`);
-        const startedAt = timestamp(job.started_at) ?? timestamp(job.created_at);
-        const completedAt = timestamp(job.completed_at);
-        observations.push({
-          kind: 'job',
-          source: OBSERVATION_SOURCE,
-          sourceId: `job:${githubJobId}`,
-          observedAt: completedAt ?? startedAt ?? observedAt,
-          data: {
-            githubJobId,
-            runId: id,
-            name: requiredString(job.name, `${id}.job_details[${jobIndex}].name`),
-            status: optionalString(job.status) ?? 'unknown',
-            conclusion: optionalString(job.conclusion) ?? null,
-            startedAt,
-            completedAt,
-            durationSeconds: startedAt && completedAt
-              ? Math.max(0, (Date.parse(completedAt) - Date.parse(startedAt)) / 1000)
-              : null,
-            runner: 'unknown',
-            runnerName: 'unknown',
-            runnerGroup: 'unknown'
-          }
-        });
-      }
-    }
   }
 
   observations.unshift(...repositories.values(), ...workflows.values());
@@ -1188,27 +1124,11 @@ function createCachedGhAwJsonlAccumulator(options) {
     const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
       ? /** @type {Record<string, unknown>} */ (run.aw_info)
       : {};
-    const sessionSourceId = `${id}:agentic`;
-    const sessionId = sourceId('session', OBSERVATION_SOURCE, sessionSourceId);
+    const eventScopeId = `${id}:agentic`;
     const startedAt = timestamp(run.started_at ?? run.created_at) ?? enriched.observedAt;
     const completedAt = run.status === 'completed'
       ? timestamp(run.updated_at) ?? enriched.observedAt
       : null;
-    observations.push({
-      kind: 'session',
-      source: OBSERVATION_SOURCE,
-      sourceId: sessionSourceId,
-      observedAt: enriched.observedAt,
-      data: {
-        id: sessionId,
-        runId: id,
-        kind: 'unified-operational-log',
-        status: optionalString(run.status) ?? 'unknown',
-        startedAt,
-        completedAt
-      }
-    });
-
     let sourceSequence = enriched.line * 1000;
     /**
      * @param {string} type
@@ -1223,10 +1143,10 @@ function createCachedGhAwJsonlAccumulator(options) {
       observations.push({
         kind: 'event',
         source: OBSERVATION_SOURCE,
-        sourceId: `${sessionSourceId}:${type}:${stableDigest(identity)}`,
+        sourceId: `${eventScopeId}:${type}:${stableDigest(identity)}`,
         observedAt: enriched.observedAt,
         data: withoutUndefined({
-          sessionId,
+          runId: id,
           timestamp: eventTimestamp,
           source: fields.source ?? 'gh-aw-logs',
           type,
@@ -1869,22 +1789,7 @@ function createCachedGhAwJsonlAccumulator(options) {
       runIds.add(collectionRunId);
     }
 
-    const sessionSourceId = `${collectionRunId}:github-api-collection`;
-    const sessionId = sourceId('session', OBSERVATION_SOURCE, sessionSourceId);
-    observations.push({
-      kind: 'session',
-      source: OBSERVATION_SOURCE,
-      sourceId: sessionSourceId,
-      observedAt,
-      data: {
-        id: sessionId,
-        runId: collectionRunId,
-        kind: 'unified-operational-log',
-        status: optionalString(contextRun.status) ?? 'unknown',
-        startedAt: optionalString(contextRun.startedAt) ?? observedAt,
-        completedAt: optionalString(contextRun.completedAt) ?? observedAt
-      }
-    });
+    const eventScopeId = `${collectionRunId}:github-api-collection`;
     for (const { envelope, line } of rateLimitEnvelopes) {
       const rateLimit = objectValue(envelope.rate_limit, `gh-aw JSONL line ${line}.rate_limit`);
       const end = objectValue(rateLimit.end, `gh-aw JSONL line ${line}.rate_limit.end`);
@@ -1893,10 +1798,10 @@ function createCachedGhAwJsonlAccumulator(options) {
       observations.push({
         kind: 'event',
         source: OBSERVATION_SOURCE,
-        sourceId: `${sessionSourceId}:github_api_rate_limit:${line}`,
+        sourceId: `${eventScopeId}:github_api_rate_limit:${line}`,
         observedAt,
         data: {
-          sessionId,
+          runId: collectionRunId,
           timestamp: observedAt,
           source: 'github-api',
           type: 'github_api_rate_limit',
@@ -1921,7 +1826,6 @@ function createCachedGhAwJsonlAccumulator(options) {
     duplicateRawRunObservations: rawPayloadRecords - rawRuns.size,
     duplicateAgenticRunObservations: agenticRunRecords - enrichedRuns.size,
     unenrichedRuns: runIds.size - enrichedRuns.size,
-    sessions: enrichedRuns.size + (mappedRateLimits > 0 ? 1 : 0),
     events: derivedEvents + mappedRateLimits,
     safeOutputItems,
     mappedSafeOutputItems: [...safeOutputItemsByRun.values()]

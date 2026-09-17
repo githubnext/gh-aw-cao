@@ -126,14 +126,16 @@ test("AI Credit timeline uses compact summary tool calls and skips checkout evid
   }));
   await writeFile(path.join(runPath, "base", "gateway.jsonl"), "not evidence\n");
   try {
-    const timeline = await readRunTimeline(root, 43, "session-43");
+    const timeline = await readRunTimeline(root, 43, "github:run:43:attempt:1");
     assert.deepEqual(timeline.map((event) => ({
+      runId: event.runId,
       source: event.source,
       type: event.type,
       summary: event.summary,
       status: event.status,
       correlationId: event.correlationId,
     })), [{
+      runId: "github:run:43:attempt:1",
       source: "gateway",
       type: "tool_call",
       summary: "github/get_file",

@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
 import { adaptGhAwTimelineFiles } from "../site/src/data/adapters/gh-aw-logs.js";
-import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
+import { runId as canonicalRunId } from "../site/src/data/model/ids.js";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";
 import { firstText } from "./text-utils.mjs";
 
@@ -80,7 +80,7 @@ async function loadRunEvidence(outputDirectory, runId) {
   return { runRoot, files: await securityFiles(runRoot) };
 }
 
-export async function readRunTimeline(outputDirectory, runId, sessionId, evidence = null) {
+export async function readRunTimeline(outputDirectory, runId, owningRunId, evidence = null) {
   const { runRoot, files } = evidence || await loadRunEvidence(outputDirectory, runId);
   const selected = files.filter((file) => {
     const relativePath = relativeEvidencePath(runRoot, file);
@@ -93,7 +93,7 @@ export async function readRunTimeline(outputDirectory, runId, sessionId, evidenc
     path: relativeEvidencePath(runRoot, file),
     content: await readBounded(file),
   })))).filter((file) => file.content !== null);
-  const timeline = adaptGhAwTimelineFiles(inputs, sessionId).map((observation) => ({
+  const timeline = adaptGhAwTimelineFiles(inputs, owningRunId).map((observation) => ({
     sourceId: observation.sourceId,
     ...observation.data,
   }));
@@ -113,8 +113,8 @@ export async function readRunTimeline(outputDirectory, runId, sessionId, evidenc
       const toolName = firstText(call?.tool_name);
       if (!eventTimestamp || !Number.isFinite(Date.parse(eventTimestamp)) || (!serverName && !toolName)) return [];
       return [{
-        sourceId: `${sessionId}:run_summary.json:mcp_tool_usage.tool_calls:${index + 1}`,
-        sessionId,
+        sourceId: `${owningRunId}:run_summary.json:mcp_tool_usage.tool_calls:${index + 1}`,
+        runId: owningRunId,
         timestamp: new Date(eventTimestamp).toISOString(),
         source: "gateway",
         type: "tool_call",
@@ -754,11 +754,7 @@ export async function collectAicUsage() {
             readRunTimeline(
               temporaryRoot,
               runId,
-              sourceId(
-                "session",
-                "gh-aw-logs",
-                `${canonicalRunId(runId, common.runAttempt)}:unified`,
-              ),
+              canonicalRunId(runId, common.runAttempt),
               evidence,
             ),
           ]);

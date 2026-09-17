@@ -101,9 +101,8 @@ for the completed run and attempt rather than an unspecified latest snapshot.
 The snapshot consists of the JSONL produced by `gh aw logs`, compact
 run-information shards, detailed event shards, and rebuildable projections.
 Run-information shards MUST contain only Package, Repository, Workflow, and Run
-records. Event shards MUST contain only Job, Session, and Event records. Every
-Event transport record MUST carry its canonical Run identity in addition to its
-Session identity.
+records. Event shards MUST contain only Event records. Every Event transport
+record MUST carry its canonical Run identity.
 
 The two phases MUST be a complete partition of the source records. Publishers
 MUST omit a phase shard when it contains no records, so the run-information and

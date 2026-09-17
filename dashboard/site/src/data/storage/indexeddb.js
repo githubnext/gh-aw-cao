@@ -6,7 +6,7 @@ import { tidy } from '../../data-operations.js';
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 13;
+export const DATABASE_VERSION = 14;
 
 /** @param {string} [pathname] */
 export function canonicalDatabaseName(pathname) {
@@ -18,8 +18,6 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
   'workflows',
   'runs',
-  'jobs',
-  'sessions',
   'events'
 ]);
 export const TRANSACTION_STORE = 'transactions';
@@ -49,25 +47,12 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
       byWorkflowStartedAt: ['workflowId', 'startedAt']
     }
   },
-  jobs: {
-    keyPath: 'id',
-    indexes: { byRun: 'runId', byRunStartedAt: ['runId', 'startedAt'] }
-  },
-  sessions: {
-    keyPath: 'id',
-    indexes: {
-      byRun: 'runId',
-      byJob: 'jobId',
-      byRunStartedAt: ['runId', 'startedAt'],
-      byJobStartedAt: ['jobId', 'startedAt']
-    }
-  },
   events: {
     keyPath: 'id',
     indexes: {
-      bySessionSequence: ['sessionId', 'sequence'],
-      bySessionTimestamp: ['sessionId', 'timestamp'],
-      bySessionType: ['sessionId', 'type'],
+      byRunSequence: ['runId', 'sequence'],
+      byRunTimestamp: ['runId', 'timestamp'],
+      byRunType: ['runId', 'type'],
       byType: 'type',
       bySource: 'source',
       byCorrelation: 'correlationId'
@@ -92,8 +77,6 @@ const QUERYABLE_STRING_KEY_PATHS = new Set([
   'repositoryId',
   'workflowId',
   'runId',
-  'jobId',
-  'sessionId',
   'status',
   'conclusion',
   'type',

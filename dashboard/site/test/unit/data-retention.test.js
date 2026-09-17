@@ -11,10 +11,9 @@ import {
 const NOW = Date.parse('2026-09-09T05:00:00Z');
 
 /**
- * @param {{ eventId: string, timestamp: string, sessionId?: string }[]} events
+ * @param {{ eventId: string, timestamp: string, runId?: string }[]} events
  */
 function batch(events) {
-  const sessionIds = new Set(events.map((event) => event.sessionId ?? 'session:1'));
   return normalize([
     {
       kind: 'repository',
@@ -42,13 +41,6 @@ function batch(events) {
         startedAt: '2026-09-09T04:00:00Z'
       }
     },
-    ...[...sessionIds].map((sessionId) => ({
-      kind: /** @type {const} */ ('session'),
-      source: 'fixture',
-      sourceId: sessionId,
-      observedAt: '2026-09-09T05:00:00Z',
-      data: { id: sessionId, runId: 'run:1', startedAt: '2026-09-09T04:00:00Z' }
-    })),
     ...events.map((event) => ({
       kind: /** @type {const} */ ('event'),
       source: 'fixture',
@@ -56,7 +48,7 @@ function batch(events) {
       observedAt: event.timestamp,
       data: {
         id: event.eventId,
-        sessionId: event.sessionId ?? 'session:1',
+        runId: event.runId ?? 'run:1',
         timestamp: event.timestamp,
         source: 'agent',
         type: 'agent_turn'
@@ -103,8 +95,6 @@ describe('canonical retention merge', () => {
     ]);
     incoming.runs[0].startedAt = '2026-07-01T04:00:00Z';
     incoming.runs[0].observedAt = '2026-07-01T04:00:00Z';
-    incoming.sessions[0].startedAt = '2026-07-01T04:00:00Z';
-    incoming.sessions[0].observedAt = '2026-07-01T04:00:00Z';
 
     const merged = mergeRetainedRecords(normalize([]), incoming, {
       now: NOW,
@@ -112,7 +102,6 @@ describe('canonical retention merge', () => {
     });
 
     expect(merged.runs.map((run) => run.id)).toEqual(['run:1']);
-    expect(merged.sessions).toEqual([]);
     expect(merged.events).toEqual([]);
     expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
     expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
@@ -120,11 +109,9 @@ describe('canonical retention merge', () => {
 
   it('drops retained records whose parents no longer survive', () => {
     const previous = batch([
-      { eventId: 'event:orphan', timestamp: '2026-09-01T04:00:00Z', sessionId: 'session:orphan' }
+      { eventId: 'event:orphan', timestamp: '2026-09-01T04:00:00Z' }
     ]);
-    previous.sessions = previous.sessions.filter((session) => session.id !== 'session:orphan');
-    previous.runs[0].startedAt = '2026-07-01T04:00:00Z';
-    previous.runs[0].observedAt = '2026-07-01T04:00:00Z';
+    previous.events[0].runId = 'run:missing';
     const incoming = batch([
       { eventId: 'event:current', timestamp: '2026-09-09T04:00:00Z' }
     ]);
@@ -132,7 +119,6 @@ describe('canonical retention merge', () => {
     const merged = mergeRetainedRecords(previous, incoming, { now: NOW });
 
     expect(merged.events.map((event) => event.id)).toEqual(['event:current']);
-    expect(merged.sessions.map((session) => session.id)).toEqual(['session:1']);
   });
 
   it('expires retained records that carry no usable observation time', () => {
@@ -188,7 +174,7 @@ describe('canonical retention merge', () => {
 
   it('drops the oldest whole run subtree to fit a byte cap', () => {
     const records = batch([
-      { eventId: 'event:old', timestamp: '2026-09-01T04:00:00Z', sessionId: 'session:old' }
+      { eventId: 'event:old', timestamp: '2026-09-01T04:00:00Z' }
     ]);
     records.runs[0].startedAt = '2026-09-01T04:00:00Z';
     records.runs.push({
@@ -196,26 +182,16 @@ describe('canonical retention merge', () => {
       id: 'run:new',
       startedAt: '2026-09-09T04:00:00Z'
     });
-    records.jobs.push({ id: 'job:old', runId: 'run:1', name: 'old' });
-    records.jobs.push({ id: 'job:new', runId: 'run:new', name: 'new' });
-    records.sessions.push({
-      ...records.sessions[0],
-      id: 'session:new',
-      runId: 'run:new',
-      startedAt: '2026-09-09T04:00:00Z'
-    });
     records.events.push({
       ...records.events[0],
       id: 'event:new',
-      sessionId: 'session:new',
+      runId: 'run:new',
       timestamp: '2026-09-09T04:00:00Z'
     });
 
     const capped = capCanonicalBatchSize(records, estimateCanonicalBatchBytes(records) - 1);
 
     expect(capped.runs.map((run) => run.id)).toEqual(['run:new']);
-    expect(capped.jobs.map((job) => job.id)).toEqual(['job:new']);
-    expect(capped.sessions.map((session) => session.id)).toEqual(['session:new']);
     expect(capped.events.map((event) => event.id)).toEqual(['event:new']);
   });
 });

@@ -34,8 +34,6 @@ const ENTITY_COLLECTIONS = [
   'repositories',
   'workflows',
   'runs',
-  'jobs',
-  'sessions',
   'events'
 ];
 const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
@@ -1164,8 +1162,6 @@ async function hashActivityPayloads({
               repositories: batch.repositories,
               workflows: batch.workflows,
               runs: batch.runs,
-              jobs: [],
-              sessions: [],
               events: []
             }
           },
@@ -1177,8 +1173,6 @@ async function hashActivityPayloads({
               repositories: [],
               workflows: [],
               runs: [],
-              jobs: batch.jobs,
-              sessions: batch.sessions,
               events: batch.events
             }
           }
@@ -1443,11 +1437,10 @@ function inTimeRange(timestamp, range) {
 
 export async function queryGhData(indexedDB, resource, options) {
   if (!GH_RESOURCES.has(resource)) throw new Error(`Unknown gh resource: ${resource}`);
-  const [repositories, workflows, runs, sessions, events] = await Promise.all([
+  const [repositories, workflows, runs, events] = await Promise.all([
     readCollection(indexedDB, 'repositories'),
     readCollection(indexedDB, 'workflows'),
     readCollection(indexedDB, 'runs'),
-    readCollection(indexedDB, 'sessions'),
     readCollection(indexedDB, 'events')
   ]);
   const repositoryFilter = option(options, 'repo', false)?.toLowerCase();
@@ -1456,7 +1449,6 @@ export async function queryGhData(indexedDB, resource, options) {
   const repositoriesById = new Map(repositories.map((record) => [record.id, record]));
   const workflowsById = new Map(workflows.map((record) => [record.id, record]));
   const runsById = new Map(runs.map((record) => [record.id, record]));
-  const sessionsById = new Map(sessions.map((record) => [record.id, record]));
   const sourceRepository = (run) => repositoriesById.get(run.repositoryId) ?? {};
   const sourceWorkflow = (run) => workflowsById.get(run.workflowId) ?? {};
 
@@ -1484,8 +1476,7 @@ export async function queryGhData(indexedDB, resource, options) {
         && event.safeOutputType === safeOutputType
       ))
       .map((event) => {
-        const session = sessionsById.get(event.sessionId) ?? {};
-        const run = runsById.get(session.runId) ?? {};
+        const run = runsById.get(event.runId) ?? {};
         const workflow = sourceWorkflow(run);
         const executionRepository = sourceRepository(run);
         const target = githubEntityUrl(event.correlationId);
@@ -1579,13 +1570,10 @@ async function runLegacyIngestion(contextPath, logDirectory) {
     );
     const queries = createCanonicalQueries(indexedDB);
     const runs = await queries.runs.list();
-    const sessions = (await Promise.all(
-      runs.map((run) => queries.sessions.forRun(String(run.id)))
-    )).flat();
     const events = (await Promise.all(
-      sessions.map((session) => queries.events.forSession(String(session.id)))
+      runs.map((run) => queries.events.forRun(String(run.id)))
     )).flat();
-    return { result, runs, sessions, events };
+    return { result, runs, events };
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

@@ -12,7 +12,6 @@ const sourceNames = [
   "repositories",
   "workflows",
   "runs",
-  "sessions",
   "events",
   "admissions",
   "admission-checks",
@@ -946,43 +945,25 @@ function transactionEventFields(event) {
 }
 
 export function transactionLogRows(usage) {
-  const sessions = [];
   const events = [];
   for (const run of usage.securityRuns || []) {
     const timeline = Array.isArray(run.timeline) ? run.timeline : [];
     const names = repositoryParts(run.repository);
     const attempt = Number(run.runAttempt) || 1;
-    const session = firstText(
-      timeline[0]?.sessionId,
-      sourceId("session", "gh-aw-logs", `${canonicalRunId(run.runId, attempt)}:unified`),
-    );
-    if (!session) continue;
+    const canonicalRun = canonicalRunId(run.runId, attempt);
     const timestamps = timeline.map((event) => firstText(event.timestamp)).filter(Boolean).sort();
     const observedAt = firstText(run.createdAt, usage.generatedAt);
     if (timestamps.length === 0 && observedAt) timestamps.push(observedAt);
-    const agentJob = Array.isArray(run.logsPayload?.jobs)
-      ? run.logsPayload.jobs.find((job) => /agent/i.test(firstText(job?.name)))
-      : null;
     const common = {
       ...names,
       workflow: run.workflowPath?.replace(/\.lock\.yml$/, ".md") || run.workflowName || "",
       run: String(run.runId),
       "run-attempt": attempt,
-      session,
     };
-    sessions.push({
-      ...common,
-      ...(agentJob?.jobId !== undefined && agentJob?.jobId !== null ? { "job-id": String(agentJob.jobId) } : {}),
-      "session-kind": "unified-operational-log",
-      "session-status": firstText(run.logsPayload?.status) || "unknown",
-      "started-at": timestamps[0],
-      "ended-at": run.logsPayload?.status === "completed" ? timestamps.at(-1) : undefined,
-      "observed-at": run.createdAt || usage.generatedAt,
-    });
     if (timeline.length === 0) {
       events.push({
         ...common,
-        event: sourceId("event", "gh-aw-logs", `${session}:run-observed`),
+        event: sourceId("event", "gh-aw-logs", `${canonicalRun}:run-observed`),
         "event-timestamp": timestamps[0],
         "event-source": "workflow",
         "event-type": "run_observed",
@@ -1008,37 +989,18 @@ export function transactionLogRows(usage) {
       "observed-at": run.createdAt || usage.generatedAt,
     }));
   }
-  return { sessions, events };
+  return { events };
 }
 
-function transactionLogRowsForCurrentRuns(transactionLogs, runs, jobs) {
+function transactionLogRowsForCurrentRuns(transactionLogs, runs) {
   const runCoordinate = (row) => [
     `${String(row.organization || "").toLowerCase()}/${String(row.repository || "").toLowerCase()}`,
     String(row.run || ""),
     Number(row["run-attempt"]) || 1,
   ].join(":");
   const runCoordinates = new Set(runs.map(runCoordinate));
-  const jobCoordinates = new Set(jobs
-    .filter((row) => row["job-id"] !== undefined && row["job-id"] !== null)
-    .map((row) => `${runCoordinate(row)}:${row["job-id"]}`));
-  const sessions = transactionLogs.sessions.flatMap((row) => {
-    const coordinate = runCoordinate(row);
-    if (!runCoordinates.has(coordinate)) return [];
-    if (
-      row["job-id"] === undefined
-      || row["job-id"] === null
-      || jobCoordinates.has(`${coordinate}:${row["job-id"]}`)
-    ) {
-      return [row];
-    }
-    const session = { ...row };
-    delete session["job-id"];
-    return [session];
-  });
-  const sessionIds = new Set(sessions.map((row) => row.session));
   return {
-    sessions,
-    events: transactionLogs.events.filter((row) => sessionIds.has(row.session)),
+    events: transactionLogs.events.filter((row) => runCoordinates.has(runCoordinate(row))),
   };
 }
 
@@ -2689,7 +2651,6 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const transactionLogs = transactionLogRowsForCurrentRuns(
     transactionLogRows(usage),
     runs,
-    performance.jobs,
   );
   const detectionObservations = detectionObservationRows(usage, performance.jobs);
   const safeOutputPerformance = safeOutputPerformanceRows(usage);
@@ -2757,13 +2718,6 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   sources.repositories = source("repositories", [...repositories.values()], generatedAt, discoveryAvailable, workflowInventoryComplete);
   sources.workflows = source("workflows", workflows, generatedAt, workflowsAvailable, workflowInventoryComplete);
   sources.runs = source("runs", runs, generatedAt, runAvailable, runComplete);
-  sources.sessions = source(
-    "sessions",
-    transactionLogs.sessions,
-    generatedAt,
-    usage.securityAvailable === true,
-    usage.securityComplete === true,
-  );
   sources.events = source(
     "events",
     transactionLogs.events,

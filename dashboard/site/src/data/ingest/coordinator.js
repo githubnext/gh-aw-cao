@@ -351,7 +351,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
         throw new TypeError('Normalized activity payload must include a canonical batch');
       }
       const batch = /** @type {import('../model/schema.js').CanonicalBatch} */ (payload.batch);
-      for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'jobs', 'sessions', 'events']) {
+      for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'events']) {
         if (!Array.isArray(batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)])) {
           throw new TypeError(`Normalized activity payload is missing ${collection}`);
         }
@@ -361,7 +361,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
           throw new TypeError(`Normalized activity payload phase must be ${options.expectedPhase}`);
         }
         const excluded = options.expectedPhase === 'runs'
-          ? ['jobs', 'sessions', 'events']
+          ? ['events']
           : ['packages', 'repositories', 'workflows', 'runs'];
         for (const collection of excluded) {
           if (batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)].length > 0) {
@@ -479,7 +479,6 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     debug('normalized JSONL stream', {
       sourceRecords: adapted.records,
       runs: batch.runs.length,
-      sessions: batch.sessions.length,
       events: batch.events.length
     });
     phase = 'writing';
@@ -527,7 +526,6 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       duplicateRawRunObservations: adapted.duplicateRawRunObservations,
       duplicateAgenticRunObservations: adapted.duplicateAgenticRunObservations,
       unenrichedRuns: adapted.unenrichedRuns,
-      sessions: adapted.sessions,
       events: adapted.events,
       rateLimits: adapted.rateLimits,
       mappedRateLimits: adapted.mappedRateLimits,

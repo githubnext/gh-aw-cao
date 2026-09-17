@@ -389,8 +389,6 @@ export async function generateDashboardStressData({
     expected: {
       repositories: options.repositories,
       runs: options.runs,
-      jobs: options.runs,
-      sessions: options.runs,
       events: options.runs * options.derivedEventsPerRun,
     },
     files,

@@ -41,7 +41,7 @@ export const profiles = [
 
 export const eventsPerformanceJourney = Object.freeze({
   pageId: 'events',
-  routes: Object.freeze(['runs', 'events', 'sessions', 'events']),
+  routes: Object.freeze(['runs', 'events', 'events']),
   maxEventsReturnMs: 1500
 });
 

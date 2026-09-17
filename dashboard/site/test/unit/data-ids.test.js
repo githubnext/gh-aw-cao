@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  jobId,
   repositoryCoordinateId,
   repositoryId,
   runId,
@@ -14,7 +13,6 @@ describe('canonical data identities', () => {
   it('uses immutable GitHub IDs rather than renameable labels', () => {
     expect(repositoryId(123456)).toBe('github:repository:123456');
     expect(workflowId(98765)).toBe('github:workflow:98765');
-    expect(jobId(445566)).toBe('github:job:445566');
   });
 
   it('distinguishes attempts of the same workflow run', () => {
@@ -38,8 +36,8 @@ describe('canonical data identities', () => {
   });
 
   it('derives stable source-coordinate identities without random values', () => {
-    expect(sourceId('session', 'gh-aw-log', 'run-12/job-4')).toBe(
-      'session:gh-aw-log:run-12%2Fjob-4'
+    expect(sourceId('event', 'gh-aw-log', 'run-12/event-4')).toBe(
+      'event:gh-aw-log:run-12%2Fevent-4'
     );
   });
 

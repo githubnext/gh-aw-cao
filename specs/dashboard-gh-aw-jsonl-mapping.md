@@ -15,13 +15,13 @@ The mapping SHALL preserve these mandatory relationships:
 ```text
 Workflow -> Repository
 Run -> Repository and Workflow
-Session -> Run
-Event -> Session
+Event -> Run
 ```
 
 The mapping SHALL NOT emit Package or Transaction observations. Transactions
 remain the database-operation audit ledger maintained by the ingestion
-coordinator. Enriched `job_details` SHALL emit canonical Job observations.
+coordinator. Enriched `job_details` MAY feed published job-performance
+projections but SHALL NOT emit canonical Job observations.
 
 ## 0 Acquisition and shard scope
 
@@ -191,31 +191,21 @@ evidence rules in `specs/dashboard-data.md` Section 5.5. Safe-output creation is
 not accepted-outcome evidence without an authoritative disposition or frozen
 evaluator rule.
 
-## 3 Job mapping
+## 3 Job detail mapping
 
-Each `job_details[]` item SHALL emit one Job belonging to the canonical Run.
-Job identity SHALL use the GitHub job ID. The mapping SHALL preserve `name`,
-`status`, `conclusion`, `started_at`, and `completed_at`; it SHALL derive
-`durationSeconds` when both timestamps are valid. Runner fields SHALL remain
-`unknown` because cached JSONL does not provide authoritative runner identity.
+`job_details[]` items are not canonical entities. Producers MAY retain them for
+the published `job-performance` logical source, but normalized canonical shards,
+SQLite, and IndexedDB MUST omit them.
 
-## 4 Agentic Session mapping
+## 4 Agentic Event ownership
 
-Every unique enriched Run SHALL emit one Session:
-
-| Session field | Mapping |
-| --- | --- |
-| `id` | Deterministic source ID from canonical Run ID plus `agentic` |
-| `runId` | Canonical Run ID |
-| `kind` | `unified-operational-log` |
-| `status` | Enriched `status`, otherwise `unknown` |
-| `startedAt` | `started_at`, then `created_at`, then observation time |
-| `completedAt` | `updated_at` only when status is `completed` |
-| `jobId` | Omitted because one enriched Run can contain multiple Jobs |
+Every Event emitted from an enriched Run SHALL carry that Run's canonical
+`runId`. Session-shaped source observations SHALL NOT create a canonical entity
+or intermediate ownership relationship.
 
 ## 5 Agentic Event mapping
 
-Agentic Events SHALL use the mapped Session ID, source `gh-aw-logs`, a stable
+Agentic Events SHALL use their owning Run ID, source `gh-aw-logs`, a stable
 semantic ID, the source line as `payloadRef`, and the source line-derived
 sequence as `sourceSequence`.
 
@@ -248,7 +238,7 @@ store: `key_findings` to `audit.finding`, `observability_insights` to
 `audit.mcp_failure`, and `skill_activations` to `audit.skill_activation`.
 
 Each `safe_output_item` envelope SHALL emit `safe_output.created` with source
-`safe-output` in the agentic Session for its preceding `run` envelope with the
+`safe-output` for its preceding `run` envelope with the
 same `run_id`. When no item envelopes are present for a Run, `safe_outputs[]`,
 or `audit.created_items[]` when `safe_outputs` is absent, SHALL provide the
 Events instead. This precedence prevents the duplicated projection in the Run
@@ -262,7 +252,7 @@ Event records SHALL populate only the existing Event model fields:
 
 ```text
 id
-sessionId
+runId
 timestamp
 source
 type
@@ -310,7 +300,7 @@ schema revision, immutable generation, observed time, completeness, freshness,
 and evidence links in `sourceProvenance`.
 The append-only lifecycle shard SHALL retain that optimizer Run as a
 `token_efficiency_run_context` envelope so lifecycle Events keep their canonical
-Run and Session relationships after ordinary Activity-window pruning. This
+Run relationship after ordinary Activity-window pruning. This
 context envelope does not represent an additional Run.
 Issue titles, bodies, comments, and open or closed state MUST NOT establish
 acceptance, implementation, disposition, or lineage.
@@ -321,7 +311,7 @@ Each `github_api_rate_limit` envelope SHALL map to one Event:
 
 | JSONL or ingestion source | Canonical Event field |
 | --- | --- |
-| Collection context | `sessionId`, `timestamp`, `observedAt` |
+| Collection context | `runId`, `timestamp`, `observedAt` |
 | Constant `github-api` | `source` |
 | Constant `github_api_rate_limit` | `type` |
 | `rate_limit.host` | `correlationId` |
@@ -330,16 +320,16 @@ Each `github_api_rate_limit` envelope SHALL map to one Event:
 | Exhausted or unavailable remaining capacity | `status: exhausted` |
 | JSONL source line | `payloadRef`, `sourceSequence` |
 
-The envelope has no run or session identity. It SHALL be emitted only when
+The envelope has no run identity. It SHALL be emitted only when
 explicit collection context resolves an owning canonical Run. The adapter
-SHALL create or resolve a deterministic collection Session for that Run.
-Missing collection context SHALL leave rate-limit records unmapped rather than
-assign them to an adjacent or inferred Run.
+SHALL link the Event directly to that Run. Missing collection context SHALL
+leave rate-limit records unmapped rather than assign them to an adjacent or
+inferred Run.
 
 ## 7 Privacy boundary
 
-The canonical mapping SHALL retain only fields required by existing Run, Job,
-Session, and Event contracts. It SHALL NOT persist complete audit objects, MCP
+The canonical mapping SHALL retain only fields required by existing Run and
+Event contracts. It SHALL NOT persist complete audit objects, MCP
 arguments, responses, error bodies, artifact contents, or other opaque source
 payloads. It SHALL NOT query the GitHub API to fill absent operational fields.
 
@@ -355,7 +345,6 @@ records
 rawPayloadRecords
 rawRuns
 agenticRuns
-sessions
 events
 safeOutputItems
 mappedSafeOutputItems

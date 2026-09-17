@@ -1,8 +1,8 @@
-import { jobId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
+import { repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, ENTITY_KINDS, requiredString } from '../model/schema.js';
 
 export const SQL_EXPORT_CONTRACT = 'gh-aw-cao.dashboard-sql-export';
-export const SQL_EXPORT_VERSION = 1;
+export const SQL_EXPORT_VERSION = 2;
 
 /** @param {unknown} value @param {string} field */
 function objectValue(value, field) {
@@ -150,32 +150,6 @@ export function adaptSqlExport(input) {
         };
         break;
       }
-      case 'job':
-        data = {
-          githubJobId: identifier(row.github_job_id, 'github_job_id'),
-          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
-          name: requiredString(row.job_name, 'job_name'),
-          status: optionalString(row.job_status) ?? 'unknown',
-          conclusion: optionalString(row.job_conclusion) ?? null,
-          startedAt: optionalString(row.job_started_at) ?? null,
-          completedAt: optionalString(row.job_completed_at) ?? null
-        };
-        break;
-      case 'session': {
-        const sessionId = sourceId('session', source, sourceRecordId);
-        data = {
-          id: sessionId,
-          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
-          jobId: row.github_job_id === undefined || row.github_job_id === null
-            ? undefined
-            : jobId(identifier(row.github_job_id, 'github_job_id')),
-          kind: requiredString(row.session_kind, 'session_kind'),
-          status: optionalString(row.session_status) ?? 'unknown',
-          startedAt: optionalString(row.session_started_at) ?? null,
-          completedAt: optionalString(row.session_completed_at) ?? null
-        };
-        break;
-      }
       case 'event': {
         if (row.source_sequence !== undefined && row.source_sequence !== null
           && (!Number.isInteger(Number(row.source_sequence)) || Number(row.source_sequence) < 0)) {
@@ -196,7 +170,7 @@ export function adaptSqlExport(input) {
           throw new TypeError('optimization_target_repo must be an owner/repository coordinate');
         }
         data = {
-          sessionId: sourceId('session', source, requiredString(row.session_source_id, 'session_source_id')),
+          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
           timestamp: canonicalTimestamp(row.event_timestamp ?? observedAt, 'event_timestamp'),
           source: requiredString(row.event_source, 'event_source'),
           type: eventType,

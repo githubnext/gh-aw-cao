@@ -44,7 +44,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     }
   })}\n`).observations);
   const normalized = (/** @type {'runs' | 'events'} */ phase, /** @type {typeof batch} */ phaseBatch) => ({
-    schemaVersion: 9,
+    schemaVersion: 10,
     ingestionVersion: 2,
     sourceRecords: 1,
     phase,
@@ -71,7 +71,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       if (init?.method !== 'HEAD') downloadedShards.push(url);
       return init?.method === 'HEAD'
         ? new Response(null, { headers: { 'content-length': '1' } })
-        : Response.json(normalized('runs', { ...batch, jobs: [], sessions: [], events: [] }));
+        : Response.json(normalized('runs', { ...batch, events: [] }));
     }
     if (init?.method !== 'HEAD') downloadedShards.push(url);
     eventDownloaded ||= init?.method !== 'HEAD';
@@ -80,7 +80,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
       ? new Response(null, { headers: { 'content-length': '1' } })
       : Response.json(normalized('events', {
           packages: [], repositories: [], workflows: [], runs: [],
-          jobs: batch.jobs, sessions: batch.sessions, events: batch.events
+          events: batch.events
         }));
   });
 

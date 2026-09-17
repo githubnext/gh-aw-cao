@@ -6,7 +6,7 @@ import { relationshipErrors } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
 
 function fixture() {
-  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'));
+  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v2.json'), 'utf8'));
 }
 
 describe('SQL export adapter', () => {
@@ -23,12 +23,9 @@ describe('SQL export adapter', () => {
         repositoryId: 'github:repository:101',
         workflowId: 'github:workflow:202'
       }],
-      jobs: [{ id: 'github:job:404', runId: 'github:run:303:attempt:1' }],
-      sessions: [{
-        id: 'session:sql%3Aenterprise-warehouse:session-505',
-        runId: 'github:run:303:attempt:1',
-        jobId: 'github:job:404'
-      }]
+      events: expect.arrayContaining([
+        expect.objectContaining({ runId: 'github:run:303:attempt:1' })
+      ])
     });
     expect(batch.events.map((event) => [event.sequence, event.type])).toEqual([
       [0, 'message.user'],
@@ -41,8 +38,8 @@ describe('SQL export adapter', () => {
   });
 
   it('rejects unknown schema versions', () => {
-    expect(() => adaptSqlExport({ ...fixture(), schema_version: 2 }))
-      .toThrow('Unsupported SQL export schema version: 2');
+    expect(() => adaptSqlExport({ ...fixture(), schema_version: 1 }))
+      .toThrow('Unsupported SQL export schema version: 1');
   });
 
   it('preserves token intervention lifecycle identity and evidence', () => {
@@ -51,7 +48,8 @@ describe('SQL export adapter', () => {
       entity_kind: 'event',
       source_id: 'event-token-lifecycle',
       observed_at: '2026-09-09T05:00:00Z',
-      session_source_id: 'session-505',
+      github_run_id: '303',
+      run_attempt: 1,
       event_timestamp: '2026-09-09T04:00:03Z',
       event_source: 'token-intervention-lifecycle',
       event_type: 'token_efficiency.intervention',

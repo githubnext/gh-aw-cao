@@ -151,16 +151,7 @@ describe('current dashboard source adapter', () => {
       requestedModel: 'model-a',
       resolvedModel: 'model-b'
     });
-    expect(batch.jobs[0]).toMatchObject({
-      id: 'github:job:67890',
-      runId: 'github:run:12345:attempt:2',
-      name: 'build',
-      conclusion: 'success',
-      durationSeconds: 240,
-      runner: 'ubuntu-latest',
-      engine: 'copilot',
-      model: 'model-b'
-    });
+    expect(batch.events).toEqual([]);
   });
 
   it('accepts source documents without generation metadata', () => {
@@ -180,7 +171,7 @@ describe('current dashboard source adapter', () => {
     expect(adaptDashboardSources(sources)).toEqual({ observations: [] });
   });
 
-  it('joins published transaction logs to canonical runs and jobs', () => {
+  it('joins published transaction logs directly to canonical runs', () => {
     const sources = {
       repositories: {
         rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
@@ -205,16 +196,9 @@ describe('current dashboard source adapter', () => {
         }],
         metadata
       },
-      sessions: {
-        rows: [{
-          run: '303', 'run-attempt': 1, 'job-id': '404', session: 'githubnext/gh-aw-cao:303:1:gh-aw',
-          'session-kind': 'unified-operational-log', 'started-at': '2026-09-09T04:00:01Z'
-        }],
-        metadata
-      },
       events: {
         rows: [{
-          session: 'githubnext/gh-aw-cao:303:1:gh-aw', event: 'event-1',
+          run: '303', 'run-attempt': 1, event: 'event-1',
           'event-timestamp': '2026-09-09T04:00:01Z',
           'event-source': 'token-intervention-lifecycle',
           'event-type': 'token_efficiency.intervention',
@@ -255,10 +239,8 @@ describe('current dashboard source adapter', () => {
     expect(batch.runs).toEqual([expect.objectContaining({
       agentId: 'copilot', modelId: 'auto'
     })]);
-    expect(batch.sessions).toEqual([expect.objectContaining({
-      runId: 'github:run:303:attempt:1', jobId: 'github:job:404'
-    })]);
     expect(batch.events).toEqual([expect.objectContaining({
+      runId: 'github:run:303:attempt:1',
       sequence: 0,
       source: 'token-intervention-lifecycle',
       type: 'token_efficiency.intervention',
@@ -289,7 +271,7 @@ describe('current dashboard source adapter', () => {
     })]);
   });
 
-  it('reconciles retained transaction logs with the published run and job horizon', () => {
+  it('reconciles retained transaction logs with the published run horizon', () => {
     const sources = {
       repositories: {
         rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
@@ -307,27 +289,14 @@ describe('current dashboard source adapter', () => {
         metadata
       },
       'job-performance': { rows: [], metadata },
-      sessions: {
-        rows: [
-          {
-            run: '302', 'run-attempt': 1, 'job-id': '402', session: 'stale-session',
-            'started-at': '2026-09-08T04:00:01Z'
-          },
-          {
-            run: '303', 'run-attempt': 1, 'job-id': '403', session: 'current-session',
-            'started-at': '2026-09-09T04:00:01Z'
-          }
-        ],
-        metadata
-      },
       events: {
         rows: [
           {
-            session: 'stale-session', event: 'stale-event',
+            run: '302', 'run-attempt': 1, event: 'stale-event',
             'event-timestamp': '2026-09-08T04:00:01Z', 'event-source': 'agent', 'event-type': 'agent_turn'
           },
           {
-            session: 'current-session', event: 'current-event',
+            run: '303', 'run-attempt': 1, event: 'current-event',
             'event-timestamp': '2026-09-09T04:00:01Z', 'event-source': 'agent', 'event-type': 'agent_turn'
           }
         ],
@@ -339,13 +308,8 @@ describe('current dashboard source adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
-    expect(batch.sessions).toEqual([expect.objectContaining({
-      id: 'current-session', runId: 'github:run:303:attempt:1'
-    })]);
-    expect(batch.sessions[0].jobId).toBeUndefined();
-    expect(Object.keys(batch.sessions[0])).not.toContain('jobId');
     expect(batch.events).toEqual([expect.objectContaining({
-      id: 'current-event', sessionId: 'current-session'
+      id: 'current-event', runId: 'github:run:303:attempt:1'
     })]);
   });
 });

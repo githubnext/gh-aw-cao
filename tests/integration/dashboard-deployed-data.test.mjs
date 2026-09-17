@@ -28,20 +28,16 @@ test("deployed dashboard cache populates canonical workflows, runs, and events",
   await deleteCanonicalDatabase(indexedDB);
   try {
     await ingestDeployedShards();
-    const [repositories, workflows, runs, jobs, sessions, events] = await Promise.all([
+    const [repositories, workflows, runs, events] = await Promise.all([
       readCollection(indexedDB, "repositories"),
       readCollection(indexedDB, "workflows"),
       readCollection(indexedDB, "runs"),
-      readCollection(indexedDB, "jobs"),
-      readCollection(indexedDB, "sessions"),
       readCollection(indexedDB, "events"),
     ]);
     for (const [table, entries] of Object.entries({
       repositories,
       workflows,
       runs,
-      jobs,
-      sessions,
       events,
     })) {
       console.error(`Canonical ${table} rows: ${entries.length}`);

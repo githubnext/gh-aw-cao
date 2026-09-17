@@ -48,10 +48,9 @@ function batch() {
     workflowId: 'workflow:1',
     conclusion: 'success'
   });
-  canonical.sessions.push({ id: 'session:1', runId: 'run:1' });
   canonical.events.push(
-    { id: 'event:2', runId: 'run:1', sessionId: 'session:1', sequence: 2 },
-    { id: 'event:1', runId: 'run:1', sessionId: 'session:1', sequence: 1 }
+    { id: 'event:2', runId: 'run:1', sequence: 2 },
+    { id: 'event:1', runId: 'run:1', sequence: 1 }
   );
   return canonical;
 }
@@ -85,7 +84,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(await readCollection(reopened, 'runs')).toEqual([
       expect.objectContaining({ id: 'run:1', conclusion: 'success' })
     ]);
-    expect(await readIndex(reopened, 'events', 'bySessionSequence', ['session:1'])).toEqual([
+    expect(await readIndex(reopened, 'events', 'byRunSequence', ['run:1'])).toEqual([
       expect.objectContaining({ id: 'event:1' }),
       expect.objectContaining({ id: 'event:2' })
     ]);
@@ -153,7 +152,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       '--context', context,
       '--logs', logs
     ], { encoding: 'utf8' }));
-    expect(ingestion.counts).toMatchObject({ runs: 1, sessions: 1, events: 6 });
+    expect(ingestion.counts).toMatchObject({ runs: 1, events: 6 });
 
     const runs = JSON.parse(execFileSync(process.execPath, [
       script,
@@ -175,7 +174,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect(diagnosis).toMatchObject({
       command: 'doctor',
       healthy: true,
-      after: { counts: { repositories: 1, workflows: 1, runs: 1, jobs: 1, sessions: 1, events: 6 } }
+      after: { counts: { repositories: 1, workflows: 1, runs: 1, events: 6 } }
     });
   });
 
@@ -200,14 +199,12 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
         records: 3,
         rawRuns: 1,
         agenticRuns: 1,
-        sessions: 2,
         mappedRateLimits: 1
       },
       counts: {
         repositories: 1,
         workflows: 1,
-        runs: 1,
-        sessions: 2
+        runs: 1
       }
     });
 
@@ -230,14 +227,13 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       [`normalized/${normalizedName}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
     });
     expect(JSON.parse(readFileSync(join(normalizedDirectory, normalizedName), 'utf8'))).toMatchObject({
-      schemaVersion: 9,
+      schemaVersion: 10,
       ingestionVersion: 2,
       sourceRecords: 3,
       batch: {
         repositories: expect.any(Array),
         workflows: expect.any(Array),
         runs: expect.any(Array),
-        sessions: expect.any(Array),
         events: expect.any(Array)
       }
     });
@@ -275,7 +271,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
         unenrichedRuns: 0,
         enrichmentCoveragePercent: 100
       },
-      canonical: { repositories: 1, workflows: 1, runs: 1, sessions: 1 }
+      canonical: { repositories: 1, workflows: 1, runs: 1 }
     });
   });
 
@@ -363,10 +359,8 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     stale.workflows[0].repositoryId = stale.repositories[0].id;
     stale.runs[0].repositoryId = stale.repositories[0].id;
     stale.runs[0].workflowId = stale.workflows[0].id;
-    stale.sessions[0].runId = stale.runs[0].id;
     stale.events.forEach((event) => {
       event.runId = stale.runs[0].id;
-      event.sessionId = stale.sessions[0].id;
       event.timestamp = '2020-01-01T00:00:00Z';
     });
     await upsertCanonicalBatch(indexedDB, stale);
@@ -393,7 +387,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     }));
     insert.run(DATABASE_NAME, 'events', JSON.stringify('event:orphan'), JSON.stringify({
       id: 'event:orphan',
-      sessionId: 'session:missing',
+      runId: 'run:missing',
       observedAt: '2026-09-09T00:00:00Z'
     }));
     insert.run(DATABASE_NAME, 'transactions', JSON.stringify('transaction:stale'), JSON.stringify({
@@ -425,11 +419,11 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       healthy: true,
       repairs: {
         invalidRecordsRemoved: 2,
-        canonicalRecordsRemoved: 5,
+        canonicalRecordsRemoved: 4,
         transactionsRemoved: 1
       },
       after: {
-        counts: { repositories: 2, workflows: 2, runs: 1, jobs: 0, sessions: 1, events: 1 },
+        counts: { repositories: 2, workflows: 2, runs: 1, events: 1 },
         transactions: 0,
         invalidRecords: {},
         relationshipErrors: []

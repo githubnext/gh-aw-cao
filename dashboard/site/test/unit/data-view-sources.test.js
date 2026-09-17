@@ -85,20 +85,11 @@ const sources = {
     }],
     metadata
   },
-  sessions: {
-    rows: [{
-      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-      run: '42', 'run-attempt': 2, session: 'session:run-42', 'job-id': '99',
-      'session-kind': 'unified-operational-log', 'session-status': 'completed',
-      'started-at': '2026-09-09T04:00:00Z', 'observed-at': '2026-09-09T04:00:00Z'
-    }],
-    metadata
-  },
   events: {
     rows: [
       {
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-        run: '42', 'run-attempt': 2, session: 'session:run-42', event: 'event:tool-call',
+        run: '42', 'run-attempt': 2, event: 'event:tool-call',
         'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
         'event-summary': 'github.list_issues', 'event-status': 'requested',
         'request-count': 7,
@@ -107,7 +98,7 @@ const sources = {
       },
       {
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-        run: '42', 'run-attempt': 2, session: 'session:run-42', event: 'event:agent-turn',
+        run: '42', 'run-attempt': 2, event: 'event:agent-turn',
         'event-timestamp': '2026-09-09T04:00:20Z', 'event-source': 'agent', 'event-type': 'agent_turn',
         'event-summary': 'Planned the change', 'source-sequence': 1, 'observed-at': '2026-09-09T04:00:20Z'
       }
@@ -305,7 +296,7 @@ describe('canonical view sources', () => {
         'run-attempt': 2, 'job-id': '99', job: 'build',
         'job-duration-seconds': 120, runner: 'ubuntu-latest', engine: 'copilot', model: 'model-b'
       }],
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+      metadata
     });
     expect(Reflect.get(projected, 'usage')).toEqual({
       source: 'usage',
@@ -350,7 +341,6 @@ describe('canonical view sources', () => {
         workflow: '.github/workflows/dashboard.md',
         run: '42',
         'run-attempt': 2,
-        session: 'session:run-42',
         event: 'event:tool-call',
         'event-type': 'tool.call',
         'event-source': 'mcp',
@@ -627,30 +617,6 @@ describe('canonical view sources', () => {
     }]);
   });
 
-  it('projects sessions with run and repository context even when events are not requested', async () => {
-    await loadCanonicalViewSources(indexedDB, collection('generation-a', sources.events.rows), { ingest: true });
-
-    const projected = await queryCanonicalViewSources(indexedDB, sources, ['sessions']);
-
-    expect(projected.events).toBeUndefined();
-    expect(projected.sessions).toMatchObject({
-      source: 'sessions',
-      metadata: { 'source-kind': 'canonical-query', availability: 'available' },
-      rows: [
-        expect.objectContaining({
-          organization: 'githubnext',
-          repository: 'gh-aw-cao',
-          workflow: '.github/workflows/dashboard.md',
-          run: '42',
-          'run-attempt': 2,
-          session: 'session:run-42',
-          'session-kind': 'unified-operational-log',
-          'session-status': 'completed'
-        })
-      ]
-    });
-  });
-
   it('keeps retained events available to event-backed views after a partial collection', async () => {
     await loadCanonicalViewSources(indexedDB, collection('generation-a', sources.events.rows), { ingest: true });
     const partial = collection('generation-b', sources.events.rows.filter((row) => row.event === 'event:agent-turn'));
@@ -679,7 +645,6 @@ describe('canonical view sources', () => {
         'run-link': { relation: 'run', href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}`, label: `Run ${run}` }
       }));
       input['job-performance'].rows = [];
-      input.sessions.rows = [];
       input.events.rows = [];
       return input;
     };

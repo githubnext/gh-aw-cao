@@ -21,19 +21,13 @@ function files(directory) {
 }
 
 describe('gh-aw logs adapter', () => {
-  it('converts agent, gateway, and firewall JSONL into one ordered operational session', () => {
+  it('converts agent, gateway, and firewall JSONL into one ordered run event stream', () => {
     const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'));
     const adapted = adaptGhAwLogs({ ...context, files: files(fixtureRoot) });
     const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
-    expect(batch.sessions).toEqual([
-      expect.objectContaining({
-        runId: 'github:run:303:attempt:1',
-        jobId: 'github:job:404',
-        kind: 'unified-operational-log'
-      })
-    ]);
+    expect(batch.events.every((event) => event.runId === 'github:run:303:attempt:1')).toBe(true);
     expect(batch.events.map((event) => [event.sequence, event.source, event.type])).toEqual([
       [0, 'agent', 'agent_turn'],
       [1, 'gateway', 'tool_call'],
@@ -45,7 +39,7 @@ describe('gh-aw logs adapter', () => {
     expect(batch.events.filter((event) => event.correlationId === 'call-1')).toHaveLength(3);
   });
 
-  it('maps cached raw runs and agentic runs into unified runs, sessions, and events', () => {
+  it('maps cached raw runs and agentic runs into unified runs and events', () => {
     const content = [
       {
         schema_version: 2,
@@ -226,7 +220,6 @@ describe('gh-aw logs adapter', () => {
       rawPayloadRecords: 1,
       rawRuns: 1,
       agenticRuns: 1,
-      sessions: 2,
       safeOutputItems: 1,
       mappedSafeOutputItems: 1,
       rateLimits: 1,
@@ -252,15 +245,6 @@ describe('gh-aw logs adapter', () => {
         firewallVersion: 'v0.28.15'
       })
     ]);
-    expect(batch.jobs).toEqual([
-      expect.objectContaining({
-        id: 'github:job:404',
-        runId: 'github:run:303:attempt:1',
-        name: 'agent',
-        conclusion: 'success'
-      })
-    ]);
-    expect(batch.sessions).toHaveLength(2);
     expect(batch.events.map((event) => event.type)).toEqual(expect.arrayContaining([
       'workflow_run_started',
       'workflow_run_completed',
@@ -296,7 +280,7 @@ describe('gh-aw logs adapter', () => {
         safeOutputType: 'create_pull_request',
         githubEntityType: 'pull_request',
         correlationId: 'https://github.com/githubnext/gh-aw-cao/pull/43',
-        sessionId: batch.sessions.find((session) => session.runId === 'github:run:303:attempt:1')?.id,
+        runId: 'github:run:303:attempt:1',
         payloadRef: 'gh-aw-logs-shards#L4'
       }),
       expect.objectContaining({

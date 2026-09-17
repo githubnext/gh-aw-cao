@@ -37,8 +37,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `packages` | Installed package inventory, registration, modes, runs, and utilization. |
 | `workflows` | Workflow inventory, role, rollout mode, activity, runs, and usage. |
 | `runs` | Workflow run status, conclusion, model, engine, timing, and repository context. |
-| `sessions` | Agent session inventory associated with retained runs. |
-| `events` | Ordered session and execution event evidence. |
+| `events` | Ordered execution event evidence linked directly to retained runs. |
 | `experiments` | Experiment definitions and observed variants. |
 | `graders` | Grader definitions and scored run observations. |
 | `evals` | Evaluation definitions and run-level results. |

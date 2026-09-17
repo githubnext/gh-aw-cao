@@ -96,7 +96,9 @@ A declared, bounded way for a workflow to produce an external effect, such as cr
 
 ## Session
 
-The canonical dashboard data-model entity for one coherent operational transaction log: an ordered stream of agent, tool, gateway, firewall, safe-output, and GitHub API observations. A session references exactly one run and may reference a job; a single run can contain multiple sessions. Do not use **session** as a synonym for **run**; use **run** for one execution of a coordinator, worker, or standalone workflow.
+An upstream agent or tool interaction context. Session identifiers may appear in
+source evidence, but Session is not a canonical dashboard entity; canonical
+Events link directly to the owning Run.
 
 ## Target repository
 

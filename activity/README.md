@@ -110,8 +110,8 @@ Logging is a no-op by default; set `NODE_DEBUG=cao:*` (or a specific category)
 to see it.
 
 Snapshots use the immutable key
-`cao-activity-v3-${github.run_id}-${github.run_attempt}` and restore prefix
-`cao-activity-v3-`. Dispatching consumers wait for the exact Activity run and
+`cao-activity-v4-${github.run_id}-${github.run_attempt}` and restore prefix
+`cao-activity-v4-`. Dispatching consumers wait for the exact Activity run and
 reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. When the current layout misses, Activity restores the preceding

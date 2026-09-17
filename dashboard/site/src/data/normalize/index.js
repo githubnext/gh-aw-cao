@@ -1,4 +1,4 @@
-import { jobId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
+import { repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 
 /** @type {Record<import('../model/schema.js').EntityKind, keyof import('../model/schema.js').CanonicalBatch>} */
@@ -7,8 +7,6 @@ const COLLECTIONS = {
   repository: 'repositories',
   workflow: 'workflows',
   run: 'runs',
-  job: 'jobs',
-  session: 'sessions',
   event: 'events'
 };
 
@@ -41,8 +39,6 @@ function identityFor(observation) {
       requiredIdentifier(data.githubRunId, 'run.githubRunId'),
       requiredIdentifier(data.attempt, 'run.attempt')
     );
-    case 'job': return jobId(requiredIdentifier(data.githubJobId, 'job.githubJobId'));
-    case 'session':
     case 'event':
       return sourceId(observation.kind, observation.source, observation.sourceId);
   }
@@ -65,23 +61,23 @@ function compareObservations(left, right, precedence) {
 }
 
 /**
- * Assigns deterministic per-session sequence numbers to canonical events.
+ * Assigns deterministic per-run sequence numbers to canonical events.
  *
  * @param {Record<string, unknown>[]} events
  * @returns {Record<string, unknown>[]}
  */
 export function orderEvents(events) {
   /** @type {Map<string, Record<string, unknown>[]>} */
-  const bySession = new Map();
+  const byRun = new Map();
   for (const event of events) {
-    const sessionId = requiredString(event.sessionId, 'event.sessionId');
-    const sessionEvents = bySession.get(sessionId) ?? [];
-    sessionEvents.push(event);
-    bySession.set(sessionId, sessionEvents);
+    const runId = requiredString(event.runId, 'event.runId');
+    const runEvents = byRun.get(runId) ?? [];
+    runEvents.push(event);
+    byRun.set(runId, runEvents);
   }
-  return [...bySession.entries()]
+  return [...byRun.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .flatMap(([, sessionEvents]) => sessionEvents
+    .flatMap(([, runEvents]) => runEvents
       .sort((left, right) => {
         const sameSource = left.source === right.source;
         const leftSequence = Number(left.sourceSequence);
@@ -112,8 +108,6 @@ export function normalize(observations, options = {}) {
     repositories: new Map(),
     workflows: new Map(),
     runs: new Map(),
-    jobs: new Map(),
-    sessions: new Map(),
     events: new Map()
   };
 
@@ -143,10 +137,6 @@ export function normalize(observations, options = {}) {
       [...records.values()].sort((left, right) => String(left.id).localeCompare(String(right.id)))
     ])
   ));
-  const sessionRuns = new Map(batch.sessions.map((session) => [session.id, session.runId]));
-  batch.events = batch.events.map((event) => event.runId === undefined
-    ? { ...event, runId: sessionRuns.get(event.sessionId) }
-    : event);
   batch.events = orderEvents(batch.events);
   return batch;
 }

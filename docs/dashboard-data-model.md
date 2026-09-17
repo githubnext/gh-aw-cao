@@ -3,8 +3,8 @@ title: Data model
 description: Understand the canonical entities, relationships, identities, and lifecycle of Central Agentic Ops dashboard data.
 ---
 
-The data model gives every retained repository, workflow, run, job, session,
-and event a stable identity and explicit relationships. Read this page when you
+The data model gives every retained repository, workflow, run, and event a
+stable identity and explicit relationships. Read this page when you
 need to understand what a dashboard record represents or how records connect.
 Views query this source-neutral model instead of interpreting upstream formats
 directly.
@@ -16,17 +16,14 @@ See [Data ingestion](/gh-aw-cao/dashboard-data-ingestion/) for collection, JSONL
 ```mermaid
 %%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 36, "rankSpacing": 52}}}%%
 flowchart LR
-  repository["Repository"] --> workflow["Workflow"] --> run["Run"] --> session["Session"] --> event["Event"]
-  run --> job["Job"]
-  job -. optional .-> session
+  repository["Repository"] --> workflow["Workflow"] --> run["Run"] --> event["Event"]
 
   classDef entity fill:#ddf4ff,stroke:#0969da,color:#0a3069,stroke-width:2px
-  class repository,workflow,run,job,session,event entity
+  class repository,workflow,run,event entity
 ```
 
 The main path follows activity from a repository to the events recorded for a
-workflow run. A run can also contain Jobs, and a Session can optionally belong
-to one of those Jobs. The table below provides the exact identities and parent
+workflow run. The table below provides the exact identities and parent
 relationships.
 
 ## Entities
@@ -36,17 +33,15 @@ relationships.
 | **Repository** | `github:repository:<github-id>` | None | Represents one GitHub repository across renames. |
 | **Workflow** | `github:workflow:<github-id>` | Repository | Represents one workflow across path or filename changes. |
 | **Run** | `github:run:<run-id>:attempt:<attempt>` | Repository and Workflow | Distinguishes every attempt of a GitHub Actions run. |
-| **Job** | `github:job:<github-id>` | Run | Represents one execution job within a run. |
-| **Session** | Stable source ID or deterministic source coordinate | Run; optionally Job | Groups one coherent operational execution context. |
-| **Event** | Stable source ID or deterministic source coordinate | Run and Session | Records messages, tools, network, policy, safe-output, API, and runtime activity. |
+| **Event** | Stable source ID or deterministic source coordinate | Run | Records messages, tools, network, policy, safe-output, API, and runtime activity. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
 The current dashboard publication does not include immutable GitHub repository or workflow IDs. Its compatibility adapter therefore uses namespaced deterministic source coordinates for those entities. These IDs are explicitly transitional and MUST be replaced by immutable GitHub IDs when publication supplies them.
 
-## Sessions and events
+## Run events
 
-A Session is an operational transaction log, not only an AI conversation. Its ordered Event stream can combine observations from agents, tools, MCP servers, gateways, firewalls, policy engines, safe-output processing, GitHub APIs, and the workflow runtime.
+A Run owns one ordered Event stream combining observations from agents, tools, MCP servers, gateways, firewalls, policy engines, safe-output processing, GitHub APIs, and the workflow runtime.
 
 Events use a source sequence when one exists. Otherwise, source timestamp plus a deterministic ID tie-breaker defines order. Related calls, policy checks, responses, and results share a `correlationId` where available.
 
@@ -58,11 +53,11 @@ SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Da
 
 Observations can arrive at different times and enrich an existing entity. Explicit source precedence and observation time resolve conflicting fields; arrival order alone never decides the result.
 
-The activity shard manifest is the dashboard's published operational input. The worker accepts phased ingestion only when every run-information shard has one event shard with the same filename stem. It imports every compact run-information shard before downloading the larger event shards. Run records include immutable agent, model, duration, firewall, MCP, operational-value, and audit-priority aggregates; every Event includes its owning `runId` in addition to `sessionId`. Run queries may refresh between phases, but that intermediate state is not a complete snapshot and event-dependent queries remain stale until event ingestion succeeds. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
+The activity shard manifest is the dashboard's published operational input. The worker accepts phased ingestion only when every run-information shard has one event shard with the same filename stem. It imports every compact run-information shard before downloading the larger event shards. Run records include immutable agent, model, duration, firewall, MCP, operational-value, and audit-priority aggregates; every Event includes its owning `runId`. Run queries may refresh between phases, but that intermediate state is not a complete snapshot and event-dependent queries remain stale until event ingestion succeeds. Legacy schema-v2 JSONL remains a compatibility input. `github_api_rate_limit` envelopes create Events only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 10. It has stores for `packages`, `repositories`, `workflows`, `runs`, `jobs`, `sessions`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs; version 10 resets source-scoped Repository and Workflow identities to canonical coordinates.
+The canonical database is `gh-aw-cao-dashboard-data`, schema version 10. It has stores for `packages`, `repositories`, `workflows`, `runs`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 
@@ -79,9 +74,7 @@ Every merged batch must satisfy these mandatory relationships:
 
 - Workflow → Repository
 - Run → Repository and Workflow
-- Job → Run
-- Session → Run and, when present, Job
-- Event → Run and Session
+- Event → Run
 
 Work items and findings are represented by Events rather than separate canonical tables. Independent domains, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them.
 

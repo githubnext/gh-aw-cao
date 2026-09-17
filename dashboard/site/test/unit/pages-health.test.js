@@ -34,7 +34,7 @@ describe('Pages health collector', () => {
   it('returns to the deployed Events page twice within a warm-navigation budget', () => {
     expect(eventsPerformanceJourney).toEqual({
       pageId: 'events',
-      routes: ['runs', 'events', 'sessions', 'events'],
+      routes: ['runs', 'events', 'events'],
       maxEventsReturnMs: 1500
     });
   });

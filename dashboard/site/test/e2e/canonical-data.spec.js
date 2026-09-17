@@ -9,7 +9,7 @@ import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.j
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
-const canonicalEntityTables = ['events', 'jobs', 'packages', 'repositories', 'runs', 'sessions', 'workflows'];
+const canonicalEntityTables = ['events', 'packages', 'repositories', 'runs', 'workflows'];
 
 function ghAwLogInput() {
   const fixtureRoot = join(siteRoot, 'test', 'fixtures', 'gh-aw-logs');
@@ -83,27 +83,18 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
-    sessions: {
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-        'run-attempt': 2, session: `session-${run}`, 'session-kind': 'unified-operational-log',
-        'session-status': 'completed', 'started-at': '2026-09-09T04:00:00Z',
-        'observed-at': '2026-09-09T05:00:00Z'
-      }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
     events: {
       rows: [
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-          'run-attempt': 2, session: `session-${run}`, event: `event-${run}`,
+          'run-attempt': 2, event: `event-${run}`,
           'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'agent',
           'event-type': 'agent_turn', 'event-summary': 'Processed the dashboard request',
           'observed-at': '2026-09-09T05:00:00Z'
         },
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-          'run-attempt': 2, session: `session-${run}`, event: `tool-call-${run}`,
+          'run-attempt': 2, event: `tool-call-${run}`,
           'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'mcp',
           'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
           'observed-at': '2026-09-09T05:00:00Z'
@@ -358,15 +349,13 @@ test('native IndexedDB directly upserts and retains canonical data across reload
     const repositories = await queries.repositories.list();
     const workflows = await queries.workflows.forRepository(String(repositories[0].id));
     const runs = await queries.runs.forWorkflow(String(workflows[0].id));
-    const jobs = await queries.jobs.forRun(String(runs[0].id));
-    return { result, repositories, workflows, runs, jobs };
+    return { result, repositories, workflows, runs };
   }, sources);
 
   expect(first.result).toMatchObject({ updated: true });
   expect(first.repositories).toHaveLength(1);
   expect(first.workflows).toHaveLength(1);
   expect(first.runs[0].id).toBe('github:run:12345:attempt:2');
-  expect(first.jobs[0].id).toBe('github:job:123459');
 
   await page.reload();
   const retained = await page.evaluate(async () => {
@@ -929,7 +918,7 @@ test('data worker serves work items and security findings without dedicated cano
   });
 });
 
-test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', async ({ page }) => {
+test('Chromium ingests gh-aw artifacts as a Run and ordered Events', async ({ page }) => {
   const result = await page.evaluate(async (input) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
     const queriesUrl = `${location.origin}/src/data/queries/index.js`;
@@ -940,14 +929,12 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
     const ingestion = await ingestGhAwLogs(indexedDB, input);
     const queries = createCanonicalQueries(indexedDB);
     const runs = await queries.runs.list();
-    const sessions = await queries.sessions.forRun(String(runs[0].id));
-    const events = await queries.events.forSession(String(sessions[0].id));
-    return { ingestion, runs, sessions, events };
+    const events = await queries.events.forRun(String(runs[0].id));
+    return { ingestion, runs, events };
   }, ghAwLogInput());
 
   expect(result.ingestion).toMatchObject({ updated: true });
   expect(result.runs[0].id).toBe('github:run:303:attempt:1');
-  expect(result.sessions[0].kind).toBe('unified-operational-log');
   expect(result.events.map((/** @type {Record<string, unknown>} */ event) => [event.sequence, event.source, event.type])).toEqual([
     [0, 'agent', 'agent_turn'],
     [1, 'gateway', 'tool_call'],

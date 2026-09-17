@@ -1,12 +1,10 @@
-export const CANONICAL_SCHEMA_VERSION = 9;
+export const CANONICAL_SCHEMA_VERSION = 10;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'package',
   'repository',
   'workflow',
   'run',
-  'job',
-  'session',
   'event'
 ]);
 
@@ -30,8 +28,6 @@ export const ENTITY_KINDS = /** @type {const} */ ([
  * @property {Record<string, unknown>[]} repositories
  * @property {Record<string, unknown>[]} workflows
  * @property {Record<string, unknown>[]} runs
- * @property {Record<string, unknown>[]} jobs
- * @property {Record<string, unknown>[]} sessions
  * @property {Record<string, unknown>[]} events
  */
 
@@ -70,23 +66,17 @@ export function relationshipErrors(batch) {
   const packageRecords = batch.packages ?? [];
   const packagesById = new Map(packageRecords.map((record) => [record.id, record]));
   const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
-  const jobsById = new Map(batch.jobs.map((record) => [record.id, record]));
-  const sessionsById = new Map(batch.sessions.map((record) => [record.id, record]));
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
     packages: new Set(packageRecords.map((record) => record.id)),
     workflows: new Set(batch.workflows.map((record) => record.id)),
-    runs: new Set(batch.runs.map((record) => record.id)),
-    jobs: new Set(batch.jobs.map((record) => record.id)),
-    sessions: new Set(batch.sessions.map((record) => record.id))
+    runs: new Set(batch.runs.map((record) => record.id))
   };
   const entityNames = {
     repositories: 'repository',
     packages: 'package',
     workflows: 'workflow',
-    runs: 'run',
-    jobs: 'job',
-    sessions: 'session'
+    runs: 'run'
   };
   /** @type {string[]} */
   const errors = [];
@@ -122,26 +112,8 @@ export function relationshipErrors(batch) {
       errors.push(`${String(run.id ?? '<unknown>')}.workflowId references a workflow from another repository`);
     }
   }
-  for (const job of batch.jobs) {
-    requireReference(job, 'runId', 'runs');
-  }
-  for (const session of batch.sessions) {
-    requireReference(session, 'runId', 'runs');
-    if (session.jobId !== undefined && session.jobId !== null) {
-      requireReference(session, 'jobId', 'jobs');
-      const job = jobsById.get(session.jobId);
-      if (job && job.runId !== session.runId) {
-        errors.push(`${String(session.id ?? '<unknown>')}.jobId references a job from another run`);
-      }
-    }
-  }
   for (const event of batch.events) {
-    requireReference(event, 'sessionId', 'sessions');
     requireReference(event, 'runId', 'runs');
-    const session = sessionsById.get(event.sessionId);
-    if (session && session.runId !== event.runId) {
-      errors.push(`${String(event.id ?? '<unknown>')}.sessionId references a session from another run`);
-    }
   }
 
   return errors;

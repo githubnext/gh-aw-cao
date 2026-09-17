@@ -77,17 +77,15 @@ describe('canonical IndexedDB', () => {
 
     expect([...database.objectStoreNames]).toEqual([
       'events',
-      'jobs',
       'packages',
       'repositories',
       'runs',
-      'sessions',
       'transactions',
       'workflows'
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
     expect(database.transaction('runs').objectStore('runs').indexNames).toContain('byConclusion');
-    expect(database.transaction('events').objectStore('events').indexNames).toContain('bySessionType');
+    expect(database.transaction('events').objectStore('events').indexNames).toContain('byRunType');
     database.close();
   });
 
@@ -110,11 +108,9 @@ describe('canonical IndexedDB', () => {
 
     expect([...database.objectStoreNames]).toEqual([
       'events',
-      'jobs',
       'packages',
       'repositories',
       'runs',
-      'sessions',
       'transactions',
       'workflows'
     ]);
@@ -169,15 +165,15 @@ describe('canonical IndexedDB', () => {
 
   it('uses compound indexes without changing filtered collection order', async () => {
     const records = [
-      { id: 'event:1', sessionId: 'session:1', type: 'tool.call' },
-      { id: 'event:2', sessionId: 'session:2', type: 'tool.call' },
-      { id: 'event:3', sessionId: 'session:1', type: 'tool.result' },
-      { id: 'event:4', sessionId: 'session:1', type: 'tool.call' }
+      { id: 'event:1', runId: 'run:1', type: 'tool.call' },
+      { id: 'event:2', runId: 'run:2', type: 'tool.call' },
+      { id: 'event:3', runId: 'run:1', type: 'tool.result' },
+      { id: 'event:4', runId: 'run:1', type: 'tool.call' }
     ];
     const operators = /** @type {import('../../src/data-operations.js').DataOperator[]} */ ([{
       op: 'filter',
       predicates: [
-        { field: 'sessionId', equals: 'session:1' },
+        { field: 'runId', equals: 'run:1' },
         { field: 'type', equals: 'tool.call' }
       ]
     }]);

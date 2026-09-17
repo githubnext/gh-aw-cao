@@ -25,27 +25,18 @@ function collection(generation, eventRows) {
       }],
       metadata: collected
     },
-    sessions: {
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-        run: '42', 'run-attempt': 1, session: 'session:run-42',
-        'session-status': 'completed', 'started-at': '2026-09-09T04:00:00Z',
-        'observed-at': '2026-09-09T04:00:00Z'
-      }],
-      metadata: collected
-    },
     events: { rows: eventRows, metadata: collected }
   };
 }
 
 const eventRows = [
   {
-    session: 'session:run-42', event: 'event:tool-call',
+    run: '42', 'run-attempt': 1, event: 'event:tool-call',
     'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
     'event-summary': 'github.list_issues', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
   },
   {
-    session: 'session:run-42', event: 'event:agent-turn',
+    run: '42', 'run-attempt': 1, event: 'event:agent-turn',
     'event-timestamp': '2026-09-09T04:00:20Z', 'event-source': 'agent', 'event-type': 'agent_turn',
     'event-summary': 'Planned the change', 'source-sequence': 1, 'observed-at': '2026-09-09T04:00:20Z'
   }
@@ -147,7 +138,7 @@ describe('canonical dashboard worker retention updates', () => {
     const requestUrls = [];
     const normalizedName = `gh-aw-logs-normalized/${'a'.repeat(64)}-${'b'.repeat(16)}.json`;
     const normalizedPayload = {
-      schemaVersion: 9,
+      schemaVersion: 10,
       ingestionVersion: 2,
       sourceRecords: 0,
       batch: {
@@ -155,8 +146,6 @@ describe('canonical dashboard worker retention updates', () => {
         repositories: [],
         workflows: [],
         runs: [],
-        jobs: [],
-        sessions: [],
         events: []
       }
     };

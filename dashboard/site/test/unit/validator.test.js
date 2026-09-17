@@ -516,7 +516,7 @@ describe('dashboard document validation', () => {
   it('defines every other editable experimental page as one full-view lazy table', () => {
     // Pages that intentionally compose more than one editable view, asserted separately below
     // or by their own focused suites: safe-outputs, maintenance, entity cards, operational value, cost, and audit.
-    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'sessions', 'operational-value', 'cost', 'audit']);
+    const multiViewPageIds = new Set(['safe-outputs', 'maintenance', 'issues', 'pull-requests', 'operational-value', 'cost', 'audit']);
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -1243,7 +1243,7 @@ dashboard:
       (/** @type {{ label?: string }} */ section) => section.label === 'Investigate'
     )).toMatchObject({
       experimental: true,
-      pages: expect.arrayContaining(['events', 'sessions'])
+      pages: expect.arrayContaining(['events'])
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
@@ -5363,7 +5363,7 @@ dashboard:
       select:
         - { field: createdAt, as: created-at }
         - { field: rawRuns, as: known-runs }
-        - { field: agenticRuns, as: session-runs }
+        - { field: agenticRuns, as: event-runs }
   pages:
     - id: transactions
       kind: custom
@@ -5376,7 +5376,7 @@ dashboard:
             x: { field: created-at, type: temporal }
             y:
               - { field: known-runs, type: quantitative, title: Known runs }
-              - { field: session-runs, type: quantitative, title: Runs with session data }
+              - { field: event-runs, type: quantitative, title: Runs with event data }
 `);
     expect(valid.ok).toBe(true);
 

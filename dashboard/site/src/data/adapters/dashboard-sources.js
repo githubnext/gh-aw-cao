@@ -1,5 +1,4 @@
 import {
-  jobId,
   repositoryCoordinateId,
   runId,
   sourceId,
@@ -60,14 +59,10 @@ export function adaptDashboardSources(sources) {
   const packages = sourceDocument(sources.packages);
   const workflows = sourceDocument(sources.workflows);
   const runs = sourceDocument(sources.runs);
-  const jobs = sourceDocument(sources['job-performance']);
-  const sessions = sourceDocument(sources.sessions);
   const events = sourceDocument(sources.events);
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
   const publishedRunIds = new Set();
-  const publishedJobIds = new Set();
-  const publishedSessionIds = new Set();
   const publishedPackageIds = new Map();
 
   for (const candidate of packages.rows) {
@@ -221,81 +216,14 @@ export function adaptDashboardSources(sources) {
     });
   }
 
-  for (const candidate of jobs.rows) {
-    const row = objectRow(candidate);
-    if (!row || row['job-id'] === null || row['job-id'] === undefined) continue;
-    const owner = requiredString(row.organization, 'job.organization');
-    const repository = requiredString(row.repository, 'job.repository');
-    const githubRunId = requiredString(row.run, 'job.run');
-    const githubJobId = requiredString(String(row['job-id']), 'job.job-id');
-    const sourceAttempt = row['run-attempt'];
-    const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1;
-    const id = jobId(githubJobId);
-    publishedJobIds.add(id);
-    observations.push({
-      kind: 'job',
-      source: SOURCE,
-      sourceId: `${owner}/${repository}:${githubRunId}:${attempt}:${githubJobId}`.toLowerCase(),
-      observedAt: requiredString(row['started-at'] ?? metadataTimestamp(jobs.metadata), 'job observed time'),
-      data: {
-        githubJobId,
-        runId: runId(githubRunId, attempt),
-        name: row.job ?? 'Unknown job',
-        status: row['job-status'] ?? 'unknown',
-        conclusion: row['job-conclusion'] ?? null,
-        startedAt: row['started-at'] ?? null,
-        completedAt: null,
-        runConclusion: row['run-conclusion'] ?? null,
-        rolloutMode: row['rollout-mode'] ?? 'unknown',
-        durationSeconds: row['job-duration-seconds'] ?? null,
-        runner: row.runner ?? 'unknown',
-        runnerName: row['runner-name'] ?? 'unknown',
-        runnerGroup: row['runner-group'] ?? 'unknown',
-        sandboxRuntime: row['sandbox-runtime'] ?? 'unknown',
-        engine: row.engine ?? 'unknown',
-        model: row.model ?? 'unknown',
-        runLink: row['run-link'] ?? null
-      }
-    });
-  }
-
-  for (const candidate of sessions.rows) {
+  for (const candidate of events.rows) {
     const row = objectRow(candidate);
     if (!row) continue;
-    const session = requiredString(row.session, 'session.session');
-    const githubRunId = requiredString(row.run, 'session.run');
+    const githubRunId = requiredString(row.run, 'event.run');
     const sourceAttempt = row['run-attempt'];
     const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1;
     const canonicalRunId = runId(githubRunId, attempt);
     if (!publishedRunIds.has(canonicalRunId)) continue;
-    const canonicalJobId = row['job-id'] === undefined || row['job-id'] === null
-      ? undefined
-      : jobId(requiredString(String(row['job-id']), 'session.job-id'));
-    observations.push({
-      kind: 'session',
-      source: SOURCE,
-      sourceId: session,
-      observedAt: requiredString(row['observed-at'] ?? row['started-at'] ?? metadataTimestamp(sessions.metadata), 'session observed time'),
-      data: {
-        id: session,
-        runId: canonicalRunId,
-        jobId: canonicalJobId === undefined || publishedJobIds.has(canonicalJobId)
-          ? canonicalJobId
-          : undefined,
-        kind: row['session-kind'] ?? 'unified-operational-log',
-        status: row['session-status'] ?? 'unknown',
-        startedAt: row['started-at'] ?? null,
-        completedAt: row['ended-at'] ?? null
-      }
-    });
-    publishedSessionIds.add(session);
-  }
-
-  for (const candidate of events.rows) {
-    const row = objectRow(candidate);
-    if (!row) continue;
-    const session = requiredString(row.session, 'event.session');
-    if (!publishedSessionIds.has(session)) continue;
     const sourceSequence = Number(row['source-sequence']);
     observations.push({
       kind: 'event',
@@ -304,7 +232,7 @@ export function adaptDashboardSources(sources) {
       observedAt: requiredString(row['observed-at'] ?? row['event-timestamp'] ?? metadataTimestamp(events.metadata), 'event observed time'),
       data: {
         id: requiredString(row.event, 'event.event'),
-        sessionId: session,
+        runId: canonicalRunId,
         timestamp: requiredString(row['event-timestamp'], 'event.event-timestamp'),
         source: requiredString(row['event-source'], 'event.event-source'),
         type: requiredString(row['event-type'], 'event.event-type'),
