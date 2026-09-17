@@ -106,9 +106,9 @@ describe('canonical dashboard worker ingestion order', () => {
       'https://dashboard.example/payload-hashes.json'
     ]);
     expect(inventoryRequests).toEqual([
-      { cache: 'no-store' },
-      { cache: 'no-store' },
-      { cache: 'no-store' }
+      expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) })
     ]);
     expect(storedRunIds).toEqual(['github:run:303:attempt:1']);
   }, 30_000);

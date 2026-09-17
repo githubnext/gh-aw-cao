@@ -46,7 +46,7 @@ const workerLoadingProgressOperations = new Set();
 
 /**
  * Adds supported main-thread behavior to a serializable worker notification.
- * @param {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown } }} notification
+ * @param {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} notification
  * @param {string} id
  * @param {() => ReturnType<typeof publishNotification>} getHandle
  */
@@ -63,7 +63,8 @@ function attachWorkerNotificationAction(notification, id, getHandle) {
       label,
       ...(action.placement === 'details' ? { placement: /** @type {'details'} */ ('details') } : {}),
       run: () => {
-        if (!cancelDataProcessing('Data ingestion was cancelled.')) return;
+        if (typeof action.requestId !== 'number'
+            || !cancelDataProcessingRequest(action.requestId)) return;
         getHandle().update({
           ...base,
           message: 'Data ingestion cancelled.',
@@ -76,6 +77,14 @@ function attachWorkerNotificationAction(notification, id, getHandle) {
       }
     }
   };
+}
+
+/** @param {number} id */
+function cancelDataProcessingRequest(id) {
+  const request = pending.get(id);
+  if (!request) return 0;
+  request.processor.postMessage({ id: ++nextRequestId, operation: 'cancel-data-processing', ids: [id] });
+  return 1;
 }
 
 /** @param {{ id: string, phase: 'start' | 'update' | 'complete', completed?: number, total?: number }} state */
@@ -547,7 +556,7 @@ function getWorker() {
           }
         } else if (id) {
           if (typeof notification.message !== 'string') return;
-          const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown } }} */ (notification);
+          const interactiveNotification = /** @type {Omit<Exclude<Parameters<typeof publishNotification>[0], string>, 'action'> & { action?: { label?: unknown, operation?: unknown, placement?: unknown, requestId?: unknown } }} */ (notification);
           const current = workerNotificationHandles.get(id);
           if (current) {
             current.update(attachWorkerNotificationAction(interactiveNotification, id, () => current));

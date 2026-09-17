@@ -309,8 +309,8 @@ export function publishedNormalizedShards(hashes) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
- * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
+ * @param {{ id?: unknown, operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown, pageId?: unknown, routeParameters?: unknown, queryContext?: unknown }} request
+ * @param {AbortSignal} [signal] cancels declarative query execution
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
@@ -345,13 +345,18 @@ export function processDataRequest(request, signal) {
     const context = dashboardContext(request.context);
     return (async () => {
       dashboardIngestionCount += 1;
-      const progress = startIngestionProgress();
+      const progress = startIngestionProgress(
+        undefined,
+        typeof request.id === 'number' ? request.id : undefined
+      );
+      /** @type {typeof fetch} */
+      const ingestionFetch = (input, init) => fetch(input, { ...init, signal });
       const activity = sourceUrl.pathname.endsWith('/payload-hashes.json');
       if (!activity) progress.start();
       let changed = false;
       try {
         progress.log(activity ? 'Loading ingestion metadata.' : 'Downloading dashboard source data.');
-        let sources = activity ? {} : await loadDashboardSources(fetch, sourceUrl.href, {
+        let sources = activity ? {} : await loadDashboardSources(ingestionFetch, sourceUrl.href, {
           onShardLoaded: ({ name, sizeBytes, cacheStatus }) => {
             const size = sizeBytes === null ? 'size unavailable' : `${sizeBytes.toLocaleString()} bytes`;
             progress.log(`Loaded dashboard source shard ${name} (${size}; cache: ${cacheStatus ?? 'unavailable'}).`);
@@ -362,7 +367,7 @@ export function processDataRequest(request, signal) {
           const inventoryUrl = new URL('./inventory-sources.json', payloadHashesUrl);
           progress.log('Refreshing workflow and repository inventory.');
           const { response: inventoryResponse, value: inventorySources } = await withRetries(async () => {
-            const response = await fetch(inventoryUrl, { cache: 'no-store' });
+            const response = await ingestionFetch(inventoryUrl, { cache: 'no-store' });
             if (!response.ok) {
               if (response.status === 404) return { response, value: {} };
               throw new Error(`Unable to load dashboard inventory sources: ${response.status}`);
@@ -376,7 +381,8 @@ export function processDataRequest(request, signal) {
             progress.log('No separate inventory metadata was published.');
           }
           progress.log('Checking the published payload identity.');
-          const payloadHashesResponse = await fetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
+          const payloadHashesResponse = await ingestionFetch(payloadHashesUrl, { cache: 'no-store' }).catch(() => null);
+          if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
           const payloadHashes = payloadHashesResponse?.ok
             ? await payloadHashesResponse.json().catch(() => null)
             : null;
@@ -425,6 +431,7 @@ export function processDataRequest(request, signal) {
           /** @type {Array<{ index: number, shard: { name: string, hash: string }, shardUrl: URL, current: boolean, sizeBytes: number | undefined }>} */
           const shardStates = [];
           for (const [index, shard] of shards.entries()) {
+            if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             const shardUrl = new URL(`./${shard.name}`, payloadHashesUrl);
             const current = normalized
               ? await isNormalizedJsonCurrent(indexedDB, {
@@ -445,7 +452,7 @@ export function processDataRequest(request, signal) {
             progress.reportShardImportProgress(shardStates.length - pendingShards.length, shardCount);
           }
           await Promise.all(pendingShards.map(async (state) => {
-            const response = await fetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
+            const response = await ingestionFetch(state.shardUrl, { method: 'HEAD' }).catch(() => null);
             const contentLength = response?.ok ? Number(response.headers.get('content-length')) : Number.NaN;
             state.sizeBytes = Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : undefined;
           }));
@@ -462,6 +469,7 @@ export function processDataRequest(request, signal) {
           let processedBytes = 0;
           let processedRecords = 0;
           for (const { index, shard, shardUrl, current, sizeBytes } of shardStates) {
+            if (signal?.aborted) throw new DashboardQueryCancelledError('data ingestion was cancelled', 'aborted');
             if (current) {
               debugIngestion('skipping current activity shard', {
                 shard: shard.name,
@@ -476,7 +484,7 @@ export function processDataRequest(request, signal) {
               index: index + 1,
               shardCount
             });
-            const response = await fetch(shardUrl);
+            const response = await ingestionFetch(shardUrl);
             if (!response.ok) throw new Error(`Unable to load activity shard ${shard.name}: ${response.status}`);
             if (!normalized && !response.body) throw new Error(`Unable to stream activity shard ${shard.name}`);
             {
@@ -698,7 +706,7 @@ if (typeof document === 'undefined' && workerScope) {
     /** @param {unknown} error */
     const failure = (error) => ({
       error: error instanceof Error ? error.message : String(error),
-      cancelled: error instanceof DashboardQueryCancelledError
+      cancelled: controller.signal.aborted || error instanceof DashboardQueryCancelledError
     });
     const settle = (/** @type {Record<string, unknown>} */ message) => {
       inFlight.delete(id);

@@ -355,6 +355,7 @@ describe('canonical dashboard view subscriptions', () => {
     const pending = processDashboardQueries([], {});
     const worker = SubscriptionWorker.current;
     if (!worker) throw new Error('Subscription worker was not created.');
+    const requestId = /** @type {number} */ (worker.messages.at(-1)?.id);
 
     worker.emit({
       type: 'notification',
@@ -363,7 +364,12 @@ describe('canonical dashboard view subscriptions', () => {
         message: 'Ingesting dashboard data.',
         duration: 0,
         details: ['Downloading data.'],
-        action: { label: 'Cancel', operation: 'cancel-data-ingestion', placement: 'details' }
+        action: {
+          label: 'Cancel',
+          operation: 'cancel-data-ingestion',
+          placement: 'details',
+          requestId
+        }
       }
     });
     const toggle = /** @type {HTMLButtonElement} */ (
@@ -378,8 +384,13 @@ describe('canonical dashboard view subscriptions', () => {
     expect(document.querySelector('.dashboard-notification-message')?.textContent)
       .toBe('Data ingestion cancelled.');
     expect(document.querySelector('.dashboard-notification')).not.toBeNull();
-    await vi.advanceTimersByTimeAsync(251);
+    const later = processDashboardQueries([], {});
+    const laterRequestId = /** @type {number} */ (worker.messages.at(-1)?.id);
+    worker.emit({ id: requestId, error: 'Data ingestion was cancelled.', cancelled: true });
+    worker.emit({ id: laterRequestId, data: {} });
     await rejection;
+    await expect(later).resolves.toEqual({});
+    expect(worker.terminated).toBe(false);
     expect(document.querySelector('.dashboard-notification')).not.toBeNull();
 
     toggle.click();
