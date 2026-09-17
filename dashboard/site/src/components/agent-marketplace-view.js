@@ -5,6 +5,9 @@ import { findLink } from './link-content.js';
 import { renderIconSpan, formatShortDate, renderFilterSelect, renderLiveRegion, renderSearchInput } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 import { formatCountOf, textValue } from './count-formatters.js';
+import { createDebug } from '../debug.js';
+
+const debugAgentMarketplaceView = createDebug('agent-marketplace-view');
 
 const LONG_RUNNING_SECONDS = 30 * 60;
 const STALE_HOURS = 24;
@@ -24,6 +27,12 @@ export function renderAgentMarketplaceView(context) {
     rowsFor(context.sources, 'security-observations'),
     rowsFor(context.sources, 'agent-smells')
   );
+  debugAgentMarketplaceView({
+    event: 'catalog-built',
+    agentCount: agents.length,
+    packageCount: agents.filter((agent) => agent.kind === 'package').length,
+    smellCount: agents.filter((agent) => agentSmellReasons(agent).length > 0).length
+  });
   const grid = h('div', { className: 'agent-marketplace-grid', role: 'list' });
   const search = renderSearchInput('Search operations and workflows');
   const owner = renderFilterSelect('Filter operations by owner', 'All owners',
@@ -57,6 +66,13 @@ export function renderAgentMarketplaceView(context) {
       if (button.dataset.facet === activeKind) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     }
+    debugAgentMarketplaceView({
+      event: 'filters-applied',
+      visibleCount: visible.length,
+      totalCount: agents.length,
+      activeKind,
+      statusFilter: status.value
+    });
   };
 
   /**
@@ -179,7 +195,7 @@ export function smellMark() {
  */
 export function agentSmellNotifications(workflows, assignments, securityObservations = [], smellObservations = []) {
   const legacySecurityObservations = smellObservations.length > 0 ? [] : securityObservations;
-  return catalogAgents(workflows, assignments, legacySecurityObservations, smellObservations).flatMap((agent) => {
+  const notifications = catalogAgents(workflows, assignments, legacySecurityObservations, smellObservations).flatMap((agent) => {
     const reasons = agentSmellReasons(agent);
     if (reasons.length === 0) return [];
     const observedAt = Date.parse(agent.observedAt);
@@ -205,6 +221,8 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
       } } : {})
     }];
   });
+  debugAgentMarketplaceView({ event: 'smell-notifications-built', notificationCount: notifications.length });
+  return notifications;
 }
 
 /**
