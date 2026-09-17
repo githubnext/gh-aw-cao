@@ -141,11 +141,11 @@ const LAZY_ELEMENT_RENDERERS = new Map([
   )],
   ['package-detail-lazy', lazyElementRenderer(
     () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'workflows')
+    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'overview')
   )],
   ['package-dispatches-lazy', lazyElementRenderer(
     () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'dispatches')
+    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'runs')
   )],
   ['package-reports-lazy', lazyElementRenderer(
     () => import('./package-route-view.js'),

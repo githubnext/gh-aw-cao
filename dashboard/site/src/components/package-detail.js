@@ -9,5 +9,5 @@ import { renderPackageRouteVariant } from './package-route-view.js';
  * @returns {HTMLElement}
  */
 export function renderPackageNavigation(context) {
-  return renderPackageRouteVariant(context, 'workflows');
+  return renderPackageRouteVariant(context, 'overview');
 }
