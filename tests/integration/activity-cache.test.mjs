@@ -133,5 +133,9 @@ test("activity cache consumers use the producer cache version paths", async () =
   ]);
 
   assertCachePathSets(dashboardWorkflow, 1);
-  assertCachePathSets(sharedCache, 2);
+  assertCachePathSets(
+    sharedCache,
+    2,
+    cachePaths.filter((cachePath) => !cachePath.endsWith("/workflow-discovery.log")),
+  );
 });

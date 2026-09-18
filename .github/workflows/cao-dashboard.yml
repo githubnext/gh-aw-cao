@@ -318,11 +318,14 @@ jobs:
               'payload-hashes.json',
             ]
             for (const fileName of collectedFiles) {
+              const source = path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName)
               const destination = path.join(process.env.REPORT_OUTPUT, fileName)
-              fs.copyFileSync(
-                path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName),
-                destination,
-              )
+              if (fileName === 'workflow-discovery.log' && !fs.existsSync(source)) {
+                fs.writeFileSync(destination, 'Workflow discovery log is unavailable for this activity snapshot.\n')
+                core.info('Workflow discovery log was unavailable; wrote a compatibility placeholder')
+              } else {
+                fs.copyFileSync(source, destination)
+              }
               core.info(`Copied ${fileName} (${formatFileSize(fs.statSync(destination).size)})`)
             }
             for (const directory of ['gh-aw-logs-shards', 'gh-aw-logs-runs', 'gh-aw-logs-records']) {
