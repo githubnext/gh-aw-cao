@@ -26,6 +26,7 @@ import { renderDashboardNavigation, enableDashboardNavigation } from './componen
 import { renderDashboardHeader } from './components/dashboard-header.js';
 import { renderDashboardFooter } from './components/dashboard-footer.js';
 import { renderDashboardFrame } from './components/dashboard-frame.js';
+import { declaredRouteTabs, renderDeclaredRouteTabs } from './components/route-tabs.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { publishSource } from './source-store.js';
@@ -743,6 +744,14 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       ...sections.map((section) => renderLayoutSection(page.id, section, renderedViewsById, sources))
     )
     : h('div', { className: 'custom-view-grid' }, ...renderedViews);
+  const routeTabs = routeParameter ? declaredRouteTabs(page.route) : null;
+  const renderedRouteTabs = routeTabs && routeParameter
+    ? renderDeclaredRouteTabs({
+      routeParameter,
+      currentTab: routeTabs.currentTab,
+      tabs: routeTabs.tabs
+    })
+    : null;
   const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0
     ? ` ${page['class-name']}`
     : '';
@@ -790,6 +799,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-view-mode': selectedViewMode
     },
     filterBar,
+    renderedRouteTabs,
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])

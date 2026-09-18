@@ -1263,8 +1263,8 @@ dashboard:
     expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
-      'repositories',
       'campaigns',
+      'repositories',
       'configuration'
     ]);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
@@ -2014,8 +2014,53 @@ dashboard:
     const document = JSON.parse(authoritativeDashboardSource);
     const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-detail');
     const repositoryPage = document.dashboard.pages[repositoryPageIndex];
-    expect(repositoryPage.route).toEqual({ 'hash-query-parameter': 'repository', 'navigation-page': 'repositories' });
+    expect(repositoryPage.route).toMatchObject({
+      'hash-query-parameter': 'repository',
+      'navigation-page': 'repositories',
+      tab: 'overview'
+    });
+    expect(repositoryPage.route.tabs).toContainEqual({
+      id: 'settings',
+      label: 'Settings',
+      icon: 'gear',
+      page: 'repository-settings'
+    });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    const declaredTabs = repositoryPage.route.tabs;
+    repositoryPage.route = { 'hash-query-parameter': 'repository', tab: 'missing', tabs: declaredTabs };
+    const unknownTab = validateDashboardDocument(JSON.stringify(document));
+    expect(unknownTab.ok).toBe(false);
+    if (!unknownTab.ok) {
+      expect(unknownTab.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: `$.dashboard.pages[${repositoryPageIndex}].route.tab`,
+        message: 'route tab must name one declared route tab id.'
+      }));
+    }
+    repositoryPage.route = {
+      'hash-query-parameter': 'repository',
+      tab: 'overview',
+      tabs: [{ id: 'overview', label: 'Overview', icon: 'repo', page: 'missing-page' }]
+    };
+    const unknownTabPage = validateDashboardDocument(JSON.stringify(document));
+    expect(unknownTabPage.ok).toBe(false);
+    if (!unknownTabPage.ok) {
+      expect(unknownTabPage.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: `$.dashboard.pages[${repositoryPageIndex}].route.tabs[0].page`,
+        message: 'route tab page must reference a declared dashboard page id.'
+      }));
+    }
+    repositoryPage.route = { 'hash-query-parameter': 'repository', tab: 'overview' };
+    const tabWithoutTabs = validateDashboardDocument(JSON.stringify(document));
+    expect(tabWithoutTabs.ok).toBe(false);
+    if (!tabWithoutTabs.ok) {
+      expect(tabWithoutTabs.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: `$.dashboard.pages[${repositoryPageIndex}].route.tab`,
+        message: 'route tab requires a route tabs sequence.'
+      }));
+    }
     repositoryPage.route = { 'navigation-page': 'repositories' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     repositoryPage.route = { 'navigation-page': 'missing-page' };
@@ -2094,18 +2139,21 @@ dashboard:
 
   it('DLS-VIEW-030 validates route fields against the selected logical source', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-detail');
+    const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-workflow-inventory');
     const repositoryPage = document.dashboard.pages[repositoryPageIndex];
-    expect(repositoryPage.views.every((/** @type {{ data: { 'route-field'?: string } }} */ view) => view.data['route-field'] === 'repository')).toBe(true);
+    const routedViewIndex = repositoryPage.views.findIndex((/** @type {{ data: { source?: string } }} */ view) => typeof view.data.source === 'string');
+    expect(repositoryPage.views
+      .filter((/** @type {{ data: { source?: string } }} */ view) => typeof view.data.source === 'string')
+      .every((/** @type {{ data: { 'route-field'?: string } }} */ view) => view.data['route-field'] === 'repository')).toBe(true);
 
-    repositoryPage.views[0].data['route-field'] = 'missing-field';
+    repositoryPage.views[routedViewIndex].data['route-field'] = 'missing-field';
     const invalid = validateDashboardDocument(JSON.stringify(document));
 
     expect(invalid.ok).toBe(false);
     if (!invalid.ok) {
       expect(invalid.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E010',
-        path: `$.dashboard.pages[${repositoryPageIndex}].views[0].data.route-field`
+        path: `$.dashboard.pages[${repositoryPageIndex}].views[${routedViewIndex}].data.route-field`
       }));
     }
   });

@@ -62,7 +62,9 @@ export const UNIT_FORMAT_VALUES = ['duration', 'number', 'usd'];
 export const NAVIGATION_SECTION_KEYS = ['label', 'pages', 'experimental'];
 export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-label', 'description', 'icon', 'class-name', 'definition'];
 export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'description', 'icon', 'class-name', 'route', 'views', 'sections'];
-export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page'];
+export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page', 'tab', 'tabs'];
+export const PAGE_ROUTE_TAB_KEYS = ['id', 'label', 'icon', 'page'];
+export const MAX_PAGE_ROUTE_TABS = 8;
 
 export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'metric', 'list', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'arguments', 'route-field', 'limit', 'order-by', 'source-metadata'];

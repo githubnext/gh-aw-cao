@@ -301,6 +301,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/route-body-specification.js
   - source: site/src/components/route-tab-set.js
     destination: .github/aw/dashboard/site/src/components/route-tab-set.js
+  - source: site/src/components/route-tabs.js
+    destination: .github/aw/dashboard/site/src/components/route-tabs.js
   - source: site/src/components/run-classification.js
     destination: .github/aw/dashboard/site/src/components/run-classification.js
   - source: site/src/components/run-conclusion-classification.json

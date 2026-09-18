@@ -130,14 +130,36 @@ describe('UI elements', () => {
     }));
 
     expect(rendered?.querySelectorAll('[data-chart-widget="line"]')).toHaveLength(3);
-    expect([...rendered?.querySelectorAll('.insights-plot-panel h2') ?? []].map((heading) => heading.textContent)).toEqual([
+    expect([...rendered?.querySelectorAll('.insights-measure-row h3') ?? []].map((heading) => heading.textContent)).toEqual([
       'Repository readiness',
       'Quality',
       'Efficiency'
     ]);
     expect(rendered?.querySelectorAll('.chart-point')).toHaveLength(6);
-    expect(rendered?.textContent).toContain('Primary metric · 2 extracts');
-    expect(rendered?.textContent).toContain('Diagnostic · 2 extracts');
+    expect(rendered?.querySelectorAll('.insights-measure-rows > .insights-measure-row')).toHaveLength(3);
+    expect([...rendered?.querySelectorAll('.insights-measure-row .insights-axis-y') ?? []].map((label) => label.textContent)).toEqual([
+      'Repository readiness (measured value)',
+      'Quality (measured value)',
+      'Efficiency (measured value)'
+    ]);
+    expect([...rendered?.querySelectorAll('.insights-measure-row .insights-axis-x') ?? []].map((label) => label.textContent))
+      .toEqual(['Observation time (UTC)', 'Observation time (UTC)', 'Observation time (UTC)']);
+    expect(rendered?.textContent).toContain('Primary operational-value measure “Repository readiness”');
+    expect(rendered?.textContent).toContain('Diagnostic measure “Quality”');
+    expect(rendered?.textContent).toContain('2 extracts across 1 workflow series');
+
+    const readout = rendered?.querySelector('.insights-measure-row .insights-point-readout');
+    expect(readout?.textContent).toBe('Select a point to inspect that observation.');
+    const point = rendered?.querySelector('.insights-measure-row .chart-point[data-chart-point-key]');
+    expect(point?.getAttribute('aria-pressed')).toBe('false');
+    point?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(point?.getAttribute('aria-pressed')).toBe('true');
+    expect(point?.getAttribute('data-selected')).toBe('true');
+    expect(readout?.textContent).toContain('40');
+    expect(readout?.textContent).toContain('.github/workflows/worker.md');
+    point?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(point?.getAttribute('aria-pressed')).toBe('false');
+    expect(readout?.textContent).toBe('Select a point to inspect that observation.');
   });
 
   it('renders the routed Work roadmap as a Projects-style timeline', () => {

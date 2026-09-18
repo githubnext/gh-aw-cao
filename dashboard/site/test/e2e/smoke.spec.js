@@ -3570,6 +3570,16 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Repository readiness');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Quality');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Efficiency');
+  await expect(campaignInsights.locator('.insights-measure-rows > .insights-measure-row')).toHaveCount(3);
+  await expect(campaignInsights.locator('.insights-measure-row').first().locator('.insights-axis-x')).toHaveText('Observation time (UTC)');
+  const measureReadout = campaignInsights.locator('.insights-measure-row').first().locator('.insights-point-readout');
+  await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
+  const measurePoint = campaignInsights.locator('.insights-measure-row').first().locator('.chart-point[data-chart-point-key]').first();
+  await measurePoint.dispatchEvent('click');
+  await expect(measureReadout).not.toHaveText('Select a point to inspect that observation.');
+  await expect(campaignInsights.locator('.insights-measure-row .chart-point[aria-pressed="true"]')).toHaveCount(1);
+  await measurePoint.dispatchEvent('keydown', { key: 'Enter', bubbles: true });
+  await expect(measureReadout).toHaveText('Select a point to inspect that observation.');
   await mobileBack.click();
   await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
   await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
@@ -4233,7 +4243,7 @@ test('DLS-SAFE-007 DLS-SAFE-008 keyboard navigation moves across labeled page se
 test('repository page template follows its JSON-declared hash query route in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const dashboardDocument = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.goto('http://dashboard.test/#page-repository-detail?repository=octo-org%2Focto-repo');
+  await page.goto('http://dashboard.test/#page-repository-workflow-inventory?repository=octo-org%2Focto-repo');
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -4258,7 +4268,19 @@ test('repository page template follows its JSON-declared hash query route in bro
             { organization: 'octo-org', repository: 'octo-repo', workflow: 'triage.md', 'workflow-name': 'Triage', 'workflow-active': 'true', runs: 4, aic: 5 },
             { organization: 'other-org', repository: 'other-repo', workflow: 'other.md', 'workflow-name': 'Other', 'workflow-active': 'true', runs: 1, aic: 1 }
           ]
-        }
+        },
+        repositories: {
+          source: 'repositories',
+          metadata,
+          rows: [
+            { organization: 'octo-org', repository: 'octo-repo', 'rollout-mode': 'review', 'observed-at': '2026-08-30T08:00:00Z' },
+            { organization: 'other-org', repository: 'other-repo', 'rollout-mode': 'review', 'observed-at': '2026-08-30T08:00:00Z' }
+          ]
+        },
+        runs: { source: 'runs', metadata, rows: [] },
+        outcomes: { source: 'outcomes', metadata, rows: [] },
+        audits: { source: 'audits', metadata, rows: [] },
+        'operational-values': { source: 'operational-values', metadata, rows: [] }
       };
       const loadPageSources = (pageId, options) => prepareDashboardViewSources(
         dashboardDocument,
@@ -4266,7 +4288,7 @@ test('repository page template follows its JSON-declared hash query route in bro
         sources,
         { queryContext: options.queryContext, routeParameters: options.routeParameters }
       );
-      const viewSources = await loadPageSources('repository-detail', {
+      const viewSources = await loadPageSources('repository-workflow-inventory', {
         routeParameters: { repository: 'octo-org/octo-repo' }
       });
       document.querySelector('#root').append(renderDashboard({
@@ -4278,15 +4300,15 @@ test('repository page template follows its JSON-declared hash query route in bro
   `);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('octo-org/octo-repo');
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-  await expect(page.locator('[data-page-id="repository-detail"] [data-view-layout="full-view"]')).toBeVisible();
-  const repositoryTable = page.locator('[data-page-id="repository-detail"] .custom-table');
+  await expect(page.getByRole('navigation', { name: 'octo-org/octo-repo views' })
+    .getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
+  const repositoryTable = page.locator('[data-page-id="repository-workflow-inventory"] .custom-table');
   await expect(repositoryTable).toContainText('Review');
   await expect(repositoryTable).toContainText('Triage');
   await expect(repositoryTable).not.toContainText('Other');
 
   await page.evaluate(() => {
-    window.location.hash = '#page-repository-detail?repository=other-org%2Fother-repo';
+    window.location.hash = '#page-repository-workflow-inventory?repository=other-org%2Fother-repo';
   });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('other-org/other-repo');
