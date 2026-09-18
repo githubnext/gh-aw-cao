@@ -70,7 +70,7 @@ on:
   # actions: read
   # contents: read
   schedule:
-    - cron: "3/20 * * * *"  # Friendly format: every 20 minutes (scattered)
+    - cron: "1/20 * * * *"  # Friendly format: every 20 minutes (scattered)
   workflow_dispatch:
     inputs:
       aw_context:
