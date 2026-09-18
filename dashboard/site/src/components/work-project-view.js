@@ -80,7 +80,7 @@ export function renderWorkProjectView(context) {
       states: stringValues(facetRow['work-state-options']),
       repositories: stringValues(facetRow['work-repository-options']),
       owners: stringValues(facetRow['work-owner-options']),
-      packages: stringValues(facetRow['work-package-options'])
+      campaigns: stringValues(facetRow['work-campaign-options'])
     }
   });
   const root = h(
@@ -95,7 +95,7 @@ export function renderWorkProjectView(context) {
 }
 
 /**
- * @param {{ pageId: string, queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'], visible: number, total: number, facets: { states: string[], repositories: string[], owners: string[], packages: string[] } }} options
+ * @param {{ pageId: string, queryContext?: import('./ui-elements.js').ElementRenderContext['queryContext'], visible: number, total: number, facets: { states: string[], repositories: string[], owners: string[], campaigns: string[] } }} options
  * @returns {HTMLElement}
  */
 function renderWorkFilterBar(options) {
@@ -105,11 +105,11 @@ function renderWorkFilterBar(options) {
   const state = renderFacetSelect('State', withSelected(options.facets.states, selectedFilters['work-state-label']?.[0]));
   const repository = renderFacetSelect('Repository', withSelected(options.facets.repositories, selectedFilters['work-repository']?.[0]));
   const owner = renderFacetSelect('Workflow owner', withSelected(options.facets.owners, selectedFilters['work-owner']?.[0]));
-  const packageName = renderFacetSelect('Package', withSelected(options.facets.packages, selectedFilters['work-package']?.[0]));
+  const campaignName = renderFacetSelect('Campaign', withSelected(options.facets.campaigns, selectedFilters['work-campaign']?.[0]));
   state.value = selectedFilters['work-state-label']?.[0] ?? '';
   repository.value = selectedFilters['work-repository']?.[0] ?? '';
   owner.value = selectedFilters['work-owner']?.[0] ?? '';
-  packageName.value = selectedFilters['work-package']?.[0] ?? '';
+  campaignName.value = selectedFilters['work-campaign']?.[0] ?? '';
   const resultCount = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'work-filter-count'));
   const clear = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
@@ -129,7 +129,7 @@ function renderWorkFilterBar(options) {
   const facets = h('div', { className: 'work-filter-facets' },
     h('div', { className: 'work-filter-sheet-panel' },
       h('header', { className: 'work-mobile-sheet-header' }, h('strong', null, 'Filter work'), closeMobileFilters),
-      state, repository, owner, packageName
+      state, repository, owner, campaignName
     )
   );
   const mobileFilters = createExpandableToggle(mobileFilterToggle, facets, {
@@ -139,7 +139,7 @@ function renderWorkFilterBar(options) {
   mobileFilterToggle.addEventListener('click', () => {
     mobileFilters.setExpanded(!facets.classList.contains('is-open'));
   });
-  const controls = [search, state, repository, owner, packageName];
+  const controls = [search, state, repository, owner, campaignName];
   const apply = () => {
     const activeFilterCount = controls.filter((control) => control.value !== '').length;
     clear.disabled = activeFilterCount === 0;
@@ -148,7 +148,7 @@ function renderWorkFilterBar(options) {
       ['work-state-label', state.value],
       ['work-repository', repository.value],
       ['work-owner', owner.value],
-      ['work-package', packageName.value]
+      ['work-campaign', campaignName.value]
     ]) {
       if (value) filters[field] = [value];
       else delete filters[field];
@@ -165,7 +165,7 @@ function renderWorkFilterBar(options) {
     }));
   };
   search.addEventListener('input', apply);
-  for (const select of [state, repository, owner, packageName]) select.addEventListener('change', apply);
+  for (const select of [state, repository, owner, campaignName]) select.addEventListener('change', apply);
   clear.addEventListener('click', () => {
     for (const control of controls) control.value = '';
     apply();
@@ -300,7 +300,7 @@ function renderTasks(items, section, context) {
     h('option', { value: 'name' }, 'Title'),
     h('option', { value: 'state' }, 'Status'),
     h('option', { value: 'owner' }, 'Owned by'),
-    h('option', { value: 'package' }, 'Package')));
+    h('option', { value: 'campaign' }, 'Campaign')));
   const direction = h('button', { type: 'button', className: 'work-task-sort-direction', 'aria-label': 'Sort descending', title: 'Sort descending' }, renderIconSpan('work-task-sort-icon', 'arrow-down', { ariaHidden: true }));
   const requestedOrder = context.queryContext?.orderBy?.[0];
   const sortField = Object.entries(TASK_SORT_FIELDS).find(([, field]) => field === requestedOrder?.field)?.[0] ?? 'started';
@@ -412,7 +412,7 @@ function renderTasks(items, section, context) {
         sortableHeader('name', 'Title'),
         sortableHeader('state', 'Status'),
         h('span', null, 'Type'),
-        sortableHeader('package', 'Labels'),
+        sortableHeader('campaign', 'Labels'),
         sortableHeader('started', 'Start'),
         h('span', null, 'End'),
         sortableHeader('owner', 'Owned by')),
@@ -427,7 +427,7 @@ const TASK_SORT_FIELDS = {
   name: 'work-name',
   state: 'work-state',
   owner: 'work-owner',
-  package: 'work-package'
+  campaign: 'work-campaign'
 };
 
 /**
@@ -609,14 +609,14 @@ function normalizeWorkItem(row) {
   const stopTime = pointInTime ? startTime : validTime(stopped) ?? Math.max(startTime, Date.now());
   const owner = textValue(row['work-owner']);
   const workType = textValue(row['work-type-normalized']);
-  const packageName = textValue(row['work-package']);
+  const campaignName = textValue(row['work-campaign']);
   return {
     id: textValue(row['work-id']),
     name: textValue(row['work-name']),
     icon: textValue(row['work-icon']),
     repository: textValue(row['work-repository']),
     owner,
-    packageName,
+    campaignName,
     workType,
     groupId: textValue(row['work-group-id']),
     groupLabel: textValue(row['work-group-label']),
@@ -674,7 +674,7 @@ function decorateMobileWorkItem(element, item, variant = 'board') {
       h('div', { className: 'work-mobile-detail-status' }, h('span', { className: `work-state work-state-${item.state}` }, item.stateLabel), item.repository),
       h('dl', null,
         mobileDetailRow('Owner', item.owner),
-        mobileDetailRow('Label', item.packageName || 'None'),
+        mobileDetailRow('Label', item.campaignName || 'None'),
         mobileDetailRow('Type', item.workType === 'unknown' ? 'Unknown' : item.workType),
         mobileDetailRow(item.timeLabel, item.startedLabel),
         ...(item.timeLabel === 'Observed' ? [] : [mobileDetailRow('End', item.stoppedLabel), mobileDetailRow('Duration', item.durationLabel)]),

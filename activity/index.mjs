@@ -173,7 +173,7 @@ async function discoverLocalInventory(root) {
           : blockWorkers?.match(/^[ \t]*-[ \t]*(.+?)\s*$/gm)?.map((line) => line.replace(/^[ \t]*-[ \t]*/, "")) || []
         ).map((value) => value.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean)
         : [],
-      package: null,
+      campaign: null,
     });
   }
   return { schemaVersion: 1, manifests: [], workflows, bundles: [] };
@@ -276,11 +276,11 @@ export async function main(actions = {}) {
       const orchestrator = workflowById.get(bundle.id);
       const members = [orchestrator, ...(bundle.workers || []).map((worker) => workflowById.get(worker.id))]
         .filter(Boolean);
-      const packagePath = localInventory.workflows.find((workflow) => workflow.id === bundle.id)?.package?.path || "";
+      const campaignPath = localInventory.workflows.find((workflow) => workflow.id === bundle.id)?.campaign?.path || "";
       return {
         repository,
         visibility: "unknown",
-        path: packagePath,
+        path: campaignPath,
         name: bundle.name,
         description: bundle.description,
         workflows: members.map((workflow) => ({
@@ -292,8 +292,8 @@ export async function main(actions = {}) {
         })),
       };
     });
-    const packagedWorkflowIds = new Set(bundles.flatMap((bundle) => bundle.workflows.map((workflow) => workflow.id)));
-    const standaloneWorkflows = workflows.filter((workflow) => !packagedWorkflowIds.has(workflow.id));
+    const bundledWorkflowIds = new Set(bundles.flatMap((bundle) => bundle.workflows.map((workflow) => workflow.id)));
+    const standaloneWorkflows = workflows.filter((workflow) => !bundledWorkflowIds.has(workflow.id));
     const generatedAt = new Date().toISOString();
     const windowStart = new Date(Date.parse(generatedAt) - windowDays * 86_400_000).toISOString();
     const available = logsState.available === true;

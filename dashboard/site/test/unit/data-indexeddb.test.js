@@ -88,7 +88,7 @@ describe('canonical IndexedDB', () => {
       'audits',
       'domains',
       'issues',
-      'packages',
+      'campaigns',
       'repositories',
       'runs',
       'tools',
@@ -129,7 +129,7 @@ describe('canonical IndexedDB', () => {
       'audits',
       'domains',
       'issues',
-      'packages',
+      'campaigns',
       'repositories',
       'runs',
       'tools',
@@ -162,18 +162,18 @@ describe('canonical IndexedDB', () => {
   it('reads selected stores through one readonly transaction', async () => {
     const canonicalBatch = normalize([]);
     canonicalBatch.repositories = [{ id: 'repository:1' }];
-    canonicalBatch.packages = [{ id: 'package:1' }];
+    canonicalBatch.campaigns = [{ id: 'campaign:1' }];
     await upsertCanonicalBatch(indexedDB, canonicalBatch);
     const transactions = vi.spyOn(IDBDatabase.prototype, 'transaction');
 
-    const collections = await readCollections(indexedDB, ['repositories', 'packages']);
+    const collections = await readCollections(indexedDB, ['repositories', 'campaigns']);
 
     expect(collections).toEqual({
       repositories: canonicalBatch.repositories,
-      packages: canonicalBatch.packages
+      campaigns: canonicalBatch.campaigns
     });
     expect(transactions).toHaveBeenCalledTimes(1);
-    expect(transactions).toHaveBeenCalledWith(['repositories', 'packages']);
+    expect(transactions).toHaveBeenCalledWith(['repositories', 'campaigns']);
     transactions.mockRestore();
   });
 
@@ -233,7 +233,7 @@ describe('canonical IndexedDB', () => {
       await storage.replaceCanonicalBatch(indexedDB, canonicalBatch, {
         previousBatch: normalize([])
       });
-      await storage.readCollections(indexedDB, ['repositories', 'packages']);
+      await storage.readCollections(indexedDB, ['repositories', 'campaigns']);
     } finally {
       IDBDatabase.prototype.transaction = originalTransaction;
       vi.doUnmock('../../src/debug.js');

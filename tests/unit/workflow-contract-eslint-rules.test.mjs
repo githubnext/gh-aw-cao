@@ -43,7 +43,7 @@ test("ESLint Factory orchestrator owns discovery and dispatches only its declare
 
   assert.match(source, /name: "ESLint Factory"/);
   assert.match(source, /^\s+schedule: "?hourly"?$/m);
-  assert.match(source, /package: eslint-rules\n\s+role: orchestrator/);
+  assert.match(source, /campaign: eslint-rules\n\s+role: orchestrator/);
   assert.match(source, /dispatch_max: 5/);
   assert.match(source, /orchestrator_credits: 250/);
   assert.match(source, /worker_credits_per_target: 1750/);
@@ -73,7 +73,7 @@ test("ESLint Factory workers are single-target and cannot discover or dispatch",
   for (const [name, worker] of workers) {
     const source = workflow(name);
 
-    assert.match(source, new RegExp(`package: eslint-rules\\n\\s+role: worker\\n\\s+worker: ${worker}`), name);
+    assert.match(source, new RegExp(`campaign: eslint-rules\\n\\s+role: worker\\n\\s+worker: ${worker}`), name);
     assert.match(source, new RegExp(`tracker-id: ${name.slice(0, -3)}`), name);
     assert.match(source, /target_repo:\n\s+required: true\n\s+type: string/, name);
     assert.match(source, /safe_output_repo:\n\s+required: true\n\s+type: string/, name);
@@ -181,7 +181,7 @@ test("ESLint Factory workflows keep GitHub evidence acquisition bounded", () => 
   assert.match(miner, /at most one candidate per run|Select \*\*at most one\*\* candidate per run/);
 });
 
-test("ESLint Factory package manifest, policy, and dashboard describe the same operation", () => {
+test("ESLint Factory campaign manifest, policy, and dashboard describe the same operation", () => {
   const manifest = readFileSync(join(root, "eslint-rules", "aw.yml"), "utf8");
   for (const name of allWorkflows) {
     assert.match(manifest, new RegExp(`\\.github/workflows/${name.replace(".", "\\.")}`), name);
@@ -191,7 +191,7 @@ test("ESLint Factory package manifest, policy, and dashboard describe the same o
   assert.match(manifest, /source: dashboard\.json\n\s+destination: \.github\/aw\/dashboards\/eslint-rules\.json/);
   assert.match(manifest, /source: rules-db\.mjs\n\s+destination: \.github\/aw\/eslint-rules\/rules-db\.mjs/);
 
-  const policy = controlPolicy["control-plane"].packages["eslint-rules"];
+  const policy = controlPolicy["control-plane"].campaigns["eslint-rules"];
   assert.equal(policy.mode, "review");
   assert.equal(policy["max-repositories"], 1);
   assert.deepEqual(

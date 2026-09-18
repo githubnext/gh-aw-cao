@@ -3,7 +3,7 @@ title: Quickstart
 description: Create a private control plane, install one operation, and run it safely against one repository.
 ---
 
-Central Agentic Ops lets you run governed agentic operations across many repositories from one private GitHub repository, which we call the central control plane. Operation packages, credentials, rollout policy, and workflow runs stay in the control plane; target repositories do not receive copies of the workflows.
+Central Agentic Ops lets you run governed agentic operations across many repositories from one private GitHub repository, which we call the central control plane. Operation campaigns, credentials, rollout policy, and workflow runs stay in the control plane; target repositories do not receive copies of the workflows.
 
 By the end of this guide, you will have created a control plane, installed the Dependabot operation, and completed one `review` run against a public target repository. You will verify that the operation selected the expected target, saved any proposal in the private control repository, and did not change the target.
 
@@ -81,29 +81,29 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The script installs `gh-aw` when needed, adds the latest published core CAO package, and initializes the minimal control policy. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and `cao` commands when you intentionally need an older package release.
+The script installs `gh-aw` when needed, adds the latest published core CAO campaign, and initializes the minimal control policy. Rerunning it after those files are installed makes no changes. Use the individual `gh aw` and `cao` commands when you intentionally need an older campaign release.
 
-The root package installs:
+The root campaign installs:
 
 1. shared authentication, routing, and fail-closed controls;
 2. the activity and dashboard infrastructure;
 3. the `cao` CLI runtime under `.github/aw/activity/`; and
 4. CAO project skills under `.github/skills/` for Copilot discovery in the control repository.
 
-Use the `add-cao-package` skill to discover and compare catalog operations when you do not already know which package fits. After explicit selection, it installs through CAO so the package declaration is merged automatically. For example, install Dependabot with:
+Use the `add-cao-campaign` skill to discover and compare catalog operations when you do not already know which campaign fits. After explicit selection, it installs through CAO so the campaign declaration is merged automatically. For example, install Dependabot with:
 
 ```bash
 node .github/aw/activity/cao.mjs add githubnext/gh-aw-cao/dependabot
 ```
 
-`cao init` creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `cao add` invokes `gh aw add`, reads the installed package's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope. `cao update` upgrades `gh-aw` to the policy's minimum version, updates installed packages, and refreshes declared worker identities while preserving operator-owned rollout settings. Use `cao mode live PACKAGE...` to promote configured packages or `cao mode preview PACKAGE...` to return them to review mode; the command validates every package name before updating `.github/workflows/cao.json`. Use `cao enable PACKAGE...` or `cao disable PACKAGE...` to run the corresponding GitHub workflow action for each package's orchestrator and every declared worker workflow.
+`cao init` creates the minimal `.github/workflows/cao.json` and refuses to overwrite an existing policy. `cao add` invokes `gh aw add`, reads the installed campaign's CAO declaration, and adds its worker identities without enabling live mode or broadening repository scope. `cao update` upgrades `gh-aw` to the policy's minimum version, updates installed campaigns, and refreshes declared worker identities while preserving operator-owned rollout settings. Use `cao mode live CAMPAIGN...` to promote configured campaigns or `cao mode preview CAMPAIGN...` to return them to review mode; the command validates every campaign name before updating `.github/workflows/cao.json`. Use `cao enable CAMPAIGN...` or `cao disable CAMPAIGN...` to run the corresponding GitHub workflow action for each campaign's orchestrator and every declared worker workflow.
 
 > [!WARNING]
 > Do not edit generated `.lock.yml` files directly. Update their Markdown sources and regenerate them with `gh aw compile`.
 
 ### Step 4 - Set the first-run boundary
 
-Add the target owner to the generated `.github/workflows/cao.json`. The package and worker declaration is already present; omitted package settings default to `review`, one repository, and 100 percent rollout:
+Add the target owner to the generated `.github/workflows/cao.json`. The campaign and worker declaration is already present; omitted campaign settings default to `review`, one repository, and 100 percent rollout:
 
 ```json title=".github/workflows/cao.json"
 {
@@ -113,7 +113,7 @@ Add the target owner to the generated `.github/workflows/cao.json`. The package 
 		"scope": {
 			"allowed-owners": ["acme"]
 		},
-		"packages": {
+		"campaigns": {
 			"dependabot": {
 				"workers": {
 					"update-planner": {

@@ -81,7 +81,7 @@ it('refreshes subscriptions during ingestion only when explicitly requested', as
     return init?.method === 'HEAD'
       ? new Response(null, { headers: { 'content-length': '1' } })
       : Response.json(normalized('records', {
-          packages: [], repositories: [], workflows: [], runs: [],
+          campaigns: [], repositories: [], workflows: [], runs: [],
           domains: batch.domains, tools: batch.tools, audits: batch.audits, issues: batch.issues
         }));
   });

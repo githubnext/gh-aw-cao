@@ -69,7 +69,7 @@
           "workflow-role": "orchestrator",
           "workflow-active": "true",
           "rollout-mode": "review",
-          "package": "cao-evolution",
+          "campaign": "cao-evolution",
           "observed-at": "2026-09-01T00:00:00Z",
           "workflow-link": {
             "relation": "workflow",

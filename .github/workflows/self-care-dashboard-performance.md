@@ -54,7 +54,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: self-care
+      campaign: self-care
       role: worker
       worker: dashboard-performance
 
@@ -173,7 +173,7 @@ After every complete evaluation, including a no-op, overwrite the state file and
 
 - Fix only the selected issue and add or update focused behavioral coverage.
 - Preserve dashboard semantics, accessibility, data correctness, public module APIs, and all CFO, CTO, and CSO journeys.
-- Do not modify the Lighthouse harness, performance budgets, package manifests, lockfiles, workflow files, dependencies, generated files, Dashboard Language JSON, or unrelated code.
+- Do not modify the Lighthouse harness, performance budgets, campaign manifests, lockfiles, workflow files, dependencies, generated files, Dashboard Language JSON, or unrelated code.
 - Do not improve a score by removing useful content, delaying it beyond measurement, disabling functionality, suppressing an audit, or weakening a test.
 - Do not create more than one pull request, merge it, or modify an existing contributor pull request.
 

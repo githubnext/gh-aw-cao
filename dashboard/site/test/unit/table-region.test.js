@@ -191,20 +191,20 @@ describe('renderTableRegion', () => {
       tableClassName: 'dispatch-table',
       emptyMessage: 'No dispatches.',
       colSpan: 2,
-      headCells: ['Package', 'Status'],
+      headCells: ['Campaign', 'Status'],
       bodyRows: [
         h('tr', null, h('td', null, 'Dependabot'), h('td', null, 'success')),
         h('tr', null, h('td', null, 'Dependabot'), h('td', null, 'failure'))
       ],
       filterLabel: 'Search dispatches',
-      filterPlaceholder: 'Run, package, worker, status, or repository',
-      filterFields: [{ key: 'package', label: 'Package', allLabel: 'All packages', columnIndex: 0, always: true }],
+      filterPlaceholder: 'Run, campaign, worker, status, or repository',
+      filterFields: [{ key: 'campaign', label: 'Campaign', allLabel: 'All campaigns', columnIndex: 0, always: true }],
       resultNoun: 'dispatch',
       resultNounPlural: 'dispatches'
     });
 
-    expect(rendered.querySelector('input')?.getAttribute('placeholder')).toBe('Run, package, worker, status, or repository');
-    expect([...rendered.querySelectorAll('select option')].map((option) => option.textContent)).toEqual(['Package', 'Dependabot']);
+    expect(rendered.querySelector('input')?.getAttribute('placeholder')).toBe('Run, campaign, worker, status, or repository');
+    expect([...rendered.querySelectorAll('select option')].map((option) => option.textContent)).toEqual(['Campaign', 'Dependabot']);
     expect(rendered.querySelector('output')?.textContent).toBe('Showing 2 of 2 dispatches');
   });
 

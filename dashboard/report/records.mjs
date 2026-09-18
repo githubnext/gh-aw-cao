@@ -117,7 +117,7 @@ function hasReportWarning(bodyHtml = "") {
 }
 
 function configuredModeFor(bundle, controlSettings) {
-  return normalizeMode(controlSettings.packages?.[bundle.controlPackage]?.mode);
+  return normalizeMode(controlSettings.campaigns?.[bundle.controlCampaign]?.mode);
 }
 
 function bundleFor(reportDefinitions, ...values) {

@@ -8,7 +8,7 @@ import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
   "organizations",
-  "packages",
+  "campaigns",
   "repositories",
   "workflows",
   "runs",
@@ -515,24 +515,24 @@ function repositoryCoverageRows(deployed) {
   ];
 }
 
-function packageAliasMap(inventory = {}) {
+function campaignAliasMap(inventory = {}) {
   const aliases = new Map();
   for (const bundle of inventory.bundles || []) {
     const canonicalId = String(bundle.id || "").trim();
-    const legacyId = String(bundle.controlPackage || "").trim();
+    const legacyId = String(bundle.controlCampaign || "").trim();
     if (canonicalId && legacyId && legacyId !== canonicalId) aliases.set(legacyId, canonicalId);
   }
   return aliases;
 }
 
-function packageMemberships(deployed, packageAliases = new Map()) {
+function campaignMemberships(deployed, campaignAliases = new Map()) {
   const memberships = new Map();
   for (const bundle of deployed.bundles || []) {
     for (const workflow of bundle.workflows || []) {
       const key = `${bundle.repository}:${workflow.lockPath}`;
       const discoveredId = bundle.path?.replace(/\/aw\.yml$|^aw\.yml$/g, "") || bundle.name;
       const membership = {
-        id: packageAliases.get(discoveredId) || discoveredId,
+        id: campaignAliases.get(discoveredId) || discoveredId,
         name: bundle.name,
       };
       const workflowMemberships = memberships.get(key) || [];
@@ -546,16 +546,16 @@ function packageMemberships(deployed, packageAliases = new Map()) {
   return memberships;
 }
 
-function workflowAdmission(controlSettings, packageName, role, workflowId) {
-  if (!Object.hasOwn(controlSettings, "packages")) return null;
+function workflowAdmission(controlSettings, campaignName, role, workflowId) {
+  if (!Object.hasOwn(controlSettings, "campaigns")) return null;
   if (controlSettings.policy_resolution?.status === "unavailable") {
     return { status: "unavailable", reason: controlSettings.policy_resolution.reason || "policy-resolution-unavailable" };
   }
-  const packagePolicy = controlSettings.packages?.[packageName];
-  if (!packagePolicy) return { status: "blocked", reason: "package-undeclared" };
-  if (packagePolicy.enabled === false) return { status: "blocked", reason: "package-disabled" };
+  const campaignPolicy = controlSettings.campaigns?.[campaignName];
+  if (!campaignPolicy) return { status: "blocked", reason: "campaign-undeclared" };
+  if (campaignPolicy.enabled === false) return { status: "blocked", reason: "campaign-disabled" };
   if (role === "worker") {
-    const workerPolicy = packagePolicy.worker_policies?.[workflowId];
+    const workerPolicy = campaignPolicy.worker_policies?.[workflowId];
     if (!workerPolicy) return { status: "blocked", reason: "worker-undeclared" };
     if (workerPolicy.enabled === false) return { status: "blocked", reason: "worker-disabled" };
   }
@@ -577,15 +577,15 @@ function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {
   }
   for (const bundle of inventory.bundles || []) {
     const policyId = String(
-      bundle.controlPackage
+      bundle.controlCampaign
       || bundle.id
       || String(bundle.path || "").replace(/\/aw\.yml$|^aw\.yml$/g, "")
     ).trim();
-    const packagePolicy = controlSettings.packages?.[policyId]
-      || controlSettings.packages?.[bundle.id];
-    const configuredMode = rolloutMode(packagePolicy?.mode);
-    const rolloutPercent = Number(packagePolicy?.["rollout-percent"] ?? packagePolicy?.rollout_percent);
-    const targetPolicies = new Map(Object.entries(packagePolicy?.targets ?? packagePolicy?.target_policies ?? {})
+    const campaignPolicy = controlSettings.campaigns?.[policyId]
+      || controlSettings.campaigns?.[bundle.id];
+    const configuredMode = rolloutMode(campaignPolicy?.mode);
+    const rolloutPercent = Number(campaignPolicy?.["rollout-percent"] ?? campaignPolicy?.rollout_percent);
+    const targetPolicies = new Map(Object.entries(campaignPolicy?.targets ?? campaignPolicy?.target_policies ?? {})
       .map(([repository, targetPolicy]) => [repository.toLowerCase(), { repository, targetPolicy }]));
     const targetRepositories = new Map();
     for (const repository of controlSettings.allowed_repositories ?? []) {
@@ -593,46 +593,46 @@ function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {
       if (name) targetRepositories.set(name.toLowerCase(), name);
     }
     for (const [repository, { repository: name }] of targetPolicies) targetRepositories.set(repository, name);
-    const packageTargets = [...targetRepositories.entries()]
+    const campaignTargets = [...targetRepositories.entries()]
       .map(([key, repository]) => ({
         repository,
         mode: rolloutMode(targetPolicies.get(key)?.targetPolicy?.mode ?? configuredMode),
         explicit: targetPolicies.has(key),
       }))
       .filter((target) => target.mode !== "unknown" && target.repository);
-    const packageId = String(policyId || bundle.id || bundle.controlPackage || "").trim();
-    const packageName = String(bundle.name || packageId).trim();
-    const packageMembership = packageId ? { id: packageId, name: packageName || packageId } : undefined;
-    const packageIcon = packagePolicy?.icon || "package";
+    const campaignId = String(policyId || bundle.id || bundle.controlCampaign || "").trim();
+    const campaignName = String(bundle.name || campaignId).trim();
+    const campaignMembership = campaignId ? { id: campaignId, name: campaignName || campaignId } : undefined;
+    const campaignIcon = campaignPolicy?.icon || "campaign";
     const workers = bundle.workers || [];
     const ready = bundle.compiled === true
       && (bundle.missingWorkers || []).length === 0
       && workers.every((worker) => worker.compiled !== false);
     const inventoryWarnings = (bundle.compiled === true ? 0 : 1) + (bundle.missingWorkers || []).length;
-    const packageAllowance = [bundle.maxAiCredits, ...workers.map((worker) => worker.maxAiCredits)]
+    const campaignAllowance = [bundle.maxAiCredits, ...workers.map((worker) => worker.maxAiCredits)]
       .filter((value) => Number.isFinite(value) && value > 0)
       .reduce((total, value) => total + value, 0);
-    const packageWorkflows = [
+    const campaignWorkflows = [
       { sourcePath: bundle.workflow, lockPath: bundle.workflow?.replace(/\.md$/, ".lock.yml"), maxAiCredits: bundle.maxAiCredits, role: "orchestrator", id: bundle.id },
       ...workers.map((worker) => ({ ...worker, role: "worker" })),
     ];
-    for (const workflow of packageWorkflows) {
-      const admission = workflowAdmission(controlSettings, bundle.controlPackage, workflow.role, workflow.id);
+    for (const workflow of campaignWorkflows) {
+      const admission = workflowAdmission(controlSettings, bundle.controlCampaign, workflow.role, workflow.id);
       for (const workflowPath of [workflow.sourcePath, workflow.lockPath].filter(Boolean)) {
         details.set(workflowPath, {
           ...details.get(workflowPath),
           maxAiCredits: workflow.maxAiCredits ?? details.get(workflowPath)?.maxAiCredits,
           inventoryReady: ready,
-          packageInventoryWarnings: inventoryWarnings,
-          packageAllowance: packageAllowance > 0 ? packageAllowance : null,
-          packageWorkerCount: workers.length,
-          packageDescription: bundle.description,
-          packageReadmePath: bundle.readmePath,
-          packageReadme: bundle.readme,
-          ...(Number.isFinite(rolloutPercent) ? { packageRolloutPercent: rolloutPercent } : {}),
-          ...(packageTargets.length > 0 ? { packageTargets } : {}),
-          ...(packageMembership ? { packageMembership } : {}),
-          packageIcon,
+          campaignInventoryWarnings: inventoryWarnings,
+          campaignAllowance: campaignAllowance > 0 ? campaignAllowance : null,
+          campaignWorkerCount: workers.length,
+          campaignDescription: bundle.description,
+          campaignReadmePath: bundle.readmePath,
+          campaignReadme: bundle.readme,
+          ...(Number.isFinite(rolloutPercent) ? { campaignRolloutPercent: rolloutPercent } : {}),
+          ...(campaignTargets.length > 0 ? { campaignTargets } : {}),
+          ...(campaignMembership ? { campaignMembership } : {}),
+          campaignIcon,
           ...(configuredMode !== "unknown" ? { configuredMode } : {}),
           ...(admission ? { admissionStatus: admission.status, admissionReason: admission.reason } : {}),
         });
@@ -642,21 +642,21 @@ function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {
   return details;
 }
 
-function packageRows(inventory = {}, controlSettings = {}, generatedAt) {
+function campaignRows(inventory = {}, controlSettings = {}, generatedAt) {
   const bundles = new Map((inventory.bundles || []).map((bundle) => [
-    String(bundle.controlPackage || bundle.id || "").trim(),
+    String(bundle.controlCampaign || bundle.id || "").trim(),
     bundle,
   ]).filter(([id]) => id));
-  const registered = new Map((inventory.packages || []).map((entry) => [
+  const registered = new Map((inventory.campaigns || []).map((entry) => [
     String(entry.id || "").trim(),
     entry,
   ]).filter(([id]) => id));
-  const ids = new Set([...bundles.keys(), ...registered.keys(), ...Object.keys(controlSettings.packages || {})]);
+  const ids = new Set([...bundles.keys(), ...registered.keys(), ...Object.keys(controlSettings.campaigns || {})]);
   return [...ids].sort().map((id) => {
     const bundle = bundles.get(id)
       || [...bundles.values()].find((candidate) => candidate.id === id)
       || {};
-    const policy = controlSettings.packages?.[id] || {};
+    const policy = controlSettings.campaigns?.[id] || {};
     const workers = Object.entries(policy.worker_policies || {}).map(([workflow, worker]) => ({
       id: worker.worker || workflow,
       workflow,
@@ -673,66 +673,66 @@ function packageRows(inventory = {}, controlSettings = {}, generatedAt) {
       .filter((value) => Number.isFinite(value) && value > 0)
       .reduce((total, value) => total + value, 0);
     return {
-      package: id,
-      "package-name": bundle.name || registered.get(id)?.name || id,
-      "package-description": bundle.description || "",
-      "package-icon": policy.icon || "package",
-      "package-mode": rolloutMode(policy.mode),
-      "package-enabled": policy.enabled !== false,
-      "package-max-repositories": policy["max-repositories"] ?? null,
-      "package-rollout-percent": policy["rollout-percent"] ?? null,
-      "package-monthly-ai-credit-budget": policy["monthly-ai-credit-budget"] ?? null,
-      "package-aic-allowance": aiCreditAllowance || null,
-      "package-worker-count": workers.length || inventoryWorkers.length,
-      "package-inventory-warnings": inventoryWarnings,
-      "package-workers": workers,
-      "package-targets": targets,
-      "package-min-version": bundle.minVersion || "",
-      "package-version": bundle.version || "unknown",
-      "package-current-version": bundle.currentVersion || "unknown",
-      "package-update-state": bundle.updateState || "unknown",
-      "package-experimental": bundle.experimental === true,
-      "package-readme-path": bundle.readmePath || "",
-      "package-readme": bundle.readme || "",
+      campaign: id,
+      "campaign-name": bundle.name || registered.get(id)?.name || id,
+      "campaign-description": bundle.description || "",
+      "campaign-icon": policy.icon || "campaign",
+      "campaign-mode": rolloutMode(policy.mode),
+      "campaign-enabled": policy.enabled !== false,
+      "campaign-max-repositories": policy["max-repositories"] ?? null,
+      "campaign-rollout-percent": policy["rollout-percent"] ?? null,
+      "campaign-monthly-ai-credit-budget": policy["monthly-ai-credit-budget"] ?? null,
+      "campaign-aic-allowance": aiCreditAllowance || null,
+      "campaign-worker-count": workers.length || inventoryWorkers.length,
+      "campaign-inventory-warnings": inventoryWarnings,
+      "campaign-workers": workers,
+      "campaign-targets": targets,
+      "campaign-min-version": bundle.minVersion || "",
+      "campaign-version": bundle.version || "unknown",
+      "campaign-current-version": bundle.currentVersion || "unknown",
+      "campaign-update-state": bundle.updateState || "unknown",
+      "campaign-experimental": bundle.experimental === true,
+      "campaign-readme-path": bundle.readmePath || "",
+      "campaign-readme": bundle.readme || "",
       "observed-at": generatedAt,
     };
   });
 }
 
 function workflowRows(deployed, generatedAt, inventory, controlSettings) {
-  const memberships = packageMemberships(deployed, packageAliasMap(inventory));
+  const memberships = campaignMemberships(deployed, campaignAliasMap(inventory));
   const inventoryDetails = inventoryWorkflowDetails(inventory, controlSettings);
   return (deployed.workflows || []).map((workflow) => {
     const names = repositoryParts(workflow.repository);
     const details = inventoryDetails.get(workflow.path);
     const discoveredMemberships = memberships.get(`${workflow.repository}:${workflow.path}`) || [];
-    const workflowMemberships = details?.packageMembership
-      ? [details.packageMembership]
+    const workflowMemberships = details?.campaignMembership
+      ? [details.campaignMembership]
       : discoveredMemberships;
     const membership = workflowMemberships.at(-1);
-    const packageIcon = details?.packageIcon
-      || controlSettings.packages?.[membership?.id]?.icon
-      || "package";
+    const campaignIcon = details?.campaignIcon
+      || controlSettings.campaigns?.[membership?.id]?.icon
+      || "campaign";
     const recentMode = rolloutMode(workflow.runHealth?.runRecords?.[0]?.displayTitle);
     const workflowRepository = String(workflow.repository ?? "").toLowerCase();
-    const packageTargets = (details?.packageTargets ?? [])
+    const campaignTargets = (details?.campaignTargets ?? [])
       .filter((target) => target.explicit || target.repository.toLowerCase() !== workflowRepository)
       .map(({ repository, mode }) => ({ repository, mode }));
     const issueLink = issueSearchLink(names.organization, details?.issueLabel, workflow.name || workflow.path);
     return {
      ...names,
-     ...(membership ? { package: membership.id, "package-name": membership.name } : {}),
-     ...(membership ? { "package-icon": packageIcon } : {}),
-     ...(workflowMemberships.length > 0 ? { "package-memberships": workflowMemberships } : {}),
+     ...(membership ? { campaign: membership.id, "campaign-name": membership.name } : {}),
+     ...(membership ? { "campaign-icon": campaignIcon } : {}),
+     ...(workflowMemberships.length > 0 ? { "campaign-memberships": workflowMemberships } : {}),
      ...(Number.isFinite(details?.maxAiCredits) ? { "max-ai-credits": details.maxAiCredits } : {}),
-     ...(Number.isFinite(details?.packageAllowance) ? { "package-aic-allowance": details.packageAllowance } : {}),
-     ...(Number.isFinite(details?.packageWorkerCount) ? { "package-worker-count": details.packageWorkerCount } : {}),
-    ...(details?.packageDescription ? { "package-description": details.packageDescription } : {}),
-    ...(details?.packageReadmePath ? { "package-readme-path": details.packageReadmePath } : {}),
-    ...(details?.packageReadme ? { "package-readme": details.packageReadme } : {}),
-     ...(Number.isFinite(details?.packageInventoryWarnings) ? { "package-inventory-warnings": details.packageInventoryWarnings } : {}),
-    ...(Number.isFinite(details?.packageRolloutPercent) ? { "package-rollout-percent": details.packageRolloutPercent } : {}),
-    ...(packageTargets.length > 0 ? { "package-targets": packageTargets } : {}),
+     ...(Number.isFinite(details?.campaignAllowance) ? { "campaign-aic-allowance": details.campaignAllowance } : {}),
+     ...(Number.isFinite(details?.campaignWorkerCount) ? { "campaign-worker-count": details.campaignWorkerCount } : {}),
+    ...(details?.campaignDescription ? { "campaign-description": details.campaignDescription } : {}),
+    ...(details?.campaignReadmePath ? { "campaign-readme-path": details.campaignReadmePath } : {}),
+    ...(details?.campaignReadme ? { "campaign-readme": details.campaignReadme } : {}),
+     ...(Number.isFinite(details?.campaignInventoryWarnings) ? { "campaign-inventory-warnings": details.campaignInventoryWarnings } : {}),
+    ...(Number.isFinite(details?.campaignRolloutPercent) ? { "campaign-rollout-percent": details.campaignRolloutPercent } : {}),
+    ...(campaignTargets.length > 0 ? { "campaign-targets": campaignTargets } : {}),
      ...(typeof details?.inventoryReady === "boolean" ? { "inventory-ready": details.inventoryReady } : {}),
      ...(details?.admissionStatus ? { "admission-status": details.admissionStatus } : {}),
      ...(details?.admissionReason ? { "admission-reason": details.admissionReason } : {}),
@@ -751,7 +751,7 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
       "gh-aw-update-state": workflow.updateState || "unknown",
       "gh-aw-metadata": workflow.ghAwMetadata || null,
       "gh-aw-manifest": workflow.ghAwManifest || null,
-      "rollout-mode": details?.packageTargets?.find(
+      "rollout-mode": details?.campaignTargets?.find(
         (target) => target.repository.toLowerCase() === workflowRepository,
       )?.mode || details?.configuredMode || recentMode,
       "observed-at": workflow.updatedAt || generatedAt,
@@ -826,7 +826,7 @@ function admissionRows(deployed) {
         workflow: workflow.path?.replace(/\.lock\.yml$/, ".md") || "",
         run: String(run.runId),
         "observed-at": admission.observedAt,
-        package: admission.package || "unknown",
+        campaign: admission.campaign || "unknown",
         "workflow-role": admission.role || workflow.role || "unknown",
         worker: admission.worker || "",
         "target-repository": admission.targetRepository || "",
@@ -1799,22 +1799,22 @@ function workflowSmellRows(workflows) {
 }
 
 function controlPlaneSmellRows(workflows, configuration, controlRepository, observedAt) {
-  const packageRows = workflows.filter((workflow) => Number(workflow["package-inventory-warnings"]) > 0);
-  const seenPackages = new Set();
-  const inventorySmells = packageRows.flatMap((workflow) => {
-    const identity = `${workflow.organization}/${workflow.repository}:${workflow.package || workflow.workflow}`;
-    if (seenPackages.has(identity)) return [];
-    seenPackages.add(identity);
+  const campaignRows = workflows.filter((workflow) => Number(workflow["campaign-inventory-warnings"]) > 0);
+  const seenCampaigns = new Set();
+  const inventorySmells = campaignRows.flatMap((workflow) => {
+    const identity = `${workflow.organization}/${workflow.repository}:${workflow.campaign || workflow.workflow}`;
+    if (seenCampaigns.has(identity)) return [];
+    seenCampaigns.add(identity);
     return [{
       organization: workflow.organization,
       repository: workflow.repository,
       workflow: workflow.workflow,
       "smell-observation-id": `control-plane:${identity}:inventory-incomplete`,
       "smell-id": "inventory-incomplete",
-      "smell-name": "Package inventory incomplete",
+      "smell-name": "Campaign inventory incomplete",
       "smell-category": "control-plane",
       "smell-severity": "high",
-      "smell-summary": `${workflow["package-inventory-warnings"]} package inventory warning(s) require review.`,
+      "smell-summary": `${workflow["campaign-inventory-warnings"]} campaign inventory warning(s) require review.`,
       "smell-recommendation": "Restore missing compiled orchestration or declared worker inventory.",
       "observed-at": workflow["observed-at"],
       "repository-link": workflow["repository-link"],
@@ -2120,7 +2120,7 @@ function outcomeRows(records, workflowRoleFor = () => "unknown") {
   return records.map((record) => ({
     ...repositoryParts(record.repository),
     "runtime-repository": record.runtimeRepository || record.repository,
-    ...(record.bundle ? { package: record.bundle } : {}),
+    ...(record.bundle ? { campaign: record.bundle } : {}),
     workflow: record.workflowPath?.replace(/\.lock\.yml$/, ".md") || record.workflow || "",
     "workflow-role": workflowRoleFor(record),
     "workflow-name": record.workflow || record.workflowPath?.replace(/\.lock\.yml$/, ".md") || "Unknown workflow",
@@ -2259,10 +2259,10 @@ function workItemRows(workflows, runs, outcomes) {
         workflow: workflow.workflow,
         run: run?.run || "",
         "workflow-name": workflow["workflow-name"] || workflow.workflow,
-        "workflow-icon": workflow["package-icon"] || "workflow",
-        package: workflow["package-name"] || "standalone",
+        "workflow-icon": workflow["campaign-icon"] || "workflow",
+        campaign: workflow["campaign-name"] || "standalone",
         scope: `${workflow.organization}/${workflow.repository}`,
-        domain: workflow["package-name"] || "standalone",
+        domain: workflow["campaign-name"] || "standalone",
         "work-type": workflow["workflow-role"] || "unknown",
         "lifecycle-state": lifecycleState,
         phase: run?.["run-status"] || "unknown",
@@ -2278,7 +2278,7 @@ function workItemRows(workflows, runs, outcomes) {
             ? (run?.resource || "scheduled run")
           : "",
         "waiting-since": run?.["resource-reset-at"] || run?.["started-at"] || matchedOutcome?.["observed-at"] || "",
-        owner: workflow["package-name"] || workflow.organization,
+        owner: workflow["campaign-name"] || workflow.organization,
         "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
         "verification-state": outcomeVerificationState(matchedOutcome?.["outcome-state"]),
         "outcome-state": matchedOutcome?.["outcome-state"] || "pending",
@@ -2575,52 +2575,52 @@ function configurationData(controlSettings) {
         detail: "Without an explicit repository allowlist, every repository under an allowed owner may be discovered.",
       });
     }
-    const packages = control.packages && typeof control.packages === "object" ? control.packages : {};
-    if (Object.keys(packages).length === 0) {
+    const campaigns = control.campaigns && typeof control.campaigns === "object" ? control.campaigns : {};
+    if (Object.keys(campaigns).length === 0) {
       diagnostics.push({
         severity: "warning",
-        path: "control-plane.packages",
-        title: "No packages are configured",
-        detail: "Operations remain inactive until a package and its workers are declared.",
+        path: "control-plane.campaigns",
+        title: "No campaigns are configured",
+        detail: "Operations remain inactive until a campaign and its workers are declared.",
       });
     }
     const defaultMode = control.defaults?.mode ?? "review";
-    for (const [packageName, policy] of Object.entries(packages)) {
+    for (const [campaignName, policy] of Object.entries(campaigns)) {
       if (!policy || typeof policy !== "object" || Array.isArray(policy) || policy.enabled === false) continue;
       const mode = policy.mode ?? defaultMode;
       if (mode === "review") {
-        const path = `control-plane.packages.${packageName}.mode`;
+        const path = `control-plane.campaigns.${campaignName}.mode`;
         diagnostics.push({
           severity: "guidance",
           path,
-          title: `${packageName} is review-only`,
+          title: `${campaignName} is review-only`,
           detail: "Review mode produces proposals in the control repository and cannot mutate targets.",
         });
         actions.push({
-          action: `Promote ${packageName} to live`,
+          action: `Promote ${campaignName} to live`,
           path,
           current: "review",
           recommended: "live",
-          prompt: `Update .github/workflows/cao.json so ${path} is "live". Preserve all existing scope and rollout limits, verify target-owned authority for ${packageName}, and validate the policy before committing.`,
+          prompt: `Update .github/workflows/cao.json so ${path} is "live". Preserve all existing scope and rollout limits, verify target-owned authority for ${campaignName}, and validate the policy before committing.`,
         });
       }
       if (mode === "live") {
         diagnostics.push({
           severity: "guidance",
-          path: `control-plane.packages.${packageName}`,
-          title: `${packageName} live mode requires target authority`,
+          path: `control-plane.campaigns.${campaignName}`,
+          title: `${campaignName} live mode requires target authority`,
           detail: "Each live target must authorize this control repository on its protected default branch.",
         });
       }
       for (const [workerName, worker] of Object.entries(policy.workers ?? {})) {
         if (worker?.enabled !== false) continue;
-        const path = `control-plane.packages.${packageName}.workers.${workerName}.enabled`;
+        const path = `control-plane.campaigns.${campaignName}.workers.${workerName}.enabled`;
         actions.push({
           action: `Enable ${workerName}`,
           path,
           current: "false",
           recommended: "true",
-          prompt: `Update .github/workflows/cao.json so ${path} is true. Preserve the worker workflow slug and all package limits, then validate the policy before committing.`,
+          prompt: `Update .github/workflows/cao.json so ${path} is true. Preserve the worker workflow slug and all campaign limits, then validate the policy before committing.`,
         });
       }
     }
@@ -2669,7 +2669,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     discovery: { ...deployed.discovery, complete: workflowInventoryComplete },
   };
   const workflows = workflowRows(workflowDeployed, generatedAt, inventory, controlSettings);
-  const packages = packageRows(inventory, controlSettings, generatedAt);
+  const campaigns = campaignRows(inventory, controlSettings, generatedAt);
   const runs = runRows(deployed, usage);
   const admission = admissionRows(deployed);
   const performance = performanceRows(deployed, usage);
@@ -2733,9 +2733,9 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
 
   const sources = Object.fromEntries(sourceNames.map((name) => [name, source(name, [], generatedAt, false, false)]));
   sources.organizations = source("organizations", organizations, generatedAt, discoveryAvailable, workflowInventoryComplete);
-  sources.packages = source(
-    "packages",
-    packages,
+  sources.campaigns = source(
+    "campaigns",
+    campaigns,
     generatedAt,
     controlSettings.policy_resolution?.status !== "unavailable",
     controlSettings.policy_resolution?.status !== "unavailable",

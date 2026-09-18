@@ -34,9 +34,9 @@ const failures = [
 ];
 
 const invalidPolicies = [
-  ["invalid package kill switch", controlPolicy({ packagePolicy: { enabled: "invalid" } }), "control-plane.packages.dependabot.enabled must be a Boolean"],
-  ["invalid worker kill switch", controlPolicy({ workerPolicy: { enabled: "False" } }), "control-plane.packages.dependabot.workers.update-planner.enabled must be a Boolean"],
-  ["removed worker ceiling", controlPolicy({ workerPolicy: { "max-mode": "preview" } }), "control-plane.packages.dependabot.workers.update-planner.max-mode must be review or live"],
+  ["invalid campaign kill switch", controlPolicy({ campaignPolicy: { enabled: "invalid" } }), "control-plane.campaigns.dependabot.enabled must be a Boolean"],
+  ["invalid worker kill switch", controlPolicy({ workerPolicy: { enabled: "False" } }), "control-plane.campaigns.dependabot.workers.update-planner.enabled must be a Boolean"],
+  ["removed worker ceiling", controlPolicy({ workerPolicy: { "max-mode": "preview" } }), "control-plane.campaigns.dependabot.workers.update-planner.max-mode must be review or live"],
   ["oversized scan cap", controlPolicy({ inventory: { "max-scan-repositories": 100001 } }), "control-plane.inventory.max-scan-repositories must be an integer in 1..100000"],
   ["invalid cell count", controlPolicy({ inventory: { "cell-count": 0 } }), "control-plane.inventory.cell-count must be an integer in 1..1000"],
   ["invalid cell index", controlPolicy({ inventory: { "cell-count": 4, "cell-index": 4 } }), "control-plane.inventory.cell-index must be smaller than cell-count"],
@@ -119,8 +119,8 @@ for (const role of ["orchestrator", "worker"]) {
           TARGET_REPO: "not-a-repository",
           SAFE_OUTPUT_REPO: "also-invalid",
         },
-        "echo 'GitHub must not be called for a disabled package' >&2; exit 99",
-        controlPolicy({ packagePolicy: { enabled: false } }),
+        "echo 'GitHub must not be called for a disabled campaign' >&2; exit 99",
+        controlPolicy({ campaignPolicy: { enabled: false } }),
       );
 
       assert.equal(result.status, 0, result.stderr);
@@ -133,7 +133,7 @@ for (const role of ["orchestrator", "worker"]) {
       const precompute = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
       assert.equal(precompute.control_role, role);
       assert.equal(precompute.enabled, false);
-      assert.equal(precompute.reason, "package-disabled");
+      assert.equal(precompute.reason, "campaign-disabled");
       assert.equal(precompute.effective_max_repos, 0);
       assert.deepEqual(precompute.candidate_repositories, []);
       assert.deepEqual(precompute.worker_workflows, []);
@@ -183,7 +183,7 @@ test("control precompute writes a complete review worker envelope", () => {
     authorized: true,
     reason: "authorized",
     control_role: "worker",
-    package: "dependabot",
+    campaign: "dependabot",
     bundle: "dependabot",
     worker: "update-planner",
     enabled: true,
@@ -298,7 +298,7 @@ esac
 `,
     controlPolicy({
       scope: { "allowed-repositories": ["acme/old-target", "acme/target"] },
-      packagePolicy: { "max-repositories": 2 },
+      campaignPolicy: { "max-repositories": 2 },
     }),
   );
 
@@ -417,7 +417,7 @@ esac
 });
 
 function runLiveWorker(overrides = {}, policy = controlPolicy({
-  packagePolicy: { mode: "live" },
+  campaignPolicy: { mode: "live" },
   workerPolicy: { "max-mode": "live" },
 })) {
   return runPrecompute({
@@ -441,9 +441,9 @@ test("control precompute authorizes live workers from central policy", () => {
   assert.equal("target_authority_source" in precompute, false);
 });
 
-test("control precompute resolves live mode from an exact package target", () => {
+test("control precompute resolves live mode from an exact campaign target", () => {
   const result = runLiveWorker({}, controlPolicy({
-    packagePolicy: {
+    campaignPolicy: {
       mode: "review",
       targets: { "acme/target": { mode: "live" } },
     },
@@ -461,7 +461,7 @@ test("control precompute rejects live mode for an unmatched review target", () =
     REQUESTED_MODE: "live",
     SAFE_OUTPUT_REPO: "acme/target",
   }, undefined, controlPolicy({
-    packagePolicy: {
+    campaignPolicy: {
       mode: "review",
       targets: { "acme/other": { mode: "live" } },
     },

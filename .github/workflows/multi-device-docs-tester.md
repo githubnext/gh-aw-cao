@@ -149,10 +149,10 @@ Discover how this repository builds and previews its documentation, start the pr
 
 ## Step 1: Discover and Start the Documentation Site
 
-Inspect committed package manifests, lockfiles, task definitions, and documentation configuration to determine:
+Inspect committed campaign manifests, lockfiles, task definitions, and documentation configuration to determine:
 
 - the documentation project root;
-- the repository's package manager;
+- the repository's campaign manager;
 - the documented build and preview commands; and
 - the local site base path.
 

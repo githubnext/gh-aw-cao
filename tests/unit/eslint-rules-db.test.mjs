@@ -62,7 +62,7 @@ const sampleLogs = {
       worker: "inventory",
       kind: "lint-inventory",
       rule_key: undefined,
-      payload: { eslint: "flat", package_manager: "npm" },
+      payload: { eslint: "flat", campaign_manager: "npm" },
     }),
   ],
   "refiner__octo__app__2025-01-03.jsonl": [
@@ -125,7 +125,7 @@ test("rules database exposes validated schema, rules, and inventory", () => {
       assert.equal(rule.target_count, 1);
       const inventory = database.prepare("SELECT * FROM lint_inventory").get();
       assert.equal(inventory.target_repo, "octo/app");
-      assert.equal(inventory.payload, '{"eslint":"flat","package_manager":"npm"}');
+      assert.equal(inventory.payload, '{"eslint":"flat","campaign_manager":"npm"}');
       const priority = database.prepare("SELECT * FROM repository_priority").get();
       assert.equal(priority.target_repo, "octo/app");
       assert.equal(priority.payload, '{"decision":"selected","rank":1}');
@@ -237,6 +237,6 @@ test("rules database command line builds and verifies without dependencies", () 
   }
 });
 
-test("installed rules database resource matches the package source", () => {
+test("installed rules database resource matches the campaign source", () => {
   assert.deepEqual(readFileSync(scriptResource), readFileSync(scriptSource));
 });

@@ -58,7 +58,7 @@ The GitHub Next project maintains this document. Version numbers follow Semantic
 
 ### 1.1 Purpose
 
-CAO centrally governs agentic workflow packages that may discover, analyze, and produce declared safe outputs for many repositories. The dashboard provides the human operating surface for that system. Its primary purpose is not to report that automation ran. Its purpose is to help an authorized operator make a sound decision about autonomous work.
+CAO centrally governs agentic workflow campaigns that may discover, analyze, and produce declared safe outputs for many repositories. The dashboard provides the human operating surface for that system. Its primary purpose is not to report that automation ran. Its purpose is to help an authorized operator make a sound decision about autonomous work.
 
 The dashboard is successful when an operator can answer, in order:
 
@@ -479,7 +479,7 @@ Ties are ordered by declared consequence tier, due time, affected scope, age, an
 
 ### 9.1 Work Inventory
 
-The Work page is the complete operational inventory. It supports filters for lifecycle state, phase, owner, repository, organization, domain, work type, workflow, package, risk or consequence tier, agent, age, outcome, verification, rollout mode, and attributed usage when those dimensions are available.
+The Work page is the complete operational inventory. It supports filters for lifecycle state, phase, owner, repository, organization, domain, work type, workflow, campaign, risk or consequence tier, agent, age, outcome, verification, rollout mode, and attributed usage when those dimensions are available.
 
 - **CAOD-WORK-001:** The default Work view **MUST** group or list by work item and **MUST NOT** default to one row per execution.
 - **CAOD-WORK-002:** Each work row **MUST** expose `what`, `state`, `reason`, and `next action`; it **SHOULD** expose scope, owner, current assignments, waiting-on, and latest evidence time.
@@ -488,7 +488,7 @@ The Work page is the complete operational inventory. It supports filters for lif
 - **CAOD-WORK-005:** Completed and cancelled work **MUST** be excluded from the default active view but remain available through filters and direct links.
 - **CAOD-WORK-022:** The Work board **MUST** present four concise columns: `Todo`, `In progress`, `Needs review`, and `Done`. Proposed, queued, waiting, pending, and unknown source states map to `Todo`; active and running states map to `In progress`; blocked and review states map to `Needs review`; terminal states map to `Done`. This presentation mapping **MUST NOT** rewrite or collapse the source lifecycle, phase, runtime, verification, or outcome evidence available in detail.
 - **CAOD-WORK-023:** Work **MUST** provide Board, Tasks, and Roadmap presentations over the same retained work-item inventory and active filters. Switching presentation **MUST NOT** change work identity, source state, ownership, timestamps, or evidence associations.
-- **CAOD-WORK-024:** Tasks **MUST** present orchestrators and workers as ordinary sortable rows rather than replacing an orchestrator and its workers with a collapsed package summary. Repository ownership **MUST** use the authoritative repository identity and link only when a valid repository URL can be constructed safely.
+- **CAOD-WORK-024:** Tasks **MUST** present orchestrators and workers as ordinary sortable rows rather than replacing an orchestrator and its workers with a collapsed campaign summary. Repository ownership **MUST** use the authoritative repository identity and link only when a valid repository URL can be constructed safely.
 - **CAOD-WORK-025:** Roadmap **MUST** retain a fixed work-title pane, a continuous UTC time grid, and one lane for every matching work item. It **MUST NOT** invent start dates, end dates, durations, actors, or artifact kinds to fill a planning interval.
 - **CAOD-WORK-026:** Roadmap **MUST** provide `Day`, `Week`, `Month`, `Quarter`, and `Year` zoom levels. Each level **MUST** disclose the represented interval and use calendar bands and ticks appropriate to that scale without changing recorded item timestamps.
 - **CAOD-WORK-027:** When the current date is inside the displayed Roadmap interval, the presenter **MUST** render a visually restrained current-date line with a non-color-only accessible label and provide a control that returns the viewport to that date.
@@ -578,12 +578,12 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 - **CAOD-AGENT-002:** Model, engine, tools, environment, utilization, retries, and attributed usage **MAY** be shown as supplemental facts and **MUST NOT** replace assignment and work context.
 - **CAOD-AGENT-003:** An idle agent **MUST NOT** be labeled unhealthy solely because it has no assignment.
 - **CAOD-AGENT-004:** Agent health **MUST** distinguish unavailable telemetry, execution failure, policy denial, waiting, idle, and healthy active work.
-- **CAOD-AGENT-019:** The default Agents experience **MUST** present a policy-scoped inventory of package and standalone agents before runtime detail, with facets for inventory kind and material health conditions.
-- **CAOD-AGENT-020:** Package members **SHOULD** remain grouped under their package identity while preserving each workflow's role, declared permissions, state, and evidence links.
+- **CAOD-AGENT-019:** The default Agents experience **MUST** present a policy-scoped inventory of campaign and standalone agents before runtime detail, with facets for inventory kind and material health conditions.
+- **CAOD-AGENT-020:** Campaign members **SHOULD** remain grouped under their campaign identity while preserving each workflow's role, declared permissions, state, and evidence links.
 - **CAOD-AGENT-021:** Disabled registration **MUST** remain distinct from a security smell. A smell label **MUST** require an observed threat, policy violation, stale evidence beyond a disclosed threshold, or another explicitly defined adverse condition.
 - **CAOD-AGENT-022:** A presenter **MUST NOT** infer that runtime duration or activity is anomalous without a representative baseline and disclosed method.
-- **CAOD-AGENT-023:** The Agents inventory **MUST** distinguish package identities from standalone workflows and provide a route from each package to its retained package detail.
-- **CAOD-AGENT-024:** Package detail **SHOULD** render the package README when retained by the authoritative inventory. Missing README content **MUST** produce an explicit unavailable state and **MUST NOT** be replaced with generated package claims.
+- **CAOD-AGENT-023:** The Agents inventory **MUST** distinguish campaign identities from standalone workflows and provide a route from each campaign to its retained campaign detail.
+- **CAOD-AGENT-024:** Campaign detail **SHOULD** render the campaign README when retained by the authoritative inventory. Missing README content **MUST** produce an explicit unavailable state and **MUST NOT** be replaced with generated campaign claims.
 
 ### 11.2 Coordination
 
@@ -591,7 +591,7 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 - **CAOD-AGENT-006:** A handoff **MUST** identify source actor, destination actor, work item, time, and status when available.
 - **CAOD-AGENT-007:** A conflict **MUST** preserve each conclusion and its supporting evidence until disposition.
 - **CAOD-AGENT-008:** A presenter **MUST NOT** equate conflict with failure when autonomous or human resolution remains active.
-- **CAOD-AGENT-009:** Declared package topology **MUST** remain visually and textually distinct from observed execution and coordination.
+- **CAOD-AGENT-009:** Declared campaign topology **MUST** remain visually and textually distinct from observed execution and coordination.
 - **CAOD-AGENT-010:** A worker or output **MUST** join an episode only through exact correlation evidence, and attribution coverage **MUST** expose both numerator and eligible denominator.
 
 ### 11.3 Execution Maps
@@ -600,7 +600,7 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 - **CAOD-AGENT-012:** Missing interval boundaries **MUST** appear unavailable and **MUST NOT** be rendered as zero-duration success.
 - **CAOD-AGENT-013:** The term `critical path` **MUST** be used only when complete causal relationships establish the path; otherwise the view **MUST** use `execution shape`.
 - **CAOD-AGENT-014:** An execution map **SHOULD** use a coordination-braid form that presents observed assignments, handoffs, dependencies, conflicts, and aggregation events across actors on one monotonic time axis.
-- **CAOD-AGENT-015:** Observed relationships **MUST** be visually and textually distinguishable from declared package topology within the same view.
+- **CAOD-AGENT-015:** Observed relationships **MUST** be visually and textually distinguishable from declared campaign topology within the same view.
 - **CAOD-AGENT-016:** A handoff, dependency, or conflict **MUST** be directly inspectable at its transition point, exposing source actor, destination actor, work item, time, and status or disposition when available.
 - **CAOD-AGENT-017:** Selecting an actor or work item **SHOULD** highlight its related assignments, handoffs, dependencies, and conflicts while preserving the temporal context and the presence of unselected actors and intervals.
 - **CAOD-AGENT-018:** A missing interval boundary **MUST** render as a gap or open end and **MUST NOT** be closed at the view boundary, the current time, or a neighboring event to fabricate a duration.
@@ -631,7 +631,7 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 
 The Evidence page provides searchable access to verification results, graders, evaluations, findings, measurements, artifacts, decisions, contradictions, sources, and provenance.
 
-- **CAOD-EVID-006:** Evidence records **MUST** be filterable by work item, repository, workflow, package, evidence class, verification result, source, time, and domain when those dimensions are available.
+- **CAOD-EVID-006:** Evidence records **MUST** be filterable by work item, repository, workflow, campaign, evidence class, verification result, source, time, and domain when those dimensions are available.
 - **CAOD-EVID-007:** An evidence record **MUST** identify the claim or state it supports, contradicts, or leaves unresolved.
 - **CAOD-EVID-008:** An artifact **MUST** link to its authoritative repository, issue, pull request, run, report, or external source when the association and URL are available.
 - **CAOD-EVID-009:** A decision **MUST** identify actor, time, disposition, authority basis when applicable, rationale when supplied, and supporting evidence.
@@ -736,7 +736,7 @@ Show the evidence for this outcome.
 ### 14.3 Actions
 
 - **CAOD-ASK-007:** A natural-language response **MUST NOT** itself grant authority or silently execute a repository write.
-- **CAOD-ASK-008:** A proposed action **MUST** be rendered as a separate preview containing target, package or workflow, effective mode, expected change, authority basis, and evidence.
+- **CAOD-ASK-008:** A proposed action **MUST** be rendered as a separate preview containing target, campaign or workflow, effective mode, expected change, authority basis, and evidence.
 - **CAOD-ASK-009:** An action requiring confirmation **MUST** receive explicit confirmation after the preview and **MUST** be reauthorized at execution time.
 - **CAOD-ASK-010:** User-supplied text, repository content, evidence, and model output **MUST** be treated as untrusted data and **MUST NOT** override system policy or action constraints.
 
@@ -968,7 +968,7 @@ Implementers should evaluate the dashboard with representative users and realist
 | T-CAOD-WORK-001 | CAOD-WORK-001 through 010; CAOD-WORK-022 | 1 | Render work with multiple attempts, source states, phase regressions, and versioned and unversioned denominators; verify four-column display mapping, retained source evidence, deduplication, required fields, filters, phase evidence, and rejection of fabricated percentages. |
 | T-CAOD-WORK-002 | CAOD-WORK-011 through 021 | 1 | Inspect detail for timeline provenance, dependencies, attributed executions, and contradictory evidence preservation; supply a phase regression, a waiting interval, and an unavailable observation interval, and verify preserved regression order, inspectable transition evidence, interval rendering, and visible discontinuity. |
 | T-CAOD-OUT-001 | CAOD-OUT-001 through 017 | 2 | Supply mixed runtime, verification, artifact, outcome, maturity, value-definition, and trend fixtures, including an immature outcome; verify semantic separation, valid aggregation, distinct artifact, outcome, maturity, and value stages, and that pending, immature, and unknown do not collapse into zero or failure. |
-| T-CAOD-AGENT-001 | CAOD-AGENT-001 through 010; CAOD-AGENT-019 through 022 | 2 | Supply package, standalone, disabled, idle, waiting, failed, unavailable, assigned, handoff, conflict, and unattributed fixtures; verify policy-scoped inventory, package grouping, threat-only smells, no unsupported anomaly inference, states, and exact correlation. |
+| T-CAOD-AGENT-001 | CAOD-AGENT-001 through 010; CAOD-AGENT-019 through 022 | 2 | Supply campaign, standalone, disabled, idle, waiting, failed, unavailable, assigned, handoff, conflict, and unattributed fixtures; verify policy-scoped inventory, campaign grouping, threat-only smells, no unsupported anomaly inference, states, and exact correlation. |
 | T-CAOD-AGENT-002 | CAOD-AGENT-011 through 018 | 2 | Render complete and incomplete execution intervals plus a handoff with an unresolved conflict and an unknown interval boundary; verify monotonic alignment, unavailable boundaries, critical-path terminology, declared-versus-observed distinction, inspectable transitions, selection highlighting that preserves temporal context, and gaps rather than fabricated durations. |
 | T-CAOD-EVID-001 | CAOD-EVID-001 through 018 | 1 | Supply each evidence class, materially contradictory evidence, decisions, artifacts, and a broken provenance chain; verify labels, methods, filters, no fabrication, a comparison preserving both claims and dispositions, missing links distinguishable from not-applicable links, evidence highlighted on link selection, and no visual bridging of broken provenance. |
 | T-CAOD-INSIGHT-001 | CAOD-INSIGHT-001 through 010; CAOD-INSIGHT-017 through 022 | 2 | Supply mixed measures, incomplete attribution, and a high-cardinality operational-value chart; verify overview order, evidence boundaries, collapsed keyboard-operable series selection with stable colors, textual alternatives, separate units, qualified efficiency labels, and per-stage numerator, denominator, missing population, and scope. |
@@ -1164,7 +1164,7 @@ This specification defines what the CAO dashboard must communicate and how users
 - **Changed:** Primary navigation is Home, Work, Agents, Insights, and Settings; evidence remains mandatory through contextual and subordinate investigation routes.
 - **Changed:** Home leads with a bounded catch-up and operational pulse followed by cause-grouped Needs attention work.
 - **Added:** Board, sortable Tasks, and UTC Roadmap presentations over one Work inventory, including Day, Week, Month, Quarter, and Year zoom levels, a current-date marker, truthful safe-output primitives, and evidence-bounded actor identity.
-- **Added:** Policy-scoped Agents Marketplace and retained package README detail, composed Insights overview, collapsed multi-series selection, policy Settings, locked authored-view guidance, and responsive global-control containment.
+- **Added:** Policy-scoped Agents Marketplace and retained campaign README detail, composed Insights overview, collapsed multi-series selection, policy Settings, locked authored-view guidance, and responsive global-control containment.
 
 ### Version 1.0.0
 

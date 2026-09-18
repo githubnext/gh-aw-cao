@@ -4,19 +4,19 @@ function isRecord(value) {
 
 export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
   const controlPlane = isRecord(controlPolicy) ? controlPolicy["control-plane"] : undefined;
-  const configuredPackages = isRecord(controlPlane) ? controlPlane.packages : undefined;
-  const packageConfig = isRecord(configuredPackages) && isRecord(configuredPackages[operationSlug])
-    ? configuredPackages[operationSlug]
+  const configuredCampaigns = isRecord(controlPlane) ? controlPlane.campaigns : undefined;
+  const campaignConfig = isRecord(configuredCampaigns) && isRecord(configuredCampaigns[operationSlug])
+    ? configuredCampaigns[operationSlug]
     : {};
 
-  const { icon, ...runtimePackageConfig } = JSON.parse(JSON.stringify(packageConfig));
+  const { icon, ...runtimeCampaignConfig } = JSON.parse(JSON.stringify(campaignConfig));
 
   return {
     version: 1,
     "control-plane": {
       scope: { "allowed-owners": [owner] },
-      packages: {
-        [operationSlug]: runtimePackageConfig,
+      campaigns: {
+        [operationSlug]: runtimeCampaignConfig,
       },
     },
   };
@@ -24,17 +24,17 @@ export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
 
 export function selectConfiguredOperations(controlPolicy, catalogEntries) {
   const controlPlane = isRecord(controlPolicy) ? controlPolicy["control-plane"] : undefined;
-  const configuredPackages = isRecord(controlPlane) ? controlPlane.packages : undefined;
+  const configuredCampaigns = isRecord(controlPlane) ? controlPlane.campaigns : undefined;
 
-  if (!isRecord(configuredPackages)) {
-    throw new Error(".github/workflows/cao.json must define control-plane.packages as an object");
+  if (!isRecord(configuredCampaigns)) {
+    throw new Error(".github/workflows/cao.json must define control-plane.campaigns as an object");
   }
 
   const catalogEntriesBySlug = new Map(catalogEntries.map((entry) => [entry.slug, entry]));
-  return Object.keys(configuredPackages)
+  return Object.keys(configuredCampaigns)
     .map((slug) => {
       const entry = catalogEntriesBySlug.get(slug);
-      if (!entry) throw new Error(`Configured package ${slug} must have a catalog manifest`);
+      if (!entry) throw new Error(`Configured campaign ${slug} must have a catalog manifest`);
       return entry;
     })
     .filter((entry) => !entry.private && !entry.builtin);

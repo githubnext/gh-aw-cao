@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const packageDashboardNames = [
+export const campaignDashboardNames = [
   'uk-ai-advisory',
   'cao-evolution',
   'dependabot',
@@ -12,6 +12,6 @@ export const packageDashboardNames = [
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-export const packageDashboardSources = packageDashboardNames.map((packageName) => (
-  readFileSync(resolve(repositoryRoot, packageName, 'dashboard.json'), 'utf8')
+export const campaignDashboardSources = campaignDashboardNames.map((campaignName) => (
+  readFileSync(resolve(repositoryRoot, campaignName, 'dashboard.json'), 'utf8')
 ));

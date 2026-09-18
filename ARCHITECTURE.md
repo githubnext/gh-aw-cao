@@ -1,9 +1,9 @@
 # Architecture
 
-Central Agentic Ops (CAO) packages agentic operations and runs them from a
+Central Agentic Ops (CAO) campaigns agentic operations and runs them from a
 central GitHub repository against an explicitly bounded repository fleet. This
-repository is both the public package catalog and a source-managed control plane
-used to develop and exercise those packages.
+repository is both the public campaign catalog and a source-managed control plane
+used to develop and exercise those campaigns.
 
 This document is a map of the stable system boundaries and source tree. The
 normative contracts live under `specs/`; operator-facing explanations live
@@ -14,7 +14,7 @@ under `docs/`.
 CAO separates the decision to run an operation from the mechanism that executes
 it:
 
-- **Catalog:** publishes versioned operation packages.
+- **Catalog:** publishes versioned operation campaigns.
 - **Control repository:** owns rollout policy, credentials, installed
   workflows, and workflow runs.
 - **Target repository:** supplies source data and may receive a declared safe
@@ -24,10 +24,10 @@ it:
 
 ```mermaid
 flowchart LR
-    Catalog["CAO catalog<br/>packages and workflows"]
+    Catalog["CAO catalog<br/>campaigns and workflows"]
     Control["Control repository<br/>policy and credentials"]
     Resolver["CAO policy resolver"]
-    Orchestrator["Package orchestrator"]
+    Orchestrator["Campaign orchestrator"]
     Worker["One-target worker"]
     Review["Review repository"]
     Target["Target repository"]
@@ -103,15 +103,15 @@ only bounded view payloads.
 | Path | Responsibility |
 | --- | --- |
 | `aw.yml` | Root catalog manifest and default CAO installation bundle. |
-| `<operation>/aw.yml` | Package boundary and installation manifest for an operation. User-facing operations include `cao-evolution/`, `dependabot/`, `eu-cra-compliance/`, `optimization/`, `repo-assist/`, `self-care/`, `software-development-practices/`, and `uk-ai-advisory/`. |
+| `<operation>/aw.yml` | Campaign boundary and installation manifest for an operation. User-facing operations include `cao-evolution/`, `dependabot/`, `eu-cra-compliance/`, `optimization/`, `repo-assist/`, `self-care/`, `software-development-practices/`, and `uk-ai-advisory/`. |
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
-| `dashboard/` | Dashboard package, report/source adapters, local preview server, and static browser application. |
+| `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and static browser application. |
 | `dashboard/site/src/data/` | Canonical browser data model, adapters, normalization, storage, and declarative query engine. |
 | `.github/workflows/*.md` | Editable gh-aw workflow sources. |
 | `.github/workflows/*.lock.yml` | Generated workflow artifacts; never edit these directly. |
 | `.github/workflows/shared/` | Shared policy resolution, control admission, checkout, review-bundle, and observability components. |
 | `.github/workflows/cao.json` | Sole persistent, non-secret rollout policy for this source-managed control plane. |
-| `.github/aw/` | Runtime resources and installed package ownership records used by workflows in this repository. |
+| `.github/aw/` | Runtime resources and installed campaign ownership records used by workflows in this repository. |
 | `skills/` | Portable Agent Plugin skills exposed by this repository. |
 | `specs/` | Normative control, Activity, dashboard, and data contracts. |
 | `docs/` | Explanatory and operator-facing documentation site. |
@@ -119,8 +119,8 @@ only bounded view payloads.
 | `tests/` | Unit, integration, load, and workflow-contract tests. |
 | `scripts/` | Repository validation and maintenance utilities. |
 
-Package manifests are the catalog's source of truth for package contents.
-Package source may install files into different destinations, so ownership is
+Campaign manifests are the catalog's source of truth for campaign contents.
+Campaign source may install files into different destinations, so ownership is
 defined by manifests rather than by directory proximity.
 
 ## Architectural boundaries
@@ -131,7 +131,7 @@ defined by manifests rather than by directory proximity.
   the admitted workflow runs.
 - `.github/workflows/cao.json` is policy, not a credential store. Credentials
   stay in GitHub Actions secrets and are resolved inside a run.
-- Review mode is the default. Live operation requires explicit package, worker,
+- Review mode is the default. Live operation requires explicit campaign, worker,
   scope, and target authority.
 - Target repository files cannot grant, narrow, or revoke control-plane
   authority.
@@ -167,8 +167,8 @@ defined by manifests rather than by directory proximity.
 
 - Edit `.github/workflows/*.md`, then compile with `gh aw compile`; do not edit
   `.lock.yml` files by hand.
-- Update installed package records through gh-aw package commands rather than
-  editing `.github/aw/packages/*.json`.
+- Update installed campaign records through gh-aw campaign commands rather than
+  editing `.github/aw/campaigns/*.json`.
 - Keep policy and workflow changes together because admission resolves policy
   at the exact workflow SHA.
 
@@ -183,7 +183,7 @@ defined by manifests rather than by directory proximity.
 - **Dashboard Language** keeps data operations declarative and off the browser
   main thread.
 - **Astro/Starlight** builds the documentation site. The operational dashboard
-  is a separately packaged static application published through GitHub Pages.
+  is a separately bundled static application published through GitHub Pages.
 
 ## Where to read next
 

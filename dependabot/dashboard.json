@@ -35,7 +35,7 @@
         "filter": {
           "predicates": [
             {
-              "field": "package",
+              "field": "campaign",
               "equals": "dependabot"
             }
           ]
@@ -115,7 +115,7 @@
             "data": {
               "source": "dependabot-update-planner-outcomes",
               "filters": {
-                "package": [
+                "campaign": [
                   "dependabot"
                 ]
               },
@@ -269,7 +269,7 @@
     ],
     "navigation": [
       {
-        "label": "Package operations",
+        "label": "Campaign operations",
         "experimental": true,
         "pages": [
           "dependabot-dashboard"

@@ -9,7 +9,7 @@ Ops Publish deliberately recreates issues instead of using GitHub issue transfer
 
 ## Supported Output
 
-The add-on supports bot-authored `create_issue` safe outputs from workers declared in the control repository's central `.github/workflows/cao.json` manifest. The resolved package and worker list is used when validating the originating run, so newly configured workers do not require publisher code changes.
+The add-on supports bot-authored `create_issue` safe outputs from workers declared in the control repository's central `.github/workflows/cao.json` manifest. The resolved campaign and worker list is used when validating the originating run, so newly configured workers do not require publisher code changes.
 
 Pull requests, comments, and artifact-backed review bundles are not publishable by this add-on. Applying the label to those items has no supported publication path.
 
@@ -22,12 +22,12 @@ The review issue body is content, not routing authority. Before publishing, the 
 3. requires that run's repository to appear in `control-plane.publishing.control-repositories`;
 4. fetches the cited run and requires a successful review-mode dispatch from a supported worker on the control repository's default branch;
 5. requires the review issue to have been created during that workflow run;
-6. derives the target repository and package from trusted run metadata;
+6. derives the target repository and campaign from trusted run metadata;
 7. enforces `control-plane.scope.allowed-owners` and, when set, `control-plane.scope.allowed-repositories`;
-8. requires the target's exact default-branch commit to assign that package to the cited control repository in `.github/workflows/cao.json`;
+8. requires the target's exact default-branch commit to assign that campaign to the cited control repository in `.github/workflows/cao.json`;
 9. checks for an existing publication marker before creating an issue.
 
-The source issue may be edited during human review. Applying `ops:publish-to-target` binds approval to its title and body at that moment; a later edit fails publication until a reviewer removes and reapplies the label. Editing it cannot change the target, package, or control repository selected by the validated workflow run. The originating worker run must come from the control repository's default branch.
+The source issue may be edited during human review. Applying `ops:publish-to-target` binds approval to its title and body at that moment; a later edit fails publication until a reviewer removes and reapplies the label. Editing it cannot change the target, campaign, or control repository selected by the validated workflow run. The originating worker run must come from the control repository's default branch.
 
 ## Install
 
@@ -41,7 +41,7 @@ cp ops-publish/ops-publish.mjs "$review_repository/ops-publish/"
 cp .github/workflows/shared/control.mjs .github/workflows/shared/policy.mjs "$review_repository/.github/workflows/shared/"
 ```
 
-These files are conventional repository automation and are not part of an Agentic Workflow package. Pin the catalog checkout to a reviewed release or commit before copying them.
+These files are conventional repository automation and are not part of an Agentic Workflow campaign. Pin the catalog checkout to a reviewed release or commit before copying them.
 
 ## Configure
 

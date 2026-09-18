@@ -398,7 +398,7 @@ jobs:
 imports:
   - uses: shared/control.md
     with:
-      package: optimization
+      campaign: optimization
       role: worker
       worker: token-optimizer
   - uses: shared/activity-cache.md

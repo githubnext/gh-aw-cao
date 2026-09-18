@@ -44,8 +44,8 @@ export function renderSectionHeading({
 
 /**
  * Renders a panel `<header>` containing an id-anchored heading and an
- * optional descriptive paragraph. Shared by the package summary,
- * package utilization, unavailable-trend, and value-history panels, which
+ * optional descriptive paragraph. Shared by the campaign summary,
+ * campaign utilization, unavailable-trend, and value-history panels, which
  * all pair one `aria-labelledby` heading with plain descriptive copy.
  * @param {string} headingId
  * @param {string} heading
@@ -64,7 +64,7 @@ export function renderPanelHeader(headingId, heading, description, options = {})
 
 /**
  * Renders a `<tr>` of `<th scope="col">` header cells from plain label
- * strings. Shared by the package summary table and the workflow
+ * strings. Shared by the campaign summary table and the workflow
  * operational-value observation table, which both build a single header
  * row from a flat list of column labels.
  * @param {string[]} labels
@@ -305,7 +305,7 @@ export function renderEmptyMessage(message, extraAttrs) {
 /**
  * Renders a `<ul>` of caller-supplied `<li>` elements when `items` is
  * non-empty, or a component-specific empty-state paragraph otherwise. Shared
- * by the configuration-actions list and the package-status repository list,
+ * by the configuration-actions list and the campaign-status repository list,
  * which both render a fully-formed `<li>` per item (unlike
  * {@link renderListWithFallback}, whose fallback message is itself wrapped
  * in a single `<li>`).
@@ -325,7 +325,7 @@ export function renderListOrEmptyMessage(listClassName, items, renderItem, empty
 
 /**
  * Renders the shared "single `<td>` spanning the full table width" empty-body
- * row used by table regions and package summary tables when there is no data
+ * row used by table regions and campaign summary tables when there is no data
  * to display. An optional `action` renders an inline button after `message`
  * (for example, a "Clear time filter" recovery action) without changing the
  * plain-message shape existing callers rely on.
@@ -435,7 +435,7 @@ export function renderDisclosure(className, summaryLabel, ...body) {
 /**
  * Renders the shared `<summary>` label plus "Show details" hint span pair
  * used by disclosure summaries whose hint text swaps to "Hide details" via
- * the `[open] .*-hint::after` CSS rule in `styles.js`. Shared by the package
+ * the `[open] .*-hint::after` CSS rule in `styles.js`. Shared by the campaign
  * README resources panel and the supplemental custom-view disclosure toggle,
  * both of which pair a title/label with a differently-classed hint span.
  * @param {string | Node} label
@@ -507,8 +507,8 @@ export function renderListWithFallback(className, items, renderItem, fallbackMes
 }
 
 /**
- * Renders the shared "icon plus name" identity link used for package/entity
- * references (package summary rows, utilization cards, package status
+ * Renders the shared "icon plus name" identity link used for campaign/entity
+ * references (campaign summary rows, utilization cards, campaign status
  * cards), wrapping the label text in the caller-selected inline element.
  * @param {{ href: string, icon: string, label: string, className?: string, labelTag?: 'span'|'strong' }} options
  * @returns {HTMLElement}

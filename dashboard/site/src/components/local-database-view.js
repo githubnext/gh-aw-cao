@@ -4,7 +4,7 @@ import { renderResetDashboardControl } from './reset-dashboard-control.js';
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderLocalDatabaseView(context) {
   const fields = /** @type {const} */ ([
-    ['database-package-count', 'packages', 'Packages'],
+    ['database-campaign-count', 'campaigns', 'Campaigns'],
     ['database-repository-count', 'repositories', 'Repositories'],
     ['database-workflow-count', 'workflows', 'Workflows'],
     ['database-run-count', 'runs', 'Runs'],

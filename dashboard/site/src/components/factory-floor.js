@@ -57,7 +57,7 @@ export function renderFactoryFloor(sources, metrics, label, animateNumbers, scop
       value: dispatchCount,
       detail: {
         text: `${formatCount(failedDispatches)} failed`,
-        href: '#page-dispatches?package-worker-dispatches.status=failure'
+        href: '#page-dispatches?campaign-worker-dispatches.status=failure'
       }
     };
   });

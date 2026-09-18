@@ -9,7 +9,7 @@ const observedAt = '2026-09-17T12:00:00.000Z';
 
 function batch() {
   return {
-    packages: [],
+    campaigns: [],
     repositories: [{
       id: 'repository:owner%2Frepo',
       owner: 'owner',
@@ -22,8 +22,8 @@ function batch() {
       repositoryId: 'repository:owner%2Frepo',
       path: '.github/workflows/worker.md',
       name: 'Worker',
-      package: 'sample',
-      packageName: 'Sample',
+      campaign: 'sample',
+      campaignName: 'Sample',
       role: 'worker',
       observedAt
     }],
@@ -136,7 +136,7 @@ describe('canonical warning source projections', () => {
       'output-tokens': 20
     });
     expect(sources.outcomes.rows[0]).toMatchObject({
-      package: 'sample',
+      campaign: 'sample',
       'outcome-category': 'issue',
       'outcome-number': 7
     });

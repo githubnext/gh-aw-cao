@@ -140,7 +140,7 @@ describe('canonical dashboard worker retention updates', () => {
       ingestionVersion: 2,
       sourceRecords: 0,
       batch: {
-        packages: [],
+        campaigns: [],
         repositories: [],
         workflows: [],
         runs: [],

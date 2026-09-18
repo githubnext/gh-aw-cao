@@ -19,13 +19,13 @@ function executeFileWithInput(file, arguments_, input, options = {}) {
   });
 }
 
-const packageJson = JSON.parse(
+const campaignJson = JSON.parse(
   await readFile(new URL("../../package.json", import.meta.url), "utf8"),
 );
-const cao = path.resolve(packageJson.bin.cao);
+const cao = path.resolve(campaignJson.bin.cao);
 
 test("exposes the dashboard data CLI as cao", async () => {
-  assert.equal(packageJson.bin.cao, "activity/cao.mjs");
+  assert.equal(campaignJson.bin.cao, "activity/cao.mjs");
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-"));
   const installedCommand = path.join(root, "cao");
   try {
@@ -34,7 +34,7 @@ test("exposes the dashboard data CLI as cao", async () => {
     assert.match(stdout, /^Usage:\n  cao init\n/);
     assert.match(stdout, /\n  cao ingest /);
     assert.match(stdout, /\n  cao init\n/);
-    assert.match(stdout, /\n  cao add PACKAGE /);
+    assert.match(stdout, /\n  cao add CAMPAIGN /);
     assert.match(stdout, /\n  cao discover-workflows /);
     assert.match(stdout, /\n  cao download /);
     assert.match(stdout, /cao query .*--stdin/);

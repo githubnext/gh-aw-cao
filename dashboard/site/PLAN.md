@@ -2,7 +2,7 @@
 
 ## Status
 
-- [x] The Dashboard Language renderer is owned and installed by the `dashboard/` package.
+- [x] The Dashboard Language renderer is owned and installed by the `dashboard/` campaign.
 - [x] All specification-defined pages are declared in `dashboard.json` and rendered by the generic runtime.
 - [x] `/cao` uses generated `sources.json`; there is no parallel HTML renderer.
 - [x] Configured mode cues, durable-output indexes and details, runtime and dispatch triage, report controls, discovery coverage, dispatch attribution, execution transitions, and output lifecycle/warning semantics are represented in the production renderer.

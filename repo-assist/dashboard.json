@@ -38,7 +38,7 @@
         "filter": {
           "predicates": [
             {
-              "field": "package",
+              "field": "campaign",
               "equals": "repo-assist"
             }
           ]
@@ -125,7 +125,7 @@
             "data": {
               "source": "repo-assist-retained-outcomes",
               "filters": {
-                "package": [
+                "campaign": [
                   "repo-assist"
                 ]
               },
@@ -244,7 +244,7 @@
     ],
     "navigation": [
       {
-        "label": "Package operations",
+        "label": "Campaign operations",
         "experimental": true,
         "pages": [
           "repo-assist-dashboard"

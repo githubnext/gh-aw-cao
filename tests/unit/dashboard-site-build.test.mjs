@@ -55,12 +55,12 @@ test("dashboard site embeds a validated commit SHA", () => {
   );
 });
 
-test("docs dashboard installs renderer assets and configured package pages", async () => {
+test("docs dashboard installs renderer assets and configured campaign pages", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-build-"));
   const destination = pathToFileURL(`${root}/cao/`);
   const controlSettings = {
     web: { experimental: true, favicon: "https://example.com/dashboard.svg" },
-    packages: { "uk-ai-advisory": {}, dependabot: {} },
+    campaigns: { "uk-ai-advisory": {}, dependabot: {} },
   };
 
   try {
@@ -171,11 +171,11 @@ test("dashboard cache hashes are stable and change with assembled site content",
   }
 });
 
-test("dashboard package includes every transitive site module and asset", async () => {
+test("dashboard campaign includes every transitive site module and asset", async () => {
   const dashboardRoot = new URL("../../dashboard/", import.meta.url);
   const manifest = parse(await readFile(new URL("aw.yml", dashboardRoot), "utf8"));
-  const packaged = new Set(manifest.resources.map(({ source }) => source));
-  const pending = [...packaged].filter((source) => source.startsWith("site/") && source.endsWith(".js"));
+  const bundled = new Set(manifest.resources.map(({ source }) => source));
+  const pending = [...bundled].filter((source) => source.startsWith("site/") && source.endsWith(".js"));
   const visited = new Set();
 
   while (pending.length > 0) {
@@ -185,7 +185,7 @@ test("dashboard package includes every transitive site module and asset", async 
     const contents = await readFile(new URL(source, dashboardRoot), "utf8");
     for (const dependency of localDependencies(contents)) {
       const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(source), dependency));
-      assert.ok(packaged.has(resolved), `${source} depends on unpackaged dashboard resource ${resolved}`);
+      assert.ok(bundled.has(resolved), `${source} depends on unbundled dashboard resource ${resolved}`);
       if (resolved.endsWith(".js")) pending.push(resolved);
     }
   }

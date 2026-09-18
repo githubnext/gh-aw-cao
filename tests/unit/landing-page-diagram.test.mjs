@@ -10,7 +10,7 @@ const hero = readFileSync("docs/components/HierarchyHero.astro", "utf8");
 const illustration = readFileSync("docs/components/DispatchIllustration.astro", "utf8");
 const wizard = readFileSync("docs/components/OpsWizard.astro", "utf8");
 const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
-const packageManifest = readFileSync("package.json", "utf8");
+const campaignManifest = readFileSync("package.json", "utf8");
 const sparklePathData = "M7.53 1.282a.5.5 0 0 1 .94 0l.478 1.306a7.492 7.492 0 0 0 4.464 4.464l1.305.478a.5.5 0 0 1 0 .94l-1.305.478a7.492 7.492 0 0 0-4.464 4.464l-.478 1.305a.5.5 0 0 1-.94 0l-.478-1.305a7.492 7.492 0 0 0-4.464-4.464L1.282 8.47a.5.5 0 0 1 0-.94l1.306-.478a7.492 7.492 0 0 0 4.464-4.464Z";
 
 function withoutRootPalette(svg) {
@@ -41,7 +41,7 @@ test("landing diagram fallbacks use concrete light and dark palettes", () => {
 
 test("landing animations use SVG and CSS without a JavaScript player", () => {
   assert.doesNotMatch(illustration, /<script>|lottie/i);
-  assert.doesNotMatch(packageManifest, /lottie-web/);
+  assert.doesNotMatch(campaignManifest, /lottie-web/);
   assert.match(illustration, /control-plane-dispatch-motion\.svg/);
   assert.match(illustration, /control-plane-dispatch-mobile-motion\.svg/);
   assert.match(illustration, /@media \(prefers-reduced-motion: reduce\) \{\s+\.dispatch-motion \{\s+display: none;/);
@@ -56,7 +56,7 @@ test("landing animations use SVG and CSS without a JavaScript player", () => {
     assert.match(motion, /\.report-update \{\s+display: none;/);
     assert.equal((motion.match(/class="sparkle"/g) ?? []).length, 28);
     assert.equal(motion.split(`d="${sparklePathData}"`).length - 1, 28);
-    assert.equal((motion.match(/class="package-status"/g) ?? []).length, 4);
+    assert.equal((motion.match(/class="campaign-status"/g) ?? []).length, 4);
     assert.match(motion, /class="report-update"/);
   }
 });
@@ -81,57 +81,57 @@ test("landing wizard client imports its prompt generation dependencies", () => {
 
 test("landing wizard operations come from the checked-in control policy", () => {
   assert.match(catalog, /import controlPolicy from "\.\.\/\.\.\/\.github\/workflows\/cao\.json"/);
-  assert.match(catalog, /export const catalogEntries = packageEntries\s+\.filter\(\(entry\) => !entry\.private\)/);
-  assert.match(catalog, /selectConfiguredOperations\(controlPolicy, packageEntries\)/);
+  assert.match(catalog, /export const catalogEntries = campaignEntries\s+\.filter\(\(entry\) => !entry\.private\)/);
+  assert.match(catalog, /selectConfiguredOperations\(controlPolicy, campaignEntries\)/);
   assert.match(wizard, /configuredOperationEntries as operations/);
   assert.doesNotMatch(wizard, /operation\.slug === "dependabot"/);
 });
 
-test("configured wizard operations follow policy package order", () => {
+test("configured wizard operations follow policy campaign order", () => {
   const first = { slug: "first" };
   const second = { slug: "second" };
-  const policy = { "control-plane": { packages: { second: {}, first: {} } } };
+  const policy = { "control-plane": { campaigns: { second: {}, first: {} } } };
 
   assert.deepEqual(selectConfiguredOperations(policy, [first, second]), [second, first]);
 });
 
-test("configured wizard operations require a package map", () => {
+test("configured wizard operations require a campaign map", () => {
   assert.throws(
     () => selectConfiguredOperations({}, []),
-    /must define control-plane\.packages as an object/,
+    /must define control-plane\.campaigns as an object/,
   );
 });
 
 test("configured wizard operations require a matching catalog manifest", () => {
-  const policy = { "control-plane": { packages: { missing: {} } } };
+  const policy = { "control-plane": { campaigns: { missing: {} } } };
 
   assert.throws(
     () => selectConfiguredOperations(policy, []),
-    /Configured package missing must have a catalog manifest/,
+    /Configured campaign missing must have a catalog manifest/,
   );
 });
 
-test("configured wizard operations exclude private packages", () => {
+test("configured wizard operations exclude private campaigns", () => {
   const first = { slug: "first" };
-  const privatePackage = { slug: "private", private: true };
-  const policy = { "control-plane": { packages: { private: {}, first: {} } } };
+  const privateCampaign = { slug: "private", private: true };
+  const policy = { "control-plane": { campaigns: { private: {}, first: {} } } };
 
-  assert.deepEqual(selectConfiguredOperations(policy, [first, privatePackage]), [first]);
+  assert.deepEqual(selectConfiguredOperations(policy, [first, privateCampaign]), [first]);
 });
 
-test("configured wizard operations exclude builtin packages", () => {
+test("configured wizard operations exclude builtin campaigns", () => {
   const first = { slug: "first" };
-  const builtinPackage = { slug: "builtin", builtin: true };
-  const policy = { "control-plane": { packages: { builtin: {}, first: {} } } };
+  const builtinCampaign = { slug: "builtin", builtin: true };
+  const policy = { "control-plane": { campaigns: { builtin: {}, first: {} } } };
 
-  assert.deepEqual(selectConfiguredOperations(policy, [first, builtinPackage]), [first]);
+  assert.deepEqual(selectConfiguredOperations(policy, [first, builtinCampaign]), [first]);
 });
 
-test("wizard policy keeps the checked-in package configuration", () => {
+test("wizard policy keeps the checked-in campaign configuration", () => {
   const policy = buildWizardPolicy(controlPolicy, "acme", "dependabot");
-  const { icon, ...expectedPackage } = controlPolicy["control-plane"].packages.dependabot;
+  const { icon, ...expectedCampaign } = controlPolicy["control-plane"].campaigns.dependabot;
 
   assert.deepEqual(policy["control-plane"].scope["allowed-owners"], ["acme"]);
-  assert.deepEqual(policy["control-plane"].packages.dependabot, expectedPackage);
+  assert.deepEqual(policy["control-plane"].campaigns.dependabot, expectedCampaign);
   assert.equal(icon, "dependabot");
 });

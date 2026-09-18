@@ -1,6 +1,6 @@
 ---
 import-schema:
-  package:
+  campaign:
     type: string
     required: true
   role:
@@ -38,7 +38,7 @@ safe-outputs:
     footer-install: "<!-- -->"
 
 env:
-  CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
+  CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
   CAO_ROLE: ${{ github.aw.import-inputs.role }}
   CAO_WORKER: ${{ github.aw.import-inputs.worker }}
 
@@ -94,7 +94,7 @@ jobs:
           CAO_API_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GH_TOKEN: ${{ github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
-          CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
+          CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
           CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
@@ -159,7 +159,7 @@ jobs:
         env:
           CAO_ADMISSION_AUTHORIZED: ${{ steps.cao_admission.outputs.authorized }}
           CAO_ADMISSION_REASON: ${{ steps.cao_admission.outputs.reason }}
-          CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
+          CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
         run: |
@@ -173,7 +173,7 @@ jobs:
           const fs = require("node:fs");
           const checks = [
            "Runtime revision", "Policy document", "Control plane", "Workflow identity",
-           "Package", "Worker", "Target input", "Mode input", "Run limits",
+           "Campaign", "Worker", "Target input", "Mode input", "Run limits",
            "GitHub API capacity",
           ].map((check, index) => ({ check, status: index === 0 ? "failed" : "not-evaluated" }));
           fs.writeFileSync(process.argv[2], `${JSON.stringify({
@@ -184,7 +184,7 @@ jobs:
            workflow_sha: process.env.GITHUB_WORKFLOW_SHA || "",
            run_id: process.env.GITHUB_RUN_ID || "",
            run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT || 1),
-           package: process.env.CAO_PACKAGE || "",
+           campaign: process.env.CAO_CAMPAIGN || "",
            role: process.env.CAO_ROLE || "",
            worker: process.env.CAO_ROLE === "orchestrator" ? "" : process.env.CAO_WORKER || "",
            target_repository: "",
@@ -228,7 +228,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
-          CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
+          CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
           CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
@@ -268,7 +268,7 @@ jobs:
         env:
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
           CONTROL_REPOSITORY: ${{ github.repository }}
-          CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
+          CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
         run: |
@@ -278,7 +278,7 @@ jobs:
           [ "$CAO_ROLE" != "orchestrator" ] || expected_worker=""
           [ -f "$out" ]
           jq -e '.authorized == true' "$out" >/dev/null
-          jq -e --arg package "$CAO_PACKAGE" '.package == $package and .bundle == $package' "$out" >/dev/null
+          jq -e --arg campaign "$CAO_CAMPAIGN" '.campaign == $campaign and .bundle == $campaign' "$out" >/dev/null
           jq -e --arg role "$CAO_ROLE" '.control_role == $role' "$out" >/dev/null
           jq -e --arg worker "$expected_worker" '.worker == $worker' "$out" >/dev/null
           jq -e --arg repository "$CONTROL_REPOSITORY" --arg sha "$GITHUB_WORKFLOW_SHA" \
@@ -352,7 +352,7 @@ post-steps:
               : 'empty';
 
         await otlp.logSpan('central-agentic-ops.dispatcher', {
-          'central_agentic_ops.dispatcher.package': String(precompute.package || precompute.bundle || 'unknown'),
+          'central_agentic_ops.dispatcher.campaign': String(precompute.campaign || precompute.bundle || 'unknown'),
           'central_agentic_ops.dispatcher.status': status,
           'central_agentic_ops.dispatcher.enabled': precompute.enabled === true,
           'central_agentic_ops.dispatcher.safe_output_mode': effectiveMode,
@@ -368,13 +368,13 @@ post-steps:
         });
 ---
 
-Read `/tmp/gh-aw/agent/control-precompute.json` before making control decisions. Treat it as authoritative for `control_role`, package enablement state, target repository inputs, safe-output routing, and worker workflow availability.
+Read `/tmp/gh-aw/agent/control-precompute.json` before making control decisions. Treat it as authoritative for `control_role`, campaign enablement state, target repository inputs, safe-output routing, and worker workflow availability.
 
 If `control_role` is `worker`, this workflow is a dispatched worker. Do not select repositories and do not dispatch workflows. Use the importing workflow's mission instructions, and treat `target_repo`, `safe_output_mode`, `safe_output_repo`, `correlation_id`, `central_repo`, and `control_plane_run_url` as the standard control-plane envelope. When `correlation_id` is present, include a short `### Control Plane` section in safe-output issues, pull requests, or comments with the correlation ID, central repository, and control plane run URL. Safe outputs are created in `SAFE_OUTPUT_REPO`.
 
 Every human-facing durable worker output must be concise, easy to scan, and use progressive disclosure. Begin directly with a short, plain-language executive summary of the decision-relevant result, critical findings, key metrics, and recommended next action; do not add a heading for this opening summary. Immediately follow it with one visible `**Action:**` sentence that says who should do what next and the acceptance check. When a repository change can be delegated safely, tell the maintainer to assign the issue to Copilot and provide the exact prompt inside `<details><summary><b>Agent prompt</b></summary>...</details>`. When human judgment or authority is required, name the reviewer and decision instead; when no action is required, say `**Action:** None.` Keep only the summary, action, and critical findings visible. Put non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details><summary>...</summary>...</details>` sections. Do not repeat the summary or add a table of contents. Metadata markers may precede the opening summary when another contract requires them.
 
-Before creating an issue, search all open issues in `SAFE_OUTPUT_REPO` owned by the same package and worker. Use a canonical unprefixed subject derived only from stable target work; keep dates, versions, run and correlation IDs, counts, severity, and status wording in the body. When an open issue already represents the same underlying work, reuse or update that issue when a configured safe output permits it, otherwise call `noop`. Never create an equivalent issue merely because its measurements or wording changed.
+Before creating an issue, search all open issues in `SAFE_OUTPUT_REPO` owned by the same campaign and worker. Use a canonical unprefixed subject derived only from stable target work; keep dates, versions, run and correlation IDs, counts, severity, and status wording in the body. When an open issue already represents the same underlying work, reuse or update that issue when a configured safe output permits it, otherwise call `noop`. Never create an equivalent issue merely because its measurements or wording changed.
 
 When `target_repo` is present, prefer a dedicated `target/` checkout when the importing workflow provides one. Treat that checkout as the authoritative target-repository snapshot for analysis, and treat the workspace root as the repository where safe outputs land. In `review` mode, do not treat `SAFE_OUTPUT_REPO` as a live substitute for the target repository. Instead, prefer an artifact-backed review bundle in `SAFE_OUTPUT_REPO` for target-bound outputs that would otherwise mutate target git state. Use the same safe-output primitive only when gh-aw natively supports that primitive against the review repository; otherwise publish a clearly labeled review bundle that identifies the target repository, intended safe-output primitive, base branch when known, and the key evidence needed for human review.
 
@@ -392,19 +392,19 @@ If `control_role` is `orchestrator`, filter and prioritize target repositories, 
 
 Use the `enabled`, `inventory_version`, `batch_id`, `max_repos`, `rollout_percent`, `effective_max_repos`, `safe_output_mode`, `safe_output_repo`, and per-candidate `safe_output_mode` fields from `/tmp/gh-aw/agent/control-precompute.json`; do not infer those values from workflow inputs.
 
-For orchestrators, use the importing package's `Discovery` and `Workers` sections only for ranking, prioritization, and deciding whether a precomputed candidate is useful for this package.
+For orchestrators, use the importing campaign's `Discovery` and `Workers` sections only for ranking, prioritization, and deciding whether a precomputed candidate is useful for this campaign.
 
-- If `enabled` is not `true`, do not select repositories or dispatch workers. Call `report_incomplete` explaining that the package is disabled by its package kill switch.
+- If `enabled` is not `true`, do not select repositories or dispatch workers. Call `report_incomplete` explaining that the campaign is disabled by its campaign kill switch.
 - If `repo_error` is non-empty, select no repositories and dispatch no workers. Call `report_incomplete` with the precomputed error; do not retry discovery, fall back to inferred inventory, or wait for an API rate limit to reset.
 
 Continue with the repository targeting and workflow dispatch steps below.
 
 1. Select target repositories:
   - use `candidate_repositories` from `/tmp/gh-aw/agent/control-precompute.json`
-  - treat each candidate's `safe_output_mode` as authoritative for that target; never substitute the package default or widen `review` to `live`
+  - treat each candidate's `safe_output_mode` as authoritative for that target; never substitute the campaign default or widen `review` to `live`
   - treat that list as the complete current batch; do not discover repositories from another cell or batch
   - skip archived or disabled repositories and repositories where required data could not be precomputed
-  - use the importing package's `Discovery` section to rank candidates
+  - use the importing campaign's `Discovery` section to rank candidates
   - select no more than `effective_max_repos` repositories; it is the stricter cap derived from `max_repos` and `rollout_percent`
   - do not exceed the configured `dispatch-workflow.max` limit
 
@@ -467,4 +467,4 @@ Continue with the repository targeting and workflow dispatch steps below.
   <concise result, no-op explanation, or incomplete reason>
   ```
 
-  Package-specific completion instructions may add details to this report but must not rename or omit its standard fields.
+  Campaign-specific completion instructions may add details to this report but must not rename or omit its standard fields.

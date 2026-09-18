@@ -23,18 +23,18 @@ function declarativeWorkRow(row) {
     'work-id': row['work-item-id'],
     'work-name': row['workflow-name'] ?? row.name,
     'work-icon': row['workflow-icon'],
-    'work-package': row.package,
+    'work-campaign': row.campaign,
     'work-repository': row.repository ?? row.scope,
     'work-owner': row.owner,
     'work-state': state,
     'work-started': row['started-at'] ?? row['observed-at'],
     'work-stopped': row['ended-at'],
     'work-type-normalized': row['work-type'],
-    'work-group-id': row.package,
-    'work-group-label': row.package,
-    'work-grouped': Boolean(row.package),
+    'work-group-id': row.campaign,
+    'work-group-label': row.campaign,
+    'work-grouped': Boolean(row.campaign),
     'work-state-options': ['In Progress', 'Needs Review'],
-    'work-package-options': ['dependabot', 'security-review']
+    'work-campaign-options': ['dependabot', 'security-review']
   };
 }
 
@@ -114,7 +114,7 @@ describe('UI elements', () => {
               name: 'Dependabot release train',
               'workflow-name': 'Dependabot release train',
               'workflow-icon': 'dependabot',
-              package: 'dependabot',
+              campaign: 'dependabot',
               scope: 'github/gh-aw',
               repository: 'gh-aw',
               owner: 'dependency-automation',
@@ -131,7 +131,7 @@ describe('UI elements', () => {
               'work-item-id': 'github/mona-tools:.github/workflows/review.md',
               'workflow-name': 'Review security posture',
               'workflow-icon': 'shield-check',
-              package: 'security-review',
+              campaign: 'security-review',
               scope: 'github/mona-tools',
               owner: 'security',
               'lifecycle-state': 'review',
@@ -174,7 +174,7 @@ describe('UI elements', () => {
 
     const filterBar = rendered?.querySelector('.work-filter-bar');
     expect(filterBar?.querySelector('[aria-label="Filter by state"]')).not.toBeNull();
-    expect(filterBar?.querySelector('[aria-label="Filter by package"]')?.textContent).toContain('dependabot');
+    expect(filterBar?.querySelector('[aria-label="Filter by campaign"]')?.textContent).toContain('dependabot');
     expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe('2 of 2');
   });
 
@@ -210,12 +210,12 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.work-roadmap')).toBeNull();
   });
 
-  it('groups packages in Board while keeping every Tasks and Roadmap item visible', () => {
+  it('groups campaigns in Board while keeping every Tasks and Roadmap item visible', () => {
     const rows = [
       {
         'work-item-id': 'daily-ops:orchestrator',
         'workflow-name': 'Daily Ops',
-        package: 'daily-ops',
+        campaign: 'daily-ops',
         'work-type': 'orchestrator',
         scope: 'githubnext/gh-aw-cao',
         'lifecycle-state': 'active',
@@ -224,7 +224,7 @@ describe('UI elements', () => {
       {
         'work-item-id': 'daily-ops:worker',
         'workflow-name': 'Daily Ops worker',
-        package: 'daily-ops',
+        campaign: 'daily-ops',
         'work-type': 'worker',
         scope: 'githubnext/gh-aw-cao',
         'lifecycle-state': 'active',
@@ -346,7 +346,7 @@ describe('UI elements', () => {
           source: 'configuration-actions',
           rows: [{
             action: 'Promote self-care to live',
-            path: 'control-plane.packages.self-care.mode',
+            path: 'control-plane.campaigns.self-care.mode',
             current: 'review',
             recommended: 'live',
             prompt: 'Update the policy.'
@@ -361,7 +361,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('table')).toBeNull();
     expect(rendered?.querySelectorAll('.configuration-action-list > li')).toHaveLength(1);
     expect(rendered?.textContent).toContain('Promote self-care to live');
-    expect(rendered?.textContent).toContain('control-plane.packages.self-care.mode');
+    expect(rendered?.textContent).toContain('control-plane.campaigns.self-care.mode');
     expect(rendered?.querySelector('[data-intent-presentation="copy-prompt"]')).not.toBeNull();
   });
 
@@ -472,17 +472,17 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('a')?.getAttribute('href')).toBe('#page-repository-detail?repository=octo%2Fone');
   });
 
-  it('flags managed packages that dispatch but produce no output', () => {
-    const rendered = renderUiElement('package-status-grid', {
+  it('flags managed campaigns that dispatch but produce no output', () => {
+    const rendered = renderUiElement('campaign-status-grid', {
       pageId: 'overview',
-      title: 'Packages',
-      sourceNames: ['overview-managed-packages'],
+      title: 'Campaigns',
+      sourceNames: ['overview-managed-campaigns'],
       sources: {
-        'overview-managed-packages': {
-          source: 'overview-managed-packages',
+        'overview-managed-campaigns': {
+          source: 'overview-managed-campaigns',
           rows: [
             {
-              package: 'daily-ops',
+              campaign: 'daily-ops',
               title: 'Daily Ops',
               icon: 'workflow',
               'dispatch-count': 3,
@@ -494,10 +494,10 @@ describe('UI elements', () => {
               'activity-window': 'Complete 24-hour window',
               inventory: 'Ready',
               'inventory-state': 'inventory-ready',
-              href: '#page-package-insights?package=daily-ops'
+              href: '#page-campaign-insights?campaign=daily-ops'
             },
             {
-              package: 'weekly-ops',
+              campaign: 'weekly-ops',
               title: 'Weekly Ops',
               icon: 'workflow',
               'dispatch-count': 2,
@@ -509,7 +509,7 @@ describe('UI elements', () => {
               'activity-window': 'Complete 24-hour window',
               inventory: 'Ready',
               'inventory-state': 'inventory-ready',
-              href: '#page-package-insights?package=weekly-ops'
+              href: '#page-campaign-insights?campaign=weekly-ops'
             }
           ],
           metadata
@@ -519,30 +519,30 @@ describe('UI elements', () => {
       headingTag: 'h3'
     });
 
-    const cards = [...(rendered?.querySelectorAll('.package-status-card') ?? [])];
+    const cards = [...(rendered?.querySelectorAll('.campaign-status-card') ?? [])];
     expect(cards).toHaveLength(2);
-    expect(cards[0]?.querySelector('.package-status-identity')?.getAttribute('href')).toBe('#page-package-insights?package=daily-ops');
-    expect(cards[0]?.querySelector('.package-status-activity')?.getAttribute('href')).toBe('#page-package-runs?package=daily-ops');
-    expect(cards[0]?.querySelector('.package-status-activity')?.classList.contains('package-status-activity-warning')).toBe(true);
-    expect(cards[0]?.querySelector('.package-status-activity-state')?.textContent).toContain('2 failed');
-    expect(cards[0]?.querySelector('.package-status-activity-state')?.classList.contains('package-status-activity-state-failed')).toBe(true);
-    expect(cards[0]?.querySelector('.package-status-activity .octicon-alert')).not.toBeNull();
-    expect(cards[0]?.querySelector('.package-status-activity')?.getAttribute('aria-label')).toContain('2 failed, 1 in progress');
-    expect(cards[0]?.querySelector('.package-status-activity')?.getAttribute('aria-label')).toContain('warning: dispatches produced no output');
-    expect(cards[1]?.querySelector('.package-status-activity')?.classList.contains('package-status-activity-warning')).toBe(false);
-    expect(cards[1]?.querySelector('.package-status-activity-state')?.textContent).toContain('1 awaiting approval');
-    expect(cards[1]?.querySelector('.package-status-activity-state')?.classList.contains('package-status-activity-state-attention')).toBe(true);
-    expect(cards[1]?.querySelector('.package-status-activity .octicon-shield-check')).not.toBeNull();
-    expect(cards[1]?.querySelector('.package-status-activity')?.getAttribute('aria-label')).not.toContain('warning');
+    expect(cards[0]?.querySelector('.campaign-status-identity')?.getAttribute('href')).toBe('#page-campaign-insights?campaign=daily-ops');
+    expect(cards[0]?.querySelector('.campaign-status-activity')?.getAttribute('href')).toBe('#page-campaign-runs?campaign=daily-ops');
+    expect(cards[0]?.querySelector('.campaign-status-activity')?.classList.contains('campaign-status-activity-warning')).toBe(true);
+    expect(cards[0]?.querySelector('.campaign-status-activity-state')?.textContent).toContain('2 failed');
+    expect(cards[0]?.querySelector('.campaign-status-activity-state')?.classList.contains('campaign-status-activity-state-failed')).toBe(true);
+    expect(cards[0]?.querySelector('.campaign-status-activity .octicon-alert')).not.toBeNull();
+    expect(cards[0]?.querySelector('.campaign-status-activity')?.getAttribute('aria-label')).toContain('2 failed, 1 in progress');
+    expect(cards[0]?.querySelector('.campaign-status-activity')?.getAttribute('aria-label')).toContain('warning: dispatches produced no output');
+    expect(cards[1]?.querySelector('.campaign-status-activity')?.classList.contains('campaign-status-activity-warning')).toBe(false);
+    expect(cards[1]?.querySelector('.campaign-status-activity-state')?.textContent).toContain('1 awaiting approval');
+    expect(cards[1]?.querySelector('.campaign-status-activity-state')?.classList.contains('campaign-status-activity-state-attention')).toBe(true);
+    expect(cards[1]?.querySelector('.campaign-status-activity .octicon-shield-check')).not.toBeNull();
+    expect(cards[1]?.querySelector('.campaign-status-activity')?.getAttribute('aria-label')).not.toContain('warning');
   });
 
-  it('renders package activity primitives as independently reusable elements', () => {
+  it('renders campaign activity primitives as independently reusable elements', () => {
     const sources = {
       workflows: {
         source: 'workflows',
         rows: [
-          { package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'package-inventory-warnings': 2 },
-          { package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'package-inventory-warnings': 2 }
+          { campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'campaign-inventory-warnings': 2 },
+          { campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'campaign-inventory-warnings': 2 }
         ],
         metadata
       },
@@ -556,7 +556,7 @@ describe('UI elements', () => {
       outcomes: {
         source: 'outcomes',
         rows: [
-          { package: 'daily-ops', run: '1', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' }
+          { campaign: 'daily-ops', run: '1', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' }
         ],
         metadata
       },
@@ -576,46 +576,46 @@ describe('UI elements', () => {
       }
     };
 
-    const utilization = renderUiElement('package-utilization', {
-      pageId: 'packages',
-      title: 'Package AIC utilization',
+    const utilization = renderUiElement('campaign-utilization', {
+      pageId: 'campaigns',
+      title: 'Campaign AIC utilization',
       sourceNames: ['workflows', 'usage'],
       sources,
       contextDetails: [],
       headingTag: 'h3'
     });
 
-    const trend = renderUiElement('package-run-trend', {
-      pageId: 'packages',
+    const trend = renderUiElement('campaign-run-trend', {
+      pageId: 'campaigns',
       title: 'All runs over time',
       sourceNames: ['workflows', 'runs', 'outcomes'],
       sources,
       contextDetails: [],
       headingTag: 'h3'
     });
-    const summary = renderUiElement('package-summary-table', {
-      pageId: 'packages',
-      title: 'All output by package',
+    const summary = renderUiElement('campaign-summary-table', {
+      pageId: 'campaigns',
+      title: 'All output by campaign',
       sourceNames: ['workflows', 'usage', 'findings', 'outcomes', 'runs'],
       sources,
       contextDetails: [],
       headingTag: 'h3'
     });
 
-    expect(utilization?.querySelector('.package-utilization-card')).not.toBeNull();
+    expect(utilization?.querySelector('.campaign-utilization-card')).not.toBeNull();
     expect(utilization?.textContent).toContain('10 of 100 AIC across 1 reported run');
-    expect(trend?.querySelector('.package-chart-point')).not.toBeNull();
+    expect(trend?.querySelector('.campaign-chart-point')).not.toBeNull();
     expect(trend?.querySelector('h3')?.textContent).toBe('All runs over time');
-    expect(summary?.querySelector('.package-summary-table')).not.toBeNull();
+    expect(summary?.querySelector('.campaign-summary-table')).not.toBeNull();
     expect(summary?.textContent).toContain('Daily Ops');
   });
 
-  it('renders package-detail through the reusable package-route variant without relying on page identity', () => {
-    const rendered = renderUiElement('package-detail', {
-      pageId: 'totally-custom-package-page',
-      title: 'Package workflows',
+  it('renders campaign-detail through the reusable campaign-route variant without relying on page identity', () => {
+    const rendered = renderUiElement('campaign-detail', {
+      pageId: 'totally-custom-campaign-page',
+      title: 'Campaign workflows',
       sourceNames: ['workflows'],
-      routeParameter: 'package',
+      routeParameter: 'campaign',
       headingTag: 'h3',
       contextDetails: [],
       sources: {
@@ -623,8 +623,8 @@ describe('UI elements', () => {
           source: 'workflows',
           metadata,
           rows: [{
-            package: 'sample-package',
-            'package-name': 'Sample Package',
+            campaign: 'sample-campaign',
+            'campaign-name': 'Sample Campaign',
             organization: 'githubnext',
             repository: 'gh-aw-cao',
             workflow: '.github/workflows/sample.md',
@@ -638,20 +638,20 @@ describe('UI elements', () => {
     });
 
     rendered?.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'sample-package' }
+      detail: { parameter: 'campaign', value: 'sample-campaign' }
     }));
 
-    expect(rendered?.querySelector('.package-tabs [aria-current="page"]')?.textContent).toBe('Overview');
-    expect(rendered?.querySelector('.package-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
+    expect(rendered?.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Overview');
+    expect(rendered?.querySelector('.campaign-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
   });
 
-  it('renders the packages page shell through one declarative element composition', () => {
+  it('renders the campaigns page shell through one declarative element composition', () => {
     const sources = {
       workflows: {
         source: 'workflows',
         rows: [
-          { package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'package-inventory-warnings': 2 },
-          { package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'package-inventory-warnings': 2 }
+          { campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'campaign-inventory-warnings': 2 },
+          { campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'campaign-inventory-warnings': 2 }
         ],
         metadata
       },
@@ -665,7 +665,7 @@ describe('UI elements', () => {
       outcomes: {
         source: 'outcomes',
         rows: [
-          { package: 'daily-ops', run: '1', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' }
+          { campaign: 'daily-ops', run: '1', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' }
         ],
         metadata
       },
@@ -685,19 +685,19 @@ describe('UI elements', () => {
       }
     };
 
-    const rendered = renderUiElement('package-activity-shell', {
-      pageId: 'packages',
-      title: 'Package activity',
+    const rendered = renderUiElement('campaign-activity-shell', {
+      pageId: 'campaigns',
+      title: 'Campaign activity',
       sourceNames: ['workflows', 'usage', 'runs', 'outcomes', 'findings'],
       sources,
       contextDetails: [],
       headingTag: 'h3'
     });
 
-    expect(rendered?.querySelector('.package-utilization-card')).not.toBeNull();
-    expect(rendered?.querySelector('.package-chart-point')).not.toBeNull();
-    expect(rendered?.querySelector('.package-summary-table')).not.toBeNull();
-    expect(rendered?.querySelector('.package-mode-tabs')).not.toBeNull();
+    expect(rendered?.querySelector('.campaign-utilization-card')).not.toBeNull();
+    expect(rendered?.querySelector('.campaign-chart-point')).not.toBeNull();
+    expect(rendered?.querySelector('.campaign-summary-table')).not.toBeNull();
+    expect(rendered?.querySelector('.campaign-mode-tabs')).not.toBeNull();
   });
 
   it('renders workflow-route with declarative body selection', () => {

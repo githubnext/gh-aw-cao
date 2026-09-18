@@ -112,7 +112,7 @@ export function updateInteractiveTabSelection(root, selectedValue, attributeName
     const element = /** @type {HTMLElement} */ (button);
     const selected = element.getAttribute(attributeName) === selectedValue
       || element.dataset.tabValue === selectedValue
-      || element.dataset.packageMode === selectedValue
+      || element.dataset.campaignMode === selectedValue
       || element.dataset.reportMode === selectedValue;
     element.setAttribute('aria-selected', String(selected));
     element.tabIndex = selected ? 0 : -1;

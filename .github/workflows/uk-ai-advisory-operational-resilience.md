@@ -60,7 +60,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: uk-ai-advisory
+      campaign: uk-ai-advisory
       role: worker
       worker: operational-resilience
 
@@ -280,8 +280,8 @@ steps:
           })),
           open_dependabot_alerts: dependabotAlerts.items.map((alert) => ({
             number: alert.number,
-            dependency: alert.dependency?.package?.name || null,
-            ecosystem: alert.dependency?.package?.ecosystem || null,
+            dependency: alert.dependency?.campaign?.name || null,
+            ecosystem: alert.dependency?.campaign?.ecosystem || null,
             severity: alert.security_advisory?.severity || null,
             vulnerable_version_range: alert.security_vulnerability?.vulnerable_version_range || null,
             first_patched_version: alert.security_vulnerability?.first_patched_version?.identifier || null,

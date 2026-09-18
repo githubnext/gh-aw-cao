@@ -35,7 +35,7 @@ function unavailableSettings(repository, reason, snapshot) {
     allowed_owners: [repository.split("/", 1)[0]],
     allowed_repositories: [repository],
     web: { experimental: false, favicon: "./favicon.svg" },
-    packages: {},
+    campaigns: {},
     publishing_enabled: false,
     publishing_control_repositories: [repository],
     publishing_reviewers: [],

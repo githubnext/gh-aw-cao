@@ -62,7 +62,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: repo-assist
+      campaign: repo-assist
       role: worker
       worker: issue-fix
   - uses: shared/review-bundle.md
@@ -150,7 +150,7 @@ Select and implement exactly one minimal fix for a current target-repository iss
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. Search at most 100 open issues in `TARGET_REPO`, prioritizing `bug`, `help wanted`, and `good first issue` labels. Select an issue only when the expected behavior, affected surface, and a bounded fix can be verified from `target/` and current GitHub evidence.
 
-Before editing, search open pull requests and package-worker issues for the target repository and issue number. Skip any issue with an active fix, an earlier Repo Assist attempt awaiting review, essential missing reproduction or design information, a likely breaking change, or a change requiring a new dependency. Use the stable marker `<!-- repo-assist:issue-fix target=TARGET_REPO issue=NUMBER -->` in every durable output.
+Before editing, search open pull requests and campaign-worker issues for the target repository and issue number. Skip any issue with an active fix, an earlier Repo Assist attempt awaiting review, essential missing reproduction or design information, a likely breaking change, or a change requiring a new dependency. Use the stable marker `<!-- repo-assist:issue-fix target=TARGET_REPO issue=NUMBER -->` in every durable output.
 
 ## Implementation
 

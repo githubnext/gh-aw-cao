@@ -1,9 +1,9 @@
-# ESLint Factory Package
+# ESLint Factory Campaign
 
 > [!NOTE]
 > **Research prototype:** Features and interfaces may change as the project evolves.
 
-The ESLint Factory package builds one small, centrally curated ESLint rule library from real defects found in enrolled JavaScript and TypeScript repositories, and asks maintainers to adopt each rule deliberately, in warning-only mode. It never edits a target repository.
+The ESLint Factory campaign builds one small, centrally curated ESLint rule library from real defects found in enrolled JavaScript and TypeScript repositories, and asks maintainers to adopt each rule deliberately, in warning-only mode. It never edits a target repository.
 
 The Agentic Workflow definitions remain in the control repository. Target repositories receive only declared safe outputs; they do not receive installed copies of these workflows.
 
@@ -16,7 +16,7 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 - Raises at most one deduplicated adoption issue per repository, asking for warning-only enforcement, a dedicated npm script, and a separate CI build job.
 - Normalizes the library over time by collapsing duplicates and deprecating rules that no longer earn their place.
 
-## Package Contents
+## Campaign Contents
 
 | Workflow | Role |
 | --- | --- |
@@ -38,7 +38,7 @@ All six workflows share one repo-memory branch, `memory/eslint-rules`.
 - `rules/<rule-key>.json` is a flat directory holding the current normalized state of each rule.
 - Only compact evidence references and outcomes are persisted — permalinks, numbers, paths, counts, and classifications. Review comment text, agent transcripts, diffs, logs, and source dumps are never stored.
 
-[`rules-db.mjs`](./rules-db.mjs) rebuilds a queryable SQLite database from those logs. It is installed as a package resource at `.github/aw/eslint-rules/rules-db.mjs` and uses only the Node.js standard library:
+[`rules-db.mjs`](./rules-db.mjs) rebuilds a queryable SQLite database from those logs. It is installed as a campaign resource at `.github/aw/eslint-rules/rules-db.mjs` and uses only the Node.js standard library:
 
 ```bash
 node .github/aw/eslint-rules/rules-db.mjs build \
@@ -50,23 +50,23 @@ The rebuild validates the transaction schema and version of every line, orders r
 
 ## Install
 
-Install the package into a Central Agentic Ops control repository:
+Install the campaign into a Central Agentic Ops control repository:
 
 ```bash
 gh aw add githubnext/gh-aw-cao/eslint-rules@<catalog-release>
 ```
 
-The package is runnable after credentials, when needed, and checked-in policy are configured.
+The campaign is runnable after credentials, when needed, and checked-in policy are configured.
 
 ## Configure
 
-Declare the package in `.github/workflows/cao.json`:
+Declare the campaign in `.github/workflows/cao.json`:
 
 ```json
 {
 	"version": 1,
 	"control-plane": {
-		"packages": {
+		"campaigns": {
 			"eslint-rules": {
 				"mode": "review",
 				"max-repositories": 1,
@@ -83,7 +83,7 @@ Declare the package in `.github/workflows/cao.json`:
 }
 ```
 
-The omitted fields default to an enabled package and worker and 100 percent rollout. Set shared owner and repository boundaries under `control-plane.scope`.
+The omitted fields default to an enabled campaign and worker and 100 percent rollout. Set shared owner and repository boundaries under `control-plane.scope`.
 
 ## Validate in review mode
 
@@ -104,11 +104,11 @@ The omitted fields default to an enabled package and worker and 100 percent roll
 
 ## Operational Value
 
-This package intentionally ships no operational-value grader. Its value — a rule adopted and a class of defect stopped — is decided by a maintainer days or weeks after a run, so nothing observable at a single run's boundary would measure it honestly. Recording a self-reported score at that boundary would fabricate attainment, so the workers report evidence and outcomes instead, and the dashboard shows runs and adoption requests rather than a synthetic success rate.
+This campaign intentionally ships no operational-value grader. Its value — a rule adopted and a class of defect stopped — is decided by a maintainer days or weeks after a run, so nothing observable at a single run's boundary would measure it honestly. Recording a self-reported score at that boundary would fabricate attainment, so the workers report evidence and outcomes instead, and the dashboard shows runs and adoption requests rather than a synthetic success rate.
 
 ## Pause or Stop
 
-Set `control-plane.packages.eslint-rules.enabled` to `false`, deploy that reviewed policy revision, and cancel active runs. For a narrower stop, set an individual worker's `enabled` to `false`. Re-enable in `review` mode after resolving the incident. For a control-plane-wide stop, follow the [emergency-stop procedure](../docs/operations.md#emergency-stop).
+Set `control-plane.campaigns.eslint-rules.enabled` to `false`, deploy that reviewed policy revision, and cancel active runs. For a narrower stop, set an individual worker's `enabled` to `false`. Re-enable in `review` mode after resolving the incident. For a control-plane-wide stop, follow the [emergency-stop procedure](../docs/operations.md#emergency-stop).
 
 ## More Information
 

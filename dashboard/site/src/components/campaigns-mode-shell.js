@@ -1,5 +1,5 @@
 /**
- * Shared package activity shell for declarative package-page compositions.
+ * Shared campaign activity shell for declarative campaign-page compositions.
  */
 
 import { h } from '../dom.js';
@@ -9,36 +9,36 @@ import { renderInteractiveTabs, updateInteractiveTabSelection } from './tab-nav.
 const MODES = ['all', 'review', 'live'];
 
 /**
- * @typedef {'all'|'review'|'live'} PackageActivityMode
+ * @typedef {'all'|'review'|'live'} CampaignActivityMode
  */
 
 /**
  * @param {{
  *   pageId: string,
- *   sections: readonly { id: string, render: (mode: PackageActivityMode) => HTMLElement }[],
+ *   sections: readonly { id: string, render: (mode: CampaignActivityMode) => HTMLElement }[],
  *   defaultMode?: string
  * }} options
  * @returns {HTMLElement}
  */
-export function renderPackagesModeShell(options) {
+export function renderCampaignsModeShell(options) {
   const requestedMode = new URLSearchParams(globalThis.window?.location.search ?? '').get('mode');
-  let selectedMode = isPackageActivityMode(requestedMode)
+  let selectedMode = isCampaignActivityMode(requestedMode)
     ? requestedMode
-    : isPackageActivityMode(options.defaultMode)
+    : isCampaignActivityMode(options.defaultMode)
       ? options.defaultMode
       : 'all';
   const panelId = `${options.pageId}-mode-panel`;
-  const content = h('div', { className: 'packages-mode-content', id: panelId, role: 'tabpanel' });
+  const content = h('div', { className: 'campaigns-mode-content', id: panelId, role: 'tabpanel' });
   const tabs = renderInteractiveTabs({
-    className: 'package-mode-tabs',
-    ariaLabel: 'Filter package activity by mode',
+    className: 'campaign-mode-tabs',
+    ariaLabel: 'Filter campaign activity by mode',
     panelId,
     onSelect: selectMode,
     tabs: MODES.map((mode) => ({
       label: titleCase(mode),
       value: mode,
       selected: mode === selectedMode,
-      dataset: { packageMode: mode }
+      dataset: { campaignMode: mode }
     }))
   });
 
@@ -47,7 +47,7 @@ export function renderPackagesModeShell(options) {
    * @param {boolean} [focus]
    */
   function selectMode(mode, focus = false) {
-    if (!isPackageActivityMode(mode)) return;
+    if (!isCampaignActivityMode(mode)) return;
     if (mode !== selectedMode) {
       selectedMode = mode;
       renderMode();
@@ -63,20 +63,20 @@ export function renderPackagesModeShell(options) {
     updateInteractiveTabSelection(tabs, selectedMode);
     content.setAttribute('aria-labelledby', `${options.pageId}-${selectedMode}-tab`);
     content.replaceChildren(...options.sections.map((section) => section.render(selectedMode)));
-    content.dispatchEvent(new CustomEvent('package-mode-change', {
+    content.dispatchEvent(new CustomEvent('campaign-mode-change', {
       bubbles: true,
       detail: { pageId: options.pageId, mode: selectedMode }
     }));
   }
 
   renderMode();
-  return h('div', { className: 'packages-view' }, tabs, content);
+  return h('div', { className: 'campaigns-view' }, tabs, content);
 }
 
 /**
  * @param {unknown} value
- * @returns {value is PackageActivityMode}
+ * @returns {value is CampaignActivityMode}
  */
-export function isPackageActivityMode(value) {
-  return typeof value === 'string' && MODES.includes(/** @type {PackageActivityMode} */ (value));
+export function isCampaignActivityMode(value) {
+  return typeof value === 'string' && MODES.includes(/** @type {CampaignActivityMode} */ (value));
 }

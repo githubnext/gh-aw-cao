@@ -69,7 +69,7 @@ The activity shard manifest is the dashboard's published operational input. The 
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 11. It has stores for `packages`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`, and `issues`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
+The canonical database is `gh-aw-cao-dashboard-data`, schema version 11. It has stores for `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`, and `issues`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection, deleting records absent from the retained batch and writing every retained record.
 

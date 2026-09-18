@@ -75,17 +75,17 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
 
       <div class="flow-connector" aria-hidden="true"><span>approved</span><i></i></div>
 
-      <section class="map-stage" aria-labelledby="packages-title">
+      <section class="map-stage" aria-labelledby="campaigns-title">
         <p class="stage-label"><span>02</span> Run centrally</p>
-        <div class="stage-panel package-panel">
+        <div class="stage-panel campaign-panel">
           <div>
             <p class="panel-kicker">Installed in control plane</p>
-            <h2 id="packages-title">Operation packages</h2>
+            <h2 id="campaigns-title">Operation campaigns</h2>
           </div>
-          <div class="package-stack">
-            <div class="package-node"><strong>Dependabot</strong><small>Central orchestrator + worker</small></div>
-            <div class="package-more"><span class="visually-hidden">More operation packages</span><i></i><i></i><i></i></div>
-            <div class="package-node"><strong>AW Optimization</strong><small>Central orchestrator + workers</small></div>
+          <div class="campaign-stack">
+            <div class="campaign-node"><strong>Dependabot</strong><small>Central orchestrator + worker</small></div>
+            <div class="campaign-more"><span class="visually-hidden">More operation campaigns</span><i></i><i></i><i></i></div>
+            <div class="campaign-node"><strong>AW Optimization</strong><small>Central orchestrator + workers</small></div>
           </div>
         </div>
       </section>
@@ -298,7 +298,7 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
       border-top: 4px solid var(--sl-color-text-accent);
     }
 
-    .package-panel {
+    .campaign-panel {
       border-top: 4px solid var(--sl-color-text-accent);
     }
 
@@ -427,16 +427,16 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
       animation-delay: 1.6s;
     }
 
-    .package-panel {
+    .campaign-panel {
       gap: 0.85rem;
     }
 
-    .package-stack {
+    .campaign-stack {
       display: grid;
       gap: 0.45rem;
     }
 
-    .package-node {
+    .campaign-node {
       display: grid;
       gap: 0.15rem;
       border: 1px solid var(--sl-color-gray-5);
@@ -445,17 +445,17 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
       background: color-mix(in srgb, var(--sl-color-gray-6) 55%, transparent);
     }
 
-    .package-node strong {
+    .campaign-node strong {
       color: var(--sl-color-white);
       font-size: 1rem;
     }
 
-    .package-node small {
+    .campaign-node small {
       color: var(--sl-color-gray-2);
       font-size: 0.75rem;
     }
 
-    .package-more,
+    .campaign-more,
     .repository-more {
       display: flex;
       justify-content: center;
@@ -463,7 +463,7 @@ const { title = data.title, tagline, actions = [] } = data.hero || {};
       padding-block: 0.1rem;
     }
 
-    .package-more i,
+    .campaign-more i,
     .repository-more i {
       width: 4px;
       height: 4px;

@@ -96,14 +96,14 @@ test("dry run emits both exact manifests without requiring GitHub access", () =>
 });
 
 test("cao-setup is exposed as an executable Node CLI", (t) => {
-  const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const campaignJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const directory = mkdtempSync(join(tmpdir(), "cao-setup-bin-"));
   const bin = join(directory, "cao-setup");
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   symlinkSync(script, bin);
   const result = spawnSync(bin, ["--help"], { encoding: "utf8" });
 
-  assert.equal(packageJson.bin["cao-setup"], ".github/workflows/shared/setup-github-apps.mjs");
+  assert.equal(campaignJson.bin["cao-setup"], ".github/workflows/shared/setup-github-apps.mjs");
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^Usage: cao-setup \[options\]/);
 });

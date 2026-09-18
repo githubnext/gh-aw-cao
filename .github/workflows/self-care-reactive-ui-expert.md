@@ -54,7 +54,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: self-care
+      campaign: self-care
       role: worker
       worker: reactive-ui-expert
 
@@ -157,7 +157,7 @@ Act as the dashboard's declarative reactive UI expert. Find and migrate one Java
 2. For a skill-drift task, update only `.github/skills/reactive-ui/SKILL.md`, and only when exact current source behavior proves the guidance stale or incomplete.
 3. For a view-source migration, select one view from `dashboard/site/dashboard.json`, record every field its renderer consumes, and trace its JavaScript source only far enough to identify the canonical entities that replace it. Define the complete transformation in `dashboard.queries`, bind the view to that derived source in the same JSON document, and update its contract fixture and focused tests together. Remove the superseded JavaScript source derivation when it is owned only by the migrated view; do not add a compatibility fallback. The active view must remain subscribed to its worker query with an abort-scoped lifetime so database changes refresh the visible result.
 4. For any fallback that changes production JavaScript, first record the specific Dashboard Language or shared-presenter limitation that makes a declarative JSON-only change impossible. Use the smallest reusable extension to the shared declarative renderer or a named UI element; never add view-specific data querying or business-state derivation. Preserve rendered behavior, accessibility, source provenance, public APIs, routes, focus, scroll position, and control state. Give every effect and derived value an explicit lifetime; clean up listeners, observers, timers, and asynchronous work.
-5. Prefer existing named elements, shared components, `h`, keyed rendering, and reactive primitives. Create a new domain-neutral component only when reuse is concrete. Update `aw.yml` and `dashboard/aw.yml` only when a new runtime file must be packaged.
+5. Prefer existing named elements, shared components, `h`, keyed rendering, and reactive primitives. Create a new domain-neutral component only when reuse is concrete. Update `aw.yml` and `dashboard/aw.yml` only when a new runtime file must be bundled.
 6. Update `dashboard/site/dashboard.json` only for the selected source migration or when the selected extraction requires declarative view composition or binding. Do not add executable expressions or infer behavior from page IDs, view IDs, source names, or source contents.
 7. Add focused unit tests for query selection and payload shape or for state transitions, cleanup, stale async work, stable node identity, empty or unavailable states, and accessible output as applicable. For a source migration, add or extend Playwright coverage that exercises the real module worker, IndexedDB generation, and initial plus navigated view requests. Add focused Playwright coverage for other changes when behavior depends on browser layout, navigation, focus, scrolling, workers, or responsive interaction.
 8. Do not add dependencies, redesign the interface, alter data acquisition or report producers, weaken tests, edit generated workflow lock files, or combine unrelated cleanup. Touch at most four production JavaScript files plus their focused tests and any strictly required manifest, dashboard document, or skill update.
@@ -174,7 +174,7 @@ After editing:
 6. Run focused `npm --prefix dashboard/site run test:e2e -- <test-file>` coverage for browser-facing changes.
 7. Run `npm test`.
 8. Run `npm run docs:build`.
-9. Run `npm run compile` when a package manifest changes.
+9. Run `npm run compile` when a campaign manifest changes.
 
 Review the final diff and scan every changed file for secrets. Call `create_pull_request` exactly once only when one candidate meets its evidence threshold and all applicable validation passes. Provide only the unprefixed subject because the configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix. Begin the body with a concise summary of the reactive boundary and preserved behavior, list the source evidence and validation, and include a `### Control Plane` section with correlation ID `${{ inputs.correlation_id }}`, central repository `${{ inputs.central_repo }}`, and control plane run `${{ inputs.control_plane_run_url }}`.
 

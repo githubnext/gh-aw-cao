@@ -1,5 +1,5 @@
 {
-  "package": "uk-ai-advisory",
+  "campaign": "uk-ai-advisory",
   "orchestrator": "uk-ai-advisory",
   "workers": {
     "operational-resilience": "uk-ai-advisory-operational-resilience"

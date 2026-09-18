@@ -45,14 +45,14 @@ network:
     - single-market-economy.ec.europa.eu
     - enisa.europa.eu
 
-run-name: "CRA package implementation-status maintenance · ${{ inputs.safe_output_mode || 'review' }}"
+run-name: "CRA campaign implementation-status maintenance · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
   group: "${{ github.workflow }}"
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-tracker-id: eu-cra-compliance-package-maintainer
+tracker-id: eu-cra-compliance-campaign-maintainer
 
 tools:
   cli-proxy: true
@@ -63,7 +63,7 @@ tools:
 
 graders:
   operational-value:
-    run: ./graders/eu-cra-compliance-package-maintainer-operational-value.sh
+    run: ./graders/eu-cra-compliance-campaign-maintainer-operational-value.sh
 
 safe-outputs:
   create-pull-request:
@@ -78,7 +78,7 @@ safe-outputs:
       - ".github/aw/eu-cra-compliance/implementation-status.md"
   create-issue:
     expires: 30d
-    title-prefix: "[eu-cra:package-improvement] "
+    title-prefix: "[eu-cra:campaign-improvement] "
     close-older-issues: false
     deduplicate-by-title: true
     max: 1
@@ -88,11 +88,11 @@ safe-outputs:
 
 # EU CRA / Maintenance
 
-Audit the operation workflows in this package against the current requirements of Regulation (EU) 2024/2847. Maintain a durable implementation ledger and, when useful, propose the single highest-priority concrete fleet improvement. This workflow audits package capabilities only; it does not assess a product repository or establish legal compliance.
+Audit the operation workflows in this campaign against the current requirements of Regulation (EU) 2024/2847. Maintain a durable implementation ledger and, when useful, propose the single highest-priority concrete fleet improvement. This workflow audits campaign capabilities only; it does not assess a product repository or establish legal compliance.
 
 ## Trusted scope
 
-Read only these repository package sources and the applicable ledger path; authoritative web sources required by the regulatory method remain in scope:
+Read only these repository campaign sources and the applicable ledger path; authoritative web sources required by the regulatory method remain in scope:
 
 - `.github/workflows/eu-cra-compliance.md`
 - `.github/workflows/eu-cra-compliance-scope-classifier.md`
@@ -119,18 +119,18 @@ For each operational requirement, maintain:
 
 - stable requirement ID and concise summary
 - applicability or human-review condition
-- package-capability status: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `NOT_APPLICABLE`, `HUMAN_REVIEW_REQUIRED`, or `INCOMPLETE`
+- campaign-capability status: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `NOT_APPLICABLE`, `HUMAN_REVIEW_REQUIRED`, or `INCOMPLETE`
 - exact workflow and section evidence, or `none`
 - concrete missing capability and recommended change
 - authoritative provenance and last verified date
 
-`IMPLEMENTED` means only that an operation-workflow feature represents the requirement. It never means that this package or any product is legally compliant. Keep capability coverage separate from the legal decision: when a workflow correctly gathers evidence and requires human review, record the capability as `IMPLEMENTED` or `PARTIAL` and put the review condition in applicability. Use `HUMAN_REVIEW_REQUIRED` as package status only when the maintainer cannot determine whether a fleet capability is required. Use `NOT_APPLICABLE` only for provisions that impose no product or economic-operator operational requirement on this fleet, and preserve them in the completeness index so omissions remain visible.
+`IMPLEMENTED` means only that an operation-workflow feature represents the requirement. It never means that this campaign or any product is legally compliant. Keep capability coverage separate from the legal decision: when a workflow correctly gathers evidence and requires human review, record the capability as `IMPLEMENTED` or `PARTIAL` and put the review condition in applicability. Use `HUMAN_REVIEW_REQUIRED` as campaign status only when the maintainer cannot determine whether a fleet capability is required. Use `NOT_APPLICABLE` only for provisions that impose no product or economic-operator operational requirement on this fleet, and preserve them in the completeness index so omissions remain visible.
 
 For material determinations about scope exclusion, economic-operator role, commercial versus non-commercial FOSS treatment, substantial modification, product classification, conformity route, harmonised standards, presumption of conformity, active exploitation, severe incidents, reportability, declarations, or market release, require human review in the applicability or decision-control field. Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`. Never submit a regulatory notification.
 
 ## Reporting style
 
-Treat the implementation ledger as an RFC-style status document, not as a narrative audit. Use the key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** only for requirements or recommendations, and interpret them as described by [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Keep normative obligations, package-capability evidence, human-review conditions, and unknown or inaccessible evidence distinct. Each material claim **MUST** identify its stable requirement ID, source provision or instrument, official URL, and verification date; an inability to verify **MUST** be reported explicitly as `INCOMPLETE`, never converted into a negative claim. Prefer one independently testable claim per row, with concise wording and explicit `none known` or `not verified` values where applicable.
+Treat the implementation ledger as an RFC-style status document, not as a narrative audit. Use the key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** only for requirements or recommendations, and interpret them as described by [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Keep normative obligations, campaign-capability evidence, human-review conditions, and unknown or inaccessible evidence distinct. Each material claim **MUST** identify its stable requirement ID, source provision or instrument, official URL, and verification date; an inability to verify **MUST** be reported explicitly as `INCOMPLETE`, never converted into a negative claim. Prefer one independently testable claim per row, with concise wording and explicit `none known` or `not verified` values where applicable.
 
 ## Outputs
 

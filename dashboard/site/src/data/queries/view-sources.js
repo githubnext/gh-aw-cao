@@ -188,37 +188,37 @@ function repositoriesSource(repositories, sources) {
   };
 }
 
-/** @param {Record<string, unknown>[]} packages @param {Record<string, unknown>} sources */
-function packagesSource(packages, sources) {
+/** @param {Record<string, unknown>[]} campaigns @param {Record<string, unknown>} sources */
+function campaignsSource(campaigns, sources) {
   return {
-    source: 'packages',
-    rows: packages.map((packageRecord) => ({
-      package: packageRecord.slug,
-      'package-name': packageRecord.name,
-      'package-description': packageRecord.description,
-      'package-icon': packageRecord.icon,
-      'package-mode': packageRecord.mode,
-      'package-enabled': packageRecord.enabled,
-      'package-registration': packageRecord.enabled ? 'true' : 'false',
-      'package-max-repositories': packageRecord.maxRepositories,
-      'package-rollout-percent': packageRecord.rolloutPercent,
-      'package-monthly-ai-credit-budget': packageRecord.monthlyAiCreditBudget,
-      'package-aic-allowance': packageRecord.aiCreditAllowance,
-      'package-worker-count': packageRecord.workerCount,
-      'package-inventory-warnings': packageRecord.inventoryWarnings,
-      'package-workers': packageRecord.workers,
-      'package-targets': packageRecord.targets,
-      'package-min-version': packageRecord.minVersion,
-      'package-version': packageRecord.version,
-      'package-current-version': packageRecord.currentVersion,
-      'package-update-state': packageRecord.updateState,
-      'package-experimental': packageRecord.experimental,
-      'package-readme-path': packageRecord.readmePath,
-      'package-readme': packageRecord.readme,
-      'observed-at': packageRecord.observedAt,
-      ...(packageRecord.packageLink ? { 'package-link': packageRecord.packageLink } : {})
+    source: 'campaigns',
+    rows: campaigns.map((campaignRecord) => ({
+      campaign: campaignRecord.slug,
+      'campaign-name': campaignRecord.name,
+      'campaign-description': campaignRecord.description,
+      'campaign-icon': campaignRecord.icon,
+      'campaign-mode': campaignRecord.mode,
+      'campaign-enabled': campaignRecord.enabled,
+      'campaign-registration': campaignRecord.enabled ? 'true' : 'false',
+      'campaign-max-repositories': campaignRecord.maxRepositories,
+      'campaign-rollout-percent': campaignRecord.rolloutPercent,
+      'campaign-monthly-ai-credit-budget': campaignRecord.monthlyAiCreditBudget,
+      'campaign-aic-allowance': campaignRecord.aiCreditAllowance,
+      'campaign-worker-count': campaignRecord.workerCount,
+      'campaign-inventory-warnings': campaignRecord.inventoryWarnings,
+      'campaign-workers': campaignRecord.workers,
+      'campaign-targets': campaignRecord.targets,
+      'campaign-min-version': campaignRecord.minVersion,
+      'campaign-version': campaignRecord.version,
+      'campaign-current-version': campaignRecord.currentVersion,
+      'campaign-update-state': campaignRecord.updateState,
+      'campaign-experimental': campaignRecord.experimental,
+      'campaign-readme-path': campaignRecord.readmePath,
+      'campaign-readme': campaignRecord.readme,
+      'observed-at': campaignRecord.observedAt,
+      ...(campaignRecord.campaignLink ? { 'campaign-link': campaignRecord.campaignLink } : {})
     })),
-    metadata: projectionMetadata(sources, 'packages', 'packages', true)
+    metadata: projectionMetadata(sources, 'campaigns', 'campaigns', true)
   };
 }
 
@@ -258,9 +258,9 @@ function workflowsSource(workflows, repositoriesById, sources) {
         'workflow-registry-state': publishedWorkflow?.['workflow-registry-state'] ?? workflow.registryState,
         'created-at': publishedWorkflow?.['created-at'] ?? workflow.createdAt,
         'updated-at': publishedWorkflow?.['updated-at'] ?? workflow.updatedAt,
-        package: workflow.package,
-        'package-name': workflow.packageName,
-        'package-icon': workflow.packageIcon,
+        campaign: workflow.campaign,
+        'campaign-name': workflow.campaignName,
+        'campaign-icon': workflow.campaignIcon,
         'workflow-role': workflow.role,
         'rollout-mode': workflow.rolloutMode,
         'max-ai-credits': workflow.maxAiCredits,
@@ -621,7 +621,7 @@ function outcomesSource(events, runsById, workflowsById, sources) {
     return [definedFields({
       organization: target[0] ?? run.owner,
       repository: target[1] ?? run.repository,
-      package: workflow.package,
+      campaign: workflow.campaign,
       'runtime-repository': [run.owner, run.repository].filter(Boolean).join('/'),
       workflow: run.workflowPath ?? workflow.path,
       'workflow-name': workflow.name ?? run.workflowPath,
@@ -815,10 +815,10 @@ function workItemsSource(workflows, runs, outcomes, sources) {
       workflow: workflow.workflow,
       run: run?.run ?? '',
       'workflow-name': workflow['workflow-name'] ?? workflow.workflow,
-      'workflow-icon': workflow['package-icon'] ?? 'workflow',
-      package: workflow.package ?? 'standalone',
+      'workflow-icon': workflow['campaign-icon'] ?? 'workflow',
+      campaign: workflow.campaign ?? 'standalone',
       scope: `${workflow.organization}/${workflow.repository}`,
-      domain: workflow['package-name'] ?? workflow.package ?? 'standalone',
+      domain: workflow['campaign-name'] ?? workflow.campaign ?? 'standalone',
       'work-type': workflow['workflow-role'] ?? 'unknown',
       'lifecycle-state': lifecycle,
       phase: run?.['run-status'] ?? 'unknown',
@@ -831,7 +831,7 @@ function workItemsSource(workflows, runs, outcomes, sources) {
       'safe-output-kind': outcome?.['safe-output-kind'] ?? 'workflow-output',
       'waiting-on': lifecycle === 'review' ? 'reviewer decision' : '',
       'waiting-since': run?.['started-at'] ?? outcome?.['observed-at'] ?? '',
-      owner: workflow['package-name'] ?? workflow.organization,
+      owner: workflow['campaign-name'] ?? workflow.organization,
       'consequence-tier': workflow['workflow-role'] === 'orchestrator' ? 'high'
         : workflow['workflow-role'] === 'worker' ? 'medium' : 'low',
       'verification-state': outcome ? 'pending' : 'unverified',
@@ -1082,7 +1082,7 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
     ...namedLogicalSources(logicalSources),
     ...await queryCanonicalViewSources(indexedDB, logicalSources, [
       'repositories',
-      'packages',
+      'campaigns',
       'workflows',
       'runs',
       'job-performance',
@@ -1157,7 +1157,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const needsWorkflows = needed.has('workflows') || needsRuns || needed.has('outcomes') || needed.has('work-items');
   const needsRepositories = needed.has('repositories') || needsWorkflows;
   const stores = /** @type {const} */ ([
-    ['packages', needed.has('packages')],
+    ['campaigns', needed.has('campaigns')],
     ['repositories', needsRepositories],
     ['workflows', needsWorkflows],
     ['runs', needsRuns],
@@ -1172,7 +1172,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     needed.has('failed-runs') ? queries.runs.recentFailures() : [],
     needed.has('transactions') ? queries.transactions.list() : []
   ]);
-  const packages = collections.packages ?? [];
+  const campaigns = collections.campaigns ?? [];
   const repositories = collections.repositories ?? [];
   const workflows = collections.workflows ?? [];
   const runs = collections.runs ?? [];
@@ -1220,7 +1220,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     if (source) projected[sourceName] = source;
   }
   if (projectedNames.has('source-metadata')) projected['source-metadata'] = sourceMetadataSource(logicalSources);
-  if (projectedNames.has('packages')) projected.packages = packagesSource(packages, sources);
+  if (projectedNames.has('campaigns')) projected.campaigns = campaignsSource(campaigns, sources);
   if (projectedNames.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
   if (projectedNames.has('workflows')) {
     projected.workflows = {

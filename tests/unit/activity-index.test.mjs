@@ -36,7 +36,7 @@ graders:
       lockPath: ".github/workflows/sample.lock.yml",
       compiled: true,
       workers: [],
-      package: null,
+      campaign: null,
     }],
   }));
   await writeFile(path.join(logsPath, "fixture.jsonl"), JSON.stringify({ schema_version: 2, kind: "run", run: {

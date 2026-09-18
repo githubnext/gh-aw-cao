@@ -6,9 +6,9 @@ export const PUBLISH_LABEL = "ops:publish-to-target";
 const API_TIMEOUT_MS = 30_000;
 
 const repositoryPattern = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
-export function configuredWorkerPackages(packages) {
-  return new Map(Object.entries(packages || {}).flatMap(([packageName, policy]) => (
-    Object.keys(policy.worker_policies || {}).map((workflow) => [`${workflow}.lock.yml`, packageName])
+export function configuredWorkerCampaigns(campaigns) {
+  return new Map(Object.entries(campaigns || {}).flatMap(([campaignName, policy]) => (
+    Object.keys(policy.worker_policies || {}).map((workflow) => [`${workflow}.lock.yml`, campaignName])
   )));
 }
 
@@ -110,7 +110,7 @@ export function validateWorkflowRun({
   reviewRepository,
   allowedOwners,
   allowedRepositories,
-  packages,
+  campaigns,
 }) {
   if (String(run.id) !== String(inspection.runId)
       || normalized(run.repository?.full_name) !== normalized(inspection.controlRepository)
@@ -132,9 +132,9 @@ export function validateWorkflowRun({
   }
   const workflowPath = String(run.path || "").split("@")[0];
   const workflowFile = workflowPath.split("/").at(-1);
-  const workerPackages = configuredWorkerPackages(packages);
-  const packageName = workerPackages.get(workflowFile);
-  if (!packageName || workflowPath !== `.github/workflows/${workflowFile}`) {
+  const workerCampaigns = configuredWorkerCampaigns(campaigns);
+  const campaignName = workerCampaigns.get(workflowFile);
+  if (!campaignName || workflowPath !== `.github/workflows/${workflowFile}`) {
     throw new Error("workflow run is not from a supported Central Agentic Ops worker");
   }
   const targetMatch = String(run.display_title || "").match(/ · ([A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+) · review$/);
@@ -152,7 +152,7 @@ export function validateWorkflowRun({
     throw new Error("target repository is outside control-plane.scope.allowed-repositories");
   }
   const [targetOwner, targetName] = targetRepository.split("/");
-  return { packageName, targetRepository, targetOwner, targetName };
+  return { campaignName, targetRepository, targetOwner, targetName };
 }
 
 export function publicationMarker(sourceRepository, sourceIssueNumber) {
@@ -241,10 +241,10 @@ async function validateRunCommand() {
     reviewRepository: process.env.GITHUB_REPOSITORY,
     allowedOwners: settings.allowed_owners,
     allowedRepositories: settings.allowed_repositories,
-    packages: settings.packages,
+    campaigns: settings.campaigns,
   });
   writeOutputs({
-    package: validated.packageName,
+    campaign: validated.campaignName,
     target_owner: validated.targetOwner,
     target_name: validated.targetName,
     target_repository: validated.targetRepository,
@@ -284,12 +284,12 @@ async function publishCommand() {
   const sourceRepository = requireRepository(process.env.GITHUB_REPOSITORY, "review repository");
   const sourceIssueNumber = Number(process.env.SOURCE_ISSUE);
   const targetRepository = requireRepository(process.env.TARGET_REPOSITORY, "target repository");
-  const packageName = process.env.PACKAGE;
+  const campaignName = process.env.CAMPAIGN;
   const expectedContentDigest = process.env.SOURCE_CONTENT_DIGEST || "";
   if (!Number.isInteger(sourceIssueNumber) || sourceIssueNumber < 1) throw new Error("source issue number is invalid");
   if (!/^[a-f0-9]{64}$/.test(expectedContentDigest)) throw new Error("approved source content digest is invalid");
-  if (![...configuredWorkerPackages(settings.packages).values()].includes(packageName)) {
-    throw new Error("package is unsupported");
+  if (![...configuredWorkerCampaigns(settings.campaigns).values()].includes(campaignName)) {
+    throw new Error("campaign is unsupported");
   }
 
   const sourceIssue = await apiRequest(process.env.SOURCE_TOKEN, apiUrl, `/repos/${sourceRepository}/issues/${sourceIssueNumber}`);

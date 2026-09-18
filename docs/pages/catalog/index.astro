@@ -8,29 +8,29 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 <StarlightPage
   frontmatter={{
     title: "Operations Catalog",
-    description: "Ready-to-install Central Agentic Ops operation packages discovered from their aw.yml manifests.",
+    description: "Ready-to-install Central Agentic Ops operation campaigns discovered from their aw.yml manifests.",
     editUrl: false,
   }}
 >
   <p class="catalog-intro">
     Choose a ready operation for your private operations hub. Every entry is generated from its manifest and opens to
-    GitHub installation instructions, workflow inventory, and the package's full README when available. Private
-    packages are omitted because gh-aw rejects them; experimental packages are labeled before installation.
+    GitHub installation instructions, workflow inventory, and the campaign's full README when available. Private
+    campaigns are omitted because gh-aw rejects them; experimental campaigns are labeled before installation.
   </p>
   <p class="catalog-author">
     Need a different outcome? <a href={`${basePath}/author-your-first-operation/`}>Author your first operation</a> and
     prove it safely on one repository before proposing it for this curated catalog.
   </p>
 
-  <section class="catalog-browser not-content" aria-label="Browse packages">
+  <section class="catalog-browser not-content" aria-label="Browse campaigns">
     <div class="catalog-toolbar">
       <label class="catalog-search">
-        <span>Search packages</span>
+        <span>Search campaigns</span>
         <input type="search" placeholder="Search by name or purpose" data-catalog-search />
       </label>
       <p class="catalog-count" aria-live="polite">
         <strong data-catalog-count>{catalogEntries.length}</strong>
-        <span data-catalog-count-label>packages</span>
+        <span data-catalog-count-label>campaigns</span>
       </p>
     </div>
 
@@ -45,7 +45,7 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
             <a href={`${basePath}/catalog/${entry.slug}/`}>
               <div class="catalog-heading">
                 <h2>{entry.name}</h2>
-                <span>{entry.experimental ? "Experimental package" : "Package"}</span>
+                <span>{entry.experimental ? "Experimental campaign" : "Campaign"}</span>
               </div>
               <p>{entry.description}</p>
               <div class="catalog-meta">
@@ -58,13 +58,13 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
       }
     </ul>
 
-    <p class="catalog-empty" data-catalog-empty hidden>No packages match your search.</p>
+    <p class="catalog-empty" data-catalog-empty hidden>No campaigns match your search.</p>
   </section>
 </StarlightPage>
 
 <script>
   const searchInput = document.querySelector<HTMLInputElement>("[data-catalog-search]");
-  const packageItems = [...document.querySelectorAll<HTMLElement>("[data-catalog-item]")];
+  const campaignItems = [...document.querySelectorAll<HTMLElement>("[data-catalog-item]")];
   const resultCount = document.querySelector<HTMLElement>("[data-catalog-count]");
   const resultCountLabel = document.querySelector<HTMLElement>("[data-catalog-count-label]");
   const emptyMessage = document.querySelector<HTMLElement>("[data-catalog-empty]");
@@ -73,14 +73,14 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
     const query = searchInput.value.trim().toLocaleLowerCase();
     let visibleCount = 0;
 
-    for (const item of packageItems) {
+    for (const item of campaignItems) {
       const visible = item.dataset.search?.includes(query) ?? false;
       item.hidden = !visible;
       if (visible) visibleCount += 1;
     }
 
     if (resultCount) resultCount.textContent = String(visibleCount);
-    if (resultCountLabel) resultCountLabel.textContent = visibleCount === 1 ? "package" : "packages";
+    if (resultCountLabel) resultCountLabel.textContent = visibleCount === 1 ? "campaign" : "campaigns";
     if (emptyMessage) emptyMessage.hidden = visibleCount !== 0;
   });
 </script>

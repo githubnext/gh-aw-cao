@@ -1,5 +1,5 @@
 /**
- * Report-style package activity view composed from workflow, run, and usage sources.
+ * Report-style campaign activity view composed from workflow, run, and usage sources.
  */
 
 import { h } from '../dom.js';
@@ -8,24 +8,24 @@ import { formatAic, pluralSuffix, titleCase } from './count-formatters.js';
 import { classifyUtilizationRatio, isFailureConclusion } from './run-classification.js';
 import { coverageWindowHours, formatMediumUtcDate, formatMediumUtcDateTime, renderEmptyMessage, renderEmptyTableRow, renderIdentityLink, renderLegendSwatch, renderPanelHeader, renderTableHeadRow } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
-import { renderPackagesModeShell } from './packages-mode-shell.js';
+import { renderCampaignsModeShell } from './campaigns-mode-shell.js';
 const DAY_IN_MILLISECONDS = 86_400_000;
 
 /**
- * Declarative host for the built-in packages page that composes reusable
- * package activity sections under the existing mode tabs.
+ * Declarative host for the built-in campaigns page that composes reusable
+ * campaign activity sections under the existing mode tabs.
  *
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string} [pageId]
  * @returns {HTMLElement}
  */
-export function renderPackagesView(sources, pageId = 'packages') {
-  return renderPackagesModeShell({
+export function renderCampaignsView(sources, pageId = 'campaigns') {
+  return renderCampaignsModeShell({
     pageId,
     sections: [
-      { id: 'utilization', render: (mode) => renderPackageUtilization(sources, mode) },
+      { id: 'utilization', render: (mode) => renderCampaignUtilization(sources, mode) },
       { id: 'run-trend', render: (mode) => renderRunTrend(sources, mode) },
-      { id: 'summary', render: (mode) => renderPackageSummary(sources, mode) }
+      { id: 'summary', render: (mode) => renderCampaignSummary(sources, mode) }
     ]
   });
 }
@@ -35,34 +35,34 @@ export function renderPackagesView(sources, pageId = 'packages') {
  * @param {string} mode
  * @returns {HTMLElement}
  */
-export function renderPackageSummary(sources, mode = 'all') {
-  const packages = summarizePackages(rowsFor(sources, 'workflows'));
-  const summaries = summarizePackageActivity(packages, sources, mode);
+export function renderCampaignSummary(sources, mode = 'all') {
+  const campaigns = summarizeCampaigns(rowsFor(sources, 'workflows'));
+  const summaries = summarizeCampaignActivity(campaigns, sources, mode);
   const modeLabel = titleCase(mode);
-  const headingId = 'packages-summary-heading';
+  const headingId = 'campaigns-summary-heading';
 
   return h(
     'section',
-    { className: 'package-summary', 'aria-labelledby': headingId },
-    renderPanelHeader(headingId, `${modeLabel} output by package`, 'Durable outputs and inventory health for each control-plane package.', { className: 'package-summary-heading' }),
+    { className: 'campaign-summary', 'aria-labelledby': headingId },
+    renderPanelHeader(headingId, `${modeLabel} output by campaign`, 'Durable outputs and inventory health for each control-plane campaign.', { className: 'campaign-summary-heading' }),
     h(
       'div',
       { className: 'table-region', role: 'region', 'aria-labelledby': `${headingId}-caption`, tabIndex: 0 },
       h(
         'table',
-        { className: 'package-summary-table' },
-        h('caption', { id: `${headingId}-caption` }, `${modeLabel} package summary`),
+        { className: 'campaign-summary-table' },
+        h('caption', { id: `${headingId}-caption` }, `${modeLabel} campaign summary`),
         h(
           'thead',
           null,
-          renderTableHeadRow(['Package', 'Runs', 'Successful', 'Failed', 'Run warnings', 'Inventory warnings', 'AIC', 'Latest activity'])
+          renderTableHeadRow(['Campaign', 'Runs', 'Successful', 'Failed', 'Run warnings', 'Inventory warnings', 'AIC', 'Latest activity'])
         ),
         h(
           'tbody',
           null,
-          ...(packages.length > 0
-            ? packages.map((entry) => renderPackageSummaryRow(entry, summaries.get(entry.key)))
-            : [renderEmptyTableRow(8, 'No packages discovered.')])
+          ...(campaigns.length > 0
+            ? campaigns.map((entry) => renderCampaignSummaryRow(entry, summaries.get(entry.key)))
+            : [renderEmptyTableRow(8, 'No campaigns discovered.')])
         )
       )
     )
@@ -70,15 +70,15 @@ export function renderPackageSummary(sources, mode = 'all') {
 }
 
 /**
- * @param {ReturnType<typeof summarizePackages>[number]} entry
+ * @param {ReturnType<typeof summarizeCampaigns>[number]} entry
  * @param {{ runs: number, successful: number, failed: number, warnings: number | null, inventoryWarnings: number | null, aic: number | null, latestActivity: Date | null } | undefined} summary
  * @returns {HTMLTableRowElement}
  */
-function renderPackageSummaryRow(entry, summary) {
+function renderCampaignSummaryRow(entry, summary) {
   return /** @type {HTMLTableRowElement} */ (h(
     'tr',
-    { dataset: { packageSummaryKey: entry.key } },
-    h('th', { scope: 'row' }, renderPackageIdentityLink(entry, 'span')),
+    { dataset: { campaignSummaryKey: entry.key } },
+    h('th', { scope: 'row' }, renderCampaignIdentityLink(entry, 'span')),
     h('td', null, summary ? formatNumber(summary.runs) : ''),
     h('td', null, summary ? formatNumber(summary.successful) : ''),
     h('td', null, summary ? formatNumber(summary.failed) : ''),
@@ -90,35 +90,35 @@ function renderPackageSummaryRow(entry, summary) {
 }
 
 /**
- * @param {ReturnType<typeof summarizePackages>} packages
+ * @param {ReturnType<typeof summarizeCampaigns>} campaigns
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string} mode
  */
-function summarizePackageActivity(packages, sources, mode) {
-  const workflowDetails = new Map(packages.flatMap((entry) => entry.workflows.map((row) => [
+function summarizeCampaignActivity(campaigns, sources, mode) {
+  const workflowDetails = new Map(campaigns.flatMap((entry) => entry.workflows.map((row) => [
     scopedEntityKey(row, 'workflow'),
     entry.key
   ])));
   const findingsAvailable = Boolean(sources.findings) && sources.findings?.metadata?.availability !== 'unavailable';
   const usageAvailable = Boolean(sources.usage) && sources.usage?.metadata?.availability !== 'unavailable';
-  const activity = packageActivityRuns(packages, sources, mode);
+  const activity = campaignActivityRuns(campaigns, sources, mode);
   const runDetails = new Map();
-  const summaries = new Map(packages.map((entry) => [entry.key, {
+  const summaries = new Map(campaigns.map((entry) => [entry.key, {
     runs: 0,
     successful: 0,
     failed: 0,
     warnings: findingsAvailable ? 0 : null,
-    inventoryWarnings: packageInventoryWarnings(entry),
+    inventoryWarnings: campaignInventoryWarnings(entry),
     aic: /** @type {number | null} */ (null),
     latestActivity: null
   }]));
 
   for (const row of activity.rows) {
-    const packageKey = String(row.packageKey);
+    const campaignKey = String(row.campaignKey);
     const runKey = String(row.runKey);
-    const summary = summaries.get(packageKey);
+    const summary = summaries.get(campaignKey);
     if (!summary || runDetails.has(runKey)) continue;
-    runDetails.set(runKey, { packageKey, mode: String(row['rollout-mode'] ?? 'unknown') });
+    runDetails.set(runKey, { campaignKey, mode: String(row['rollout-mode'] ?? 'unknown') });
     summary.runs += 1;
     if (String(row['run-conclusion']) === 'success') summary.successful += 1;
     if (isFailureConclusion(row['run-conclusion'])) summary.failed += 1;
@@ -130,8 +130,8 @@ function summarizePackageActivity(packages, sources, mode) {
     for (const row of rowsFor(sources, 'findings')) {
       const runKey = runIdentity(row);
       const run = runDetails.get(runKey);
-      const packageKey = run?.packageKey ?? workflowDetails.get(scopedEntityKey(row, 'workflow'));
-      const summary = packageKey ? summaries.get(packageKey) : null;
+      const campaignKey = run?.campaignKey ?? workflowDetails.get(scopedEntityKey(row, 'workflow'));
+      const summary = campaignKey ? summaries.get(campaignKey) : null;
       const findingMode = run?.mode ?? String(row['rollout-mode'] ?? 'unknown');
       if (!summary || (mode !== 'all' && findingMode !== mode)) continue;
       updateLatestActivity(summary, row['observed-at']);
@@ -143,8 +143,8 @@ function summarizePackageActivity(packages, sources, mode) {
 
   if (usageAvailable) {
     for (const row of rowsFor(sources, 'usage')) {
-      const packageKey = workflowDetails.get(scopedEntityKey(row, 'workflow'));
-      const summary = packageKey ? summaries.get(packageKey) : null;
+      const campaignKey = workflowDetails.get(scopedEntityKey(row, 'workflow'));
+      const summary = campaignKey ? summaries.get(campaignKey) : null;
       if (!summary || !matchesMode(row, mode)) continue;
       const aic = Number(row.aic);
       if (Number.isFinite(aic) && aic >= 0) summary.aic = (summary.aic ?? 0) + aic;
@@ -156,12 +156,12 @@ function summarizePackageActivity(packages, sources, mode) {
 }
 
 /**
- * @param {ReturnType<typeof summarizePackages>[number]} entry
+ * @param {ReturnType<typeof summarizeCampaigns>[number]} entry
  * @returns {number | null}
  */
-function packageInventoryWarnings(entry) {
+function campaignInventoryWarnings(entry) {
   const explicitCount = entry.workflows
-    .map((row) => Number(row['package-inventory-warnings']))
+    .map((row) => Number(row['campaign-inventory-warnings']))
     .find(Number.isFinite);
   if (explicitCount !== undefined) return Math.max(0, explicitCount);
   const readiness = entry.workflows
@@ -193,20 +193,20 @@ function matchesMode(row, mode) {
 }
 
 /**
- * Prefer durable-output run evidence, which is retained for the package report
+ * Prefer durable-output run evidence, which is retained for the campaign report
  * window, over the shorter Actions inventory window.
  *
- * @param {ReturnType<typeof summarizePackages>} packages
+ * @param {ReturnType<typeof summarizeCampaigns>} campaigns
  * @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources
  * @param {string} mode
  */
-function packageActivityRuns(packages, sources, mode) {
+function campaignActivityRuns(campaigns, sources, mode) {
   const outcomesAvailable = Boolean(sources.outcomes)
     && sources.outcomes?.metadata?.availability !== 'unavailable';
   const source = outcomesAvailable ? sources.outcomes : sources.runs;
   const rows = outcomesAvailable ? rowsFor(sources, 'outcomes') : rowsFor(sources, 'runs');
   const windowStart = outcomesAvailable ? outcomeWindowStart(source) : Number.NEGATIVE_INFINITY;
-  const workflowPackages = new Map(packages.flatMap((entry) => entry.workflows.map((row) => [
+  const workflowCampaigns = new Map(campaigns.flatMap((entry) => entry.workflows.map((row) => [
     scopedEntityKey(row, 'workflow'),
     entry.key
   ])));
@@ -217,17 +217,17 @@ function packageActivityRuns(packages, sources, mode) {
     if (!matchesMode(row, mode) || (outcomesAvailable && !['review', 'live'].includes(rolloutMode))) continue;
     const publishedAt = Date.parse(String(row['published-at'] ?? ''));
     if (outcomesAvailable && (!Number.isFinite(publishedAt) || publishedAt < windowStart)) continue;
-    const packageKey = outcomesAvailable
-      ? packageKeyForOutcome(row, packages)
-      : workflowPackages.get(scopedEntityKey(row, 'workflow'));
+    const campaignKey = outcomesAvailable
+      ? campaignKeyForOutcome(row, campaigns)
+      : workflowCampaigns.get(scopedEntityKey(row, 'workflow'));
     const runKey = runIdentity(row);
-    if (!packageKey || !runKey) continue;
+    if (!campaignKey || !runKey) continue;
     const startedAt = outcomesAvailable ? row['published-at'] : row['started-at'];
     const endedAt = outcomesAvailable ? row['observed-at'] : row['ended-at'];
     const existing = runs.get(runKey);
     if (!existing) {
       runs.set(runKey, {
-        packageKey,
+        campaignKey,
         runKey,
         'rollout-mode': rolloutMode,
         'run-conclusion': String(row['run-conclusion'] ?? 'unknown'),
@@ -257,12 +257,12 @@ function outcomeWindowStart(source) {
 
 /**
  * @param {Record<string, unknown>} row
- * @param {ReturnType<typeof summarizePackages>} packages
+ * @param {ReturnType<typeof summarizeCampaigns>} campaigns
  */
-function packageKeyForOutcome(row, packages) {
-  const packageId = String(row.package ?? '').toLowerCase();
-  if (!packageId) return null;
-  const candidates = packages.filter((entry) => entry.id.toLowerCase() === packageId);
+function campaignKeyForOutcome(row, campaigns) {
+  const campaignId = String(row.campaign ?? '').toLowerCase();
+  if (!campaignId) return null;
+  const candidates = campaigns.filter((entry) => entry.id.toLowerCase() === campaignId);
   const runtimeRepository = String(row['runtime-repository'] ?? '').toLowerCase();
   const scoped = candidates.find((entry) => (
     [entry.organization, entry.repository].filter(Boolean).join('/').toLowerCase() === runtimeRepository
@@ -298,40 +298,40 @@ function laterDate(left, right) {
  * @param {string} mode
  * @returns {HTMLElement}
  */
-export function renderPackageUtilization(sources, mode = 'all') {
+export function renderCampaignUtilization(sources, mode = 'all') {
   const workflows = rowsFor(sources, 'workflows');
   const usage = rowsFor(sources, 'usage');
-  const packages = summarizePackages(workflows);
-  const utilization = summarizeUtilization(packages, usage, mode);
+  const campaigns = summarizeCampaigns(workflows);
+  const utilization = summarizeUtilization(campaigns, usage, mode);
   const usageMetadata = sources.usage?.metadata;
   const available = Boolean(sources.usage) && usageMetadata?.availability !== 'unavailable';
   const windowLabel = sourceWindowLabel(usageMetadata);
   const modeLabel = mode;
-  const headingId = 'packages-utilization-heading';
+  const headingId = 'campaigns-utilization-heading';
 
   return h(
     'section',
-    { className: 'package-utilization', 'aria-labelledby': headingId },
+    { className: 'campaign-utilization', 'aria-labelledby': headingId },
     renderPanelHeader(
       headingId,
-      'Package AIC utilization',
+      'Campaign AIC utilization',
       available
-        ? `Actual AI Credits against summed per-run limits for ${modeLabel} package runs retained from ${windowLabel}.`
+        ? `Actual AI Credits against summed per-run limits for ${modeLabel} campaign runs retained from ${windowLabel}.`
         : 'AI Credit usage artifacts are unavailable.',
-      { className: 'package-utilization-heading' }
+      { className: 'campaign-utilization-heading' }
     ),
     h(
       'div',
-      { className: 'package-utilization-grid' },
-      ...(packages.length > 0
-        ? packages.map((entry) => renderUtilizationCard(entry, utilization.get(entry.key), available))
-        : [renderEmptyMessage('No centrally managed packages were observed.')])
+      { className: 'campaign-utilization-grid' },
+      ...(campaigns.length > 0
+        ? campaigns.map((entry) => renderUtilizationCard(entry, utilization.get(entry.key), available))
+        : [renderEmptyMessage('No centrally managed campaigns were observed.')])
     )
   );
 }
 
 /**
- * @param {ReturnType<typeof summarizePackages>[number]} entry
+ * @param {ReturnType<typeof summarizeCampaigns>[number]} entry
  * @param {{ used: number, allowed: number, reportedRuns: number } | undefined} utilization
  * @param {boolean} available
  * @returns {HTMLElement}
@@ -356,12 +356,12 @@ function renderUtilizationCard(entry, utilization, available) {
   return h(
     'article',
     {
-      className: `package-utilization-card utilization-${status}`,
+      className: `campaign-utilization-card utilization-${status}`,
       dataset: {
-        packageId: entry.id,
-        packageKey: entry.key,
-        packageOrganization: entry.organization,
-        packageRepository: entry.repository
+        campaignId: entry.id,
+        campaignKey: entry.key,
+        campaignOrganization: entry.organization,
+        campaignRepository: entry.repository
       }
     },
     h(
@@ -369,11 +369,11 @@ function renderUtilizationCard(entry, utilization, available) {
       null,
       h(
         'span',
-        { className: 'package-utilization-identity' },
-        renderPackageIdentityLink(entry, 'strong'),
+        { className: 'campaign-utilization-identity' },
+        renderCampaignIdentityLink(entry, 'strong'),
         scopeLabel ? h('small', null, scopeLabel) : null
       ),
-      h('span', { className: 'package-utilization-value' }, ratio === null ? '' : formatPercent(ratio))
+      h('span', { className: 'campaign-utilization-value' }, ratio === null ? '' : formatPercent(ratio))
     ),
     h(
       'div',
@@ -385,8 +385,8 @@ function renderUtilizationCard(entry, utilization, available) {
       'small',
       null,
       entry.completeAttemptAllowance === null
-        ? 'Complete package attempt allowance unavailable'
-        : `${formatAic(entry.completeAttemptAllowance)} AIC allowance per complete package attempt`
+        ? 'Complete campaign attempt allowance unavailable'
+        : `${formatAic(entry.completeAttemptAllowance)} AIC allowance per complete campaign attempt`
     )
   );
 }
@@ -397,19 +397,19 @@ function renderUtilizationCard(entry, utilization, available) {
  * @returns {HTMLElement}
  */
 export function renderRunTrend(sources, mode = 'all') {
-  const packages = summarizePackages(rowsFor(sources, 'workflows'));
-  const activity = packageActivityRuns(packages, sources, mode);
+  const campaigns = summarizeCampaigns(rowsFor(sources, 'workflows'));
+  const activity = campaignActivityRuns(campaigns, sources, mode);
   const runsSource = activity.source;
   const modeLabel = titleCase(mode);
   const heading = `${modeLabel} runs over time`;
-  const headingId = 'packages-trend-heading';
+  const headingId = 'campaigns-trend-heading';
   if (!runsSource || runsSource.metadata?.availability === 'unavailable') {
-    return renderUnavailableRunTrend(heading, headingId, 'Package run data is unavailable.');
+    return renderUnavailableRunTrend(heading, headingId, 'Campaign run data is unavailable.');
   }
   const allRuns = activity.rows;
   const trendDays = buildTrendDays(runsSource, allRuns);
   if (trendDays.length === 0) {
-    return renderUnavailableRunTrend(heading, headingId, 'Package run trend is unavailable because no reporting date was provided.');
+    return renderUnavailableRunTrend(heading, headingId, 'Campaign run trend is unavailable because no reporting date was provided.');
   }
   const windowStart = trendDays[0]?.getTime() ?? Number.NEGATIVE_INFINITY;
   const windowEnd = (trendDays.at(-1)?.getTime() ?? Number.POSITIVE_INFINITY) + DAY_IN_MILLISECONDS;
@@ -423,11 +423,11 @@ export function renderRunTrend(sources, mode = 'all') {
     cancelled: cumulativeCounts(trendDays, runs.filter((row) => row['run-conclusion'] === 'cancelled'))
   };
   const maximum = Math.max(1, ...series.successful, ...series.failed, ...series.cancelled);
-  const chartDescription = `Daily cumulative successful, failed, and cancelled ${modeLabel.toLowerCase()} package run counts.`;
+  const chartDescription = `Daily cumulative successful, failed, and cancelled ${modeLabel.toLowerCase()} campaign run counts.`;
 
   return h(
     'section',
-    { className: 'package-trend-panel', 'aria-labelledby': headingId },
+    { className: 'campaign-trend-panel', 'aria-labelledby': headingId },
     h(
       'header',
       null,
@@ -442,18 +442,18 @@ export function renderRunTrend(sources, mode = 'all') {
           h('span', null, `as of ${formatDate(trendDays.at(-1))}`)
         )
       ),
-      h('span', { className: 'package-trend-group' }, 'Group by: ', h('strong', null, 'Status'))
+      h('span', { className: 'campaign-trend-group' }, 'Group by: ', h('strong', null, 'Status'))
     ),
     h(
       'div',
-      { className: 'package-trend-legend', 'aria-label': 'Run status legend' },
+      { className: 'campaign-trend-legend', 'aria-label': 'Run status legend' },
       renderLegendItem('successful', 'Successful'),
       renderLegendItem('failed', 'Failed'),
       renderLegendItem('cancelled', 'Cancelled')
     ),
     h(
       'div',
-      { className: 'package-trend-chart' },
+      { className: 'campaign-trend-chart' },
       h(
         'svg',
         {
@@ -470,14 +470,14 @@ export function renderRunTrend(sources, mode = 'all') {
         h('text', { x: 8, y: 54 }, formatNumber(maximum)),
         h('text', { x: 8, y: 129 }, formatNumber(maximum / 2)),
         h('text', { x: 8, y: 204 }, '0'),
-        h('polyline', { className: 'package-chart-successful', points: trendPoints(series.successful, maximum) }),
-        h('polyline', { className: 'package-chart-failed', points: trendPoints(series.failed, maximum) }),
-        h('polyline', { className: 'package-chart-cancelled', points: trendPoints(series.cancelled, maximum) }),
+        h('polyline', { className: 'campaign-chart-successful', points: trendPoints(series.successful, maximum) }),
+        h('polyline', { className: 'campaign-chart-failed', points: trendPoints(series.failed, maximum) }),
+        h('polyline', { className: 'campaign-chart-cancelled', points: trendPoints(series.cancelled, maximum) }),
         ...renderTrendPoints(trendDays, series, maximum)
       ),
       h(
         'div',
-        { className: 'package-trend-axis' },
+        { className: 'campaign-trend-axis' },
         h('span', null, formatDate(trendDays[0], true)),
         h('span', null, formatDate(trendDays.at(-1), true))
       )
@@ -494,7 +494,7 @@ export function renderRunTrend(sources, mode = 'all') {
 function renderUnavailableRunTrend(heading, headingId, message) {
   return h(
     'section',
-    { className: 'package-trend-panel', 'aria-labelledby': headingId },
+    { className: 'campaign-trend-panel', 'aria-labelledby': headingId },
     renderPanelHeader(headingId, heading),
     renderEmptyMessage(message)
   );
@@ -506,7 +506,7 @@ function renderUnavailableRunTrend(heading, headingId, message) {
  * @returns {HTMLElement}
  */
 function renderLegendItem(status, label) {
-  return h('span', null, renderLegendSwatch(`package-legend-${status}`), label);
+  return h('span', null, renderLegendSwatch(`campaign-legend-${status}`), label);
 }
 
 /**
@@ -527,17 +527,17 @@ function renderTrendPoints(days, series, maximum) {
     const label = `${formatDate(day, true)}: ${values.successful} successful, ${values.failed} failed, ${values.cancelled} cancelled runs`;
     return /** @type {SVGElement} */ (/** @type {unknown} */ (h(
       'g',
-      { className: 'package-chart-point', tabIndex: 0, role: 'img', 'aria-label': label },
-      h('rect', { className: 'package-point-hit', x: x - 12, y: 40, width: 24, height: 170 }),
+      { className: 'campaign-chart-point', tabIndex: 0, role: 'img', 'aria-label': label },
+      h('rect', { className: 'campaign-point-hit', x: x - 12, y: 40, width: 24, height: 170 }),
       ...Object.entries(values).map(([status, value]) => h('circle', {
-        className: `package-point-marker package-point-marker-${status}`,
+        className: `campaign-point-marker campaign-point-marker-${status}`,
         cx: x,
         cy: 200 - (value * 150 / maximum),
         r: 5
       })),
       h(
         'g',
-        { className: 'package-point-tooltip', transform: `translate(${tooltipX} 44)`, 'aria-hidden': 'true' },
+        { className: 'campaign-point-tooltip', transform: `translate(${tooltipX} 44)`, 'aria-hidden': 'true' },
         h('rect', { width: 190, height: 92, rx: 6 }),
         h('text', { className: 'tooltip-date', x: 12, y: 20 }, formatDate(day, true)),
         renderTooltipLine('successful', 'Successful', values.successful, 42),
@@ -568,15 +568,15 @@ function renderTooltipLine(status, label, value, y) {
 /**
  * @param {Array<Record<string, unknown>>} workflows
  */
-function summarizePackages(workflows) {
+function summarizeCampaigns(workflows) {
   /** @type {Map<string, Array<Record<string, unknown>>>} */
   const grouped = new Map();
   for (const row of workflows) {
-    if (!isPackageWorkflow(row)) continue;
-    const packageKey = scopedEntityKey(row, 'package');
-    const rows = grouped.get(packageKey) ?? [];
+    if (!isCampaignWorkflow(row)) continue;
+    const campaignKey = scopedEntityKey(row, 'campaign');
+    const rows = grouped.get(campaignKey) ?? [];
     rows.push(row);
-    grouped.set(packageKey, rows);
+    grouped.set(campaignKey, rows);
   }
 
   return [...grouped.entries()].map(([key, rows]) => {
@@ -586,12 +586,12 @@ function summarizePackages(workflows) {
       .map((row) => [scopedEntityKey(row, 'workflow'), /** @type {number} */ (row['max-ai-credits'])]));
     const summedAllowance = [...uniqueWorkflowAllowances.values()]
       .reduce((total, value) => total + value, 0);
-    const id = String(firstRow.package);
+    const id = String(firstRow.campaign);
     return {
       key,
       id,
-      name: String(rows.find((row) => typeof row['package-name'] === 'string')?.['package-name'] ?? titleCase(id)),
-      icon: String(rows.find((row) => typeof row['package-icon'] === 'string')?.['package-icon'] ?? 'package'),
+      name: String(rows.find((row) => typeof row['campaign-name'] === 'string')?.['campaign-name'] ?? titleCase(id)),
+      icon: String(rows.find((row) => typeof row['campaign-icon'] === 'string')?.['campaign-icon'] ?? 'goal'),
       organization: String(firstRow.organization ?? ''),
       repository: String(firstRow.repository ?? ''),
       completeAttemptAllowance: uniqueWorkflowAllowances.size > 0 ? summedAllowance : null,
@@ -600,35 +600,35 @@ function summarizePackages(workflows) {
   }).sort((left, right) => left.name.localeCompare(right.name));
 }
 
-/** @param {string} packageId */
-function packageInsightsHref(packageId) {
-  return `#page-package-insights?package=${encodeURIComponent(packageId)}`;
+/** @param {string} campaignId */
+function campaignInsightsHref(campaignId) {
+  return `#page-campaign-insights?campaign=${encodeURIComponent(campaignId)}`;
 }
 
 /**
- * Renders the shared package-identity link (icon plus name) used by both the
+ * Renders the shared campaign-identity link (icon plus name) used by both the
  * summary table and the utilization card header, wrapping the name in the
  * caller-selected inline element.
  * @param {{ id: string, icon: string, name: string }} entry
  * @param {'span'|'strong'} nameTag
  * @returns {HTMLElement}
  */
-function renderPackageIdentityLink(entry, nameTag) {
-  return renderIdentityLink({ href: packageInsightsHref(entry.id), icon: entry.icon, label: entry.name, labelTag: nameTag });
+function renderCampaignIdentityLink(entry, nameTag) {
+  return renderIdentityLink({ href: campaignInsightsHref(entry.id), icon: entry.icon, label: entry.name, labelTag: nameTag });
 }
 
 /**
- * @param {ReturnType<typeof summarizePackages>} packages
+ * @param {ReturnType<typeof summarizeCampaigns>} campaigns
  * @param {Array<Record<string, unknown>>} usage
  * @param {string} mode
  * @returns {Map<string, { used: number, allowed: number, reportedRuns: number }>}
  */
-function summarizeUtilization(packages, usage, mode) {
-  const workflowDetails = new Map(packages.flatMap((entry) => entry.workflows.map((row) => [
+function summarizeUtilization(campaigns, usage, mode) {
+  const workflowDetails = new Map(campaigns.flatMap((entry) => entry.workflows.map((row) => [
     scopedEntityKey(row, 'workflow'),
-    { packageKey: entry.key, allowance: Number(row['max-ai-credits']) }
+    { campaignKey: entry.key, allowance: Number(row['max-ai-credits']) }
   ])));
-  /** @type {Map<string, { packageKey: string, used: number, allowance: number }>} */
+  /** @type {Map<string, { campaignKey: string, used: number, allowance: number }>} */
   const runs = new Map();
   for (const row of usage) {
     if (mode !== 'all' && row['rollout-mode'] !== mode) continue;
@@ -637,9 +637,9 @@ function summarizeUtilization(packages, usage, mode) {
     if (!details || !Number.isFinite(aic) || aic < 0) continue;
     const runId = String(row.run ?? row.invocation ?? '');
     if (!runId) continue;
-    const key = JSON.stringify([details.packageKey, scopedEntityKey(row, row.run == null ? 'invocation' : 'run')]);
+    const key = JSON.stringify([details.campaignKey, scopedEntityKey(row, row.run == null ? 'invocation' : 'run')]);
     const run = runs.get(key) ?? {
-      packageKey: details.packageKey,
+      campaignKey: details.campaignKey,
       used: 0,
       allowance: Number.isFinite(details.allowance) && details.allowance > 0 ? details.allowance : 0
     };
@@ -649,11 +649,11 @@ function summarizeUtilization(packages, usage, mode) {
   /** @type {Map<string, { used: number, allowed: number, reportedRuns: number }>} */
   const totals = new Map();
   for (const run of runs.values()) {
-    const total = totals.get(run.packageKey) ?? { used: 0, allowed: 0, reportedRuns: 0 };
+    const total = totals.get(run.campaignKey) ?? { used: 0, allowed: 0, reportedRuns: 0 };
     total.used += run.used;
     total.allowed += run.allowance;
     total.reportedRuns += 1;
-    totals.set(run.packageKey, total);
+    totals.set(run.campaignKey, total);
   }
   return totals;
 }
@@ -711,9 +711,9 @@ function sourceWindowLabel(metadata) {
  * @param {Record<string, unknown>} row
  * @returns {boolean}
  */
-function isPackageWorkflow(row) {
-  return typeof row.package === 'string'
-    && row.package.length > 0
+function isCampaignWorkflow(row) {
+  return typeof row.campaign === 'string'
+    && row.campaign.length > 0
     && (row['workflow-role'] === 'orchestrator' || row['workflow-role'] === 'worker');
 }
 

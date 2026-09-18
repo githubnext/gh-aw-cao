@@ -36,7 +36,7 @@
         "filter": {
           "predicates": [
             {
-              "field": "package",
+              "field": "campaign",
               "equals": "software-development-practices"
             }
           ]
@@ -120,7 +120,7 @@
             "data": {
               "source": "development-practices-guidance",
               "filters": {
-                "package": [
+                "campaign": [
                   "software-development-practices"
                 ]
               },
@@ -283,7 +283,7 @@
     ],
     "navigation": [
       {
-        "label": "Package operations",
+        "label": "Campaign operations",
         "experimental": true,
         "pages": [
           "software-development-practices-dashboard"

@@ -2,18 +2,18 @@
 
 Use this as a lookup from configuration to verified behavior. Examples assume 25 discovered repositories. `-` means unset or not applicable. Statuses are `🟢 Pass` and `🔴 Fail`.
 
-Run dependency-free contract tests with `npm run test:unit`. Run local failure-injection tests with `npm run test:integration`. Run the authenticated clean-room package tests with `npm run test:package-lifecycle`; they require gh-aw, `GH_TOKEN`, and public GitHub access. Run `npm run test:package-root` to install only the root `aw.yml` package, which the Release workflow uses to stay within GitHub API rate limits. Run synthetic enterprise scale tests with `npm run test:load`. `npm test` runs unit and local integration tests, while `npm run check` adds load tests, visual checks, compilation, and documentation builds. Use `npm run compile:locks` when updating tracked lock files. CI runs package lifecycle tests in a separate job and sets `CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE` to the exact commit under test so package installation validates pull-request contents rather than only the default branch. The CI job reports the lifecycle check as infrastructure-incomplete when the shared GitHub App installation lacks enough core API capacity to run the clean-room suite.
+Run dependency-free contract tests with `npm run test:unit`. Run local failure-injection tests with `npm run test:integration`. Run the authenticated clean-room campaign tests with `npm run test:campaign-lifecycle`; they require gh-aw, `GH_TOKEN`, and public GitHub access. Run `npm run test:campaign-root` to install only the root `aw.yml` campaign, which the Release workflow uses to stay within GitHub API rate limits. Run synthetic enterprise scale tests with `npm run test:load`. `npm test` runs unit and local integration tests, while `npm run check` adds load tests, visual checks, compilation, and documentation builds. Use `npm run compile:locks` when updating tracked lock files. CI runs campaign lifecycle tests in a separate job and sets `CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE` to the exact commit under test so campaign installation validates pull-request contents rather than only the default branch. The CI job reports the lifecycle check as infrastructure-incomplete when the shared GitHub App installation lacks enough core API capacity to run the clean-room suite.
 
-The automated suite checks source `.md` contracts, ops-value interfaces, smoke-workflow safety, generated workflows, and `gh aw add`/`gh aw update` package behavior. It does not execute agentic workflows or spend AI Credits; the manual `Review smoke` Actions workflow performs that opt-in runtime check.
+The automated suite checks source `.md` contracts, ops-value interfaces, smoke-workflow safety, generated workflows, and `gh aw add`/`gh aw update` campaign behavior. It does not execute agentic workflows or spend AI Credits; the manual `Review smoke` Actions workflow performs that opt-in runtime check.
 
 ## Test Suite
 
 | Layer | Location | Command | Coverage |
 | --- | --- | --- | --- |
-| Unit | `tests/unit/` | `npm run test:unit` | Policy matrices, workflow contracts, safety limits, generated settings, and package manifest structure. |
+| Unit | `tests/unit/` | `npm run test:unit` | Policy matrices, workflow contracts, safety limits, generated settings, and campaign manifest structure. |
 | Integration | `tests/integration/control-*.test.mjs` | `npm run test:integration` | Pre-activation admission, policy resolution, and fail-closed execution of the actual control precompute shell. |
-| Package lifecycle | `tests/integration/package-lifecycle.test.mjs` | `npm run test:package-lifecycle` | Authenticated clean-room `gh aw add`/`update` behavior. |
-| Root package install | `tests/integration/package-lifecycle.test.mjs` | `npm run test:package-root` | Authenticated clean-room install of the root `aw.yml` package only; used by the Release workflow to limit API usage. |
+| Campaign lifecycle | `tests/integration/campaign-lifecycle.test.mjs` | `npm run test:campaign-lifecycle` | Authenticated clean-room `gh aw add`/`update` behavior. |
+| Root campaign install | `tests/integration/campaign-lifecycle.test.mjs` | `npm run test:campaign-root` | Authenticated clean-room install of the root `aw.yml` campaign only; used by the Release workflow to limit API usage. |
 | Load | `tests/load/` | `npm run test:load` | Actual pagination, deterministic batching, and admission logic over 100,000 synthetic repositories, including bounded API failure. |
 | Compilation | Source workflows | `npm run compile` | All agentic workflow sources compile without emitting repository artifacts; unit contracts reject HTML-escaped operators in tracked expressions. |
 | Runtime review | `.github/workflows/review-smoke.yml` | Manual Actions dispatch | One bounded target and its workers complete; outputs route to a private review repository and target refs and issues remain unchanged. |
@@ -21,21 +21,21 @@ The automated suite checks source `.md` contracts, ops-value interfaces, smoke-w
 | Runtime stress | `.github/workflows/enterprise-stress.yml` | Manual protected Actions dispatch | Repository-local two, three, or five same-scope review runs verify cancellation and no target mutation. |
 | Ops Publish | `tests/unit/ops-publish*.test.mjs` | `node --test tests/unit/ops-publish*.test.mjs` | Reviewer, provenance, routing, authority, least-privilege, API failure, retry, pagination, and publication contracts. |
 
-## Package Lifecycle Integration
+## Campaign Lifecycle Integration
 
 The integration suite creates disposable consumer repositories under the system temporary directory and removes them after each test.
 
 | Test result | Command | Checked behavior |
 | --- | --- | --- |
-| 🟢 Pass | `gh aw add` | Installs the core orchestrators and workers, shared imports, packaged skills and agent, and package manifest; focused UK AI Advisory and EU CRA packages are validated separately. |
-| 🟢 Pass | `gh aw update --force` | Replaces a locally modified package workflow and restores deleted workflow dependencies, skills, and agent files for a branch-tracked package. |
+| 🟢 Pass | `gh aw add` | Installs the core orchestrators and workers, shared imports, bundled skills and agent, and campaign manifest; focused UK AI Advisory and EU CRA campaigns are validated separately. |
+| 🟢 Pass | `gh aw update --force` | Replaces a locally modified campaign workflow and restores deleted workflow dependencies, skills, and agent files for a branch-tracked campaign. |
 | 🟢 Pass | Dashboard `gh aw add` and `gh aw add --force` | Installs and restores the reusable builder, manual standalone publisher, and all deterministic report modules. |
 
 ## Enterprise Integration and Load
 
 | Test result | Scenario | Checked behavior |
 | --- | --- | --- |
-| 🟢 Pass | Pre-activation admission | The actual `.github/workflows/shared/control.mjs` `admit` command authorizes declared packages and fails closed for disabled packages, malformed policy, and unavailable policy content. |
+| 🟢 Pass | Pre-activation admission | The actual `.github/workflows/shared/control.mjs` `admit` command authorizes declared campaigns and fails closed for disabled campaigns, malformed policy, and unavailable policy content. |
 | 🟢 Pass | Control validation and authorization | The actual control precompute shell passes 54 success, failure, disablement, review-isolation, live-authorization, and output-binding cases. |
 | 🟢 Pass | 100,000-repository inventory | Pagination stops at 1,000 pages, retains exactly 100,000 candidates, and applies the 10%/1,000 target cap within 120 seconds. |
 | 🟢 Pass | Deterministic cell and batch selection | Stable repository IDs assign every selected candidate to one cell; bounded batches share an inventory version and have distinct batch IDs. |
@@ -51,7 +51,7 @@ Mode controls how declared [safe outputs](https://github.github.com/gh-aw/refere
 
 ### Trigger: Schedule (`on.schedule`)
 
-Schedule-triggered runs use the configured package mode.
+Schedule-triggered runs use the configured campaign mode.
 
 | Test result | Configured mode | Checked scheduled behavior |
 | --- | --- | --- |
@@ -66,7 +66,7 @@ Manual-triggered runs use the `safe_output_mode` workflow input. They run indepe
 | --- | --- | --- |
 | 🟢 Pass | `review` | Run starts and safe outputs default to the control-plane repository. |
 | 🟢 Pass | `live` | Run starts and declared safe outputs may target the live destination. |
-| 🟢 Pass | Either mode with package enabled | Run starts independently of scheduled configuration. |
+| 🟢 Pass | Either mode with campaign enabled | Run starts independently of scheduled configuration. |
 
 ## Routing safe outputs for Review
 
@@ -120,8 +120,8 @@ Invalid caps, out-of-scope owners, and incomplete control facts stop before work
 | 🟢 Pass | Invalid cell count/index or batch size/index | Rejected. |
 | 🟢 Pass | Target or review repository outside `control-plane.scope.allowed-owners` | Rejected. |
 | 🟢 Pass | Unknown or removed mode | Rejected before agent execution. |
-| 🟢 Pass | Invalid package kill-switch value | Rejected before agent execution. |
-| 🟢 Pass | Package kill switch set to `false` | Produces zero capacity and dispatches without repository inspection. |
+| 🟢 Pass | Invalid campaign kill-switch value | Rejected before agent execution. |
+| 🟢 Pass | Campaign kill switch set to `false` | Produces zero capacity and dispatches without repository inspection. |
 | 🟢 Pass | Missing worker target or non-positive correlation ID | Rejected before target or review repository access. |
 
 ## Enterprise Safety
@@ -135,7 +135,7 @@ Invalid caps, out-of-scope owners, and incomplete control facts stop before work
 | 🟢 Pass | Duplicate workflow display names | Workers resolve only by exact generated path; analytics group by workflow path. |
 | 🟢 Pass | Enterprise and organization planes target the same repository | Independent provenance, policy, credentials, and kill switches are preserved. |
 | 🟢 Pass | Direct worker dispatch | Target and safe-output owners still pass the trusted allowlist. |
-| 🟢 Pass | Worker ceiling omitted | Worker remains enabled and inherits the resolved package or exact-target mode. |
+| 🟢 Pass | Worker ceiling omitted | Worker remains enabled and inherits the resolved campaign or exact-target mode. |
 | 🟢 Pass | Review destination is public or inaccessible | Rejected before agent execution. |
 | 🟢 Pass | Aggregate AI Credit request exceeds `1100` default | Repository selection is reduced to fit the shared cap. |
 | 🟢 Pass | Public targets without an App or PAT | Built-in `GITHUB_TOKEN` supports bounded review runs in the control repository; private access, alternate review repositories, and live target writes remain prohibited. |
@@ -156,10 +156,10 @@ Compilation checks prove the source policy reaches the generated GitHub Actions 
 | 🟢 Pass | AI Credit Auditor | Standard dispatch envelope and safe output settings compile. |
 | 🟢 Pass | AI Credit Optimizer | Standard dispatch envelope and safe output settings compile. |
 | 🟢 Pass | All worker workflow safe outputs | Review/live routing vocabulary checked. |
-| 🟢 Pass | All generated package workflows | Emitted activation gates, transitive job dependencies, review isolation, live authority, output binding, and removed-mode settings checked in a clean-room compile. |
-| 🟢 Pass | Core catalog package | Installs the complete dashboard package while keeping its standalone Pages publisher manual-only. |
+| 🟢 Pass | All generated campaign workflows | Emitted activation gates, transitive job dependencies, review isolation, live authority, output binding, and removed-mode settings checked in a clean-room compile. |
+| 🟢 Pass | Core catalog campaign | Installs the complete dashboard campaign while keeping its standalone Pages publisher manual-only. |
 | 🟢 Pass | Operational value | Schema-v4 evaluators are registered by workers and the dashboard consumes actual `grader_results.json` observations. |
-| 🟢 Pass | Dashboard package | Root and focused installations include the same dashboard destinations; reusable builds mount under a relative path and standalone deployment remains manual and access-controlled. |
-| 🟢 Pass | Grader package transport | gh-aw installs and restores referenced `.github/workflows/graders/*.sh` files in clean package consumers. |
+| 🟢 Pass | Dashboard campaign | Root and focused installations include the same dashboard destinations; reusable builds mount under a relative path and standalone deployment remains manual and access-controlled. |
+| 🟢 Pass | Grader campaign transport | gh-aw installs and restores referenced `.github/workflows/graders/*.sh` files in clean campaign consumers. |
 
-Exhaustive coverage: 24 scheduled plus 96 manual cases, for 120 unique policy configurations and 22 user-facing scenarios. The custom review-bundle job retains gh-aw's internal `GH_AW_SAFE_OUTPUTS_STAGED` dry-run signal; it is compiler plumbing, not a public package mode.
+Exhaustive coverage: 24 scheduled plus 96 manual cases, for 120 unique policy configurations and 22 user-facing scenarios. The custom review-bundle job retains gh-aw's internal `GH_AW_SAFE_OUTPUTS_STAGED` dry-run signal; it is compiler plumbing, not a public campaign mode.

@@ -6,7 +6,7 @@ experimental: true
 includes:
   - ../aw.yml
   - .github/workflows/uk-ai-advisory.md
-  - .github/workflows/uk-ai-advisory-package-maintainer.md
+  - .github/workflows/uk-ai-advisory-campaign-maintainer.md
 resources:
   - source: cao.json
     destination: .github/aw/uk-ai-advisory/cao.json

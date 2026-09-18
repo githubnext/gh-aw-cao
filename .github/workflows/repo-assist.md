@@ -62,7 +62,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: repo-assist
+      campaign: repo-assist
       role: orchestrator
       dispatch_max: 3
       orchestrator_credits: 250

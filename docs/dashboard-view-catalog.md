@@ -21,7 +21,7 @@ These are the default product destinations. They are custom pages composed from 
 | --- | --- | --- | --- |
 | `overview` | Overview | `factory-header`, `factory-floor` | Summarizes current motion, outcomes, delivery, runs, dispatches, value, and weekly rhythm. |
 | `work` | Work | `work-project-view` | Presents delegated work as board, task, and roadmap modes. |
-| `agents` | Operations | `agent-marketplace-view` | Presents the policy-scoped package and agent marketplace. |
+| `agents` | Operations | `agent-marketplace-view` | Presents the policy-scoped campaign and agent marketplace. |
 | `insights` | Insights | `insights-overview` | Composes outcomes, value, usage, runtime, security, and experiment evidence. |
 | `configuration` | Settings | `configuration-policy` | Presents checked-in control policy and its editable settings surface. |
 
@@ -34,7 +34,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 | `overview` | Cross-domain operational overview with availability and filter context. |
 | `organizations` | Organization inventory and aggregate repository, workflow, run, and usage activity. |
 | `repositories` | Repository activity, workflow coverage, failures, and usage. |
-| `packages` | Installed package inventory, registration, modes, runs, and utilization. |
+| `campaigns` | Installed campaign inventory, registration, modes, runs, and utilization. |
 | `workflows` | Workflow inventory, role, rollout mode, activity, runs, and usage. |
 | `runs` | Workflow run status, conclusion, model, engine, timing, and repository context. |
 | `audits` | Ordered audit evidence linked directly to retained runs. |
@@ -80,22 +80,22 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | Element | Purpose |
 | --- | --- |
 | `domain-attention` | Renders data-driven attention summaries by operational domain. |
-| `package-status-grid` | Shows compact status across installed packages. |
+| `campaign-status-grid` | Shows compact status across installed campaigns. |
 | `summary-grid` | Presents a reusable grid of summarized values. |
 | `readiness-verdict` | Presents the control-plane readiness decision and supporting evidence. |
 | `context-summary` | Summarizes the active scope and contextual evidence. |
 | `anomaly-readiness` | Presents anomaly-detection readiness and gaps. |
 | `signal-list` | Presents a compact list of evidence-backed signals. |
-| `package-activity` | Composes package activity views. |
-| `package-activity-shell` | Coordinates package activity modes and shared chrome. |
-| `package-utilization` | Presents package utilization measures. |
-| `package-run-trend` | Presents package run history and trend. |
-| `package-summary-table` | Presents the package summary table. |
-| `package-insights` | Presents the insights variant of a routed package page. |
-| `package-detail` | Presents the workflows variant of a routed package page. |
-| `package-dispatches` | Compatibility element that presents the workflow-runs variant of a routed package page. |
-| `package-reports` | Presents the reports variant of a routed package page. |
-| `package-route` | Resolves and composes a route-selected package experience. |
+| `campaign-activity` | Composes campaign activity views. |
+| `campaign-activity-shell` | Coordinates campaign activity modes and shared chrome. |
+| `campaign-utilization` | Presents campaign utilization measures. |
+| `campaign-run-trend` | Presents campaign run history and trend. |
+| `campaign-summary-table` | Presents the campaign summary table. |
+| `campaign-insights` | Presents the insights variant of a routed campaign page. |
+| `campaign-detail` | Presents the workflows variant of a routed campaign page. |
+| `campaign-dispatches` | Compatibility element that presents the workflow-runs variant of a routed campaign page. |
+| `campaign-reports` | Presents the reports variant of a routed campaign page. |
+| `campaign-route` | Resolves and composes a route-selected campaign experience. |
 | `workflow-route` | Resolves a route-selected workflow experience. |
 | `workflow-route-page` | Composes a complete routed workflow page. |
 | `outcome-detail` | Presents one outcome and its linked evidence. |
@@ -104,7 +104,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `configuration-actions` | Presents approved configuration actions. |
 | `local-database` | Presents local canonical database diagnostics. |
 | `work-project-view` | Presents delegated work in board, task, and roadmap modes. |
-| `agent-marketplace-view` | Presents policy-scoped packages and agent capabilities. |
+| `agent-marketplace-view` | Presents policy-scoped campaigns and agent capabilities. |
 | `insights-overview` | Composes the primary cross-domain Insights experience. |
 | `factory-header` | Presents factory status, retained-output context, work in motion, and weekly rhythm. |
 | `factory-floor` | Presents linked repository, run, dispatch, and value stations. |

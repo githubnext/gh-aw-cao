@@ -42,16 +42,16 @@ cao init
 ```
 
 The command refuses to replace an existing `.github/workflows/cao.json`. Install an
-operational package and merge its declared orchestrator and workers into that policy with:
+operational campaign and merge its declared orchestrator and workers into that policy with:
 
 ```bash
 cao add githubnext/gh-aw-cao/dependabot
 ```
 
-`cao add` forwards remaining arguments to `gh aw add`, preserves operator-owned package
+`cao add` forwards remaining arguments to `gh aw add`, preserves operator-owned campaign
 settings, and does not copy live mode or broader rollout into the policy. If the policy is
-missing, `cao add` creates the same minimal policy as `cao init` after the package installs.
-Upgrade `gh-aw` to the policy minimum, update every installed package, and refresh CAO
+missing, `cao add` creates the same minimal policy as `cao init` after the campaign installs.
+Upgrade `gh-aw` to the policy minimum, update every installed campaign, and refresh CAO
 worker declarations with:
 
 ```bash
@@ -59,7 +59,7 @@ cao update
 ```
 
 `cao update` forwards remaining arguments to `gh aw update`, preserves operator-owned
-package settings, and does not enable live mode or broaden repository scope.
+campaign settings, and does not enable live mode or broaden repository scope.
 
 ### 1. Local development mode
 
@@ -98,7 +98,7 @@ itself is not guaranteed to be at a fixed path.
    miss and must be treated as a fallback condition, not an error — fall back to
    bounded read-only GitHub or `agentic-workflows` tool calls instead.
 2. Resolve the CLI entry point. It lives at a different path depending on whether this
-   is the source-managed control repository or an installed package:
+   is the source-managed control repository or an installed campaign:
 
    ```bash
    if [ -f activity/cao.mjs ]; then

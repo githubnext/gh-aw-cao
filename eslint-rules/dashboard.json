@@ -64,7 +64,7 @@
         "filter": {
           "predicates": [
             {
-              "field": "package",
+              "field": "campaign",
               "equals": "eslint-rules"
             }
           ]
@@ -163,7 +163,7 @@
             "data": {
               "source": "eslint-rules-adoption-outcomes",
               "filters": {
-                "package": [
+                "campaign": [
                   "eslint-rules"
                 ]
               },
@@ -226,7 +226,7 @@
     ],
     "navigation": [
       {
-        "label": "Package operations",
+        "label": "Campaign operations",
         "experimental": true,
         "pages": ["eslint-rules-dashboard"]
       }

@@ -42,7 +42,7 @@
         "filter": {
           "predicates": [
             {
-              "field": "package",
+              "field": "campaign",
               "equals": "cao-evolution"
             }
           ]
@@ -251,7 +251,7 @@
             "data": {
               "source": "cao-evolution-outcomes",
               "filters": {
-                "package": [
+                "campaign": [
                   "cao-evolution"
                 ]
               },
@@ -378,7 +378,7 @@
     ],
     "navigation": [
       {
-        "label": "Package operations",
+        "label": "Campaign operations",
         "experimental": true,
         "pages": [
           "cao-evolution-dashboard"

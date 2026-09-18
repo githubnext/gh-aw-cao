@@ -1,13 +1,13 @@
 ---
 title: What Is Central Agentic Ops?
-description: Package engineering expertise once, operate across repositories, and prove the outcome.
+description: Campaign engineering expertise once, operate across repositories, and prove the outcome.
 ---
 
 Central Agentic Ops brings **agentic operations as code** to GitHub.
 
-## Package Once. Operate Everywhere.
+## Campaign Once. Operate Everywhere.
 
-Turn engineering expertise into a reusable operation package. Choose a ready
+Turn engineering expertise into a reusable operation campaign. Choose a ready
 operation or build your own, customize it once, run it safely across any set of
 repositories, and prove the value it delivers.
 
@@ -33,16 +33,16 @@ flowchart TB
   you(["You"])
   ready["Discover<br/>ready operations"]
   custom["Create<br/>your own operations"]
-  package["Operation package<br/>your expertise as reusable code"]
+  campaign["Operation campaign<br/>your expertise as reusable code"]
   hub["Operations hub<br/>customize · control · coordinate"]
   estate["Your repositories<br/>one or thousands"]
   outcomes["Proven outcomes<br/>review · cost · value"]
   improve["Improve once<br/>reuse everywhere"]
 
-  you --> ready --> package
-  you --> custom --> package
-  package --> hub --> estate --> outcomes --> you
-  outcomes --> improve --> package
+  you --> ready --> campaign
+  you --> custom --> campaign
+  campaign --> hub --> estate --> outcomes --> you
+  outcomes --> improve --> campaign
 ```
 
 ## What “Central” Means
@@ -61,7 +61,7 @@ maintainers review that change and choose its rollout.
 
 ## Why It Is Different
 
-- **Operations as code:** package a desired repository outcome, not only a
+- **Operations as code:** campaign a desired repository outcome, not only a
   prompt or agent persona.
 - **Ready or custom:** adopt a proven operation or create one unique to your
   organization.

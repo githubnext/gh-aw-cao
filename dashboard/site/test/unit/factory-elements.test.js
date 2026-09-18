@@ -93,7 +93,7 @@ it('renders the factory floor from its independent JSON view and configuration',
   ]);
   expect(rendered?.querySelector('.factory-station:nth-child(2) strong .metric-number-animated')).not.toBeNull();
   expect(rendered?.querySelector('.factory-station:nth-child(3) small a')?.getAttribute('href'))
-    .toBe('#page-dispatches?package-worker-dispatches.status=failure');
+    .toBe('#page-dispatches?campaign-worker-dispatches.status=failure');
   expect(rendered?.getAttribute('aria-label')).toContain('6 repositories registered with 3 delivered to');
 });
 

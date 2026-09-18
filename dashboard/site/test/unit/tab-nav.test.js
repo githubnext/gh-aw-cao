@@ -25,9 +25,9 @@ describe('tab-nav', () => {
   it('renders interactive tabs and supports roving selection with keyboard navigation', () => {
     const onSelect = vi.fn();
     const rendered = renderInteractiveTabs({
-      className: 'package-mode-tabs',
-      ariaLabel: 'Filter package activity by mode',
-      panelId: 'packages-mode-panel',
+      className: 'campaign-mode-tabs',
+      ariaLabel: 'Filter campaign activity by mode',
+      panelId: 'campaigns-mode-panel',
       onSelect,
       tabs: [
         { label: 'All', value: 'all', selected: true },

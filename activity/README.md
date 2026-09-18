@@ -14,7 +14,7 @@ the JSONL shards through the canonical Node.js data pipeline and consolidates
 them for publication. Before log collection, it also enumerates each resolved
 repository's paginated GitHub Actions workflow registry. Those registry rows
 provide workflow paths, names, active or disabled state, and links; target-owned
-workflows remain standalone and never become CAO package workers or rollout
+workflows remain standalone and never become CAO campaign workers or rollout
 authority. Per-repository registry failures are published as partial or
 unavailable source evidence rather than complete empty inventories. It uploads
 the completed snapshot as a one-day artifact.
@@ -49,7 +49,7 @@ Activity has two source classes:
 
 | Input | Authority | Canonical contribution |
 | --- | --- | --- |
-| `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, package configuration, declared control workflows, paginated Actions workflow registries, and maintenance evidence | Package, Repository, declared control Workflow, and standalone repository Workflow observations |
+| `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, campaign configuration, declared control workflows, paginated Actions workflow registries, and maintenance evidence | Campaign, Repository, declared control Workflow, and standalone repository Workflow observations |
 | `gh-aw-logs-shards/*.jsonl` | Observed GitHub Actions execution and agentic audit evidence | Repository, Workflow, Run, Domain, Tool, Audit, and Issue observations |
 
 The SQLite database and browser IndexedDB are
@@ -60,7 +60,7 @@ the normalized `OWNER/REPOSITORY` coordinate available in cached logs. A
 Workflow belongs to that Repository and uses its workflow path when available,
 falling back to a repository-scoped workflow name. A Run uses the GitHub run ID
 plus attempt and references both the Repository where it executed and its
-Workflow. Package targets and dispatch payloads never replace that execution
+Workflow. Campaign targets and dispatch payloads never replace that execution
 repository relationship.
 
 Dashboard selection, grouping, aggregation, and joins remain declarative. The

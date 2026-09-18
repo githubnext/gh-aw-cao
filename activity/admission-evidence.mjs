@@ -50,7 +50,7 @@ export function normalizeAdmissionRecord(value, expected = {}) {
     workflowSha: text(value.workflow_sha, 64) || "",
     runId,
     runAttempt,
-    package: text(value.package) || "",
+    campaign: text(value.campaign) || "",
     role: text(value.role, 32) || "",
     worker: text(value.worker) || "",
     targetRepository: text(value.target_repository) || "",

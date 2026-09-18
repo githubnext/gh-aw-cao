@@ -24,7 +24,7 @@
       "experimental": true,
       "favicon": "./favicon.svg"
     },
-    "packages": {
+    "campaigns": {
       "dashboard": {
         "deploy": false
       },
@@ -242,7 +242,7 @@
     }
   },
   "target-authority": {
-    "packages": {
+    "campaigns": {
       "self-care": {
         "authority": "githubnext/gh-aw-cao"
       },

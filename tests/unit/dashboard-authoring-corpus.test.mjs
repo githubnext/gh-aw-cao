@@ -15,8 +15,8 @@ test("generate-dashboard-ir corpus is indexed and valid", () => {
 });
 
 test("dashboard lint validates every dashboard.json", () => {
-  const packageJson = JSON.parse(readFileSync(resolve(root, "dashboard/site/package.json"), "utf8"));
-  assert.match(packageJson.scripts.lint, /npm run validate:dashboards/);
+  const campaignJson = JSON.parse(readFileSync(resolve(root, "dashboard/site/package.json"), "utf8"));
+  assert.match(campaignJson.scripts.lint, /npm run validate:dashboards/);
   execFileSync("npm", ["--prefix", "dashboard/site", "run", "validate:dashboards"], {
     cwd: root,
     encoding: "utf8",

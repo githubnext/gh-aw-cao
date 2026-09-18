@@ -9,7 +9,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { deriveDataHealthSources } from '../../src/data-health.js';
 import { SOURCE_FIELDS } from '../../src/specification.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
-import { packageDashboardSources } from '../package-dashboard-documents.js';
+import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
 import { dashboardPagePayload, resolveBuiltInPages } from '../../src/dashboard-chunks.js';
 
@@ -17,10 +17,10 @@ const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
   readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8')
 );
-const packageDashboardDocuments = packageDashboardSources.map((source) => JSON.parse(source));
+const campaignDashboardDocuments = campaignDashboardSources.map((source) => JSON.parse(source));
 const authoritativeDashboardDocument = composeDashboardDocuments(
   builtInDashboardDocument,
-  packageDashboardDocuments
+  campaignDashboardDocuments
 );
 
 /** @param {Parameters<typeof renderDashboardView>[0]} input */
@@ -526,21 +526,21 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('binds package and repository version evidence in Maintenance', async () => {
+  it('binds campaign and repository version evidence in Maintenance', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        packages: {
-          source: 'packages',
+        campaigns: {
+          source: 'campaigns',
           rows: [{
-            package: 'remote-agent',
-            'package-name': 'Remote agent',
-            'package-version': 'v1',
-            'package-current-version': 'v2',
-            'package-update-state': 'update-available'
+            campaign: 'remote-agent',
+            'campaign-name': 'Remote agent',
+            'campaign-version': 'v1',
+            'campaign-current-version': 'v2',
+            'campaign-update-state': 'update-available'
           }],
           metadata: {
-            'source-id': 'packages-fixture',
+            'source-id': 'campaigns-fixture',
             'source-kind': 'github',
             'as-of': '2026-09-08T17:24:49.713Z',
             'retrieved-at': '2026-09-08T17:24:49.713Z',
@@ -572,13 +572,13 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'maintenance');
-    const packageUpdates = page?.querySelector('[data-view-id="package-updates"]');
+    const campaignUpdates = page?.querySelector('[data-view-id="campaign-updates"]');
     const compilerUpgrades = page?.querySelector('[data-view-id="compiler-upgrades"]');
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
     expect(page?.querySelectorAll('[data-view-layout="full"]')).toHaveLength(2);
-    expect(packageUpdates?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    expect(campaignUpdates?.querySelectorAll('.document-list-card')).toHaveLength(1);
     expect(compilerUpgrades?.querySelectorAll('.document-list-card')).toHaveLength(1);
-    expect(packageUpdates?.textContent).toContain('Remote agent');
+    expect(campaignUpdates?.textContent).toContain('Remote agent');
     expect(compilerUpgrades?.textContent).toContain('acme/service');
     expect(compilerUpgrades?.textContent).toContain('v0.88.7');
     expect(compilerUpgrades?.textContent).toContain('v0.89.0');
@@ -799,8 +799,8 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'dependabot', 'package-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'review' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'dependabot', 'package-name': 'Dependabot', workflow: '.github/workflows/dependabot-update-planner.yml', 'workflow-name': 'Dependabot / Update Planner', 'workflow-role': 'worker', 'workflow-active': 'true', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot-update-planner.yml', 'workflow-name': 'Dependabot / Update Planner', 'workflow-role': 'worker', 'workflow-active': 'true', 'rollout-mode': 'review' },
             { organization: 'github', repository: 'target-service', workflow: '.github/workflows/ci.yml', 'workflow-name': 'CI', 'workflow-role': 'standalone', 'workflow-active': 'true', 'rollout-mode': 'live' }
           ],
           metadata: {
@@ -926,7 +926,7 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'dependabot', 'package-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'live' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot.yml', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'rollout-mode': 'live' },
             { organization: 'github', repository: 'target-service', workflow: '.github/workflows/ci.yml', 'workflow-name': 'CI', 'workflow-role': 'standalone', 'workflow-active': 'true', 'rollout-mode': 'unknown' }
           ],
           metadata: {
@@ -1213,7 +1213,7 @@ describe('presenter built-in and custom pages', () => {
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
       'Repositories',
-      'Packages',
+      'Campaigns',
       'Settings'
     ]);
     expect(rendered.querySelector('[data-nav-page-id="workflows"] .octicon-workflow')).not.toBeNull();
@@ -1245,7 +1245,7 @@ describe('presenter built-in and custom pages', () => {
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
       'Repositories',
-      'Packages',
+      'Campaigns',
       'Settings',
       'Workflows',
       'Runs',
@@ -1432,9 +1432,9 @@ describe('presenter built-in and custom pages', () => {
           source: 'outcomes',
           metadata,
           rows: [
-            { package: 'daily', 'workflow-name': 'Open worker', 'workflow-role': 'worker', 'outcome-category': 'issue', 'outcome-title': 'Open issue', 'outcome-status': 'open', repository: 'control', 'observed-at': '2026-09-03T10:00:00Z' },
-            { package: 'daily', 'workflow-name': 'Closed worker', 'workflow-role': 'worker', 'outcome-category': 'issue', 'outcome-title': 'Closed issue', 'outcome-status': 'closed', repository: 'control', 'observed-at': '2026-09-03T09:00:00Z' },
-            { package: 'unknown', 'workflow-name': 'Unknown workflow', 'workflow-role': 'unknown', 'outcome-category': 'issue', 'outcome-title': 'Unattributed issue', 'outcome-status': 'open', repository: 'control', 'observed-at': '2026-09-03T08:00:00Z' }
+            { campaign: 'daily', 'workflow-name': 'Open worker', 'workflow-role': 'worker', 'outcome-category': 'issue', 'outcome-title': 'Open issue', 'outcome-status': 'open', repository: 'control', 'observed-at': '2026-09-03T10:00:00Z' },
+            { campaign: 'daily', 'workflow-name': 'Closed worker', 'workflow-role': 'worker', 'outcome-category': 'issue', 'outcome-title': 'Closed issue', 'outcome-status': 'closed', repository: 'control', 'observed-at': '2026-09-03T09:00:00Z' },
+            { campaign: 'unknown', 'workflow-name': 'Unknown workflow', 'workflow-role': 'unknown', 'outcome-category': 'issue', 'outcome-title': 'Unattributed issue', 'outcome-status': 'open', repository: 'control', 'observed-at': '2026-09-03T08:00:00Z' }
           ]
         }
       }
@@ -1805,7 +1805,7 @@ describe('presenter built-in and custom pages', () => {
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Overview',
       'Repositories',
-      'Packages',
+      'Campaigns',
       'Settings',
       'Workflows',
       'Runs',
@@ -2225,8 +2225,8 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { workflow: '.github/workflows/daily.md', 'workflow-name': 'Daily operations', package: 'daily', 'package-name': 'Daily', 'inventory-ready': true },
-            { workflow: '.github/workflows/release.md', 'workflow-name': '<img src=x onerror=alert(1)>', package: 'release', 'package-name': 'Release', 'inventory-ready': false }
+            { workflow: '.github/workflows/daily.md', 'workflow-name': 'Daily operations', campaign: 'daily', 'campaign-name': 'Daily', 'inventory-ready': true },
+            { workflow: '.github/workflows/release.md', 'workflow-name': '<img src=x onerror=alert(1)>', campaign: 'release', 'campaign-name': 'Release', 'inventory-ready': false }
           ],
           metadata
         },
@@ -2289,7 +2289,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('img')).toBeNull();
   });
 
-  it('renders package operational value as a pie chart and full-view table', async () => {
+  it('renders campaign operational value as a pie chart and full-view table', async () => {
     const metadata = {
       'source-id': 'value-fixture',
       'source-kind': 'fixture',
@@ -2314,24 +2314,24 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        'package-inventory': {
-          source: 'package-inventory',
+        'campaign-inventory': {
+          source: 'campaign-inventory',
           rows: [
             {
-              package: 'ambient-context',
-              'package-name': 'Ambient Context',
-              'package-dashboard-link': {
-                'dashboard-href': '#page-package-insights?package=ambient-context',
-                'dashboard-label': 'View Ambient Context package dashboard'
+              campaign: 'ambient-context',
+              'campaign-name': 'Ambient Context',
+              'campaign-dashboard-link': {
+                'dashboard-href': '#page-campaign-insights?campaign=ambient-context',
+                'dashboard-label': 'View Ambient Context campaign dashboard'
               },
               'value-created': 1.6
             },
             {
-              package: 'aw-doctor',
-              'package-name': 'AW Doctor',
-              'package-dashboard-link': {
-                'dashboard-href': '#page-package-insights?package=aw-doctor',
-                'dashboard-label': 'View AW Doctor package dashboard'
+              campaign: 'aw-doctor',
+              'campaign-name': 'AW Doctor',
+              'campaign-dashboard-link': {
+                'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+                'dashboard-label': 'View AW Doctor campaign dashboard'
               },
               'value-created': 0.4
             }
@@ -2491,7 +2491,7 @@ describe('presenter built-in and custom pages', () => {
     expect(dashboardPage).not.toHaveProperty('page');
     expect(dashboardPage).not.toHaveProperty('sections');
     expect(rendered.querySelector('[data-nav-page-id="operational-value"] .octicon-beaker')).not.toBeNull();
-    expect(page?.querySelector('[data-view-id="operational-value-by-package"] [data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="operational-value-by-campaign"] [data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('Ambient Context');
     expect(page?.querySelector('.chart-legend-pie')?.textContent).toContain('AW Doctor');
     const tables = page?.querySelectorAll('.custom-table') ?? [];
@@ -2500,14 +2500,14 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect([...tables[0]?.querySelectorAll('thead > tr:first-child > th') ?? []].map((cell) => cell.textContent)).toEqual([
-      'Package',
+      'Campaign',
       'Operational value'
     ]);
     expect(tables[0]?.textContent).toContain('Ambient Context');
     expect(tables[0]?.textContent).toContain('1.60');
     const valueRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
     const valueFilter = /** @type {HTMLInputElement} */ (valueRegion?.querySelector('[data-table-filter]'));
-    expect(valueFilter.closest('label')?.textContent).toContain('Filter Packages');
+    expect(valueFilter.closest('label')?.textContent).toContain('Filter Campaigns');
     valueFilter.value = 'AW Doctor';
     valueFilter.dispatchEvent(new Event('input'));
     expect([...valueRegion.querySelectorAll('tbody tr')]
@@ -2635,8 +2635,8 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', 'workflow-role': 'orchestrator', workflow: '.github/workflows/daily.yml', 'workflow-active': 'true', 'rollout-mode': 'review', 'package-rollout-percent': 100, 'package-targets': [{ repository: 'github/gh-aw', mode: 'live' }, { repository: 'github/gh-aw-firewall', mode: 'review' }, { repository: 'github/gh-aw-mcpg', mode: 'review' }, { repository: 'github/gh-aw-actions', mode: 'review' }, { repository: 'github/gh-aw-threat-detection', mode: 'review' }, { repository: 'githubnext/gh-aw-workshop', mode: 'review' }], 'max-ai-credits': 10, 'observed-at': '2026-08-29T09:00:00Z' },
-            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', 'workflow-role': 'worker', workflow: '.github/workflows/review.yml', 'workflow-active': 'false', 'rollout-mode': 'review', 'max-ai-credits': 20, 'observed-at': '2026-08-29T09:05:00Z' }
+            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', 'workflow-role': 'orchestrator', workflow: '.github/workflows/daily.yml', 'workflow-active': 'true', 'rollout-mode': 'review', 'campaign-rollout-percent': 100, 'campaign-targets': [{ repository: 'github/gh-aw', mode: 'live' }, { repository: 'github/gh-aw-firewall', mode: 'review' }, { repository: 'github/gh-aw-mcpg', mode: 'review' }, { repository: 'github/gh-aw-actions', mode: 'review' }, { repository: 'github/gh-aw-threat-detection', mode: 'review' }, { repository: 'githubnext/gh-aw-workshop', mode: 'review' }], 'max-ai-credits': 10, 'observed-at': '2026-08-29T09:00:00Z' },
+            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', 'workflow-role': 'worker', workflow: '.github/workflows/review.yml', 'workflow-active': 'false', 'rollout-mode': 'review', 'max-ai-credits': 20, 'observed-at': '2026-08-29T09:05:00Z' }
           ],
           metadata: {
             'source-id': 'workflows-fixture',
@@ -2668,7 +2668,7 @@ describe('presenter built-in and custom pages', () => {
         outcomes: {
           source: 'outcomes',
           rows: [
-            { package: 'daily-ops', 'runtime-repository': 'github/gh-aw-cao', run: '1001', 'safe-output': 'daily-output-1', 'outcome-state': 'accepted', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:10:00Z' }
+            { campaign: 'daily-ops', 'runtime-repository': 'github/gh-aw-cao', run: '1001', 'safe-output': 'daily-output-1', 'outcome-state': 'accepted', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:10:00Z' }
           ],
           metadata: {
             'source-id': 'outcomes-fixture',
@@ -2795,7 +2795,7 @@ describe('presenter built-in and custom pages', () => {
     expect(cards.at(-1)?.textContent).toContain('3');
     expect(cards.every((card) => card.getAttribute('href') === '#page-coverage')).toBe(true);
     expect(overviewPage?.querySelector('.overview-method-note')?.textContent).toContain('State key:');
-    expect(overviewPage?.querySelector('.overview-package-status')).toBeNull();
+    expect(overviewPage?.querySelector('.overview-campaign-status')).toBeNull();
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('.data-state-summary'))?.hidden).toBe(true);
   });
 
@@ -2827,7 +2827,7 @@ describe('presenter built-in and custom pages', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'workflow-role': 'orchestrator', workflow: '.github/workflows/daily.yml', 'workflow-active': 'true', 'rollout-mode': 'live' }
+            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'workflow-role': 'orchestrator', workflow: '.github/workflows/daily.yml', 'workflow-active': 'true', 'rollout-mode': 'live' }
           ],
           metadata: {
             'source-id': 'workflows-fixture',
@@ -2847,38 +2847,38 @@ describe('presenter built-in and custom pages', () => {
     expect(cards).toHaveLength(6);
     expect(cards.find((card) => card.textContent?.includes('Workflows'))?.textContent).toContain('Monitor');
     expect(cards.filter((card) => card.textContent?.includes('Unavailable'))).toHaveLength(5);
-    expect(overviewPage?.querySelector('.package-status-card')).toBeNull();
+    expect(overviewPage?.querySelector('.campaign-status-card')).toBeNull();
   });
 
-  it('DLS-PAGE-014 DLS-PAGE-015 renders mode-filtered package AIC utilization and package-run trends', () => {
+  it('DLS-PAGE-014 DLS-PAGE-015 renders mode-filtered campaign AIC utilization and campaign-run trends', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
-        id: 'packages-dashboard',
-        title: 'Packages Dashboard',
+        id: 'campaigns-dashboard',
+        title: 'Campaigns Dashboard',
         pages: [{
-          id: 'packages',
+          id: 'campaigns',
           kind: /** @type {'built-in'} */ ('built-in'),
-          page: 'packages',
-          title: 'Packages',
-          description: 'Activity from centrally managed packages.',
+          page: 'campaigns',
+          title: 'Campaigns',
+          description: 'Activity from centrally managed campaigns.',
           definition: {
             'data-state': { availability: true },
             views: [
-              { id: 'package-workflows', data: { source: 'workflows' } },
-              { id: 'package-runs', data: { source: 'runs' } },
-              { id: 'package-outcomes', data: { source: 'outcomes' } },
-              { id: 'package-usage', data: { source: 'usage' } },
-              { id: 'packages-utilization', title: 'Package AIC utilization', data: { sources: ['workflows', 'usage'] }, mark: 'element', element: 'package-utilization' },
-              { id: 'packages-run-trend', title: 'All runs over time', data: { sources: ['workflows', 'runs', 'outcomes'] }, mark: 'element', element: 'package-run-trend' },
-              { id: 'packages-summary', title: 'All output by package', data: { sources: ['workflows', 'usage', 'findings', 'outcomes', 'runs'] }, mark: 'element', element: 'package-summary-table' }
+              { id: 'campaign-workflows', data: { source: 'workflows' } },
+              { id: 'campaign-runs', data: { source: 'runs' } },
+              { id: 'campaign-outcomes', data: { source: 'outcomes' } },
+              { id: 'campaign-usage', data: { source: 'usage' } },
+              { id: 'campaigns-utilization', title: 'Campaign AIC utilization', data: { sources: ['workflows', 'usage'] }, mark: 'element', element: 'campaign-utilization' },
+              { id: 'campaigns-run-trend', title: 'All runs over time', data: { sources: ['workflows', 'runs', 'outcomes'] }, mark: 'element', element: 'campaign-run-trend' },
+              { id: 'campaigns-summary', title: 'All output by campaign', data: { sources: ['workflows', 'usage', 'findings', 'outcomes', 'runs'] }, mark: 'element', element: 'campaign-summary-table' }
             ]
           }
         }]
       }
     };
     const metadata = {
-      'source-id': 'packages-fixture',
+      'source-id': 'campaigns-fixture',
       'source-kind': 'fixture',
       'as-of': '2026-08-29T20:00:00Z',
       'retrieved-at': '2026-08-29T20:01:00Z',
@@ -2889,20 +2889,20 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({
       document,
       sources: {
-        packages: {
-          source: 'packages',
+        campaigns: {
+          source: 'campaigns',
           rows: [
-            { package: 'daily-ops', 'package-name': 'Daily Ops' },
-            { package: 'empty-ops', 'package-name': 'Empty Ops' }
+            { campaign: 'daily-ops', 'campaign-name': 'Daily Ops' },
+            { campaign: 'empty-ops', 'campaign-name': 'Empty Ops' }
           ],
           metadata
         },
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'package-aic-allowance': 250, 'package-inventory-warnings': 2 },
-            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'package-aic-allowance': 250, 'package-inventory-warnings': 2 },
-            { organization: 'github', repository: 'gh-aw-cao', package: 'empty-ops', 'package-name': 'Empty Ops', workflow: '.github/workflows/empty.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'live', 'max-ai-credits': 80, 'inventory-ready': true }
+            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'campaign-aic-allowance': 250, 'campaign-inventory-warnings': 2 },
+            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'campaign-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'campaign-aic-allowance': 250, 'campaign-inventory-warnings': 2 },
+            { organization: 'github', repository: 'gh-aw-cao', campaign: 'empty-ops', 'campaign-name': 'Empty Ops', workflow: '.github/workflows/empty.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'live', 'max-ai-credits': 80, 'inventory-ready': true }
           ],
           metadata
         },
@@ -2918,10 +2918,10 @@ describe('presenter built-in and custom pages', () => {
         outcomes: {
           source: 'outcomes',
           rows: [
-            { package: 'daily-ops', run: '1', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' },
-            { package: 'daily-ops', run: '2', 'rollout-mode': 'live', 'published-at': '2026-08-29T10:00:00Z', 'observed-at': '2026-08-29T10:05:00Z' },
-            { package: 'daily-ops', run: '2', 'run-conclusion': 'failure', 'rollout-mode': 'live', 'published-at': '2026-08-29T10:00:00Z', 'observed-at': '2026-08-29T10:06:00Z' },
-            { package: 'daily-ops', run: 'old', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-07-01T10:00:00Z', 'observed-at': '2026-07-01T10:00:00Z' }
+            { campaign: 'daily-ops', run: '1', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' },
+            { campaign: 'daily-ops', run: '2', 'rollout-mode': 'live', 'published-at': '2026-08-29T10:00:00Z', 'observed-at': '2026-08-29T10:05:00Z' },
+            { campaign: 'daily-ops', run: '2', 'run-conclusion': 'failure', 'rollout-mode': 'live', 'published-at': '2026-08-29T10:00:00Z', 'observed-at': '2026-08-29T10:06:00Z' },
+            { campaign: 'daily-ops', run: 'old', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-07-01T10:00:00Z', 'observed-at': '2026-07-01T10:00:00Z' }
           ],
           metadata
         },
@@ -2945,34 +2945,34 @@ describe('presenter built-in and custom pages', () => {
       }
     });
 
-    const packagesPage = rendered.querySelector('[data-page-name="packages"]');
-    expect(packagesPage?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
-    expect(packagesPage?.querySelector('[data-table-filter]')).not.toBeNull();
-    const packageSummaryRows = [...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
-    expect(packageSummaryRows).toHaveLength(2);
-    expect(packageSummaryRows[0]?.textContent).toContain('Daily Ops');
-    expect(packageSummaryRows[0]?.textContent).toContain('40');
-    expect(packageSummaryRows[1]?.textContent).toContain('Empty Ops');
-    expect(/** @type {HTMLElement | null} */ (packagesPage?.querySelector('.data-state-summary'))?.hidden).toBe(true);
+    const campaignsPage = rendered.querySelector('[data-page-name="campaigns"]');
+    expect(campaignsPage?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
+    expect(campaignsPage?.querySelector('[data-table-filter]')).not.toBeNull();
+    const campaignSummaryRows = [...(campaignsPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
+    expect(campaignSummaryRows).toHaveLength(2);
+    expect(campaignSummaryRows[0]?.textContent).toContain('Daily Ops');
+    expect(campaignSummaryRows[0]?.textContent).toContain('40');
+    expect(campaignSummaryRows[1]?.textContent).toContain('Empty Ops');
+    expect(/** @type {HTMLElement | null} */ (campaignsPage?.querySelector('.data-state-summary'))?.hidden).toBe(true);
 
   });
 
-  it('DLS-SEM-022 DLS-SEM-023 DLS-PAGE-014 DLS-PAGE-015 keeps packages repository-scoped and distinguishes unknown or unavailable telemetry', () => {
+  it('DLS-SEM-022 DLS-SEM-023 DLS-PAGE-014 DLS-PAGE-015 keeps campaigns repository-scoped and distinguishes unknown or unavailable telemetry', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
-        id: 'repository-scoped-packages',
-        title: 'Repository-scoped packages',
+        id: 'repository-scoped-campaigns',
+        title: 'Repository-scoped campaigns',
         pages: [{
-          id: 'packages',
+          id: 'campaigns',
           kind: /** @type {'built-in'} */ ('built-in'),
-          page: 'packages',
-          title: 'Packages'
+          page: 'campaigns',
+          title: 'Campaigns'
         }]
       }
     };
     const metadata = {
-      'source-id': 'packages-fixture',
+      'source-id': 'campaigns-fixture',
       'source-kind': 'fixture',
       'as-of': '2026-08-29T20:00:00Z',
       'retrieved-at': '2026-08-29T20:01:00Z',
@@ -2983,8 +2983,8 @@ describe('presenter built-in and custom pages', () => {
     const workflows = {
       source: 'workflows',
       rows: [
-        { organization: 'octo-org', repository: 'alpha', package: 'daily-ops', 'package-name': 'Daily Ops', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'max-ai-credits': 100, 'package-aic-allowance': 100 },
-        { organization: 'octo-org', repository: 'beta', package: 'daily-ops', 'package-name': 'Daily Ops', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'max-ai-credits': 200, 'package-aic-allowance': 999 }
+        { organization: 'octo-org', repository: 'alpha', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'max-ai-credits': 100, 'campaign-aic-allowance': 100 },
+        { organization: 'octo-org', repository: 'beta', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'max-ai-credits': 200, 'campaign-aic-allowance': 999 }
       ],
       metadata
     };
@@ -3005,31 +3005,31 @@ describe('presenter built-in and custom pages', () => {
       metadata: { ...metadata, completeness: /** @type {'unknown'} */ ('unknown') }
     };
 
-    const packages = {
-      source: 'packages',
+    const campaigns = {
+      source: 'campaigns',
       rows: [
-        { package: 'daily-ops', 'package-name': 'Daily Ops' }
+        { campaign: 'daily-ops', 'campaign-name': 'Daily Ops' }
       ],
       metadata
     };
-    const rendered = renderDashboard({ document, sources: { packages, workflows, runs, usage } });
-    const packagesPage = rendered.querySelector('[data-page-name="packages"]');
-    const rows = [...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
+    const rendered = renderDashboard({ document, sources: { campaigns, workflows, runs, usage } });
+    const campaignsPage = rendered.querySelector('[data-page-name="campaigns"]');
+    const rows = [...(campaignsPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
     expect(rows).toHaveLength(1);
     expect(rows[0]?.textContent).toContain('30');
-    expect(packagesPage?.querySelector('[data-table-filter]')).not.toBeNull();
+    expect(campaignsPage?.querySelector('[data-table-filter]')).not.toBeNull();
 
     const unavailable = renderDashboard({
       document,
       sources: {
-        packages,
+        campaigns,
         workflows,
         runs: { ...runs, rows: [], metadata: { ...metadata, availability: /** @type {'unavailable'} */ ('unavailable'), completeness: /** @type {'unknown'} */ ('unknown') } },
         usage
       }
     });
-    const unavailablePackagesPage = unavailable.querySelector('[data-page-name="packages"]');
-    expect(unavailablePackagesPage?.querySelector('.custom-table')).not.toBeNull();
+    const unavailableCampaignsPage = unavailable.querySelector('[data-page-name="campaigns"]');
+    expect(unavailableCampaignsPage?.querySelector('.custom-table')).not.toBeNull();
   });
 
   it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 DLS-PAGE-017 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
@@ -3042,7 +3042,7 @@ describe('presenter built-in and custom pages', () => {
       'overview',
       'organizations',
       'repositories',
-      'packages',
+      'campaigns',
       'workflows',
       'runs',
       'experiments',
@@ -3082,7 +3082,7 @@ describe('presenter built-in and custom pages', () => {
       {
         id: 'repositories-activity',
         title: 'Repositories',
-        description: 'Repository-local execution health and all attributed package or local-workflow outcomes.',
+        description: 'Repository-local execution health and all attributed campaign or local-workflow outcomes.',
         data: { source: 'repository-activity' },
         mark: 'table',
         controls: 'interactive',
@@ -4018,14 +4018,14 @@ describe('presenter built-in and custom pages', () => {
   it('keeps route tabs visible while a sibling view loads', async () => {
     const root = document.createElement('div');
     root.innerHTML = `
-      <a data-nav-page-id="first" href="#page-first?package=ambient-context">First</a>
-      <a data-nav-page-id="second" href="#page-second?package=ambient-context">Second</a>
+      <a data-nav-page-id="first" href="#page-first?campaign=ambient-context">First</a>
+      <a data-nav-page-id="second" href="#page-second?campaign=ambient-context">Second</a>
       <main class="dashboard-prototype">
         <section class="dashboard-page" id="page-first" data-page-id="first">
           <nav data-route-tabs aria-label="Ambient Context views">
-            <a href="#page-first?package=ambient-context" aria-current="page">Overview</a>
-            <a href="#page-second?package=ambient-context">Workflows</a>
-            <a href="#page-third?package=ambient-context">Runs</a>
+            <a href="#page-first?campaign=ambient-context" aria-current="page">Overview</a>
+            <a href="#page-second?campaign=ambient-context">Workflows</a>
+            <a href="#page-third?campaign=ambient-context">Runs</a>
           </nav>
           <p>Overview content</p>
         </section>

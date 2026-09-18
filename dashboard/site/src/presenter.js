@@ -1289,7 +1289,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       pageDescription.textContent = description;
       pageDescription.toggleAttribute('hidden', description.length === 0);
     }
-    const requestedMode = pageId === 'packages'
+    const requestedMode = pageId === 'campaigns'
       ? new URLSearchParams(root.ownerDocument.defaultView?.location.search ?? '').get('mode')
       : '';
     renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '');

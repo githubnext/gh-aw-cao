@@ -62,7 +62,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: optimization
+      campaign: optimization
       role: worker
       worker: agents-md-curator
 
@@ -220,11 +220,11 @@ steps:
           .filter((candidate) => !exists(candidate))
           .slice(0, MAX_LIST_ITEMS);
 
-        const packageManifest = readFile('package.json');
+        const campaignManifest = readFile('package.json');
         let missingScripts = [];
-        if (packageManifest) {
+        if (campaignManifest) {
           try {
-            const scripts = Object.keys(JSON.parse(packageManifest).scripts || {});
+            const scripts = Object.keys(JSON.parse(campaignManifest).scripts || {});
             const referenced = new Set(
               [...agentsMarkdown.matchAll(/(?:npm|pnpm|yarn)\s+run\s+([\w:-]+)/g)].map((match) => match[1]),
             );
@@ -244,21 +244,21 @@ steps:
           duplication[name] = { duplicated_lines: shared.length, samples: shared.slice(0, 5) };
         }
 
-        // Package-manager and command conflicts across instruction files are a top failure class:
+        // Campaign-manager and command conflicts across instruction files are a top failure class:
         // an agent that reads two files with contradicting commands picks one at random.
-        const PACKAGE_MANAGERS = [
+        const CAMPAIGN_MANAGERS = [
           { name: 'npm', lockfile: 'package-lock.json', pattern: /\bnpm (?:ci|install|run|test)\b/ },
           { name: 'pnpm', lockfile: 'pnpm-lock.yaml', pattern: /\bpnpm (?:install|run|test)\b/ },
           { name: 'yarn', lockfile: 'yarn.lock', pattern: /\byarn (?:install|run|test)\b/ },
           { name: 'bun', lockfile: 'bun.lockb', pattern: /\bbun (?:install|run|test)\b/ },
         ];
-        const lockfilesPresent = PACKAGE_MANAGERS.filter((manager) => exists(manager.lockfile)).map((manager) => manager.name);
+        const lockfilesPresent = CAMPAIGN_MANAGERS.filter((manager) => exists(manager.lockfile)).map((manager) => manager.name);
         const instructionFiles = ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.github/copilot-instructions.md'];
         const managersByFile = {};
         for (const name of instructionFiles) {
           const content = name === 'AGENTS.md' ? agentsMarkdown : readFile(name);
           if (content === null) continue;
-          managersByFile[name] = PACKAGE_MANAGERS
+          managersByFile[name] = CAMPAIGN_MANAGERS
             .filter((manager) => manager.pattern.test(content))
             .map((manager) => manager.name);
         }
@@ -266,14 +266,14 @@ steps:
         const conflicts = [];
         if (managersMentioned.length > 1) {
           conflicts.push({
-            kind: 'package_manager',
-            detail: `instruction files reference more than one package manager: ${managersMentioned.join(', ')}`,
+            kind: 'campaign_manager',
+            detail: `instruction files reference more than one campaign manager: ${managersMentioned.join(', ')}`,
             by_file: managersByFile,
           });
         }
         if (lockfilesPresent.length === 1 && managersMentioned.length && !managersMentioned.includes(lockfilesPresent[0])) {
           conflicts.push({
-            kind: 'package_manager_lockfile',
+            kind: 'campaign_manager_lockfile',
             detail: `instruction files document ${managersMentioned.join(', ')} but the repository has ${lockfilesPresent[0]} lockfile`,
           });
         }
@@ -290,9 +290,9 @@ steps:
           .map((match) => ({ subject: match[1], version: match[2] }))
           .slice(0, MAX_LIST_ITEMS);
         const declaredDependencies = {};
-        if (packageManifest) {
+        if (campaignManifest) {
           try {
-            const parsed = JSON.parse(packageManifest);
+            const parsed = JSON.parse(campaignManifest);
             Object.assign(declaredDependencies, parsed.dependencies || {}, parsed.devDependencies || {});
           } catch {
             // An unparsable manifest is reported through missingScripts staying empty.
@@ -440,7 +440,7 @@ steps:
           verification: {
             referenced_paths_checked: referencedPaths.size,
             missing_referenced_paths: missingPaths,
-            missing_package_scripts: missingScripts,
+            missing_campaign_scripts: missingScripts,
             duplication,
             cross_file_conflicts: conflicts,
             lockfiles_present: lockfilesPresent,
@@ -485,7 +485,7 @@ Consult [agentconfig.org](https://agentconfig.org) and, when available, its [mac
 
 ## Step 1 — Scope gate
 
-If `agents_md_present` is `false`, stop immediately. Do not create an issue, do not propose creating an `AGENTS.md`, and do not analyze anything else. Emit a `noop` explaining that the repository has no root `AGENTS.md` and is therefore out of scope for this package. This package only maintains ambient context that already exists.
+If `agents_md_present` is `false`, stop immediately. Do not create an issue, do not propose creating an `AGENTS.md`, and do not analyze anything else. Emit a `noop` explaining that the repository has no root `AGENTS.md` and is therefore out of scope for this campaign. This campaign only maintains ambient context that already exists.
 
 If `in_flight.open_instruction_pull_requests` is non-empty, a previous proposal is still being applied. Emit a `noop` naming those pull requests rather than proposing a competing change set. Proposing against a file that an open pull request is already rewriting produces conflicting edits and repeated churn.
 
@@ -497,8 +497,8 @@ Use the precomputed evidence first; use bounded `git` and `jq` calls in `target/
 | --- | --- | --- |
 | Size | `agents_md.lines`, `agents_md.bytes`, `agents_md.estimated_tokens` | under 200 lines and under 10 KB; every run pays this cost |
 | Freshness | `staleness.days_since_last_change`, `staleness.commits_since_last_change` | changed within 90 days, or unchanged because the repository is also unchanged |
-| Accuracy | `verification.missing_referenced_paths`, `verification.missing_package_scripts`, `staleness.deleted_paths_since_last_change` | no broken paths or commands |
-| Consistency | `verification.cross_file_conflicts`, `verification.lockfiles_present` | one package manager and one set of commands across every instruction file, matching the lockfiles actually committed |
+| Accuracy | `verification.missing_referenced_paths`, `verification.missing_campaign_scripts`, `staleness.deleted_paths_since_last_change` | no broken paths or commands |
+| Consistency | `verification.cross_file_conflicts`, `verification.lockfiles_present` | one campaign manager and one set of commands across every instruction file, matching the lockfiles actually committed |
 | Version accuracy | `verification.version_claims` against `verification.declared_dependencies` | prose version claims match the manifests |
 | Residue | `verification.stale_markers` | no unresolved `TODO`/`FIXME` markers and no year references that contradict current reality |
 | Non-duplication | `verification.duplication` | little verbatim overlap with `README.md` or `CONTRIBUTING.md` |
@@ -531,7 +531,7 @@ If the evidence supports no edit, emit a `noop` stating that the ambient context
 
 ## Step 4 — Gain gate
 
-This package exists to make every future agent run on the target repository cheaper for the same delivered outcome. A change set that does not move that number is not worth a maintainer's review. Estimate the gain before you write anything.
+This campaign exists to make every future agent run on the target repository cheaper for the same delivered outcome. A change set that does not move that number is not worth a maintainer's review. Estimate the gain before you write anything.
 
 1. For each proposed edit, count the characters it removes from `AGENTS.md` and the characters it adds. Content moved to a nested `AGENTS.md`, a path-scoped instructions file, or a skill counts as removed, because it no longer loads on every run; the pointer left behind counts as added. A correction that replaces text with shorter text counts the difference.
 2. Convert characters to tokens with the same approximation the prefetch uses: tokens are characters divided by 4.
@@ -581,7 +581,7 @@ A fenced block containing a complete, self-contained prompt that an agent can ru
 
 ### Verification
 
-State how a reviewer can check the result: the merged file is at least 10 percent smaller in estimated tokens than before, referenced paths resolve, documented commands exist in the manifest or task runner, the instruction files agree on one package manager and command set, size is within target, and no content duplicates `README.md`.
+State how a reviewer can check the result: the merged file is at least 10 percent smaller in estimated tokens than before, referenced paths resolve, documented commands exist in the manifest or task runner, the instruction files agree on one campaign manager and command set, size is within target, and no content duplicates `README.md`.
 
 ### Control Plane
 

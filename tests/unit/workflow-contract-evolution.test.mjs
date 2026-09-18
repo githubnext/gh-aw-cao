@@ -20,7 +20,7 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
   const descriptor = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
   const dashboard = JSON.parse(readFileSync(join(root, "optimization", "dashboard.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
-  const policyWorkers = policy["control-plane"].packages.optimization.workers;
+  const policyWorkers = policy["control-plane"].campaigns.optimization.workers;
   const workerEntries = Object.entries(descriptor.workers);
   const declaredWorkflowIds = [descriptor.orchestrator, ...Object.values(descriptor.workers)].sort();
   const includedWorkflowIds = manifest.includes
@@ -31,14 +31,14 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
   const controlImport = orchestratorConfig.imports.find((entry) => entry.uses === "shared/control.md");
 
   assert.equal(manifest.name, "AW Optimization");
-  assert.equal(descriptor.package, "optimization");
+  assert.equal(descriptor.campaign, "optimization");
   assert.equal(dashboard.dashboard.title, "AW Optimization");
   assert.equal(orchestratorConfig.name, manifest.name);
   assert.deepEqual(includedWorkflowIds, declaredWorkflowIds);
   assert.match(orchestrator, /worker_credits_per_target: 1950/);
   assert.deepEqual([...dispatchWorkflows].sort(), Object.values(descriptor.workers).sort());
   assert.equal(new Set(dispatchWorkflows).size, dispatchWorkflows.length, "dispatch allowlist must not contain duplicates");
-  assert.equal(controlImport.with.package, descriptor.package);
+  assert.equal(controlImport.with.campaign, descriptor.campaign);
   assert.equal(controlImport.with.role, "orchestrator");
   assert.equal(controlImport.with.worker, undefined);
   assert.deepEqual(
@@ -48,16 +48,16 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
     ])),
     descriptor.workers,
   );
-  assert.equal(policy["control-plane"].packages["ambient-context"], undefined);
+  assert.equal(policy["control-plane"].campaigns["ambient-context"], undefined);
   for (const [workerName, workflowId] of workerEntries) {
     const sourceName = `${workflowId}.md`;
     const config = workflowConfig(sourceName);
     const generatedConfig = parse(workflow(`${workflowId}.lock.yml`));
     const workerControlImport = config.imports.find((entry) => entry.uses === "shared/control.md");
 
-    assert.ok(config.name.startsWith(`${manifest.name} / `), `${sourceName} must use the package display-name prefix`);
+    assert.ok(config.name.startsWith(`${manifest.name} / `), `${sourceName} must use the campaign display-name prefix`);
     assert.equal(generatedConfig.name, config.name, `${sourceName} display name must match its compiled workflow`);
-    assert.equal(workerControlImport.with.package, descriptor.package);
+    assert.equal(workerControlImport.with.campaign, descriptor.campaign);
     assert.equal(workerControlImport.with.role, "worker");
     assert.equal(workerControlImport.with.worker, workerName);
     assert.equal(policyWorkers[workerName].workflow, workflowId);
@@ -106,7 +106,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     ".github/workflows/cao-evolution-reliability.md",
     ".github/workflows/cao-evolution.md",
   ]);
-  assert.deepEqual(policy["control-plane"].packages["cao-evolution"], {
+  assert.deepEqual(policy["control-plane"].campaigns["cao-evolution"], {
     icon: "gear",
     mode: "review",
     "max-repositories": 1,
@@ -116,7 +116,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     ])),
   });
   assert.match(orchestrator, /A \*\*control repository\*\* has `\.github\/workflows\/cao\.json`/);
-  assert.match(orchestrator, /An \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` package manifest/);
+  assert.match(orchestrator, /An \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` campaign manifest/);
   assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-catalog-advisor, cao-evolution-failures-investigator, cao-evolution-compiler-security\]/);
   assert.match(orchestrator, /Dispatch each eligible worker at most once for each selected repository and effective mode/);
   for (const [workerName, workflowName] of workers) {
@@ -129,21 +129,21 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   assert.match(orchestrator, /Dispatch the failure investigator and compiler-security workers only for verified agentic-workflow repositories/);
   const catalogAdvisor = workflow("cao-evolution-catalog-advisor.md");
   assert.match(catalogAdvisor, /Use `githubnext\/gh-aw-cao` as the official Operations Catalog/);
-  assert.match(catalogAdvisor, /Never install or update a package, edit policy, dispatch a workflow/);
+  assert.match(catalogAdvisor, /Never install or update a campaign, edit policy, dispatch a workflow/);
   assert.match(catalogAdvisor, /installation and enablement require separate reviewed changes/);
   assert.match(workflow("cao-evolution-reliability.md"), /uses: shared\/activity-cache\.md/);
   const efficiency = workflow("cao-evolution-efficiency.md");
   assert.match(efficiency, /same authoritative activity and safe-output evidence that the dashboard normalizes into browser IndexedDB/);
   assert.match(efficiency, /Never attempt to open, download, or treat browser IndexedDB as shared or authoritative storage/);
   assert.match(efficiency, /open review backlog, oldest review age, review-decision latency, accepted outcomes, rejected or closed-unmerged outcomes/);
-  assert.match(efficiency, /Select one package and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
+  assert.match(efficiency, /Select one campaign and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
   assert.match(efficiency, /Do not duplicate `AW Optimization`/);
 
-  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
-  assert.match(packageSkill, /When a worker optimizes a package or package portfolio/);
-  assert.match(packageSkill, /A package workflow has no dashboard browser session/);
-  assert.match(packageSkill, /never add browser automation or Pages access merely to query IndexedDB/);
-  assert.match(packageSkill, /coding agents may inspect the disposable cache only through the canonical storage\/query APIs or Playwright/);
+  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
+  assert.match(campaignSkill, /When a worker optimizes a campaign or campaign portfolio/);
+  assert.match(campaignSkill, /A campaign workflow has no dashboard browser session/);
+  assert.match(campaignSkill, /never add browser automation or Pages access merely to query IndexedDB/);
+  assert.match(campaignSkill, /coding agents may inspect the disposable cache only through the canonical storage\/query APIs or Playwright/);
 });
 
 test("CAO Evolution compiler security worker runs the full validation suite", () => {
@@ -261,7 +261,7 @@ test("CAO Evolution failures worker fails closed on evidence-free failures", () 
   assert.match(source, /P2: N, needs evidence: N/);
 });
 
-test("slower package orchestrators run hourly", () => {
+test("slower campaign orchestrators run hourly", () => {
   for (const name of [
     "dependabot.md",
     "eslint-rules.md",

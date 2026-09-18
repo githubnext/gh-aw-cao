@@ -1,5 +1,5 @@
 {
-  "package": "dependabot",
+  "campaign": "dependabot",
   "orchestrator": "dependabot",
   "workers": {
     "update-planner": "dependabot-update-planner"

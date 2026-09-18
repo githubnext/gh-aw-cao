@@ -9,7 +9,7 @@ export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
 /**
  * Stores whose retention is decided by observation time. Structural parents
  * are never TTLed: repositories and workflows are retained by reachability so
- * a retained run never loses its hierarchy, while packages persist across imports.
+ * a retained run never loses its hierarchy, while campaigns persist across imports.
  * @type {Record<string, string[]>}
  */
 const RETENTION_TIMESTAMPS = {
@@ -21,7 +21,7 @@ const RETENTION_TIMESTAMPS = {
 };
 
 const STORES = /** @type {const} */ ([
-  'packages',
+  'campaigns',
   'repositories',
   'workflows',
   'runs',
@@ -32,10 +32,10 @@ const STORES = /** @type {const} */ ([
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ (['domains', 'tools', 'audits', 'issues']);
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
-  'packageId',
-  'package',
-  'packageName',
-  'packageIcon',
+  'campaignId',
+  'campaign',
+  'campaignName',
+  'campaignIcon',
   'githubId',
   'registryState',
   'createdAt',
@@ -99,7 +99,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
   }
 
   return /** @type {import('../model/schema.js').CanonicalBatch} */ ({
-    packages: batch.packages,
+    campaigns: batch.campaigns,
     repositories: batch.repositories,
     workflows: batch.workflows,
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
@@ -150,7 +150,7 @@ function newestObservation(batch) {
  * @param {number} reference
  * @param {number} defaultRetentionWindowMs
  * @param {Partial<Record<typeof STORES[number], number>>} retentionWindowMsByStore
- * @param {boolean} preserveWorkflowPackageMappings
+ * @param {boolean} preserveWorkflowCampaignMappings
  * @param {boolean} preserveRepositoryRecords
  */
 function upsertRecords(
@@ -159,7 +159,7 @@ function upsertRecords(
   reference,
   defaultRetentionWindowMs,
   retentionWindowMsByStore,
-  preserveWorkflowPackageMappings,
+  preserveWorkflowCampaignMappings,
   preserveRepositoryRecords
 ) {
   /** @type {Record<string, Map<string, Record<string, unknown>>>} */
@@ -185,9 +185,9 @@ function upsertRecords(
       // Discovery owns repository metadata, so run-derived observations may only
       // backfill missing repository records and must never overwrite existing ones.
       if (storeName === 'repositories' && preserveRepositoryRecords && records.has(id)) continue;
-      // Inventory discovery owns package membership and registry metadata.
+      // Inventory discovery owns campaign membership and registry metadata.
       // Run-derived observations may enrich other workflow fields only.
-      if (storeName === 'workflows' && preserveWorkflowPackageMappings) {
+      if (storeName === 'workflows' && preserveWorkflowCampaignMappings) {
         const existing = records.get(id);
         if (existing) {
           const inventoryFields = existing.registryState === undefined
@@ -214,16 +214,16 @@ function upsertRecords(
  * @param {Record<string, Map<string, Record<string, unknown>>>} merged
  */
 function pruneOrphans(merged) {
-  const packages = merged.packages;
+  const campaigns = merged.campaigns;
   const repositories = merged.repositories;
   const workflows = merged.workflows;
   const runs = merged.runs;
 
   for (const [id, workflow] of workflows) {
     if (!repositories.has(String(workflow.repositoryId))
-      || (workflow.packageId !== undefined
-        && workflow.packageId !== null
-        && !packages.has(String(workflow.packageId)))) workflows.delete(id);
+      || (workflow.campaignId !== undefined
+        && workflow.campaignId !== null
+        && !campaigns.has(String(workflow.campaignId)))) workflows.delete(id);
   }
   for (const [id, run] of runs) {
     const workflow = workflows.get(String(run.workflowId));
@@ -240,7 +240,7 @@ function pruneOrphans(merged) {
 
 /**
  * Collects repository and workflow parents that neither the current collection
- * nor any retained descendant still references. Package records are durable
+ * nor any retained descendant still references. Campaign records are durable
  * inventory and are never collected during imports.
  *
  * @param {Record<string, Map<string, Record<string, unknown>>>} merged
@@ -280,7 +280,7 @@ function collectUnreferencedParents(merged, incoming) {
  *   retentionWindowMsByStore?: Partial<Record<typeof STORES[number], number>>,
  *   includePreviousInReference?: boolean,
  *   preserveUnreferencedParents?: boolean,
- *   preserveWorkflowPackageMappings?: boolean,
+ *   preserveWorkflowCampaignMappings?: boolean,
  *   preserveRepositoryRecords?: boolean
  * }} [options]
  * @returns {import('../model/schema.js').CanonicalBatch}
@@ -301,7 +301,7 @@ export function mergeRetainedRecords(previous, incoming, options = {}) {
     reference,
     retentionWindowMs,
     options.retentionWindowMsByStore ?? {},
-    options.preserveWorkflowPackageMappings === true,
+    options.preserveWorkflowCampaignMappings === true,
     options.preserveRepositoryRecords === true
   );
   pruneOrphans(merged);

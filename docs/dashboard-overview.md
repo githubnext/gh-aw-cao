@@ -28,7 +28,7 @@ operational signals, not stages in a conversion funnel.
 | **Factory rhythm** | Successful runs for each weekday in the current week, with previous-week context for weekdays not yet reached. | Runs when the cadence changes unexpectedly. |
 | **Repositories registered** | Distinct repositories represented in the retained control-plane scope. | Repositories for the complete inventory. |
 | **Successful runs** | Runs that completed successfully, with failed runs shown separately. | Runs with the success or failure filter applied. |
-| **Dispatches** | Retained `workflow_dispatch` runs, with failed dispatches shown separately. | Dispatches for package-worker activity. |
+| **Dispatches** | Retained `workflow_dispatch` runs, with failed dispatches shown separately. | Dispatches for campaign-worker activity. |
 | **Value gains** | Grader observations available as operational-value evidence. | Operational value for the underlying graders, value contracts, and evidence. |
 
 The selected dashboard time range applies before Overview calculates these

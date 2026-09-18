@@ -58,7 +58,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: cao-evolution
+      campaign: cao-evolution
       role: worker
       worker: reliability
   - uses: shared/activity-cache.md
@@ -131,7 +131,7 @@ Inspect:
 4. Activity collection/cache restore, dashboard build, dashboard data health, canonical-model query, and artifact publication failures.
 5. Repeated timeouts, exhausted AI Credits, API pressure, or missing evidence that prevents the control plane from failing closed with a useful audit record.
 
-Ignore isolated target-repository task failures already owned by the CAO Evolution agentic-workflow health workers, Dependabot, or another package unless the evidence shows a shared CAO admission, dispatch, routing, cache, or dashboard defect. Do not classify intentional package-disabled, worker-disabled, rollout-excluded, review-mode, or policy-denied outcomes as incidents.
+Ignore isolated target-repository task failures already owned by the CAO Evolution agentic-workflow health workers, Dependabot, or another campaign unless the evidence shows a shared CAO admission, dispatch, routing, cache, or dashboard defect. Do not classify intentional campaign-disabled, worker-disabled, rollout-excluded, review-mode, or policy-denied outcomes as incidents.
 
 ## Outcome
 

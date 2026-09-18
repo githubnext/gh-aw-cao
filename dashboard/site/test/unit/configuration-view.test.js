@@ -280,7 +280,7 @@ describe('Configuration dashboard view', () => {
       { mode: 'review' }
     ]));
     const rendered = renderConfigurationView(context({
-      document: { 'control-plane': { packages: { maintenance: { targets } } } },
+      document: { 'control-plane': { campaigns: { maintenance: { targets } } } },
       raw: '',
       diagnostics: []
     }));

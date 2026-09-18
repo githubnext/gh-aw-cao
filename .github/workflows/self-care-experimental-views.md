@@ -54,7 +54,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: self-care
+      campaign: self-care
       role: worker
       worker: experimental-views
 
@@ -162,7 +162,7 @@ First prove that experimental views are enabled by repository policy and are pre
 
 Build a complete coverage table before selecting work. Rank reproducible issues by broken behavior or incorrect data first, cross-browser failures second, and measured DOM growth risk third. Prefer a root-cause fix that benefits multiple in-scope views.
 
-Fix exactly one highest-ranked actionable issue. Keep the change independently reviewable and within at most three production files plus focused tests. Do not modify locked view definitions, top-level non-experimental views, workflow files, dependencies, package manifests, lockfiles, generated files, test thresholds, or unrelated code. Do not make broad navigation or information-architecture changes.
+Fix exactly one highest-ranked actionable issue. Keep the change independently reviewable and within at most three production files plus focused tests. Do not modify locked view definitions, top-level non-experimental views, workflow files, dependencies, campaign manifests, lockfiles, generated files, test thresholds, or unrelated code. Do not make broad navigation or information-architecture changes.
 
 Add or update focused tests that reproduce the issue in both Chromium and WebKit when browser-specific behavior is relevant. From `dashboard/site`, run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run test:e2e`. Re-run the affected inventory across both browsers after the fix, review the final diff, and scan changed files for secrets.
 

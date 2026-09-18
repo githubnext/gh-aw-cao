@@ -63,7 +63,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: repo-assist
+      campaign: repo-assist
       role: worker
       worker: pr-upkeep
   - uses: shared/review-bundle.md

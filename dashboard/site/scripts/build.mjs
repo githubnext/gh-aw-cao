@@ -43,10 +43,10 @@ export async function buildDashboardSite({
   const configuredIndex = configureSite(await readFile(indexPath, "utf8"), controlSettings);
   await writeFile(indexPath, embedDashboardVersion(configuredIndex, commitSha));
 
-  const packageDashboards = await findPackageDashboards(repositoryPath, controlSettings);
+  const campaignDashboards = await findCampaignDashboards(repositoryPath, controlSettings);
 
   const dashboardPath = join(destinationPath, "dashboard.json");
-  await bundleDashboardFiles(dashboardPath, packageDashboards);
+  await bundleDashboardFiles(dashboardPath, campaignDashboards);
   const dashboard = filterExperimentalDashboardViews(
     JSON.parse(await readFile(dashboardPath, "utf8")),
     controlSettings.web?.experimental === true,
@@ -108,7 +108,7 @@ export function filterExperimentalDashboardViews(document, enabled = false) {
   };
 }
 
-async function findPackageDashboards(repositoryPath, controlSettings) {
+async function findCampaignDashboards(repositoryPath, controlSettings) {
   const installedDashboardsPath = join(repositoryPath, "dashboards");
   try {
     return (await readdir(installedDashboardsPath, { withFileTypes: true }))
@@ -118,14 +118,14 @@ async function findPackageDashboards(repositoryPath, controlSettings) {
     if (error?.code !== "ENOENT") throw error;
   }
 
-  const packageDashboards = [];
-  for (const packageName of Object.keys(controlSettings.packages ?? {}).toSorted()) {
-    const source = join(repositoryPath, packageName, "dashboard.json");
-    await access(source).then(() => packageDashboards.push(source)).catch((error) => {
+  const campaignDashboards = [];
+  for (const campaignName of Object.keys(controlSettings.campaigns ?? {}).toSorted()) {
+    const source = join(repositoryPath, campaignName, "dashboard.json");
+    await access(source).then(() => campaignDashboards.push(source)).catch((error) => {
       if (error?.code !== "ENOENT") throw error;
     });
   }
-  return packageDashboards;
+  return campaignDashboards;
 }
 
 async function bundleSiteJavascript(destinationPath) {

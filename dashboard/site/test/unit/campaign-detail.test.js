@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { renderPackageNavigation } from '../../src/components/package-detail.js';
-import { renderPackageRouteVariant, renderPackageRouteView } from '../../src/components/package-route-view.js';
+import { renderCampaignNavigation } from '../../src/components/campaign-detail.js';
+import { renderCampaignRouteVariant, renderCampaignRouteView } from '../../src/components/campaign-route-view.js';
 
 const metadata = {
   'source-id': 'fixture',
@@ -15,17 +15,17 @@ const metadata = {
 
 const workflows = [
   {
-    package: 'ambient-context',
-    'package-name': 'Ambient Context',
+    campaign: 'ambient-context',
+    'campaign-name': 'Ambient Context',
     organization: 'githubnext',
     repository: 'gh-aw-cao',
     workflow: '.github/workflows/ambient-context.md',
     'workflow-name': 'Ambient Context',
     'workflow-role': 'orchestrator',
     'rollout-mode': 'review',
-    'package-description': 'Keeps repository guidance current.',
-    'package-readme-path': 'ambient-context/README.md',
-    'package-readme': '# Ambient Context\n\nKeeps shared guidance current. See the [guide](docs/guide.md).\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
+    'campaign-description': 'Keeps repository guidance current.',
+    'campaign-readme-path': 'ambient-context/README.md',
+    'campaign-readme': '# Ambient Context\n\nKeeps shared guidance current. See the [guide](docs/guide.md).\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
     'repository-link': {
       relation: 'repository',
       href: 'https://ghe.example/githubnext/gh-aw-cao',
@@ -40,8 +40,8 @@ const workflows = [
     }
   },
   {
-    package: 'ambient-context',
-    'package-name': 'Ambient Context',
+    campaign: 'ambient-context',
+    'campaign-name': 'Ambient Context',
     organization: 'githubnext',
     repository: 'gh-aw-cao',
     workflow: '.github/workflows/ambient-context-agents-md-curator.md',
@@ -50,8 +50,8 @@ const workflows = [
     'rollout-mode': 'review'
   },
   {
-    package: 'other',
-    'package-name': 'Other',
+    campaign: 'other',
+    'campaign-name': 'Other',
     workflow: '.github/workflows/other.md',
     'workflow-name': 'Other',
     'workflow-role': 'orchestrator',
@@ -100,7 +100,7 @@ const operationalValues = [
 
 const outcomes = [
   {
-    package: 'ambient-context',
+    campaign: 'ambient-context',
     workflow: '.github/workflows/ambient-context.md',
     'workflow-name': 'Ambient Context',
     'safe-output': 'ambient-issue-1',
@@ -112,7 +112,7 @@ const outcomes = [
     'observed-at': '2026-08-31T17:00:00Z'
   },
   {
-    package: 'ambient-context',
+    campaign: 'ambient-context',
     workflow: '.github/workflows/ambient-context-agents-md-curator.md',
     'workflow-name': 'Ambient Context / AGENTS.md',
     'safe-output': 'ambient-pr-2',
@@ -125,12 +125,12 @@ const outcomes = [
     'observed-at': '2026-08-30T16:00:00Z'
   },
   {
-    package: 'other',
+    campaign: 'other',
     workflow: '.github/workflows/ambient-context.md',
     'workflow-name': 'Other',
     'safe-output': 'other-1',
-    'outcome-title': 'Other package report',
-    'outcome-summary': 'Not part of the selected package.',
+    'outcome-title': 'Other campaign report',
+    'outcome-summary': 'Not part of the selected campaign.',
     'outcome-category': 'issue',
     'outcome-status': 'open',
     'rollout-mode': 'live',
@@ -140,11 +140,11 @@ const outcomes = [
 
 function context() {
   return {
-    pageId: 'package-detail',
+    pageId: 'campaign-detail',
     title: 'Orchestrator and workers',
     sourceNames: ['workflows'],
     contextDetails: [],
-    routeParameter: 'package',
+    routeParameter: 'campaign',
     headingTag: /** @type {'h3'} */ ('h3'),
     sources: {
       workflows: { source: 'workflows', metadata, rows: workflows },
@@ -154,48 +154,48 @@ function context() {
   };
 }
 
-describe('renderPackageNavigation', () => {
-  it('renders the Insights facet for the selected package', () => {
-    const rendered = renderPackageRouteView({
+describe('renderCampaignNavigation', () => {
+  it('renders the Insights facet for the selected campaign', () => {
+    const rendered = renderCampaignRouteView({
       ...context(),
-      pageId: 'package-insights',
+      pageId: 'campaign-insights',
       sourceNames: ['workflows'],
       elementConfig: { body: 'insights' }
     });
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'ambient-context' }
+      detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
 
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.textContent).toBe('Insights');
-    expect(rendered.querySelector('.package-insights-content')).toBeNull();
+    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights');
+    expect(rendered.querySelector('.campaign-insights-content')).toBeNull();
   });
 
-  it('renders reusable navigation for the selected package workflow view', () => {
-    const rendered = renderPackageNavigation(context());
+  it('renders reusable navigation for the selected campaign workflow view', () => {
+    const rendered = renderCampaignNavigation(context());
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'ambient-context' }
+      detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
 
-    expect(rendered.dataset.package).toBe('ambient-context');
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context');
-    expect([...rendered.querySelectorAll('.package-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
-      '#page-package-detail?package=ambient-context',
-      '#page-package-insights?package=ambient-context',
-      '#page-package-workflows?package=ambient-context',
-      '#page-package-runs?package=ambient-context',
-      '#page-package-issues?package=ambient-context'
+    expect(rendered.dataset.campaign).toBe('ambient-context');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
+    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-detail?campaign=ambient-context');
+    expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('href'))).toEqual([
+      '#page-campaign-detail?campaign=ambient-context',
+      '#page-campaign-insights?campaign=ambient-context',
+      '#page-campaign-workflows?campaign=ambient-context',
+      '#page-campaign-runs?campaign=ambient-context',
+      '#page-campaign-issues?campaign=ambient-context'
     ]);
-    expect(rendered.querySelector('.package-readme h1')?.textContent).toBe('Ambient Context');
-    expect(rendered.querySelector('.package-readme h2')?.textContent).toBe('Capabilities');
-    expect(rendered.querySelectorAll('.package-readme li')).toHaveLength(2);
-    expect(rendered.querySelector('.package-readme-about')?.textContent).toContain('Keeps repository guidance current.');
-    expect(rendered.querySelector('.package-marketplace-detail')?.getAttribute('data-package')).toBe('ambient-context');
-    expect(rendered.querySelector('.package-marketplace-title')?.textContent).toBe('Ambient ContextPackage');
-    expect(rendered.querySelector('.package-rollout')?.textContent).toBe('review');
-    expect(rendered.querySelector('.package-marketplace-actions a')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md');
-    expect([...rendered.querySelectorAll('.package-readme a')].find((link) => link.textContent === 'guide')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/docs/guide.md');
-    const resources = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.package-readme-resources'));
+    expect(rendered.querySelector('.campaign-readme h1')?.textContent).toBe('Ambient Context');
+    expect(rendered.querySelector('.campaign-readme h2')?.textContent).toBe('Capabilities');
+    expect(rendered.querySelectorAll('.campaign-readme li')).toHaveLength(2);
+    expect(rendered.querySelector('.campaign-readme-about')?.textContent).toContain('Keeps repository guidance current.');
+    expect(rendered.querySelector('.campaign-marketplace-detail')?.getAttribute('data-campaign')).toBe('ambient-context');
+    expect(rendered.querySelector('.campaign-marketplace-title')?.textContent).toBe('Ambient ContextCampaign');
+    expect(rendered.querySelector('.campaign-rollout')?.textContent).toBe('review');
+    expect(rendered.querySelector('.campaign-marketplace-actions a')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md');
+    expect([...rendered.querySelectorAll('.campaign-readme a')].find((link) => link.textContent === 'guide')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/docs/guide.md');
+    const resources = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.campaign-readme-resources'));
     expect(resources.open).toBe(false);
     expect(resources.querySelector('summary')?.textContent).toBe('ResourcesShow details');
     resources.open = true;
@@ -204,20 +204,20 @@ describe('renderPackageNavigation', () => {
     expect(rendered.textContent).not.toContain('Other');
   });
 
-  it('renders workflow tab composition through the reusable package route variant primitive', () => {
-    const rendered = renderPackageRouteVariant(context(), 'workflows');
+  it('renders workflow tab composition through the reusable campaign route variant primitive', () => {
+    const rendered = renderCampaignRouteVariant(context(), 'workflows');
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'ambient-context' }
+      detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
 
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-workflows?package=ambient-context');
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
+    expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-workflows?campaign=ambient-context');
+    expect(rendered.querySelector('.campaign-tabs')?.textContent).toBe('OverviewInsightsWorkflowsRunsIssues');
   });
 
   describe('workflow run navigation', () => {
-    it('renders package-scoped workflow run navigation and identity', () => {
+    it('renders campaign-scoped workflow run navigation and identity', () => {
       const host = document.createElement('div');
-      const rendered = renderPackageRouteView({ ...context(), pageId: 'package-runs', elementConfig: { body: 'runs' } });
+      const rendered = renderCampaignRouteView({ ...context(), pageId: 'campaign-runs', elementConfig: { body: 'runs' } });
       host.append(rendered);
       let detail;
       host.addEventListener('dashboard-route-allocation', (event) => {
@@ -225,24 +225,24 @@ describe('renderPackageNavigation', () => {
       });
 
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
+        detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
 
-      expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-runs?package=ambient-context');
+      expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-campaign-runs?campaign=ambient-context');
       expect(detail).toEqual({
         title: 'Ambient Context',
-        description: 'Workflow runs for the Ambient Context package.',
+        description: 'Workflow runs for the Ambient Context campaign.',
         mode: 'review',
-        navigationPage: 'packages'
+        navigationPage: 'campaigns'
       });
     });
 
-    it('uses the trusted target mode for package navigation', () => {
+    it('uses the trusted target mode for campaign navigation', () => {
       const host = document.createElement('div');
-      const targetModeWorkflows = workflows.map((workflow) => workflow.package === 'ambient-context'
-        ? { ...workflow, 'package-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }] }
+      const targetModeWorkflows = workflows.map((workflow) => workflow.campaign === 'ambient-context'
+        ? { ...workflow, 'campaign-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }] }
         : workflow);
-      const rendered = renderPackageNavigation({
+      const rendered = renderCampaignNavigation({
         ...context(),
         sources: { ...context().sources, workflows: { source: 'workflows', metadata, rows: targetModeWorkflows } }
       });
@@ -253,16 +253,16 @@ describe('renderPackageNavigation', () => {
       });
 
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
+        detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
 
       expect(detail).toEqual(expect.objectContaining({ mode: 'live' }));
     });
   });
 
-  it('reallocates package title, description, mode, and parent navigation', () => {
+  it('reallocates campaign title, description, mode, and parent navigation', () => {
     const host = document.createElement('div');
-    const rendered = renderPackageNavigation(context());
+    const rendered = renderCampaignNavigation(context());
     host.append(rendered);
     let detail;
     host.addEventListener('dashboard-route-allocation', (event) => {
@@ -270,31 +270,31 @@ describe('renderPackageNavigation', () => {
     });
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'ambient-context' }
+      detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
 
     expect(detail).toEqual({
       title: 'Ambient Context',
-      description: 'Overview of the Ambient Context package.',
+      description: 'Overview of the Ambient Context campaign.',
       mode: 'review',
-      navigationPage: 'packages'
+      navigationPage: 'campaigns'
     });
   });
 
   describe('report navigation', () => {
-    it('renders route-scoped package navigation', () => {
-      const rendered = renderPackageRouteView({ ...context(), pageId: 'package-reports', elementConfig: { body: 'reports' } });
+    it('renders route-scoped campaign navigation', () => {
+      const rendered = renderCampaignRouteView({ ...context(), pageId: 'campaign-reports', elementConfig: { body: 'reports' } });
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
+        detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
 
-      expect(rendered.querySelector('.package-tabs [aria-current="page"]')).toBeNull();
+      expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')).toBeNull();
       expect(rendered.getAttribute('data-route-view')).not.toBeNull();
     });
 
-    it('reallocates package report identity and renders explicit empty states', () => {
+    it('reallocates campaign report identity and renders explicit empty states', () => {
       const host = document.createElement('div');
-      const rendered = renderPackageRouteView({ ...context(), pageId: 'package-reports', elementConfig: { body: 'reports' } });
+      const rendered = renderCampaignRouteView({ ...context(), pageId: 'campaign-reports', elementConfig: { body: 'reports' } });
       host.append(rendered);
       let detail;
       host.addEventListener('dashboard-route-allocation', (event) => {
@@ -302,25 +302,25 @@ describe('renderPackageNavigation', () => {
       });
 
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
+        detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
       expect(detail).toEqual({
         title: 'Ambient Context',
-        description: 'Durable reports produced by the Ambient Context package.',
+        description: 'Durable reports produced by the Ambient Context campaign.',
         mode: 'review',
-        navigationPage: 'packages'
+        navigationPage: 'campaigns'
       });
 
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'missing' }
+        detail: { parameter: 'campaign', value: 'missing' }
       }));
-      expect(rendered.textContent).toBe('Package not found.');
+      expect(rendered.textContent).toBe('Campaign not found.');
 
       const unavailableContext = context();
-      const unavailable = renderPackageRouteView({
+      const unavailable = renderCampaignRouteView({
         ...unavailableContext,
         elementConfig: { body: 'reports' },
-        pageId: 'package-reports',
+        pageId: 'campaign-reports',
         sources: {
           ...unavailableContext.sources,
           workflows: {
@@ -331,32 +331,32 @@ describe('renderPackageNavigation', () => {
         }
       });
       unavailable.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
+        detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
-      expect(unavailable.textContent).toBe('Package data is unavailable.');
+      expect(unavailable.textContent).toBe('Campaign data is unavailable.');
     });
   });
 
-  it('renders explicit empty states for missing and invalid package routes', () => {
-    const rendered = renderPackageNavigation(context());
-    expect(rendered.textContent).toBe('Select a package to view its overview.');
+  it('renders explicit empty states for missing and invalid campaign routes', () => {
+    const rendered = renderCampaignNavigation(context());
+    expect(rendered.textContent).toBe('Select a campaign to view its overview.');
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: '<invalid>' }
+      detail: { parameter: 'campaign', value: '<invalid>' }
     }));
-    expect(rendered.textContent).toBe('Select a package to view its overview.');
+    expect(rendered.textContent).toBe('Select a campaign to view its overview.');
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'missing' }
+      detail: { parameter: 'campaign', value: 'missing' }
     }));
-    expect(rendered.textContent).toBe('Package not found.');
+    expect(rendered.textContent).toBe('Campaign not found.');
   });
 
   it('renders the same unavailable state for workflow and report navigation', () => {
     const unavailableContext = context();
 
     for (const selectedView of /** @type {const} */ (['workflows', 'dispatches', 'reports'])) {
-      const rendered = renderPackageRouteView({
+      const rendered = renderCampaignRouteView({
         ...unavailableContext,
         elementConfig: { body: selectedView },
         sources: {
@@ -369,9 +369,9 @@ describe('renderPackageNavigation', () => {
         }
       });
       rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
+        detail: { parameter: 'campaign', value: 'ambient-context' }
       }));
-      expect(rendered.textContent).toBe('Package data is unavailable.');
+      expect(rendered.textContent).toBe('Campaign data is unavailable.');
     }
   });
 });

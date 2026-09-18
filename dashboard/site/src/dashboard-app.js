@@ -58,7 +58,7 @@
         "github/gh-aw-threat-detection",
         "githubnext/gh-aw-workshop",
       ];
-      const packageTargets = (liveRepository = "") => targetRepositories.map((repository) => ({
+      const campaignTargets = (liveRepository = "") => targetRepositories.map((repository) => ({
         repository,
         mode: repository === liveRepository ? "live" : "review",
       }));
@@ -459,13 +459,13 @@
               "control-plane": {
                 scope: { "allowed-owners": ["githubnext"], "allowed-repositories": ["githubnext/gh-aw-cao"] },
                 defaults: { mode: "review", "max-repositories": 1, "rollout-percent": 100 },
-                packages: { "self-care": { mode: "review", workers: { "dashboard-review": { workflow: "self-care-dashboard-review" } } } },
+                campaigns: { "self-care": { mode: "review", workers: { "dashboard-review": { workflow: "self-care-dashboard-review" } } } },
               },
             },
             raw: '{\n  "version": 1,\n  "control-plane": {\n    "scope": {\n      "allowed-owners": ["githubnext"],\n      "allowed-repositories": ["githubnext/gh-aw-cao"]\n    },\n    "defaults": {\n      "mode": "review",\n      "max-repositories": 1,\n      "rollout-percent": 100\n    }\n  }\n}',
             diagnostics: [
               { severity: "valid", path: ".github/workflows/cao.json", title: "Policy is valid", detail: "The runtime policy resolver accepted this revision." },
-              { severity: "guidance", path: "control-plane.packages.self-care.mode", title: "self-care is review-only", detail: "Review mode produces proposals in the control repository and cannot mutate targets." },
+              { severity: "guidance", path: "control-plane.campaigns.self-care.mode", title: "self-care is review-only", detail: "Review mode produces proposals in the control repository and cannot mutate targets." },
             ],
           }],
           metadata: metadata("configuration-policy-fixture"),
@@ -474,10 +474,10 @@
           source: "configuration-actions",
           rows: [{
             action: "Promote self-care to live",
-            path: "control-plane.packages.self-care.mode",
+            path: "control-plane.campaigns.self-care.mode",
             current: "review",
             recommended: "live",
-            prompt: 'Update .github/workflows/cao.json so control-plane.packages.self-care.mode is "live". Preserve all existing scope and rollout limits, verify target-owned authority, and validate the policy before committing.',
+            prompt: 'Update .github/workflows/cao.json so control-plane.campaigns.self-care.mode is "live". Preserve all existing scope and rollout limits, verify target-owned authority, and validate the policy before committing.',
           }],
           metadata: metadata("configuration-actions-fixture"),
         },
@@ -502,16 +502,16 @@
         workflows: {
           source: "workflows",
           rows: [
-            { organization: "githubnext", repository: "gh-aw-cao", package: "dependabot", "package-name": "Dependabot", "workflow-role": "orchestrator", workflow: ".github/workflows/dependabot.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "package-targets": packageTargets("github/gh-aw"), "max-ai-credits": 250, "package-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "dependabot", "package-name": "Dependabot", "workflow-role": "worker", workflow: ".github/workflows/dependabot-update-planner.md", "workflow-name": "Dependabot update planner", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 600, "package-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "cao-evolution", "package-name": "CAO Evolution", "workflow-role": "orchestrator", workflow: ".github/workflows/cao-evolution.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "package-targets": packageTargets(), "max-ai-credits": 250, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "cao-evolution", "package-name": "CAO Evolution", "workflow-role": "worker", workflow: ".github/workflows/cao-evolution-compiler-security.md", "workflow-name": "AW compiler security", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "cao-evolution", "package-name": "CAO Evolution", "workflow-role": "worker", workflow: ".github/workflows/cao-evolution-failures-investigator.md", "workflow-name": "AW failures investigator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "optimization", "package-name": "AW Optimization", "workflow-role": "orchestrator", workflow: ".github/workflows/optimization.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "package-targets": packageTargets(), "max-ai-credits": 250, "package-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "optimization", "package-name": "AW Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-ai-credit-optimizer.md", "workflow-name": "AI Credit optimizer", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "package-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "optimization", "package-name": "AW Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-ai-credit-auditor.md", "workflow-name": "AI Credit auditor", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 350, "package-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "optimization", "package-name": "AW Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-agents-md-curator.md", "workflow-name": "AGENTS.md curator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 400, "package-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
-            { organization: "githubnext", repository: "gh-aw-cao", package: "optimization", "package-name": "AW Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-skills-curator.md", "workflow-name": "Skills curator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 400, "package-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "dependabot", "campaign-name": "Dependabot", "workflow-role": "orchestrator", workflow: ".github/workflows/dependabot.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "campaign-targets": campaignTargets("github/gh-aw"), "max-ai-credits": 250, "campaign-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "dependabot", "campaign-name": "Dependabot", "workflow-role": "worker", workflow: ".github/workflows/dependabot-update-planner.md", "workflow-name": "Dependabot update planner", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 600, "campaign-aic-allowance": 850, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "cao-evolution", "campaign-name": "CAO Evolution", "workflow-role": "orchestrator", workflow: ".github/workflows/cao-evolution.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "campaign-targets": campaignTargets(), "max-ai-credits": 250, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "cao-evolution", "campaign-name": "CAO Evolution", "workflow-role": "worker", workflow: ".github/workflows/cao-evolution-compiler-security.md", "workflow-name": "AW compiler security", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "cao-evolution", "campaign-name": "CAO Evolution", "workflow-role": "worker", workflow: ".github/workflows/cao-evolution-failures-investigator.md", "workflow-name": "AW failures investigator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "AW Optimization", "workflow-role": "orchestrator", workflow: ".github/workflows/optimization.md", "workflow-name": "Repository selector", "workflow-active": "true", "rollout-mode": "review", "campaign-targets": campaignTargets(), "max-ai-credits": 250, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "AW Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-ai-credit-optimizer.md", "workflow-name": "AI Credit optimizer", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 500, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "AW Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-ai-credit-auditor.md", "workflow-name": "AI Credit auditor", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 350, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "AW Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-agents-md-curator.md", "workflow-name": "AGENTS.md curator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 400, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
+            { organization: "githubnext", repository: "gh-aw-cao", campaign: "optimization", "campaign-name": "AW Optimization", "workflow-role": "worker", workflow: ".github/workflows/optimization-skills-curator.md", "workflow-name": "Skills curator", "workflow-active": "true", "rollout-mode": "review", "max-ai-credits": 400, "campaign-aic-allowance": 1900, "inventory-ready": true, "observed-at": "2026-08-29T10:00:00Z" },
             { organization: "github", repository: "gh-aw-cao", "workflow-role": "standalone", workflow: ".github/workflows/daily.yml", "workflow-name": "Daily", "workflow-active": "true", "rollout-mode": "live", "observed-at": "2026-08-29T10:00:00Z" },
             { organization: "github", repository: "mona-tools", "workflow-role": "standalone", workflow: ".github/workflows/review.yml", "workflow-name": "Review", "workflow-active": "true", "rollout-mode": "review", "observed-at": "2026-08-29T10:00:00Z" },
             { organization: "github", repository: "mona-tools", "workflow-role": "standalone", workflow: ".github/workflows/ci.yml", "workflow-name": "Build and test", "workflow-active": "true", "rollout-mode": "live", "observed-at": "2026-08-29T10:00:00Z" },
@@ -771,7 +771,7 @@
           rows: [{
             "smell-observation-id": "control-plane:cao-evolution:inventory-incomplete",
             "smell-id": "inventory-incomplete",
-            "smell-name": "Package inventory incomplete",
+            "smell-name": "Campaign inventory incomplete",
             "smell-category": "control-plane",
             "smell-severity": "high",
             "smell-recommendation": "Restore the worker source and compile its lock file.",
@@ -837,7 +837,7 @@
         outcomes: {
           source: "outcomes",
           rows: [
-            { organization: "github", repository: "gh-aw", package: "dependabot", "runtime-repository": "githubnext/gh-aw-cao", workflow: ".github/workflows/dependabot.md", run: "2002", "safe-output": "dependabot-review", "outcome-state": "accepted", "rollout-mode": "review", "observed-at": "2026-08-29T08:40:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2002", label: "View run 2002" } },
+            { organization: "github", repository: "gh-aw", campaign: "dependabot", "runtime-repository": "githubnext/gh-aw-cao", workflow: ".github/workflows/dependabot.md", run: "2002", "safe-output": "dependabot-review", "outcome-state": "accepted", "rollout-mode": "review", "observed-at": "2026-08-29T08:40:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2002", label: "View run 2002" } },
             { organization: "github", repository: "gh-aw-cao", workflow: ".github/workflows/daily.yml", run: "1001", "outcome-state": "pending", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/1001", label: "View run 1001" } },
             { organization: "github", repository: "mona-tools", workflow: ".github/workflows/review.yml", run: "1002", "outcome-state": "rejected", "run-link": { relation: "run", href: "https://github.com/githubnext/mona-tools/actions/runs/1002", label: "View run 1002" } },
           ],

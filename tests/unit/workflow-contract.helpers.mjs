@@ -75,9 +75,9 @@ export function resolvePolicy({
   orchestratorCredits = 0,
   workerCreditsPerTarget = 0,
   aggregateCreditLimit = 1100,
-  packageEnabled = true,
+  campaignEnabled = true,
 }) {
-  if (packageEnabled === false) {
+  if (campaignEnabled === false) {
     return {
       enabled: false,
       safeOutputMode: null,
@@ -86,8 +86,8 @@ export function resolvePolicy({
       dispatchAllowed: false,
     };
   }
-  if (packageEnabled !== true) {
-    throw new TypeError("packageEnabled must be true or false");
+  if (campaignEnabled !== true) {
+    throw new TypeError("campaignEnabled must be true or false");
   }
   if (!Number.isInteger(maxRepos) || maxRepos < 1 || maxRepos > 1000) {
     throw new RangeError("maxRepos must be an integer from 1 through 1000");
@@ -119,7 +119,7 @@ export function resolvePolicy({
   const effectiveMaxRepos = Math.min(maxRepos, percentCap, dispatchCap, creditCap);
 
   return {
-    enabled: packageEnabled,
+    enabled: campaignEnabled,
     safeOutputMode,
     safeOutputRepo: safeOutputMode === "review" ? reviewOutputRepo : "",
     effectiveMaxRepos,

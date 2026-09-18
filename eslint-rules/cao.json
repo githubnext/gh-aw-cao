@@ -1,5 +1,5 @@
 {
-  "package": "eslint-rules",
+  "campaign": "eslint-rules",
   "orchestrator": "eslint-rules",
   "workers": {
     "inventory": "eslint-rules-inventory",

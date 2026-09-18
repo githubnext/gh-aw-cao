@@ -19,7 +19,7 @@ describe('octicons', () => {
     expect(rendered.querySelector('use')).toBeNull();
   });
 
-  it('references packaged Octicons through a same-document sprite reference', () => {
+  it('references bundled Octicons through a same-document sprite reference', () => {
     const rendered = octicon('alert');
 
     expect(rendered.querySelector('use')?.getAttribute('href')).toBe('#octicon-alert');

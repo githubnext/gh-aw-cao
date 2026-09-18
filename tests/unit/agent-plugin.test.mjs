@@ -18,8 +18,8 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
   assert.deepEqual(manifest.extensions, { "com.github.copilot": {} });
   for (const skillName of [
     "setup-cao",
-    "add-cao-package",
-    "create-cao-package",
+    "add-cao-campaign",
+    "create-cao-campaign",
     "analyze-cao",
     "cao-cli",
   ]) {
@@ -31,17 +31,17 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
   }
 });
 
-test("add-cao-package requires discovery, consent, and review-safe installation", async () => {
+test("add-cao-campaign requires discovery, consent, and review-safe installation", async () => {
   const skill = await readFile(
-    new URL("skills/add-cao-package/SKILL.md", root),
+    new URL("skills/add-cao-campaign/SKILL.md", root),
     "utf8",
   );
 
   assert.match(skill, /same commit/);
-  assert.match(skill, /Exclude packages with `private: true`/);
-  assert.match(skill, /no more than three installable packages/);
+  assert.match(skill, /Exclude campaigns with `private: true`/);
+  assert.match(skill, /no more than three installable campaigns/);
   assert.match(skill, /explicit approval/);
-  assert.match(skill, /cao\.mjs add githubnext\/gh-aw-cao\/<package-slug>@<catalog-commit>/);
+  assert.match(skill, /cao\.mjs add githubnext\/gh-aw-cao\/<campaign-slug>@<catalog-commit>/);
   assert.match(skill, /must remain in review/);
   assert.match(skill, /did not broaden or change/);
 });

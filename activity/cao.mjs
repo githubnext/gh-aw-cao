@@ -62,11 +62,11 @@ class UsageError extends Error {}
 
 const USAGE = `Usage:
   cao init
-  cao add PACKAGE [GH_AW_ADD_OPTIONS...]
+  cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
   cao update [GH_AW_UPDATE_OPTIONS...]
-  cao mode (live|preview) PACKAGE...
-  cao enable PACKAGE...
-  cao disable PACKAGE...
+  cao mode (live|preview) CAMPAIGN...
+  cao enable CAMPAIGN...
+  cao disable CAMPAIGN...
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
@@ -128,14 +128,14 @@ function isMapping(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function validatePackageDeclaration(document, source) {
+function validateCampaignDeclaration(document, source) {
   if (!isMapping(document)) throw new Error(`${source} must contain a JSON object`);
   const keys = Object.keys(document);
-  const unknown = keys.filter((key) => !['package', 'orchestrator', 'workers'].includes(key));
+  const unknown = keys.filter((key) => !['campaign', 'orchestrator', 'workers'].includes(key));
   if (unknown.length > 0) throw new Error(`${source} contains unknown key: ${unknown[0]}`);
   const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-  if (typeof document.package !== 'string' || !slug.test(document.package)) {
-    throw new Error(`${source} package must be a kebab-case identifier`);
+  if (typeof document.campaign !== 'string' || !slug.test(document.campaign)) {
+    throw new Error(`${source} campaign must be a kebab-case identifier`);
   }
   if (typeof document.orchestrator !== 'string' || !slug.test(document.orchestrator)) {
     throw new Error(`${source} orchestrator must be a kebab-case workflow identifier`);
@@ -208,7 +208,7 @@ function minimalPolicy(version) {
     $schema: CAO_SCHEMA_URL,
     version: 1,
     'gh-aw-version': version,
-    'control-plane': { packages: {} }
+    'control-plane': { campaigns: {} }
   };
 }
 
@@ -233,8 +233,8 @@ function validateGlobalPolicy(document, source) {
   if (document['control-plane'] !== undefined && !isMapping(document['control-plane'])) {
     throw new Error(`${source} control-plane must be an object`);
   }
-  if (document['control-plane']?.packages !== undefined && !isMapping(document['control-plane'].packages)) {
-    throw new Error(`${source} control-plane.packages must be an object`);
+  if (document['control-plane']?.campaigns !== undefined && !isMapping(document['control-plane'].campaigns)) {
+    throw new Error(`${source} control-plane.campaigns must be an object`);
   }
   return document;
 }
@@ -257,11 +257,11 @@ function ghAwMinimumVersion(policy, source) {
   return version;
 }
 
-function mergeCaoPackageDeclaration(policy, declaration) {
+function mergeCaoCampaignDeclaration(policy, declaration) {
   const controlPlane = policy['control-plane'] ?? {};
-  const packages = controlPlane.packages ?? {};
-  const existingPackage = isMapping(packages[declaration.package]) ? packages[declaration.package] : {};
-  const existingWorkers = isMapping(existingPackage.workers) ? existingPackage.workers : {};
+  const campaigns = controlPlane.campaigns ?? {};
+  const existingCampaign = isMapping(campaigns[declaration.campaign]) ? campaigns[declaration.campaign] : {};
+  const existingWorkers = isMapping(existingCampaign.workers) ? existingCampaign.workers : {};
   const workers = Object.fromEntries(Object.entries(declaration.workers).map(([worker, workflow]) => {
     const existing = isMapping(existingWorkers[worker]) ? existingWorkers[worker] : {};
     const preserved = {};
@@ -271,28 +271,28 @@ function mergeCaoPackageDeclaration(policy, declaration) {
   }));
   policy['control-plane'] = {
     ...controlPlane,
-    packages: {
-      ...packages,
-      [declaration.package]: {
-        ...existingPackage,
+    campaigns: {
+      ...campaigns,
+      [declaration.campaign]: {
+        ...existingCampaign,
         workers
       }
     }
   };
 }
 
-function packageSlugFromSpec(spec) {
+function campaignSlugFromSpec(spec) {
   const refSeparator = spec.lastIndexOf('@');
   const withoutRef = refSeparator > spec.indexOf('/') ? spec.slice(0, refSeparator) : spec;
   const slug = withoutRef.replace(/\/+$/, '').split('/').pop();
   if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-    throw new Error(`Unable to determine package name from ${spec}`);
+    throw new Error(`Unable to determine campaign name from ${spec}`);
   }
   return slug;
 }
 
-async function installedPackageRecords(root = process.cwd()) {
-  const recordsDirectory = path.resolve(root, '.github', 'aw', 'packages');
+async function installedCampaignRecords(root = process.cwd()) {
+  const recordsDirectory = path.resolve(root, '.github', 'aw', 'campaigns');
   let entries;
   try {
     entries = await readdir(recordsDirectory, { withFileTypes: true });
@@ -311,36 +311,36 @@ async function installedPackageRecords(root = process.cwd()) {
       if (error instanceof SyntaxError) throw new Error(`${path.relative(root, source)} contains invalid JSON: ${error.message}`);
       throw error;
     }
-    const packageName = typeof record.package === 'string' && record.package.trim()
-      ? record.package.trim()
+    const campaignName = typeof record.campaign === 'string' && record.campaign.trim()
+      ? record.campaign.trim()
       : typeof record.source === 'string'
         ? record.source.split('@')[0].trim()
         : '';
-    if (!packageName) throw new Error(`${path.relative(root, source)} does not identify an installed package`);
-    records.set(packageName, {
-      package: packageName,
-      source: typeof record.source === 'string' ? record.source : packageName
+    if (!campaignName) throw new Error(`${path.relative(root, source)} does not identify an installed campaign`);
+    records.set(campaignName, {
+      campaign: campaignName,
+      source: typeof record.source === 'string' ? record.source : campaignName
     });
   }
-  return [...records.values()].sort((left, right) => left.package.localeCompare(right.package));
+  return [...records.values()].sort((left, right) => left.campaign.localeCompare(right.campaign));
 }
 
-async function readInstalledCaoDeclaration(packageName) {
-  const expectedPackage = packageSlugFromSpec(packageName);
-  const declarationPath = path.resolve('.github', 'aw', expectedPackage, 'cao.json');
+async function readInstalledCaoDeclaration(campaignName) {
+  const expectedCampaign = campaignSlugFromSpec(campaignName);
+  const declarationPath = path.resolve('.github', 'aw', expectedCampaign, 'cao.json');
   let declaration;
   try {
-    declaration = validatePackageDeclaration(
+    declaration = validateCampaignDeclaration(
       JSON.parse(await readFile(declarationPath, 'utf8')),
       path.relative(process.cwd(), declarationPath)
     );
   } catch (error) {
     if (error?.code === 'ENOENT') return undefined;
-    if (error instanceof SyntaxError) throw new Error(`Package ${expectedPackage} installed invalid cao.json: ${error.message}`);
+    if (error instanceof SyntaxError) throw new Error(`Campaign ${expectedCampaign} installed invalid cao.json: ${error.message}`);
     throw error;
   }
-  if (declaration.package !== expectedPackage) {
-    throw new Error(`Installed CAO declaration names package ${declaration.package}, expected ${expectedPackage}`);
+  if (declaration.campaign !== expectedCampaign) {
+    throw new Error(`Installed CAO declaration names campaign ${declaration.campaign}, expected ${expectedCampaign}`);
   }
   return declaration;
 }
@@ -375,12 +375,12 @@ export async function ensureGhAwMinimumVersion({
   return { required, previous: current, current, updated: false };
 }
 
-export async function addCaoPackage(packageSpec, ghAwOptions = [], {
+export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
-  if (!packageSpec || packageSpec.startsWith('-')) throw new UsageError('cao add requires a package');
-  const install = execute('gh', ['aw', 'add', packageSpec, ...ghAwOptions], {
+  if (!campaignSpec || campaignSpec.startsWith('-')) throw new UsageError('cao add requires a campaign');
+  const install = execute('gh', ['aw', 'add', campaignSpec, ...ghAwOptions], {
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024
   });
@@ -388,9 +388,9 @@ export async function addCaoPackage(packageSpec, ghAwOptions = [], {
     throw new Error(`gh aw add failed: ${commandFailureMessage(install, 'unknown error')}`);
   }
 
-  const expectedPackage = packageSlugFromSpec(packageSpec);
-  const declaration = await readInstalledCaoDeclaration(packageSpec);
-  if (!declaration) throw new Error(`Package ${expectedPackage} did not install .github/aw/${expectedPackage}/cao.json`);
+  const expectedCampaign = campaignSlugFromSpec(campaignSpec);
+  const declaration = await readInstalledCaoDeclaration(campaignSpec);
+  if (!declaration) throw new Error(`Campaign ${expectedCampaign} did not install .github/aw/${expectedCampaign}/cao.json`);
 
   const absolutePolicyPath = path.resolve(policyPath);
   let policy;
@@ -405,116 +405,116 @@ export async function addCaoPackage(packageSpec, ghAwOptions = [], {
     policy = minimalPolicy(version);
   }
 
-  mergeCaoPackageDeclaration(policy, declaration);
+  mergeCaoCampaignDeclaration(policy, declaration);
   await writeJsonAtomically(absolutePolicyPath, policy);
   return {
     command: 'add',
-    package: declaration.package,
+    campaign: declaration.campaign,
     orchestrator: declaration.orchestrator,
     workers: Object.keys(declaration.workers),
     policy: policyPath
   };
 }
 
-export async function updateCaoPackages(ghAwOptions = [], {
+export async function updateCaoCampaigns(ghAwOptions = [], {
   policyPath = DEFAULT_POLICY_PATH,
   execute = spawnSync
 } = {}) {
   const policy = await readCaoPolicy(policyPath);
   const ghAw = await ensureGhAwMinimumVersion({ policyPath, execute });
-  const packages = await installedPackageRecords();
-  if (packages.length === 0) {
-    throw new Error('No installed gh-aw package records found under .github/aw/packages');
+  const campaigns = await installedCampaignRecords();
+  if (campaigns.length === 0) {
+    throw new Error('No installed gh-aw campaign records found under .github/aw/campaigns');
   }
 
-  const updatedPackages = [];
+  const updatedCampaigns = [];
   const mergedDeclarations = [];
-  for (const record of packages) {
-    const update = execute('gh', ['aw', 'update', record.package, ...ghAwOptions], {
+  for (const record of campaigns) {
+    const update = execute('gh', ['aw', 'update', record.campaign, ...ghAwOptions], {
       encoding: 'utf8',
       maxBuffer: 16 * 1024 * 1024
     });
     if (update.error || update.status !== 0) {
-      throw new Error(`gh aw update failed for ${record.package}: ${commandFailureMessage(update, 'unknown error')}`);
+      throw new Error(`gh aw update failed for ${record.campaign}: ${commandFailureMessage(update, 'unknown error')}`);
     }
-    const declaration = await readInstalledCaoDeclaration(record.package);
+    const declaration = await readInstalledCaoDeclaration(record.campaign);
     if (declaration) {
-      mergeCaoPackageDeclaration(policy, declaration);
-      mergedDeclarations.push(declaration.package);
+      mergeCaoCampaignDeclaration(policy, declaration);
+      mergedDeclarations.push(declaration.campaign);
     }
-    updatedPackages.push(record.package);
+    updatedCampaigns.push(record.campaign);
   }
   if (mergedDeclarations.length > 0) await writeJsonAtomically(path.resolve(policyPath), policy);
   return {
     command: 'update',
     policy: policyPath,
     'gh-aw': ghAw,
-    packages: updatedPackages,
+    campaigns: updatedCampaigns,
     declarations: mergedDeclarations
   };
 }
 
-export async function setCaoPackageMode(mode, packageNames, {
+export async function setCaoCampaignMode(mode, campaignNames, {
   policyPath = DEFAULT_POLICY_PATH
 } = {}) {
   if (mode !== 'live' && mode !== 'preview') {
     throw new UsageError('cao mode requires live or preview');
   }
-  if (!Array.isArray(packageNames) || packageNames.length === 0) {
-    throw new UsageError(`cao mode ${mode} requires at least one package`);
+  if (!Array.isArray(campaignNames) || campaignNames.length === 0) {
+    throw new UsageError(`cao mode ${mode} requires at least one campaign`);
   }
 
   const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-  const invalidPackage = packageNames.find((packageName) => typeof packageName !== 'string' || !slug.test(packageName));
-  if (invalidPackage !== undefined) {
-    throw new UsageError(`Invalid CAO package name: ${invalidPackage}`);
+  const invalidCampaign = campaignNames.find((campaignName) => typeof campaignName !== 'string' || !slug.test(campaignName));
+  if (invalidCampaign !== undefined) {
+    throw new UsageError(`Invalid CAO campaign name: ${invalidCampaign}`);
   }
 
   const policy = await readCaoPolicy(policyPath, 'mode');
-  const packages = policy['control-plane']?.packages ?? {};
-  const unknownPackages = [...new Set(packageNames)].filter((packageName) => !Object.hasOwn(packages, packageName));
-  if (unknownPackages.length > 0) {
-    throw new UsageError(`Unknown CAO package${unknownPackages.length === 1 ? '' : 's'}: ${unknownPackages.join(', ')}`);
+  const campaigns = policy['control-plane']?.campaigns ?? {};
+  const unknownCampaigns = [...new Set(campaignNames)].filter((campaignName) => !Object.hasOwn(campaigns, campaignName));
+  if (unknownCampaigns.length > 0) {
+    throw new UsageError(`Unknown CAO campaign${unknownCampaigns.length === 1 ? '' : 's'}: ${unknownCampaigns.join(', ')}`);
   }
-  for (const packageName of packageNames) {
-    if (!isMapping(packages[packageName])) {
-      throw new Error(`${policyPath} control-plane package ${packageName} must be an object`);
+  for (const campaignName of campaignNames) {
+    if (!isMapping(campaigns[campaignName])) {
+      throw new Error(`${policyPath} control-plane campaign ${campaignName} must be an object`);
     }
   }
 
   const policyMode = mode === 'preview' ? 'review' : 'live';
-  for (const packageName of new Set(packageNames)) {
-    packages[packageName] = { ...packages[packageName], mode: policyMode };
+  for (const campaignName of new Set(campaignNames)) {
+    campaigns[campaignName] = { ...campaigns[campaignName], mode: policyMode };
   }
   await writeJsonAtomically(path.resolve(policyPath), policy);
   return {
     command: 'mode',
     mode,
-    packages: [...new Set(packageNames)],
+    campaigns: [...new Set(campaignNames)],
     policy: policyPath
   };
 }
 
-export async function setCaoPackageWorkflowsEnabled(action, packageNames, {
+export async function setCaoCampaignWorkflowsEnabled(action, campaignNames, {
   execute = spawnSync
 } = {}) {
   if (action !== 'enable' && action !== 'disable') {
-    throw new UsageError('CAO package workflow action must be enable or disable');
+    throw new UsageError('CAO campaign workflow action must be enable or disable');
   }
-  if (!Array.isArray(packageNames) || packageNames.length === 0) {
-    throw new UsageError(`cao ${action} requires at least one package`);
+  if (!Array.isArray(campaignNames) || campaignNames.length === 0) {
+    throw new UsageError(`cao ${action} requires at least one campaign`);
   }
-  const packages = [...new Set(packageNames)];
-  const invalidPackage = packages.find((packageName) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(packageName));
-  if (invalidPackage !== undefined) {
-    throw new UsageError(`Invalid CAO package name: ${invalidPackage}`);
+  const campaigns = [...new Set(campaignNames)];
+  const invalidCampaign = campaigns.find((campaignName) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaignName));
+  if (invalidCampaign !== undefined) {
+    throw new UsageError(`Invalid CAO campaign name: ${invalidCampaign}`);
   }
 
   const declarations = [];
-  for (const packageName of packages) {
-    const declaration = await readInstalledCaoDeclaration(packageName);
+  for (const campaignName of campaigns) {
+    const declaration = await readInstalledCaoDeclaration(campaignName);
     if (!declaration) {
-      throw new Error(`Package ${packageName} is not installed or does not declare CAO workflows`);
+      throw new Error(`Campaign ${campaignName} is not installed or does not declare CAO workflows`);
     }
     declarations.push(declaration);
   }
@@ -532,7 +532,7 @@ export async function setCaoPackageWorkflowsEnabled(action, packageNames, {
       throw new Error(`gh workflow ${action} failed for ${workflow}: ${commandFailureMessage(result, 'unknown error')}`);
     }
   }
-  return { command: action, packages, workflows };
+  return { command: action, campaigns, workflows };
 }
 
 async function jsonlFiles(root) {
@@ -1206,7 +1206,7 @@ async function hashActivityPayloads({
             ...metadata,
             phase: 'runs',
             batch: {
-              packages: batch.packages,
+              campaigns: batch.campaigns,
               repositories: batch.repositories,
               workflows: batch.workflows,
               runs: batch.runs,
@@ -1220,7 +1220,7 @@ async function hashActivityPayloads({
             ...metadata,
             phase: 'records',
             batch: {
-              packages: [],
+              campaigns: [],
               repositories: [],
               workflows: [],
               runs: [],
@@ -1654,7 +1654,7 @@ export async function discoverWorkflows({
   return {
     command: "discover-workflows",
     repositories: sources.repositories.rows.length,
-    packages: sources.packages.rows.length,
+    campaigns: sources.campaigns.rows.length,
     workflows: sources.workflows.rows.length,
   };
 }
@@ -1667,16 +1667,16 @@ export async function runCli(arguments_, input = process.stdin) {
     return initializeCaoPolicy();
   }
   if (command === 'add') {
-    return addCaoPackage(optionArguments[0], optionArguments.slice(1));
+    return addCaoCampaign(optionArguments[0], optionArguments.slice(1));
   }
   if (command === 'update') {
-    return updateCaoPackages(optionArguments);
+    return updateCaoCampaigns(optionArguments);
   }
   if (command === 'mode') {
-    return setCaoPackageMode(optionArguments[0], optionArguments.slice(1));
+    return setCaoCampaignMode(optionArguments[0], optionArguments.slice(1));
   }
   if (command === 'enable' || command === 'disable') {
-    return setCaoPackageWorkflowsEnabled(command, optionArguments);
+    return setCaoCampaignWorkflowsEnabled(command, optionArguments);
   }
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);

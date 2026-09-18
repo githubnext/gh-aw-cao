@@ -32,7 +32,7 @@ describe('declarative dispatch view', () => {
           source: 'workflows',
           metadata,
           rows: [
-            { organization: 'githubnext', repository: 'control', workflow: 'worker.yml', 'workflow-name': 'Dependency updater', 'workflow-role': 'worker', package: 'dependabot', 'package-name': 'Dependabot' }
+            { organization: 'githubnext', repository: 'control', workflow: 'worker.yml', 'workflow-name': 'Dependency updater', 'workflow-role': 'worker', campaign: 'dependabot', 'campaign-name': 'Dependabot' }
           ]
         },
         runs: {
@@ -45,7 +45,7 @@ describe('declarative dispatch view', () => {
       }, ['dispatches'])
     });
 
-    const dispatchTable = dispatchPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-worker-dispatches');
+    const dispatchTable = dispatchPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'campaign-worker-dispatches');
     expect(dispatchPage.views).toHaveLength(1);
     expect(dispatchPage.sections).toBeUndefined();
     expect(dispatchTable).toMatchObject({
@@ -67,14 +67,14 @@ describe('declarative dispatch view', () => {
     ))).toEqual([
       'Started',
       'Type',
-      'Package',
+      'Campaign',
       'Workflow',
       'Run title',
       'Runtime repository',
       'Status',
       'Why'
     ]);
-    expect(rendered.textContent).toContain('Package worker');
+    expect(rendered.textContent).toContain('Campaign worker');
     expect(rendered.textContent).toContain('Update dependencies');
     expect(rendered.querySelector('table')?.className).toBe('custom-table');
     expect(rendered.querySelector('.status-attention')).not.toBeNull();

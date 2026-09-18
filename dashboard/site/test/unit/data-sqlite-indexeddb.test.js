@@ -34,13 +34,13 @@ function temporaryDatabase() {
 
 function batch() {
   const canonical = normalize([]);
-  canonical.packages.push({ id: 'package:1', slug: 'dashboard' });
+  canonical.campaigns.push({ id: 'campaign:1', slug: 'dashboard' });
   canonical.repositories.push({ id: 'repository:1' });
   canonical.workflows.push({
     id: 'workflow:1',
     repositoryId: 'repository:1',
-    packageId: 'package:1',
-    package: 'dashboard'
+    campaignId: 'campaign:1',
+    campaign: 'dashboard'
   });
   canonical.runs.push({
     id: 'run:1',
@@ -72,7 +72,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
     expect([...database.objectStoreNames]).toEqual(expect.arrayContaining([
       'domains', 'tools', 'audits', 'issues'
     ]));
-    expect([...database.objectStoreNames]).toContain('packages');
+    expect([...database.objectStoreNames]).toContain('campaigns');
     database.close();
 
     await upsertCanonicalBatch(indexedDB, batch());
@@ -364,7 +364,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
         record.observedAt = '2020-01-01T00:00:00Z';
       }
     }
-    stale.workflows[0].packageId = stale.packages[0].id;
+    stale.workflows[0].campaignId = stale.campaigns[0].id;
     stale.workflows[0].repositoryId = stale.repositories[0].id;
     stale.runs[0].repositoryId = stale.repositories[0].id;
     stale.runs[0].workflowId = stale.workflows[0].id;

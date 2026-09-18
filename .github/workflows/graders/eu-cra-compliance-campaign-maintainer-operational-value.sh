@@ -8,7 +8,7 @@ WORKFLOW_NAME="EU CRA / Maintenance"
 LEDGER_PATH="eu-cra-compliance/implementation-status.md"
 MATURATION_SECONDS=2592000
 
-tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/eu-cra-package-maintainer-value.XXXXXX")
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/eu-cra-campaign-maintainer-value.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 
 definition() {
@@ -18,19 +18,19 @@ definition() {
   "grader": "operational-value",
   "repository": "githubnext/gh-aw-cao",
   "workflowName": "EU CRA / Maintenance",
-  "sourcePath": ".github/workflows/eu-cra-compliance-package-maintainer.md",
+  "sourcePath": ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
   "adoption": {
     "commit": "d7bea37d9ae5ea5af2282be06d19f72ab416493b",
     "adoptedAt": "2026-08-27T18:02:44Z"
   },
-  "operationalValue": "Resolve the frozen EU CRA package-capability gaps through human-reviewed ledger changes.",
+  "operationalValue": "Resolve the frozen EU CRA campaign-capability gaps through human-reviewed ledger changes.",
   "evidence": {
-    "opportunity": "Each PARTIAL, MISSING, or INCOMPLETE requirement ID in the implementation ledger at the package-maintainer run's source commit.",
+    "opportunity": "Each PARTIAL, MISSING, or INCOMPLETE requirement ID in the implementation ledger at the campaign-maintainer run's source commit.",
     "assignment": "Freeze the source ledger blob and its eligible requirement IDs; key cra-ledger:<repository>:<startingLedgerBlob>. Duplicate runs over the same ledger share the opportunity.",
     "accepted": "An assigned requirement ID no longer has a PARTIAL, MISSING, or INCOMPLETE status in the latest ledger at the evidence cutoff, and the ledger change arrived through a pull request approved by a non-bot human.",
     "repositories": ["githubnext/gh-aw-cao"],
     "collection": "Read the immutable source ledger blob, the latest ledger commit at the capped cutoff, its associated pull request, and submitted reviews.",
-    "maturation": "Thirty days after the package-maintainer run starts.",
+    "maturation": "Thirty days after the campaign-maintainer run starts.",
     "zeroRule": "Complete evidence with no human-reviewed resolution of any assigned requirement ID scores 0.",
     "missingRule": "An inaccessible or malformed ledger, no eligible starting gap, inaccessible commit or review evidence, or an invalid run assignment scores null."
   },

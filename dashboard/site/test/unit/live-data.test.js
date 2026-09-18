@@ -201,7 +201,7 @@ describe("live Dashboard Language sources", () => {
           "githubnext/gh-aw-cao",
           "githubnext/gh-aw-workshop",
         ],
-        packages: {
+        campaigns: {
           dependabot: {
             mode: "review",
             rollout_percent: 100,
@@ -245,10 +245,10 @@ describe("live Dashboard Language sources", () => {
       expect(sources.workflows.rows[0]).toMatchObject({
         organization: "githubnext",
         repository: "gh-aw-cao",
-        package: "dependabot",
-        "package-inventory-warnings": 2,
-        "package-rollout-percent": 100,
-        "package-targets": [
+        campaign: "dependabot",
+        "campaign-inventory-warnings": 2,
+        "campaign-rollout-percent": 100,
+        "campaign-targets": [
           { repository: "github/gh-aw", mode: "review" },
           { repository: "github/gh-aw-firewall", mode: "review" },
           { repository: "github/gh-aw-mcpg", mode: "review" },

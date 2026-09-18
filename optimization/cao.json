@@ -1,5 +1,5 @@
 {
-  "package": "optimization",
+  "campaign": "optimization",
   "orchestrator": "optimization",
   "workers": {
     "ai-credit-auditor": "optimization-ai-credit-auditor",

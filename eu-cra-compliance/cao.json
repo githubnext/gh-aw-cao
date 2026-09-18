@@ -1,5 +1,5 @@
 {
-  "package": "eu-cra-compliance",
+  "campaign": "eu-cra-compliance",
   "orchestrator": "eu-cra-compliance",
   "workers": {
     "scope-classifier": "eu-cra-compliance-scope-classifier",

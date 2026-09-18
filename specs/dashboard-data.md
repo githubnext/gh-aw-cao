@@ -265,13 +265,13 @@ as fully enriched runs.
 
 ## 5.2 Maintenance inventory
 
-Package inventory inputs MAY report `package-version`,
-`package-current-version`, and `package-update-state` for an installed gh-aw
-starter package. `package-update-state` MUST be `update-available`,
+Campaign inventory inputs MAY report `campaign-version`,
+`campaign-current-version`, and `campaign-update-state` for an installed gh-aw
+starter campaign. `campaign-update-state` MUST be `update-available`,
 `up-to-date`, or `unknown`; missing or incomparable version evidence MUST
-normalize to `unknown`. The package slug remains the stable identity, and a
-refresh MUST enrich the existing Package record rather than create a
-version-specific Package.
+normalize to `unknown`. The campaign slug remains the stable identity, and a
+refresh MUST enrich the existing Campaign record rather than create a
+version-specific Campaign.
 
 Workflow inventory inputs SHALL continue to report `gh-aw-version`,
 `gh-aw-current-version`, and `gh-aw-update-state` as compiler evidence.
@@ -280,12 +280,12 @@ Repository identity. A repository requires an upgrade when at least one
 workflow reports `update-available`; mixed workflow versions MUST remain
 visible and MUST NOT be collapsed to a fabricated single version.
 
-The SQLite Package projection and the IndexedDB `packages` object store MUST
-preserve the same three package-maintenance fields with identical missing-data
-semantics. Both projections remain disposable and reconstructable from package
+The SQLite Campaign projection and the IndexedDB `campaigns` object store MUST
+preserve the same three campaign-maintenance fields with identical missing-data
+semantics. Both projections remain disposable and reconstructable from campaign
 inventory inputs. Schema migration MUST rebuild these derived records, and a
 failed refresh MUST retain the last complete active generation rather than
-publish partial maintenance state. Package and repository maintenance actions
+publish partial maintenance state. Campaign and repository maintenance actions
 MUST use these canonical query results and MUST NOT inspect upstream manifests
 or browser storage directly.
 
@@ -304,15 +304,15 @@ cao.json repository scope
 
 `cao.json` and its resolved control settings SHALL define collection authority
 and repository scope. They MUST NOT be treated as evidence that a Workflow or
-Run exists, executed, or executed in a package target repository.
+Run exists, executed, or executed in a campaign target repository.
 
 Inventory inputs SHALL provide static declarations and maintenance evidence:
-Package configuration, enrolled Repository metadata, declared control-plane
+Campaign configuration, enrolled Repository metadata, declared control-plane
 Workflow metadata, and bounded GitHub Actions workflow registry metadata for
 each resolved Repository. Registry metadata MAY enrich Workflow path, display
 name, active or disabled state, native identifier, and link without an observed
 Run. Repository-owned registry Workflows MUST remain standalone and MUST NOT
-inherit Package membership, worker status, admission, or rollout authority from
+inherit Campaign membership, worker status, admission, or rollout authority from
 repository enrollment. Cached gh-aw JSONL SHALL provide observed runtime
 evidence: Repository, Workflow, Run, Domain, Tool, Audit, and Issue observations.
 A declared or registered Workflow MAY exist without an observed Run. Queries MUST
@@ -336,20 +336,20 @@ JSONL shards when normalized payloads are unavailable.
 
 ## 5.4 Canonical join contract
 
-### 5.4.1 Package resource navigation projections
+### 5.4.1 Campaign resource navigation projections
 
-Package resource pages SHALL resolve one package slug from the active route and
+Campaign resource pages SHALL resolve one campaign slug from the active route and
 apply it as an equality predicate inside the dashboard query worker. Generated
 issue and pull-request views SHALL select retained Outcome observations by
 `outcome-category`; workflow-run views SHALL join canonical Run and Workflow
 records through Workflow identity; repository views SHALL group the canonical
-Repositories reached through package-classified Workflows. Missing package
+Repositories reached through campaign-classified Workflows. Missing campaign
 relationships MUST produce an honest empty or unavailable result and MUST NOT
 fall back to unscoped records.
 
 The local SQLite projection and browser IndexedDB projection SHALL expose
-equivalent Package-to-Workflow, Workflow-to-Run, and Workflow-to-Repository
-relationships to these queries. Package resource navigation is presentation
+equivalent Campaign-to-Workflow, Workflow-to-Run, and Workflow-to-Repository
+relationships to these queries. Campaign resource navigation is presentation
 configuration, not canonical operational evidence, and MUST NOT be persisted as
 mutable browser state. Both projections remain disposable and reconstructable;
 no schema migration is required for navigation-only changes.
@@ -373,7 +373,7 @@ Issue.runId            -> Run.id
 ```
 
 `Run.repositoryId` SHALL identify the repository where GitHub Actions executed
-the run. Package targets, dispatch envelopes, safe-output destinations, and
+the run. Campaign targets, dispatch envelopes, safe-output destinations, and
 other repository-shaped payload fields MUST NOT override it. An inventory
 Workflow and a runtime Workflow SHALL converge only when their canonical
 Repository and workflow-path identities match.
@@ -428,7 +428,7 @@ following source contract:
 | Optimization overhead | Invocation or non-overlapping Run-aggregate AIC for auditor, optimizer, verifier, and replacement recommendations attributable to one frozen opportunity and intervention lineage | Deduplicate by Run attempt, preserve cost grain, and exclude unrelated repositories, workflows, opportunities, and portfolio dispatches. |
 | Outcome quality | Frozen grader or eval observation with evaluator digest; one outcome or stable opportunity | Compare only observations produced by the same definition and evaluator digest. Missing quality evidence is unknown. |
 | Operational value | Schema-version-4 operational-value result; one stable opportunity at one evidence cutoff | Preserve value, maturity, evidence cutoff, accepted provenance, diagnostics, and evaluator digest. |
-| Workflow declaration | Workflow inventory at the exact reviewed source revision | Supply configured tools, model, trigger, budget, and package classification. Static declarations MUST NOT prove runtime use. |
+| Workflow declaration | Workflow inventory at the exact reviewed source revision | Supply configured tools, model, trigger, budget, and campaign classification. Static declarations MUST NOT prove runtime use. |
 
 Source provenance for every observation SHALL include collection scope, source
 kind, source identifier, source schema revision, observed time, generation,
@@ -760,7 +760,7 @@ without changing the core execution hierarchy.
 
 ```mermaid
 erDiagram
-  PACKAGE o|--o{ WORKFLOW : classifies
+  CAMPAIGN o|--o{ WORKFLOW : classifies
   REPOSITORY ||--o{ WORKFLOW : contains
   REPOSITORY ||--o{ RUN : executes
   WORKFLOW ||--o{ RUN : defines
@@ -769,9 +769,9 @@ erDiagram
   RUN ||--o{ AUDIT : records
   RUN ||--o{ ISSUE : creates
 
-  PACKAGE {
+  CAMPAIGN {
     string id PK "canonical ID"
-    string slug UK "stable package identity"
+    string slug UK "stable campaign identity"
     string name
     string mode
     boolean enabled
@@ -789,7 +789,7 @@ erDiagram
   WORKFLOW {
     string id PK "canonical ID"
     string repositoryId FK "required execution repository"
-    string packageId FK "nullable package classification"
+    string campaignId FK "nullable campaign classification"
     number githubId UK "nullable immutable ID"
     string name "repository-scoped fallback identity"
     string path "normalized preferred identity"
@@ -1298,9 +1298,9 @@ A missing canonical data point MUST NOT immediately be treated as zero, empty, o
 
 Before classifying it as missing, an implementation agent SHALL inspect the current [`gh aw logs` schema](https://github.com/github/gh-aw/blob/main/schemas/logs.schema.json) and determine whether any field in the applicable output variant contains an authoritative observation that can be normalized into the canonical model. This inspection SHALL include nested and aggregate structures, not only fields whose names match the canonical property.
 
-This discovery and normalization SHALL run in the activity-package JavaScript invoked by `.github/workflows/cao-activity.yml`, before the activity snapshot is published. The workflow YAML orchestrates that JavaScript and MUST NOT embed source-field mappings.
+This discovery and normalization SHALL run in the activity-campaign JavaScript invoked by `.github/workflows/cao-activity.yml`, before the activity snapshot is published. The workflow YAML orchestrates that JavaScript and MUST NOT embed source-field mappings.
 
-When the schema exposes suitable data, the activity-package source adapter SHOULD normalize it. The mapping MUST:
+When the schema exposes suitable data, the activity-campaign source adapter SHOULD normalize it. The mapping MUST:
 
 1. be explicit, deterministic, and covered by a fixture-based test;
 2. preserve source provenance and the schema revision used to establish the mapping;
@@ -1310,7 +1310,7 @@ When the schema exposes suitable data, the activity-package source adapter SHOUL
 
 The `gh aw logs` schema is a discovery surface for source adapters, not a canonical dashboard contract. Views MUST NOT read its fields directly, and similarity of field names alone is insufficient evidence for a mapping.
 
-If the schema defines a suitable field but the collected log does not contain it, the activity-package source adapter MUST preserve the data point as unknown and record why it is missing, including whether the cause is an unsupported schema variant, an older producer, an unavailable artifact, an uncollected optional field, or invalid source data. If no semantically valid field exists, the data point MUST remain explicitly unknown rather than being guessed or coerced.
+If the schema defines a suitable field but the collected log does not contain it, the activity-campaign source adapter MUST preserve the data point as unknown and record why it is missing, including whether the cause is an unsupported schema variant, an older producer, an unavailable artifact, an uncollected optional field, or invalid source data. If no semantically valid field exists, the data point MUST remain explicitly unknown rather than being guessed or coerced.
 
 Token-optimization evidence SHALL use the more specific completeness and
 comparability rules in Section 5.5. An aggregate `token_usage_summary` does not
@@ -1615,7 +1615,7 @@ After the old data path is removed, the name MAY be simplified.
 Version 1.2 SHOULD define:
 
 ```text
-packages
+campaigns
 repositories
 workflows
 runs
@@ -1670,7 +1670,7 @@ audits: runId
 issues: runId
 ```
 
-These indexes correspond to the shipped package lookup, repository/workflow
+These indexes correspond to the shipped campaign lookup, repository/workflow
 navigation, failed-run, and run-detail access paths. Presentation-level
 Dashboard Language fields are projected after canonical reads and do not by
 themselves justify canonical secondary indexes. Indexes SHOULD NOT be added

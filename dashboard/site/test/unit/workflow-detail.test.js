@@ -29,9 +29,9 @@ function context(pageId = 'workflow-detail') {
           {
             organization: 'githubnext',
             repository: 'gh-aw-cao',
-            package: 'ambient-context',
-            'package-name': 'Ambient Context',
-            'package-memberships': [
+            campaign: 'ambient-context',
+            'campaign-name': 'Ambient Context',
+            'campaign-memberships': [
               { id: 'central-agentic-ops', name: 'Central Agentic Ops' },
               { id: 'ambient-context', name: 'Ambient Context' }
             ],
@@ -129,12 +129,12 @@ describe('renderWorkflowDetail', () => {
     );
     expect([...rendered.querySelectorAll('.workflow-identity .workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Orchestrator',
-      'Package · Ambient Context',
-      'Package · Central Agentic Ops'
+      'Campaign · Ambient Context',
+      'Campaign · Central Agentic Ops'
     ]);
     expect([...rendered.querySelectorAll('.workflow-identity .workflow-badge-operation')].map((badge) => badge.getAttribute('href'))).toEqual([
-      '#page-package-insights?package=ambient-context',
-      '#page-package-insights?package=central-agentic-ops'
+      '#page-campaign-insights?campaign=ambient-context',
+      '#page-campaign-insights?campaign=central-agentic-ops'
     ]);
     expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('href')).toBe(
       'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md'

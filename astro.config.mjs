@@ -155,7 +155,7 @@ export default defineConfig({
         {
           label: "Maintain",
           items: [
-            { label: "Add a package", link: "/operations/#adding-a-package" },
+            { label: "Add a campaign", link: "/operations/#adding-a-campaign" },
             { label: "Add a worker", link: "/operations/#adding-a-worker" },
             { label: "Validate changes", link: "/operations/#change-validation" },
           ],

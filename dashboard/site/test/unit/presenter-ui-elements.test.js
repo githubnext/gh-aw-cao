@@ -57,16 +57,16 @@ describe('dashboard sidebar', () => {
 describe('declarative view data', () => {
   it('aggregates, orders, and limits table rows', () => {
     expect(prepareTableRows([
-      { package: 'alpha', runs: 2 },
-      { package: 'alpha', runs: 3 },
-      { package: 'beta', runs: 7 }
+      { campaign: 'alpha', runs: 2 },
+      { campaign: 'alpha', runs: 3 },
+      { campaign: 'beta', runs: 7 }
     ], [
-      { field: 'package' },
+      { field: 'campaign' },
       { field: 'runs', aggregate: 'sum', as: 'total' }
     ], {
       'order-by': [{ field: 'total', direction: 'desc' }],
       limit: 1
-    })).toEqual([{ package: 'beta', total: 7 }]);
+    })).toEqual([{ campaign: 'beta', total: 7 }]);
   });
 
   it('builds and orders aggregated chart points', () => {

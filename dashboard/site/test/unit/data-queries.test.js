@@ -38,7 +38,7 @@ function metadata(id, overrides = {}) {
 const workflows = {
   source: 'workflows',
   rows: [
-    { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', package: 'aw-doctor' },
+    { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', campaign: 'aw-doctor' },
     { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md' }
   ],
   metadata: metadata('workflows')
@@ -262,7 +262,7 @@ describe('declarative dashboard queries', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', package: 'dashboard', 'workflow-active': 'false' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', campaign: 'dashboard', 'workflow-active': 'false' },
             { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md', 'workflow-active': false },
             { organization: 'githubnext', repository: 'other', workflow: 'c.md', 'workflow-active': 'true' }
           ],
@@ -355,10 +355,10 @@ describe('declarative dashboard queries', () => {
 
   it('counts database entities through the declared horizon queries', () => {
     const sources = {
-      packages: {
-        source: 'packages',
-        rows: [{ package: 'activity' }, { package: 'dashboard' }],
-        metadata: metadata('packages')
+      campaigns: {
+        source: 'campaigns',
+        rows: [{ campaign: 'activity' }, { campaign: 'dashboard' }],
+        metadata: metadata('campaigns')
       },
       repositories: {
         source: 'repositories',
@@ -376,10 +376,10 @@ describe('declarative dashboard queries', () => {
     const result = executeDashboardQueries(
       dashboardQueries,
       sources,
-      ['database-package-count', 'database-repository-count', 'database-workflow-count', 'database-run-count', 'database-domain-count', 'database-tool-count', 'database-audit-count', 'database-issue-count']
+      ['database-campaign-count', 'database-repository-count', 'database-workflow-count', 'database-run-count', 'database-domain-count', 'database-tool-count', 'database-audit-count', 'database-issue-count']
     );
 
-    expect(result['database-package-count'].rows).toEqual([{ packages: 2 }]);
+    expect(result['database-campaign-count'].rows).toEqual([{ campaigns: 2 }]);
     expect(result['database-repository-count'].rows).toEqual([{ repositories: 3 }]);
     expect(result['database-workflow-count'].rows).toEqual([{ workflows: 2 }]);
     expect(result['database-run-count'].rows).toEqual([{ runs: 2 }]);
@@ -624,13 +624,13 @@ describe('declarative dashboard queries', () => {
       {
         name: 'workflow-projection',
         from: 'workflows',
-        select: [{ field: 'workflow', as: 'name' }, { field: 'package' }],
+        select: [{ field: 'workflow', as: 'name' }, { field: 'campaign' }],
         'order-by': [{ field: 'name', direction: 'desc' }]
       },
       { workflows }
     );
 
-    expect(result.rows).toEqual([{ name: 'b.md' }, { name: 'a.md', package: 'aw-doctor' }]);
+    expect(result.rows).toEqual([{ name: 'b.md' }, { name: 'a.md', campaign: 'aw-doctor' }]);
     expect(result.metadata['source-kind']).toBe('derived');
     expect(result.metadata.availability).toBe('available');
   });
@@ -1215,7 +1215,7 @@ describe('declarative dashboard queries', () => {
       expect(derived['event-inspection'].rows.at(-1)?.event).toBe('event-000001');
     });
 
-  it('computes Repositories, Workflows, and Packages view payloads from dashboard queries', () => {
+  it('computes Repositories, Workflows, and Campaigns view payloads from dashboard queries', () => {
     const repositories = {
       source: 'repositories',
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'repository-link': { href: 'repo' } }],
@@ -1226,31 +1226,31 @@ describe('declarative dashboard queries', () => {
       rows: [
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
-          package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'orchestrator',
+          campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'workflow-role': 'orchestrator',
           'rollout-mode': 'review', 'workflow-active': 'true'
         },
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
-          package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'worker',
+          campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'workflow-role': 'worker',
           'rollout-mode': 'review', 'workflow-active': 'false'
         },
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'c.md',
-          package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'worker',
+          campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'workflow-role': 'worker',
           'rollout-mode': 'review', 'workflow-active': 'true'
         }
       ],
       metadata: metadata('workflows')
     };
-    const packages = {
-      source: 'packages',
+    const campaigns = {
+      source: 'campaigns',
       rows: [{
-        package: 'aw-doctor',
-        'package-name': 'AW Doctor',
-        'package-mode': 'review',
-        'package-registration': 'true'
+        campaign: 'aw-doctor',
+        'campaign-name': 'AW Doctor',
+        'campaign-mode': 'review',
+        'campaign-registration': 'true'
       }],
-      metadata: metadata('packages')
+      metadata: metadata('campaigns')
     };
     const runs = {
       source: 'runs',
@@ -1283,8 +1283,8 @@ describe('declarative dashboard queries', () => {
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { ...emptyRunRecordSources, packages, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-values': operationalValues, usage },
-      ['repository-activity', 'workflow-inventory', 'top-workflow-runs', 'package-operational-value-totals', 'package-inventory']
+      { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-values': operationalValues, usage },
+      ['repository-activity', 'workflow-inventory', 'top-workflow-runs', 'campaign-operational-value-totals', 'campaign-inventory']
     );
 
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
@@ -1308,16 +1308,16 @@ describe('declarative dashboard queries', () => {
       expect.objectContaining({ workflow: 'a.md', run: '2', 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'workflow-runs': 2 }),
       expect.objectContaining({ workflow: 'c.md', run: '3', 'workflow-label': 'githubnext/gh-aw-cao:c.md', 'workflow-runs': 1 })
     ]);
-    expect(derived['package-operational-value-totals'].rows).toEqual([{
-      package: 'aw-doctor',
+    expect(derived['campaign-operational-value-totals'].rows).toEqual([{
+      campaign: 'aw-doctor',
       'value-created': 1
     }]);
-    expect(derived['package-inventory'].rows).toEqual([{
-      package: 'aw-doctor',
-      'package-name': 'AW Doctor',
-      'package-dashboard-link': {
-        'dashboard-href': '#page-package-detail?package=aw-doctor',
-        'dashboard-label': 'View AW Doctor package dashboard'
+    expect(derived['campaign-inventory'].rows).toEqual([{
+      campaign: 'aw-doctor',
+      'campaign-name': 'AW Doctor',
+      'campaign-dashboard-link': {
+        'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+        'dashboard-label': 'View AW Doctor campaign dashboard'
       },
       workflows: 3,
       roles: 'orchestrator, worker',
@@ -2270,8 +2270,8 @@ describe('computed field vocabulary', () => {
     });
     expect(compute('dashboard-link', [
       { field: 'missing' },
-      { value: '#page-package-detail?package=' },
-      { value: 'View package dashboard' },
+      { value: '#page-campaign-detail?campaign=' },
+      { value: 'View campaign dashboard' },
       { value: '' }
     ])).toBeNull();
   });

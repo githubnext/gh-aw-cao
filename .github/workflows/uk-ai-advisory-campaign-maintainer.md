@@ -41,14 +41,14 @@ network:
     - github
     - www.gov.uk
 
-run-name: "UK AI Advisory package alignment maintenance · ${{ inputs.safe_output_mode || 'review' }}"
+run-name: "UK AI Advisory campaign alignment maintenance · ${{ inputs.safe_output_mode || 'review' }}"
 
 concurrency:
   group: "${{ github.workflow }}"
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-tracker-id: uk-ai-advisory-package-maintainer
+tracker-id: uk-ai-advisory-campaign-maintainer
 
 tools:
   cli-proxy: true
@@ -70,7 +70,7 @@ safe-outputs:
       - ".github/aw/uk-ai-advisory/implementation-status.md"
   create-issue:
     expires: 30d
-    title-prefix: "[uk-ai-advisory:package-improvement] "
+    title-prefix: "[uk-ai-advisory:campaign-improvement] "
     close-older-issues: false
     deduplicate-by-title: true
     max: 1
@@ -82,11 +82,11 @@ safe-outputs:
 
 # UK AI Advisory / Maintenance
 
-Audit the operation workflows in this package against the original specification and current authoritative GOV.UK guidance at `https://www.gov.uk/guidance/ai-open-code-and-vulnerability-risk-in-the-public-sector`. Maintain a durable capability ledger and, when useful, propose the single highest-priority concrete fleet improvement. This workflow audits the UK AI Advisory package only; it does not assess target repositories, establish security, or authorize an open-code or closure decision.
+Audit the operation workflows in this campaign against the original specification and current authoritative GOV.UK guidance at `https://www.gov.uk/guidance/ai-open-code-and-vulnerability-risk-in-the-public-sector`. Maintain a durable capability ledger and, when useful, propose the single highest-priority concrete fleet improvement. This workflow audits the UK AI Advisory campaign only; it does not assess target repositories, establish security, or authorize an open-code or closure decision.
 
 ## Trusted scope
 
-Read only these package sources and the applicable ledger path, plus the authoritative GOV.UK source:
+Read only these campaign sources and the applicable ledger path, plus the authoritative GOV.UK source:
 
 - `.github/workflows/uk-ai-advisory.md`
 - `.github/workflows/uk-ai-advisory-operational-resilience.md`
@@ -100,7 +100,7 @@ Fetch the official GOV.UK guidance on every run. Distinguish:
 
 1. the authoritative current guidance;
 2. the stable original requirement IDs preserved in the ledger;
-3. the observed package implementation.
+3. the observed campaign implementation.
 
 Systematically reconcile the complete guidance, including its scope, threat model, minimum standard, remediation expectations, and closure-exception governance. Preserve stable requirement IDs; add new IDs rather than renumbering or silently deleting the original baseline. If guidance changes, retain the prior requirement and record the changed provenance or disposition.
 
@@ -118,19 +118,19 @@ The core baseline includes:
 - advisory A/B/C/D tiers that never authorize opening, restricting, hiding, or decommissioning code;
 - non-binding, incomplete-by-design outputs and explicit human review.
 
-Record the official URL and verification date for every material ledger row. GOV.UK guidance is policy guidance rather than a package compliance certificate. If the authoritative source or a trusted package file cannot be accessed or reconciled, call `report_incomplete`, preserve the ledger, and create no speculative pull request or issue. A transient source outage is not a no-op and does not justify date-only ledger churn.
+Record the official URL and verification date for every material ledger row. GOV.UK guidance is policy guidance rather than a campaign compliance certificate. If the authoritative source or a trusted campaign file cannot be accessed or reconciled, call `report_incomplete`, preserve the ledger, and create no speculative pull request or issue. A transient source outage is not a no-op and does not justify date-only ledger churn.
 
 ## Ledger contract
 
 For each requirement, maintain:
 
 - stable requirement ID and concise summary;
-- package-capability status: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `HUMAN_REVIEW_REQUIRED`, or `INCOMPLETE`;
+- campaign-capability status: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `HUMAN_REVIEW_REQUIRED`, or `INCOMPLETE`;
 - exact workflow and section evidence, or `none`;
 - concrete missing capability and recommended change;
 - authoritative provenance and last materially verified date.
 
-`IMPLEMENTED` means only that a workflow capability represents the requirement. It does not prove that the package, an installed fleet, a repository, or an organization is secure or aligned with the guidance. Missing or ambiguous evidence is never alignment. Do not change the ledger only to refresh a verification date; Git history and workflow runs provide the recurring audit trail.
+`IMPLEMENTED` means only that a workflow capability represents the requirement. It does not prove that the campaign, an installed fleet, a repository, or an organization is secure or aligned with the guidance. Missing or ambiguous evidence is never alignment. Do not change the ledger only to refresh a verification date; Git history and workflow runs provide the recurring audit trail.
 
 ## Outputs
 

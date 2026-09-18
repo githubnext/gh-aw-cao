@@ -83,7 +83,7 @@ jobs:
         id: publish
         env:
           CONTROL_REPOSITORY: ${{ steps.inspect.outputs.control_repository }}
-          PACKAGE: ${{ steps.validate.outputs.package }}
+          CAMPAIGN: ${{ steps.validate.outputs.campaign }}
           REVIEWER: ${{ steps.inspect.outputs.reviewer }}
           SOURCE_CONTENT_DIGEST: ${{ steps.inspect.outputs.source_content_digest }}
           SOURCE_ISSUE: ${{ steps.inspect.outputs.source_issue }}

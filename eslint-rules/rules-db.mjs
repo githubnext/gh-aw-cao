@@ -2,7 +2,7 @@
 // ESLint Factory rules database builder.
 //
 // Rebuilds a queryable SQLite database from the append-only JSONL transaction
-// logs that are the authoritative memory of the `eslint-rules` package. The
+// logs that are the authoritative memory of the `eslint-rules` campaign. The
 // JSONL logs always win: the database is a disposable derived artifact that can
 // be thrown away and rebuilt from the same logs.
 //

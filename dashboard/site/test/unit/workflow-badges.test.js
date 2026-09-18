@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { renderWorkflowBadges, workflowPackageMemberships, workflowRole } from '../../src/components/workflow-badges.js';
+import { renderWorkflowBadges, workflowCampaignMemberships, workflowRole } from '../../src/components/workflow-badges.js';
 
 describe('workflow-badges', () => {
-  it('renders the workflow role and sorted package memberships', () => {
+  it('renders the workflow role and sorted campaign memberships', () => {
     const element = renderWorkflowBadges({
-      package: 'ambient-context',
-      'package-name': 'Ambient Context',
-      'package-memberships': [
+      campaign: 'ambient-context',
+      'campaign-name': 'Ambient Context',
+      'campaign-memberships': [
         { id: 'central-agentic-ops', name: 'Central Agentic Ops' },
         { id: 'ambient-context', name: 'Ambient Context' }
       ],
@@ -17,42 +17,42 @@ describe('workflow-badges', () => {
     expect(element.className).toBe('workflow-badges');
     expect([...element.querySelectorAll('.workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Orchestrator',
-      'Package · Ambient Context',
-      'Package · Central Agentic Ops'
+      'Campaign · Ambient Context',
+      'Campaign · Central Agentic Ops'
     ]);
     expect([...element.querySelectorAll('a')].map((badge) => badge.getAttribute('href'))).toEqual([
-      '#page-package-insights?package=ambient-context',
-      '#page-package-insights?package=central-agentic-ops'
+      '#page-campaign-insights?campaign=ambient-context',
+      '#page-campaign-insights?campaign=central-agentic-ops'
     ]);
   });
 
-  it('supports custom class names and package destinations', () => {
+  it('supports custom class names and campaign destinations', () => {
     const element = renderWorkflowBadges({
-      package: 'maintenance',
-      'package-name': 'Maintenance',
+      campaign: 'maintenance',
+      'campaign-name': 'Maintenance',
       'workflow-role': 'worker'
     }, {
       containerClassName: 'repository-workflow-badges',
       roleClassName: 'workflow-badge',
       membershipClassName: 'workflow-badge workflow-badge-operation',
-      packagePage: 'packages'
+      campaignPage: 'campaigns'
     });
 
     expect(element.className).toBe('repository-workflow-badges');
     expect(element.querySelector('.workflow-badge-worker')?.textContent).toBe('Worker');
-    expect(element.querySelector('a')?.getAttribute('href')).toBe('#page-packages?package=maintenance');
+    expect(element.querySelector('a')?.getAttribute('href')).toBe('#page-campaigns?campaign=maintenance');
   });
 
   it('derives operation and unknown roles conservatively', () => {
-    expect(workflowRole({ package: 'ambient-context', 'package-name': 'Ambient Context' })).toBe('operation');
+    expect(workflowRole({ campaign: 'ambient-context', 'campaign-name': 'Ambient Context' })).toBe('operation');
     expect(workflowRole({})).toBe('unknown');
   });
 
-  it('normalizes and deduplicates package memberships while skipping invalid items', () => {
-    expect(workflowPackageMemberships({
-      package: 'fallback',
-      'package-name': 'Fallback',
-      'package-memberships': [
+  it('normalizes and deduplicates campaign memberships while skipping invalid items', () => {
+    expect(workflowCampaignMemberships({
+      campaign: 'fallback',
+      'campaign-name': 'Fallback',
+      'campaign-memberships': [
         { id: 'beta', name: 'Beta' },
         { id: 'alpha', name: 'Alpha' },
         { id: 'beta', name: 'Beta duplicate' },
@@ -66,9 +66,9 @@ describe('workflow-badges', () => {
       { id: 'beta', name: 'Beta duplicate' }
     ]);
 
-    expect(workflowPackageMemberships({ package: 'fallback', 'package-name': 'Fallback' })).toEqual([
+    expect(workflowCampaignMemberships({ campaign: 'fallback', 'campaign-name': 'Fallback' })).toEqual([
       { id: 'fallback', name: 'Fallback' }
     ]);
-    expect(workflowPackageMemberships({})).toEqual([]);
+    expect(workflowCampaignMemberships({})).toEqual([]);
   });
 });

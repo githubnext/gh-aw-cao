@@ -18,7 +18,7 @@ case "$BUNDLE" in
   dependabot) workflow_file=dependabot.lock.yml ;;
   eu-cra-compliance) workflow_file=eu-cra-compliance.lock.yml ;;
   optimization) workflow_file=optimization.lock.yml ;;
-  *) printf 'Unsupported package: %s\n' "$BUNDLE" >&2; exit 1 ;;
+  *) printf 'Unsupported campaign: %s\n' "$BUNDLE" >&2; exit 1 ;;
 esac
 case "$RUNS" in
   2|3|5) ;;
@@ -93,7 +93,7 @@ done < "$run_ids_file"
 
 {
   printf '## Enterprise stress canary\n'
-  printf -- '- Package: `%s`\n' "$BUNDLE"
+  printf -- '- Campaign: `%s`\n' "$BUNDLE"
   printf -- '- Target: `%s`\n' "$TARGET_REPO"
   printf -- '- Review destination: `%s`\n' "$SAFE_OUTPUT_REPO"
   printf -- '- Requested runs: `%s`\n' "$RUNS"

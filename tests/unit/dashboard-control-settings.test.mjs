@@ -17,7 +17,7 @@ test("dashboard control settings retain successful policy resolution", () => {
       stdout: JSON.stringify({
         allowed_owners: ["acme"],
         allowed_repositories: ["acme/target"],
-        packages: { dependabot: { enabled: true } },
+        campaigns: { dependabot: { enabled: true } },
       }),
       stderr: "",
     }),
@@ -25,7 +25,7 @@ test("dashboard control settings retain successful policy resolution", () => {
 
   assert.deepEqual(settings.policy_resolution, { status: "available", reason: "" });
   assert.deepEqual(settings.allowed_repositories, ["acme/target"]);
-  assert.deepEqual(settings.packages, { dependabot: { enabled: true } });
+  assert.deepEqual(settings.campaigns, { dependabot: { enabled: true } });
   assert.deepEqual(settings.policy_document, { version: 1, "control-plane": {} });
   assert.equal(settings.policy_source, '{"version":1,"control-plane":{}}');
 });
@@ -43,7 +43,7 @@ test("dashboard control settings report policy refusal without widening scope", 
     allowed_owners: ["acme"],
     allowed_repositories: ["acme/control"],
     web: { experimental: false, favicon: "./favicon.svg" },
-    packages: {},
+    campaigns: {},
     publishing_enabled: false,
     publishing_control_repositories: ["acme/control"],
     publishing_reviewers: [],
@@ -70,5 +70,5 @@ test("dashboard control settings report resolver crashes without widening scope"
   assert.equal(settings.policy_resolution.status, "unavailable");
   assert.equal(settings.policy_resolution.reason, "resolver crashed");
   assert.deepEqual(settings.allowed_repositories, ["acme/control"]);
-  assert.deepEqual(settings.packages, {});
+  assert.deepEqual(settings.campaigns, {});
 });

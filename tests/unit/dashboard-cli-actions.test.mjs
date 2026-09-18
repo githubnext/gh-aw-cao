@@ -282,7 +282,7 @@ test("dashboard composition merges CLI actions and rejects duplicate ids", () =>
   });
   const composed = composeDashboardDocuments(
     dashboard("primary", "compile"),
-    [dashboard("package", "upgrade")],
+    [dashboard("campaign", "upgrade")],
   );
   assert.deepEqual(
     composed.dashboard["cli-actions"].map(({ id }) => id),
@@ -291,7 +291,7 @@ test("dashboard composition merges CLI actions and rejects duplicate ids", () =>
   assert.throws(
     () => composeDashboardDocuments(
       dashboard("primary", "compile"),
-      [dashboard("package", "compile")],
+      [dashboard("campaign", "compile")],
     ),
     /duplicate dashboard CLI action id/,
   );

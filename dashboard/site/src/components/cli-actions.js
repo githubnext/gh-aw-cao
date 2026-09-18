@@ -320,7 +320,7 @@ export function renderCliActions(actions, options = {}) {
           'div',
           null,
           h('h3', { id: 'configuration-cli-actions-heading' }, 'Agentic Workflows'),
-          h('p', null, 'Update installed packages or upgrade this repository’s Agentic Workflows.')
+          h('p', null, 'Update installed campaigns or upgrade this repository’s Agentic Workflows.')
         )
       ),
       settingsList

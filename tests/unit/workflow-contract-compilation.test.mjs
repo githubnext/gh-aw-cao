@@ -39,8 +39,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     cpSync(join(root, "aw.yml"), join(temporaryRoot, "aw.yml"));
     cpSync(join(root, "cao.sh"), join(temporaryRoot, "cao.sh"));
     cpSync(join(root, "README.md"), join(temporaryRoot, "README.md"));
-    for (const packageDirectory of ["activity", "cao-evolution", "dashboard", "dependabot", "optimization", "repo-assist"]) {
-      cpSync(join(root, packageDirectory), join(temporaryRoot, packageDirectory), { recursive: true });
+    for (const campaignDirectory of ["activity", "cao-evolution", "dashboard", "dependabot", "optimization", "repo-assist"]) {
+      cpSync(join(root, campaignDirectory), join(temporaryRoot, campaignDirectory), { recursive: true });
     }
     for (const manifest of ["aw.yml", "activity/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml", "repo-assist/aw.yml"]) {
       const manifestPath = join(temporaryRoot, manifest);
@@ -65,7 +65,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       return [{
         sourceName,
         lockName: sourceName.replace(/\.md$/, ".lock.yml"),
-        packageName: controlImport.with.package,
+        campaignName: controlImport.with.campaign,
         role: controlImport.with.role,
         workerName: controlImport.with.worker ?? "__none__",
       }];
@@ -82,10 +82,10 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     const lockNames = readdirSync(generatedDirectory)
       .filter((name) => name.endsWith(".lock.yml"))
       .sort();
-    const packageLockNames = controlContracts.map(({ lockName }) => lockName);
+    const campaignLockNames = controlContracts.map(({ lockName }) => lockName);
 
     assert.deepEqual(lockNames, expectedLockNames);
-    for (const name of packageLockNames) {
+    for (const name of campaignLockNames) {
       const generated = workflow(name, generatedDirectory);
       const jobs = generatedJobs(generated);
       const preActivation = jobs.get("pre_activation").block;
@@ -130,9 +130,9 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.doesNotMatch(generated, /safe_output_mode == 'private'/);
     }
 
-    for (const { lockName, packageName, workerName } of controlContracts.filter(({ role }) => role === "orchestrator")) {
+    for (const { lockName, campaignName, workerName } of controlContracts.filter(({ role }) => role === "orchestrator")) {
       const generated = workflow(lockName, generatedDirectory);
-      assert.match(generated, new RegExp(`CAO_PACKAGE: ${packageName}`));
+      assert.match(generated, new RegExp(`CAO_CAMPAIGN: ${campaignName}`));
       assert.match(generated, /CAO_ROLE: orchestrator/);
       assert.equal(workerName, "__none__", `${lockName}: orchestrators must not declare a worker identity`);
       assert.match(generated, new RegExp(`CAO_WORKER: ${workerName}`));
@@ -149,9 +149,9 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
     }
 
-    for (const { lockName, packageName, workerName } of controlContracts.filter(({ role }) => role === "worker")) {
+    for (const { lockName, campaignName, workerName } of controlContracts.filter(({ role }) => role === "worker")) {
       const generated = workflow(lockName, generatedDirectory);
-      assert.match(generated, new RegExp(`CAO_PACKAGE: ${packageName}`));
+      assert.match(generated, new RegExp(`CAO_CAMPAIGN: ${campaignName}`));
       assert.match(generated, /CAO_ROLE: worker/);
       assert.match(generated, new RegExp(`CAO_WORKER: ${workerName}`));
       assert.match(generated, /GH_AW_SAFE_OUTPUT_MODE: \$\{\{ inputs\.safe_output_mode \|\| 'review' \}\}/);
@@ -166,12 +166,12 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     assert.match(generatedDependabotPlan, /add_comment/);
     assert.doesNotMatch(generatedDependabotPlan, /create_pull_request/);
 
-    const advisoryMaintainer = workflow("uk-ai-advisory-package-maintainer.lock.yml", generatedDirectory);
+    const advisoryMaintainer = workflow("uk-ai-advisory-campaign-maintainer.lock.yml", generatedDirectory);
     assert.match(advisoryMaintainer, /schedule:/);
     assert.match(advisoryMaintainer, /uk-ai-advisory\/implementation-status\.md/);
     assert.match(advisoryMaintainer, /copilot\/gpt-5\.4/);
 
-    const craMaintainer = workflow("eu-cra-compliance-package-maintainer.lock.yml", generatedDirectory);
+    const craMaintainer = workflow("eu-cra-compliance-campaign-maintainer.lock.yml", generatedDirectory);
     assert.match(craMaintainer, /schedule:/);
     assert.match(craMaintainer, /eu-cra-compliance\/implementation-status\.md/);
     assert.match(craMaintainer, /copilot\/gpt-5\.4/);

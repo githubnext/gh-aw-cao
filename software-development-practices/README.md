@@ -7,7 +7,7 @@
 
 Dev Practices helps a private Central Agentic Ops control repository identify active software repositories and produce evidence-backed improvement guidance based on the [GitHub Well-Architected framework](https://learn.github.com/well-architected/) and the [NIST Secure Software Development Framework](https://csrc.nist.gov/projects/ssdf).
 
-## Package Contents
+## Campaign Contents
 
 | Workflow | Responsibility |
 | --- | --- |
@@ -23,13 +23,13 @@ The orchestrator dispatches at most 20 workers per run. Each worker reviews one 
 gh aw add githubnext/gh-aw-cao/software-development-practices@<catalog-release>
 ```
 
-Configure the shared GitHub App or PAT described in the [authentication guide](../docs/authentication.md), then declare the package in the control repository's `.github/workflows/cao.json`:
+Configure the shared GitHub App or PAT described in the [authentication guide](../docs/authentication.md), then declare the campaign in the control repository's `.github/workflows/cao.json`:
 
 ```json
 {
 	"version": 1,
 	"control-plane": {
-		"packages": {
+		"campaigns": {
 			"software-development-practices": {
 				"workers": {
 					"github-well-architected": {
@@ -45,7 +45,7 @@ Configure the shared GitHub App or PAT described in the [authentication guide](.
 }
 ```
 
-The omitted fields default to an enabled package and workers, `review` mode, one repository, and 100 percent rollout. Run the orchestrator manually with an explicit target and review output before considering a limited live rollout.
+The omitted fields default to an enabled campaign and workers, `review` mode, one repository, and 100 percent rollout. Run the orchestrator manually with an explicit target and review output before considering a limited live rollout.
 
 ## Safety Boundaries
 
@@ -56,4 +56,4 @@ The omitted fields default to an enabled package and workers, `review` mode, one
 - Review mode routes guidance to the designated review repository; live mode creates it in the selected target only when control policy explicitly authorizes that target and worker.
 - Findings distinguish observed evidence, gaps, limitations, and human-review questions; they never claim certification, compliance, security, or framework endorsement.
 - Safe outputs contain no secrets, personal data, exploit details, private alerts, or confidential evidence.
-- Operational value is attainment-only: each worker scores `1` when a non-bot human accepts its frozen target-commit guidance issue with a thumbs-up reaction within 30 days, `0` when complete evidence shows no acceptance, and `null` when assignment or evidence is unavailable. The package dashboard keeps this evidence distinct by framework and does not imply causation, certification, security, or conformance.
+- Operational value is attainment-only: each worker scores `1` when a non-bot human accepts its frozen target-commit guidance issue with a thumbs-up reaction within 30 days, `0` when complete evidence shows no acceptance, and `null` when assignment or evidence is unavailable. The campaign dashboard keeps this evidence distinct by framework and does not imply causation, certification, security, or conformance.

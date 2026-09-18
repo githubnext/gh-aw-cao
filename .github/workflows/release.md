@@ -147,8 +147,8 @@ jobs:
             core.info(`Resolved ${bump} bump from v${latest.join('.')} to ${releaseTag}.`);
             core.setOutput('release_tag', releaseTag);
 
-  validate-package:
-    name: Validate gh-aw package
+  validate-campaign:
+    name: Validate gh-aw campaign
     needs: resolve-version
     runs-on: ubuntu-latest
     permissions:
@@ -163,15 +163,15 @@ jobs:
           node-version: 24
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw
-      - name: Validate files installed from the root aw.yml package
+      - name: Validate files installed from the root aw.yml campaign
         env:
-          CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: ${{ github.repository }}@${{ github.sha }}
+          CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE: ${{ github.repository }}@${{ github.sha }}
           GH_TOKEN: ${{ github.token }}
-        run: npm run test:package-root
+        run: npm run test:campaign-root
 
   prepare-release:
     name: Prepare draft release
-    needs: [resolve-version, validate-package]
+    needs: [resolve-version, validate-campaign]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -208,7 +208,7 @@ jobs:
             core.setOutput('release_tag', release.tag_name);
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
-              .addRaw('The release highlights agent will update this draft. A maintainer must then review the complete notes, publish the draft, and mark it as the latest release from the GitHub website. Control repositories install or update this package only with gh aw add or gh aw update.')
+              .addRaw('The release highlights agent will update this draft. A maintainer must then review the complete notes, publish the draft, and mark it as the latest release from the GitHub website. Control repositories install or update this campaign only with gh aw add or gh aw update.')
               .addEOL()
               .addLink('Review draft release', release.html_url);
             await core.summary.write();

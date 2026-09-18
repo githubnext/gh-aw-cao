@@ -6,7 +6,7 @@ export default function rewriteDocsLinks({ base }) {
 
   return (tree, file) => {
     const repositoryPath = relative(repositoryRoot, file.path);
-    const packageReadme = repositoryPath.match(/^([^/]+)\/README\.md$/);
+    const campaignReadme = repositoryPath.match(/^([^/]+)\/README\.md$/);
     const sourceDirectory = dirname(relative(docsRoot, file.path));
 
     visit(tree, (node) => {
@@ -15,7 +15,7 @@ export default function rewriteDocsLinks({ base }) {
       const match = node.url.match(/^([^?#]+)\.md([?#].*)?$/);
       if (!match || match[1].includes(":")) return;
 
-      if (packageReadme) {
+      if (campaignReadme) {
         const target = normalize(join(dirname(repositoryPath), `${match[1]}.md`))
           .split(sep)
           .join("/");

@@ -18,7 +18,7 @@ test("discovered repositories flow from control scope into canonical storage", a
     const controlSettings = {
       allowed_owners: ["acme"],
       allowed_repositories: [],
-      packages: {},
+      campaigns: {},
       policy_document: {
         "control-plane": { inventory: { "max-scan-repositories": 100 } },
       },
@@ -76,7 +76,7 @@ test("explicitly allowed repositories flow into canonical storage", async () => 
     const controlSettings = {
       allowed_owners: [],
       allowed_repositories: ["acme/payments", "acme/storefront"],
-      packages: {},
+      campaigns: {},
       policy_document: {
         "control-plane": { inventory: { "max-scan-repositories": 100 } },
       },

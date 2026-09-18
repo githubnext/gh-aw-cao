@@ -18,7 +18,7 @@ describe('Local database view', () => {
       pageId: 'transactions',
       title: 'Local database',
       sourceNames: [
-        'database-package-count',
+        'database-campaign-count',
         'database-repository-count',
         'database-workflow-count',
         'database-run-count',
@@ -28,7 +28,7 @@ describe('Local database view', () => {
         'database-issue-count'
       ],
       sources: {
-        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
+        'database-campaign-count': { source: 'database-campaign-count', rows: [{ campaigns: 2 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },

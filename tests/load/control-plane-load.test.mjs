@@ -65,7 +65,7 @@ fi
 
 function runPrecompute(overrides = {}, policy = controlPolicy({
   inventory: { "max-scan-repositories": 100000 },
-  packagePolicy: { "max-repositories": 1000, "rollout-percent": 10 },
+  campaignPolicy: { "max-repositories": 1000, "rollout-percent": 10 },
 })) {
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "central-agentic-ops-load-"));
   const logPath = join(temporaryDirectory, "gh.log");
@@ -142,7 +142,7 @@ test("control precompute assigns stable cells and bounded batches", () => {
       "batch-size": 100,
       "batch-index": 1,
     },
-    packagePolicy: { "max-repositories": 1000, "rollout-percent": 10 },
+    campaignPolicy: { "max-repositories": 1000, "rollout-percent": 10 },
   });
   const first = runPrecompute({}, firstPolicy);
 
@@ -165,7 +165,7 @@ test("control precompute assigns stable cells and bounded batches", () => {
         "batch-size": 100,
         "batch-index": 2,
       },
-      packagePolicy: { "max-repositories": 1000, "rollout-percent": 10 },
+      campaignPolicy: { "max-repositories": 1000, "rollout-percent": 10 },
     }));
     try {
       assert.equal(second.result.status, 0, second.result.stderr);
@@ -183,10 +183,10 @@ test("control precompute assigns stable cells and bounded batches", () => {
   }
 });
 
-test("control precompute attaches package target modes to candidates", () => {
+test("control precompute attaches campaign target modes to candidates", () => {
   const policy = controlPolicy({
     inventory: { "max-scan-repositories": 100 },
-    packagePolicy: {
+    campaignPolicy: {
       mode: "review",
       "max-repositories": 10,
       targets: {
@@ -232,7 +232,7 @@ test("control precompute attaches package target modes to candidates", () => {
 
 test("control precompute excludes workers disabled by policy", () => {
   const run = runPrecompute({}, controlPolicy({
-    packagePolicy: { "max-repositories": 10 },
+    campaignPolicy: { "max-repositories": 10 },
     workerPolicy: { enabled: false },
   }));
 
@@ -249,13 +249,13 @@ test("control precompute excludes workers disabled by policy", () => {
   }
 });
 
-test("control precompute ignores deprecated monthly package budgets", () => {
+test("control precompute ignores deprecated monthly campaign budgets", () => {
   const run = runPrecompute({
     ORCHESTRATOR_CREDITS: "250",
     WORKER_CREDITS_PER_TARGET: "600",
   }, controlPolicy({
     inventory: { "max-scan-repositories": 1000 },
-    packagePolicy: {
+    campaignPolicy: {
       "max-repositories": 10,
       "rollout-percent": 100,
       "monthly-ai-credit-budget": 2000,
@@ -283,7 +283,7 @@ test("control precompute does not read monthly budget usage logs", () => {
     MOCK_FAIL_BUDGET: "true",
   }, controlPolicy({
     inventory: { "max-scan-repositories": 1000 },
-    packagePolicy: {
+    campaignPolicy: {
       "max-repositories": 10,
       "monthly-ai-credit-budget": 2000,
     },
@@ -300,15 +300,15 @@ test("control precompute does not read monthly budget usage logs", () => {
   }
 });
 
-test("control precompute rejects an invalid monthly package budget", () => {
+test("control precompute rejects an invalid monthly campaign budget", () => {
   const run = runPrecompute({}, controlPolicy({
     inventory: { "max-scan-repositories": 1000 },
-    packagePolicy: { "monthly-ai-credit-budget": 1.5 },
+    campaignPolicy: { "monthly-ai-credit-budget": 1.5 },
   }));
 
   try {
     assert.notEqual(run.result.status, 0);
-    assert.match(run.result.stderr, /control-plane\.packages\.dependabot\.monthly-ai-credit-budget must be an integer in >= 0/);
+    assert.match(run.result.stderr, /control-plane\.campaigns\.dependabot\.monthly-ai-credit-budget must be an integer in >= 0/);
   } finally {
     rmSync(run.temporaryDirectory, { recursive: true, force: true });
   }

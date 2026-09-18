@@ -6,7 +6,7 @@ experimental: true
 includes:
   - ../aw.yml
   - .github/workflows/eu-cra-compliance.md
-  - .github/workflows/eu-cra-compliance-package-maintainer.md
+  - .github/workflows/eu-cra-compliance-campaign-maintainer.md
   - .github/workflows/eu-cra-compliance-scope-classifier.md
   - .github/workflows/eu-cra-compliance-security-requirements-auditor.md
   - .github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md
@@ -26,8 +26,8 @@ resources:
     destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh
   - source: .github/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh
     destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh
-  - source: .github/graders/eu-cra-compliance-package-maintainer-operational-value.sh
-    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-package-maintainer-operational-value.sh
+  - source: .github/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh
+    destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh
   - source: .github/graders/eu-cra-compliance-scope-classifier-operational-value.sh
     destination: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh
   - source: .github/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh

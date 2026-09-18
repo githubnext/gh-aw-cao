@@ -15,7 +15,7 @@ import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
  *   contentClassName: string,
  *   selectMessage: string,
  *   description: string,
- *   navigationPage: 'packages'|'repositories',
+ *   navigationPage: 'campaigns'|'repositories',
  *   breadcrumbs: Array<{ label: string, href: string }> | undefined,
  *   currentTab: 'workflow-runtime'|'workflow-detail'|'workflow-runs',
  *   bodyRenderer: WorkflowRouteBodyRenderer | undefined
@@ -83,7 +83,7 @@ function workflowRouteAllocation(config, route, workflow, title) {
     ...(['review', 'live'].includes(text(workflow['rollout-mode']))
       ? { mode: text(workflow['rollout-mode']) }
       : {}),
-    navigationPage: config.navigationPage === 'packages' && workflow.package ? 'packages' : 'repositories',
+    navigationPage: config.navigationPage === 'campaigns' && workflow.campaign ? 'campaigns' : 'repositories',
     ...(config.breadcrumbs
       ? {
           breadcrumbs: config.breadcrumbs.map((crumb) => ({

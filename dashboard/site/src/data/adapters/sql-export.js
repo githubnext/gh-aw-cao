@@ -96,14 +96,14 @@ export function adaptSqlExport(input) {
     let data;
 
     switch (kind) {
-      case 'package':
+      case 'campaign':
         data = {
-          slug: requiredString(row.package_slug, 'package_slug'),
-          name: requiredString(row.package_name, 'package_name'),
-          description: optionalString(row.package_description) ?? '',
-          icon: optionalString(row.package_icon) ?? 'package',
-          mode: optionalString(row.package_mode) ?? 'unknown',
-          enabled: row.package_enabled !== false
+          slug: requiredString(row.campaign_slug, 'campaign_slug'),
+          name: requiredString(row.campaign_name, 'campaign_name'),
+          description: optionalString(row.campaign_description) ?? '',
+          icon: optionalString(row.campaign_icon) ?? 'goal',
+          mode: optionalString(row.campaign_mode) ?? 'unknown',
+          enabled: row.campaign_enabled !== false
         };
         break;
       case 'repository': {
@@ -125,10 +125,10 @@ export function adaptSqlExport(input) {
           name: requiredString(row.workflow_name, 'workflow_name'),
           path: requiredString(row.workflow_path, 'workflow_path'),
           state: optionalString(row.workflow_state) ?? 'unknown',
-          packageId: row.package_source_id === undefined || row.package_source_id === null
+          campaignId: row.campaign_source_id === undefined || row.campaign_source_id === null
             ? undefined
-            : sourceId('package', source, requiredString(row.package_source_id, 'package_source_id')),
-          package: optionalString(row.package_slug)
+            : sourceId('campaign', source, requiredString(row.campaign_source_id, 'campaign_source_id')),
+          campaign: optionalString(row.campaign_slug)
         };
         break;
       case 'run': {

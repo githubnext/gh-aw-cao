@@ -1,5 +1,5 @@
 {
-  "package": "cao-evolution",
+  "campaign": "cao-evolution",
   "orchestrator": "cao-evolution",
   "workers": {
     "catalog-advisor": "cao-evolution-catalog-advisor",

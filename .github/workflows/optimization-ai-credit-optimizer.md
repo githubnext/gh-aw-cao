@@ -53,7 +53,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: optimization
+      campaign: optimization
       role: worker
       worker: ai-credit-optimizer
   - uses: shared/activity-cache.md

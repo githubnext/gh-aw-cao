@@ -62,7 +62,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: optimization
+      campaign: optimization
       role: worker
       worker: skills-curator
 
@@ -313,7 +313,7 @@ Consult [agentconfig.org](https://agentconfig.org) and, when available, its [mac
 
 ## Step 1 — Scope gate
 
-If `agents_md_present` is `false`, stop immediately. Emit a `noop` explaining that the repository has no root `AGENTS.md` and is out of scope for this package. Do not propose creating ambient context where none exists.
+If `agents_md_present` is `false`, stop immediately. Emit a `noop` explaining that the repository has no root `AGENTS.md` and is out of scope for this campaign. Do not propose creating ambient context where none exists.
 
 If `agents_md_present` is `true` and `skill_count` is `0`, continue: the only work available is recommending extraction of procedure-shaped `AGENTS.md` sections into new skills, and only when a section clearly qualifies.
 

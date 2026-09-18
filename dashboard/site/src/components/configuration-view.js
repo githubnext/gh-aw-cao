@@ -35,18 +35,18 @@ const EXACT_EXPLANATIONS = {
   'control-plane.web': 'Configures presentation without granting operational authority.',
   'control-plane.web.experimental': 'Shows dashboard views marked as experimental.',
   'control-plane.web.favicon': 'Sets the dashboard favicon to a safe HTTPS URL or non-traversing local path.',
-  'control-plane.defaults': 'Supplies inherited package limits when a package does not override them.',
+  'control-plane.defaults': 'Supplies inherited campaign limits when a campaign does not override them.',
   'control-plane.defaults.mode': 'Sets the inherited execution mode. Review proposes changes; live may write authorized outputs.',
-  'control-plane.defaults.max-repositories': 'Caps repositories selected by each package.',
+  'control-plane.defaults.max-repositories': 'Caps repositories selected by each campaign.',
   'control-plane.defaults.rollout-percent': 'Deterministically limits the percentage of eligible repositories selected.',
   'control-plane.defaults.monthly-ai-credit-budget': 'Deprecated compatibility field; it no longer gates monthly AI Credit usage.',
-  'control-plane.packages': 'Declares installed operation packages and their permitted behavior.',
+  'control-plane.campaigns': 'Declares installed operation campaigns and their permitted behavior.',
   'control-plane.publishing': 'Controls optional publishing of reviewed operation issues.',
   'control-plane.publishing.enabled': 'Enables or disables reviewed operation publishing.',
   'control-plane.publishing.control-repositories': 'Lists repositories allowed to receive published operations.',
   'control-plane.publishing.reviewers': 'Lists GitHub users who may approve published operations.',
-  'target-authority': 'Grants one control repository authority to run named packages live against this target.',
-  'target-authority.packages': 'Maps package identifiers to their authorized control repositories.'
+  'target-authority': 'Grants one control repository authority to run named campaigns live against this target.',
+  'target-authority.campaigns': 'Maps campaign identifiers to their authorized control repositories.'
 };
 
 /** @param {string} path @param {unknown} value */
@@ -55,23 +55,23 @@ function explanation(path, value) {
   if (/^control-plane\.scope\.allowed-owners\.\d+$/.test(path)) return 'An owner included in the discovery boundary.';
   if (/^control-plane\.scope\.allowed-repositories\.\d+$/.test(path)) return 'An exact repository included in the discovery boundary.';
   if (/^control-plane\.publishing\.(control-repositories|reviewers)\.\d+$/.test(path)) return 'One explicitly allowed publishing destination or reviewer.';
-  if (/^control-plane\.packages\.[^.]+$/.test(path)) return 'Configures one operation package; omitted limits inherit from control-plane.defaults.';
-  if (/^control-plane\.packages\.[^.]+\.enabled$/.test(path)) return 'Controls whether this package may activate.';
-  if (/^control-plane\.packages\.[^.]+\.mode$/.test(path)) return 'Sets this package to review-only proposals or authorized live output.';
-  if (/^control-plane\.packages\.[^.]+\.(max-repositories|rollout-percent|monthly-ai-credit-budget)$/.test(path)) {
-    return 'Overrides the matching control-plane default for this package.';
+  if (/^control-plane\.campaigns\.[^.]+$/.test(path)) return 'Configures one operation campaign; omitted limits inherit from control-plane.defaults.';
+  if (/^control-plane\.campaigns\.[^.]+\.enabled$/.test(path)) return 'Controls whether this campaign may activate.';
+  if (/^control-plane\.campaigns\.[^.]+\.mode$/.test(path)) return 'Sets this campaign to review-only proposals or authorized live output.';
+  if (/^control-plane\.campaigns\.[^.]+\.(max-repositories|rollout-percent|monthly-ai-credit-budget)$/.test(path)) {
+    return 'Overrides the matching control-plane default for this campaign.';
   }
-  if (/^control-plane\.packages\.[^.]+\.icon$/.test(path)) return 'Selects the Octicon used to identify this package.';
-  if (/^control-plane\.packages\.[^.]+\.targets$/.test(path)) return 'Defines exact repository mode overrides without widening global scope.';
-  if (/^control-plane\.packages\.[^.]+\.targets\.[^.]+\/[^.]+$/.test(path)) return 'Overrides policy for this exact target repository.';
-  if (/^control-plane\.packages\.[^.]+\.targets\.[^.]+\/[^.]+\.mode$/.test(path)) return 'Narrows or promotes this exact target between review and live mode.';
-  if (/^control-plane\.packages\.[^.]+\.workers$/.test(path)) return 'Declares the workers this package may dispatch.';
-  if (/^control-plane\.packages\.[^.]+\.workers\.[^.]+$/.test(path)) return 'Configures one package worker.';
-  if (/^control-plane\.packages\.[^.]+\.workers\.[^.]+\.workflow$/.test(path)) return 'Names the exact installed workflow slug for this worker.';
-  if (/^control-plane\.packages\.[^.]+\.workers\.[^.]+\.enabled$/.test(path)) return 'Controls whether this worker may be dispatched.';
-  if (/^control-plane\.packages\.[^.]+\.workers\.[^.]+\.max-mode$/.test(path)) return 'Places a ceiling on this worker so it cannot run in a broader mode.';
-  if (/^target-authority\.packages\.[^.]+$/.test(path)) return 'Declares target-owned authority for one package.';
-  if (/^target-authority\.packages\.[^.]+\.authority$/.test(path)) return 'Names the only control repository authorized for this package.';
+  if (/^control-plane\.campaigns\.[^.]+\.icon$/.test(path)) return 'Selects the Octicon used to identify this campaign.';
+  if (/^control-plane\.campaigns\.[^.]+\.targets$/.test(path)) return 'Defines exact repository mode overrides without widening global scope.';
+  if (/^control-plane\.campaigns\.[^.]+\.targets\.[^.]+\/[^.]+$/.test(path)) return 'Overrides policy for this exact target repository.';
+  if (/^control-plane\.campaigns\.[^.]+\.targets\.[^.]+\/[^.]+\.mode$/.test(path)) return 'Narrows or promotes this exact target between review and live mode.';
+  if (/^control-plane\.campaigns\.[^.]+\.workers$/.test(path)) return 'Declares the workers this campaign may dispatch.';
+  if (/^control-plane\.campaigns\.[^.]+\.workers\.[^.]+$/.test(path)) return 'Configures one campaign worker.';
+  if (/^control-plane\.campaigns\.[^.]+\.workers\.[^.]+\.workflow$/.test(path)) return 'Names the exact installed workflow slug for this worker.';
+  if (/^control-plane\.campaigns\.[^.]+\.workers\.[^.]+\.enabled$/.test(path)) return 'Controls whether this worker may be dispatched.';
+  if (/^control-plane\.campaigns\.[^.]+\.workers\.[^.]+\.max-mode$/.test(path)) return 'Places a ceiling on this worker so it cannot run in a broader mode.';
+  if (/^target-authority\.campaigns\.[^.]+$/.test(path)) return 'Declares target-owned authority for one campaign.';
+  if (/^target-authority\.campaigns\.[^.]+\.authority$/.test(path)) return 'Names the only control repository authorized for this campaign.';
   if (/^\$/.test(path)) return 'Policy document root.';
   return isPlainObject(value) || Array.isArray(value)
     ? 'Groups the policy entries shown below.'

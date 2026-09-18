@@ -157,7 +157,7 @@ function serializeIngestion(indexedDB, task, options = {}) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowPackageMappings?: boolean, preserveRepositoryRecords?: boolean, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, signal?: AbortSignal }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowCampaignMappings?: boolean, preserveRepositoryRecords?: boolean, onWriteProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, signal?: AbortSignal }} options
  */
 async function ingestCanonicalBatch(indexedDB, incoming, options) {
   options.signal?.throwIfAborted();
@@ -179,7 +179,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     now: options.now,
     retentionWindowMs: options.retentionWindowMs,
     retentionWindowMsByStore: options.retentionWindowMsByStore,
-    preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings,
+    preserveWorkflowCampaignMappings: options.preserveWorkflowCampaignMappings,
     preserveRepositoryRecords: options.preserveRepositoryRecords
   }), targetDatabaseBytes);
   let writeMetrics = {
@@ -348,7 +348,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
     phase = 'writing';
     return await ingestCanonicalBatch(indexedDB, batch, {
       ...options,
-      preserveWorkflowPackageMappings: true,
+      preserveWorkflowCampaignMappings: true,
       preserveRepositoryRecords: true
     });
   } catch (error) {
@@ -383,7 +383,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
         throw new TypeError('Normalized activity payload must include a canonical batch');
       }
       const batch = /** @type {import('../model/schema.js').CanonicalBatch} */ (payload.batch);
-      for (const collection of ['packages', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues']) {
+      for (const collection of ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues']) {
         if (!Array.isArray(batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)])) {
           throw new TypeError(`Normalized activity payload is missing ${collection}`);
         }
@@ -394,7 +394,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
         }
         const excluded = options.expectedPhase === 'runs'
           ? ['domains', 'tools', 'audits', 'issues']
-          : ['packages', 'repositories', 'workflows', 'runs'];
+          : ['campaigns', 'repositories', 'workflows', 'runs'];
         for (const collection of excluded) {
           if (batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)].length > 0) {
             throw new TypeError(`Normalized ${options.expectedPhase} payload must not include ${collection}`);
@@ -409,7 +409,7 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       const storageStartedAt = monotonicNow();
       const result = await ingestCanonicalBatch(indexedDB, batch, {
         ...options,
-        preserveWorkflowPackageMappings: true,
+        preserveWorkflowCampaignMappings: true,
         preserveRepositoryRecords: true
       });
       options.signal?.throwIfAborted();
@@ -537,7 +537,7 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
     const storageStartedAt = monotonicNow();
     const result = await ingestCanonicalBatch(indexedDB, batch, {
       ...options,
-      preserveWorkflowPackageMappings: true,
+      preserveWorkflowCampaignMappings: true,
       preserveRepositoryRecords: true
     });
     options.signal?.throwIfAborted();

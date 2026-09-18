@@ -66,13 +66,13 @@ describe('link content helpers', () => {
 
   it('uses a presentation-only dashboard route when no external target is available', () => {
     expect(findLink({
-      'package-link': {
-        'dashboard-href': '#page-package-insights?package=aw-doctor',
-        'dashboard-label': 'View AW Doctor package dashboard'
+      'campaign-link': {
+        'dashboard-href': '#page-campaign-insights?campaign=aw-doctor',
+        'dashboard-label': 'View AW Doctor campaign dashboard'
       }
-    }, 'package-link')).toEqual({
-      href: '#page-package-insights?package=aw-doctor',
-      label: 'View AW Doctor package dashboard'
+    }, 'campaign-link')).toEqual({
+      href: '#page-campaign-insights?campaign=aw-doctor',
+      label: 'View AW Doctor campaign dashboard'
     });
   });
 

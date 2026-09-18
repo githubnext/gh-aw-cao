@@ -129,7 +129,7 @@ import {
 } from './specification.js';
 import {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
-  PACKAGE_ROUTE_BODY_VALUES,
+  CAMPAIGN_ROUTE_BODY_VALUES,
   WORK_VIEW_BODY_VALUES,
   WORKFLOW_ROUTE_BODY_VALUES
 } from './components/route-body-specification.js';
@@ -352,7 +352,7 @@ export function validateLogicalSources(sources) {
   }
 
   /** @type {Map<string, Array<{ row: Record<string, unknown>, index: number }>>} */
-  const packageRows = new Map();
+  const campaignRows = new Map();
   for (const [index, candidate] of workflowRows.entries()) {
     const path = `$.sources.workflows.rows[${index}]`;
     if (!isPlainObject(candidate)) {
@@ -373,55 +373,55 @@ export function validateLogicalSources(sources) {
       ));
     }
 
-    const packageId = candidate.package;
-    const hasPackage = typeof packageId === 'string' && packageId.length > 0;
-    if ((role === 'orchestrator' || role === 'worker') && !hasPackage) {
+    const campaignId = candidate.campaign;
+    const hasCampaign = typeof campaignId === 'string' && campaignId.length > 0;
+    if ((role === 'orchestrator' || role === 'worker') && !hasCampaign) {
       errors.push(createError(
         ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-        'An orchestrator or worker workflow must identify its package.',
-        `${path}.package`
+        'An orchestrator or worker workflow must identify its campaign.',
+        `${path}.campaign`
       ));
     }
-    if (role === 'standalone' && packageId != null) {
+    if (role === 'standalone' && campaignId != null) {
       errors.push(createError(
         ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-        'A standalone workflow must not identify a package.',
-        `${path}.package`
+        'A standalone workflow must not identify a campaign.',
+        `${path}.campaign`
       ));
     }
 
-    const packageIcon = candidate['package-icon'];
-    if (packageIcon !== undefined && (typeof packageIcon !== 'string' || !PAGE_ICON_VALUES.includes(packageIcon))) {
+    const campaignIcon = candidate['campaign-icon'];
+    if (campaignIcon !== undefined && (typeof campaignIcon !== 'string' || !PAGE_ICON_VALUES.includes(campaignIcon))) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'package-icon must name a canonical Octicon.',
-        `${path}.package-icon`
+        'campaign-icon must name a canonical Octicon.',
+        `${path}.campaign-icon`
       ));
     }
 
     validateNonNegativeSourceMeasure(candidate['max-ai-credits'], `${path}.max-ai-credits`, errors);
-    validateNonNegativeSourceMeasure(candidate['package-aic-allowance'], `${path}.package-aic-allowance`, errors);
+    validateNonNegativeSourceMeasure(candidate['campaign-aic-allowance'], `${path}.campaign-aic-allowance`, errors);
 
-    if (hasPackage && (role === 'orchestrator' || role === 'worker')) {
-      const key = sourceEntityKey(candidate, 'package');
-      const rows = packageRows.get(key) ?? [];
+    if (hasCampaign && (role === 'orchestrator' || role === 'worker')) {
+      const key = sourceEntityKey(candidate, 'campaign');
+      const rows = campaignRows.get(key) ?? [];
       rows.push({ row: candidate, index });
-      packageRows.set(key, rows);
+      campaignRows.set(key, rows);
     }
   }
 
-  for (const rows of packageRows.values()) {
+  for (const rows of campaignRows.values()) {
     const workflowAllowances = new Map(rows
       .filter(({ row }) => typeof row.workflow === 'string' && isNonNegativeFiniteNumber(row['max-ai-credits']))
       .map(({ row }) => [sourceEntityKey(row, 'workflow'), /** @type {number} */ (row['max-ai-credits'])]));
     const expectedAllowance = [...workflowAllowances.values()].reduce((total, value) => total + value, 0);
     for (const { row, index } of rows) {
-      const allowance = row['package-aic-allowance'];
+      const allowance = row['campaign-aic-allowance'];
       if (isNonNegativeFiniteNumber(allowance) && !numbersEqual(allowance, expectedAllowance)) {
         errors.push(createError(
           ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-          'package-aic-allowance must equal the sum of available per-run workflow limits.',
-          `$.sources.workflows.rows[${index}].package-aic-allowance`
+          'campaign-aic-allowance must equal the sum of available per-run workflow limits.',
+          `$.sources.workflows.rows[${index}].campaign-aic-allowance`
         ));
       }
     }
@@ -2425,12 +2425,12 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'work-project-view') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'campaign-route' || view.element === 'outcome-detail-section' || view.element === 'work-project-view') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
        const allowedBodies = view.element === 'workflow-route' || view.element === 'workflow-route-page'
          ? WORKFLOW_ROUTE_BODY_VALUES
-         : view.element === 'package-route'
-           ? PACKAGE_ROUTE_BODY_VALUES
+         : view.element === 'campaign-route'
+           ? CAMPAIGN_ROUTE_BODY_VALUES
            : view.element === 'work-project-view'
                ? WORK_VIEW_BODY_VALUES
              : OUTCOME_DETAIL_SECTION_BODY_VALUES;
@@ -2444,7 +2444,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, workflow-route-page, package-route, outcome-detail-section, and work-project-view elements.',
+         'config.body is supported only for the workflow-route, workflow-route-page, campaign-route, outcome-detail-section, and work-project-view elements.',
          `${path}.config.body`
        ));
       }

@@ -3,7 +3,7 @@ title: Data model
 description: Understand the canonical entities, relationships, identities, and lifecycle of Central Agentic Ops dashboard data.
 ---
 
-The data model gives every retained package, repository, workflow, run, and
+The data model gives every retained campaign, repository, workflow, run, and
 run-owned record a stable identity and explicit relationships. Read this page when you
 need to understand what a dashboard record represents or how records connect.
 Views query this source-neutral model instead of interpreting upstream formats
@@ -15,7 +15,7 @@ See [Data ingestion](/gh-aw-cao/dashboard-data-ingestion/) for collection, JSONL
 
 ```mermaid
 erDiagram
-  PACKAGE o|--o{ WORKFLOW : classifies
+  CAMPAIGN o|--o{ WORKFLOW : classifies
   REPOSITORY ||--o{ WORKFLOW : contains
   REPOSITORY ||--o{ RUN : executes
   WORKFLOW ||--o{ RUN : defines
@@ -26,7 +26,7 @@ erDiagram
 ```
 
 The main path follows activity from a repository through its workflows and
-runs to four specialized run-owned record types. A Package may classify a
+runs to four specialized run-owned record types. A Campaign may classify a
 Workflow independently of that execution hierarchy. The table below provides
 the exact identities and parent relationships.
 
@@ -34,7 +34,7 @@ the exact identities and parent relationships.
 
 | Entity | Canonical identity | Parent relationships | Purpose |
 | --- | --- | --- | --- |
-| **Package** | Namespaced deterministic ID from the stable package slug | None | Classifies an installed starter package and its maintenance state. |
+| **Campaign** | Namespaced deterministic ID from the stable campaign slug | None | Classifies an installed starter campaign and its maintenance state. |
 | **Repository** | `github:repository:<github-id>` | None | Represents one GitHub repository across renames. |
 | **Workflow** | `github:workflow:<github-id>` | Repository | Represents one workflow across path or filename changes. |
 | **Run** | `github:run:<run-id>:attempt:<attempt>` | Repository and Workflow | Distinguishes every attempt of a GitHub Actions run. |
@@ -70,7 +70,7 @@ The activity shard manifest is the dashboard's published operational input. The 
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 11. It has stores for `packages`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`, and `issues`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
+The canonical database is `gh-aw-cao-dashboard-data`, schema version 11. It has stores for `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `audits`, and `issues`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 

@@ -19,7 +19,7 @@ function validate(policy) {
 }
 
 function effective(policy, {
-  packageName = "dependabot",
+  campaignName = "dependabot",
   role = "orchestrator",
   worker = "",
   requestedMode = "",
@@ -30,7 +30,7 @@ function effective(policy, {
       status: 0,
       stderr: "",
       output: effectivePolicy(parsePolicy(policy), {
-        packageName,
+        campaignName,
         role,
         workerName: worker,
         controlRepository: "acme/control",
@@ -49,7 +49,7 @@ function effectiveWithLimits(policy, requestedMaxRepositories, requestedRolloutP
       status: 0,
       stderr: "",
       output: effectivePolicy(parsePolicy(policy), {
-        packageName: "dependabot",
+        campaignName: "dependabot",
         role: "orchestrator",
         controlRepository: "acme/control",
         requestedMaxRepositories,
@@ -67,7 +67,7 @@ const minimalPolicy = JSON.stringify({
   "gh-aw-version": "v0.89.15",
   "control-plane": {
     scope: { "allowed-repositories": ["acme/payments-api", "acme/storefront"] },
-    packages: {
+    campaigns: {
       dependabot: {
         mode: "live",
         "max-repositories": 8,
@@ -88,7 +88,7 @@ test("control policy accepts the minimal version 1 control document", () => {
   assert.equal(result.status, 0, result.stderr);
 });
 
-test("control policy schema accepts config-defined package and worker catalogs", () => {
+test("control policy schema accepts config-defined campaign and worker catalogs", () => {
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
 
   assert.equal(schema.$schema, "https://json-schema.org/draft/2020-12/schema");
@@ -98,10 +98,10 @@ test("control policy schema accepts config-defined package and worker catalogs",
   assert.equal(schema.$defs.controlPlane.properties.web.$ref, "#/$defs/web");
   assert.equal(policy["control-plane"].web.experimental, true);
   assert.equal(policy["control-plane"].web.favicon, "./favicon.svg");
-  assert.equal(schema.$defs.controlPackages.additionalProperties.$ref, "#/$defs/packagePolicy");
-  assert.equal(schema.$defs.targetPackages.additionalProperties.$ref, "#/$defs/targetPackage");
-  for (const packagePolicy of Object.values(policy["control-plane"].packages)) {
-    for (const workerPolicy of Object.values(packagePolicy.workers ?? {})) {
+  assert.equal(schema.$defs.controlCampaigns.additionalProperties.$ref, "#/$defs/campaignPolicy");
+  assert.equal(schema.$defs.targetCampaigns.additionalProperties.$ref, "#/$defs/targetCampaign");
+  for (const campaignPolicy of Object.values(policy["control-plane"].campaigns)) {
+    for (const workerPolicy of Object.values(campaignPolicy.workers ?? {})) {
       assert.match(workerPolicy.workflow, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
     }
   }
@@ -141,20 +141,20 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
 
   assert.deepEqual(policy["control-plane"].scope["allowed-repositories"], repositories);
   assert.equal(policy["control-plane"].defaults["max-repositories"], 6);
-  assert.equal(policy["control-plane"].packages.dashboard.deploy, false);
+  assert.equal(policy["control-plane"].campaigns.dashboard.deploy, false);
 
-  const dependabotPackage = policy["control-plane"].packages.dependabot;
-  assert.equal(dependabotPackage.mode, "review");
-  assert.equal(dependabotPackage["max-repositories"], 1);
-  assert.equal(dependabotPackage["rollout-percent"], 100);
-  assert.deepEqual(dependabotPackage.targets, {
+  const dependabotCampaign = policy["control-plane"].campaigns.dependabot;
+  assert.equal(dependabotCampaign.mode, "review");
+  assert.equal(dependabotCampaign["max-repositories"], 1);
+  assert.equal(dependabotCampaign["rollout-percent"], 100);
+  assert.deepEqual(dependabotCampaign.targets, {
     "github/gh-aw": {
       mode: "live",
     },
   });
 
   const dependabotGhAw = effectivePolicy(policy, {
-    packageName: "dependabot",
+    campaignName: "dependabot",
     role: "orchestrator",
     controlRepository: "githubnext/gh-aw-cao",
     targetRepository: "github/gh-aw",
@@ -164,7 +164,7 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
 
   for (const targetRepository of repositories.filter((repository) => repository !== "github/gh-aw")) {
     const effective = effectivePolicy(policy, {
-      packageName: "dependabot",
+      campaignName: "dependabot",
       role: "orchestrator",
       controlRepository: "githubnext/gh-aw-cao",
       targetRepository,
@@ -174,7 +174,7 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
   }
 
   const selfCare = effectivePolicy(policy, {
-    packageName: "self-care",
+    campaignName: "self-care",
     role: "orchestrator",
     controlRepository: "githubnext/gh-aw-cao",
     targetRepository: "githubnext/gh-aw-cao",
@@ -182,33 +182,33 @@ test("checked-in control policy keeps Dependabot scoped with live gh-aw target a
   assert.equal(selfCare.safe_output_mode, "live");
   assert.equal(selfCare.max_repositories, 1);
   assert.equal(
-    policy["control-plane"].packages["self-care"].workers["open-source-failures"].workflow,
+    policy["control-plane"].campaigns["self-care"].workers["open-source-failures"].workflow,
     "self-care-open-source-failures",
   );
   assert.equal(
-    policy["control-plane"].packages["self-care"].workers["dashboard-performance"].workflow,
+    policy["control-plane"].campaigns["self-care"].workers["dashboard-performance"].workflow,
     "self-care-dashboard-performance",
   );
   assert.equal(
-    policy["control-plane"].packages["self-care"].workers["experimental-views"].workflow,
+    policy["control-plane"].campaigns["self-care"].workers["experimental-views"].workflow,
     "self-care-experimental-views",
   );
   assert.equal(
-    policy["control-plane"].packages["self-care"].workers["pages-health"].workflow,
+    policy["control-plane"].campaigns["self-care"].workers["pages-health"].workflow,
     "self-care-pages-health",
   );
   assert.equal(
-    policy["control-plane"].packages["self-care"].workers.glossary.workflow,
+    policy["control-plane"].campaigns["self-care"].workers.glossary.workflow,
     "self-care-glossary",
   );
   assert.equal(
-    policy["control-plane"].packages["self-care"].workers["reactive-ui-expert"].workflow,
+    policy["control-plane"].campaigns["self-care"].workers["reactive-ui-expert"].workflow,
     "self-care-reactive-ui-expert",
   );
-  assert.equal(policy["target-authority"].packages["self-care"].authority, "githubnext/gh-aw-cao");
+  assert.equal(policy["target-authority"].campaigns["self-care"].authority, "githubnext/gh-aw-cao");
 });
 
-test("control policy applies schema defaults and package values", () => {
+test("control policy applies schema defaults and campaign values", () => {
   const result = effective(minimalPolicy);
 
   assert.equal(result.status, 0, result.stderr);
@@ -235,7 +235,7 @@ test("control policy exposes scope and publishing defaults to deterministic add-
       experimental: false,
       favicon: "./favicon.svg",
     },
-    packages: {
+    campaigns: {
       dependabot: {
         enabled: true,
         mode: "live",
@@ -291,13 +291,13 @@ test("control policy validates and exposes web presentation settings", () => {
   }
 });
 
-test("control policy validates and exposes a package octicon", () => {
+test("control policy validates and exposes a campaign octicon", () => {
   const policyWithIcon = JSON.stringify({
     $schema: schema.$id,
     version: 1,
     "gh-aw-version": "v0.89.15",
     "control-plane": {
-      packages: { dependabot: { icon: "dependabot" } },
+      campaigns: { dependabot: { icon: "dependabot" } },
     },
   });
 
@@ -305,42 +305,42 @@ test("control policy validates and exposes a package octicon", () => {
     version: 1,
     "gh-aw-version": "v0.89.15",
     "control-plane": {
-      packages: { dependabot: { icon: "not-a-real-icon" } },
+      campaigns: { dependabot: { icon: "not-a-real-icon" } },
     },
   });
 
   assert.equal(validate(policyWithIcon).status, 0, validate(policyWithIcon).stderr);
   const invalidResult = validate(policyWithInvalidIcon);
   assert.notEqual(invalidResult.status, 0);
-  assert.match(invalidResult.stderr, /control-plane\.packages\.dependabot\.icon must be one of/);
+  assert.match(invalidResult.stderr, /control-plane\.campaigns\.dependabot\.icon must be one of/);
 
   assert.equal(
-    controlSettings(parsePolicy(policyWithIcon), "acme/control").packages.dependabot.icon,
+    controlSettings(parsePolicy(policyWithIcon), "acme/control").campaigns.dependabot.icon,
     "dependabot",
   );
 });
 
-test("control policy validates and exposes package deployment settings", () => {
+test("control policy validates and exposes campaign deployment settings", () => {
   const policy = JSON.parse(minimalPolicy);
-  policy["control-plane"].packages.dashboard = { deploy: false };
+  policy["control-plane"].campaigns.dashboard = { deploy: false };
 
   assert.equal(validate(JSON.stringify(policy)).status, 0);
   assert.equal(
-    controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").packages.dashboard.deploy,
+    controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").campaigns.dashboard.deploy,
     false,
   );
 
-  policy["control-plane"].packages.dashboard.deploy = "false";
+  policy["control-plane"].campaigns.dashboard.deploy = "false";
   const invalid = validate(JSON.stringify(policy));
   assert.notEqual(invalid.status, 0);
-  assert.match(invalid.stderr, /control-plane\.packages\.dashboard\.deploy must be a Boolean/);
+  assert.match(invalid.stderr, /control-plane\.campaigns\.dashboard\.deploy must be a Boolean/);
 });
 
 test("control policy validates config-defined worker workflow identities", () => {
   const missingWorkflow = JSON.parse(minimalPolicy);
-  delete missingWorkflow["control-plane"].packages.dependabot.workers["update-planner"].workflow;
+  delete missingWorkflow["control-plane"].campaigns.dependabot.workers["update-planner"].workflow;
   const duplicateWorkflow = JSON.parse(minimalPolicy);
-  duplicateWorkflow["control-plane"].packages.dependabot.workers.secondary = {
+  duplicateWorkflow["control-plane"].campaigns.dependabot.workers.secondary = {
     workflow: "dependabot-update-planner",
   };
 
@@ -356,20 +356,20 @@ test("control policy validates config-defined worker workflow identities", () =>
 test("control policy registers the dashboard debug logging worker", () => {
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   assert.equal(
-    policy["control-plane"].packages["self-care"].workers["dashboard-debug-logging"].workflow,
+    policy["control-plane"].campaigns["self-care"].workers["dashboard-debug-logging"].workflow,
     "self-care-dashboard-debug-logging",
   );
 });
 
-test("control policy disables packages by absence and requires declared workers", () => {
-  const absentPackage = effective(minimalPolicy, { packageName: "optimization" });
+test("control policy disables campaigns by absence and requires declared workers", () => {
+  const absentCampaign = effective(minimalPolicy, { campaignName: "optimization" });
   const declaredWorker = effective(minimalPolicy, {
     role: "worker",
     worker: "update-planner",
-    packageName: "dependabot",
+    campaignName: "dependabot",
   });
   const policyWithoutWorker = JSON.parse(minimalPolicy);
-  delete policyWithoutWorker["control-plane"].packages.dependabot.workers;
+  delete policyWithoutWorker["control-plane"].campaigns.dependabot.workers;
   const undeclaredWorker = effective(JSON.stringify(policyWithoutWorker), {
     role: "worker",
     worker: "update-planner",
@@ -381,14 +381,14 @@ test("control policy disables packages by absence and requires declared workers"
   const disabledWorkerOrchestrator = effective(
     minimalPolicy.replace('"max-mode":"live"', '"enabled":false'),
   );
-  const disabledPackageWithoutWorker = JSON.parse(minimalPolicy);
-  disabledPackageWithoutWorker["control-plane"].packages.dependabot = { enabled: false };
-  const disabledPackageWorker = effective(JSON.stringify(disabledPackageWithoutWorker), {
+  const disabledCampaignWithoutWorker = JSON.parse(minimalPolicy);
+  disabledCampaignWithoutWorker["control-plane"].campaigns.dependabot = { enabled: false };
+  const disabledCampaignWorker = effective(JSON.stringify(disabledCampaignWithoutWorker), {
     role: "worker",
     worker: "update-planner",
   });
 
-  assert.equal(absentPackage.output.reason, "package-undeclared");
+  assert.equal(absentCampaign.output.reason, "campaign-undeclared");
   assert.equal(declaredWorker.output.authorized, true);
   assert.notEqual(undeclaredWorker.status, 0);
   assert.match(undeclaredWorker.stderr, /unknown worker: dependabot\/update-planner/);
@@ -397,10 +397,10 @@ test("control policy disables packages by absence and requires declared workers"
     false,
   );
   assert.equal(disabledWorker.output.reason, "worker-disabled");
-  assert.equal(disabledPackageWorker.output.reason, "package-disabled");
+  assert.equal(disabledCampaignWorker.output.reason, "campaign-disabled");
 });
 
-test("control policy intersects package mode, dispatch request, and worker ceiling", () => {
+test("control policy intersects campaign mode, dispatch request, and worker ceiling", () => {
   const reviewRequest = effective(minimalPolicy, {
     role: "worker",
     worker: "update-planner",
@@ -429,7 +429,7 @@ test("workers inherit the resolved mode when max-mode is omitted", () => {
     "gh-aw-version": "v0.89.15",
     "control-plane": {
       scope: { "allowed-repositories": ["acme/payments-api", "acme/storefront"] },
-      packages: {
+      campaigns: {
         dependabot: {
           mode: "review",
           targets: { "acme/payments-api": { mode: "live" } },
@@ -460,14 +460,14 @@ test("workers inherit the resolved mode when max-mode is omitted", () => {
   assert.equal(reviewWorker.output.safe_output_mode, "review");
 });
 
-test("control policy resolves exact package target modes", () => {
+test("control policy resolves exact campaign target modes", () => {
   const policy = JSON.stringify({
     $schema: schema.$id,
     version: 1,
     "gh-aw-version": "v0.89.15",
     "control-plane": {
       scope: { "allowed-repositories": ["acme/payments-api", "acme/storefront"] },
-      packages: {
+      campaigns: {
         dependabot: {
           mode: "review",
           targets: {
@@ -519,13 +519,13 @@ test("control policy resolves exact package target modes", () => {
   });
 });
 
-test("control policy requires package targets to stay inside explicit scope", () => {
+test("control policy requires campaign targets to stay inside explicit scope", () => {
   const policy = JSON.stringify({
     version: 1,
     "gh-aw-version": "v0.89.15",
     "control-plane": {
       scope: { "allowed-repositories": ["acme/storefront"] },
-      packages: {
+      campaigns: {
         dependabot: {
           targets: {
             "acme/payments-api": { mode: "live" },
@@ -538,23 +538,23 @@ test("control policy requires package targets to stay inside explicit scope", ()
   const result = validate(policy);
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /package target acme\/payments-api is outside control-plane\.scope\.allowed-repositories/);
+  assert.match(result.stderr, /campaign target acme\/payments-api is outside control-plane\.scope\.allowed-repositories/);
 });
 
 for (const [name, targets, error] of [
-  ["an array", [], /control-plane\.packages\.dependabot\.targets must be a mapping/],
-  ["a missing mode", { "acme/payments-api": {} }, /control-plane\.packages\.dependabot\.targets\.acme\/payments-api\.mode is required/],
-  ["an unsupported field", { "acme/payments-api": { mode: "live", percentage: 10 } }, /unknown key control-plane\.packages\.dependabot\.targets\.acme\/payments-api\.percentage/],
-  ["an invalid mode", { "acme/payments-api": { mode: "preview" } }, /control-plane\.packages\.dependabot\.targets\.acme\/payments-api\.mode must be review or live/],
-  ["case-insensitive duplicates", { "acme/payments-api": { mode: "live" }, "ACME/PAYMENTS-API": { mode: "review" } }, /control-plane\.packages\.dependabot\.targets must contain unique repository names/],
+  ["an array", [], /control-plane\.campaigns\.dependabot\.targets must be a mapping/],
+  ["a missing mode", { "acme/payments-api": {} }, /control-plane\.campaigns\.dependabot\.targets\.acme\/payments-api\.mode is required/],
+  ["an unsupported field", { "acme/payments-api": { mode: "live", percentage: 10 } }, /unknown key control-plane\.campaigns\.dependabot\.targets\.acme\/payments-api\.percentage/],
+  ["an invalid mode", { "acme/payments-api": { mode: "preview" } }, /control-plane\.campaigns\.dependabot\.targets\.acme\/payments-api\.mode must be review or live/],
+  ["case-insensitive duplicates", { "acme/payments-api": { mode: "live" }, "ACME/PAYMENTS-API": { mode: "review" } }, /control-plane\.campaigns\.dependabot\.targets must contain unique repository names/],
 ]) {
-  test(`control policy rejects package targets with ${name}`, () => {
+  test(`control policy rejects campaign targets with ${name}`, () => {
     const result = validate(JSON.stringify({
       version: 1,
       "gh-aw-version": "v0.89.15",
       "control-plane": {
         scope: { "allowed-owners": ["acme"] },
-        packages: { dependabot: { targets } },
+        campaigns: { dependabot: { targets } },
       },
     }));
 
@@ -563,20 +563,20 @@ for (const [name, targets, error] of [
   });
 }
 
-test("control policy requires package targets to stay inside allowed owners", () => {
+test("control policy requires campaign targets to stay inside allowed owners", () => {
   const result = validate(JSON.stringify({
     version: 1,
     "gh-aw-version": "v0.89.15",
     "control-plane": {
       scope: { "allowed-owners": ["acme"] },
-      packages: {
+      campaigns: {
         dependabot: { targets: { "outside/payments-api": { mode: "live" } } },
       },
     },
   }));
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /package target outside\/payments-api is outside control-plane\.scope\.allowed-owners/);
+  assert.match(result.stderr, /campaign target outside\/payments-api is outside control-plane\.scope\.allowed-owners/);
 });
 
 test("control policy permits dispatch limits to narrow but not widen policy", () => {
@@ -593,7 +593,7 @@ test("control policy permits dispatch limits to narrow but not widen policy", ()
 test("control policy accepts target-only authority in the version 1 shape", () => {
   const result = validate(JSON.stringify({
     version: 1,
-    "target-authority": { packages: { optimization: { authority: "acme/control" } } },
+    "target-authority": { campaigns: { optimization: { authority: "acme/control" } } },
   }));
 
   assert.equal(result.status, 0, result.stderr);
@@ -603,7 +603,7 @@ for (const [name, policy, error] of [
   ["legacy root bundles", '{"version":1,"bundles":{}}', /unknown key policy.bundles/],
   ["future versions", '{"version":2,"control-plane":{}}', /version must be an integer in 1..1/],
   ["unknown schema URI", '{"$schema":"https://example.com/policy.schema.json","version":1,"control-plane":{}}', /\$schema must be https:\/\/raw\.githubusercontent\.com/],
-  ["unknown nested keys", '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"packages":{"dependabot":{"surprise":true}}}}', /unknown key control-plane.packages.dependabot.surprise/],
+  ["unknown nested keys", '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"campaigns":{"dependabot":{"surprise":true}}}}', /unknown key control-plane.campaigns.dependabot.surprise/],
   ["duplicate keys", '{"version":1,"version":1,"control-plane":{}}', /duplicate mapping key: version/],
   ["malformed JSON", '{"version":1,}', /invalid policy JSON/],
   ["expressions", '{"version":1,"control-plane":{"scope":{"allowed-owners":["${{ github.repository_owner }}"]}}}', /must not contain a GitHub Actions expression/],
