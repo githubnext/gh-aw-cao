@@ -255,7 +255,14 @@ test('package card actions wrap together on narrow screens', async ({ page }) =>
   const actions = page.locator('.document-list-card-actions');
   await expect(actions).toHaveCount(1);
   await expect(actions.locator('.table-cli-action-control')).toHaveCount(4);
-  expect((await actions.boundingBox())?.height).toBeLessThanOrEqual(70);
+  const [actionsBox, controlBox] = await Promise.all([
+    actions.boundingBox(),
+    actions.locator('.table-cli-action-control').first().boundingBox()
+  ]);
+  expect(actionsBox).not.toBeNull();
+  expect(controlBox).not.toBeNull();
+  if (actionsBox === null || controlBox === null) throw new Error('Expected visible package actions.');
+  expect(actionsBox.height).toBeLessThanOrEqual(controlBox.height * 2 + 6);
 });
 
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {

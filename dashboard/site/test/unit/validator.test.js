@@ -566,7 +566,7 @@ describe('dashboard document validation', () => {
       (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
     )?.views).toEqual([
       expect.objectContaining({
-        id: 'starter-updates',
+        id: 'package-updates',
         mark: 'list',
         list: {
           style: 'cards',

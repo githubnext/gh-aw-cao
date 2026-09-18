@@ -572,7 +572,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'maintenance');
-    const starterUpdates = page?.querySelector('[data-view-id="starter-updates"]');
+    const starterUpdates = page?.querySelector('[data-view-id="package-updates"]');
     const compilerUpgrades = page?.querySelector('[data-view-id="compiler-upgrades"]');
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
     expect(page?.querySelectorAll('[data-view-layout="full"]')).toHaveLength(2);
