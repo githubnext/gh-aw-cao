@@ -128,7 +128,10 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
           for (const disclosure of disclosures) disclosure.open = true;
         });
 
-        const views = activePage.locator("[data-view-id]");
+        // Rendered-view accounting covers every declared view, including views the
+        // page's view-mode selection currently hides; only visible views are scrolled
+        // into view and awaited.
+        const renderedViewElements = activePage.locator("[data-view-id]");
         const visibleViews = activePage.locator(visibleViewSelector);
         for (let index = 0; index < await visibleViews.count(); index += 1) {
           await visibleViews.nth(index).scrollIntoViewIfNeeded().catch(() => {});
@@ -141,7 +144,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         }
         await expect(busyViews).toHaveCount(0);
 
-        result.renderedViews = (await views.evaluateAll((elements) =>
+        result.renderedViews = (await renderedViewElements.evaluateAll((elements) =>
           elements.map((element) => element.getAttribute("data-view-id")).filter(Boolean)
         ));
         result.missingViews = result.declaredViews.filter(
