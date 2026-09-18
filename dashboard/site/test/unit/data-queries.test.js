@@ -1284,9 +1284,14 @@ describe('declarative dashboard queries', () => {
     const derived = executeDashboardQueries(
       dashboardQueries,
       { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-values': operationalValues, usage },
-      ['repository-activity', 'workflow-inventory', 'top-workflow-runs', 'campaign-operational-value-totals', 'campaign-inventory']
+      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'top-workflow-runs', 'campaign-operational-value-totals', 'campaign-inventory']
     );
 
+    expect(derived['entity-workflows'].rows).toEqual([
+      expect.objectContaining({ workflow: 'a.md', runs: 2, 'successful-runs': 1, 'failed-runs': 1, 'aic-per-run': 5 }),
+      expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null }),
+      expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0 })
+    ]);
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
       repository: 'githubnext/gh-aw-cao',
       workflows: 3,

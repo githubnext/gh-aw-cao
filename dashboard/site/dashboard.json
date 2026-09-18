@@ -677,9 +677,59 @@
         "order-by": [{ "field": "repository-coordinate", "direction": "asc" }]
       },
       {
+        "name": "entity-workflow-run-totals",
+        "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
+        "from": "runs",
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [
+            { "field": "run", "as": "runs", "reducer": "distinct-count" },
+            {
+              "field": "run-conclusion",
+              "as": "successful-runs",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] }
+            },
+            {
+              "field": "run-conclusion",
+              "as": "failed-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+              }
+            },
+            { "field": "aic-total", "as": "aic", "reducer": "sum" }
+          ]
+        }
+      },
+      {
         "name": "entity-workflows",
         "intent": "Project workflow entities for reusable workflow cards and repository drill-down.",
         "from": "workflows",
+        "joins": [
+          {
+            "source": "entity-workflow-run-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [
+              { "field": "runs", "as": "observed-runs" },
+              { "field": "successful-runs", "as": "observed-successful-runs" },
+              { "field": "failed-runs", "as": "observed-failed-runs" },
+              { "field": "aic", "as": "observed-aic" }
+            ]
+          }
+        ],
+        "compute": [
+          { "as": "runs", "function": "coalesce", "args": [{ "field": "observed-runs" }, { "value": 0 }] },
+          { "as": "successful-runs", "function": "coalesce", "args": [{ "field": "observed-successful-runs" }, { "value": 0 }] },
+          { "as": "failed-runs", "function": "coalesce", "args": [{ "field": "observed-failed-runs" }, { "value": 0 }] },
+          { "as": "aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] },
+          { "as": "aic-per-run", "function": "quotient", "args": [{ "field": "aic" }, { "field": "runs" }] }
+        ],
         "select": [
           { "field": "organization" },
           { "field": "repository" },
@@ -689,6 +739,10 @@
           { "field": "workflow-active" },
           { "field": "campaign-name" },
           { "field": "observed-at" },
+          { "field": "runs" },
+          { "field": "successful-runs" },
+          { "field": "failed-runs" },
+          { "field": "aic-per-run" },
           { "field": "workflow-link" }
         ],
         "order-by": [

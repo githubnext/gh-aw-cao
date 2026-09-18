@@ -62,6 +62,11 @@ describe('entity card templates', () => {
     );
     const columns = inventoryView.encoding.columns.map((/** @type {Record<string, any>} */ field) => field.field);
     expect(columns).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
+    const entityQuery = dashboard.queries.find(
+      (/** @type {Record<string, any>} */ query) => query.name === 'entity-workflows'
+    );
+    const entityFields = entityQuery.select.map((/** @type {Record<string, any>} */ field) => field.as ?? field.field);
+    expect(entityFields).toEqual(expect.arrayContaining(['runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
   });
 
   it('declares a firewall domain card with allowed and blocked metrics', () => {
