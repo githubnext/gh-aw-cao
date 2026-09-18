@@ -55,7 +55,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'discover-workflows', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'enable', 'disable', 'discover-workflows', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -65,6 +65,8 @@ const USAGE = `Usage:
   cao add PACKAGE [GH_AW_ADD_OPTIONS...]
   cao update [GH_AW_UPDATE_OPTIONS...]
   cao mode (live|preview) PACKAGE...
+  cao enable PACKAGE...
+  cao disable PACKAGE...
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
@@ -491,6 +493,46 @@ export async function setCaoPackageMode(mode, packageNames, {
     packages: [...new Set(packageNames)],
     policy: policyPath
   };
+}
+
+export async function setCaoPackageWorkflowsEnabled(action, packageNames, {
+  execute = spawnSync
+} = {}) {
+  if (action !== 'enable' && action !== 'disable') {
+    throw new UsageError('CAO package workflow action must be enable or disable');
+  }
+  if (!Array.isArray(packageNames) || packageNames.length === 0) {
+    throw new UsageError(`cao ${action} requires at least one package`);
+  }
+  const packages = [...new Set(packageNames)];
+  const invalidPackage = packages.find((packageName) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(packageName));
+  if (invalidPackage !== undefined) {
+    throw new UsageError(`Invalid CAO package name: ${invalidPackage}`);
+  }
+
+  const declarations = [];
+  for (const packageName of packages) {
+    const declaration = await readInstalledCaoDeclaration(packageName);
+    if (!declaration) {
+      throw new Error(`Package ${packageName} is not installed or does not declare CAO workflows`);
+    }
+    declarations.push(declaration);
+  }
+  const workflows = [...new Set(declarations.flatMap((declaration) => [
+    declaration.orchestrator,
+    ...Object.values(declaration.workers)
+  ]))];
+  for (const workflow of workflows) {
+    const workflowFile = `${workflow}.lock.yml`;
+    const result = execute('gh', ['workflow', action, workflowFile], {
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024
+    });
+    if (result.error || result.status !== 0) {
+      throw new Error(`gh workflow ${action} failed for ${workflow}: ${commandFailureMessage(result, 'unknown error')}`);
+    }
+  }
+  return { command: action, packages, workflows };
 }
 
 async function jsonlFiles(root) {
@@ -1632,6 +1674,9 @@ export async function runCli(arguments_, input = process.stdin) {
   }
   if (command === 'mode') {
     return setCaoPackageMode(optionArguments[0], optionArguments.slice(1));
+  }
+  if (command === 'enable' || command === 'disable') {
+    return setCaoPackageWorkflowsEnabled(command, optionArguments);
   }
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
