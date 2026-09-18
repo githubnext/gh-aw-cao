@@ -1,5 +1,6 @@
 /**
- * Native operational-value collector records explicitly set `resultAvailable`.
+ * Native operational-value collector records explicitly set `resultAvailable`
+ * and retain the normalized metrics array.
  * Legacy cache records from the replay-era collector did not have that field,
  * but a retained observation payload means the evaluator produced displayable
  * evidence that must not be replaced by a later empty logs shard.
@@ -7,7 +8,7 @@
  * @param {Record<string, unknown> | null | undefined} record
  */
 export function hasOperationalValueResult(record) {
-  if (record?.resultAvailable === true) return true;
+  if (record?.resultAvailable === true) return Array.isArray(record.metrics);
   if (record?.resultAvailable !== undefined) return false;
   return Boolean(record?.observation && typeof record.observation === "object" && !Array.isArray(record.observation));
 }
