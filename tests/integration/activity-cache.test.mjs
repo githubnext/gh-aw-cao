@@ -10,7 +10,6 @@ const cachePaths = [
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
-  "${{ runner.temp }}/cao-activity/workflow-discovery.log",
   "${{ runner.temp }}/cao-activity/drain3_weights.json",
 ];
 
@@ -21,7 +20,6 @@ const legacyCachePaths = [
   "${{ runner.temp }}/cao-activity/payload-hashes.json",
   "${{ runner.temp }}/cao-activity/control-settings.json",
   "${{ runner.temp }}/cao-activity/inventory-sources.json",
-  "${{ runner.temp }}/cao-activity/workflow-discovery.log",
   "${{ runner.temp }}/cao-activity/drain3_weights.json",
 ];
 
@@ -63,13 +61,13 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     cacheJob,
-    /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json workflow-discovery\.log drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
+    /Verify activity snapshot[\s\S]*?for file in gh-aw-logs\.sqlite payload-hashes\.json control-settings\.json inventory-sources\.json drain3_weights\.json[\s\S]*?-s "\$snapshot_root\/\$file"[\s\S]*?Activity snapshot contains no JSONL shards[\s\S]*?exit 1/,
   );
   assert.doesNotMatch(cacheJob, /Activity run and record shard sets do not match/);
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,
-    /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?REPORT_WORKFLOW_DISCOVERY_LOG: \$\{\{ runner\.temp \}\}\/cao-activity\/workflow-discovery\.log[\s\S]*?core\.info\(`\$\{label\} started`\)[\s\S]*?core\.info\(`\$\{label\} completed`\)[\s\S]*?Download agentic workflow logs/,
+    /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?core\.info\(`\$\{label\} started`\)[\s\S]*?core\.info\(`\$\{label\} completed`\)[\s\S]*?Download agentic workflow logs/,
   );
   assert.match(
     indexJob,
@@ -133,9 +131,5 @@ test("activity cache consumers use the producer cache version paths", async () =
   ]);
 
   assertCachePathSets(dashboardWorkflow, 1);
-  assertCachePathSets(
-    sharedCache,
-    2,
-    cachePaths.filter((cachePath) => !cachePath.endsWith("/workflow-discovery.log")),
-  );
+  assertCachePathSets(sharedCache, 2);
 });

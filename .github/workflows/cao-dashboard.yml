@@ -103,7 +103,6 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
-            ${{ runner.temp }}/cao-activity/workflow-discovery.log
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
@@ -313,19 +312,15 @@ jobs:
             core.info('Copying collected activity data')
             const collectedFiles = [
               'inventory-sources.json',
-              'workflow-discovery.log',
               'gh-aw-logs.sqlite',
               'payload-hashes.json',
             ]
             for (const fileName of collectedFiles) {
-              const source = path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName)
               const destination = path.join(process.env.REPORT_OUTPUT, fileName)
-              if (fileName === 'workflow-discovery.log' && !fs.existsSync(source)) {
-                fs.writeFileSync(destination, 'Workflow discovery log is unavailable for this activity snapshot.\n')
-                core.info('Workflow discovery log was unavailable; wrote a compatibility placeholder')
-              } else {
-                fs.copyFileSync(source, destination)
-              }
+              fs.copyFileSync(
+                path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName),
+                destination,
+              )
               core.info(`Copied ${fileName} (${formatFileSize(fs.statSync(destination).size)})`)
             }
             for (const directory of ['gh-aw-logs-shards', 'gh-aw-logs-runs', 'gh-aw-logs-records']) {
