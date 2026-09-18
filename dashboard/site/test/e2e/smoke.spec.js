@@ -38,10 +38,10 @@ function buildPresenterModuleUrl() {
 }
 
 test('shows a not-supported message instead of starting without IndexedDB', async ({ page }) => {
-  await page.evaluate(async () => {
+  await page.evaluate(async (mainModuleUrl) => {
     Object.defineProperty(window, 'indexedDB', { configurable: true, value: undefined });
-    await import('http://dashboard.test/src/main.js');
-  });
+    await import(mainModuleUrl);
+  }, 'http://dashboard.test/src/main.js');
 
   const alert = page.getByRole('alert');
   await expect(alert).toContainText('Browser not supported');
