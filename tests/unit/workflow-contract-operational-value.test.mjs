@@ -121,7 +121,8 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   const optimizerEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-optimizer-operational-value.sh"), "utf8");
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
-  assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
+  assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    close-older-issues: true/);
+  assert.match(dependabotWorker, /close-older-key:.*dependabot-update-plan/);
   assert.match(dependabotWorker, /canonical unprefixed subject/i);
   assert.match(dependabotWorker, /Use that exact subject on every run/);
   assert.match(dependabotWorker, /repo-memory:/);

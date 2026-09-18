@@ -170,7 +170,8 @@ safe-outputs:
   create-issue:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[dependabot:update-planner] "
-    deduplicate-by-title: true
+    close-older-issues: true
+    close-older-key: ${{ format('dependabot-update-plan-{0}', inputs.target_repo) }}
     max: 1
 
 timeout-minutes: 60
@@ -305,7 +306,7 @@ Identify exact repository-declared validation commands for each checklist item. 
 
 ## Plan issue contract
 
-The issue is the single durable Dependabot plan for the target repository. Its canonical unprefixed subject is `Dependency update plan for <owner>/<repository>`. Use that exact subject on every run so `deduplicate-by-title` remains effective. Begin the body with:
+The issue is the single durable Dependabot plan for the target repository. Its canonical unprefixed subject is `Dependency update plan for <owner>/<repository>`. Use that exact subject on every run so open-issue discovery remains stable. Begin the body with:
 
 ```html
 <!-- dependabot-update-plan:repository=<owner>/<repository> -->
@@ -344,13 +345,13 @@ Derive the memory filename by replacing `/` with `__` in `SAFE_OUTPUT_REPO` and 
 
 Read that memory file first. When it contains the expected repository pair and a positive integer issue number, call `issue_read` for that exact issue; never search for it. Accept it only when it is an open issue whose canonical title or `dependabot-update-plan:repository` marker matches the target repository.
 
-When memory is missing, malformed, or stale, bootstrap once with `list_issues` in `SAFE_OUTPUT_REPO`. List open issues in `SAFE_OUTPUT_REPO` without requiring labels because not all live targets allow this workflow to create missing labels. Match by the exact canonical title or repository marker, choose the oldest canonical issue if duplicates exist, and write its number and repository pair to the memory file. This label-free bootstrap preserves issues created under the former `dependabot:release-train-updater` worker label and issues created without labels. Do not call `search_issues`, semantic issue search, code search, or repository search. Do not treat a Dependabot pull request as the plan issue.
+When memory is missing, malformed, or stale, bootstrap once with `list_issues` in `SAFE_OUTPUT_REPO`. List only open issues in `SAFE_OUTPUT_REPO` without requiring labels because not all live targets allow this workflow to create missing labels. Do not list, search, match, or reuse closed issues. Match by the exact canonical title or repository marker, choose the oldest canonical issue if duplicates exist, and write its number and repository pair to the memory file. This label-free bootstrap preserves issues created under the former `dependabot:release-train-updater` worker label and issues created without labels. Do not call `search_issues`, semantic issue search, code search, or repository search. Do not treat a Dependabot pull request as the plan issue.
 
 After identifying an existing canonical issue, ensure its current number is stored in the memory file before finishing. A newly created issue number is not available until safe-output processing completes; on the next run, perform the bounded `list_issues` bootstrap once and persist the resulting number. Never guess an issue number.
 
 - If one matching issue exists and work remains, call `update_issue` once to replace its complete body with the fresh plan. Then call `add_comment` once on the same issue with a concise message beginning `Dependabot update plan refreshed.` and summarizing API evidence, merge-order changes, security/access boundary changes, and comment handling. This refresh comment is mandatory even when the resulting plan is materially unchanged.
 - If one matching issue exists and no work remains, keep the durable issue open and call `update_issue` once with a completed description that preserves the repository marker, states that Dependabot identifies no current updates, access gaps, or actionable blockers, and contains `**Action:** None.` Then call `add_comment` once beginning `Dependabot update plan refreshed.` This clears obsolete unchecked tasks without breaking issue continuity.
-- If no matching issue exists and at least one current update or actionable Dependabot blocker exists, call `create_issue` once with the canonical unprefixed subject and complete body.
+- If no matching open issue exists and at least one current update or actionable Dependabot blocker exists, call `create_issue` once with the canonical unprefixed subject and complete body. The configured safe output supersedes older open plan issues for this target with the newly created issue; never let a closed issue prevent this creation.
 - If multiple matching issues exist, update the oldest canonical issue, mention the duplicate issue numbers in its refresh comment, and do not create another issue.
 - If no matching issue has ever existed and Dependabot identifies no current update or actionable blocker, call `noop`. Do not create an empty tracking issue.
 
