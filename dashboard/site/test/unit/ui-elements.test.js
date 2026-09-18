@@ -130,7 +130,7 @@ describe('UI elements', () => {
     }));
 
     expect(rendered?.querySelectorAll('[data-chart-widget="line"]')).toHaveLength(3);
-    expect([...rendered?.querySelectorAll('.insights-plot-panel h2') ?? []].map((heading) => heading.textContent)).toEqual([
+    expect([...rendered?.querySelectorAll('.insights-measure-row h3') ?? []].map((heading) => heading.textContent)).toEqual([
       'Repository readiness',
       'Quality',
       'Efficiency'

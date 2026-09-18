@@ -1690,7 +1690,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .insights-overview { display: grid; gap: 28px; }
 .insights-value-lead { min-width: 0; display: grid; gap: 14px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
 .insights-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; min-width: 0; }
-.insights-section-heading h2, .insights-plot-panel h2 { margin: 2px 0 4px; font-size: .9375rem; }
+.insights-section-heading h2, .insights-plot-panel :is(h2, h3) { margin: 2px 0 4px; font-size: .9375rem; }
 .insights-section-heading p, .insights-plot-panel header p { max-width: 680px; margin: 0; color: var(--muted); font-size: .75rem; line-height: 1.45; }
 .insights-eyebrow { color: var(--accent); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
 .insights-lead-metrics, .insights-inline-metrics { display: flex; gap: 26px; margin: 0; }

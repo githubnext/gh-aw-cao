@@ -48,7 +48,7 @@ function renderMeasureRow(metric) {
   attachPointSelection(chart, points, readout);
   return h('section', { className: 'insights-plot-panel insights-measure-row', 'data-metric-kind': kind },
     h('header', null,
-      h('h2', null, title),
+      h('h3', null, title),
       h('p', null, describeMeasure(kind, title, points, series.length))),
     h('div', { className: 'insights-measure-plot' },
       h('span', { className: 'insights-axis-label insights-axis-y' }, `${title} (measured value)`),
@@ -90,29 +90,34 @@ function describeMeasure(kind, title, points, seriesCount) {
 function attachPointSelection(chart, points, readout) {
   const marks = [...chart.querySelectorAll('.chart-point[data-chart-point-key]')];
   if (marks.length === 0) return;
-  const byKey = new Map(points.map((point) => [point.key, point]));
+  /** @type {Map<Element, { x: string, y: number, color: string, key: string }>} */
+  const pointsByMark = new Map();
+  const unmatched = [...points];
   for (const mark of marks) {
     mark.setAttribute('role', 'button');
     mark.setAttribute('aria-pressed', 'false');
+    const key = mark.getAttribute('data-chart-point-key');
+    const seriesName = mark.getAttribute('data-chart-point-series');
+    const index = unmatched.findIndex((point) => point.key === key && point.color === seriesName);
+    if (index >= 0) pointsByMark.set(mark, unmatched.splice(index, 1)[0]);
   }
-  /** @type {string | null} */
-  let selectedKey = null;
+  /** @type {Element | null} */
+  let selectedMark = null;
   /** @param {Element} mark */
   const select = (mark) => {
-    const key = String(mark.getAttribute('data-chart-point-key'));
-    selectedKey = selectedKey === key ? null : key;
+    selectedMark = selectedMark === mark ? null : mark;
     for (const candidate of marks) {
-      const pressed = selectedKey !== null && candidate.getAttribute('data-chart-point-key') === selectedKey;
+      const pressed = candidate === selectedMark;
       candidate.setAttribute('aria-pressed', pressed ? 'true' : 'false');
       if (pressed) candidate.setAttribute('data-selected', 'true');
       else candidate.removeAttribute('data-selected');
     }
-    const point = selectedKey === null ? undefined : byKey.get(selectedKey);
+    const point = selectedMark ? pointsByMark.get(selectedMark) : undefined;
     if (!point) {
       readout.replaceChildren(SELECT_POINT_MESSAGE);
       return;
     }
-    const seriesLabel = String(point.color || mark.getAttribute('data-chart-point-series') || '');
+    const seriesLabel = String(mark.getAttribute('data-chart-point-series') || '');
     readout.replaceChildren(...[
       h('strong', null, formatNumber(point.y)),
       h('span', null, formatInstant(point.x)),
