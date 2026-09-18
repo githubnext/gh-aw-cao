@@ -24,17 +24,21 @@ function isDeployedDashboardShardProbe({ method, url }) {
 
 export async function scrollRenderedViewsIntoView(activePage) {
   const viewHandles = await activePage.locator("[data-view-id]").elementHandles();
+  let unexpectedError;
   for (const viewHandle of viewHandles) {
     try {
-      await viewHandle.evaluate((element) => {
-        element.scrollIntoView({ block: "center", inline: "nearest" });
-      });
+      if (!unexpectedError) {
+        await viewHandle.evaluate((element) => {
+          element.scrollIntoView({ block: "center", inline: "nearest" });
+        });
+      }
     } catch (error) {
-      if (!isDetachedViewError(error)) throw error;
+      if (!isDetachedViewError(error)) unexpectedError = error;
     } finally {
       await viewHandle.dispose();
     }
   }
+  if (unexpectedError) throw unexpectedError;
 }
 
 function isDetachedViewError(error) {

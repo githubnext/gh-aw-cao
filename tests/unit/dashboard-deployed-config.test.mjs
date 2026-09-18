@@ -83,16 +83,25 @@ test("deployed dashboard scrolling tolerates lazy view replacement only", async 
 
 test("deployed dashboard scrolling reports unexpected errors", async () => {
   const disposed = [];
+  const evaluated = [];
   const activePage = {
     locator() {
       return {
         async elementHandles() {
           return [{
             async evaluate() {
+              evaluated.push(0);
               throw new Error("unexpected scroll failure");
             },
             async dispose() {
               disposed.push(0);
+            },
+          }, {
+            async evaluate() {
+              evaluated.push(1);
+            },
+            async dispose() {
+              disposed.push(1);
             },
           }];
         },
@@ -102,7 +111,8 @@ test("deployed dashboard scrolling reports unexpected errors", async () => {
 
   await assert.rejects(scrollRenderedViewsIntoView(activePage), /unexpected scroll failure/);
 
-  assert.deepEqual(disposed, [0]);
+  assert.deepEqual(evaluated, [0]);
+  assert.deepEqual(disposed, [0, 1]);
 });
 
 test("deployed dashboard failure tracking ignores only benign aborted probes", () => {
