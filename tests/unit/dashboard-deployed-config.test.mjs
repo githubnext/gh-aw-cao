@@ -49,19 +49,33 @@ test("deployed dashboard scrolling uses a stable view snapshot", async () => {
 test("deployed dashboard failure tracking ignores only benign aborted probes", () => {
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
+    url: "https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs-runs/shard.json",
     errorText: "net::ERR_ABORTED",
   }), true);
   assert.equal(shouldIgnoreRequestFailure({
     method: "GET",
+    url: "https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs-runs/shard.json",
     errorText: "net::ERR_ABORTED",
     reloading: true,
   }), true);
   assert.equal(shouldIgnoreRequestFailure({
     method: "GET",
+    url: "https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs-runs/shard.json",
     errorText: "net::ERR_ABORTED",
   }), false);
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
+    url: "https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs-runs/shard.json",
     errorText: "net::ERR_NAME_NOT_RESOLVED",
+  }), false);
+  assert.equal(shouldIgnoreRequestFailure({
+    method: "HEAD",
+    url: "https://example.com/shard.json",
+    errorText: "net::ERR_ABORTED",
+  }), false);
+  assert.equal(shouldIgnoreRequestFailure({
+    method: "HEAD",
+    url: "https://githubnext.github.io/gh-aw-cao/cao/assets/app.js",
+    errorText: "net::ERR_ABORTED",
   }), false);
 });

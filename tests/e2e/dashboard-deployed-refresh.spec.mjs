@@ -21,7 +21,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const errorText = request.failure()?.errorText || "failed";
-    if (shouldIgnoreRequestFailure({ method: request.method(), errorText, reloading })) return;
+    if (shouldIgnoreRequestFailure({ method: request.method(), url: request.url(), errorText, reloading })) return;
     failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
   });
   page.on("response", (response) => {
