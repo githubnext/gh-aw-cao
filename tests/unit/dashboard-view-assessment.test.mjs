@@ -20,6 +20,7 @@ test("assesses only the views a reader can see", () => {
 });
 
 test("grows the assessment timeout with the number of selected views", () => {
+  assert.equal(maximumDashboardAssessmentTimeoutMs, 120_000);
   assert.equal(
     dashboardAssessmentTimeout(1),
     dashboardAssessmentStartupBudgetMs + dashboardAssessmentPageBudgetMs,

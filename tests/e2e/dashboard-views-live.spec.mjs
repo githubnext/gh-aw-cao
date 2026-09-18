@@ -8,6 +8,7 @@ import {
   isExpectedPageCloseAbort,
   isIgnoredDashboardPageId,
   isSpuriousAbortAfterSuccessResponse,
+  maximumDashboardAssessmentTimeoutMs,
   visibleBusyViewSelector,
   visibleViewSelector,
 } from "./dashboard-view-assessment.mjs";
@@ -32,6 +33,7 @@ function messageText(value) {
 }
 
 test("each selected dashboard view renders with live data", async ({ browser }, testInfo) => {
+  test.setTimeout(maximumDashboardAssessmentTimeoutMs);
   await rm(outputDirectory, { force: true, recursive: true });
   await mkdir(outputDirectory, { recursive: true });
 
