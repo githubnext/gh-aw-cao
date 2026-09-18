@@ -18,8 +18,8 @@ export const visibleViewSelector = "[data-view-id]:visible";
 export const visibleBusyViewSelector = '[aria-busy="true"]:visible';
 
 // The assessment loads every selected page in its own browser page, so the test
-// budget has to grow with the number of selected pages. The cap keeps the run
-// inside its job timeout so the summary is always uploaded.
+// budget has to grow with the number of selected pages. The 25-minute cap leaves
+// five minutes of the job timeout for setup and summary upload.
 export const dashboardAssessmentStartupBudgetMs = 120_000;
 export const dashboardAssessmentPageBudgetMs = 20_000;
 export const maximumDashboardAssessmentTimeoutMs = 1_500_000;
