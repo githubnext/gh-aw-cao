@@ -212,7 +212,7 @@ safe-outputs:
     max: 20
   threat-detection: false
 
-source: githubnext/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
+source: github/gh-aw-cao@2de9130ff1709fccdacbe5261fd5da71995e6721
 ---
 
 # AW Optimization

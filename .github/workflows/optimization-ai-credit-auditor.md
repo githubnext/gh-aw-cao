@@ -231,7 +231,7 @@ steps:
       echo "Forecast exit code: $FORECAST_EXIT_CODE"
       echo "Forecast JSON valid: $FORECAST_JSON_VALID"
 
-source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
+source: github/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
 ---
 
 You are the Agentic Workflow Auditor — a workflow that tracks daily AI Credit (AIC) spend and token consumption, forecasts weekly and monthly cost, and maintains a historical record for trend analysis across all agentic workflows in the target repository.

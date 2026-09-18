@@ -483,7 +483,7 @@ post-steps:
       if-no-files-found: error
       retention-days: 30
 
-source: githubnext/gh-aw-cao/.github/workflows/optimization-token-optimizer.md@main
+source: github/gh-aw-cao/.github/workflows/optimization-token-optimizer.md@main
 ---
 
 # AW Optimization / Token Optimizer
