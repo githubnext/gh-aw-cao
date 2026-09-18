@@ -42,6 +42,13 @@ const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
   'audits',
   'issues'
 ]);
+const LEGACY_PACKAGE_FIELD_ALIASES = /** @type {const} */ ({
+  packageId: 'campaignId',
+  package: 'campaign',
+  packageName: 'campaignName',
+  packageIcon: 'campaignIcon',
+  packageLink: 'campaignLink'
+});
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 
 /**
@@ -62,6 +69,39 @@ function migrateLegacyPackageId(value) {
     : value;
 }
 
+/** @param {unknown} value */
+function hasLegacyPackageAliases(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && (
+    (typeof /** @type {{ id?: unknown }} */ (value).id === 'string'
+      && /** @type {{ id: string }} */ (value).id.startsWith('package:'))
+    || Object.keys(LEGACY_PACKAGE_FIELD_ALIASES).some((field) => Object.hasOwn(value, field))
+  ));
+}
+
+/** @param {Record<string, unknown>} batch */
+function hasLegacyPackageShape(batch) {
+  if (Array.isArray(batch.packages)) return true;
+  return Object.values(batch).some((records) => (
+    Array.isArray(records) && records.some(hasLegacyPackageAliases)
+  ));
+}
+
+/** @param {unknown} candidate */
+function migrateLegacyPackageAliases(candidate) {
+  if (!hasLegacyPackageAliases(candidate)) return candidate;
+  const record = { .../** @type {Record<string, unknown>} */ (candidate) };
+  record.id = migrateLegacyPackageId(record.id);
+  for (const [legacyField, campaignField] of Object.entries(LEGACY_PACKAGE_FIELD_ALIASES)) {
+    if (record[campaignField] === undefined && record[legacyField] !== undefined) {
+      record[campaignField] = legacyField === 'packageId'
+        ? migrateLegacyPackageId(record[legacyField])
+        : record[legacyField];
+    }
+    delete record[legacyField];
+  }
+  return record;
+}
+
 /**
  * Accepts normalized shards emitted shortly before the package-to-campaign
  * vocabulary rename. The schema and ingestion versions did not change in that
@@ -72,35 +112,17 @@ function migrateLegacyPackageId(value) {
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
 function migrateNormalizedBatch(batch) {
+  if (!hasLegacyPackageShape(batch)) {
+    return /** @type {import('../model/schema.js').CanonicalBatch} */ (batch);
+  }
   const migrated = { ...batch };
   if (!Array.isArray(migrated.campaigns) && Array.isArray(migrated.packages)) {
-    migrated.campaigns = migrated.packages.map((candidate) => {
-      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return candidate;
-      const record = { ...candidate };
-      record.id = migrateLegacyPackageId(record.id);
-      if (record.campaignLink === undefined && record.packageLink !== undefined) {
-        record.campaignLink = record.packageLink;
-      }
-      delete record.packageLink;
-      return record;
-    });
+    migrated.campaigns = migrated.packages.map(migrateLegacyPackageAliases);
   }
-  if (Array.isArray(migrated.workflows)) {
-    migrated.workflows = migrated.workflows.map((candidate) => {
-      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return candidate;
-      const record = { ...candidate };
-      if (record.campaignId === undefined && record.packageId !== undefined) {
-        record.campaignId = migrateLegacyPackageId(record.packageId);
-      }
-      if (record.campaign === undefined && record.package !== undefined) record.campaign = record.package;
-      if (record.campaignName === undefined && record.packageName !== undefined) record.campaignName = record.packageName;
-      if (record.campaignIcon === undefined && record.packageIcon !== undefined) record.campaignIcon = record.packageIcon;
-      delete record.packageId;
-      delete record.package;
-      delete record.packageName;
-      delete record.packageIcon;
-      return record;
-    });
+  for (const collection of NORMALIZED_BATCH_COLLECTIONS) {
+    if (Array.isArray(migrated[collection])) {
+      migrated[collection] = migrated[collection].map(migrateLegacyPackageAliases);
+    }
   }
   delete migrated.packages;
   return /** @type {import('../model/schema.js').CanonicalBatch} */ (migrated);
