@@ -2500,7 +2500,7 @@ function operationalValueMetrics(definitions, record) {
   ]);
   diagnosticNames.delete(primaryId);
   return [
-    { id: primaryId, value: record.value },
+    { id: primaryId, value: record.value ?? diagnostics[primaryId] ?? null },
     ...[...diagnosticNames].map((id) => ({ id, value: diagnostics[id] ?? null })),
   ];
 }

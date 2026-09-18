@@ -19,5 +19,5 @@ export function hasOperationalValueResult(record) {
  * @param {Record<string, unknown>} record
  */
 export function operationalValueRecordTime(record) {
-  return record.observedAt || record.observation?.evidenceAt || record.run?.createdAt || "";
+  return record?.observedAt || record?.observation?.evidenceAt || record?.run?.createdAt || "";
 }
