@@ -38,6 +38,10 @@ export async function scrollRenderedViewsIntoView(activePage) {
 }
 
 function isDetachedViewError(error) {
+  const name = error && typeof error === "object" && "name" in error
+    ? String(error.name)
+    : "";
   const message = error instanceof Error ? error.message : String(error);
-  return /not attached|detached|Execution context was destroyed|Cannot find context/i.test(message);
+  return /not attached|detached|context/i.test(name)
+    || /not attached|detached|Execution context was destroyed|Cannot find context/i.test(message);
 }

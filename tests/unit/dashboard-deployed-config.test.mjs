@@ -56,7 +56,9 @@ test("deployed dashboard scrolling tolerates lazy view replacement only", async 
           return [
             {
               async evaluate() {
-                throw new Error("Element is not attached to the DOM");
+                const error = new Error("Element is not attached to the DOM");
+                error.name = "DetachedElementError";
+                throw error;
               },
               async dispose() {
                 disposed.push(0);
@@ -108,6 +110,11 @@ test("deployed dashboard failure tracking ignores only benign aborted probes", (
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
     url: `${deployedDashboardUrl}gh-aw-logs-runs/shard.json`,
+    errorText: "net::ERR_ABORTED",
+  }), true);
+  assert.equal(shouldIgnoreRequestFailure({
+    method: "HEAD",
+    url: `${deployedDashboardUrl}gh-aw-logs-records/shard.json`,
     errorText: "net::ERR_ABORTED",
   }), true);
   assert.equal(shouldIgnoreRequestFailure({
