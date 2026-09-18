@@ -3,7 +3,6 @@
  */
 
 import campaignResourceNavigation from './campaign-resource-navigation.json' with { type: 'json' };
-import repositoryResourceNavigation from './repository-resource-navigation.json' with { type: 'json' };
 
 export const WORKFLOW_ROUTE_BODY_VALUES = ['insights', 'reports', 'runs'];
 export const WORKFLOW_ROUTE_PAGE_BODY_VALUES = ['insights', 'reports', 'runs'];
@@ -15,9 +14,6 @@ export const CAMPAIGN_ROUTE_BODY_VALUES = Object.freeze([
   ...campaignResourceNavigation['additional-bodies'],
   ...Object.keys(CAMPAIGN_ROUTE_ALIASES)
 ]);
-export const REPOSITORY_ROUTE_TABS = Object.freeze(repositoryResourceNavigation.tabs);
-export const REPOSITORY_ROUTE_DEFAULT_BODY = repositoryResourceNavigation.default;
-export const REPOSITORY_ROUTE_BODY_VALUES = Object.freeze(REPOSITORY_ROUTE_TABS.map((tab) => tab.id));
 export const OUTCOME_DETAIL_SECTION_BODY_VALUES = ['discussion', 'metadata'];
 export const CAMPAIGN_ROUTE_VARIANT_VALUES = CAMPAIGN_ROUTE_BODY_VALUES;
 export const WORK_VIEW_BODY_VALUES = ['board', 'tasks', 'roadmap'];

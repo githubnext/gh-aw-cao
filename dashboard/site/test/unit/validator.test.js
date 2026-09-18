@@ -2014,8 +2014,53 @@ dashboard:
     const document = JSON.parse(authoritativeDashboardSource);
     const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-detail');
     const repositoryPage = document.dashboard.pages[repositoryPageIndex];
-    expect(repositoryPage.route).toEqual({ 'hash-query-parameter': 'repository', 'navigation-page': 'repositories' });
+    expect(repositoryPage.route).toMatchObject({
+      'hash-query-parameter': 'repository',
+      'navigation-page': 'repositories',
+      tab: 'overview'
+    });
+    expect(repositoryPage.route.tabs).toContainEqual({
+      id: 'settings',
+      label: 'Settings',
+      icon: 'gear',
+      page: 'repository-settings'
+    });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    const declaredTabs = repositoryPage.route.tabs;
+    repositoryPage.route = { 'hash-query-parameter': 'repository', tab: 'missing', tabs: declaredTabs };
+    const unknownTab = validateDashboardDocument(JSON.stringify(document));
+    expect(unknownTab.ok).toBe(false);
+    if (!unknownTab.ok) {
+      expect(unknownTab.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: `$.dashboard.pages[${repositoryPageIndex}].route.tab`,
+        message: 'route tab must name one declared route tab id.'
+      }));
+    }
+    repositoryPage.route = {
+      'hash-query-parameter': 'repository',
+      tab: 'overview',
+      tabs: [{ id: 'overview', label: 'Overview', icon: 'repo', page: 'missing-page' }]
+    };
+    const unknownTabPage = validateDashboardDocument(JSON.stringify(document));
+    expect(unknownTabPage.ok).toBe(false);
+    if (!unknownTabPage.ok) {
+      expect(unknownTabPage.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: `$.dashboard.pages[${repositoryPageIndex}].route.tabs[0].page`,
+        message: 'route tab page must reference a declared dashboard page id.'
+      }));
+    }
+    repositoryPage.route = { 'hash-query-parameter': 'repository', tab: 'overview' };
+    const tabWithoutTabs = validateDashboardDocument(JSON.stringify(document));
+    expect(tabWithoutTabs.ok).toBe(false);
+    if (!tabWithoutTabs.ok) {
+      expect(tabWithoutTabs.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: `$.dashboard.pages[${repositoryPageIndex}].route.tab`,
+        message: 'route tab requires a route tabs sequence.'
+      }));
+    }
     repositoryPage.route = { 'navigation-page': 'repositories' };
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
     repositoryPage.route = { 'navigation-page': 'missing-page' };

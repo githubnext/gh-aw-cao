@@ -4878,25 +4878,143 @@
         "class-name": "repository-detail-page",
         "route": {
           "hash-query-parameter": "repository",
-          "navigation-page": "repositories"
+          "navigation-page": "repositories",
+          "tab": "overview",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
         },
         "views": [
           {
-            "id": "repository-overview-navigation",
-            "title": "Repository overview",
+            "id": "repository-workflow-count",
+            "title": "Workflows",
+            "description": "Answers how many Agentic Workflows this repository declares.",
             "data": {
-              "sources": ["repository-activity"]
+              "source": "repository-activity",
+              "route-field": "repository"
             },
-            "mark": "element",
-            "element": "repository-route",
-            "config": {
-              "body": "overview"
+            "mark": "metric",
+            "encoding": {
+              "value": {
+                "field": "workflows",
+                "type": "quantitative",
+                "aggregate": "max"
+              }
+            },
+            "layout": "third"
+          },
+          {
+            "id": "repository-run-count",
+            "title": "Runs",
+            "description": "Answers how many runs were observed for this repository.",
+            "data": {
+              "source": "repository-activity",
+              "route-field": "repository"
+            },
+            "mark": "metric",
+            "encoding": {
+              "value": {
+                "field": "runs",
+                "type": "quantitative",
+                "aggregate": "max"
+              }
+            },
+            "layout": "third"
+          },
+          {
+            "id": "repository-aic-total",
+            "title": "AI Credits",
+            "description": "Answers how many AI Credits this repository consumed.",
+            "data": {
+              "source": "repository-activity",
+              "route-field": "repository"
+            },
+            "mark": "metric",
+            "encoding": {
+              "value": {
+                "field": "aic",
+                "type": "quantitative",
+                "aggregate": "sum",
+                "unit": "aic"
+              }
+            },
+            "layout": "third"
+          },
+          {
+            "id": "repository-health-summary",
+            "title": "Repository health",
+            "description": "Answers whether this repository needs attention, how often its runs fail, and how complete its ingestion is.",
+            "data": {
+              "source": "repository-activity",
+              "route-field": "repository"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No activity has been observed for this repository.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository",
+                  "display": "repository-link"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "failure-summary",
+                  "type": "nominal",
+                  "title": "Failures"
+                },
+                {
+                  "field": "evaluated-workflows",
+                  "type": "quantitative",
+                  "title": "Evaluated workflows"
+                }
+              ],
+              "href": {
+                "field": "repository-link",
+                "type": "nominal"
+              }
             },
             "layout": "full"
           }
         ]
       },
-      {
+{
         "id": "repository-insights",
         "kind": "custom",
         "title": "Repository",
@@ -4905,22 +5023,42 @@
         "class-name": "repository-insights-page",
         "route": {
           "hash-query-parameter": "repository",
-          "navigation-page": "repositories"
+          "navigation-page": "repositories",
+          "tab": "insights",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
         },
         "views": [
-          {
-            "id": "repository-insights-navigation",
-            "title": "Repository insights",
-            "data": {
-              "sources": ["repository-activity"]
-            },
-            "mark": "element",
-            "element": "repository-route",
-            "config": {
-              "body": "insights"
-            },
-            "layout": "full"
-          },
           {
             "id": "repository-run-health",
             "title": "Run health trend",
@@ -4953,7 +5091,7 @@
           }
         ]
       },
-      {
+{
         "id": "repository-workflow-inventory",
         "kind": "custom",
         "title": "Repository",
@@ -4962,22 +5100,42 @@
         "class-name": "repository-workflow-inventory-page",
         "route": {
           "hash-query-parameter": "repository",
-          "navigation-page": "repositories"
+          "navigation-page": "repositories",
+          "tab": "workflows",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
         },
         "views": [
-          {
-            "id": "repository-workflows-navigation",
-            "title": "Repository workflows",
-            "data": {
-              "sources": ["repository-activity"]
-            },
-            "mark": "element",
-            "element": "repository-route",
-            "config": {
-              "body": "workflows"
-            },
-            "layout": "full"
-          },
           {
             "id": "repository-authored-workflows",
             "title": "Repository workflows",
@@ -5042,7 +5200,7 @@
           }
         ]
       },
-      {
+{
         "id": "repository-runs",
         "kind": "custom",
         "title": "Repository",
@@ -5051,22 +5209,42 @@
         "class-name": "repository-runs-page",
         "route": {
           "hash-query-parameter": "repository",
-          "navigation-page": "repositories"
+          "navigation-page": "repositories",
+          "tab": "runs",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
         },
         "views": [
-          {
-            "id": "repository-runs-navigation",
-            "title": "Repository runs",
-            "data": {
-              "sources": ["repository-activity"]
-            },
-            "mark": "element",
-            "element": "repository-route",
-            "config": {
-              "body": "runs"
-            },
-            "layout": "full"
-          },
           {
             "id": "repository-run-table",
             "title": "Runs",
@@ -5127,7 +5305,7 @@
           }
         ]
       },
-      {
+{
         "id": "repository-settings",
         "kind": "custom",
         "title": "Repository",
@@ -5136,22 +5314,42 @@
         "class-name": "repository-settings-page",
         "route": {
           "hash-query-parameter": "repository",
-          "navigation-page": "repositories"
+          "navigation-page": "repositories",
+          "tab": "settings",
+          "tabs": [
+            {
+              "id": "overview",
+              "label": "Overview",
+              "icon": "repo",
+              "page": "repository-detail"
+            },
+            {
+              "id": "insights",
+              "label": "Insights",
+              "icon": "graph",
+              "page": "repository-insights"
+            },
+            {
+              "id": "workflows",
+              "label": "Workflows",
+              "icon": "workflow",
+              "page": "repository-workflow-inventory"
+            },
+            {
+              "id": "runs",
+              "label": "Runs",
+              "icon": "play",
+              "page": "repository-runs"
+            },
+            {
+              "id": "settings",
+              "label": "Settings",
+              "icon": "gear",
+              "page": "repository-settings"
+            }
+          ]
         },
         "views": [
-          {
-            "id": "repository-settings-navigation",
-            "title": "Repository settings",
-            "data": {
-              "sources": ["repository-activity"]
-            },
-            "mark": "element",
-            "element": "repository-route",
-            "config": {
-              "body": "settings"
-            },
-            "layout": "full"
-          },
           {
             "id": "repository-compiler-versions",
             "title": "Compiler version",
@@ -5180,6 +5378,17 @@
                   "type": "nominal",
                   "title": "Upgrade",
                   "display": "status"
+                }
+              ],
+              "actions": [
+                {
+                  "action": "upgrade-target-repository",
+                  "presentation": "cli-action",
+                  "icon": "download",
+                  "label": "Update agentic workflows",
+                  "context": [
+                    "repository"
+                  ]
                 }
               ]
             },

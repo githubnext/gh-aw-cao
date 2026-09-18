@@ -279,16 +279,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/campaign-route-shell.js
   - source: site/src/components/campaign-route-view.js
     destination: .github/aw/dashboard/site/src/components/campaign-route-view.js
-  - source: site/src/components/repository-resource-navigation.json
-    destination: .github/aw/dashboard/site/src/components/repository-resource-navigation.json
-  - source: site/src/components/repository-route-bodies.js
-    destination: .github/aw/dashboard/site/src/components/repository-route-bodies.js
-  - source: site/src/components/repository-route-composition.js
-    destination: .github/aw/dashboard/site/src/components/repository-route-composition.js
-  - source: site/src/components/repository-route-shell.js
-    destination: .github/aw/dashboard/site/src/components/repository-route-shell.js
-  - source: site/src/components/repository-route-view.js
-    destination: .github/aw/dashboard/site/src/components/repository-route-view.js
   - source: site/src/components/campaigns-mode-shell.js
     destination: .github/aw/dashboard/site/src/components/campaigns-mode-shell.js
   - source: site/src/components/campaigns-view.js
@@ -311,6 +301,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/route-body-specification.js
   - source: site/src/components/route-tab-set.js
     destination: .github/aw/dashboard/site/src/components/route-tab-set.js
+  - source: site/src/components/route-tabs.js
+    destination: .github/aw/dashboard/site/src/components/route-tabs.js
   - source: site/src/components/run-classification.js
     destination: .github/aw/dashboard/site/src/components/run-classification.js
   - source: site/src/components/run-conclusion-classification.json

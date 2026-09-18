@@ -76,6 +76,8 @@ import {
   ORDER_DIRECTION_VALUES,
   OUTCOME_STATE_VALUES,
   PAGE_ROUTE_KEYS,
+  PAGE_ROUTE_TAB_KEYS,
+  MAX_PAGE_ROUTE_TABS,
   PAGE_ICON_VALUES,
   PAGE_KIND_VALUES,
   PAGE_SECTION_KEYS,
@@ -133,7 +135,6 @@ import {
 import {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   CAMPAIGN_ROUTE_BODY_VALUES,
-  REPOSITORY_ROUTE_BODY_VALUES,
   WORK_VIEW_BODY_VALUES,
   WORKFLOW_ROUTE_BODY_VALUES
 } from './components/route-body-specification.js';
@@ -1093,6 +1094,18 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         }
       }
     }
+    if (isPlainObject(page.route) && Array.isArray(page.route.tabs)) {
+      page.route.tabs.forEach((tab, tabIndex) => {
+        if (!isPlainObject(tab) || typeof tab.page !== 'string' || !IDENTIFIER_PATTERN.test(tab.page)) return;
+        if (!pageIds.has(tab.page)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'route tab page must reference a declared dashboard page id.',
+            `$.dashboard.pages[${index}].route.tabs[${tabIndex}].page`
+          ));
+        }
+      });
+    }
     const views = page.kind === 'built-in' && isPlainObject(page.definition)
       ? page.definition.views
       : page.views;
@@ -2050,6 +2063,77 @@ function collectFieldDefinitionCoverage(fieldDefinition, coveredFields) {
 }
 
 /**
+ * Validates the optional tab set of a routed custom page.
+ * @param {Record<string, unknown>} route
+ * @param {string} routePath
+ * @param {ValidationError[]} errors
+ */
+function validateRouteTabs(route, routePath, errors) {
+  if (route.tabs === undefined) {
+    if (route.tab !== undefined) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'route tab requires a route tabs sequence.',
+        `${routePath}.tab`
+      ));
+    }
+    return;
+  }
+  if (route['hash-query-parameter'] === undefined) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'route tabs require hash-query-parameter.',
+      `${routePath}.tabs`
+    ));
+  }
+  if (!Array.isArray(route.tabs) || route.tabs.length === 0 || route.tabs.length > MAX_PAGE_ROUTE_TABS) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      `route tabs must be a sequence of 1 to ${MAX_PAGE_ROUTE_TABS} tabs.`,
+      `${routePath}.tabs`
+    ));
+    return;
+  }
+  const identifiers = new Set();
+  for (const [index, tab] of route.tabs.entries()) {
+    const tabPath = `${routePath}.tabs[${index}]`;
+    if (!isPlainObject(tab)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'route tab must be a mapping.', tabPath));
+      continue;
+    }
+    for (const key of Object.keys(tab)) {
+      if (!PAGE_ROUTE_TAB_KEYS.includes(key)) {
+        errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Unknown key "${key}" is not allowed at ${tabPath}.`, `${tabPath}.${key}`));
+      }
+    }
+    validateRequiredIdentifier(tab.id, `${tabPath}.id`, 'route tab id', errors);
+    validateRequiredIdentifier(tab.page, `${tabPath}.page`, 'route tab page', errors);
+    validateStringField(tab.label, `${tabPath}.label`, true, errors);
+    validateStringField(tab.icon, `${tabPath}.icon`, true, errors);
+    if (typeof tab.icon === 'string' && !PAGE_ICON_VALUES.includes(tab.icon)) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        'route tab icon must use one canonical Octicon name.',
+        `${tabPath}.icon`
+      ));
+    }
+    if (typeof tab.id === 'string') {
+      if (identifiers.has(tab.id)) {
+        errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, 'route tab ids must be unique.', `${tabPath}.id`));
+      }
+      identifiers.add(tab.id);
+    }
+  }
+  if (typeof route.tab !== 'string' || !identifiers.has(route.tab)) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'route tab must name one declared route tab id.',
+      `${routePath}.tab`
+    ));
+  }
+}
+
+/**
  * @param {Record<string, unknown>} page
  * @param {unknown} pageNode
  * @param {string} path
@@ -2097,6 +2181,7 @@ function validateCustomPage(page, pageNode, path, errors) {
           errors
         );
       }
+      validateRouteTabs(page.route, routePath, errors);
     }
   }
 
@@ -2429,16 +2514,14 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'campaign-route' || view.element === 'repository-route' || view.element === 'outcome-detail-section' || view.element === 'work-project-view') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'campaign-route' || view.element === 'outcome-detail-section' || view.element === 'work-project-view') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
        const allowedBodies = view.element === 'workflow-route' || view.element === 'workflow-route-page'
          ? WORKFLOW_ROUTE_BODY_VALUES
          : view.element === 'campaign-route'
            ? CAMPAIGN_ROUTE_BODY_VALUES
-           : view.element === 'repository-route'
-             ? REPOSITORY_ROUTE_BODY_VALUES
-             : view.element === 'work-project-view'
-               ? WORK_VIEW_BODY_VALUES
+           : view.element === 'work-project-view'
+             ? WORK_VIEW_BODY_VALUES
              : OUTCOME_DETAIL_SECTION_BODY_VALUES;
        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
          errors.push(createError(
@@ -2450,7 +2533,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, workflow-route-page, campaign-route, repository-route, outcome-detail-section, and work-project-view elements.',
+         'config.body is supported only for the workflow-route, workflow-route-page, campaign-route, outcome-detail-section, and work-project-view elements.',
          `${path}.config.body`
        ));
       }

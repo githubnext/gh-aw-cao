@@ -883,24 +883,11 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .summary-card h4 { margin: 0 0 8px; font-size: .875rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
 .summary-list, .run-status-counts, .run-conclusion-counts, .run-outcome-counts { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .summary-list li, .run-status-counts li, .run-conclusion-counts li, .run-outcome-counts li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 2em; background: var(--canvas-subtle); font-size: .75rem; font-weight: 600; }
-.repository-tabs { max-width: 100%; display: flex; gap: 4px; margin-bottom: 24px; overflow-x: auto; border-bottom: 1px solid var(--border); }
-.repository-tabs a { display: inline-flex; align-items: center; gap: 8px; position: relative; padding: 10px 14px 12px; color: var(--fg); font-weight: 600; white-space: nowrap; text-decoration: none; }
-.repository-tabs a > .octicon { color: var(--muted); }
-.repository-tabs a:hover { background: var(--canvas-subtle); }
-.repository-tabs a[aria-current="page"]::after { content: ""; height: 2px; position: absolute; right: 8px; bottom: -1px; left: 8px; background: var(--danger); }
-.repository-overview-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
-.repository-overview-identity { min-width: 0; display: flex; align-items: flex-start; gap: 14px; }
-.repository-overview-icon { width: 42px; height: 42px; flex: none; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-subtle); color: var(--muted); }
-.repository-overview-identity h2 { margin: 0; font-size: 1.25rem; line-height: 1.35; overflow-wrap: anywhere; }
-.repository-overview-identity p { margin: 3px 0 0; color: var(--muted); font-size: .8125rem; }
-.repository-overview-header > a { flex: none; min-height: 32px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font-size: .75rem; font-weight: 600; text-decoration: none; }
-.repository-overview-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0; }
-.repository-overview-stats > div { padding: 12px 14px; border: 1px solid var(--border); background: var(--canvas-subtle); }
-.repository-overview-stats dt { color: var(--muted); font-size: .75rem; font-weight: 600; text-transform: uppercase; }
-.repository-overview-stats dd { margin: 4px 0 0; font-size: 1.125rem; font-weight: 600; }
-.repository-settings h2 { margin: 0 0 6px; font-size: 1rem; }
-.repository-settings p { margin: 0 0 14px; color: var(--muted); }
-.repository-settings-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.route-tabs, .repository-tabs { max-width: 100%; display: flex; gap: 4px; margin-bottom: 24px; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.route-tabs a, .repository-tabs a { display: inline-flex; align-items: center; gap: 8px; position: relative; padding: 10px 14px 12px; color: var(--fg); font-weight: 600; white-space: nowrap; text-decoration: none; }
+.route-tabs a > .octicon, .repository-tabs a > .octicon { color: var(--muted); }
+.route-tabs a:hover, .repository-tabs a:hover { background: var(--canvas-subtle); }
+.route-tabs a[aria-current="page"]::after, .repository-tabs a[aria-current="page"]::after { content: ""; height: 2px; position: absolute; right: 8px; bottom: -1px; left: 8px; background: var(--danger); }
 .workflow-badge-operation, .workflow-badge-orchestrator { border-color: var(--accent); color: var(--accent); }
 .workflow-identity { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 .workflow-identity p { margin: 7px 0 0; }
