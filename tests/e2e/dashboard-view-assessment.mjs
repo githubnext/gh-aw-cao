@@ -9,6 +9,29 @@ export function withoutIgnoredDashboardPageIds(pageIds) {
   return pageIds.filter((pageId) => !isIgnoredDashboardPageId(pageId));
 }
 
+// Views hidden by the page's view-mode selection (a declared full-view table is
+// hidden while the page shows its charts) keep their lazy-view skeleton, and that
+// skeleton stays `aria-busy` until the reader selects it. Only views the reader
+// can actually see are assessed, so hidden views neither block hydration nor
+// consume the assessment's time budget.
+export const visibleViewSelector = "[data-view-id]:visible";
+export const visibleBusyViewSelector = '[aria-busy="true"]:visible';
+
+// The assessment loads every selected page in its own browser page, so the test
+// budget has to grow with the number of selected pages. The cap keeps the run
+// inside its job timeout so the summary is always uploaded.
+export const dashboardAssessmentStartupBudgetMs = 120_000;
+export const dashboardAssessmentPageBudgetMs = 20_000;
+export const maximumDashboardAssessmentTimeoutMs = 900_000;
+
+export function dashboardAssessmentTimeout(pageCount) {
+  const pages = Number.isFinite(pageCount) && pageCount > 0 ? Math.floor(pageCount) : 0;
+  return Math.min(
+    dashboardAssessmentStartupBudgetMs + pages * dashboardAssessmentPageBudgetMs,
+    maximumDashboardAssessmentTimeoutMs,
+  );
+}
+
 export function isExpectedPageCloseAbort(errorText, closing) {
   return closing && errorText === "net::ERR_ABORTED";
 }
