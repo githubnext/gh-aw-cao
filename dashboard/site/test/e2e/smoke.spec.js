@@ -4483,7 +4483,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
     </script>
   `);
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('.github/workflows/ambient-context.md');
+  await expect(page.getByRole('heading', { name: 'Ambient Context', level: 1 })).toBeVisible();
   await expect(page.locator('#page-workflow-detail .custom-table')).toContainText('Debug ambient context workflow failure');
   await expect(page.locator('#page-workflow-detail .custom-table .status-success')).toHaveText('closed');
   await expect(page.locator('#page-workflow-detail .custom-table .mode-review')).toHaveText('review');
