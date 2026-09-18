@@ -143,7 +143,7 @@ test("Dependabot worker maintains one agent-ready issue and never writes pull re
   assert.match(source, /Do not call `search_issues`/);
   assert.match(source, /target\/\.github\/dependabot\.md/);
   assert.match(source, /Repository guidance/);
-  assert.match(source, /Dependabot repository-access gaps/);
+  assert.match(source, /Dependabot repository-access gap/);
   assert.match(source, /### Apply in this order/);
   assert.match(source, /### Security and access boundaries/);
   assert.match(source, /### Comment response/);
