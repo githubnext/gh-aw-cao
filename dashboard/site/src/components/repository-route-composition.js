@@ -28,7 +28,12 @@ import { renderRepositoryOverview, renderRepositorySettings } from './repository
  * }} RepositoryRouteComposition
  */
 
-/** @type {Readonly<Record<RepositoryRouteBody, RepositoryRouteComposition>>} */
+/**
+ * `description` supports the `{repository}` placeholder, replaced with the routed coordinate.
+ * Tabs without a `bodyRenderer` render only the tab bar; their content comes from the
+ * declarative table and chart views declared alongside the element on the same page.
+ * @type {Readonly<Record<RepositoryRouteBody, RepositoryRouteComposition>>}
+ */
 const REPOSITORY_ROUTE_COMPOSITIONS = {
   overview: {
     rootClassName: 'repository-detail',
@@ -90,13 +95,18 @@ export function repositoryRouteComposition(body) {
   );
 }
 
+// GitHub owner names are 1-100 characters of alphanumerics or hyphens, and repository
+// names are 1-100 characters of alphanumerics, hyphens, underscores, or periods.
+const REPOSITORY_COORDINATE_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,98}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}$/;
+
 /**
- * Normalizes a repository route value into an `organization/repository` coordinate.
+ * Normalizes a repository route value into an `organization/repository` coordinate,
+ * returning an empty string when the route value is not a valid coordinate.
  * @param {unknown} value
  * @returns {string}
  */
 export function normalizeRepositoryRoute(value) {
   if (typeof value !== 'string') return '';
   const repository = value.trim();
-  return /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,98}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}$/.test(repository) ? repository : '';
+  return REPOSITORY_COORDINATE_PATTERN.test(repository) ? repository : '';
 }

@@ -93,6 +93,16 @@ describe('repository route', () => {
     expect(overview?.querySelector('a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao');
   });
 
+  it('falls back to a placeholder for unobserved overview stats', () => {
+    const rendered = renderRepositoryRouteView(context('repository-detail', 'overview'));
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'repository', value: 'github/gh-aw' }
+    }));
+
+    const stats = [...rendered.querySelectorAll('.repository-overview-stats dd')];
+    expect(stats.map((stat) => stat.textContent)).toEqual(['3', '5039', '\u2014', '\u2014', '\u2014']);
+  });
+
   it('offers update and upgrade actions on the settings tab', () => {
     setDeclaredCliActions([
       {
