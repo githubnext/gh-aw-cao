@@ -3451,8 +3451,10 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
   expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
   await packageNavigation.getByRole('link', { name: 'Insights' }).click();
-  await expect(packageNavigation.getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('[data-page-id="package-insights"]')).toBeVisible();
+  const packageInsights = page.locator('[data-page-id="package-insights"]');
+  await expect(packageInsights).toBeVisible();
+  await expect(packageInsights.getByRole('navigation', { name: 'Ambient Context views' })
+    .getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context package.');
 });
 
