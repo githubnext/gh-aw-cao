@@ -1,6 +1,7 @@
 /**
  * Native operational-value collector records explicitly set `resultAvailable`
- * and retain the normalized metrics array.
+ * and retain the normalized metrics array; records missing that array are
+ * malformed and should be retried instead of treated as complete cache hits.
  * Legacy cache records from the replay-era collector did not have that field,
  * but a retained observation payload means the evaluator produced displayable
  * evidence that must not be replaced by a later empty logs shard.

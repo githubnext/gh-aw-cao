@@ -2486,6 +2486,10 @@ function diagnosticValues(record) {
 
 function operationalValueMetrics(definitions, record) {
   if (Array.isArray(record.metrics)) return record.metrics;
+  // Legacy cache records predate metric arrays. Prefer an exact evaluator
+  // definition; if retained records no longer match the current digest, use the
+  // workflow-level fallback only when it is unambiguous. Otherwise group the
+  // primary value under the stable generic metric id.
   const definition = definitions.byDigest.get(operationalValueDefinitionKey(record))
     ?? definitions.singleByWorkflow.get(operationalValueDefinitionKey(record, ""))
     ?? {};
