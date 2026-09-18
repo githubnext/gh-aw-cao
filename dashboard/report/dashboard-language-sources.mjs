@@ -2455,40 +2455,55 @@ function evidenceRecordRows(outcomes, findings, workItems) {
   return [...outcomeRecords, ...findingRecords];
 }
 
-function operationalValueDefinition(values, record) {
-  const definitions = Array.isArray(values.definitions) ? values.definitions : [];
-  return definitions.find((definition) => (
-    definition?.repository === record.repository
-    && definition?.workflowId === record.workflowId
-    && (!record.evaluatorDigest || definition?.evaluatorDigest === record.evaluatorDigest)
-  )) || {};
+function operationalValueDefinitionKey(record, evaluatorDigest = record.evaluatorDigest) {
+  return `${record.repository || ""}\0${record.workflowId || ""}\0${evaluatorDigest || ""}`;
 }
 
-function operationalValueMetrics(values, record) {
+function operationalValueDefinitionLookup(values) {
+  const definitions = Array.isArray(values.definitions) ? values.definitions : [];
+  const lookup = new Map();
+  for (const definition of definitions) {
+    lookup.set(operationalValueDefinitionKey(definition), definition);
+    const fallbackKey = operationalValueDefinitionKey(definition, "");
+    if (!lookup.has(fallbackKey)) lookup.set(fallbackKey, definition);
+  }
+  return lookup;
+}
+
+function diagnosticValues(record) {
+  return record.diagnostics && typeof record.diagnostics === "object" && !Array.isArray(record.diagnostics)
+    ? record.diagnostics
+    : {};
+}
+
+function operationalValueMetrics(definitions, record) {
   if (Array.isArray(record.metrics)) return record.metrics;
-  const definition = operationalValueDefinition(values, record);
+  const definition = definitions.get(operationalValueDefinitionKey(record)) ?? definitions.get(operationalValueDefinitionKey(record, "")) ?? {};
+  const diagnostics = diagnosticValues(record);
   const primary = typeof definition.operationalValue === "string"
     ? definition.operationalValue
     : definition.operationalValue?.metric;
-  const diagnosticNames = Array.isArray(definition.diagnosticMetrics)
-    ? definition.diagnosticMetrics
-    : Object.keys(record.diagnostics || {});
+  const diagnosticNames = new Set([
+    ...(Array.isArray(definition.diagnosticMetrics) ? definition.diagnosticMetrics : []),
+    ...Object.keys(diagnostics),
+  ]);
   return [
     { id: primary || record.workflowId || "operational-value", value: record.value },
-    ...diagnosticNames.map((id) => ({ id, value: record.diagnostics?.[id] ?? null })),
+    ...[...diagnosticNames].map((id) => ({ id, value: diagnostics[id] ?? null })),
   ];
 }
 
 function hasOperationalValueResult(record) {
-  return record?.resultAvailable === true && Array.isArray(record.metrics)
+  return (record?.resultAvailable === true && Array.isArray(record.metrics))
     || Boolean(record?.evaluatorDigest || record?.observation);
 }
 
 function operationalValueRows(values) {
+  const definitions = operationalValueDefinitionLookup(values);
   return (values.records || []).filter(hasOperationalValueResult).map((record) => {
     const repository = repositoryParts(record.repository);
     const runAttempt = Number(record.runAttempt || record.run?.attempt || 1);
-    const metrics = operationalValueMetrics(values, record);
+    const metrics = operationalValueMetrics(definitions, record);
     const primary = metrics[0] || {};
     const diagnostics = Object.fromEntries(metrics.slice(1).map((metric) => [metric.id, metric.value]));
     const observedAt = record.observedAt || record.observation?.evidenceAt || record.run?.createdAt;

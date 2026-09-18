@@ -26,7 +26,7 @@ function runIdentity(record) {
 }
 
 function recordHasResult(record) {
-  return record?.resultAvailable === true && Array.isArray(record.metrics)
+  return (record?.resultAvailable === true && Array.isArray(record.metrics))
     || Boolean(record?.evaluatorDigest || record?.observation);
 }
 
@@ -39,6 +39,8 @@ function mergeRecords(...recordSets) {
   for (const record of recordSets.flat()) {
     const key = runIdentity(record);
     const existing = records.get(key);
+    // Legacy cached observations may be the only retained result for a run
+    // when the current logs shard no longer includes that run.
     if (existing && recordHasResult(existing) && !recordHasResult(record)) continue;
     records.set(key, record);
   }
