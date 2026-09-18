@@ -103,6 +103,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/workflow-discovery.log
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: cao-activity-v5-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
@@ -312,6 +313,7 @@ jobs:
             core.info('Copying collected activity data')
             const collectedFiles = [
               'inventory-sources.json',
+              'workflow-discovery.log',
               'gh-aw-logs.sqlite',
               'payload-hashes.json',
             ]

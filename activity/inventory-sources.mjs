@@ -390,6 +390,7 @@ export async function discoverWorkflowRegistries(discoveredRepositories, {
   for (const candidate of repositoryCandidates.values()) {
     const repository = String(repositoryFullName(candidate) || "").trim();
     if (!repository) continue;
+    log.info`Discovering workflows for ${repository}`;
     const workflows = [];
     let expected = null;
     let observed = 0;
@@ -450,6 +451,7 @@ export async function discoverWorkflowRegistries(discoveredRepositories, {
       state: failure ? workflows.length > 0 ? "partial" : "unavailable" : "complete",
       failure,
     });
+    log.info`Workflow discovery for ${repository}: ${failure ? workflows.length > 0 ? "partial" : "unavailable" : "complete"}; ${workflows.length} usable of ${observed} observed${expected === null ? "" : `, ${expected} expected`}; ${pages} pages`;
   }
   return registries;
 }
@@ -470,6 +472,7 @@ export async function discoverWorkflowVersions(workflowRegistries, {
   if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover workflow versions");
   const enriched = [];
   for (const registry of workflowRegistries) {
+    log.info`Discovering compiler versions for ${registry.workflows?.length || 0} workflows in ${registry.repository}`;
     const versionFailures = [];
     const workflows = [];
     for (const workflow of registry.workflows || []) {
@@ -510,6 +513,7 @@ export async function discoverWorkflowVersions(workflowRegistries, {
       versionFailures,
       versionState: versionFailures.length === 0 ? "complete" : workflows.length > 0 ? "partial" : "unavailable",
     });
+    log.info`Workflow compiler version discovery for ${registry.repository}: ${workflows.length - versionFailures.length} resolved, ${versionFailures.length} unresolved`;
   }
   return enriched;
 }
@@ -937,6 +941,8 @@ export async function main() {
       readFile(controlSettingsPath, "utf8").then(JSON.parse),
     ]);
     const discoveredRepositories = await discoverRepositories(controlSettings);
+    log.info`Repository discovery selected ${discoveredRepositories.length} repositories`;
+    log.info`Starting workflow registry, package version, and gh-aw release discovery`;
     const [rawWorkflowRegistries, latestPackageResolution, latestGhAwResolution] = await Promise.all([
       discoverWorkflowRegistries(discoveredRepositories, { controlRepository: repository }),
       discoverLatestPackageCommits(inventory),
@@ -951,6 +957,7 @@ export async function main() {
       })),
     ]);
     const workflowRegistries = await discoverWorkflowVersions(rawWorkflowRegistries);
+    log.info`Workflow discovery completed for ${workflowRegistries.length} repository registries`;
     const sources = buildInventoryDashboardSources({
       inventory,
       controlSettings,

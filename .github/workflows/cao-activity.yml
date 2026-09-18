@@ -63,6 +63,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/workflow-discovery.log
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
@@ -79,6 +80,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/workflow-discovery.log
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
@@ -151,22 +153,47 @@ jobs:
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
-        run: |
-          rm -f "$REPORT_INVENTORY" "$REPORT_INVENTORY_SOURCES"
-          if [[ "$(jq '.allowed_repositories | length' "$REPORT_CONTROL_SETTINGS")" -eq 0 && -z "$ACTIVITY_APP_TOKEN" ]]; then
-            echo "Owner-wide repository discovery requires the read-only GitHub App" >&2
-            exit 1
-          fi
-          if [[ -f activity/inventory-sources.mjs ]]; then
-            activity_root=activity
-          elif [[ -f .github/aw/activity/inventory-sources.mjs ]]; then
-            activity_root=.github/aw/activity
-          else
-            echo "Activity inventory collector is unavailable" >&2
-            exit 1
-          fi
-          node "$activity_root/inventory.mjs"
-          node "$activity_root/inventory-sources.mjs"
+          REPORT_WORKFLOW_DISCOVERY_LOG: ${{ runner.temp }}/cao-activity/workflow-discovery.log
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const path = require('path')
+            const settings = JSON.parse(fs.readFileSync(process.env.REPORT_CONTROL_SETTINGS, 'utf8'))
+            if (settings.allowed_repositories.length === 0 && !process.env.ACTIVITY_APP_TOKEN) {
+              throw new Error('Owner-wide repository discovery requires the read-only GitHub App')
+            }
+            const activityRoot = fs.existsSync('activity/inventory-sources.mjs')
+              ? 'activity'
+              : fs.existsSync('.github/aw/activity/inventory-sources.mjs')
+                ? '.github/aw/activity'
+                : undefined
+            if (!activityRoot) {
+              throw new Error('Activity inventory collector is unavailable')
+            }
+            fs.rmSync(process.env.REPORT_INVENTORY, { force: true })
+            fs.rmSync(process.env.REPORT_INVENTORY_SOURCES, { force: true })
+            fs.mkdirSync(path.dirname(process.env.REPORT_WORKFLOW_DISCOVERY_LOG), { recursive: true })
+            fs.writeFileSync(process.env.REPORT_WORKFLOW_DISCOVERY_LOG, '')
+            const runDiscoveryStep = async (label, scriptName) => {
+              core.info(`${label} started`)
+              const result = await exec.getExecOutput(
+                process.execPath,
+                [path.join(activityRoot, scriptName)],
+                { ignoreReturnCode: true, silent: true },
+              )
+              const output = [result.stdout, result.stderr].filter(Boolean).join('')
+              fs.appendFileSync(process.env.REPORT_WORKFLOW_DISCOVERY_LOG, output)
+              if (result.stdout.trim()) core.info(result.stdout.trim())
+              if (result.stderr.trim()) core.info(result.stderr.trim())
+              if (result.exitCode !== 0) {
+                throw new Error(`${label} failed with exit code ${result.exitCode}`)
+              }
+              core.info(`${label} completed`)
+            }
+            await runDiscoveryStep('Local workflow inventory discovery', 'inventory.mjs')
+            await runDiscoveryStep('Remote workflow registry discovery', 'inventory-sources.mjs')
+            core.info(`Workflow discovery log written to ${process.env.REPORT_WORKFLOW_DISCOVERY_LOG}`)
 
       - name: Download agentic workflow logs
         continue-on-error: true
@@ -280,6 +307,7 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/workflow-discovery.log
             ${{ runner.temp }}/cao-activity/drain3_weights.json
 
   cache:
@@ -302,7 +330,7 @@ jobs:
           mkdir -p "$snapshot_root/gh-aw-logs-runs"
           mkdir -p "$snapshot_root/gh-aw-logs-records"
           missing=0
-          for file in gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json drain3_weights.json; do
+          for file in gh-aw-logs.sqlite payload-hashes.json control-settings.json inventory-sources.json workflow-discovery.log drain3_weights.json; do
             if [[ ! -s "$snapshot_root/$file" ]]; then
               echo "Activity snapshot file is missing or empty: $file" >&2
               missing=1
@@ -336,5 +364,6 @@ jobs:
             ${{ runner.temp }}/cao-activity/payload-hashes.json
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-activity/workflow-discovery.log
             ${{ runner.temp }}/cao-activity/drain3_weights.json
           key: ${{ needs.index.outputs.cache-key }}
