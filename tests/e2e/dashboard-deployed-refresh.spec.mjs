@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import {
+  scrollRenderedViewsIntoView,
+  shouldIgnoreRequestFailure,
+} from "./dashboard-deployed-refresh-helpers.mjs";
 
 const dashboardUrl = "https://githubnext.github.io/gh-aw-cao/cao/";
 const outputDirectory = resolve("test-results/dashboard-deployed");
@@ -17,7 +21,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const errorText = request.failure()?.errorText || "failed";
-    if (reloading && errorText === "net::ERR_ABORTED") return;
+    if (shouldIgnoreRequestFailure({ method: request.method(), errorText, reloading })) return;
     failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
   });
   page.on("response", (response) => {
@@ -76,10 +80,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
           detail.dispatchEvent(new Event("toggle"));
         }
       });
-      const views = activePage.locator("[data-view-id]");
-      for (let index = 0; index < await views.count(); index += 1) {
-        await views.nth(index).scrollIntoViewIfNeeded().catch(() => {});
-      }
+      await scrollRenderedViewsIntoView(activePage);
       await expect(activePage.locator("[data-lazy-view]")).toHaveCount(0, { timeout: 60_000 });
       await expect(activePage.locator('[aria-busy="true"]')).toHaveCount(0);
       await expect(activePage.locator('[aria-label^="Unable to load "]')).toHaveCount(0);
