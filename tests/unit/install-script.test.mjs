@@ -9,7 +9,7 @@ import test from "node:test";
 const executeFile = promisify(execFile);
 const installScript = path.resolve("install.sh");
 
-test("install.sh installs gh-aw, adds the core package, and is idempotent", async () => {
+test("install.sh installs gh-aw, adds the core campaign, and is idempotent", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-install-"));
   const bin = path.join(root, "bin");
   const log = path.join(root, "commands.log");
@@ -29,7 +29,7 @@ if [[ "\${1:-} \${2:-} \${3:-}" == "aw add githubnext/gh-aw-cao" ]]; then
   cat > .github/aw/activity/cao.mjs <<'EOF'
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 mkdirSync(".github/workflows", { recursive: true });
-writeFileSync(".github/workflows/cao.json", '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"packages":{}}}\\n');
+writeFileSync(".github/workflows/cao.json", '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"campaigns":{}}}\\n');
 appendFileSync(process.env.FAKE_COMMAND_LOG, "init\\n");
 EOF
   exit 0
@@ -51,7 +51,7 @@ printf '%s\\n' '#!/usr/bin/env bash' 'touch "$FAKE_GH_AW_INSTALLED"'
   };
   try {
     await executeFile("bash", [installScript], { cwd: root, env });
-    assert.match(await readFile(path.join(root, ".github", "workflows", "cao.json"), "utf8"), /"packages":\{\}/);
+    assert.match(await readFile(path.join(root, ".github", "workflows", "cao.json"), "utf8"), /"campaigns":\{\}/);
     assert.equal(await readFile(log, "utf8"), "curl\nadd\ninit\n");
 
     await executeFile("bash", [installScript], { cwd: root, env });

@@ -43,7 +43,7 @@ describe('dashboard query architecture', () => {
     expect(factoryElements).not.toMatch(/connectedRepositoryCoverage|latestOutcomes|activityDays|exceedsThreshold|workerCount/);
     expect(factoryElements).toMatch(/requestSource|publishSource/);
     expect(factoryElements).not.toMatch(/indexedDB/);
-    expect(workProject).not.toMatch(/normalizeState|actorForLifecycle|compareWorkItems|orchestratedPackageNames/);
+    expect(workProject).not.toMatch(/normalizeState|actorForLifecycle|compareWorkItems|orchestratedCampaignNames/);
     expect(read('src/components/ui-elements.js')).not.toContain('filterRows');
     expect(presentationQueryFixture).toContain("operation: 'execute-dashboard-queries'");
     expect(presentationQueryFixture).not.toMatch(/executeDashboardQueries|compileDashboardViewPayloadQueries|deriveDashboardLinkSources/);

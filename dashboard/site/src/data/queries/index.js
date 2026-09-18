@@ -9,10 +9,10 @@ import {
 /** @param {IDBFactory} indexedDB */
 export function createCanonicalQueries(indexedDB) {
   return {
-    packages: {
-      list: () => readCollection(indexedDB, 'packages'),
+    campaigns: {
+      list: () => readCollection(indexedDB, 'campaigns'),
       getBySlug: async (/** @type {string} */ slug) =>
-        (await readIndex(indexedDB, 'packages', 'bySlug', [slug]))[0] ?? null
+        (await readIndex(indexedDB, 'campaigns', 'bySlug', [slug]))[0] ?? null
     },
     repositories: {
       list: () => readCollection(indexedDB, 'repositories'),

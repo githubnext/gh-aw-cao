@@ -16,16 +16,16 @@ execFileSync(process.execPath, [buildScript, buildRoot, controlSettings], {
 });
 
 const inventory = {
-  packages: {
+  campaigns: {
     rows: [{
-      package: 'dependabot',
-      'package-name': 'Dependabot',
-      'package-description': 'Dependabot automation',
-      'package-icon': 'package',
-      'package-mode': 'review',
-      'package-enabled': true,
-      'package-worker-count': 1,
-      'package-min-version': 'v1.0.0',
+      campaign: 'dependabot',
+      'campaign-name': 'Dependabot',
+      'campaign-description': 'Dependabot automation',
+      'campaign-icon': 'goal',
+      'campaign-mode': 'review',
+      'campaign-enabled': true,
+      'campaign-worker-count': 1,
+      'campaign-min-version': 'v1.0.0',
       'observed-at': '2026-09-15T10:00:00Z',
     }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
@@ -51,8 +51,8 @@ const inventory = {
   'configuration-policy': {
     rows: [{
       path: '.github/workflows/cao.json',
-      document: { version: 1, 'control-plane': { packages: {} } },
-      raw: '{"version":1,"control-plane":{"packages":{}}}',
+      document: { version: 1, 'control-plane': { campaigns: {} } },
+      raw: '{"version":1,"control-plane":{"campaigns":{}}}',
       diagnostics: [{
         severity: 'valid',
         path: '.github/workflows/cao.json',

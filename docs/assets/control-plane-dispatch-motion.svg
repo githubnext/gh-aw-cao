@@ -20,12 +20,12 @@
       animation: dispatch 5s linear var(--delay) infinite;
     }
 
-    .package-status {
+    .campaign-status {
       fill: var(--attention);
       stroke: var(--surface);
       stroke-width: 3;
       opacity: 0;
-      animation: package-status 5s steps(1, end) infinite;
+      animation: campaign-status 5s steps(1, end) infinite;
     }
 
     .report-update {
@@ -38,7 +38,7 @@
       8%, 100% { offset-distance: 100%; opacity: 0; }
     }
 
-    @keyframes package-status {
+    @keyframes campaign-status {
       0%, 3% { fill: var(--attention); opacity: 0; }
       4%, 11% { opacity: 1; }
       12%, 19% { opacity: 0; }
@@ -72,7 +72,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       .sparkle,
-      .package-status,
+      .campaign-status,
       .report-update {
         display: none;
         animation: none;
@@ -114,10 +114,10 @@
   </g>
 
   <g>
-    <circle class="package-status" cx="580" cy="200" r="7"/>
-    <circle class="package-status" cx="580" cy="252" r="7"/>
-    <circle class="package-status" cx="580" cy="304" r="7"/>
-    <circle class="package-status" cx="580" cy="356" r="7"/>
+    <circle class="campaign-status" cx="580" cy="200" r="7"/>
+    <circle class="campaign-status" cx="580" cy="252" r="7"/>
+    <circle class="campaign-status" cx="580" cy="304" r="7"/>
+    <circle class="campaign-status" cx="580" cy="356" r="7"/>
   </g>
 
   <g class="report-update" transform="translate(930 144)" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">

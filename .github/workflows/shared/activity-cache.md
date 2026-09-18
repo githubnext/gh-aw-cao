@@ -54,7 +54,7 @@ restore populated `$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite`; a
 missing or empty file is a cache miss and must be treated as a fallback
 condition, not an error. Resolve the CLI entry point before running any
 `cao` command, since it lives at a different path depending on whether
-this is the source-managed control repository or an installed package:
+this is the source-managed control repository or an installed campaign:
 
 ```bash
 if [ -f activity/cao.mjs ]; then

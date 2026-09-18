@@ -33,7 +33,7 @@ export const GET: APIRoute = async ({ url }) => {
       entry.data.description ?? "",
     );
   });
-  const packages = catalogEntries.map((entry) =>
+  const campaigns = catalogEntries.map((entry) =>
     link(entry.name, new URL(`catalog/${entry.slug}/`, baseUrl), entry.description)
   );
 
@@ -48,21 +48,21 @@ export const GET: APIRoute = async ({ url }) => {
     "",
     ...documentation,
     "",
-    "## Operation Packages",
+    "## Operation Campaigns",
     "",
     link(
-      "Package catalog",
+      "Campaign catalog",
       new URL("catalog/", baseUrl),
       "Browse the operations available for installation into a control plane.",
     ),
-    ...packages,
+    ...campaigns,
     "",
     "## Source",
     "",
     link(
       "GitHub repository",
       new URL("https://github.com/githubnext/gh-aw-cao"),
-      "Read the source, package manifests, workflow definitions, and contribution history.",
+      "Read the source, campaign manifests, workflow definitions, and contribution history.",
     ),
     "",
   ].join("\n");

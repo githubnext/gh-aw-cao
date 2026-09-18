@@ -33,8 +33,8 @@ const ADMISSION_CHECKS = [
   ["Runtime revision", "The control and policy modules are read from the exact `github.workflow_sha` commit."],
   ["Policy document", "The checked-in policy is parsed and validated for supported keys, types, ranges, unique names, and expressions."],
   ["Control plane", "The `control-plane` declaration is present."],
-  ["Workflow identity", "The package, role, and (for workers) exact worker identity are authorized."],
-  ["Package", "The requested package is declared and enabled."],
+  ["Workflow identity", "The campaign, role, and (for workers) exact worker identity are authorized."],
+  ["Campaign", "The requested campaign is declared and enabled."],
   ["Worker", "For worker runs, the requested worker is declared and enabled."],
   ["Target input", "Any supplied `target_repo` uses the exact `owner/repository` form."],
   ["Mode input", "Any supplied `safe_output_mode` does not exceed the checked-in mode ceiling."],
@@ -222,7 +222,7 @@ function failedAdmissionCheckIndex(reason) {
     || reason === "worker identity is required"
     || reason === "worker identity is forbidden for orchestrators"
   ) return 3; // Workflow identity
-  if (reason === "package-undeclared" || reason === "package-disabled") return 4; // Package
+  if (reason === "campaign-undeclared" || reason === "campaign-disabled") return 4; // Campaign
   if (reason === "worker-disabled" || reason.startsWith("unknown worker:")) return 5; // Worker
   if (reason === "target_repo must use owner/repository form") return 6; // Target input
   if (reason === "safe_output_mode exceeds checked-in policy" || reason === "safe_output_mode must be review or live") return 7; // Mode input
@@ -239,16 +239,16 @@ function admissionCheckHeading(title, index, authorized, failedIndex) {
   return title;
 }
 
-function writeAdmissionSummary({ authorized, packageName, role, reason, apiCapacity }) {
+function writeAdmissionSummary({ authorized, campaignName, role, reason, apiCapacity }) {
   const summaryPath = environment("GITHUB_STEP_SUMMARY");
   if (!summaryPath) return;
   const status = apiCapacity?.status === "limited"
-    ? `Blocked package \`${packageName}\` as \`${role}\` before activation: insufficient GitHub REST API capacity.`
+    ? `Blocked campaign \`${campaignName}\` as \`${role}\` before activation: insufficient GitHub REST API capacity.`
     : apiCapacity?.status === "unavailable"
-      ? `Blocked package \`${packageName}\` as \`${role}\` before activation: GitHub REST API capacity is unavailable.`
+      ? `Blocked campaign \`${campaignName}\` as \`${role}\` before activation: GitHub REST API capacity is unavailable.`
       : authorized
-    ? `Authorized package \`${packageName}\` as \`${role}\`.`
-    : `Skipped package \`${packageName}\` as \`${role}\`: ${reason}`;
+    ? `Authorized campaign \`${campaignName}\` as \`${role}\`.`
+    : `Skipped campaign \`${campaignName}\` as \`${role}\`: ${reason}`;
   const failedIndex = authorized ? -1 : failedAdmissionCheckIndex(reason);
   const checks = ADMISSION_CHECKS.map(([title, description], index) => (
     `- ${admissionCheckHeading(title, index, authorized, failedIndex)} — ${description}`
@@ -303,7 +303,7 @@ function isRateLimitError(error) {
   return typeof error?.message === "string" && /rate limit/i.test(error.message);
 }
 
-function writeCapacityBlockedPrecompute(packageName, role, capacity) {
+function writeCapacityBlockedPrecompute(campaignName, role, capacity) {
   const reason = capacity.status === "limited" ? "github-api-capacity-insufficient" : "github-api-capacity-unavailable";
   writeActionsOutputs({
     authorized: false,
@@ -314,7 +314,7 @@ function writeCapacityBlockedPrecompute(packageName, role, capacity) {
     github_api_required: capacity.required,
     github_api_reset_at: capacity.resetAt,
   });
-  writeAdmissionSummary({ authorized: false, packageName, role, reason, apiCapacity: capacity });
+  writeAdmissionSummary({ authorized: false, campaignName, role, reason, apiCapacity: capacity });
 }
 
 async function applyGithubApiAdmission(result, options) {
@@ -333,7 +333,7 @@ async function applyGithubApiAdmission(result, options) {
 function policyOptions({ normalizeOrchestrator = false } = {}) {
   const role = environment("CAO_ROLE");
   return {
-    packageName: environment("CAO_PACKAGE"),
+    campaignName: environment("CAO_CAMPAIGN"),
     role,
     workerName: normalizeOrchestrator && role === "orchestrator" ? "" : environment("CAO_WORKER"),
     controlRepository: environment("GITHUB_REPOSITORY"),
@@ -366,7 +366,7 @@ function writeAdmissionRecord(result, options, workflowSha) {
     workflow_sha: workflowSha,
     run_id: environment("GITHUB_RUN_ID"),
     run_attempt: parseInteger(environment("GITHUB_RUN_ATTEMPT"), 1),
-    package: options.packageName,
+    campaign: options.campaignName,
     role: options.role,
     worker: options.workerName,
     target_repository: options.targetRepository,
@@ -384,7 +384,7 @@ async function admit() {
   let result = { authorized: false, reason: "control policy admission did not complete" };
 
   try {
-    if (!options.packageName || !options.role) throw new ControlError("admission requires a package and control role");
+    if (!options.campaignName || !options.role) throw new ControlError("admission requires a campaign and control role");
     if (!SHA_PATTERN.test(workflowSha)) throw new ControlError("github.workflow_sha must be an exact commit SHA");
 
     const directory = admissionDirectory();
@@ -425,7 +425,7 @@ async function admit() {
   writeActionsOutputs(outputs);
   writeAdmissionSummary({
     authorized: result.authorized,
-    packageName: options.packageName,
+    campaignName: options.campaignName,
     role: options.role,
     reason: result.reason,
     apiCapacity: result.github_api_capacity,
@@ -624,14 +624,14 @@ function validateWorkerDispatch(context) {
 }
 
 function createContext(policy) {
-  const packageName = environment("CAO_PACKAGE");
+  const campaignName = environment("CAO_CAMPAIGN");
   const role = environment("CAO_ROLE");
   const worker = role === "orchestrator" ? "" : environment("CAO_WORKER");
-  if (!packageName || !role) throw new ControlError("precompute requires package and role inputs");
+  if (!campaignName || !role) throw new ControlError("precompute requires campaign and role inputs");
   const workerPolicy = policy.worker_policies?.[worker];
   return {
     policy,
-    packageName,
+    campaignName,
     role,
     worker,
     targetRepository: environment("CAO_TARGET_REPOSITORY"),
@@ -659,7 +659,7 @@ function writeDeniedPrecompute(policy) {
     authorized: false,
     reason: policy.reason ?? "control policy denied this run",
     control_role: role,
-    package: environment("CAO_PACKAGE"),
+    campaign: environment("CAO_CAMPAIGN"),
     worker,
     enabled: false,
     effective_max_repos: 0,
@@ -686,8 +686,8 @@ function writeWorkerPrecompute(context) {
     authorized: true,
     reason: "authorized",
     control_role: "worker",
-    package: context.packageName,
-    bundle: context.packageName,
+    campaign: context.campaignName,
+    bundle: context.campaignName,
     worker: context.worker,
     enabled: context.policy.enabled,
     worker_enabled: context.workerPolicy.enabled,
@@ -827,7 +827,7 @@ async function writeOrchestratorPrecompute(context) {
       state: match?.state ?? "",
       eligible: Boolean(enabled && match && active),
       skip_reason: !policy
-        ? "worker is not part of installed package"
+        ? "worker is not part of installed campaign"
         : !enabled
           ? "worker disabled by control-plane policy"
           : !match
@@ -848,8 +848,8 @@ async function writeOrchestratorPrecompute(context) {
     authorized: true,
     reason: "authorized",
     control_role: "orchestrator",
-    package: context.packageName,
-    bundle: context.packageName,
+    campaign: context.campaignName,
+    bundle: context.campaignName,
     worker: context.worker,
     enabled: context.policy.enabled,
     target_repo: context.targetRepository,
@@ -917,7 +917,7 @@ async function precompute() {
     const required = githubApiRequestRequirement(policy, { role: context.role, targetRepository: context.targetRepository });
     const capacity = await githubApiCapacity(required);
     writeCapacityBlockedPrecompute(
-      context.packageName,
+      context.campaignName,
       context.role,
       capacity.status === "unavailable" ? { ...capacity, status: "limited" } : capacity,
     );
@@ -938,10 +938,10 @@ function policyCommand(command, args) {
 }
 
 function authority(args) {
-  if (args.length !== 2) throw new ControlError("usage: control.mjs authority <file|-> <package>");
+  if (args.length !== 2) throw new ControlError("usage: control.mjs authority <file|-> <campaign>");
   const document = parsePolicy(readSource(args[0]));
-  const value = document["target-authority"]?.packages?.[args[1]]?.authority;
-  if (!value) throw new PolicyError(`target authority does not declare package ${args[1]}`);
+  const value = document["target-authority"]?.campaigns?.[args[1]]?.authority;
+  if (!value) throw new PolicyError(`target authority does not declare campaign ${args[1]}`);
   process.stdout.write(`${value}\n`);
 }
 
@@ -975,7 +975,7 @@ export async function main(actionsOrArguments = {}, maybeArguments = undefined) 
       process.stdout.write(`${JSON.stringify(policyCommand(command, args), null, 2)}\n`);
       return;
     }
-    throw new ControlError("usage: control.mjs admit | precompute | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | compiler-version <file|-> | authority <file|-> <package>");
+    throw new ControlError("usage: control.mjs admit | precompute | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | compiler-version <file|-> | authority <file|-> <campaign>");
   } catch (error) {
     if (error instanceof ControlError || error instanceof PolicyError || error?.code === "ENOENT") {
       process.stderr.write(`[CAO failure] ${error.message}\n`);

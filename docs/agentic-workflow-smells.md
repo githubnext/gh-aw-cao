@@ -23,7 +23,7 @@ finding from high cost, long duration, or broad tool use.
 | Agent smell | Execution behavior, control quality, reducibility, or resource choice | A deterministic pre-step could replace most agent turns |
 | Workflow smell | Static workflow configuration or supply-chain posture | Strict validation is disabled |
 | Security finding | Observed unsafe or untrusted behavior | Threat detection identifies prompt injection |
-| Control-plane smell | Policy, package inventory, rollout, or governance | Declared worker inventory is incomplete |
+| Control-plane smell | Policy, campaign inventory, rollout, or governance | Declared worker inventory is incomplete |
 
 The dashboard normalizes all four classifications into Home attention signals.
 Agent smells also appear on matching cards in the Agents view. Each observation
@@ -113,7 +113,7 @@ or network access may cross a boundary without adequate controls.
   without a concrete need.
 - Actions, containers, skills, plugins, engines, or upstream workflows use
   mutable references.
-- Package installation scripts are enabled without review.
+- Campaign installation scripts are enabled without review.
 - Agents can change dependency manifests, workflows, `CODEOWNERS`, or agent
   instructions without protected-file review.
 - Writable caches are shared across trusted and untrusted runs.

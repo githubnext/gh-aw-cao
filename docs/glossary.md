@@ -32,7 +32,7 @@ The consistent entities, identities, and relationships produced by applying the 
 
 ## Coordinator
 
-The CAO operator-facing name for the workflow that selects and dispatches work for an operation. The canonical gh-aw term is [Orchestrator Workflow](https://github.github.com/gh-aw/reference/glossary/#orchestrator-workflow). Workflow source, policy, package manifests, and other technical contracts use the role name `orchestrator`.
+The CAO operator-facing name for the workflow that selects and dispatches work for an operation. The canonical gh-aw term is [Orchestrator Workflow](https://github.github.com/gh-aw/reference/glossary/#orchestrator-workflow). Workflow source, policy, campaign manifests, and other technical contracts use the role name `orchestrator`.
 
 ## Control plane
 
@@ -78,7 +78,7 @@ A later repository-state observation of what happened to a safe output, such as 
 
 Evidence-backed attainment for a specific operation and value contract. Operational value is not inferred from run volume, safe-output count, or activity alone.
 
-## Package
+## Campaign
 
 A distributable collection of an operation's workflows, shared dependencies, and manifest.
 

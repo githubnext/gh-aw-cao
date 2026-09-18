@@ -8,7 +8,7 @@
     "queries": [
       {
         "name": "uk-ai-advisory-runs",
-        "intent": "Show UK AI Advisory orchestrator, maintainer, and resilience-review runs so operators can verify package activation.",
+        "intent": "Show UK AI Advisory orchestrator, maintainer, and resilience-review runs so operators can verify campaign activation.",
         "from": "runs",
         "filter": {
           "predicates": [
@@ -16,7 +16,7 @@
               "field": "workflow",
               "in": [
                 ".github/workflows/uk-ai-advisory.md",
-                ".github/workflows/uk-ai-advisory-package-maintainer.md",
+                ".github/workflows/uk-ai-advisory-campaign-maintainer.md",
                 ".github/workflows/uk-ai-advisory-operational-resilience.md"
               ]
             }
@@ -36,7 +36,7 @@
         "filter": {
           "predicates": [
             {
-              "field": "package",
+              "field": "campaign",
               "equals": "uk-ai-advisory"
             }
           ]
@@ -89,7 +89,7 @@
               "filters": {
                 "workflow": [
                   ".github/workflows/uk-ai-advisory.md",
-                  ".github/workflows/uk-ai-advisory-package-maintainer.md",
+                  ".github/workflows/uk-ai-advisory-campaign-maintainer.md",
                   ".github/workflows/uk-ai-advisory-operational-resilience.md"
                 ]
               }
@@ -117,7 +117,7 @@
             "data": {
               "source": "uk-ai-advisory-reports",
               "filters": {
-                "package": [
+                "campaign": [
                   "uk-ai-advisory"
                 ]
               },
@@ -272,7 +272,7 @@
     ],
     "navigation": [
       {
-        "label": "Package operations",
+        "label": "Campaign operations",
         "experimental": true,
         "pages": [
           "uk-ai-advisory-dashboard"

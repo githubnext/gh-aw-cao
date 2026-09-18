@@ -36,7 +36,7 @@ function policy() {
         "rollout-percent": 75,
         "monthly-ai-credit-budget": 1000,
       },
-      packages: {
+      campaigns: {
         operations: {
           enabled: true,
           mode: "review",
@@ -63,7 +63,7 @@ function policy() {
       },
     },
     "target-authority": {
-      packages: {
+      campaigns: {
         operations: { authority: "acme/control" },
       },
     },
@@ -93,7 +93,7 @@ function run(args, input = "", environment = {}) {
     env: {
       ...process.env,
       GITHUB_REPOSITORY: "acme/control",
-      CAO_PACKAGE: "operations",
+      CAO_CAMPAIGN: "operations",
       CAO_ROLE: "orchestrator",
       CAO_WORKER: "",
       CAO_REQUESTED_MODE: "",
@@ -241,92 +241,92 @@ const policyViolations = [
   ["negative default budgets", (value) => {
     value["control-plane"].defaults["monthly-ai-credit-budget"] = -1;
   }, "control-plane.defaults.monthly-ai-credit-budget must be an integer in >= 0"],
-  ["non-mapping packages", (value) => { value["control-plane"].packages = []; }, "control-plane.packages must be a mapping"],
-  ["malformed package slugs", (value) => {
-    value["control-plane"].packages["Not Valid"] = {};
-  }, "control-plane.packages.Not Valid has an invalid value"],
-  ["non-mapping package policies", (value) => {
-    value["control-plane"].packages.operations = [];
-  }, "control-plane.packages.operations must be a mapping"],
-  ["unknown package properties", (value) => {
-    value["control-plane"].packages.operations.unexpected = true;
-  }, "unknown key control-plane.packages.operations.unexpected"],
-  ["non-boolean package switches", (value) => {
-    value["control-plane"].packages.operations.enabled = "true";
-  }, "control-plane.packages.operations.enabled must be a Boolean"],
-  ["unknown package icons", (value) => {
-    value["control-plane"].packages.operations.icon = "invalid";
-  }, "control-plane.packages.operations.icon must be one of"],
-  ["invalid package modes", (value) => {
-    value["control-plane"].packages.operations.mode = "preview";
-  }, "control-plane.packages.operations.mode must be review or live"],
-  ["invalid package repository limits", (value) => {
-    value["control-plane"].packages.operations["max-repositories"] = 1001;
-  }, "control-plane.packages.operations.max-repositories must be an integer in 1..1000"],
-  ["invalid package rollout percentages", (value) => {
-    value["control-plane"].packages.operations["rollout-percent"] = 0;
-  }, "control-plane.packages.operations.rollout-percent must be an integer in 1..100"],
-  ["negative package budgets", (value) => {
-    value["control-plane"].packages.operations["monthly-ai-credit-budget"] = -1;
-  }, "control-plane.packages.operations.monthly-ai-credit-budget must be an integer in >= 0"],
-  ["non-mapping package targets", (value) => {
-    value["control-plane"].packages.operations.targets = [];
-  }, "control-plane.packages.operations.targets must be a mapping"],
-  ["duplicate package targets", (value) => {
-    value["control-plane"].packages.operations.targets = {
+  ["non-mapping campaigns", (value) => { value["control-plane"].campaigns = []; }, "control-plane.campaigns must be a mapping"],
+  ["malformed campaign slugs", (value) => {
+    value["control-plane"].campaigns["Not Valid"] = {};
+  }, "control-plane.campaigns.Not Valid has an invalid value"],
+  ["non-mapping campaign policies", (value) => {
+    value["control-plane"].campaigns.operations = [];
+  }, "control-plane.campaigns.operations must be a mapping"],
+  ["unknown campaign properties", (value) => {
+    value["control-plane"].campaigns.operations.unexpected = true;
+  }, "unknown key control-plane.campaigns.operations.unexpected"],
+  ["non-boolean campaign switches", (value) => {
+    value["control-plane"].campaigns.operations.enabled = "true";
+  }, "control-plane.campaigns.operations.enabled must be a Boolean"],
+  ["unknown campaign icons", (value) => {
+    value["control-plane"].campaigns.operations.icon = "invalid";
+  }, "control-plane.campaigns.operations.icon must be one of"],
+  ["invalid campaign modes", (value) => {
+    value["control-plane"].campaigns.operations.mode = "preview";
+  }, "control-plane.campaigns.operations.mode must be review or live"],
+  ["invalid campaign repository limits", (value) => {
+    value["control-plane"].campaigns.operations["max-repositories"] = 1001;
+  }, "control-plane.campaigns.operations.max-repositories must be an integer in 1..1000"],
+  ["invalid campaign rollout percentages", (value) => {
+    value["control-plane"].campaigns.operations["rollout-percent"] = 0;
+  }, "control-plane.campaigns.operations.rollout-percent must be an integer in 1..100"],
+  ["negative campaign budgets", (value) => {
+    value["control-plane"].campaigns.operations["monthly-ai-credit-budget"] = -1;
+  }, "control-plane.campaigns.operations.monthly-ai-credit-budget must be an integer in >= 0"],
+  ["non-mapping campaign targets", (value) => {
+    value["control-plane"].campaigns.operations.targets = [];
+  }, "control-plane.campaigns.operations.targets must be a mapping"],
+  ["duplicate campaign targets", (value) => {
+    value["control-plane"].campaigns.operations.targets = {
       "acme/target": { mode: "live" },
       "ACME/TARGET": { mode: "review" },
     };
-  }, "control-plane.packages.operations.targets must contain unique repository names"],
+  }, "control-plane.campaigns.operations.targets must contain unique repository names"],
   ["malformed target repository names", (value) => {
-    value["control-plane"].packages.operations.targets = { invalid: { mode: "live" } };
-  }, "control-plane.packages.operations.targets.invalid has an invalid value"],
+    value["control-plane"].campaigns.operations.targets = { invalid: { mode: "live" } };
+  }, "control-plane.campaigns.operations.targets.invalid has an invalid value"],
   ["non-mapping target policies", (value) => {
-    value["control-plane"].packages.operations.targets["acme/target"] = [];
-  }, "control-plane.packages.operations.targets.acme/target must be a mapping"],
+    value["control-plane"].campaigns.operations.targets["acme/target"] = [];
+  }, "control-plane.campaigns.operations.targets.acme/target must be a mapping"],
   ["unknown target properties", (value) => {
-    value["control-plane"].packages.operations.targets["acme/target"].unexpected = true;
-  }, "unknown key control-plane.packages.operations.targets.acme/target.unexpected"],
+    value["control-plane"].campaigns.operations.targets["acme/target"].unexpected = true;
+  }, "unknown key control-plane.campaigns.operations.targets.acme/target.unexpected"],
   ["target policies without modes", (value) => {
-    delete value["control-plane"].packages.operations.targets["acme/target"].mode;
-  }, "control-plane.packages.operations.targets.acme/target.mode is required"],
+    delete value["control-plane"].campaigns.operations.targets["acme/target"].mode;
+  }, "control-plane.campaigns.operations.targets.acme/target.mode is required"],
   ["invalid target modes", (value) => {
-    value["control-plane"].packages.operations.targets["acme/target"].mode = "preview";
-  }, "control-plane.packages.operations.targets.acme/target.mode must be review or live"],
+    value["control-plane"].campaigns.operations.targets["acme/target"].mode = "preview";
+  }, "control-plane.campaigns.operations.targets.acme/target.mode must be review or live"],
   ["targets outside allowed repositories", (value) => {
-    value["control-plane"].packages.operations.targets = { "acme/other": { mode: "live" } };
-  }, "package target acme/other is outside control-plane.scope.allowed-repositories"],
+    value["control-plane"].campaigns.operations.targets = { "acme/other": { mode: "live" } };
+  }, "campaign target acme/other is outside control-plane.scope.allowed-repositories"],
   ["targets outside allowed owners", (value) => {
     delete value["control-plane"].scope["allowed-repositories"];
-    value["control-plane"].packages.operations.targets = { "outside/target": { mode: "live" } };
-  }, "package target outside/target is outside control-plane.scope.allowed-owners"],
+    value["control-plane"].campaigns.operations.targets = { "outside/target": { mode: "live" } };
+  }, "campaign target outside/target is outside control-plane.scope.allowed-owners"],
   ["non-mapping worker catalogs", (value) => {
-    value["control-plane"].packages.operations.workers = [];
-  }, "control-plane.packages.operations.workers must be a mapping"],
+    value["control-plane"].campaigns.operations.workers = [];
+  }, "control-plane.campaigns.operations.workers must be a mapping"],
   ["malformed worker slugs", (value) => {
-    value["control-plane"].packages.operations.workers["Not Valid"] = { workflow: "operations-worker" };
-  }, "control-plane.packages.operations.workers.Not Valid has an invalid value"],
+    value["control-plane"].campaigns.operations.workers["Not Valid"] = { workflow: "operations-worker" };
+  }, "control-plane.campaigns.operations.workers.Not Valid has an invalid value"],
   ["non-mapping worker policies", (value) => {
-    value["control-plane"].packages.operations.workers.auditor = [];
-  }, "control-plane.packages.operations.workers.auditor must be a mapping"],
+    value["control-plane"].campaigns.operations.workers.auditor = [];
+  }, "control-plane.campaigns.operations.workers.auditor must be a mapping"],
   ["unknown worker properties", (value) => {
-    value["control-plane"].packages.operations.workers.auditor.unexpected = true;
-  }, "unknown key control-plane.packages.operations.workers.auditor.unexpected"],
+    value["control-plane"].campaigns.operations.workers.auditor.unexpected = true;
+  }, "unknown key control-plane.campaigns.operations.workers.auditor.unexpected"],
   ["workers without workflows", (value) => {
-    delete value["control-plane"].packages.operations.workers.auditor.workflow;
-  }, "control-plane.packages.operations.workers.auditor.workflow has an invalid value"],
+    delete value["control-plane"].campaigns.operations.workers.auditor.workflow;
+  }, "control-plane.campaigns.operations.workers.auditor.workflow has an invalid value"],
   ["malformed worker workflows", (value) => {
-    value["control-plane"].packages.operations.workers.auditor.workflow = "Not Valid";
-  }, "control-plane.packages.operations.workers.auditor.workflow has an invalid value"],
+    value["control-plane"].campaigns.operations.workers.auditor.workflow = "Not Valid";
+  }, "control-plane.campaigns.operations.workers.auditor.workflow has an invalid value"],
   ["duplicate worker workflows", (value) => {
-    value["control-plane"].packages.operations.workers.secondary = { workflow: "operations-auditor" };
-  }, "control-plane.packages.operations.workers must declare unique workflow identities"],
+    value["control-plane"].campaigns.operations.workers.secondary = { workflow: "operations-auditor" };
+  }, "control-plane.campaigns.operations.workers must declare unique workflow identities"],
   ["non-boolean worker switches", (value) => {
-    value["control-plane"].packages.operations.workers.auditor.enabled = "true";
-  }, "control-plane.packages.operations.workers.auditor.enabled must be a Boolean"],
+    value["control-plane"].campaigns.operations.workers.auditor.enabled = "true";
+  }, "control-plane.campaigns.operations.workers.auditor.enabled must be a Boolean"],
   ["invalid worker mode ceilings", (value) => {
-    value["control-plane"].packages.operations.workers.auditor["max-mode"] = "preview";
-  }, "control-plane.packages.operations.workers.auditor.max-mode must be review or live"],
+    value["control-plane"].campaigns.operations.workers.auditor["max-mode"] = "preview";
+  }, "control-plane.campaigns.operations.workers.auditor.max-mode must be review or live"],
   ["non-mapping publishing policies", (value) => {
     value["control-plane"].publishing = [];
   }, "control-plane.publishing must be a mapping"],
@@ -363,27 +363,27 @@ const policyViolations = [
   ["unknown target-authority properties", (value) => {
     value["target-authority"].unexpected = true;
   }, "unknown key target-authority.unexpected"],
-  ["target authority without packages", (value) => {
-    delete value["target-authority"].packages;
-  }, "target-authority.packages must be a mapping"],
-  ["non-mapping target-authority packages", (value) => {
-    value["target-authority"].packages = [];
-  }, "target-authority.packages must be a mapping"],
-  ["malformed target-authority package slugs", (value) => {
-    value["target-authority"].packages["Not Valid"] = { authority: "acme/control" };
-  }, "target-authority.packages.Not Valid has an invalid value"],
-  ["non-mapping target package policies", (value) => {
-    value["target-authority"].packages.operations = [];
-  }, "target-authority.packages.operations must be a mapping"],
-  ["unknown target package properties", (value) => {
-    value["target-authority"].packages.operations.unexpected = true;
-  }, "unknown key target-authority.packages.operations.unexpected"],
-  ["target packages without authorities", (value) => {
-    delete value["target-authority"].packages.operations.authority;
-  }, "target-authority.packages.operations.authority has an invalid value"],
-  ["malformed target package authorities", (value) => {
-    value["target-authority"].packages.operations.authority = "invalid";
-  }, "target-authority.packages.operations.authority has an invalid value"],
+  ["target authority without campaigns", (value) => {
+    delete value["target-authority"].campaigns;
+  }, "target-authority.campaigns must be a mapping"],
+  ["non-mapping target-authority campaigns", (value) => {
+    value["target-authority"].campaigns = [];
+  }, "target-authority.campaigns must be a mapping"],
+  ["malformed target-authority campaign slugs", (value) => {
+    value["target-authority"].campaigns["Not Valid"] = { authority: "acme/control" };
+  }, "target-authority.campaigns.Not Valid has an invalid value"],
+  ["non-mapping target campaign policies", (value) => {
+    value["target-authority"].campaigns.operations = [];
+  }, "target-authority.campaigns.operations must be a mapping"],
+  ["unknown target campaign properties", (value) => {
+    value["target-authority"].campaigns.operations.unexpected = true;
+  }, "unknown key target-authority.campaigns.operations.unexpected"],
+  ["target campaigns without authorities", (value) => {
+    delete value["target-authority"].campaigns.operations.authority;
+  }, "target-authority.campaigns.operations.authority has an invalid value"],
+  ["malformed target campaign authorities", (value) => {
+    value["target-authority"].campaigns.operations.authority = "invalid";
+  }, "target-authority.campaigns.operations.authority has an invalid value"],
 ];
 
 for (const [name, mutate, expected] of policyViolations) {
@@ -427,10 +427,10 @@ test("control.mjs control-settings requires a control-plane policy", () => {
   expectFailure(run(["control-settings", "-"], JSON.stringify(source)), "control-plane is required");
 });
 
-test("control.mjs authority requires a declared package", () => {
+test("control.mjs authority requires a declared campaign", () => {
   expectFailure(
     run(["authority", "-", "unknown"], JSON.stringify(policy())),
-    "target authority does not declare package unknown",
+    "target authority does not declare campaign unknown",
   );
 });
 

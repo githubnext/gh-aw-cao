@@ -125,13 +125,13 @@ queries:
     joins:
       - source: workflows
         on: [{ left: workflow-link, right: workflow-link }]
-        fields: [{ field: package, as: package }]
+        fields: [{ field: campaign, as: campaign }]
     aggregate:
       by: [workflow]
       values: [{ field: started-at, as: first-start, reducer: min }]
 ```
 
-Invalid because the join keys and the `min` measure are incompatible with the source schema: `workflow-link` is a structured link field with no scalar value to compare, and `started-at` is a temporal field rather than a numeric measure. A query may project a link field, but must not filter, join, group, order, or compute with one, and must not read a field a presenter only derives after the query runs, such as `package-link`.
+Invalid because the join keys and the `min` measure are incompatible with the source schema: `workflow-link` is a structured link field with no scalar value to compare, and `started-at` is a temporal field rather than a numeric measure. A query may project a link field, but must not filter, join, group, order, or compute with one, and must not read a field a presenter only derives after the query runs, such as `campaign-link`.
 
 ## Corpus procedure
 

@@ -7,7 +7,7 @@ Dispatches shows how many `workflow_dispatch` runs appear in the selected
 dashboard time range and how many of those runs failed.
 
 Use the total to inspect related runs. Use the supporting failure count to open
-failed package-worker dispatches directly.
+failed campaign-worker dispatches directly.
 
 ## Data it uses
 

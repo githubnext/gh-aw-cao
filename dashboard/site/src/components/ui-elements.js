@@ -6,8 +6,8 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
-import { renderPackagesView, renderPackageSummary, renderPackageUtilization, renderRunTrend } from './packages-view.js';
-import { renderPackageRouteVariant, renderPackageRouteView } from './package-route-view.js';
+import { renderCampaignsView, renderCampaignSummary, renderCampaignUtilization, renderRunTrend } from './campaigns-view.js';
+import { renderCampaignRouteVariant, renderCampaignRouteView } from './campaign-route-view.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage } from './ui-primitives.js';
@@ -21,7 +21,7 @@ import { renderWorkProjectView } from './work-project-view.js';
 import { renderInsightsOverview } from './insights-overview.js';
 import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
-import { renderPackagesModeShell } from './packages-mode-shell.js';
+import { renderCampaignsModeShell } from './campaigns-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { renderFactoryFloorElement } from './factory-floor.js';
 import { renderFactoryHeaderElement } from './factory-header.js';
@@ -52,22 +52,22 @@ export {};
 /** @type {Map<string, (context: ElementRenderContext) => HTMLElement | null>} */
 const ELEMENT_RENDERERS = new Map([
   ['domain-attention', renderDomainAttentionElement],
-  ['package-status-grid', renderPackageStatusGridElement],
+  ['campaign-status-grid', renderCampaignStatusGridElement],
   ['summary-grid', renderSummaryGridElement],
   ['readiness-verdict', renderReadinessVerdictElement],
   ['context-summary', renderContextSummaryElement],
   ['anomaly-readiness', renderAnomalyReadinessElement],
   ['signal-list', renderSignalListElement],
-  ['package-activity', ({ sources, pageId }) => renderPackagesView(sources, pageId)],
-  ['package-utilization', ({ sources }) => renderPackageUtilization(sources)],
-  ['package-run-trend', ({ sources }) => renderRunTrend(sources)],
-  ['package-summary-table', ({ sources }) => renderPackageSummary(sources)],
-  ['package-activity-shell', renderPackageActivityShellElement],
-  ['package-insights', (context) => renderPackageRouteVariant(context, 'insights')],
-  ['package-detail', (context) => renderPackageRouteVariant(context, 'overview')],
-  ['package-dispatches', (context) => renderPackageRouteVariant(context, 'runs')],
-  ['package-reports', (context) => renderPackageRouteVariant(context, 'reports')],
-  ['package-route', renderPackageRouteView],
+  ['campaign-activity', ({ sources, pageId }) => renderCampaignsView(sources, pageId)],
+  ['campaign-utilization', ({ sources }) => renderCampaignUtilization(sources)],
+  ['campaign-run-trend', ({ sources }) => renderRunTrend(sources)],
+  ['campaign-summary-table', ({ sources }) => renderCampaignSummary(sources)],
+  ['campaign-activity-shell', renderCampaignActivityShellElement],
+  ['campaign-insights', (context) => renderCampaignRouteVariant(context, 'insights')],
+  ['campaign-detail', (context) => renderCampaignRouteVariant(context, 'overview')],
+  ['campaign-dispatches', (context) => renderCampaignRouteVariant(context, 'runs')],
+  ['campaign-reports', (context) => renderCampaignRouteVariant(context, 'reports')],
+  ['campaign-route', renderCampaignRouteView],
   ['workflow-route', renderWorkflowRouteView],
   ['workflow-route-page', renderWorkflowRoutePage],
   ['outcome-detail', renderOutcomeDetail],
@@ -94,7 +94,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'outcomes-overview', 'local-database']);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**
@@ -112,52 +112,52 @@ function lazyElementRenderer(importModule, render) {
 
 /** @type {Map<string, (context: ElementRenderContext) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
-  ['package-activity-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderPackagesView }, { sources, pageId }) => renderPackagesView(sources, pageId)
+  ['campaign-activity-lazy', lazyElementRenderer(
+    () => import('./campaigns-view.js'),
+    ({ renderCampaignsView }, { sources, pageId }) => renderCampaignsView(sources, pageId)
   )],
-  ['package-utilization-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderPackageUtilization }, { sources }) => renderPackageUtilization(sources)
+  ['campaign-utilization-lazy', lazyElementRenderer(
+    () => import('./campaigns-view.js'),
+    ({ renderCampaignUtilization }, { sources }) => renderCampaignUtilization(sources)
   )],
-  ['package-run-trend-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
+  ['campaign-run-trend-lazy', lazyElementRenderer(
+    () => import('./campaigns-view.js'),
     ({ renderRunTrend }, { sources }) => renderRunTrend(sources)
   )],
-  ['package-summary-table-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderPackageSummary }, { sources }) => renderPackageSummary(sources)
+  ['campaign-summary-table-lazy', lazyElementRenderer(
+    () => import('./campaigns-view.js'),
+    ({ renderCampaignSummary }, { sources }) => renderCampaignSummary(sources)
   )],
-  ['package-activity-shell-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderPackageUtilization, renderRunTrend, renderPackageSummary }, context) => renderPackagesModeShell({
+  ['campaign-activity-shell-lazy', lazyElementRenderer(
+    () => import('./campaigns-view.js'),
+    ({ renderCampaignUtilization, renderRunTrend, renderCampaignSummary }, context) => renderCampaignsModeShell({
       pageId: context.pageId,
       sections: [
-        { id: 'utilization', render: (mode) => renderPackageUtilization(context.sources, mode) },
+        { id: 'utilization', render: (mode) => renderCampaignUtilization(context.sources, mode) },
         { id: 'run-trend', render: (mode) => renderRunTrend(context.sources, mode) },
-        { id: 'summary', render: (mode) => renderPackageSummary(context.sources, mode) }
+        { id: 'summary', render: (mode) => renderCampaignSummary(context.sources, mode) }
       ]
     })
   )],
-  ['package-insights-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'insights')
+  ['campaign-insights-lazy', lazyElementRenderer(
+    () => import('./campaign-route-view.js'),
+    ({ renderCampaignRouteVariant }, context) => renderCampaignRouteVariant(context, 'insights')
   )],
-  ['package-detail-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'overview')
+  ['campaign-detail-lazy', lazyElementRenderer(
+    () => import('./campaign-route-view.js'),
+    ({ renderCampaignRouteVariant }, context) => renderCampaignRouteVariant(context, 'overview')
   )],
-  ['package-dispatches-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'runs')
+  ['campaign-dispatches-lazy', lazyElementRenderer(
+    () => import('./campaign-route-view.js'),
+    ({ renderCampaignRouteVariant }, context) => renderCampaignRouteVariant(context, 'runs')
   )],
-  ['package-reports-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'reports')
+  ['campaign-reports-lazy', lazyElementRenderer(
+    () => import('./campaign-route-view.js'),
+    ({ renderCampaignRouteVariant }, context) => renderCampaignRouteVariant(context, 'reports')
   )],
-  ['package-route-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteView }, context) => renderPackageRouteView(context)
+  ['campaign-route-lazy', lazyElementRenderer(
+    () => import('./campaign-route-view.js'),
+    ({ renderCampaignRouteView }, context) => renderCampaignRouteView(context)
   )],
   ['workflow-route-lazy', lazyElementRenderer(
     () => import('./workflow-route-view.js'),
@@ -231,13 +231,13 @@ function renderOutcomeDetailSectionElement(context) {
  * @param {ElementRenderContext} context
  * @returns {HTMLElement}
  */
-function renderPackageActivityShellElement(context) {
-  return renderPackagesModeShell({
+function renderCampaignActivityShellElement(context) {
+  return renderCampaignsModeShell({
     pageId: context.pageId,
     sections: [
       {
         id: 'utilization',
-        render: (mode) => renderPackageUtilization(context.sources, mode)
+        render: (mode) => renderCampaignUtilization(context.sources, mode)
       },
       {
         id: 'run-trend',
@@ -245,7 +245,7 @@ function renderPackageActivityShellElement(context) {
       },
       {
         id: 'summary',
-        render: (mode) => renderPackageSummary(context.sources, mode)
+        render: (mode) => renderCampaignSummary(context.sources, mode)
       }
     ]
   });
@@ -316,14 +316,14 @@ function renderDomainAttentionElement(context) {
 /**
  * @param {ElementRenderContext} context
  */
-function renderPackageStatusGridElement(context) {
-  const rows = rowsFor(context, 'overview-managed-packages');
+function renderCampaignStatusGridElement(context) {
+  const rows = rowsFor(context, 'overview-managed-campaigns');
   const headingId = `${context.pageId}-${slugify(context.title, 'element')}-heading`;
   return h(
     'section',
-    { className: 'overview-package-status', 'aria-labelledby': headingId },
+    { className: 'overview-campaign-status', 'aria-labelledby': headingId },
     renderSectionHeading({
-      kicker: 'Managed packages',
+      kicker: 'Managed campaigns',
       id: headingId,
       title: context.title,
       description: context.description,
@@ -331,7 +331,7 @@ function renderPackageStatusGridElement(context) {
     }),
     h(
       'div',
-      { className: 'package-status-grid' },
+      { className: 'campaign-status-grid' },
       ...rows.map((row) => {
         const liveCoveragePercent = Number(row['live-coverage-percent']);
         const rolloutLiveRepositories = Number(row['rollout-live-repositories']);
@@ -342,7 +342,7 @@ function renderPackageStatusGridElement(context) {
         const dispatchCount = row['dispatch-count'] == null ? null : Number(row['dispatch-count']);
         const runTelemetryUnavailable = context.sources.runs?.metadata?.availability === 'unavailable' || !context.sources.runs;
         const outputCollectionUnavailable = context.sources.outcomes?.metadata?.availability === 'unavailable' || !context.sources.outcomes;
-        const dispatchStatus = packageDispatchStatus(row, dispatchCount, runTelemetryUnavailable);
+        const dispatchStatus = campaignDispatchStatus(row, dispatchCount, runTelemetryUnavailable);
         const outputDispatchCount = row['dispatches-with-safe-output'] == null ? null : Number(row['dispatches-with-safe-output']);
         const dispatchText = Number.isFinite(dispatchCount)
           ? `${dispatchCount} dispatch${dispatchCount === 1 ? '' : 'es'}`
@@ -358,20 +358,20 @@ function renderPackageStatusGridElement(context) {
         return h(
           'article',
           {
-            className: `package-status-card package-status-${stringValue(row['inventory-state']) === 'inventory-ready' ? 'ready' : 'attention'}`
+            className: `campaign-status-card campaign-status-${stringValue(row['inventory-state']) === 'inventory-ready' ? 'ready' : 'attention'}`
           },
           h(
             'header',
-            { className: 'package-status-header' },
-            h('strong', null, renderIdentityLink({ href: stringValue(row.href), icon: stringValue(row.icon) || 'package', label: stringValue(row.title), className: 'package-status-identity' })),
-            inventoryText === 'Ready' ? null : h('span', { className: 'package-status-state' }, inventoryText)
+            { className: 'campaign-status-header' },
+            h('strong', null, renderIdentityLink({ href: stringValue(row.href), icon: stringValue(row.icon) || 'goal', label: stringValue(row.title), className: 'campaign-status-identity' })),
+            inventoryText === 'Ready' ? null : h('span', { className: 'campaign-status-state' }, inventoryText)
           ),
           h(
             'div',
-            { className: 'package-status-live-coverage' },
+            { className: 'campaign-status-live-coverage' },
             h(
               'div',
-              { className: 'package-status-live-coverage-heading' },
+              { className: 'campaign-status-live-coverage-heading' },
               h('div', null, h('span', null, 'Rollout'), h('strong', null, coverageKnown ? `${rolloutLiveRepositories} live · ${reviewRepositories} review` : 'No target data')),
               h('strong', null, coverageKnown ? `${coveragePercent}% live` : 'Unknown')
             ),
@@ -383,45 +383,45 @@ function renderPackageStatusGridElement(context) {
           ),
           h(
             'div',
-            { className: 'package-status-runtime' },
+            { className: 'campaign-status-runtime' },
             h(
               'div',
-              { className: 'package-status-repository-heading' },
+              { className: 'campaign-status-repository-heading' },
               h('span', null, 'Target repositories'),
               h('span', null, 'Mode')
             ),
             renderListOrEmptyMessage(
-              'package-status-repositories',
+              'campaign-status-repositories',
               repoEntries,
               (entry) => {
                 const repoMode = stringValue(entry.mode || 'review');
                 return h(
                   'li',
                   null,
-                  h('span', { className: 'package-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
+                  h('span', { className: 'campaign-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
                   h('span', { className: `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim() }, octicon('dot-fill'), capitalize(repoMode))
                 );
               },
-              'package-status-repositories-empty',
+              'campaign-status-repositories-empty',
               'No repositories reported'
             )
           ),
           h(
             'a',
             {
-              className: `package-status-activity${noOutputWarning ? ' package-status-activity-warning' : ''}`,
-              href: `#page-package-runs?package=${encodeURIComponent(stringValue(row.package))}`,
+              className: `campaign-status-activity${noOutputWarning ? ' campaign-status-activity-warning' : ''}`,
+              href: `#page-campaign-runs?campaign=${encodeURIComponent(stringValue(row.campaign))}`,
               title: stringValue(row['activity-window']),
               'aria-label': `Recent activity: ${dispatchStatus.detail}; ${dispatchText}; ${outputText}${noOutputWarning ? '; warning: dispatches produced no output' : ''}`
             },
             h(
               'span',
-              { className: 'package-status-activity-heading' },
-              h('span', { className: 'package-status-activity-label' }, 'Recent'),
+              { className: 'campaign-status-activity-heading' },
+              h('span', { className: 'campaign-status-activity-label' }, 'Recent'),
               h(
                 'span',
                 {
-                  className: `package-status-activity-state package-status-activity-state-${dispatchStatus.tone}`,
+                  className: `campaign-status-activity-state campaign-status-activity-state-${dispatchStatus.tone}`,
                   title: dispatchStatus.detail
                 },
                 octicon(dispatchStatus.icon),
@@ -447,7 +447,7 @@ function renderPackageStatusGridElement(context) {
  * @param {number | null} dispatchCount
  * @param {boolean} runTelemetryUnavailable
  */
-function packageDispatchStatus(row, dispatchCount, runTelemetryUnavailable = false) {
+function campaignDispatchStatus(row, dispatchCount, runTelemetryUnavailable = false) {
   const successful = row['dispatch-success-count'] == null ? null : Number(row['dispatch-success-count']);
   const failed = row['dispatch-failure-count'] == null ? null : Number(row['dispatch-failure-count']);
   const approval = row['dispatch-approval-count'] == null ? null : Number(row['dispatch-approval-count']);

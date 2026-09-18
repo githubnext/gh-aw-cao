@@ -129,13 +129,13 @@ async function requestWithHost(url, host) {
   });
 }
 
-test("local dashboard server composes package dashboards and reloads after updates", async () => {
+test("local dashboard server composes campaign dashboards and reloads after updates", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-server-"));
   const siteRoot = path.join(root, "site");
-  const packageRoot = path.join(root, "packages");
-  const packageDirectory = path.join(packageRoot, "example");
-  const stalePreviewDirectory = path.join(packageRoot, ".cao-dashboard-preview-stale");
-  await mkdir(packageDirectory, { recursive: true });
+  const campaignRoot = path.join(root, "campaigns");
+  const campaignDirectory = path.join(campaignRoot, "example");
+  const stalePreviewDirectory = path.join(campaignRoot, ".cao-dashboard-preview-stale");
+  await mkdir(campaignDirectory, { recursive: true });
   await mkdir(stalePreviewDirectory, { recursive: true });
   await mkdir(siteRoot, { recursive: true });
   const syntheticToken = ["ghp", "abcdefghijklmnopqrstuvwxyz123456"].join("_");
@@ -147,7 +147,7 @@ test("local dashboard server composes package dashboards and reloads after updat
   const builtInDashboard = JSON.parse(dashboard("built-in"));
   builtInDashboard.dashboard.description = syntheticToken;
   await writeFile(path.join(siteRoot, "dashboard.json"), JSON.stringify(builtInDashboard));
-  await writeFile(path.join(packageDirectory, "dashboard.json"), dashboard("package-one"));
+  await writeFile(path.join(campaignDirectory, "dashboard.json"), dashboard("campaign-one"));
   await writeFile(path.join(stalePreviewDirectory, "dashboard.json"), dashboard("built-in"));
   const downloadData = async (destination) => {
     await mkdir(destination, { recursive: true });
@@ -165,7 +165,7 @@ test("local dashboard server composes package dashboards and reloads after updat
 
   const preview = await startDashboardServer({
     siteRoot,
-    catalogRoot: packageRoot,
+    catalogRoot: campaignRoot,
     installedDashboardsDirectory: path.join(root, "installed-dashboards"),
     downloadData,
     loadViewer: async () => ({
@@ -205,7 +205,7 @@ test("local dashboard server composes package dashboards and reloads after updat
     assert.ok(requestLogs.some((message) => /^GET \/dashboard\.json 200 \d+ms$/.test(message)));
     assert.deepEqual(
       browserDashboard.dashboard.pages.map(({ id }) => id),
-      ["built-in", "package-one"],
+      ["built-in", "campaign-one"],
     );
     assert.equal(browserDashboard.dashboard.description, "[REDACTED]");
     const sourcesResponse = await fetch(`${preview.url}/sources.json`);
@@ -250,17 +250,17 @@ test("local dashboard server composes package dashboards and reloads after updat
 
     const socket = await openDashboardSocket(preview.url);
     const update = nextDashboard(socket);
-    await writeFile(path.join(packageDirectory, "dashboard.json"), dashboard("package-two"));
+    await writeFile(path.join(campaignDirectory, "dashboard.json"), dashboard("campaign-two"));
     assert.deepEqual(
       (await update).dashboard.pages.map(({ id }) => id),
-      ["built-in", "package-two"],
+      ["built-in", "campaign-two"],
     );
     socket.close();
 
     const updatedResponse = await fetch(`${preview.url}/dashboard.json`);
     assert.deepEqual(
       (await updatedResponse.json()).dashboard.pages.map(({ id }) => id),
-      ["built-in", "package-two"],
+      ["built-in", "campaign-two"],
     );
   } finally {
     await preview.close();
@@ -491,12 +491,12 @@ test("canvas dashboard executes only declared CLI actions through the provided e
 
 test("local dashboard server optionally prompts Copilot to update the active view", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-server-"));
-  const packageRoot = path.join(root, "packages");
-  const packageDirectory = path.join(packageRoot, "example");
-  await mkdir(packageDirectory, { recursive: true });
+  const campaignRoot = path.join(root, "campaigns");
+  const campaignDirectory = path.join(campaignRoot, "example");
+  await mkdir(campaignDirectory, { recursive: true });
   await writeFile(path.join(root, "index.html"), "<!doctype html><body><div id=\"root\"></div></body>");
   await writeFile(path.join(root, "dashboard.json"), dashboard("built-in"));
-  await writeFile(path.join(packageDirectory, "dashboard.json"), dashboard("package-one"));
+  await writeFile(path.join(campaignDirectory, "dashboard.json"), dashboard("campaign-one"));
   const prompts = [];
   const promptGate = Promise.withResolvers();
   let runtimeClosed = false;
@@ -505,7 +505,7 @@ test("local dashboard server optionally prompts Copilot to update the active vie
 
   const preview = await startDashboardServer({
     siteRoot: root,
-    catalogRoot: packageRoot,
+    catalogRoot: campaignRoot,
     installedDashboardsDirectory: path.join(root, "dashboards"),
     downloadData: async (destination) => {
       await mkdir(destination, { recursive: true });
@@ -519,7 +519,7 @@ test("local dashboard server optionally prompts Copilot to update the active vie
         payload.onEvent({ type: "assistant-delta", content: "Updating dashboard…" });
         await promptGate.promise;
         if (runtimeStopped) return { aborted: true };
-        let source = JSON.stringify(JSON.parse(dashboard("package-one")));
+        let source = JSON.stringify(JSON.parse(dashboard("campaign-one")));
         if (payload.request === "Produce invalid JSON") {
           source = "{ invalid";
         } else if (payload.request === "Produce invalid dashboard") {
@@ -563,7 +563,7 @@ test("local dashboard server optionally prompts Copilot to update the active vie
     const socket = await openDashboardSocket(preview.url);
     socket.send(JSON.stringify({
       type: "copilot.start",
-      view: "package-one",
+      view: "campaign-one",
       request: "Add a failure trend",
     }));
     while (prompts.length === 0) await new Promise((resolve) => setTimeout(resolve, 5));
@@ -571,7 +571,7 @@ test("local dashboard server optionally prompts Copilot to update the active vie
       message.type === "error" && /already running/.test(message.message));
     socket.send(JSON.stringify({
       type: "copilot.start",
-      view: "package-one",
+      view: "campaign-one",
       request: "Change the summary",
     }));
     assert.equal((await concurrentError).type, "error");
@@ -579,10 +579,10 @@ test("local dashboard server optionally prompts Copilot to update the active vie
     socket.send(JSON.stringify({ type: "copilot.stop" }));
     assert.equal((await stoppedMessage).type, "stopped");
     assert.equal(prompts.length, 1);
-    assert.equal(prompts[0].view, "package-one");
+    assert.equal(prompts[0].view, "campaign-one");
     assert.equal(prompts[0].request, "Add a failure trend");
     assert.match(prompts[0].sessionKey, /^[a-f0-9]{32}$/);
-    const expectedViewDashboardPath = await realpath(path.join(packageDirectory, "dashboard.json"));
+    const expectedViewDashboardPath = await realpath(path.join(campaignDirectory, "dashboard.json"));
     assert.equal(prompts[0].viewDashboardPath, expectedViewDashboardPath);
     assert.deepEqual(prompts[0].editableDashboardPaths, [
       await realpath(path.join(root, "dashboard.json")),
@@ -590,8 +590,8 @@ test("local dashboard server optionally prompts Copilot to update the active vie
     ]);
     assert.match(prompts[0].bundledDashboardPath, /cao-dashboard-preview-.*dashboard\.json$/);
     assert.equal(
-      await readFile(path.join(packageDirectory, "dashboard.json"), "utf8"),
-      dashboard("package-one"),
+      await readFile(path.join(campaignDirectory, "dashboard.json"), "utf8"),
+      dashboard("campaign-one"),
     );
 
     runtimeStopped = false;
@@ -599,28 +599,28 @@ test("local dashboard server optionally prompts Copilot to update the active vie
       message.type === "error" && /could not update/.test(message.message));
     socket.send(JSON.stringify({
       type: "copilot.start",
-      view: "package-one",
+      view: "campaign-one",
       request: "Produce invalid JSON",
     }));
     assert.equal((await invalidJsonError).type, "error");
-    await writeFile(path.join(packageDirectory, "dashboard.json"), dashboard("package-one"));
+    await writeFile(path.join(campaignDirectory, "dashboard.json"), dashboard("campaign-one"));
 
     const invalidDashboardError = nextSocketMessage(socket, (message) =>
       message.type === "error" && /could not update/.test(message.message));
     socket.send(JSON.stringify({
       type: "copilot.start",
-      view: "package-one",
+      view: "campaign-one",
       request: "Produce invalid dashboard",
     }));
     assert.equal((await invalidDashboardError).type, "error");
-    await writeFile(path.join(packageDirectory, "dashboard.json"), dashboard("package-one"));
+    await writeFile(path.join(campaignDirectory, "dashboard.json"), dashboard("campaign-one"));
 
     const recoveredUpdate = nextSocketMessage(socket, (message) =>
       message.type === "dashboard-update");
     const recoveredDone = nextSocketMessage(socket, (message) => message.type === "done");
     socket.send(JSON.stringify({
       type: "copilot.start",
-      view: "package-one",
+      view: "campaign-one",
       request: "Fail after valid write",
     }));
     const recoveredDashboard = await recoveredUpdate;
@@ -632,11 +632,11 @@ test("local dashboard server optionally prompts Copilot to update the active vie
     }));
     assert.equal((await recoveredDone).type, "done");
     assert.equal(
-      JSON.parse(await readFile(path.join(packageDirectory, "dashboard.json"), "utf8"))
+      JSON.parse(await readFile(path.join(campaignDirectory, "dashboard.json"), "utf8"))
         .dashboard.pages[0].title,
       "Updated despite SDK failure",
     );
-    await writeFile(path.join(packageDirectory, "dashboard.json"), dashboard("package-one"));
+    await writeFile(path.join(campaignDirectory, "dashboard.json"), dashboard("campaign-one"));
 
     const dashboardUpdate = nextSocketMessage(socket, (message) =>
       message.type === "dashboard-update");
@@ -644,7 +644,7 @@ test("local dashboard server optionally prompts Copilot to update the active vie
       message.type === "error" && /preview could not reload/.test(message.message));
     socket.send(JSON.stringify({
       type: "copilot.start",
-      view: "package-one",
+      view: "campaign-one",
       request: "Fail hot reload",
     }));
     const update = await dashboardUpdate;
@@ -664,8 +664,8 @@ test("local dashboard server optionally prompts Copilot to update the active vie
     assert.match(reloadFailure.details.errorLog, /renderSources/);
     assert.match(reloadFailure.message, /previous dashboard was restored/);
     assert.equal(
-      await readFile(path.join(packageDirectory, "dashboard.json"), "utf8"),
-      dashboard("package-one"),
+      await readFile(path.join(campaignDirectory, "dashboard.json"), "utf8"),
+      dashboard("campaign-one"),
     );
 
     socket.close();

@@ -5,7 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
-  configuredWorkerPackages,
+  configuredWorkerCampaigns,
   inspectPublishEvent,
   issueContentDigest,
   publicationCommentMarker,
@@ -16,10 +16,10 @@ import {
 import { controlSettings, parsePolicy } from "../../.github/workflows/shared/policy.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const packages = controlSettings(
+const campaigns = controlSettings(
   parsePolicy(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8")),
   "githubnext/gh-aw-cao",
-).packages;
+).campaigns;
 
 const event = {
   action: "labeled",
@@ -60,7 +60,7 @@ test("ops publish derives routing from an allowlisted generated run", () => {
     reviewRepository: "acme/review",
     allowedOwners: "acme",
     allowedRepositories: "acme/service",
-    packages,
+    campaigns,
     run: {
       id: 123,
       event: "workflow_dispatch",
@@ -76,7 +76,7 @@ test("ops publish derives routing from an allowlisted generated run", () => {
     },
   });
   assert.deepEqual(validated, {
-    packageName: "cao-evolution",
+    campaignName: "cao-evolution",
     targetRepository: "acme/service",
     targetOwner: "acme",
     targetName: "service",
@@ -90,13 +90,13 @@ test("ops publish recognizes every supported worker on the default branch", () =
     reviewers: "OCTOCAT",
     controlRepositories: "ACME/CONTROL",
   });
-  for (const [workflowFile, packageName] of configuredWorkerPackages(packages)) {
+  for (const [workflowFile, campaignName] of configuredWorkerCampaigns(campaigns)) {
     const validated = validateWorkflowRun({
       inspection,
       reviewRepository: "acme/review",
       allowedOwners: "ACME",
       allowedRepositories: "ACME/SERVICE",
-      packages,
+      campaigns,
       run: {
         id: 123,
         event: "workflow_dispatch",
@@ -111,7 +111,7 @@ test("ops publish recognizes every supported worker on the default branch", () =
         repository: { full_name: "ACME/CONTROL", default_branch: "main" },
       },
     });
-    assert.equal(validated.packageName, packageName);
+    assert.equal(validated.campaignName, campaignName);
   }
 });
 
@@ -192,7 +192,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
     reviewRepository: "acme/review",
     allowedOwners: "acme",
     allowedRepositories: "",
-    packages,
+    campaigns,
   }), /outside control-plane\.scope\.allowed-owners/);
   assert.throws(() => validateWorkflowRun({
     run: { ...run, display_title: "AW failure investigation · acme/service · live" },
@@ -200,7 +200,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
     reviewRepository: "acme/review",
     allowedOwners: "acme",
     allowedRepositories: "acme/service",
-    packages,
+    campaigns,
   }), /does not identify a review-mode target repository/);
 
   assert.throws(() => validateWorkflowRun({
@@ -209,7 +209,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
     reviewRepository: "acme/review",
     allowedOwners: "acme",
     allowedRepositories: "acme/service",
-    packages,
+    campaigns,
   }), /default branch/);
 
   assert.throws(() => validateWorkflowRun({
@@ -218,7 +218,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
     reviewRepository: "acme/review",
     allowedOwners: "acme",
     allowedRepositories: "acme/service",
-    packages,
+    campaigns,
   }), /not from a supported/);
 
   for (const [runOverride, message] of [
@@ -236,7 +236,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
       reviewRepository: "acme/review",
       allowedOwners: "acme",
       allowedRepositories: "acme/service",
-      packages,
+      campaigns,
     }), message);
   }
 });

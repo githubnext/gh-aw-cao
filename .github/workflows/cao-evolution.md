@@ -62,7 +62,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: cao-evolution
+      campaign: cao-evolution
       role: orchestrator
       dispatch_max: 6
       orchestrator_credits: 250
@@ -103,25 +103,25 @@ Read `/tmp/gh-aw/agent/control-precompute.json` before selecting repositories. T
 
 Classify each candidate using read-only repository evidence:
 
-- A **control repository** has `.github/workflows/cao.json` plus CAO runtime evidence under `.github/workflows/shared/` or installed package records under `.github/aw/packages/`.
-- An **agentic-workflow repository** has editable `.github/workflows/*.md` sources or an `aw.yml` package manifest.
+- A **control repository** has `.github/workflows/cao.json` plus CAO runtime evidence under `.github/workflows/shared/` or installed campaign records under `.github/aw/campaigns/`.
+- An **agentic-workflow repository** has editable `.github/workflows/*.md` sources or an `aw.yml` campaign manifest.
 
 Verify the evidence through read-only repository tools. Do not infer either role from the repository name, catalog manifests alone, or target-repository files. A repository may have both roles.
 
 Prioritize control repositories with one or more of these signals:
 
-1. Invalid or drifting CAO policy, worker registrations, package ownership, target authority, or installed workflow sources.
+1. Invalid or drifting CAO policy, worker registrations, campaign ownership, target authority, or installed workflow sources.
 2. Recent CAO admission, orchestration, dispatch, worker, activity-cache, dashboard-build, data-health, or agentic-workflow failures.
 3. Agentic workflow sources that need compiler, validation, image, or security-scanner verification.
 4. Repeated no-op or incomplete runs, duplicate evidence acquisition, overlapping schedules, high API pressure, or AI Credit allocation that is disproportionate to attained operational value.
 5. Recurring, evidence-complete needs that installed operations do not address and that may match a public operation in the official catalog.
-6. Recent policy, package, workflow, credential-boundary, or dashboard changes that have not yet been checked together.
+6. Recent policy, campaign, workflow, credential-boundary, or dashboard changes that have not yet been checked together.
 
 Skip archived repositories, repositories without a readable default branch, repositories with neither verified role, and repositories whose evidence is incomplete. Report incomplete evidence rather than widening discovery.
 
 ## Workers
 
-- `cao-evolution-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
+- `cao-evolution-integrity`: checks policy/schema validity, authority boundaries, campaign and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
 - `cao-evolution-reliability`: checks the last 24 full hours of CAO admission, dispatch, worker, activity-cache, review-bundle, dashboard-build, and dashboard-data-health evidence for actionable recurring failures.
 - `cao-evolution-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It does not duplicate per-workflow prompt or ambient-context optimization owned by `optimization`.
 - `cao-evolution-catalog-advisor`: compares recurring, evidence-complete capability gaps with public operations in the official catalog and suggests one bounded review-mode trial or custom operation gap. It never installs, enables, or dispatches a recommended operation.

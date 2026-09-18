@@ -52,8 +52,8 @@ describe('Runtime dashboard view', () => {
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'dependabot', 'package-name': 'Dependabot', workflow: '.github/workflows/dependabot.md', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'dependabot', 'package-name': 'Dependabot', workflow: '.github/workflows/dependabot-worker.md', 'workflow-name': 'Dependabot worker', 'workflow-role': 'worker' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot.md', 'workflow-name': 'Dependabot', 'workflow-role': 'orchestrator' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'dependabot', 'campaign-name': 'Dependabot', workflow: '.github/workflows/dependabot-worker.md', 'workflow-name': 'Dependabot worker', 'workflow-role': 'worker' }
           ],
           metadata
         },
@@ -71,7 +71,7 @@ describe('Runtime dashboard view', () => {
     expect(result['runtime-episodes'].rows).toEqual([
       expect.objectContaining({
         run: '10',
-        package: 'Dependabot',
+        campaign: 'Dependabot',
         workflow: 'Dependabot',
         status: 'action-required',
         attribution: 'Root only'

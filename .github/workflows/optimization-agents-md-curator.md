@@ -62,7 +62,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: optimization
+      campaign: optimization
       role: worker
       worker: agents-md-curator
 
@@ -244,7 +244,7 @@ steps:
           duplication[name] = { duplicated_lines: shared.length, samples: shared.slice(0, 5) };
         }
 
-        // Package-manager and command conflicts across instruction files are a top failure class:
+        // Campaign-manager and command conflicts across instruction files are a top failure class:
         // an agent that reads two files with contradicting commands picks one at random.
         const PACKAGE_MANAGERS = [
           { name: 'npm', lockfile: 'package-lock.json', pattern: /\bnpm (?:ci|install|run|test)\b/ },
@@ -485,7 +485,7 @@ Consult [agentconfig.org](https://agentconfig.org) and, when available, its [mac
 
 ## Step 1 — Scope gate
 
-If `agents_md_present` is `false`, stop immediately. Do not create an issue, do not propose creating an `AGENTS.md`, and do not analyze anything else. Emit a `noop` explaining that the repository has no root `AGENTS.md` and is therefore out of scope for this package. This package only maintains ambient context that already exists.
+If `agents_md_present` is `false`, stop immediately. Do not create an issue, do not propose creating an `AGENTS.md`, and do not analyze anything else. Emit a `noop` explaining that the repository has no root `AGENTS.md` and is therefore out of scope for this campaign. This campaign only maintains ambient context that already exists.
 
 If `in_flight.open_instruction_pull_requests` is non-empty, a previous proposal is still being applied. Emit a `noop` naming those pull requests rather than proposing a competing change set. Proposing against a file that an open pull request is already rewriting produces conflicting edits and repeated churn.
 
@@ -531,7 +531,7 @@ If the evidence supports no edit, emit a `noop` stating that the ambient context
 
 ## Step 4 — Gain gate
 
-This package exists to make every future agent run on the target repository cheaper for the same delivered outcome. A change set that does not move that number is not worth a maintainer's review. Estimate the gain before you write anything.
+This campaign exists to make every future agent run on the target repository cheaper for the same delivered outcome. A change set that does not move that number is not worth a maintainer's review. Estimate the gain before you write anything.
 
 1. For each proposed edit, count the characters it removes from `AGENTS.md` and the characters it adds. Content moved to a nested `AGENTS.md`, a path-scoped instructions file, or a skill counts as removed, because it no longer loads on every run; the pointer left behind counts as added. A correction that replaces text with shorter text counts the difference.
 2. Convert characters to tokens with the same approximation the prefetch uses: tokens are characters divided by 4.

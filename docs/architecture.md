@@ -10,7 +10,7 @@ Read this overview when evaluating whether the control plane fits your organizat
 The control plane is designed to:
 
 - operate enterprise-wide and organization-wide workflows from private central repositories;
-- promote packages independently without coupling their release schedules;
+- promote campaigns independently without coupling their release schedules;
 - keep credentials and common policy centralized;
 - separate repository selection from repository mutation;
 - make every dispatched action attributable to a control-plane run;
@@ -34,7 +34,7 @@ Any repository may explicitly operate as a source-managed control plane for work
 
 ## How It Works
 
-1. A schedule or manual dispatch starts a package orchestrator in the control repository.
+1. A schedule or manual dispatch starts a campaign orchestrator in the control repository.
 2. Shared control resolves mode, routing, candidate repositories, limits, and eligible workers.
 3. The orchestrator ranks candidates and dispatches one worker run per selected target.
 4. Each worker analyzes only its dispatched target and emits only declared safe outputs.
@@ -52,7 +52,7 @@ collection flow and data-quality behavior.
 - review mode is the default;
 - target selection and dispatch are bounded;
 - owners, targets, and review destinations must pass explicit trust checks;
-- every live `(target repository, package)` pair has one target-approved mutation authority;
+- every live `(target repository, campaign)` pair has one target-approved mutation authority;
 - workers accept only declared targets and eligible generated-workflow paths;
 - GitHub tools are read-only, while writes use declared safe-output primitives;
 - credentials are resolved inside each run and never carried in dispatch inputs;
@@ -69,6 +69,6 @@ Central Agentic Ops governs participating catalog workflows. Use GitHub rulesets
 | [What Is Central Agentic Ops?](architecture-at-a-glance.md) | How ready-made or custom operations scale across GitHub from one place |
 | [Deployment and Governance](deployment-and-governance.md) | Organization and enterprise topologies, ownership, target enrollment, provenance, reporting identity, and the broader governance boundary |
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
-| [Orchestrators and Workers](orchestrators-and-workers.md) | Package-specific authority, worker enforcement, eligibility, and worker ceilings |
+| [Orchestrators and Workers](orchestrators-and-workers.md) | Campaign-specific authority, worker enforcement, eligibility, and worker ceilings |
 | [Rollout and Routing](rollout-and-routing.md) | Review-to-live promotion; review destinations; authority checks; and rollback |
 | [CAO Activity](activity.md) | Shared evidence collection, retained-snapshot behavior, and dashboard inputs |

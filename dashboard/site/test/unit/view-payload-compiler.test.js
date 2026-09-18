@@ -145,50 +145,50 @@ it('injects route and runtime predicates before a declared aggregate executes', 
 
 it('fails closed when a route-scoped view has no route value', () => {
   const page = {
-    route: { 'hash-query-parameter': 'package' },
+    route: { 'hash-query-parameter': 'campaign' },
     views: [{
-      id: 'package-issues',
-      data: { source: 'outcomes', 'route-field': 'package' }
+      id: 'campaign-issues',
+      data: { source: 'outcomes', 'route-field': 'campaign' }
     }]
   };
-  const payload = compileDashboardViewPayloadQueries(page, 'package-issues');
+  const payload = compileDashboardViewPayloadQueries(page, 'campaign-issues');
   const results = executeDashboardQueries(payload.queries, {
     outcomes: {
       source: 'outcomes',
       rows: [
-        { package: 'alpha', 'safe-output': 'issue-1' },
-        { package: 'beta', 'safe-output': 'issue-2' },
-        { package: '', 'safe-output': 'unattributed' }
+        { campaign: 'alpha', 'safe-output': 'issue-1' },
+        { campaign: 'beta', 'safe-output': 'issue-2' },
+        { campaign: '', 'safe-output': 'unattributed' }
       ],
       metadata
     }
   }, payload.aliases);
 
   expect(/** @type {any} */ (payload.queries[0]).filter.predicates).toEqual([
-    { field: 'package', equals: '' },
-    { field: 'package', equals: '\0' }
+    { field: 'campaign', equals: '' },
+    { field: 'campaign', equals: '\0' }
   ]);
   expect(results[payload.aliases[0]].rows).toEqual([]);
 });
 
 it('applies route scope after a declared query creates the route field', () => {
   const page = {
-    route: { 'hash-query-parameter': 'package' },
+    route: { 'hash-query-parameter': 'campaign' },
     views: [{
-      id: 'package-runs',
-      data: { source: 'package-runs', 'route-field': 'package' }
+      id: 'campaign-runs',
+      data: { source: 'campaign-runs', 'route-field': 'campaign' }
     }]
   };
-  const payload = compileDashboardViewPayloadQueries(page, 'package-runs', {
-    routeParameters: { package: 'beta' },
+  const payload = compileDashboardViewPayloadQueries(page, 'campaign-runs', {
+    routeParameters: { campaign: 'beta' },
     queryContext: { filters: { mode: ['live'] } },
     queries: [{
-      name: 'package-runs',
+      name: 'campaign-runs',
       from: 'runs',
-      compute: [{ as: 'declared-package', function: 'coalesce', args: [{ field: 'source-package' }] }],
+      compute: [{ as: 'declared-campaign', function: 'coalesce', args: [{ field: 'source-campaign' }] }],
       select: [
         { field: 'run' },
-        { field: 'declared-package', as: 'package' }
+        { field: 'declared-campaign', as: 'campaign' }
       ],
       limit: 1
     }]
@@ -197,15 +197,15 @@ it('applies route scope after a declared query creates the route field', () => {
     runs: {
       source: 'runs',
       rows: [
-        { run: '1', 'source-package': 'alpha', 'rollout-mode': 'live' },
-        { run: '2', 'source-package': 'alpha', 'rollout-mode': 'review' },
-        { run: '3', 'source-package': 'beta', 'rollout-mode': 'live' }
+        { run: '1', 'source-campaign': 'alpha', 'rollout-mode': 'live' },
+        { run: '2', 'source-campaign': 'alpha', 'rollout-mode': 'review' },
+        { run: '3', 'source-campaign': 'beta', 'rollout-mode': 'live' }
       ],
       metadata
     }
   }, payload.aliases);
 
-  expect(results[payload.aliases[0]].rows).toEqual([{ run: '3', package: 'beta' }]);
+  expect(results[payload.aliases[0]].rows).toEqual([{ run: '3', campaign: 'beta' }]);
 });
 
 it('applies the selected horizon before derived repository totals aggregate runs', () => {

@@ -89,7 +89,7 @@ function requestedSourceNames(sourceNames) {
   return new Set(sourceNames);
 }
 
-const RUN_PHASE_CANONICAL_SOURCES = new Set(['packages', 'repositories', 'workflows', 'runs']);
+const RUN_PHASE_CANONICAL_SOURCES = new Set(['campaigns', 'repositories', 'workflows', 'runs']);
 
 /** @param {{ sourceNames: string[], context: ReturnType<typeof dashboardContext> }} subscription */
 function isRunPhaseSubscription(subscription) {

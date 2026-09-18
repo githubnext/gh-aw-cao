@@ -78,7 +78,7 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
   const control = workflow("shared/control.md");
   const configuration = readFileSync(join(root, "docs", "configuration.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
-  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
+  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
 
   assert.match(control, /post-steps:[\s\S]*?Emit control-plane dispatcher telemetry/);
   assert.match(control, /if: \$\{\{ always\(\) \}\}/);
@@ -98,11 +98,11 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
   assert.match(configuration, /`Authorization: <GH_AW_OTEL_SENTRY_AUTHORIZATION>`/);
   assert.match(configuration, /`Authorization: <GH_AW_OTEL_GRAFANA_AUTHORIZATION>`/);
   assert.match(configuration, /`DD-API-KEY: <GH_AW_OTEL_DATADOG_API_KEY or DD_API_KEY>`/);
-  assert.match(configuration, /Installed Central Agentic Ops packages do not include these optional provider files by default/);
+  assert.match(configuration, /Installed Central Agentic Ops campaigns do not include these optional provider files by default/);
   assert.match(operations, /`central-agentic-ops\.dispatcher\.run` span/);
   assert.match(operations, /`requested` status records dispatch intent before safe-output handlers call the GitHub API/);
-  assert.match(packageSkill, /inherits the dedicated `central-agentic-ops\.dispatcher\.run` OTEL span from `shared\/control\.md`/);
-  assert.match(packageSkill, /configure OTLP exporters only/);
+  assert.match(campaignSkill, /inherits the dedicated `central-agentic-ops\.dispatcher\.run` OTEL span from `shared\/control\.md`/);
+  assert.match(campaignSkill, /configure OTLP exporters only/);
 });
 
 test("orchestrators dispatch workers only through safe-output tools", () => {
@@ -170,10 +170,10 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["self-care-reactive-ui-expert.md", "self-care", "reactive-ui-expert"],
   ];
 
-  for (const [name, packageName, workerName] of workerNames) {
+  for (const [name, campaignName, workerName] of workerNames) {
     const source = workflow(name);
 
-    assert.match(source, new RegExp(`package: ${packageName}`));
+    assert.match(source, new RegExp(`campaign: ${campaignName}`));
     assert.match(source, /role: worker/);
     assert.match(source, new RegExp(`worker: ${workerName}`));
     for (const input of [

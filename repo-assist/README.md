@@ -1,11 +1,11 @@
 # Repo Assist
 
 > [!NOTE]
-> **Experimental package:** Worker boundaries and output contracts may change as review evidence accumulates.
+> **Experimental campaign:** Worker boundaries and output contracts may change as review evidence accumulates.
 
 Repo Assist makes bounded progress on enrolled repositories. Its orchestrator ranks current maintenance signals and dispatches at most three applicable workers per selected repository.
 
-## Package Contents
+## Campaign Contents
 
 | Workflow | Responsibility |
 | --- | --- |
@@ -25,13 +25,13 @@ Install from a reviewed catalog release into a Central Agentic Ops control repos
 gh aw add githubnext/gh-aw-cao/repo-assist@<catalog-release>
 ```
 
-Configure the package in `.github/workflows/cao.json`:
+Configure the campaign in `.github/workflows/cao.json`:
 
 ```json
 {
   "version": 1,
   "control-plane": {
-    "packages": {
+    "campaigns": {
       "repo-assist": {
         "mode": "review",
         "max-repositories": 1,
@@ -47,7 +47,7 @@ Configure the package in `.github/workflows/cao.json`:
 }
 ```
 
-Keep eligible owners and repositories bounded under `control-plane.scope`. The package defaults to review mode; installation does not grant live authority.
+Keep eligible owners and repositories bounded under `control-plane.scope`. The campaign defaults to review mode; installation does not grant live authority.
 
 ## Validate
 
@@ -66,7 +66,7 @@ Review the orchestrator report, worker runs, central review issues, and review-b
 
 ## Safety Boundaries
 
-- CAO policy decides whether and where the package may run; workflow capabilities do not grant rollout authority.
+- CAO policy decides whether and where the campaign may run; workflow capabilities do not grant rollout authority.
 - Orchestrators only rank and dispatch. Workers cannot discover repositories, dispatch more work, or widen mode.
 - GitHub reads use scoped tools. Repository mutations use declared safe outputs only.
 - Stable titles and machine markers prevent equivalent issues, fixes, maintenance proposals, and upkeep attempts from being recreated.
@@ -88,4 +88,4 @@ The evaluators grade validated requests available in the current run. They do no
 
 ## Pause or Stop
 
-Set `control-plane.packages.repo-assist.enabled` to `false` in a reviewed policy change and cancel active runs. Disable an individual worker for a narrower stop. Re-enable in review mode after resolving the incident.
+Set `control-plane.campaigns.repo-assist.enabled` to `false` in a reviewed policy change and cancel active runs. Disable an individual worker for a narrower stop. Re-enable in review mode after resolving the incident.

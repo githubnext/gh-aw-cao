@@ -62,7 +62,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: software-development-practices
+      campaign: software-development-practices
       role: orchestrator
       dispatch_max: 20
       orchestrator_credits: 250
@@ -113,9 +113,9 @@ Read `/tmp/gh-aw/agent/control-precompute.json` first and use its candidates, mo
 
 Rank active software repositories using:
 
-1. Recent commits, releases, packages, deployments, or supported software artifacts.
+1. Recent commits, releases, artifacts, deployments, or supported software artifacts.
 2. Build, test, release, deployment, dependency, and security workflows.
-3. Package manifests, source code, infrastructure as code, architecture records, `README`, `CONTRIBUTING`, `CODEOWNERS`, `SECURITY.md`, and support documentation.
+3. Campaign manifests, source code, infrastructure as code, architecture records, `README`, `CONTRIBUTING`, `CODEOWNERS`, `SECURITY.md`, and support documentation.
 4. Open maintenance or security work that indicates actionable development-practice improvements.
 
 Exclude archived or disabled repositories, inaccessible repositories, generated mirrors without meaningful ownership, and repositories with no software-development or operational surface. Do not interpret missing metadata as a framework gap.
@@ -129,7 +129,7 @@ Resolve enabled workers from precompute. Dispatch one repository-level responsib
 - `software-development-practices-github-well-architected` reviews observable evidence across the current GitHub Well-Architected pillars and produces one consolidated improvement issue.
 - `software-development-practices-nist-ssdf` reviews observable evidence against the current final NIST SSDF practices and produces one consolidated improvement issue.
 
-Dispatch `github-well-architected` when a repository has meaningful collaboration, workflow, GitHub configuration, or architecture evidence. Dispatch `nist-ssdf` when it ships or supports software with a security-relevant surface such as releases, packages, dependencies, builds, or vulnerability handling. Dispatch both only when both conditions hold.
+Dispatch `github-well-architected` when a repository has meaningful collaboration, workflow, GitHub configuration, or architecture evidence. Dispatch `nist-ssdf` when it ships or supports software with a security-relevant surface such as releases, artifacts, dependencies, builds, or vulnerability handling. Dispatch both only when both conditions hold.
 
 Calculate the proposed dispatch count across selected repositories and enabled workers. Keep the total at or below 20, reduce repository or worker selection if needed, and record every dispatch or skip rationale. Workers own source-aware duplicate detection because the orchestrator must not assess framework currency.
 

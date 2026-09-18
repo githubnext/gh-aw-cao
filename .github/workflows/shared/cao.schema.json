@@ -64,7 +64,7 @@
       "enum": [
         "mark-github", "code", "repo", "server", "issue", "pull-request", "play", "eye",
         "shield", "meter", "graph", "codescan", "dependabot", "key", "beaker", "rocket",
-        "workflow", "gear", "check-circle", "package", "external-link"
+        "workflow", "gear", "check-circle", "goal", "external-link"
       ]
     },
     "workerPolicy": {
@@ -88,7 +88,7 @@
         "mode": { "$ref": "#/$defs/mode" }
       }
     },
-    "packagePolicy": {
+    "campaignPolicy": {
       "type": "object",
       "properties": {
         "enabled": { "type": "boolean" },
@@ -113,12 +113,12 @@
       },
       "additionalProperties": false
     },
-    "controlPackages": {
+    "controlCampaigns": {
       "type": "object",
       "propertyNames": {
         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
       },
-      "additionalProperties": { "$ref": "#/$defs/packagePolicy" }
+      "additionalProperties": { "$ref": "#/$defs/campaignPolicy" }
     },
     "scope": {
       "type": "object",
@@ -206,11 +206,11 @@
         "inventory": { "$ref": "#/$defs/inventory" },
         "web": { "$ref": "#/$defs/web" },
         "defaults": { "$ref": "#/$defs/defaults" },
-        "packages": { "$ref": "#/$defs/controlPackages" },
+        "campaigns": { "$ref": "#/$defs/controlCampaigns" },
         "publishing": { "$ref": "#/$defs/publishing" }
       }
     },
-    "targetPackage": {
+    "targetCampaign": {
       "type": "object",
       "additionalProperties": false,
       "required": ["authority"],
@@ -218,19 +218,19 @@
         "authority": { "$ref": "#/$defs/repository" }
       }
     },
-    "targetPackages": {
+    "targetCampaigns": {
       "type": "object",
       "propertyNames": {
         "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
       },
-      "additionalProperties": { "$ref": "#/$defs/targetPackage" }
+      "additionalProperties": { "$ref": "#/$defs/targetCampaign" }
     },
     "targetAuthority": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["packages"],
+      "required": ["campaigns"],
       "properties": {
-        "packages": { "$ref": "#/$defs/targetPackages" }
+        "campaigns": { "$ref": "#/$defs/targetCampaigns" }
       }
     }
   }

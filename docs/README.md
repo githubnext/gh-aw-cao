@@ -1,13 +1,13 @@
 ---
 title: Central Agentic Ops
-description: Package engineering expertise once, operate across repositories, and prove the outcome.
+description: Campaign engineering expertise once, operate across repositories, and prove the outcome.
 template: splash
 editUrl: false
 prev: false
 next: false
 hero:
   title: Central Agentic Ops
-  tagline: Package once. Operate everywhere. Turn engineering expertise into reusable AI operations that improve one repository or thousands.
+  tagline: Campaign once. Operate everywhere. Turn engineering expertise into reusable AI operations that improve one repository or thousands.
   actions:
     - text: Run your first operation
       link: /gh-aw-cao/getting-started/

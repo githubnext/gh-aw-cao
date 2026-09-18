@@ -26,7 +26,7 @@
         ],
         "details": [
           { "field": "repository", "title": "Repository" },
-          { "field": "package-name", "title": "Package" },
+          { "field": "campaign-name", "title": "Campaign" },
           { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
         ]
       },
@@ -188,7 +188,7 @@
             { "field": "workflow-role", "type": "nominal", "title": "Role" },
             { "field": "workflow-active", "type": "nominal", "title": "State" },
             { "field": "repository", "type": "nominal", "title": "Repository" },
-            { "field": "package-name", "type": "nominal", "title": "Package" },
+            { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
             { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
             { "field": "organization", "type": "nominal", "title": "Organization" }
           ]
@@ -230,7 +230,7 @@
             { "field": "workflow-role", "type": "nominal", "title": "Role" },
             { "field": "workflow-active", "type": "nominal", "title": "State" },
             { "field": "repository", "type": "nominal", "title": "Repository" },
-            { "field": "package-name", "type": "nominal", "title": "Package" },
+            { "field": "campaign-name", "type": "nominal", "title": "Campaign" },
             { "field": "observed-at", "type": "temporal", "title": "Observed", "format": "human-friendly-timestamp" },
             { "field": "organization", "type": "nominal", "title": "Organization" }
           ]
@@ -475,7 +475,7 @@
       {
         "id": "update-repository",
         "label": "Update all",
-        "description": "Update all installed Agentic Workflow packages in this repository.",
+        "description": "Update all installed Agentic Workflow campaigns in this repository.",
         "icon": "sync",
         "command": "./.github/aw/cao.sh update --repo {{repository}}",
         "placement": "view",
@@ -483,7 +483,7 @@
           {
             "id": "create-pull-request",
             "label": "Create pull request",
-            "description": "Create a pull request with the workflow package updates.",
+            "description": "Create a pull request with the workflow campaign updates.",
             "type": "boolean",
             "flag": "--create-pull-request",
             "default": true
@@ -543,43 +543,43 @@
         ]
       },
       {
-        "id": "update-package",
-        "label": "Update package",
-        "description": "Update this package's agentic workflow.",
+        "id": "update-campaign",
+        "label": "Update campaign",
+        "description": "Update this campaign's agentic workflow.",
         "icon": "sync",
-        "command": "./.github/aw/cao.sh add {{package}}",
+        "command": "./.github/aw/cao.sh add {{campaign}}",
         "placement": "row"
       },
       {
-        "id": "set-package-live",
+        "id": "set-campaign-live",
         "label": "Switch to live",
-        "description": "Switch this package's workflows to live mode.",
+        "description": "Switch this campaign's workflows to live mode.",
         "icon": "play",
-        "command": "./.github/aw/cao.sh mode live {{package}}",
+        "command": "./.github/aw/cao.sh mode live {{campaign}}",
         "placement": "row"
       },
       {
-        "id": "set-package-preview",
+        "id": "set-campaign-preview",
         "label": "Switch to preview",
-        "description": "Switch this package's workflows to preview mode.",
+        "description": "Switch this campaign's workflows to preview mode.",
         "icon": "eye",
-        "command": "./.github/aw/cao.sh mode preview {{package}}",
+        "command": "./.github/aw/cao.sh mode preview {{campaign}}",
         "placement": "row"
       },
       {
-        "id": "enable-package",
-        "label": "Enable package",
-        "description": "Enable this package's orchestrator and worker workflows.",
+        "id": "enable-campaign",
+        "label": "Enable campaign",
+        "description": "Enable this campaign's orchestrator and worker workflows.",
         "icon": "play",
-        "command": "./.github/aw/cao.sh enable {{package}}",
+        "command": "./.github/aw/cao.sh enable {{campaign}}",
         "placement": "row"
       },
       {
-        "id": "disable-package",
-        "label": "Disable package",
-        "description": "Disable this package's orchestrator and worker workflows.",
+        "id": "disable-campaign",
+        "label": "Disable campaign",
+        "description": "Disable this campaign's orchestrator and worker workflows.",
         "icon": "stop",
-        "command": "./.github/aw/cao.sh disable {{package}}",
+        "command": "./.github/aw/cao.sh disable {{campaign}}",
         "placement": "row"
       }
     ],
@@ -682,7 +682,7 @@
           { "field": "workflow-name" },
           { "field": "workflow-role" },
           { "field": "workflow-active" },
-          { "field": "package-name" },
+          { "field": "campaign-name" },
           { "field": "observed-at" },
           { "field": "workflow-link" }
         ],
@@ -753,14 +753,14 @@
       },
       {
         "name": "marketplace-operation-groups",
-        "intent": "Group declared workflows by operation package or standalone workflow with ownership, workflow state, and a dashboard navigation route.",
+        "intent": "Group declared workflows by operation campaign or standalone workflow with ownership, workflow state, and a dashboard navigation route.",
         "from": "workflows",
         "compute": [
           {
             "as": "is-standalone",
             "function": "equals-any",
             "args": [
-              { "field": "package" },
+              { "field": "campaign" },
               { "value": "standalone" },
               { "value": "unknown" }
             ]
@@ -771,14 +771,14 @@
             "args": [
               { "field": "is-standalone" },
               { "field": "workflow" },
-              { "field": "package" }
+              { "field": "campaign" }
             ]
           },
           {
             "as": "operation-name",
             "function": "coalesce",
             "args": [
-              { "field": "package-name" },
+              { "field": "campaign-name" },
               { "field": "workflow-name" },
               { "field": "workflow" }
             ]
@@ -787,7 +787,7 @@
             "as": "operation-icon",
             "function": "coalesce",
             "args": [
-              { "field": "package-icon" },
+              { "field": "campaign-icon" },
               { "value": "workflow" }
             ]
           },
@@ -797,7 +797,7 @@
             "args": [
               { "field": "is-standalone" },
               { "value": "Standalone" },
-              { "value": "Package" }
+              { "value": "Campaign" }
             ]
           },
           {
@@ -806,7 +806,7 @@
             "args": [
               { "field": "is-standalone" },
               { "value": "Standalone agentic workflow." },
-              { "value": "Centrally managed operation package." }
+              { "value": "Centrally managed operation campaign." }
             ]
           },
           {
@@ -840,10 +840,10 @@
             "args": [{ "field": "workflow-coordinate" }]
           },
           {
-            "as": "package-dashboard-href",
+            "as": "campaign-dashboard-href",
             "function": "concat",
             "args": [
-              { "value": "#page-package-detail?package=" },
+              { "value": "#page-campaign-detail?campaign=" },
               { "field": "encoded-operation-id" }
             ]
           },
@@ -861,7 +861,7 @@
             "args": [
               { "field": "is-standalone" },
               { "field": "workflow-dashboard-href" },
-              { "field": "package-dashboard-href" }
+              { "field": "campaign-dashboard-href" }
             ]
           },
           {
@@ -910,7 +910,7 @@
       },
       {
         "name": "marketplace-operations",
-        "intent": "List operation packages and standalone workflows as reusable Marketplace cards with package membership, ownership, workflow state, and dashboard navigation.",
+        "intent": "List operation campaigns and standalone workflows as reusable Marketplace cards with campaign membership, ownership, workflow state, and dashboard navigation.",
         "from": "marketplace-operation-groups",
         "joins": [
           {
@@ -952,10 +952,10 @@
         ]
       },
       {
-        "name": "database-package-count",
-        "intent": "Count packages in the dashboard database.",
-        "from": "packages",
-        "aggregate": { "values": [{ "field": "package", "as": "packages", "reducer": "count" }] }
+        "name": "database-campaign-count",
+        "intent": "Count campaigns in the dashboard database.",
+        "from": "campaigns",
+        "aggregate": { "values": [{ "field": "campaign", "as": "campaigns", "reducer": "count" }] }
       },
       {
         "name": "database-repository-count",
@@ -1083,7 +1083,7 @@
               { "left": "repository", "right": "repository" },
               { "left": "workflow", "right": "workflow" }
             ],
-            "fields": [{ "field": "package", "as": "declared-package" }]
+            "fields": [{ "field": "campaign", "as": "declared-campaign" }]
           }
         ],
         "aggregate": {
@@ -1328,7 +1328,7 @@
       },
       {
         "name": "overview-worker-summary",
-        "intent": "Count declared package worker workflows.",
+        "intent": "Count declared campaign worker workflows.",
         "from": "workflows",
         "filter": { "predicates": [{ "field": "workflow-role", "equals": "worker" }] },
         "aggregate": { "values": [{ "field": "workflow", "as": "workers", "reducer": "count" }] }
@@ -1411,17 +1411,17 @@
             "args": [{ "field": "work-type-normalized" }, { "value": "orchestrator" }, { "value": "worker" }]
           },
           {
-            "as": "work-package-fallback",
+            "as": "work-campaign-fallback",
             "function": "if",
             "args": [{ "field": "work-managed-role" }, { "field": "work-owner" }, { "value": "" }]
           },
           {
-            "as": "work-package",
+            "as": "work-campaign",
             "function": "coalesce",
             "args": [
-              { "field": "package" },
-              { "field": "package-name" },
-              { "field": "work-package-fallback" },
+              { "field": "campaign" },
+              { "field": "campaign-name" },
+              { "field": "work-campaign-fallback" },
               { "value": "" }
             ]
           },
@@ -1448,7 +1448,7 @@
           {
             "as": "work-icon",
             "function": "coalesce",
-            "args": [{ "field": "workflow-icon" }, { "field": "package-icon" }, { "value": "workflow" }]
+            "args": [{ "field": "workflow-icon" }, { "field": "campaign-icon" }, { "value": "workflow" }]
           },
           {
             "as": "work-safe-output-kind",
@@ -1570,7 +1570,7 @@
               { "value": " " },
               { "field": "work-owner" },
               { "value": " " },
-              { "field": "work-package" }
+              { "field": "work-campaign" }
             ]
           },
           {
@@ -1582,22 +1582,22 @@
         ]
       },
       {
-        "name": "work-project-orchestrator-packages",
-        "intent": "Identify packages represented by orchestrator work in the current canonical Work inventory.",
+        "name": "work-project-orchestrator-campaigns",
+        "intent": "Identify campaigns represented by orchestrator work in the current canonical Work inventory.",
         "from": "work-project-base",
         "filter": { "predicates": [{ "field": "work-type-normalized", "equals": "orchestrator" }] },
         "aggregate": {
-          "by": ["work-package"],
+          "by": ["work-campaign"],
           "values": [{ "field": "work-id", "as": "work-orchestrator-count", "reducer": "count" }]
         }
       },
       {
-        "name": "work-project-worker-packages",
-        "intent": "Identify packages represented by worker work in the current canonical Work inventory.",
+        "name": "work-project-worker-campaigns",
+        "intent": "Identify campaigns represented by worker work in the current canonical Work inventory.",
         "from": "work-project-base",
         "filter": { "predicates": [{ "field": "work-type-normalized", "equals": "worker" }] },
         "aggregate": {
-          "by": ["work-package"],
+          "by": ["work-campaign"],
           "values": [{ "field": "work-id", "as": "work-worker-count", "reducer": "count" }]
         }
       },
@@ -1611,7 +1611,7 @@
             { "field": "work-state-label", "as": "work-state-options", "reducer": "distinct-values" },
             { "field": "work-repository", "as": "work-repository-options", "reducer": "distinct-values" },
             { "field": "work-owner", "as": "work-owner-options", "reducer": "distinct-values" },
-            { "field": "work-package", "as": "work-package-options", "reducer": "distinct-values" },
+            { "field": "work-campaign", "as": "work-campaign-options", "reducer": "distinct-values" },
             { "field": "work-item-id", "as": "work-total-count", "reducer": "count" }
           ]
         }
@@ -1629,20 +1629,20 @@
               { "field": "work-state-options", "as": "work-state-options" },
               { "field": "work-repository-options", "as": "work-repository-options" },
               { "field": "work-owner-options", "as": "work-owner-options" },
-              { "field": "work-package-options", "as": "work-package-options" },
+              { "field": "work-campaign-options", "as": "work-campaign-options" },
               { "field": "work-total-count", "as": "work-total-count" }
             ]
           },
           {
-            "source": "work-project-orchestrator-packages",
+            "source": "work-project-orchestrator-campaigns",
             "type": "left",
-            "on": [{ "left": "work-package", "right": "work-package" }],
+            "on": [{ "left": "work-campaign", "right": "work-campaign" }],
             "fields": [{ "field": "work-orchestrator-count", "as": "work-orchestrator-count" }]
           },
           {
-            "source": "work-project-worker-packages",
+            "source": "work-project-worker-campaigns",
             "type": "left",
-            "on": [{ "left": "work-package", "right": "work-package" }],
+            "on": [{ "left": "work-campaign", "right": "work-campaign" }],
             "fields": [{ "field": "work-worker-count", "as": "work-worker-count" }]
           }
         ],
@@ -1678,23 +1678,23 @@
             "args": [{ "value": "item:" }, { "field": "work-id" }]
           },
           {
-            "as": "work-package-group-id",
+            "as": "work-campaign-group-id",
             "function": "concat",
-            "args": [{ "value": "package:" }, { "field": "work-package" }]
+            "args": [{ "value": "campaign:" }, { "field": "work-campaign" }]
           },
           {
             "as": "work-group-id",
             "function": "if",
             "args": [
               { "field": "work-grouped" },
-              { "field": "work-package-group-id" },
+              { "field": "work-campaign-group-id" },
               { "field": "work-item-group-id" }
             ]
           },
           {
             "as": "work-group-label",
             "function": "if",
-            "args": [{ "field": "work-grouped" }, { "field": "work-package" }, { "field": "work-name" }]
+            "args": [{ "field": "work-grouped" }, { "field": "work-campaign" }, { "field": "work-name" }]
           },
           {
             "as": "work-is-orchestrator",
@@ -1721,7 +1721,7 @@
       },
       {
         "name": "work-board-todo",
-        "intent": "Return Todo board cards in worker-computed package and role order.",
+        "intent": "Return Todo board cards in worker-computed campaign and role order.",
         "from": "work-project-items",
         "filter": { "predicates": [{ "field": "work-state", "equals": "todo" }] },
         "order-by": [
@@ -1732,7 +1732,7 @@
       },
       {
         "name": "work-board-in-progress",
-        "intent": "Return in-progress board cards in worker-computed package and role order.",
+        "intent": "Return in-progress board cards in worker-computed campaign and role order.",
         "from": "work-project-items",
         "filter": { "predicates": [{ "field": "work-state", "equals": "in-progress" }] },
         "order-by": [
@@ -1743,7 +1743,7 @@
       },
       {
         "name": "work-board-needs-review",
-        "intent": "Return needs-review board cards in worker-computed package and role order.",
+        "intent": "Return needs-review board cards in worker-computed campaign and role order.",
         "from": "work-project-items",
         "filter": { "predicates": [{ "field": "work-state", "equals": "needs-review" }] },
         "order-by": [
@@ -1754,7 +1754,7 @@
       },
       {
         "name": "work-board-done",
-        "intent": "Return Done board cards in worker-computed package and role order.",
+        "intent": "Return Done board cards in worker-computed campaign and role order.",
         "from": "work-project-items",
         "filter": { "predicates": [{ "field": "work-state", "equals": "done" }] },
         "order-by": [
@@ -2400,7 +2400,7 @@
               { "left": "repository", "right": "repository" },
               { "left": "workflow", "right": "workflow" }
             ],
-            "fields": [{ "field": "package", "as": "declared-package" }]
+            "fields": [{ "field": "campaign", "as": "declared-campaign" }]
           },
           {
             "source": "runs",
@@ -2420,7 +2420,7 @@
           { "field": "event-type", "as": "audit-kind" },
           { "field": "event-status" },
           { "field": "event-summary" },
-          { "field": "declared-package", "as": "package" },
+          { "field": "declared-campaign", "as": "campaign" },
           { "field": "organization" },
           { "field": "repository" },
           { "field": "workflow" },
@@ -2464,15 +2464,15 @@
               { "left": "repository", "right": "repository" },
               { "left": "workflow", "right": "workflow" }
             ],
-            "fields": [{ "field": "package", "as": "package" }]
+            "fields": [{ "field": "campaign", "as": "campaign" }]
           }
         ],
         "aggregate": {
-          "by": ["package", "workflow", "event-summary"],
+          "by": ["campaign", "workflow", "event-summary"],
           "values": [{ "field": "event", "as": "events", "reducer": "count" }]
         },
         "select": [
-          { "field": "package" },
+          { "field": "campaign" },
           { "field": "workflow" },
           { "field": "event-summary" },
           { "field": "events" }
@@ -2629,8 +2629,8 @@
       },
       {
         "name": "workflow-inventory",
-        "intent": "List declared workflows with their package, repository, configuration, and observed execution totals.",
-        "description": "Central package and repository-owned workflow inventory with observed execution totals.",
+        "intent": "List declared workflows with their campaign, repository, configuration, and observed execution totals.",
+        "description": "Central campaign and repository-owned workflow inventory with observed execution totals.",
         "from": "workflows",
         "joins": [
           {
@@ -2658,11 +2658,11 @@
           }
         ],
         "compute": [
-          { "as": "package-title", "function": "title-case", "args": [{ "field": "package" }] },
+          { "as": "campaign-title", "function": "title-case", "args": [{ "field": "campaign" }] },
           {
-            "as": "package-display-name",
+            "as": "campaign-display-name",
             "function": "coalesce",
-            "args": [{ "field": "package-name" }, { "field": "package-title" }, { "value": "Repository-owned" }]
+            "args": [{ "field": "campaign-name" }, { "field": "campaign-title" }, { "value": "Repository-owned" }]
           },
           {
             "as": "repository-slug",
@@ -2706,25 +2706,25 @@
             "args": [{ "field": "total-imported-runs" }, { "field": "total-runs" }]
           },
           { "as": "ingestion", "function": "format-percent", "args": [{ "field": "ingestion-rate" }] },
-          { "as": "encoded-package", "function": "url-encode", "args": [{ "field": "package" }] },
+          { "as": "encoded-campaign", "function": "url-encode", "args": [{ "field": "campaign" }] },
           {
-            "as": "package-dashboard-href",
+            "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
-            "as": "package-dashboard-label",
+            "as": "campaign-dashboard-label",
             "function": "concat",
-            "args": [{ "value": "View " }, { "field": "package-display-name" }, { "value": " package dashboard" }]
+            "args": [{ "value": "View " }, { "field": "campaign-display-name" }, { "value": " campaign dashboard" }]
           },
           {
-            "as": "package-dashboard-link",
+            "as": "campaign-dashboard-link",
             "function": "dashboard-link",
             "args": [
               { "field": "repository-link" },
-              { "field": "package-dashboard-href" },
-              { "field": "package-dashboard-label" },
-              { "field": "package" }
+              { "field": "campaign-dashboard-href" },
+              { "field": "campaign-dashboard-label" },
+              { "field": "campaign" }
             ]
           },
           { "as": "encoded-repository", "function": "url-encode", "args": [{ "field": "repository-slug" }] },
@@ -2776,8 +2776,8 @@
           }
         ],
         "select": [
-          { "field": "package" },
-          { "field": "package-display-name", "as": "package-name" },
+          { "field": "campaign" },
+          { "field": "campaign-display-name", "as": "campaign-name" },
           { "field": "organization" },
           { "field": "repository-slug", "as": "repository" },
           { "field": "workflow" },
@@ -2789,21 +2789,21 @@
           { "field": "total-aic", "as": "aic" },
           { "field": "total-runs", "as": "runs" },
           { "field": "ingestion" },
-          { "field": "package-dashboard-link", "as": "package-link" },
+          { "field": "campaign-dashboard-link", "as": "campaign-link" },
           { "field": "repository-dashboard-link", "as": "repository-link" },
           { "field": "workflow-dashboard-link", "as": "workflow-link" }
         ],
         "order-by": [{ "field": "repository", "direction": "asc" }, { "field": "workflow", "direction": "asc" }]
       },
       {
-        "name": "packaged-workflows",
-        "intent": "List package-owned orchestrator and worker workflows with database-backed execution totals.",
-        "description": "Package workflows projected from the canonical workflow inventory.",
+        "name": "campaign-workflows",
+        "intent": "List campaign-owned orchestrator and worker workflows with database-backed execution totals.",
+        "description": "Campaign workflows projected from the canonical workflow inventory.",
         "from": "workflow-inventory",
         "filter": { "predicates": [{ "field": "workflow-role", "in": ["orchestrator", "worker"] }] },
         "select": [
-          { "field": "package" },
-          { "field": "package-name" },
+          { "field": "campaign" },
+          { "field": "campaign-name" },
           { "field": "organization" },
           { "field": "repository" },
           { "field": "workflow" },
@@ -2817,7 +2817,7 @@
           { "field": "workflow-link" }
         ],
         "order-by": [
-          { "field": "package-name", "direction": "asc" },
+          { "field": "campaign-name", "direction": "asc" },
           { "field": "workflow-role", "direction": "asc" },
           { "field": "workflow-name", "direction": "asc" }
         ]
@@ -2904,9 +2904,9 @@
         "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "outcome-title", "direction": "asc" }]
       },
       {
-        "name": "package-reports",
-        "intent": "Project retained outcomes into package-addressable report evidence.",
-        "description": "Package outcome reports with database-backed disposition fields.",
+        "name": "campaign-reports",
+        "intent": "Project retained outcomes into campaign-addressable report evidence.",
+        "description": "Campaign outcome reports with database-backed disposition fields.",
         "from": "outcomes",
         "compute": [
           {
@@ -2916,7 +2916,7 @@
           }
         ],
         "select": [
-          { "field": "package" },
+          { "field": "campaign" },
           { "field": "safe-output" },
           { "field": "outcome-title" },
           { "field": "outcome-summary" },
@@ -2933,9 +2933,9 @@
         "order-by": [{ "field": "observed-at", "direction": "desc" }, { "field": "outcome-title", "direction": "asc" }]
       },
       {
-        "name": "package-worker-issues",
-        "intent": "Project issue outcomes created by package worker workflows.",
-        "description": "Package-addressable issue outcomes restricted to declared worker workflows.",
+        "name": "campaign-worker-issues",
+        "intent": "Project issue outcomes created by campaign worker workflows.",
+        "description": "Campaign-addressable issue outcomes restricted to declared worker workflows.",
         "from": "outcomes",
         "joins": [
           {
@@ -2956,7 +2956,7 @@
           ]
         },
         "select": [
-          { "field": "package" },
+          { "field": "campaign" },
           { "field": "safe-output" },
           { "field": "outcome-number" },
           { "field": "outcome-title" },
@@ -2973,9 +2973,9 @@
         "order-by": [{ "field": "observed-at", "direction": "desc" }]
       },
       {
-        "name": "package-runs",
-        "intent": "Project workflow runs with package attribution and retained failure evidence.",
-        "description": "Canonical workflow runs joined to their declared package and workflow identity.",
+        "name": "campaign-runs",
+        "intent": "Project workflow runs with campaign attribution and retained failure evidence.",
+        "description": "Canonical workflow runs joined to their declared campaign and workflow identity.",
         "from": "runs",
         "joins": [
           {
@@ -2987,8 +2987,8 @@
               { "left": "workflow", "right": "workflow" }
             ],
             "fields": [
-              { "field": "package", "as": "declared-package" },
-              { "field": "package-name", "as": "declared-package-name" },
+              { "field": "campaign", "as": "declared-campaign" },
+              { "field": "campaign-name", "as": "declared-campaign-name" },
               { "field": "workflow-name", "as": "declared-workflow-name" },
               { "field": "workflow-role", "as": "declared-workflow-role" }
             ]
@@ -3031,44 +3031,44 @@
             "function": "if",
             "args": [
               { "field": "is-orchestrator" },
-              { "value": "Package orchestrator" },
+              { "value": "Campaign orchestrator" },
               { "value": "Standalone workflow" }
             ]
           },
           {
             "as": "dispatch-type",
             "function": "if",
-            "args": [{ "field": "is-worker" }, { "value": "Package worker" }, { "field": "root-dispatch-type" }]
+            "args": [{ "field": "is-worker" }, { "value": "Campaign worker" }, { "field": "root-dispatch-type" }]
           },
           {
-            "as": "package-display-name",
+            "as": "campaign-display-name",
             "function": "coalesce",
-            "args": [{ "field": "declared-package-name" }, { "field": "declared-package" }]
+            "args": [{ "field": "declared-campaign-name" }, { "field": "declared-campaign" }]
           },
           {
             "as": "workflow-display-name",
             "function": "coalesce",
             "args": [{ "field": "declared-workflow-name" }, { "field": "workflow" }]
           },
-          { "as": "encoded-package", "function": "url-encode", "args": [{ "field": "declared-package" }] },
+          { "as": "encoded-campaign", "function": "url-encode", "args": [{ "field": "declared-campaign" }] },
           {
-            "as": "package-dashboard-href",
+            "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
-            "as": "package-dashboard-label",
+            "as": "campaign-dashboard-label",
             "function": "concat",
-            "args": [{ "value": "View " }, { "field": "package-display-name" }, { "value": " package dashboard" }]
+            "args": [{ "value": "View " }, { "field": "campaign-display-name" }, { "value": " campaign dashboard" }]
           },
           {
-            "as": "package-dashboard-link",
+            "as": "campaign-dashboard-link",
             "function": "dashboard-link",
             "args": [
               { "field": "repository-link" },
-              { "field": "package-dashboard-href" },
-              { "field": "package-dashboard-label" },
-              { "field": "declared-package" }
+              { "field": "campaign-dashboard-href" },
+              { "field": "campaign-dashboard-label" },
+              { "field": "declared-campaign" }
             ]
           },
           {
@@ -3126,8 +3126,8 @@
         "select": [
           { "field": "started-at" },
           { "field": "dispatch-type" },
-          { "field": "declared-package", "as": "package" },
-          { "field": "declared-package-name", "as": "package-name" },
+          { "field": "declared-campaign", "as": "campaign" },
+          { "field": "declared-campaign-name", "as": "campaign-name" },
           { "field": "declared-workflow-name", "as": "workflow-name" },
           { "field": "run" },
           { "field": "run-title" },
@@ -3140,7 +3140,7 @@
           { "field": "repository" },
           { "field": "workflow" },
           { "field": "run-link" },
-          { "field": "package-dashboard-link", "as": "package-link" },
+          { "field": "campaign-dashboard-link", "as": "campaign-link" },
           { "field": "repository-dashboard-link", "as": "repository-link" },
           { "field": "workflow-dashboard-link", "as": "workflow-link" }
         ],
@@ -3148,9 +3148,9 @@
       },
       {
         "name": "dispatches",
-        "intent": "Select workflow-dispatch runs from package-attributed workflow run evidence.",
+        "intent": "Select workflow-dispatch runs from campaign-attributed workflow run evidence.",
         "description": "Canonical workflow runs whose authoritative trigger is workflow_dispatch.",
-        "from": "package-runs",
+        "from": "campaign-runs",
         "filter": {
           "predicates": [
             { "field": "event", "equals": "workflow_dispatch" }
@@ -3159,11 +3159,11 @@
         "order-by": [{ "field": "started-at", "direction": "desc" }]
       },
       {
-        "name": "package-dispatch-totals",
-        "intent": "Summarize observed workflow dispatches for each centrally managed package.",
-        "description": "Observed workflow-dispatch run totals grouped by package.",
+        "name": "campaign-dispatch-totals",
+        "intent": "Summarize observed workflow dispatches for each centrally managed campaign.",
+        "description": "Observed workflow-dispatch run totals grouped by campaign.",
         "from": "dispatches",
-        "aggregate": { "by": ["package"], "values": [{ "field": "run", "as": "dispatches", "reducer": "distinct-count" }] }
+        "aggregate": { "by": ["campaign"], "values": [{ "field": "run", "as": "dispatches", "reducer": "distinct-count" }] }
       },
       {
         "name": "runtime-episodes",
@@ -3180,7 +3180,7 @@
               { "left": "workflow", "right": "workflow" }
             ],
             "fields": [
-              { "field": "package-name", "as": "episode-package" },
+              { "field": "campaign-name", "as": "episode-campaign" },
               { "field": "workflow-name", "as": "episode-workflow" },
               { "field": "workflow-role", "as": "episode-role" }
             ]
@@ -3212,7 +3212,7 @@
         "select": [
           { "field": "run" },
           { "field": "episode-title", "as": "run-title" },
-          { "field": "episode-package", "as": "package" },
+          { "field": "episode-campaign", "as": "campaign" },
           { "field": "episode-workflow", "as": "workflow" },
           { "field": "started-at" },
           { "field": "duration" },
@@ -3623,9 +3623,9 @@
         }
       },
       {
-        "name": "package-operational-value-totals",
-        "intent": "Summarize the operational value created by each centrally managed package.",
-        "description": "Observed operational value totals attributed to centrally managed package workflows.",
+        "name": "campaign-operational-value-totals",
+        "intent": "Summarize the operational value created by each centrally managed campaign.",
+        "description": "Observed operational value totals attributed to centrally managed campaign workflows.",
         "from": "workflow-inventory",
         "joins": [
           {
@@ -3637,18 +3637,18 @@
         ],
         "filter": { "predicates": [{ "field": "workflow-role", "in": ["orchestrator", "worker"] }] },
         "aggregate": {
-          "by": ["package"],
+          "by": ["campaign"],
           "values": [{ "field": "workflow-value-created", "as": "value-created", "reducer": "sum" }]
         }
       },
       {
-        "name": "package-workflow-totals",
-        "intent": "Summarize observed workflow and execution totals for each centrally managed package.",
-        "description": "Observed workflow, rollout, run, and AI Credit totals grouped by package.",
+        "name": "campaign-workflow-totals",
+        "intent": "Summarize observed workflow and execution totals for each centrally managed campaign.",
+        "description": "Observed workflow, rollout, run, and AI Credit totals grouped by campaign.",
         "from": "workflow-inventory",
         "filter": { "predicates": [{ "field": "workflow-role", "in": ["orchestrator", "worker"] }] },
         "aggregate": {
-          "by": ["package"],
+          "by": ["campaign"],
           "values": [
             { "field": "workflow", "as": "workflows", "reducer": "count" },
             { "field": "workflow-role", "as": "roles", "reducer": "distinct-list" },
@@ -3660,15 +3660,15 @@
         }
       },
       {
-        "name": "package-inventory",
-        "intent": "List centrally managed packages with their observed workflow and execution totals.",
-        "description": "Canonical package inventory enriched with observed workflow, rollout, run, and AI Credit totals.",
-        "from": "packages",
+        "name": "campaign-inventory",
+        "intent": "List centrally managed campaigns with their observed workflow and execution totals.",
+        "description": "Canonical campaign inventory enriched with observed workflow, rollout, run, and AI Credit totals.",
+        "from": "campaigns",
         "joins": [
           {
-            "source": "package-workflow-totals",
+            "source": "campaign-workflow-totals",
             "type": "left",
-            "on": [{ "left": "package", "right": "package" }],
+            "on": [{ "left": "campaign", "right": "campaign" }],
             "fields": [
               { "field": "workflows", "as": "observed-workflows" },
               { "field": "roles", "as": "observed-roles" },
@@ -3679,15 +3679,15 @@
             ]
           },
           {
-            "source": "package-dispatch-totals",
+            "source": "campaign-dispatch-totals",
             "type": "left",
-            "on": [{ "left": "package", "right": "package" }],
+            "on": [{ "left": "campaign", "right": "campaign" }],
             "fields": [{ "field": "dispatches", "as": "observed-dispatches" }]
           },
           {
-            "source": "package-operational-value-totals",
+            "source": "campaign-operational-value-totals",
             "type": "left",
-            "on": [{ "left": "package", "right": "package" }],
+            "on": [{ "left": "campaign", "right": "campaign" }],
             "fields": [{ "field": "value-created", "as": "value-created" }]
           }
         ],
@@ -3701,12 +3701,12 @@
           {
             "as": "modes",
             "function": "coalesce",
-            "args": [{ "field": "observed-modes" }, { "field": "package-mode" }]
+            "args": [{ "field": "observed-modes" }, { "field": "campaign-mode" }]
           },
           {
             "as": "registration",
             "function": "coalesce",
-            "args": [{ "field": "observed-registration" }, { "field": "package-registration" }]
+            "args": [{ "field": "observed-registration" }, { "field": "campaign-registration" }]
           },
           { "as": "runs", "function": "coalesce", "args": [{ "field": "observed-runs" }, { "value": 0 }] },
           {
@@ -3715,32 +3715,32 @@
             "args": [{ "field": "observed-dispatches" }, { "value": 0 }]
           },
           { "as": "aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] },
-          { "as": "encoded-package", "function": "url-encode", "args": [{ "field": "package" }] },
+          { "as": "encoded-campaign", "function": "url-encode", "args": [{ "field": "campaign" }] },
           {
-            "as": "package-dashboard-href",
+            "as": "campaign-dashboard-href",
             "function": "concat",
-            "args": [{ "value": "#page-package-detail?package=" }, { "field": "encoded-package" }]
+            "args": [{ "value": "#page-campaign-detail?campaign=" }, { "field": "encoded-campaign" }]
           },
           {
-            "as": "package-dashboard-label",
+            "as": "campaign-dashboard-label",
             "function": "concat",
-            "args": [{ "value": "View " }, { "field": "package-name" }, { "value": " package dashboard" }]
+            "args": [{ "value": "View " }, { "field": "campaign-name" }, { "value": " campaign dashboard" }]
           },
           {
-            "as": "package-dashboard-link",
+            "as": "campaign-dashboard-link",
             "function": "dashboard-link",
             "args": [
               { "value": "" },
-              { "field": "package-dashboard-href" },
-              { "field": "package-dashboard-label" },
-              { "field": "package" }
+              { "field": "campaign-dashboard-href" },
+              { "field": "campaign-dashboard-label" },
+              { "field": "campaign" }
             ]
           }
         ],
         "select": [
-          { "field": "package" },
-          { "field": "package-name" },
-          { "field": "package-dashboard-link" },
+          { "field": "campaign" },
+          { "field": "campaign-name" },
+          { "field": "campaign-dashboard-link" },
           { "field": "workflows" },
           { "field": "roles" },
           { "field": "modes" },
@@ -3750,7 +3750,7 @@
           { "field": "aic" },
           { "field": "value-created" }
         ],
-        "order-by": [{ "field": "package-name", "direction": "asc" }]
+        "order-by": [{ "field": "campaign-name", "direction": "asc" }]
       },
       {
         "name": "maintenance-repository-versions",
@@ -3919,7 +3919,7 @@
         "navigation-label": "Readiness",
         "icon": "check-circle",
         "class-name": "readiness-page",
-        "description": "Fail-closed release readiness across evidence integrity, package inventory, policy controls, and recent runtime behavior.",
+        "description": "Fail-closed release readiness across evidence integrity, campaign inventory, policy controls, and recent runtime behavior.",
         "views": [
           {
             "id": "readiness-operational-observations",
@@ -4603,7 +4603,7 @@
             {
               "id": "repositories-activity",
               "title": "Repositories",
-              "description": "Repository-local execution health and all attributed package or local-workflow outcomes.",
+              "description": "Repository-local execution health and all attributed campaign or local-workflow outcomes.",
               "data": {
                 "source": "repository-activity"
               },
@@ -4690,7 +4690,7 @@
           {
             "id": "repository-authored-workflows",
             "title": "Repository workflows",
-            "description": "All declared workflows belonging to this repository, with managed-package membership and observed execution totals.",
+            "description": "All declared workflows belonging to this repository, with managed-campaign membership and observed execution totals.",
             "data": {
               "source": "workflow-inventory",
               "route-field": "repository"
@@ -4714,9 +4714,9 @@
                   "title": "Role"
                 },
                 {
-                  "field": "package-name",
+                  "field": "campaign-name",
                   "type": "nominal",
-                  "title": "Package"
+                  "title": "Campaign"
                 },
                 {
                   "field": "rollout-mode",
@@ -5222,34 +5222,34 @@
         ]
       },
       {
-        "id": "packages",
+        "id": "campaigns",
         "kind": "built-in",
-        "page": "packages",
-        "title": "Packages",
-        "icon": "package",
-        "class-name": "packages-page",
-        "description": "Activity from centrally managed packages.",
+        "page": "campaigns",
+        "title": "Campaigns",
+        "icon": "goal",
+        "class-name": "campaigns-page",
+        "description": "Activity from centrally managed campaigns.",
         "definition": {
           "data-state": {
             "availability": true
           },
           "views": [
             {
-              "id": "packages-value-created",
-              "title": "Ops Value by package",
-              "description": "The share of observed operational value created by each centrally managed package.",
+              "id": "campaigns-value-created",
+              "title": "Ops Value by campaign",
+              "description": "The share of observed operational value created by each centrally managed campaign.",
               "data": {
-                "source": "package-inventory"
+                "source": "campaign-inventory"
               },
               "mark": "chart",
               "chart": "pie",
               "layout": "horizontal",
-              "empty-message": "No package operational value was observed in the selected horizon.",
+              "empty-message": "No campaign operational value was observed in the selected horizon.",
               "encoding": {
                 "x": {
-                  "field": "package-name",
+                  "field": "campaign-name",
                   "type": "nominal",
-                  "title": "Package"
+                  "title": "Campaign"
                 },
                 "y": {
                   "field": "value-created",
@@ -5260,34 +5260,34 @@
                   "unit": "ops-value"
                 },
                 "href": {
-                  "field": "package-dashboard-link",
+                  "field": "campaign-dashboard-link",
                   "type": "nominal"
                 }
               }
             },
             {
-              "id": "packages-inventory",
-              "title": "Packages",
-              "description": "Centrally managed package inventory and observed execution totals.",
+              "id": "campaigns-inventory",
+              "title": "Campaigns",
+              "description": "Centrally managed campaign inventory and observed execution totals.",
               "data": {
-                "source": "package-inventory"
+                "source": "campaign-inventory"
               },
               "mark": "table",
               "controls": "interactive",
               "lazy-list": true,
               "column-summaries": true,
               "layout": "full-view",
-              "empty-message": "No packages discovered.",
+              "empty-message": "No campaigns discovered.",
               "encoding": {
                 "href": {
-                  "field": "package-dashboard-link",
+                  "field": "campaign-dashboard-link",
                   "type": "nominal"
                 },
                 "columns": [
                   {
-                    "field": "package-name",
+                    "field": "campaign-name",
                     "type": "nominal",
-                    "title": "Package"
+                    "title": "Campaign"
                   },
                   {
                     "field": "workflows",
@@ -5340,41 +5340,41 @@
         }
       },
       {
-        "id": "package-insights",
+        "id": "campaign-insights",
         "kind": "custom",
-        "title": "Package",
-        "description": "Audit events observed for this package.",
+        "title": "Campaign",
+        "description": "Audit events observed for this campaign.",
         "icon": "graph",
-        "class-name": "package-insights-page",
+        "class-name": "campaign-insights-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-insights-navigation",
-            "title": "Package insights",
+            "id": "campaign-insights-navigation",
+            "title": "Campaign insights",
             "data": {
               "sources": ["workflows"]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "insights"
             }
           },
           {
-            "id": "package-audit-event-summary-buckets",
+            "id": "campaign-audit-event-summary-buckets",
             "title": "High and medium severity audit events",
-            "description": "The 20 most frequent audit-event buckets for this package, grouped by workflow and shared summary after info-level events are excluded.",
+            "description": "The 20 most frequent audit-event buckets for this campaign, grouped by workflow and shared summary after info-level events are excluded.",
             "data": {
               "source": "audit-event-summary-buckets",
-              "route-field": "package"
+              "route-field": "campaign"
             },
             "mark": "chart",
             "chart": "bar",
             "layout": "full",
-            "empty-message": "No high- or medium-severity audit events were observed for this package in the current run window.",
+            "empty-message": "No high- or medium-severity audit events were observed for this campaign in the current run window.",
             "encoding": {
               "x": {
                 "field": "workflow",
@@ -5395,18 +5395,18 @@
             }
           },
           {
-            "id": "package-audit-events-table",
+            "id": "campaign-audit-events-table",
             "title": "Audit events",
-            "description": "Observed audit events for this package ordered from newest to oldest with their audit kind, status, summary, and run context.",
+            "description": "Observed audit events for this campaign ordered from newest to oldest with their audit kind, status, summary, and run context.",
             "data": {
               "source": "audit-events",
-              "route-field": "package"
+              "route-field": "campaign"
             },
             "mark": "table",
             "controls": "interactive",
             "lazy-list": true,
             "layout": "full-view",
-            "empty-message": "No audit events were observed for this package in the current run window.",
+            "empty-message": "No audit events were observed for this campaign in the current run window.",
             "encoding": {
               "href": {
                 "field": "run-link",
@@ -5469,26 +5469,26 @@
         ]
       },
       {
-        "id": "package-detail",
+        "id": "campaign-detail",
         "kind": "custom",
-        "title": "Package",
-        "description": "Overview of this package.",
-        "icon": "package",
-        "class-name": "package-detail-page",
+        "title": "Campaign",
+        "description": "Overview of this campaign.",
+        "icon": "goal",
+        "class-name": "campaign-detail-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-overview-navigation",
-            "title": "Package overview",
+            "id": "campaign-overview-navigation",
+            "title": "Campaign overview",
             "data": {
               "sources": [
                 "workflows"
               ]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "overview"
@@ -5497,42 +5497,42 @@
         ]
       },
       {
-        "id": "package-workflows",
+        "id": "campaign-workflows",
         "kind": "custom",
-        "title": "Package",
-        "description": "Orchestrator and worker workflows in this package.",
+        "title": "Campaign",
+        "description": "Orchestrator and worker workflows in this campaign.",
         "icon": "workflow",
-        "class-name": "package-workflows-page",
+        "class-name": "campaign-workflows-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-workflow-navigation",
-            "title": "Package workflows",
+            "id": "campaign-workflow-navigation",
+            "title": "Campaign workflows",
             "data": {
               "sources": [
                 "workflows"
               ]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "workflows"
             }
           },
           {
-            "id": "package-workflow-table",
+            "id": "campaign-workflow-table",
             "disclosure-label": "Orchestrator and workers",
             "disclosure": "supplemental",
             "data": {
-              "source": "packaged-workflows",
-              "route-field": "package"
+              "source": "campaign-workflows",
+              "route-field": "campaign"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No orchestrator or worker workflows are configured for this package.",
+            "empty-message": "No orchestrator or worker workflows are configured for this campaign.",
             "encoding": {
               "href": {
                 "field": "workflow-link",
@@ -5586,23 +5586,23 @@
         ]
       },
       {
-        "id": "package-issues",
+        "id": "campaign-issues",
         "kind": "custom",
-        "title": "Package",
-        "description": "Issues generated by this package.",
+        "title": "Campaign",
+        "description": "Issues generated by this campaign.",
         "icon": "issue-opened",
-        "class-name": "package-issues-page",
+        "class-name": "campaign-issues-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-issue-status",
+            "id": "campaign-issue-status",
             "title": "Generated issue status",
-            "description": "Current disposition of retained issue outcomes generated by this package.",
+            "description": "Current disposition of retained issue outcomes generated by this campaign.",
             "data": {
-              "source": "package-worker-issues",
-              "route-field": "package"
+              "source": "campaign-worker-issues",
+              "route-field": "campaign"
             },
             "mark": "chart",
             "chart": "pie",
@@ -5622,31 +5622,31 @@
             }
           },
           {
-            "id": "package-issue-navigation",
-            "title": "Package issues",
+            "id": "campaign-issue-navigation",
+            "title": "Campaign issues",
             "data": {
               "sources": ["workflows"]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "issues"
             }
           },
           {
-            "id": "package-issue-table",
+            "id": "campaign-issue-table",
             "title": "Generated issues",
             "data": {
-              "source": "package-worker-issues",
-              "route-field": "package",
+              "source": "campaign-worker-issues",
+              "route-field": "campaign",
               "order-by": [
                 { "field": "observed-at", "direction": "desc" }
               ]
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No generated issues have been attributed to this package.",
+            "empty-message": "No generated issues have been attributed to this campaign.",
             "encoding": {
               "columns": [
                 {
@@ -5679,23 +5679,23 @@
         ]
       },
       {
-        "id": "package-pull-requests",
+        "id": "campaign-pull-requests",
         "kind": "custom",
-        "title": "Package",
-        "description": "Pull requests generated by this package.",
+        "title": "Campaign",
+        "description": "Pull requests generated by this campaign.",
         "icon": "git-pull-request",
-        "class-name": "package-pull-requests-page",
+        "class-name": "campaign-pull-requests-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-pull-request-status",
+            "id": "campaign-pull-request-status",
             "title": "Generated pull request status",
-            "description": "Current disposition of retained pull-request outcomes generated by this package.",
+            "description": "Current disposition of retained pull-request outcomes generated by this campaign.",
             "data": {
               "source": "outcomes",
-              "route-field": "package",
+              "route-field": "campaign",
               "filters": {
                 "outcome-category": ["pull-request"]
               }
@@ -5718,24 +5718,24 @@
             }
           },
           {
-            "id": "package-pull-request-navigation",
-            "title": "Package pull requests",
+            "id": "campaign-pull-request-navigation",
+            "title": "Campaign pull requests",
             "data": {
               "sources": ["workflows"]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "pull-requests"
             }
           },
           {
-            "id": "package-pull-request-table",
+            "id": "campaign-pull-request-table",
             "title": "Generated pull requests",
             "data": {
               "source": "outcomes",
-              "route-field": "package",
+              "route-field": "campaign",
               "filters": {
                 "outcome-category": ["pull-request"]
               },
@@ -5745,7 +5745,7 @@
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No generated pull requests have been attributed to this package.",
+            "empty-message": "No generated pull requests have been attributed to this campaign.",
             "encoding": {
               "columns": [
                 {
@@ -5778,43 +5778,43 @@
         ]
       },
       {
-        "id": "package-runs",
+        "id": "campaign-runs",
         "kind": "custom",
-        "title": "Package",
-        "description": "Workflow runs for this package.",
+        "title": "Campaign",
+        "description": "Workflow runs for this campaign.",
         "icon": "play",
-        "class-name": "package-runs-page",
+        "class-name": "campaign-runs-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-run-navigation",
-            "title": "Package workflow runs",
+            "id": "campaign-run-navigation",
+            "title": "Campaign workflow runs",
             "data": {
               "sources": [
                 "workflows"
               ]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "runs"
             }
           },
           {
-            "id": "package-run-status",
+            "id": "campaign-run-status",
             "title": "Workflow run status",
-            "description": "Observed workflow conclusions provide the package's leading execution signal.",
+            "description": "Observed workflow conclusions provide the campaign's leading execution signal.",
             "data": {
-              "source": "package-runs",
-              "route-field": "package"
+              "source": "campaign-runs",
+              "route-field": "campaign"
             },
             "mark": "chart",
             "chart": "pie",
             "layout": "full",
-            "empty-message": "No workflow runs were observed for this package in the current run window.",
+            "empty-message": "No workflow runs were observed for this campaign in the current run window.",
             "encoding": {
               "x": {
                 "field": "status",
@@ -5830,12 +5830,12 @@
             }
           },
           {
-            "id": "package-failure-reason-distribution",
+            "id": "campaign-failure-reason-distribution",
             "title": "Why these dispatches failed",
             "description": "Grouped by the strongest failure reason retained for each dispatch. Select a reason in the table below to open its GitHub Actions evidence.",
             "data": {
               "source": "dispatches",
-              "route-field": "package",
+              "route-field": "campaign",
               "filters": {
                 "status": [
                   "failure",
@@ -5853,7 +5853,7 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
+            "empty-message": "No failed workflow dispatch runs were observed for this campaign in the current run window.",
             "encoding": {
               "x": {
                 "field": "status-detail",
@@ -5870,12 +5870,12 @@
             "layout": "full"
           },
           {
-            "id": "package-failed-dispatch-table",
+            "id": "campaign-failed-dispatch-table",
             "disclosure-label": "Failed dispatches",
             "description": "Failure reasons first. Open a reason for the GitHub Actions run, or copy a debug prompt with retained context.",
             "data": {
               "source": "dispatches",
-              "route-field": "package",
+              "route-field": "campaign",
               "filters": {
                 "status": [
                   "failure",
@@ -5888,7 +5888,7 @@
             "mark": "table",
             "disclosure": "supplemental",
             "controls": "interactive",
-            "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
+            "empty-message": "No failed workflow dispatch runs were observed for this campaign in the current run window.",
             "encoding": {
               "href": {
                 "field": "run-link",
@@ -5930,7 +5930,7 @@
                   "icon": "search",
                   "label": "Review debug prompt",
                   "context": [
-                    "package",
+                    "campaign",
                     "status",
                     "status-detail",
                     "started-at",
@@ -5945,17 +5945,17 @@
             "layout": "full"
           },
           {
-            "id": "package-run-table",
+            "id": "campaign-run-table",
             "disclosure-label": "All workflow runs",
             "disclosure": "supplemental",
-            "description": "Workflow runs attributed to this package, ordered newest first.",
+            "description": "Workflow runs attributed to this campaign, ordered newest first.",
             "data": {
-              "source": "package-runs",
-              "route-field": "package"
+              "source": "campaign-runs",
+              "route-field": "campaign"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No workflow runs were observed for this package in the current run window.",
+            "empty-message": "No workflow runs were observed for this campaign in the current run window.",
             "encoding": {
               "href": {
                 "field": "run-link",
@@ -6007,23 +6007,23 @@
         ]
       },
       {
-        "id": "package-dispatches",
+        "id": "campaign-dispatches",
         "kind": "custom",
-        "title": "Package",
-        "description": "Workflow dispatch runs for this package.",
+        "title": "Campaign",
+        "description": "Workflow dispatch runs for this campaign.",
         "icon": "play",
-        "class-name": "package-runs-page",
+        "class-name": "campaign-runs-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-dispatch-compatibility-status",
+            "id": "campaign-dispatch-compatibility-status",
             "title": "Workflow dispatch status",
-            "description": "Observed workflow-dispatch conclusions for this package.",
+            "description": "Observed workflow-dispatch conclusions for this campaign.",
             "data": {
               "source": "dispatches",
-              "route-field": "package"
+              "route-field": "campaign"
             },
             "mark": "chart",
             "chart": "pie",
@@ -6043,28 +6043,28 @@
             }
           },
           {
-            "id": "package-dispatch-compatibility-navigation",
-            "title": "Package workflow runs",
+            "id": "campaign-dispatch-compatibility-navigation",
+            "title": "Campaign workflow runs",
             "data": {
               "sources": ["workflows"]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "dispatches"
             }
           },
           {
-            "id": "package-dispatch-compatibility-table",
+            "id": "campaign-dispatch-compatibility-table",
             "title": "Workflow dispatches",
             "data": {
               "source": "dispatches",
-              "route-field": "package"
+              "route-field": "campaign"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No workflow dispatch runs were observed for this package.",
+            "empty-message": "No workflow dispatch runs were observed for this campaign.",
             "encoding": {
               "href": {
                 "field": "run-link",
@@ -6095,23 +6095,23 @@
         ]
       },
       {
-        "id": "package-repositories",
+        "id": "campaign-repositories",
         "kind": "custom",
-        "title": "Package",
-        "description": "Repositories associated with this package.",
+        "title": "Campaign",
+        "description": "Repositories associated with this campaign.",
         "icon": "repo",
-        "class-name": "package-repositories-page",
+        "class-name": "campaign-repositories-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-repository-workflows",
+            "id": "campaign-repository-workflows",
             "title": "Workflows by repository",
-            "description": "Distribution of package workflows across associated repositories.",
+            "description": "Distribution of campaign workflows across associated repositories.",
             "data": {
-              "source": "packaged-workflows",
-              "route-field": "package"
+              "source": "campaign-workflows",
+              "route-field": "campaign"
             },
             "mark": "chart",
             "chart": "pie",
@@ -6135,24 +6135,24 @@
             }
           },
           {
-            "id": "package-repository-navigation",
-            "title": "Package repositories",
+            "id": "campaign-repository-navigation",
+            "title": "Campaign repositories",
             "data": {
               "sources": ["workflows"]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "repositories"
             }
           },
           {
-            "id": "package-repository-table",
+            "id": "campaign-repository-table",
             "title": "Associated repositories",
             "data": {
-              "source": "packaged-workflows",
-              "route-field": "package",
+              "source": "campaign-workflows",
+              "route-field": "campaign",
               "order-by": [
                 { "field": "repository", "direction": "asc" },
                 { "field": "workflow-name", "direction": "asc" }
@@ -6160,7 +6160,7 @@
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No repositories are associated with this package.",
+            "empty-message": "No repositories are associated with this campaign.",
             "encoding": {
               "href": {
                 "field": "repository-link",
@@ -6197,23 +6197,23 @@
         ]
       },
       {
-        "id": "package-reports",
+        "id": "campaign-reports",
         "kind": "custom",
-        "title": "Package",
-        "description": "Durable reports produced by this package.",
-        "icon": "package",
-        "class-name": "package-reports-page",
+        "title": "Campaign",
+        "description": "Durable reports produced by this campaign.",
+        "icon": "goal",
+        "class-name": "campaign-reports-page",
         "route": {
-          "hash-query-parameter": "package"
+          "hash-query-parameter": "campaign"
         },
         "views": [
           {
-            "id": "package-report-status",
+            "id": "campaign-report-status",
             "title": "Report status",
-            "description": "The disposition of durable outputs is the leading outcome signal for this package.",
+            "description": "The disposition of durable outputs is the leading outcome signal for this campaign.",
             "data": {
-              "source": "package-reports",
-              "route-field": "package"
+              "source": "campaign-reports",
+              "route-field": "campaign"
             },
             "mark": "chart",
             "chart": "pie",
@@ -6233,31 +6233,31 @@
             }
           },
           {
-            "id": "package-report-navigation",
-            "title": "Package reports",
+            "id": "campaign-report-navigation",
+            "title": "Campaign reports",
             "data": {
               "sources": [
                 "workflows"
               ]
             },
             "mark": "element",
-            "element": "package-route",
+            "element": "campaign-route",
             "layout": "full",
             "config": {
               "body": "reports"
             }
           },
           {
-            "id": "package-report-table",
+            "id": "campaign-report-table",
             "disclosure-label": "Reports",
             "disclosure": "supplemental",
             "data": {
-              "source": "package-reports",
-              "route-field": "package"
+              "source": "campaign-reports",
+              "route-field": "campaign"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No reports have been attributed to this package.",
+            "empty-message": "No reports have been attributed to this campaign.",
             "encoding": {
               "columns": [
                 {
@@ -6301,7 +6301,7 @@
         "page": "workflows",
         "title": "Workflows",
         "icon": "workflow",
-        "description": "Inspect declared central package and repository-owned workflow relationships. This inventory does not assert that a dispatch occurred.",
+        "description": "Inspect declared central campaign and repository-owned workflow relationships. This inventory does not assert that a dispatch occurred.",
         "definition": {
           "data-state": {
             "availability": true
@@ -6402,9 +6402,9 @@
                     "display": "repository-link"
                   },
                   {
-                    "field": "package-name",
+                    "field": "campaign-name",
                     "type": "nominal",
-                    "title": "Package"
+                    "title": "Campaign"
                   },
                   {
                     "field": "workflow-role",
@@ -6471,9 +6471,9 @@
                   "title": "Run"
                 },
                 {
-                  "field": "package",
+                  "field": "campaign",
                   "type": "nominal",
-                  "title": "Package"
+                  "title": "Campaign"
                 },
                 {
                   "field": "workflow",
@@ -6971,7 +6971,7 @@
         "description": "Workflow dispatch events retained from configured repositories.",
         "views": [
           {
-            "id": "package-worker-dispatches",
+            "id": "campaign-worker-dispatches",
             "description": "Runs whose authoritative GitHub Actions trigger is workflow_dispatch, ordered newest first.",
             "data": {
               "source": "dispatches"
@@ -6996,9 +6996,9 @@
                   "title": "Type"
                 },
                 {
-                  "field": "package-name",
+                  "field": "campaign-name",
                   "type": "nominal",
-                  "title": "Package"
+                  "title": "Campaign"
                 },
                 {
                   "field": "workflow-name",
@@ -7654,7 +7654,7 @@
             "description": "Inspect and manage records retained in this browser.",
             "data": {
               "sources": [
-                "database-package-count",
+                "database-campaign-count",
                 "database-repository-count",
                 "database-workflow-count",
                 "database-run-count",
@@ -7838,24 +7838,24 @@
         "navigation-label": "Value",
         "icon": "beaker",
         "class-name": "value-page",
-        "description": "Operational value created by centrally managed packages.",
+        "description": "Operational value created by centrally managed campaigns.",
         "views": [
           {
-            "id": "operational-value-by-package",
-            "title": "Operational value by package",
-            "description": "The share of observed operational value created by each centrally managed package.",
+            "id": "operational-value-by-campaign",
+            "title": "Operational value by campaign",
+            "description": "The share of observed operational value created by each centrally managed campaign.",
             "data": {
-              "source": "package-inventory"
+              "source": "campaign-inventory"
             },
             "mark": "chart",
             "chart": "pie",
             "layout": "horizontal",
-            "empty-message": "No package operational value was observed in the selected horizon.",
+            "empty-message": "No campaign operational value was observed in the selected horizon.",
             "encoding": {
               "x": {
-                "field": "package-name",
+                "field": "campaign-name",
                 "type": "nominal",
-                "title": "Package"
+                "title": "Campaign"
               },
               "y": {
                 "field": "value-created",
@@ -7868,24 +7868,24 @@
             }
           },
           {
-            "id": "operational-value-packages",
-            "title": "Packages",
-            "description": "Observed operational value created by each centrally managed package.",
+            "id": "operational-value-campaigns",
+            "title": "Campaigns",
+            "description": "Observed operational value created by each centrally managed campaign.",
             "data": {
-              "source": "package-inventory"
+              "source": "campaign-inventory"
             },
             "mark": "table",
             "controls": "interactive",
             "lazy-list": true,
             "column-summaries": true,
             "layout": "full-view",
-            "empty-message": "No package operational value was observed in the selected horizon.",
+            "empty-message": "No campaign operational value was observed in the selected horizon.",
             "encoding": {
               "columns": [
                 {
-                  "field": "package-name",
+                  "field": "campaign-name",
                   "type": "nominal",
-                  "title": "Package"
+                  "title": "Campaign"
                 },
                 {
                   "field": "value-created",
@@ -8166,17 +8166,17 @@
         "kind": "custom",
         "title": "Maintenance",
         "icon": "workflow",
-        "description": "Update installed packages and upgrade repository compiler versions.",
+        "description": "Update installed campaigns and upgrade repository compiler versions.",
         "views": [
           {
-            "id": "package-updates",
-            "title": "Packages",
-            "description": "Update installed packages when a newer package revision is available.",
+            "id": "campaign-updates",
+            "title": "Campaigns",
+            "description": "Update installed campaigns when a newer campaign revision is available.",
             "data": {
-              "source": "packages",
+              "source": "campaigns",
               "order-by": [
                 {
-                  "field": "package-name",
+                  "field": "campaign-name",
                   "direction": "asc"
                 }
               ]
@@ -8184,29 +8184,29 @@
             "mark": "list",
             "list": {
               "style": "cards",
-              "icon": "package",
+              "icon": "goal",
               "action": "update-repository"
             },
-            "empty-message": "No installed packages were discovered.",
+            "empty-message": "No installed campaigns were discovered.",
             "encoding": {
               "columns": [
                 {
-                  "field": "package-name",
+                  "field": "campaign-name",
                   "type": "nominal",
-                  "title": "Package"
+                  "title": "Campaign"
                 },
                 {
-                  "field": "package-version",
+                  "field": "campaign-version",
                   "type": "nominal",
                   "title": "Installed"
                 },
                 {
-                  "field": "package-current-version",
+                  "field": "campaign-current-version",
                   "type": "nominal",
                   "title": "Latest"
                 },
                 {
-                  "field": "package-mode",
+                  "field": "campaign-mode",
                   "type": "nominal",
                   "title": "Mode",
                   "display": "status"
@@ -8214,60 +8214,60 @@
               ],
               "actions": [
                 {
-                  "action": "update-package",
+                  "action": "update-campaign",
                   "presentation": "cli-action",
                   "icon": "sync",
                   "label": "Update",
                   "context": [
-                    "package"
+                    "campaign"
                   ],
                   "when": {
-                    "field": "package-update-state",
+                    "field": "campaign-update-state",
                     "equals": "update-available"
                   }
                 },
                 {
-                  "action": "set-package-live",
+                  "action": "set-campaign-live",
                   "presentation": "cli-action",
                   "icon": "play",
                   "label": "Switch to live",
                   "context": [
-                    "package"
+                    "campaign"
                   ],
                   "when": {
-                    "field": "package-mode",
+                    "field": "campaign-mode",
                     "equals": "review"
                   }
                 },
                 {
-                  "action": "set-package-preview",
+                  "action": "set-campaign-preview",
                   "presentation": "cli-action",
                   "icon": "eye",
                   "label": "Switch to preview",
                   "context": [
-                    "package"
+                    "campaign"
                   ],
                   "when": {
-                    "field": "package-mode",
+                    "field": "campaign-mode",
                     "equals": "live"
                   }
                 },
                 {
-                  "action": "enable-package",
+                  "action": "enable-campaign",
                   "presentation": "cli-action",
                   "icon": "play",
                   "label": "Enable",
                   "context": [
-                    "package"
+                    "campaign"
                   ]
                 },
                 {
-                  "action": "disable-package",
+                  "action": "disable-campaign",
                   "presentation": "cli-action",
                   "icon": "stop",
                   "label": "Disable",
                   "context": [
-                    "package"
+                    "campaign"
                   ]
                 }
               ]
@@ -8368,9 +8368,9 @@
                   "title": "Observed"
                 },
                 {
-                  "field": "package",
+                  "field": "campaign",
                   "type": "nominal",
-                  "title": "Package"
+                  "title": "Campaign"
                 },
                 {
                   "field": "workflow-role",
@@ -8464,7 +8464,7 @@
         "kind": "custom",
         "title": "Preview",
         "icon": "issue-opened",
-        "description": "Current report issues attributed to the worker workflows and packages that produced them.",
+        "description": "Current report issues attributed to the worker workflows and campaigns that produced them.",
         "views": [
           {
             "id": "preview-issue-ledger",
@@ -8488,9 +8488,9 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "package",
+                  "field": "campaign",
                   "type": "nominal",
-                  "title": "Package"
+                  "title": "Campaign"
                 },
                 {
                   "field": "workflow-name",
@@ -8912,13 +8912,13 @@
         "navigation-label": "Operations",
         "icon": "sparkles-fill",
         "class-name": "dashboard-next-agents-page",
-        "description": "Browse operation packages, standalone workflows, and their runtime health.",
+        "description": "Browse operation campaigns, standalone workflows, and their runtime health.",
         "views": [
           {
             "id": "agents-marketplace",
             "locked": true,
             "title": "Operations",
-            "description": "Operation packages and standalone workflows with ownership, membership, and declared workflow state.",
+            "description": "Operation campaigns and standalone workflows with ownership, membership, and declared workflow state.",
             "data": {
               "source": "marketplace-operations"
             },
@@ -8933,7 +8933,7 @@
                 "field": "operation-link"
               }
             },
-            "empty-message": "No operation packages or standalone workflows are available in the selected scope.",
+            "empty-message": "No operation campaigns or standalone workflows are available in the selected scope.",
             "layout": "full",
             "encoding": {
               "columns": [
@@ -9000,7 +9000,7 @@
         "pages": [
           "overview",
           "repositories",
-          "packages",
+          "campaigns",
           "configuration"
         ]
       },

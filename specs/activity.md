@@ -77,8 +77,8 @@ resolved into the allowed collection scope, the publisher MAY enumerate the
 GitHub Actions workflow registry to obtain authoritative workflow path, display
 name, active or disabled state, stable link, and native identifier evidence.
 Repository-owned workflows discovered this way MUST remain standalone runtime
-inventory and MUST NOT be attributed to a CAO package, registered as a package
-worker, or treated as rollout authority. Package ownership and admission
+inventory and MUST NOT be attributed to a CAO campaign, registered as a campaign
+worker, or treated as rollout authority. Campaign ownership and admission
 evidence remain bounded to declarations in the checked-out control repository.
 
 Registry enumeration MUST be paginated and report availability, completeness,
@@ -100,7 +100,7 @@ for the completed run and attempt rather than an unspecified latest snapshot.
 
 The snapshot consists of the JSONL produced by `gh aw logs`, compact
 run-information shards, detailed record shards, and rebuildable projections.
-Run-information shards MUST contain only Package, Repository, Workflow, and Run
+Run-information shards MUST contain only Campaign, Repository, Workflow, and Run
 records. Record shards MUST contain only Domain, Tool, Audit, and Issue records.
 Every record-shard transport record MUST carry its canonical Run identity.
 

@@ -203,7 +203,7 @@ test('issue card labels stay compact with centered text and balanced padding', a
   expect(Math.abs(centers.textY - centers.labelY)).toBeLessThanOrEqual(1);
 });
 
-test('package card actions wrap together on narrow screens', async ({ page }) => {
+test('campaign card actions wrap together on narrow screens', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(async (moduleUrls) => {
     const [stylesUrl, dataViewUrl, cliActionsUrl] = moduleUrls;
@@ -214,29 +214,29 @@ test('package card actions wrap together on narrow screens', async ({ page }) =>
     ]);
     document.head.append(Object.assign(document.createElement('style'), { textContent: getPrimerStyles() }));
     setDeclaredCliActions([
-      { id: 'update', label: 'Update', icon: 'sync', command: 'gh aw update {{package}}', placement: 'row' },
-      { id: 'live', label: 'Switch to live', icon: 'play', command: 'gh aw mode live {{package}}', placement: 'row' },
-      { id: 'enable', label: 'Enable', icon: 'play', command: 'gh aw enable {{package}}', placement: 'row' },
-      { id: 'disable', label: 'Disable', icon: 'stop', command: 'gh aw disable {{package}}', placement: 'row' }
+      { id: 'update', label: 'Update', icon: 'sync', command: 'gh aw update {{campaign}}', placement: 'row' },
+      { id: 'live', label: 'Switch to live', icon: 'play', command: 'gh aw mode live {{campaign}}', placement: 'row' },
+      { id: 'enable', label: 'Enable', icon: 'play', command: 'gh aw enable {{campaign}}', placement: 'row' },
+      { id: 'disable', label: 'Disable', icon: 'stop', command: 'gh aw disable {{campaign}}', placement: 'row' }
     ], { canExecute: false });
     const view = renderDataView('list', {
       pageId: 'maintenance',
-      title: 'Packages',
+      title: 'Campaigns',
       view: {
         mark: 'list',
-        list: { style: 'cards', icon: 'package' },
+        list: { style: 'cards', icon: 'goal' },
         encoding: {
-          columns: [{ field: 'package-name', title: 'Package' }],
+          columns: [{ field: 'campaign-name', title: 'Campaign' }],
           actions: [
-            { action: 'update', presentation: 'cli-action', icon: 'sync', label: 'Update', context: ['package'] },
-            { action: 'live', presentation: 'cli-action', icon: 'play', label: 'Switch to live', context: ['package'] },
-            { action: 'enable', presentation: 'cli-action', icon: 'play', label: 'Enable', context: ['package'] },
-            { action: 'disable', presentation: 'cli-action', icon: 'stop', label: 'Disable', context: ['package'] }
+            { action: 'update', presentation: 'cli-action', icon: 'sync', label: 'Update', context: ['campaign'] },
+            { action: 'live', presentation: 'cli-action', icon: 'play', label: 'Switch to live', context: ['campaign'] },
+            { action: 'enable', presentation: 'cli-action', icon: 'play', label: 'Enable', context: ['campaign'] },
+            { action: 'disable', presentation: 'cli-action', icon: 'stop', label: 'Disable', context: ['campaign'] }
           ]
         }
       },
-      sourceName: 'packages',
-      rows: [{ package: 'aw-optimization', 'package-name': 'AW Optimization' }],
+      sourceName: 'campaigns',
+      rows: [{ campaign: 'aw-optimization', 'campaign-name': 'AW Optimization' }],
       metadata: { 'source-id': 'fixture', 'source-kind': 'fixture', 'as-of': '2026-09-18T00:00:00Z', 'retrieved-at': '2026-09-18T00:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
       contextDetails: [],
       headingTag: 'h3',
@@ -261,7 +261,7 @@ test('package card actions wrap together on narrow screens', async ({ page }) =>
   ]);
   expect(actionsBox).not.toBeNull();
   expect(controlBox).not.toBeNull();
-  if (actionsBox === null || controlBox === null) throw new Error('Expected visible package actions.');
+  if (actionsBox === null || controlBox === null) throw new Error('Expected visible campaign actions.');
   const maxWrappedRows = 2;
   const actionGap = 6;
   expect(actionsBox.height).toBeLessThanOrEqual(controlBox.height * maxWrappedRows + actionGap);
@@ -738,7 +738,7 @@ test('Transactions includes local database controls and a responsive transaction
           rows: [{ document: { version: 1 }, raw: '{"version":1}', diagnostics: [] }],
           metadata
         },
-        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
+        'database-campaign-count': { source: 'database-campaign-count', rows: [{ campaigns: 2 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
@@ -1317,8 +1317,8 @@ test('control-plane readiness presents operational evidence in one lazy table', 
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'inventory-ready': true },
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'workflow-active': 'true', 'inventory-ready': true }
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'inventory-ready': true },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'workflow-active': 'true', 'inventory-ready': true }
           ],
           metadata
         },
@@ -1567,7 +1567,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
           rows: [{ document: { version: 1 }, raw: '', diagnostics: [] }],
           metadata
         },
-        'database-package-count': { source: 'database-package-count', rows: [{ packages: 2 }], metadata },
+        'database-campaign-count': { source: 'database-campaign-count', rows: [{ campaigns: 2 }], metadata },
         'database-repository-count': { source: 'database-repository-count', rows: [{ repositories: 3 }], metadata },
         'database-workflow-count': { source: 'database-workflow-count', rows: [{ workflows: 5 }], metadata },
         'database-run-count': { source: 'database-run-count', rows: [{ runs: 8 }], metadata },
@@ -1815,12 +1815,12 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').first();
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages', 'Settings']);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Campaigns', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Models & Agents', 'Firewall', 'MCPs']);
   await expect(experimental.locator('[data-nav-page-id="events"]')).toHaveCount(1);
-  await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
+  await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Campaigns/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
   await expect(page.locator('.refresh-button')).toHaveCount(0);
@@ -2048,10 +2048,10 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
           source: 'work-items',
           metadata,
           rows: [
-            { 'work-item-id': 'todo', name: 'Prepare rollout', owner: 'operations', package: 'release', scope: 'github/cao', 'lifecycle-state': 'waiting', 'started-at': '2026-08-30T09:00:00Z' },
-            { 'work-item-id': 'active', name: 'Run validation', owner: 'automation', package: 'checks', scope: 'github/cao', 'lifecycle-state': 'active', 'started-at': '2026-09-02T09:00:00Z' },
-            { 'work-item-id': 'review', name: 'Review evidence', owner: 'security', package: 'review', scope: 'github/cao', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision', 'started-at': '2026-09-03T09:00:00Z' },
-            { 'work-item-id': 'done', name: 'Publish result', owner: 'operations', package: 'release', scope: 'github/cao', 'lifecycle-state': 'completed', 'started-at': '2026-09-04T09:00:00Z', 'ended-at': '2026-09-04T10:00:00Z' }
+            { 'work-item-id': 'todo', name: 'Prepare rollout', owner: 'operations', campaign: 'release', scope: 'github/cao', 'lifecycle-state': 'waiting', 'started-at': '2026-08-30T09:00:00Z' },
+            { 'work-item-id': 'active', name: 'Run validation', owner: 'automation', campaign: 'checks', scope: 'github/cao', 'lifecycle-state': 'active', 'started-at': '2026-09-02T09:00:00Z' },
+            { 'work-item-id': 'review', name: 'Review evidence', owner: 'security', campaign: 'review', scope: 'github/cao', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision', 'started-at': '2026-09-03T09:00:00Z' },
+            { 'work-item-id': 'done', name: 'Publish result', owner: 'operations', campaign: 'release', scope: 'github/cao', 'lifecycle-state': 'completed', 'started-at': '2026-09-04T09:00:00Z', 'ended-at': '2026-09-04T10:00:00Z' }
           ]
         }
       };
@@ -2399,8 +2399,8 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'workflow-role': 'orchestrator', workflow: '.github/workflows/daily.yml', 'workflow-active': 'true', 'rollout-mode': 'review', 'package-rollout-percent': 100, 'package-targets': [{ repository: 'github/gh-aw', mode: 'live' }, { repository: 'github/gh-aw-firewall', mode: 'review' }, { repository: 'github/gh-aw-mcpg', mode: 'review' }, { repository: 'github/gh-aw-actions', mode: 'review' }, { repository: 'github/gh-aw-threat-detection', mode: 'review' }, { repository: 'githubnext/gh-aw-workshop', mode: 'review' }], 'max-ai-credits': 10, 'observed-at': '2026-08-29T09:00:00Z' },
-            { organization: 'github', repository: 'gh-aw-cao', package: 'daily-ops', 'package-name': 'Daily Ops', 'workflow-role': 'worker', workflow: '.github/workflows/review.yml', 'workflow-active': 'false', 'rollout-mode': 'review', 'max-ai-credits': 20, 'observed-at': '2026-08-29T09:05:00Z' }
+            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'workflow-role': 'orchestrator', workflow: '.github/workflows/daily.yml', 'workflow-active': 'true', 'rollout-mode': 'review', 'campaign-rollout-percent': 100, 'campaign-targets': [{ repository: 'github/gh-aw', mode: 'live' }, { repository: 'github/gh-aw-firewall', mode: 'review' }, { repository: 'github/gh-aw-mcpg', mode: 'review' }, { repository: 'github/gh-aw-actions', mode: 'review' }, { repository: 'github/gh-aw-threat-detection', mode: 'review' }, { repository: 'githubnext/gh-aw-workshop', mode: 'review' }], 'max-ai-credits': 10, 'observed-at': '2026-08-29T09:00:00Z' },
+            { organization: 'github', repository: 'gh-aw-cao', campaign: 'daily-ops', 'campaign-name': 'Daily Ops', 'workflow-role': 'worker', workflow: '.github/workflows/review.yml', 'workflow-active': 'false', 'rollout-mode': 'review', 'max-ai-credits': 20, 'observed-at': '2026-08-29T09:05:00Z' }
           ],
           metadata: {
             'source-id': 'workflows-fixture',
@@ -2432,7 +2432,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
         outcomes: {
           source: 'outcomes',
           rows: [
-            { package: 'daily-ops', 'runtime-repository': 'github/gh-aw-cao', run: '1001', 'safe-output': 'daily-output-1', 'outcome-state': 'accepted', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:10:00Z' }
+            { campaign: 'daily-ops', 'runtime-repository': 'github/gh-aw-cao', run: '1001', 'safe-output': 'daily-output-1', 'outcome-state': 'accepted', 'rollout-mode': 'live', 'observed-at': '2026-08-29T10:10:00Z' }
           ],
           metadata: {
             'source-id': 'outcomes-fixture',
@@ -2580,7 +2580,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
     '#page-cost'
   ]);
   await expect(page.locator('.overview-method-note')).toContainText('State key:');
-  await expect(page.locator('.overview-page .overview-package-status')).toHaveCount(0);
+  await expect(page.locator('.overview-page .overview-campaign-status')).toHaveCount(0);
   await expect(page.locator('[data-page-id="overview"] .data-state-summary')).toBeHidden();
 
   await page.setViewportSize({ width: 400, height: 900 });
@@ -2617,7 +2617,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
         availability: 'available'
       };
       const emptySource = (source) => ({ source, rows: [], metadata });
-      const packages = ['EU CRA', 'Repository Ops', 'AW Optimization'];
+      const campaigns = ['EU CRA', 'Repository Ops', 'AW Optimization'];
       const roles = ['orchestrator', 'worker'];
       const modes = ['review', 'live', 'staged'];
       const sources = {
@@ -2626,7 +2626,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
           rows: Array.from({ length: 100 }, (_, index) => ({
             organization: 'githubnext',
             repository: \`repository-\${index + 1}\`,
-            package: packages[index % packages.length],
+            campaign: campaigns[index % campaigns.length],
             role: roles[index % roles.length],
             mode: modes[index % modes.length]
           })),
@@ -2679,7 +2679,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
                 columns: [
                   { field: 'organization', type: 'nominal' },
                   { field: 'repository', type: 'nominal' },
-                  { field: 'package', type: 'nominal' },
+                  { field: 'campaign', type: 'nominal' },
                   { field: 'role', type: 'nominal' },
                   { field: 'mode', type: 'nominal' }
                 ]
@@ -3092,21 +3092,21 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   await expect(legend).toBeVisible();
 });
 
-test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory, and package activity in browser', async ({ page }) => {
+test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory, and campaign activity in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const queryDefinitions = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8')).dashboard.queries;
   const operationalValuePage = authoritativeDashboard.dashboard.pages.find(
     (/** @type {{ id?: string }} */ candidate) => candidate.id === 'operational-value'
   );
-  const packageInsightsPage = authoritativeDashboard.dashboard.pages.find(
-    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'package-insights'
+  const campaignInsightsPage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-insights'
   );
-  const packageIssuesPage = authoritativeDashboard.dashboard.pages.find(
-    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'package-issues'
+  const campaignIssuesPage = authoritativeDashboard.dashboard.pages.find(
+    (/** @type {{ id?: string }} */ candidate) => candidate.id === 'campaign-issues'
   );
   assert(operationalValuePage, 'Missing operational value page');
-  assert(packageInsightsPage, 'Missing package insights page');
-  assert(packageIssuesPage, 'Missing package issues page');
+  assert(campaignInsightsPage, 'Missing campaign insights page');
+  assert(campaignIssuesPage, 'Missing campaign issues page');
 
   await page.setContent(`
     <div id="root"></div>
@@ -3120,16 +3120,16 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
         JSON.stringify({ range: 'all' })
       );
       setDeclaredCliActions([{
-        id: 'update-package',
-        label: 'Update package',
-        description: "Update this package's agentic workflow.",
+        id: 'update-campaign',
+        label: 'Update campaign',
+        description: "Update this campaign's agentic workflow.",
         icon: 'sync',
-        command: 'gh aw update {{package}}',
+        command: 'gh aw update {{campaign}}',
         placement: 'row'
       }], { canExecute: false });
 
       const metadata = {
-        'source-id': 'packages-fixture',
+        'source-id': 'campaigns-fixture',
         'source-kind': 'fixture',
         'as-of': '2026-09-14T16:00:00Z',
         'retrieved-at': '2026-09-14T16:01:00Z',
@@ -3140,51 +3140,51 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
       const documentModel = {
         languageVersion: '0.1.0',
         dashboard: {
-          id: 'packages-render',
+          id: 'campaigns-render',
           title: 'Central Agentic Ops',
           queries: ${JSON.stringify(queryDefinitions)},
           pages: [
-            ${JSON.stringify(builtInPage('packages', {
-              id: 'packages',
-              title: 'Packages',
-              description: 'Activity from centrally managed packages.',
+            ${JSON.stringify(builtInPage('campaigns', {
+              id: 'campaigns',
+              title: 'Campaigns',
+              description: 'Activity from centrally managed campaigns.',
             }))},
             ${JSON.stringify(operationalValuePage)},
-            ${JSON.stringify(packageInsightsPage)},
+            ${JSON.stringify(campaignInsightsPage)},
             {
-              id: 'package-detail',
+              id: 'campaign-detail',
               kind: 'custom',
-              title: 'Package',
-              route: { 'hash-query-parameter': 'package' },
+              title: 'Campaign',
+              route: { 'hash-query-parameter': 'campaign' },
               views: [
                 {
-                  id: 'package-workflow-navigation',
-                  title: 'Package workflows',
+                  id: 'campaign-workflow-navigation',
+                  title: 'Campaign workflows',
                   data: { sources: ['workflows'] },
                   mark: 'element',
-                  element: 'package-route',
+                  element: 'campaign-route',
                   config: { body: 'overview' }
                 }
               ]
             },
             {
-              id: 'package-workflows',
+              id: 'campaign-workflows',
               kind: 'custom',
-              title: 'Package',
-              route: { 'hash-query-parameter': 'package' },
+              title: 'Campaign',
+              route: { 'hash-query-parameter': 'campaign' },
               views: [
                 {
-                  id: 'package-workflow-navigation',
-                  title: 'Package workflows',
+                  id: 'campaign-workflow-navigation',
+                  title: 'Campaign workflows',
                   data: { sources: ['workflows'] },
                   mark: 'element',
-                  element: 'package-route',
+                  element: 'campaign-route',
                   config: { body: 'workflows' }
                 },
                 {
-                  id: 'package-workflow-table',
+                  id: 'campaign-workflow-table',
                   title: 'Orchestrator and workers',
-                  data: { source: 'packaged-workflows', 'route-field': 'package' },
+                  data: { source: 'campaign-workflows', 'route-field': 'campaign' },
                   mark: 'table',
                   controls: 'interactive',
                   encoding: {
@@ -3202,52 +3202,52 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
               ]
             },
             {
-              id: 'package-runs',
+              id: 'campaign-runs',
               kind: 'custom',
-              title: 'Package',
-              route: { 'hash-query-parameter': 'package' },
+              title: 'Campaign',
+              route: { 'hash-query-parameter': 'campaign' },
               views: [
                 {
-                  id: 'package-run-navigation',
-                  title: 'Package workflow runs',
+                  id: 'campaign-run-navigation',
+                  title: 'Campaign workflow runs',
                   data: { sources: ['workflows'] },
                   mark: 'element',
-                  element: 'package-route',
+                  element: 'campaign-route',
                   config: { body: 'runs' }
                 },
                 {
-                  id: 'package-run-status',
+                  id: 'campaign-run-status',
                   title: 'Workflow run status',
-                  data: { source: 'package-runs', 'route-field': 'package' },
+                  data: { source: 'campaign-runs', 'route-field': 'campaign' },
                   mark: 'chart',
                   chart: 'pie',
-                  'empty-message': 'No workflow runs were observed for this package in the current run window.',
+                  'empty-message': 'No workflow runs were observed for this campaign in the current run window.',
                   encoding: {
                     x: { field: 'status', type: 'nominal', title: 'Status' },
                     y: { field: 'started-at', type: 'quantitative', aggregate: 'count', title: 'Runs' }
                   }
                 },
                 {
-                  id: 'package-failure-reason-distribution',
+                  id: 'campaign-failure-reason-distribution',
                   title: 'Why these dispatches failed',
                   data: {
                     source: 'dispatches',
-                    'route-field': 'package',
+                    'route-field': 'campaign',
                     filters: { status: ['failure', 'startup-failure', 'timed-out', 'stale'] },
                     'order-by': [{ field: 'count-status-detail', direction: 'desc' }]
                   },
                   mark: 'chart',
                   chart: 'pie',
-                  'empty-message': 'No failed workflow dispatch runs were observed for this package in the current run window.',
+                  'empty-message': 'No failed workflow dispatch runs were observed for this campaign in the current run window.',
                   encoding: {
                     x: { field: 'status-detail', type: 'nominal', title: 'Failure reason' },
                     y: { field: 'status-detail', type: 'quantitative', aggregate: 'count', title: 'Failed dispatches' }
                   }
                 },
                 {
-                  id: 'package-failed-dispatch-table',
+                  id: 'campaign-failed-dispatch-table',
                   title: 'Failed dispatches',
-                  data: { source: 'dispatches', 'route-field': 'package', filters: { status: ['failure', 'startup-failure', 'timed-out', 'stale'] } },
+                  data: { source: 'dispatches', 'route-field': 'campaign', filters: { status: ['failure', 'startup-failure', 'timed-out', 'stale'] } },
                   mark: 'table',
                   controls: 'interactive',
                   encoding: {
@@ -3264,14 +3264,14 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                       presentation: 'copy-prompt',
                       icon: 'search',
                       label: 'Review debug prompt',
-                      context: ['package', 'status', 'status-detail', 'started-at', 'workflow-name', 'run-title', 'runtime-repository', 'run-link']
+                      context: ['campaign', 'status', 'status-detail', 'started-at', 'workflow-name', 'run-title', 'runtime-repository', 'run-link']
                     }]
                   }
                 },
                 {
-                  id: 'package-run-table',
+                  id: 'campaign-run-table',
                   title: 'All workflow runs',
-                  data: { source: 'package-runs', 'route-field': 'package' },
+                  data: { source: 'campaign-runs', 'route-field': 'campaign' },
                   mark: 'table',
                   controls: 'interactive',
                   encoding: {
@@ -3289,25 +3289,25 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
                 }
               ]
             },
-            ${JSON.stringify(packageIssuesPage)},
+            ${JSON.stringify(campaignIssuesPage)},
             {
-              id: 'package-reports',
+              id: 'campaign-reports',
               kind: 'custom',
-              title: 'Package',
-              route: { 'hash-query-parameter': 'package' },
+              title: 'Campaign',
+              route: { 'hash-query-parameter': 'campaign' },
               views: [
                 {
-                  id: 'package-report-navigation',
-                  title: 'Package reports',
+                  id: 'campaign-report-navigation',
+                  title: 'Campaign reports',
                   data: { sources: ['workflows'] },
                   mark: 'element',
-                  element: 'package-route',
+                  element: 'campaign-route',
                   config: { body: 'reports' }
                 },
                 {
-                  id: 'package-report-table',
+                  id: 'campaign-report-table',
                   title: 'Reports',
-                  data: { source: 'package-reports', 'route-field': 'package' },
+                  data: { source: 'campaign-reports', 'route-field': 'campaign' },
                   mark: 'table',
                   controls: 'interactive',
                   encoding: {
@@ -3326,20 +3326,20 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
         }
       };
       const sources = {
-        packages: {
-          source: 'packages',
+        campaigns: {
+          source: 'campaigns',
           rows: [
-            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', 'package-link': { 'dashboard-href': '#page-package-detail?package=ambient-context', 'dashboard-label': 'View Ambient Context package dashboard' } },
-            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', 'package-link': { 'dashboard-href': '#page-package-detail?package=aw-doctor', 'dashboard-label': 'View AW Doctor package dashboard' } }
+            { campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', 'campaign-link': { 'dashboard-href': '#page-campaign-detail?campaign=ambient-context', 'dashboard-label': 'View Ambient Context campaign dashboard' } },
+            { campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear', 'campaign-link': { 'dashboard-href': '#page-campaign-detail?campaign=aw-doctor', 'dashboard-label': 'View AW Doctor campaign dashboard' } }
           ],
           metadata
         },
         workflows: {
           source: 'workflows',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 800, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'package-aic-allowance': 1250, 'package-inventory-warnings': 1 }
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', 'campaign-name': 'Ambient Context', 'campaign-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 800, 'campaign-aic-allowance': 1050, 'campaign-inventory-warnings': 0 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'aw-doctor', 'campaign-name': 'AW Doctor', 'campaign-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'campaign-aic-allowance': 1250, 'campaign-inventory-warnings': 1 }
           ],
           metadata
         },
@@ -3373,11 +3373,11 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
         outcomes: {
           source: 'outcomes',
           rows: [
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', run: '3', 'run-conclusion': 'success', 'safe-output': 'ambient-review', 'outcome-title': 'Review ambient context proposal', 'outcome-summary': 'A review proposal is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-29T18:00:00Z', 'observed-at': '2026-08-29T18:05:00Z' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-worker-issue', 'outcome-title': 'Review worker finding', 'outcome-summary': 'A worker finding is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-28T19:00:00Z', 'observed-at': '2026-08-28T19:05:00Z' },
-            { organization: 'githubnext', repository: 'gh-aw-cao', package: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-live', 'outcome-title': 'Reconcile ambient context', 'outcome-summary': 'Updated durable guidance.', 'outcome-category': 'pull-request', 'outcome-status': 'closed', 'outcome-state': 'lifecycle-close', 'rollout-mode': 'live', 'published-at': '2026-08-28T18:00:00Z', 'observed-at': '2026-08-28T18:05:00Z' },
-            { package: 'aw-doctor', workflow: '.github/workflows/aw-doctor.md', run: '1', 'run-conclusion': 'success', 'safe-output': 'maintenance-review', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' },
-            { package: 'aw-doctor', workflow: '.github/workflows/aw-doctor.md', run: '2', 'run-conclusion': 'failure', 'safe-output': 'maintenance-live', 'rollout-mode': 'live', 'published-at': '2026-08-29T10:00:00Z', 'observed-at': '2026-08-29T10:00:00Z' }
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', run: '3', 'run-conclusion': 'success', 'safe-output': 'ambient-review', 'outcome-title': 'Review ambient context proposal', 'outcome-summary': 'A review proposal is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-29T18:00:00Z', 'observed-at': '2026-08-29T18:05:00Z' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-worker-issue', 'outcome-title': 'Review worker finding', 'outcome-summary': 'A worker finding is ready.', 'outcome-category': 'issue', 'outcome-status': 'open', 'outcome-state': 'pending', 'rollout-mode': 'review', 'published-at': '2026-08-28T19:00:00Z', 'observed-at': '2026-08-28T19:05:00Z' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', campaign: 'ambient-context', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', run: '4', 'run-conclusion': 'success', 'safe-output': 'ambient-live', 'outcome-title': 'Reconcile ambient context', 'outcome-summary': 'Updated durable guidance.', 'outcome-category': 'pull-request', 'outcome-status': 'closed', 'outcome-state': 'lifecycle-close', 'rollout-mode': 'live', 'published-at': '2026-08-28T18:00:00Z', 'observed-at': '2026-08-28T18:05:00Z' },
+            { campaign: 'aw-doctor', workflow: '.github/workflows/aw-doctor.md', run: '1', 'run-conclusion': 'success', 'safe-output': 'maintenance-review', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' },
+            { campaign: 'aw-doctor', workflow: '.github/workflows/aw-doctor.md', run: '2', 'run-conclusion': 'failure', 'safe-output': 'maintenance-live', 'rollout-mode': 'live', 'published-at': '2026-08-29T10:00:00Z', 'observed-at': '2026-08-29T10:00:00Z' }
           ],
           metadata
         },
@@ -3397,7 +3397,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
         sources,
         { queryContext: options.queryContext, routeParameters: options.routeParameters }
       );
-      const viewSources = await loadPageSources('packages', {});
+      const viewSources = await loadPageSources('campaigns', {});
       document.querySelector('#root').append(renderDashboard({
         document: documentModel,
         sources: viewSources,
@@ -3406,20 +3406,20 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
     </script>
   `);
 
-  await expect(page.getByRole('heading', { name: 'Packages', level: 1 })).toBeVisible();
-  const valueChart = page.locator('[data-view-id="packages-value-created"]');
+  await expect(page.getByRole('heading', { name: 'Campaigns', level: 1 })).toBeVisible();
+  const valueChart = page.locator('[data-view-id="campaigns-value-created"]');
   await expect(valueChart.locator('[data-chart-widget="pie"]')).toBeVisible();
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('Ambient Context');
   await expect(valueChart.locator('.chart-legend-pie')).toContainText('AW Doctor');
   await page.getByRole('button', { name: 'Show table view' }).click();
-  await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
-  await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
-  const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
-  await expect(packageRows).toHaveCount(2);
-  await expect(page.locator('[data-page-id="packages"] .custom-table thead tr').first().locator('th')).toHaveText([
-    'Package',
+  await expect(page.locator('[data-page-id="campaigns"] [data-view-layout="full-view"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="campaigns"] [data-lazy-list]')).toBeVisible();
+  await expect(page.locator('[data-page-id="campaigns"] [data-table-filter]')).toBeVisible();
+  await expect(page.locator('[data-page-id="campaigns"] .table-summary-row')).toBeVisible();
+  const campaignRows = page.locator('[data-page-id="campaigns"] .custom-table tbody tr');
+  await expect(campaignRows).toHaveCount(2);
+  await expect(page.locator('[data-page-id="campaigns"] .custom-table thead tr').first().locator('th')).toHaveText([
+    'Campaign',
     'Workflows',
     'Roles',
     'Modes',
@@ -3429,45 +3429,45 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
     'Ops Value',
     'Registration'
   ]);
-  const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
+  const awDoctorSummary = campaignRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
   await expect(awDoctorSummary.locator('[data-field="value-created"]')).toHaveText('0.25');
-  await expect(awDoctorSummary.getByRole('button', { name: 'Update package' })).toHaveCount(0);
-  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
+  await expect(awDoctorSummary.getByRole('button', { name: 'Update campaign' })).toHaveCount(0);
+  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
   await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
   await page.getByRole('button', { name: 'Show card list view' }).click();
-  const awDoctorCard = page.locator('[data-page-id="packages"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
-  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-package-detail?package=aw-doctor');
+  const awDoctorCard = page.locator('[data-page-id="campaigns"] [data-mobile-card-list] .entity-card-list-card').filter({ hasText: 'AW Doctor' });
+  await expect(awDoctorCard.locator('[data-card-drill]')).toHaveAttribute('href', '#page-campaign-detail?campaign=aw-doctor');
   await awDoctorCard.click({ position: { x: 6, y: 6 } });
-  await expect(page).toHaveURL(/#page-package-detail\?package=aw-doctor$/);
+  await expect(page).toHaveURL(/#page-campaign-detail\?campaign=aw-doctor$/);
   await page.evaluate(() => {
     window.location.hash = '#page-operational-value';
   });
   const operationalValue = page.locator('[data-page-id="operational-value"]');
   await expect(page.getByRole('heading', { name: 'Operational value', level: 1 })).toBeVisible();
-  await expect(operationalValue.locator('[data-view-id="operational-value-by-package"] [data-chart-widget="pie"]')).toBeAttached();
+  await expect(operationalValue.locator('[data-view-id="operational-value-by-campaign"] [data-chart-widget="pie"]')).toBeAttached();
   await expect(operationalValue.locator('.chart-legend-pie')).toContainText('Ambient Context');
   await expect(operationalValue.locator('.chart-legend-pie')).toContainText('AW Doctor');
   await expect(operationalValue.locator('.custom-table tbody tr')).toHaveCount(2);
   await expect(operationalValue.locator('.custom-table thead tr').first().locator('th')).toHaveText([
-    'Package',
+    'Campaign',
     'Operational value'
   ]);
   await page.evaluate(() => {
-    window.location.hash = '#page-package-detail?package=ambient-context';
+    window.location.hash = '#page-campaign-detail?campaign=ambient-context';
   });
   await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
-  await expect(page.locator('[data-nav-page-id="packages"]')).toHaveAttribute('aria-current', 'page');
-  const packageNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
-  await expect(packageNavigation).toContainText('OverviewInsightsWorkflowsRunsIssues');
-  await expect(packageNavigation).toHaveCSS('display', 'flex');
-  await expect(packageNavigation).toHaveCSS('border-bottom-style', 'solid');
-  const currentPackageLink = packageNavigation.getByRole('link', { name: 'Overview' });
-  await expect(currentPackageLink).toHaveAttribute('aria-current', 'page');
-  expect(await currentPackageLink.evaluate((link) => {
+  await expect(page.locator('[data-nav-page-id="campaigns"]')).toHaveAttribute('aria-current', 'page');
+  const campaignNavigation = page.getByRole('navigation', { name: 'Ambient Context views' });
+  await expect(campaignNavigation).toContainText('OverviewInsightsWorkflowsRunsIssues');
+  await expect(campaignNavigation).toHaveCSS('display', 'flex');
+  await expect(campaignNavigation).toHaveCSS('border-bottom-style', 'solid');
+  const currentCampaignLink = campaignNavigation.getByRole('link', { name: 'Overview' });
+  await expect(currentCampaignLink).toHaveAttribute('aria-current', 'page');
+  expect(await currentCampaignLink.evaluate((link) => {
     const token = document.createElement('span');
     token.style.color = 'var(--accent)';
     link.append(token);
@@ -3476,12 +3476,12 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
     return colors[0] === colors[1];
   })).toBe(true);
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toHaveCount(0);
-  await packageNavigation.getByRole('link', { name: 'Workflows' }).click();
+  await campaignNavigation.getByRole('link', { name: 'Workflows' }).click();
   await expect(page.getByRole('heading', { name: 'Orchestrator and workers', level: 3 })).toBeVisible();
-  await expect(packageNavigation.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
-  const packageWorkflowRows = page.locator('[data-page-id="package-workflows"] .custom-table tbody tr');
-  await expect(packageWorkflowRows).toHaveCount(2);
-  await expect(page.locator('[data-page-id="package-workflows"] .custom-table thead tr').first().locator('th')).toHaveText([
+  await expect(campaignNavigation.getByRole('link', { name: 'Workflows' })).toHaveAttribute('aria-current', 'page');
+  const campaignWorkflowRows = page.locator('[data-page-id="campaign-workflows"] .custom-table tbody tr');
+  await expect(campaignWorkflowRows).toHaveCount(2);
+  await expect(page.locator('[data-page-id="campaign-workflows"] .custom-table thead tr').first().locator('th')).toHaveText([
     'Role',
     'Workflow',
     'Definition',
@@ -3490,48 +3490,48 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders value, inventory,
     'Runs',
     'Total AIC'
   ]);
-  await expect(packageWorkflowRows.first()).toContainText('OrchestratorAmbient Context');
-  await expect(packageWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
-  await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
-  await expect(packageWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
-  await packageNavigation.getByRole('link', { name: 'Runs' }).click();
-  const packageRunsPage = page.locator('[data-page-id="package-runs"]');
-  await expect(packageRunsPage.locator('.custom-view-grid > .custom-view').first()).toHaveAttribute('data-view-id', 'package-run-navigation');
-  await expect(packageNavigation.getByRole('link', { name: 'Runs' })).toHaveAttribute('aria-current', 'page');
-  await expect(packageRunsPage.locator('[data-view-id="package-run-status"] [data-chart-widget="pie"]')).toBeVisible();
-  await expect(packageRunsPage.locator('[data-view-id="package-failure-reason-distribution"] [data-chart-widget="pie"]')).toBeVisible();
-  await packageRunsPage.getByText('All workflow runs', { exact: true }).click();
-  await expect(packageRunsPage.locator('[data-view-id="package-run-table"] tbody tr')).toHaveCount(5);
-  await packageNavigation.getByRole('link', { name: 'Issues' }).click();
-  await expect(packageNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"]')).toBeVisible();
-  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"] tbody tr')).toHaveCount(1);
-  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"]')).toContainText('Review worker finding');
-  await expect(page.locator('[data-page-id="package-issues"] [data-view-id="package-issue-table"]')).not.toContainText('Review ambient context proposal');
+  await expect(campaignWorkflowRows.first()).toContainText('OrchestratorAmbient Context');
+  await expect(campaignWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
+  await expect(campaignWorkflowRows.first().locator('td').nth(6)).toHaveText('0');
+  await expect(campaignWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
+  await campaignNavigation.getByRole('link', { name: 'Runs' }).click();
+  const campaignRunsPage = page.locator('[data-page-id="campaign-runs"]');
+  await expect(campaignRunsPage.locator('.custom-view-grid > .custom-view').first()).toHaveAttribute('data-view-id', 'campaign-run-navigation');
+  await expect(campaignNavigation.getByRole('link', { name: 'Runs' })).toHaveAttribute('aria-current', 'page');
+  await expect(campaignRunsPage.locator('[data-view-id="campaign-run-status"] [data-chart-widget="pie"]')).toBeVisible();
+  await expect(campaignRunsPage.locator('[data-view-id="campaign-failure-reason-distribution"] [data-chart-widget="pie"]')).toBeVisible();
+  await campaignRunsPage.getByText('All workflow runs', { exact: true }).click();
+  await expect(campaignRunsPage.locator('[data-view-id="campaign-run-table"] tbody tr')).toHaveCount(5);
+  await campaignNavigation.getByRole('link', { name: 'Issues' }).click();
+  await expect(campaignNavigation.getByRole('link', { name: 'Issues' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"] tbody tr')).toHaveCount(1);
+  await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toContainText('Review worker finding');
+  await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).not.toContainText('Review ambient context proposal');
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(packageNavigation).toHaveCSS('display', 'grid');
-  await expect(packageNavigation).toHaveCSS('gap', '0px');
-  await expect(packageNavigation).toHaveCSS('overflow', 'hidden');
-  const mobilePackageLinks = packageNavigation.locator('a');
-  await expect(mobilePackageLinks).toHaveCount(5);
-  await expect(mobilePackageLinks.first().locator('.tab-trailing-icon')).toBeVisible();
-  expect(await mobilePackageLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
-  await mobilePackageLinks.first().focus();
-  await expect(mobilePackageLinks.first()).toHaveCSS('outline-offset', '-3px');
-  const mobileLinkBoxes = await mobilePackageLinks.evaluateAll((links) => links.map((link) => {
+  await expect(campaignNavigation).toHaveCSS('display', 'grid');
+  await expect(campaignNavigation).toHaveCSS('gap', '0px');
+  await expect(campaignNavigation).toHaveCSS('overflow', 'hidden');
+  const mobileCampaignLinks = campaignNavigation.locator('a');
+  await expect(mobileCampaignLinks).toHaveCount(5);
+  await expect(mobileCampaignLinks.first().locator('.tab-trailing-icon')).toBeVisible();
+  expect(await mobileCampaignLinks.first().locator('.tab-trailing-icon').evaluate((icon) => parseFloat(getComputedStyle(icon).marginLeft) > 0)).toBe(true);
+  await mobileCampaignLinks.first().focus();
+  await expect(mobileCampaignLinks.first()).toHaveCSS('outline-offset', '-3px');
+  const mobileLinkBoxes = await mobileCampaignLinks.evaluateAll((links) => links.map((link) => {
     const box = link.getBoundingClientRect();
     return { height: box.height, top: box.top };
   }));
   expect(mobileLinkBoxes.every((box) => box.height >= 44)).toBe(true);
   expect(mobileLinkBoxes.every((box, index) => index === 0 || box.top > mobileLinkBoxes[index - 1].top)).toBe(true);
 
-  await packageNavigation.getByRole('link', { name: 'Insights' }).click();
-  const packageInsights = page.locator('[data-page-id="package-insights"]');
-  await expect(packageInsights).toBeVisible();
-  await expect(packageInsights.getByRole('navigation', { name: 'Ambient Context views' })
+  await campaignNavigation.getByRole('link', { name: 'Insights' }).click();
+  const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
+  await expect(campaignInsights).toBeVisible();
+  await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })
     .getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context package.');
+  await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context campaign.');
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {
@@ -4386,8 +4386,8 @@ test('workflow page template follows its JSON-declared route and renders attribu
           rows: [{
             organization: 'githubnext',
             repository: 'gh-aw-cao',
-            package: 'ambient-context',
-            'package-name': 'Ambient Context',
+            campaign: 'ambient-context',
+            'campaign-name': 'Ambient Context',
             workflow: '.github/workflows/ambient-context.md',
             'workflow-name': 'Ambient Context',
             'workflow-role': 'orchestrator',
@@ -4601,8 +4601,8 @@ test('workflow page template follows its JSON-declared route and renders attribu
           rows: [{
             organization: 'githubnext',
             repository: 'gh-aw-cao',
-            package: 'ambient-context',
-            'package-name': 'Ambient Context',
+            campaign: 'ambient-context',
+            'campaign-name': 'Ambient Context',
             workflow: '.github/workflows/ambient-context.md',
             'workflow-name': 'Ambient Context',
             'workflow-role': 'orchestrator',
@@ -4718,9 +4718,9 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
             workflow,
             'workflow-name': 'Multi-Device Docs Tester',
             'workflow-role': 'standalone',
-            package: 'testing',
-            'package-name': 'Testing',
-            'package-memberships': [
+            campaign: 'testing',
+            'campaign-name': 'Testing',
+            'campaign-memberships': [
               { id: 'testing', name: 'Testing' },
               { id: 'central-agentic-ops', name: 'Central Agentic Ops' }
             ],
@@ -4783,8 +4783,8 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
   await expect(page.getByRole('link', { name: 'Reports' })).toHaveAttribute('href', /#page-workflow-detail\?workflow=/);
   await expect(page.locator('.workflow-badges .workflow-badge')).toHaveText([
     'Standalone',
-    'Package · Central Agentic Ops',
-    'Package · Testing'
+    'Campaign · Central Agentic Ops',
+    'Campaign · Testing'
   ]);
   await expect(page.getByRole('link', { name: 'View authored workflow' })).toHaveAttribute(
     'href',
@@ -5124,11 +5124,11 @@ test('phone navigation uses overview actions and a full-label view menu without 
               { id: 'security', kind: 'custom', title: 'Security', icon: 'shield', views: [] },
               { id: 'value', kind: 'custom', title: 'Value', icon: 'graph', views: [] },
               { id: 'cost', kind: 'custom', title: 'Cost & efficiency', icon: 'meter', views: [] },
-              { id: 'packages', kind: 'custom', title: 'Packages', icon: 'package', views: [] }
+              { id: 'campaigns', kind: 'custom', title: 'Campaigns', icon: 'goal', views: [] }
             ],
             navigation: [
               { label: 'Main', pages: ['overview', 'runs', 'security'] },
-              { label: 'Investigate', pages: ['value', 'cost', 'packages'] }
+              { label: 'Investigate', pages: ['value', 'cost', 'campaigns'] }
             ]
           }
         },
@@ -5173,7 +5173,7 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await expect(menuActions.locator('.repository-link .action-label')).toBeVisible();
   await expect(menuActions.locator('.repository-link .action-label')).toHaveText('githubnext/gh-aw-cao');
   await expect(menuActions.locator('.account-menu')).toHaveCount(0);
-  await expect(menu.locator('.octicon-package')).toBeVisible();
+  await expect(menu.locator('.octicon-goal')).toBeVisible();
   await expect(menu.getByText('Cost & efficiency', { exact: true })).toBeVisible();
   await menu.getByText('Cost & efficiency', { exact: true }).click();
   await expect(menu).toBeHidden();
@@ -5295,7 +5295,7 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
         'workflow-inventory': {
           source: 'workflow-inventory',
           rows: [{
-            'package-name': 'Maintenance',
+            'campaign-name': 'Maintenance',
             repository: 'githubnext/gh-aw-cao',
             workflow: '.github/workflows/aw-maintenance.md',
             'workflow-name': 'AW Maintenance',

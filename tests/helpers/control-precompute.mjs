@@ -10,7 +10,7 @@ export function controlProgram() {
 export function controlPolicy({
   scope = {},
   inventory = {},
-  packagePolicy = {},
+  campaignPolicy = {},
   workerPolicy = {},
 } = {}) {
   return JSON.stringify({
@@ -19,12 +19,12 @@ export function controlPolicy({
     "control-plane": {
       scope: { "allowed-owners": ["acme"], ...scope },
       inventory,
-      packages: {
+      campaigns: {
         dependabot: {
           mode: "review",
           "max-repositories": 1,
           "rollout-percent": 100,
-          ...packagePolicy,
+          ...campaignPolicy,
           ...(workerPolicy === null ? {} : {
             workers: {
               "update-planner": {
@@ -67,7 +67,7 @@ export function controlEnvironment(overrides = {}) {
   };
   return {
     ...values,
-    CAO_PACKAGE: overrides.CAO_PACKAGE ?? values.BUNDLE,
+    CAO_CAMPAIGN: overrides.CAO_CAMPAIGN ?? values.BUNDLE,
     CAO_ROLE: overrides.CAO_ROLE ?? values.ROLE,
     CAO_WORKER: overrides.CAO_WORKER ?? (values.ROLE === "orchestrator" ? "" : values.WORKER),
     CAO_TARGET_REPOSITORY: overrides.CAO_TARGET_REPOSITORY ?? values.TARGET_REPO,

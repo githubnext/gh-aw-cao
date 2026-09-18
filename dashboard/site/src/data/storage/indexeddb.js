@@ -14,7 +14,7 @@ export function canonicalDatabaseName(pathname) {
 }
 
 export const ENTITY_STORES = /** @type {const} */ ([
-  'packages',
+  'campaigns',
   'repositories',
   'workflows',
   'runs',
@@ -27,7 +27,7 @@ export const TRANSACTION_STORE = 'transactions';
 export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  * string, { keyPath: string, indexes: Record<string, string | string[]> }
  * >} */ ({
- packages: {
+ campaigns: {
    keyPath: 'id',
    indexes: { bySlug: 'slug' }
  },

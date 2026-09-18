@@ -3,7 +3,7 @@ title: Configure Authentication
 description: Choose and configure least-privilege GitHub App, fine-grained PAT, or built-in workflow-token access.
 ---
 
-Choose the least-powerful authentication profile that can satisfy the effective target scope, package API requirements, mode, and review destination. Control-repository visibility does not determine target access. Use the built-in workflow token for the bounded cases below, prefer a GitHub App for long-lived cross-repository operation, and treat a fine-grained personal access token (PAT) as a consented fallback with additional eligibility limits.
+Choose the least-powerful authentication profile that can satisfy the effective target scope, campaign API requirements, mode, and review destination. Control-repository visibility does not determine target access. Use the built-in workflow token for the bounded cases below, prefer a GitHub App for long-lived cross-repository operation, and treat a fine-grained personal access token (PAT) as a consented fallback with additional eligibility limits.
 
 | Your use case | Credential |
 | --- | --- |
@@ -60,7 +60,7 @@ The private key commands read keys from local files without placing them in shel
 
 ### Automated App setup
 
-The CAO package includes a credential-only Node CLI that mirrors gh-aw's GitHub App manifest flow without rewriting the package. Run the installed CLI from the control repository:
+The CAO campaign includes a credential-only Node CLI that mirrors gh-aw's GitHub App manifest flow without rewriting the campaign. Run the installed CLI from the control repository:
 
 ```bash
 node .github/workflows/shared/setup-github-apps.mjs --repo acme/central-agentic-ops
@@ -103,8 +103,8 @@ Before offering a PAT fallback, verify all of these conditions:
 1. The user can select the target organization as the PAT resource owner and already has the required access to every enrolled repository.
 2. Organization and enterprise policy permits fine-grained PATs, and any required organization approval can be obtained before the first run.
 3. All repositories covered by the token have one resource owner. A fine-grained PAT cannot access multiple organizations at once; with CAO's single `GH_AW_GITHUB_TOKEN` fallback, a multi-organization scope requires a GitHub App, narrower control planes, or separate credential architecture.
-4. Every API required by the installed package supports fine-grained PATs. Fine-grained PATs do not currently support every endpoint, including the Checks API; do not replace a required App with a classic PAT to work around an endpoint gap.
-5. The PAT can be limited to the exact enrolled repositories, package-required permissions, and an explicit expiration and rotation owner.
+4. Every API required by the installed campaign supports fine-grained PATs. Fine-grained PATs do not currently support every endpoint, including the Checks API; do not replace a required App with a classic PAT to work around an endpoint gap.
+5. The PAT can be limited to the exact enrolled repositories, campaign-required permissions, and an explicit expiration and rotation owner.
 
 If any condition fails, stop and recommend obtaining a GitHub App installation, narrowing or splitting the scope, or involving an organization owner. Do not present a PAT as an access bypass.
 
@@ -146,7 +146,7 @@ Grant only permissions required by installed operations. The current full catalo
 | Checks | Read | None | Inspect checks |
 | Contents | Read | Write | Read repositories and create approved changes |
 | Issues | Read | Write | Inspect issues and emit issue or comment safe outputs |
-| Packages | Read | None | Inspect package evidence |
+| Campaigns | Read | None | Inspect campaign evidence |
 | Pull requests | Read | Write | Inspect pull requests and emit approved pull-request outputs |
 | Secret scanning alerts | Read | None | Inspect code-security evidence |
 | Security events | Read | None | Inspect code-security evidence |
@@ -154,7 +154,7 @@ Grant only permissions required by installed operations. The current full catalo
 | Vulnerability alerts | Read | None | Prioritize dependency security work |
 | Metadata | Read | Read | Required automatically for GitHub Apps |
 
-A package-only installation should narrow these permissions to that package's workflows. Fine-grained PATs should be limited to the same repositories and permissions.
+A campaign-only installation should narrow these permissions to that campaign's workflows. Fine-grained PATs should be limited to the same repositories and permissions.
 
 Example PAT fallback configuration:
 
@@ -180,7 +180,7 @@ For a PAT:
 3. Validate review runs.
 4. Revoke the previous PAT.
 
-For suspected credential exposure, set affected package kill switches to `false`, cancel active runs, revoke the credential, inspect GitHub Actions logs and safe outputs, rotate credentials, and resume in review mode.
+For suspected credential exposure, set affected campaign kill switches to `false`, cancel active runs, revoke the credential, inspect GitHub Actions logs and safe outputs, rotate credentials, and resume in review mode.
 
 :::danger[Suspected exposure]
 Stopping an operation does not revoke its credential. Disable affected runs and revoke the App installation or PAT before investigating further.
@@ -197,4 +197,4 @@ Before promotion, verify:
 - organization PAT policy, approval state, resource-owner scope, expiration, and required API compatibility when using a PAT;
 - read operations for repository and workflow discovery;
 - a review output in the intended control repository without credential material;
-- authentication-profile review whenever target scope, package API requirements, mode, or review destination changes.
+- authentication-profile review whenever target scope, campaign API requirements, mode, or review destination changes.

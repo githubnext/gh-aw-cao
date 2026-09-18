@@ -86,7 +86,7 @@ export function text(value) {
 /**
  * Formats an AI Credit (AIC) amount for UI text, rounding to at most one
  * fractional digit. Shared by the overview attention/health summaries and
- * the packages utilization view, which both render measured and allowed AIC
+ * the campaigns utilization view, which both render measured and allowed AIC
  * quantities inline in prose.
  * @param {number} value
  * @returns {string}

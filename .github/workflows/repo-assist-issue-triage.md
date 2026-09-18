@@ -57,7 +57,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: repo-assist
+      campaign: repo-assist
       role: worker
       worker: issue-triage
 
@@ -157,7 +157,7 @@ Do not post acknowledgements, restatements, generic contribution advice, promise
 
 In `live` mode, use `add_labels` or `remove_labels` only for the selected target issue, and use `add_comment` at most once when substantive guidance or clarification is warranted. Start a live comment with `🤖 *This is an automated response from Repo Assist.*`.
 
-In `review` mode, never call item-based outputs for the target issue. Create one review issue in `SAFE_OUTPUT_REPO` with the canonical unprefixed subject `TARGET_REPO issue NUMBER triage guidance`. The configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix. Keep the subject identical across reruns for the same target issue. Search all open package-worker issues before creation and call `noop` when equivalent guidance is already tracked.
+In `review` mode, never call item-based outputs for the target issue. Create one review issue in `SAFE_OUTPUT_REPO` with the canonical unprefixed subject `TARGET_REPO issue NUMBER triage guidance`. The configured `title-prefix` is added automatically, so do not repeat it or add a semantically equivalent category prefix. Keep the subject identical across reruns for the same target issue. Search all open campaign-worker issues before creation and call `noop` when equivalent guidance is already tracked.
 
 ## Report
 

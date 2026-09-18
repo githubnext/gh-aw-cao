@@ -1,17 +1,17 @@
 [
   {
     "role": "worker",
-    "packaged": true,
-    "label": "Package worker"
+    "bundled": true,
+    "label": "Campaign worker"
   },
   {
     "role": "orchestrator",
-    "packaged": true,
-    "label": "Package orchestrator"
+    "bundled": true,
+    "label": "Campaign orchestrator"
   },
   {
     "role": "*",
-    "packaged": false,
+    "bundled": false,
     "label": "Standalone workflow"
   }
 ]

@@ -8,7 +8,7 @@ import { root, workflow } from "./workflow-contract.helpers.mjs";
 
 test("Advisory preserves UK AI guidance and human-review boundaries", () => {
   const orchestrator = workflow("uk-ai-advisory.md");
-  const maintainer = workflow("uk-ai-advisory-package-maintainer.md");
+  const maintainer = workflow("uk-ai-advisory-campaign-maintainer.md");
   const worker = workflow("uk-ai-advisory-operational-resilience.md");
   const readme = readFileSync(join(root, "uk-ai-advisory", "README.md"), "utf8");
 
@@ -66,7 +66,7 @@ test("Advisory preserves UK AI guidance and human-review boundaries", () => {
   assert.match(maintainer, /allowed-files:\n\s+- "uk-ai-advisory\/implementation-status\.md"\n\s+- "\.github\/aw\/uk-ai-advisory\/implementation-status\.md"/);
   assert.match(maintainer, /draft: true/);
   assert.match(maintainer, /create-issue:[\s\S]*?deduplicate-by-title: true[\s\S]*?max: 1/);
-  assert.match(maintainer, /If the authoritative source or a trusted package file cannot be accessed or reconciled, call `report_incomplete`/);
+  assert.match(maintainer, /If the authoritative source or a trusted campaign file cannot be accessed or reconciled, call `report_incomplete`/);
   assert.match(maintainer, /Emit `noop` only after the authoritative source and every trusted file were evaluated successfully/);
   assert.doesNotMatch(maintainer, /shared\/control\.md/);
   assert.doesNotMatch(maintainer, /^graders:/m);
@@ -76,7 +76,7 @@ test("Advisory preserves UK AI guidance and human-review boundaries", () => {
   assert.match(ledger, /UK-AI-015/);
   assert.match(ledger, /AI is a threat accelerator, not an eligibility requirement/);
   assert.match(ledger, /credible attacker, what publication adds to risk, and the realistic path to harm/);
-  assert.match(ledger, /It does not prove that the package, an installed fleet, a repository, or an organization is secure/);
+  assert.match(ledger, /It does not prove that the campaign, an installed fleet, a repository, or an organization is secure/);
 });
 
 test("UK AI advisory worker uses actionable progressive-disclosure reports", () => {
@@ -92,7 +92,7 @@ test("UK AI advisory worker uses actionable progressive-disclosure reports", () 
 
 test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   const orchestrator = workflow("eu-cra-compliance.md");
-  const maintainer = workflow("eu-cra-compliance-package-maintainer.md");
+  const maintainer = workflow("eu-cra-compliance-campaign-maintainer.md");
   const workers = [
     ["eu-cra-compliance-scope-classifier.md", "Scope"],
     ["eu-cra-compliance-security-requirements-auditor.md", "Security"],
@@ -112,7 +112,7 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   assert.match(orchestrator, /Keep that total at or below 48/);
   assert.match(orchestrator, /worker_credits_per_target: 600/);
 
-  for (const [name, displayName] of [["eu-cra-compliance.md", null], ...workers, ["eu-cra-compliance-package-maintainer.md", "Maintenance"]]) {
+  for (const [name, displayName] of [["eu-cra-compliance.md", null], ...workers, ["eu-cra-compliance-campaign-maintainer.md", "Maintenance"]]) {
     const source = workflow(name);
     if (displayName) {
       assert.match(source, new RegExp(`^name: "EU CRA / ${displayName}"$`, "m"));
@@ -157,7 +157,7 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
   assert.match(maintainer, /draft: true/);
   assert.match(maintainer, /create-issue:[\s\S]*?max: 1/);
   assert.match(maintainer, /deduplicate-by-title: true/);
-  assert.match(maintainer, /graders:\n\s+operational-value:\n\s+run: \.\/graders\/eu-cra-compliance-package-maintainer-operational-value\.sh/);
+  assert.match(maintainer, /graders:\n\s+operational-value:\n\s+run: \.\/graders\/eu-cra-compliance-campaign-maintainer-operational-value\.sh/);
   assert.doesNotMatch(maintainer, /shared\/control\.md/);
 
   const ledger = readFileSync(join(root, "eu-cra-compliance", "implementation-status.md"), "utf8");

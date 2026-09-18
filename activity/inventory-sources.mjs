@@ -10,7 +10,7 @@ import {
   updateState,
 } from "./version.mjs";
 
-const INTERNAL_PACKAGES = new Set(["activity", "dashboard"]);
+const INTERNAL_CAMPAIGNS = new Set(["activity", "dashboard"]);
 const POLICY_PATH = ".github/workflows/cao.json";
 const WORKFLOW_PAGE_SIZE = 100;
 const MAX_WORKFLOWS_PER_REPOSITORY = 10_000;
@@ -93,9 +93,9 @@ function repositoryFullName(candidate) {
   return typeof candidate === "string" ? candidate : candidate?.full_name;
 }
 
-function packageRepository(candidate) {
-  const packageName = String(candidate?.package || candidate?.source || "").split("@", 1)[0];
-  const [owner, repository] = packageName.split("/");
+function campaignRepository(candidate) {
+  const campaignName = String(candidate?.campaign || candidate?.source || "").split("@", 1)[0];
+  const [owner, repository] = campaignName.split("/");
   return owner && repository ? `${owner}/${repository}` : "";
 }
 
@@ -268,38 +268,38 @@ export async function discoverRepositories(controlSettings, {
   return repositories;
 }
 
-export async function discoverLatestPackageCommits(inventory = {}, {
+export async function discoverLatestCampaignCommits(inventory = {}, {
   fetchImplementation = fetch,
   token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || "",
   apiUrl = process.env.GITHUB_API_URL || "https://api.github.com",
 } = {}) {
-  if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover package versions");
+  if (!token) throw new Error("GH_TOKEN or GITHUB_TOKEN is required to discover campaign versions");
   const repositories = [...new Set([
-    ...(inventory.packages || []),
+    ...(inventory.campaigns || []),
     ...(inventory.bundles || []),
-  ].map(packageRepository).filter(Boolean))];
+  ].map(campaignRepository).filter(Boolean))];
   const commits = {};
   const failures = [];
   for (const repository of repositories) {
     try {
       const repositoryResponse = await githubResponse(fetchImplementation, apiUrl, token, `repos/${repository}`);
-      const repositoryRecord = await responseJson(repositoryResponse, `Unable to inspect package repository ${repository}`);
+      const repositoryRecord = await responseJson(repositoryResponse, `Unable to inspect campaign repository ${repository}`);
       const defaultBranch = String(repositoryRecord?.default_branch || "").trim();
-      if (!defaultBranch) throw new Error(`Package repository ${repository} did not report a default branch`);
+      if (!defaultBranch) throw new Error(`Campaign repository ${repository} did not report a default branch`);
       const commitResponse = await githubResponse(
         fetchImplementation,
         apiUrl,
         token,
         `repos/${repository}/commits/${contentPath(defaultBranch)}`,
       );
-      const commit = await responseJson(commitResponse, `Unable to resolve package repository ${repository}`);
+      const commit = await responseJson(commitResponse, `Unable to resolve campaign repository ${repository}`);
       const sha = String(commit?.sha || "").trim();
-      if (!/^[0-9a-f]{40}$/i.test(sha)) throw new Error(`Package repository ${repository} did not report a commit SHA`);
+      if (!/^[0-9a-f]{40}$/i.test(sha)) throw new Error(`Campaign repository ${repository} did not report a commit SHA`);
       commits[repository] = sha;
     } catch (error) {
       failures.push(versionFailure(
         repository,
-        "package-version-discovery",
+        "campaign-version-discovery",
         error?.status,
         error?.message || String(error),
       ));
@@ -547,7 +547,7 @@ function workflowRegistryHealth(registries, rows) {
   };
 }
 
-function packageVersionHealth(resolution, rows) {
+function campaignVersionHealth(resolution, rows) {
   const failures = resolution?.failures || [];
   const expected = Number.isFinite(resolution?.expected) ? resolution.expected : undefined;
   const observed = Number.isFinite(resolution?.observed) ? resolution.observed : undefined;
@@ -556,37 +556,37 @@ function packageVersionHealth(resolution, rows) {
     complete: failures.length === 0,
     expected,
     observed,
-    operation: "package-version-discovery",
+    operation: "campaign-version-discovery",
     state: failures.length === 0 ? "complete" : observed > 0 ? "partial" : "failed",
     failureClass: failures.some((failure) => failure["failure-class"] === "permission") ? "permission"
       : failures.length > 0 ? "request" : "",
-    reason: failures.length > 0 ? `${failures.length} package repositories could not be resolved` : "",
+    reason: failures.length > 0 ? `${failures.length} campaign repositories could not be resolved` : "",
     failures,
   };
 }
 
-function packageRows(inventory, controlSettings, generatedAt, latestPackageCommits = {}) {
+function campaignRows(inventory, controlSettings, generatedAt, latestCampaignCommits = {}) {
   const bundles = new Map((inventory.bundles || []).map((bundle) => [
-    String(bundle.controlPackage || bundle.id || "").trim(),
+    String(bundle.controlCampaign || bundle.id || "").trim(),
     bundle,
   ]).filter(([id]) => id));
-  const registered = new Map((inventory.packages || []).map((entry) => [
+  const registered = new Map((inventory.campaigns || []).map((entry) => [
     String(entry.id || "").trim(),
     entry,
   ]).filter(([id]) => id));
   const ids = new Set(
-    [...bundles.keys(), ...registered.keys(), ...Object.keys(controlSettings.packages || {})]
-      .filter((id) => !INTERNAL_PACKAGES.has(id)),
+    [...bundles.keys(), ...registered.keys(), ...Object.keys(controlSettings.campaigns || {})]
+      .filter((id) => !INTERNAL_CAMPAIGNS.has(id)),
   );
   return [...ids].sort().map((id) => {
     const bundle = bundles.get(id)
       || [...bundles.values()].find((candidate) => candidate.id === id)
       || {};
     const installed = registered.get(id) || {};
-    const repository = packageRepository(installed) || packageRepository(bundle);
+    const repository = campaignRepository(installed) || campaignRepository(bundle);
     const installedRevision = String(installed.resolvedCommit || bundle.version || "").trim();
-    const latestRevision = String(latestPackageCommits[repository] || "").trim();
-    const policy = controlSettings.packages?.[id] || {};
+    const latestRevision = String(latestCampaignCommits[repository] || "").trim();
+    const policy = controlSettings.campaigns?.[id] || {};
     const workers = Object.entries(policy.worker_policies || {}).map(([workflow, worker]) => ({
       id: worker.worker || workflow,
       workflow,
@@ -603,49 +603,49 @@ function packageRows(inventory, controlSettings, generatedAt, latestPackageCommi
       .filter((value) => Number.isFinite(value) && value > 0)
       .reduce((total, value) => total + value, 0);
     return {
-      package: id,
-      "package-name": bundle.name || installed.name || id,
-      "package-description": bundle.description || "",
-      "package-icon": policy.icon || "package",
-      "package-mode": rolloutMode(policy.mode),
-      "package-enabled": policy.enabled !== false,
-      "package-max-repositories": policy["max-repositories"] ?? null,
-      "package-rollout-percent": policy["rollout-percent"] ?? null,
-      "package-monthly-ai-credit-budget": policy["monthly-ai-credit-budget"] ?? null,
-      "package-aic-allowance": aiCreditAllowance || null,
-      "package-worker-count": workers.length || inventoryWorkers.length,
-      "package-inventory-warnings": inventoryWarnings,
-      "package-workers": workers,
-      "package-targets": targets,
-      "package-min-version": bundle.minVersion || "",
-      "package-version": shortRevision(installedRevision) || "unknown",
-      "package-current-version": shortRevision(latestRevision) || "unknown",
-      "package-update-state": revisionUpdateState(installedRevision, latestRevision),
-      "package-experimental": bundle.experimental === true,
-      "package-readme-path": bundle.readmePath || "",
-      "package-readme": bundle.readme || "",
+      campaign: id,
+      "campaign-name": bundle.name || installed.name || id,
+      "campaign-description": bundle.description || "",
+      "campaign-icon": policy.icon || "goal",
+      "campaign-mode": rolloutMode(policy.mode),
+      "campaign-enabled": policy.enabled !== false,
+      "campaign-max-repositories": policy["max-repositories"] ?? null,
+      "campaign-rollout-percent": policy["rollout-percent"] ?? null,
+      "campaign-monthly-ai-credit-budget": policy["monthly-ai-credit-budget"] ?? null,
+      "campaign-aic-allowance": aiCreditAllowance || null,
+      "campaign-worker-count": workers.length || inventoryWorkers.length,
+      "campaign-inventory-warnings": inventoryWarnings,
+      "campaign-workers": workers,
+      "campaign-targets": targets,
+      "campaign-min-version": bundle.minVersion || "",
+      "campaign-version": shortRevision(installedRevision) || "unknown",
+      "campaign-current-version": shortRevision(latestRevision) || "unknown",
+      "campaign-update-state": revisionUpdateState(installedRevision, latestRevision),
+      "campaign-experimental": bundle.experimental === true,
+      "campaign-readme-path": bundle.readmePath || "",
+      "campaign-readme": bundle.readme || "",
       "observed-at": generatedAt,
     };
   });
 }
 
-function workflowAdmission(controlSettings, packageName, role, workflowId) {
-  if (!Object.hasOwn(controlSettings, "packages")) return null;
+function workflowAdmission(controlSettings, campaignName, role, workflowId) {
+  if (!Object.hasOwn(controlSettings, "campaigns")) return null;
   if (controlSettings.policy_resolution?.status === "unavailable") {
     return { status: "unavailable", reason: controlSettings.policy_resolution.reason || "policy-resolution-unavailable" };
   }
-  const packagePolicy = controlSettings.packages?.[packageName];
-  if (!packagePolicy) return { status: "blocked", reason: "package-undeclared" };
-  if (packagePolicy.enabled === false) return { status: "blocked", reason: "package-disabled" };
+  const campaignPolicy = controlSettings.campaigns?.[campaignName];
+  if (!campaignPolicy) return { status: "blocked", reason: "campaign-undeclared" };
+  if (campaignPolicy.enabled === false) return { status: "blocked", reason: "campaign-disabled" };
   if (role === "worker") {
-    const workerPolicy = packagePolicy.worker_policies?.[workflowId];
+    const workerPolicy = campaignPolicy.worker_policies?.[workflowId];
     if (!workerPolicy) return { status: "blocked", reason: "worker-undeclared" };
     if (workerPolicy.enabled === false) return { status: "blocked", reason: "worker-disabled" };
   }
   return { status: "authorized", reason: "authorized" };
 }
 
-function workflowPackageDetails(inventory, controlSettings) {
+function workflowCampaignDetails(inventory, controlSettings) {
   const details = new Map();
   for (const workflow of inventory.workflows || []) {
     details.set(workflow.sourcePath, {
@@ -655,8 +655,8 @@ function workflowPackageDetails(inventory, controlSettings) {
     });
   }
   for (const bundle of inventory.bundles || []) {
-    const packageId = String(bundle.controlPackage || bundle.id || "").trim();
-    const policy = controlSettings.packages?.[packageId] || {};
+    const campaignId = String(bundle.controlCampaign || bundle.id || "").trim();
+    const policy = controlSettings.campaigns?.[campaignId] || {};
     const configuredMode = rolloutMode(policy.mode);
     const rolloutPercent = Number(policy["rollout-percent"] ?? policy.rollout_percent);
     const targetPolicies = new Map(Object.entries(policy.targets ?? policy.target_policies ?? {})
@@ -667,7 +667,7 @@ function workflowPackageDetails(inventory, controlSettings) {
       if (name) targetRepositories.set(name.toLowerCase(), name);
     }
     for (const [repository, { repository: name }] of targetPolicies) targetRepositories.set(repository, name);
-    const packageTargets = [...targetRepositories.entries()]
+    const campaignTargets = [...targetRepositories.entries()]
       .map(([key, repository]) => ({
         repository,
         mode: rolloutMode(targetPolicies.get(key)?.targetPolicy?.mode ?? configuredMode),
@@ -687,18 +687,18 @@ function workflowPackageDetails(inventory, controlSettings) {
       ...workers.map((worker) => ({ ...worker, role: "worker" })),
     ]) {
       if (!workflow.sourcePath) continue;
-      const admission = workflowAdmission(controlSettings, packageId, workflow.role, workflow.id);
+      const admission = workflowAdmission(controlSettings, campaignId, workflow.role, workflow.id);
       details.set(workflow.sourcePath, {
         ...details.get(workflow.sourcePath),
-        package: packageId,
-        packageName: bundle.name || packageId,
-        packageDescription: bundle.description,
-        packageIcon: policy.icon || "package",
-        packageReadmePath: bundle.readmePath,
-        packageReadme: bundle.readme,
+        campaign: campaignId,
+        campaignName: bundle.name || campaignId,
+        campaignDescription: bundle.description,
+        campaignIcon: policy.icon || "goal",
+        campaignReadmePath: bundle.readmePath,
+        campaignReadme: bundle.readme,
         role: workflow.role,
         configuredMode,
-        packageTargets,
+        campaignTargets,
         allowance: allowance || null,
         workerCount: workers.length,
         inventoryWarnings,
@@ -745,7 +745,7 @@ function remoteWorkflowRow(workflow, generatedAt, latestGhAwVersion) {
 
 function workflowRows(inventory, controlSettings, repository, generatedAt, workflowRegistries = [], latestGhAwVersion = null) {
   const [organization, repositoryName] = repository.split("/");
-  const packageDetails = workflowPackageDetails(inventory, controlSettings);
+  const campaignDetails = workflowCampaignDetails(inventory, controlSettings);
   const rows = new Map();
   for (const registry of workflowRegistries) {
     for (const workflow of registry.workflows) {
@@ -755,28 +755,28 @@ function workflowRows(inventory, controlSettings, repository, generatedAt, workf
     }
   }
   for (const workflow of inventory.workflows || []) {
-    const details = packageDetails.get(workflow.sourcePath);
+    const details = campaignDetails.get(workflow.sourcePath);
     const repositoryKey = repository.toLowerCase();
-    const targets = (details?.packageTargets || [])
+    const targets = (details?.campaignTargets || [])
       .filter((target) => target.explicit || target.repository.toLowerCase() !== repositoryKey)
       .map(({ repository: targetRepository, mode }) => ({ repository: targetRepository, mode }));
     const localRow = {
       organization,
       repository: repositoryName,
       ...(details ? {
-        package: details.package,
-        "package-name": details.packageName,
-        "package-icon": details.packageIcon,
-        "package-aic-allowance": details.allowance,
-        "package-worker-count": details.workerCount,
-        "package-inventory-warnings": details.inventoryWarnings,
+        campaign: details.campaign,
+        "campaign-name": details.campaignName,
+        "campaign-icon": details.campaignIcon,
+        "campaign-aic-allowance": details.allowance,
+        "campaign-worker-count": details.workerCount,
+        "campaign-inventory-warnings": details.inventoryWarnings,
       } : {}),
       ...(Number.isFinite(details?.maxAiCredits) ? { "max-ai-credits": details.maxAiCredits } : {}),
-      ...(details?.packageDescription ? { "package-description": details.packageDescription } : {}),
-      ...(details?.packageReadmePath ? { "package-readme-path": details.packageReadmePath } : {}),
-      ...(details?.packageReadme ? { "package-readme": details.packageReadme } : {}),
-      ...(Number.isFinite(details?.rolloutPercent) ? { "package-rollout-percent": details.rolloutPercent } : {}),
-      ...(targets.length > 0 ? { "package-targets": targets } : {}),
+      ...(details?.campaignDescription ? { "campaign-description": details.campaignDescription } : {}),
+      ...(details?.campaignReadmePath ? { "campaign-readme-path": details.campaignReadmePath } : {}),
+      ...(details?.campaignReadme ? { "campaign-readme": details.campaignReadme } : {}),
+      ...(Number.isFinite(details?.rolloutPercent) ? { "campaign-rollout-percent": details.rolloutPercent } : {}),
+      ...(targets.length > 0 ? { "campaign-targets": targets } : {}),
       ...(typeof details?.inventoryReady === "boolean" ? { "inventory-ready": details.inventoryReady } : {}),
       ...(details?.admissionStatus ? { "admission-status": details.admissionStatus } : {}),
       ...(details?.admissionReason ? { "admission-reason": details.admissionReason } : {}),
@@ -787,7 +787,7 @@ function workflowRows(inventory, controlSettings, repository, generatedAt, workf
       "gh-aw-version": details?.ghAwVersion || normalizeVersion(workflow.ghAwVersion) || "unknown",
       "gh-aw-current-version": latestGhAwVersion || "unknown",
       "gh-aw-update-state": updateState(details?.ghAwVersion || workflow.ghAwVersion, latestGhAwVersion),
-      "rollout-mode": details?.packageTargets?.find(
+      "rollout-mode": details?.campaignTargets?.find(
         (target) => target.repository.toLowerCase() === repositoryKey,
       )?.mode || details?.configuredMode || "unknown",
       "observed-at": generatedAt,
@@ -873,7 +873,7 @@ export function buildInventoryDashboardSources({
   controlSettings,
   discoveredRepositories = [],
   workflowRegistries = [],
-  latestPackageResolution = {},
+  latestCampaignResolution = {},
   latestGhAwVersion = null,
   latestGhAwFailure = null,
   repository = "",
@@ -889,7 +889,7 @@ export function buildInventoryDashboardSources({
     workflowRegistries,
     latestGhAwVersion,
   );
-  const packageInventory = packageRows(inventory, settings, generatedAt, latestPackageResolution.commits);
+  const campaignInventory = campaignRows(inventory, settings, generatedAt, latestCampaignResolution.commits);
   const workflowHealth = workflowRegistryHealth(workflowRegistries, workflows);
   if (latestGhAwFailure) {
     workflowHealth.complete = false;
@@ -899,11 +899,11 @@ export function buildInventoryDashboardSources({
     workflowHealth.failures = [...(workflowHealth.failures || []), latestGhAwFailure];
   }
   return {
-    packages: source(
-      "packages",
-      packageInventory,
+    campaigns: source(
+      "campaigns",
+      campaignInventory,
       generatedAt,
-      packageVersionHealth(latestPackageResolution, packageInventory),
+      campaignVersionHealth(latestCampaignResolution, campaignInventory),
     ),
     repositories: source(
       "repositories",
@@ -932,10 +932,10 @@ export async function discoverInventoryDashboardSources({
 } = {}) {
   const discoveredRepositories = await discoverRepositories(controlSettings, { controlRepository: repository });
   log.info`Repository discovery selected ${discoveredRepositories.length} repositories`;
-  log.info`Starting workflow registry, package version, and gh-aw release discovery`;
-  const [rawWorkflowRegistries, latestPackageResolution, latestGhAwResolution] = await Promise.all([
+  log.info`Starting workflow registry, campaign version, and gh-aw release discovery`;
+  const [rawWorkflowRegistries, latestCampaignResolution, latestGhAwResolution] = await Promise.all([
     discoverWorkflowRegistries(discoveredRepositories, { controlRepository: repository }),
-    discoverLatestPackageCommits(inventory),
+    discoverLatestCampaignCommits(inventory),
     discoverLatestGhAwVersion().then((version) => ({ version, failure: null })).catch((error) => ({
       version: null,
       failure: versionFailure(
@@ -953,7 +953,7 @@ export async function discoverInventoryDashboardSources({
     controlSettings,
     discoveredRepositories,
     workflowRegistries,
-    latestPackageResolution,
+    latestCampaignResolution,
     latestGhAwVersion: latestGhAwResolution.version,
     latestGhAwFailure: latestGhAwResolution.failure,
     repository,
@@ -989,13 +989,13 @@ export async function main() {
     if (workflowVersionFailures.length > 0) {
       log.warning`Workflow compiler version discovery was incomplete for ${workflowVersionFailures.length} workflow files`;
     }
-    if (latestPackageResolution.failures.length > 0) {
-      log.warning`Package version discovery was incomplete for ${latestPackageResolution.failures.length} repositories`;
+    if (latestCampaignResolution.failures.length > 0) {
+      log.warning`Campaign version discovery was incomplete for ${latestCampaignResolution.failures.length} repositories`;
     }
     if (latestGhAwResolution.failure) {
       log.warning`Latest stable gh-aw version discovery failed: ${latestGhAwResolution.failure.reason}`;
     }
-    log.info`Wrote ${sources.repositories.rows.length} repositories, ${sources.packages.rows.length} packages, and ${sources.workflows.rows.length} workflows`;
+    log.info`Wrote ${sources.repositories.rows.length} repositories, ${sources.campaigns.rows.length} campaigns, and ${sources.workflows.rows.length} workflows`;
   } finally {
     log.endGroup();
   }

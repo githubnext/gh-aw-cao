@@ -9,9 +9,9 @@ Use this page when implementing or reviewing control-plane behavior. For the arc
 
 | Layer | Owns | Must not own |
 | --- | --- | --- |
-| [CAO admission runtime](admission.md) | Pre-activation policy validation and package, role, and request authorization | Repository inventory, target access, live target authority, or routing computation |
-| Shared control | Authentication, common environment, mode interpretation, review requirements, authorized-run precomputation, control envelope | Package ranking or worker workflow-specific mutation policy |
-| orchestrator workflow | Package mode, review destination, target selection, ranking, dispatch limits, eligible worker workflow list | Direct target mutation or credential duplication |
+| [CAO admission runtime](admission.md) | Pre-activation policy validation and campaign, role, and request authorization | Repository inventory, target access, live target authority, or routing computation |
+| Shared control | Authentication, common environment, mode interpretation, review requirements, authorized-run precomputation, control envelope | Campaign ranking or worker workflow-specific mutation policy |
+| orchestrator workflow | Campaign mode, review destination, target selection, ranking, dispatch limits, eligible worker workflow list | Direct target mutation or credential duplication |
 | worker workflow | Repository analysis, declared safe outputs, permissions, and execution limits | Repository discovery, downstream dispatch, or mode escalation |
 
 The orchestrator workflow is the rollout authority. worker workflows are enforcement points: they consume the dispatched control envelope and must stay within it.
@@ -20,14 +20,14 @@ The orchestrator workflow is the rollout authority. worker workflows are enforce
 
 The execution boundary is the key architectural fact: orchestrators and workers run from the private central control repository. A worker checks out and analyzes one remote target at a time. Target repositories receive only declared safe outputs; they do not receive or run the control-plane workflow definitions.
 
-![The control plane contains rollout policy and operation packages. Central orchestrators and workers inspect remote targets, emit declared safe outputs across the repository boundary, and correlate results with the originating central run.](assets/central-execution-how-it-works.svg)
+![The control plane contains rollout policy and operation campaigns. Central orchestrators and workers inspect remote targets, emit declared safe outputs across the repository boundary, and correlate results with the originating central run.](assets/central-execution-how-it-works.svg)
 
-1. A schedule trigger or `workflow_dispatch` starts a package orchestrator workflow.
-2. Before activation, `.github/workflows/shared/control.md` loads the package-installed `.github/workflows/shared` runtime from the workflow revision, then runs the `admit` command against policy from that revision.
+1. A schedule trigger or `workflow_dispatch` starts a campaign orchestrator workflow.
+2. Before activation, `.github/workflows/shared/control.md` loads the campaign-installed `.github/workflows/shared` runtime from the workflow revision, then runs the `admit` command against policy from that revision.
 3. A denied or invalid request skips activation and records the reason in the workflow summary. An admitted run executes the `precompute` command in the same pre-activation job to resolve routing, repository inventory, centrally owned live authority, budgets, and worker workflow availability.
 4. Pre-activation uploads only the resulting non-secret `control-precompute.json`. The agent job restores and validates that artifact before checkout; CAO policy and precompute credentials do not cross into the agent job.
-5. The admitted workflow imports shared control with its package mode and review repository.
-6. The orchestrator workflow ranks eligible repositories using package-specific discovery rules and applies `max_repos` and dispatch limits.
+5. The admitted workflow imports shared control with its campaign mode and review repository.
+6. The orchestrator workflow ranks eligible repositories using campaign-specific discovery rules and applies `max_repos` and dispatch limits.
 7. The orchestrator workflow dispatches each eligible worker workflow with the standard control envelope.
 8. The worker workflow imports shared control as `role: worker`, analyzes only `target_repo`, and emits only its declared safe outputs.
 9. safe outputs are routed to the review repository or processed against the target repository according to the effective mode.
@@ -73,7 +73,7 @@ Never add an App key, PAT, installation token, or other secret to this envelope.
 - Orchestrator precompute versions each inventory and deterministically selects one bounded cell and batch before agent ranking begins.
 - Repository selection defaults to one target and is bounded by absolute, percentage, and dispatch-derived caps.
 - Manual targets and review destinations are restricted to trusted repository owners; the default is the control repository owner.
-- Each live `(target repository, package)` pair has one assigned mutation authority; this operating invariant is not automatically reconciled across control repositories.
+- Each live `(target repository, campaign)` pair has one assigned mutation authority; this operating invariant is not automatically reconciled across control repositories.
 - Review mode defaults to the current control-plane repository when no destination override is provided.
 - An orchestrator workflow dispatches only worker workflows declared in its `safe-outputs.dispatch-workflow.workflows` list and resolved by exact generated-workflow path.
 - Disabled or unavailable worker workflows are skipped with a reason.
@@ -81,7 +81,7 @@ Never add an App key, PAT, installation token, or other secret to this envelope.
 - GitHub tools are read-only; writes occur only through declared safe-output primitives.
 - Agents do not receive Pages deployment permission or mode-promotion authority. Pages report mode and destination come from the control envelope; persistent publication is performed only by conventional deterministic workflows from trusted durable inputs.
 - Review Pages must be access-controlled for the intended reviewers and isolated from production Pages. If that boundary is unavailable, review publication fails closed.
-- A `workflow_dispatch` run may narrow or redirect one run but does not change another package's configured mode.
+- A `workflow_dispatch` run may narrow or redirect one run but does not change another campaign's configured mode.
 - Control-plane correlation is included in worker workflow-created issue, pull request, or comment safe outputs when available.
 
 ## Failure Posture
@@ -108,6 +108,6 @@ fail, skip, or report incomplete -- never infer broader authority
 
 ## Current Controls
 
-Implemented controls include shared authentication, package-level modes and review destinations, target and dispatch limits, versioned inventory batches, worker workflow eligibility checks, standard dispatch envelopes, read-only GitHub tools, and worker workflow safe outputs. Batch selection is deterministic; runs do not auto-advance or retry batches.
+Implemented controls include shared authentication, campaign-level modes and review destinations, target and dispatch limits, versioned inventory batches, worker workflow eligibility checks, standard dispatch envelopes, read-only GitHub tools, and worker workflow safe outputs. Batch selection is deterministic; runs do not auto-advance or retry batches.
 
-Worker-level `enabled` and `max_mode` controls provide ceilings beneath package policy for workers with independent risk or maturity. They are not separate control planes. See [Orchestrators and Workers](orchestrators-and-workers.md).
+Worker-level `enabled` and `max_mode` controls provide ceilings beneath campaign policy for workers with independent risk or maturity. They are not separate control planes. See [Orchestrators and Workers](orchestrators-and-workers.md).

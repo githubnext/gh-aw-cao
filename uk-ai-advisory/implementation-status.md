@@ -2,9 +2,9 @@
 
 This ledger records how the **Advisory operation workflow fleet** represents the UK government guidance on AI, open code, and vulnerability risk in the public sector. The authoritative source is the current [GOV.UK guidance](https://www.gov.uk/guidance/ai-open-code-and-vulnerability-risk-in-the-public-sector), not this ledger.
 
-`IMPLEMENTED` means a workflow capability represents a requirement. It does not prove that the package, an installed fleet, a repository, or an organization is secure, complete, correct, or aligned with the guidance.
+`IMPLEMENTED` means a workflow capability represents a requirement. It does not prove that the campaign, an installed fleet, a repository, or an organization is secure, complete, correct, or aligned with the guidance.
 
-Allowed package-capability statuses: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `HUMAN_REVIEW_REQUIRED`, `INCOMPLETE`.
+Allowed campaign-capability statuses: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `HUMAN_REVIEW_REQUIRED`, `INCOMPLETE`.
 
 ## Completeness index
 
@@ -17,9 +17,9 @@ Allowed package-capability statuses: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `HUMAN
 
 ## Requirement ledger
 
-The source below is non-binding GOV.UK policy guidance. Stable requirement IDs preserve the original package baseline; source changes must be recorded rather than silently renumbering or deleting rows.
+The source below is non-binding GOV.UK policy guidance. Stable requirement IDs preserve the original campaign baseline; source changes must be recorded rather than silently renumbering or deleting rows.
 
-| Requirement ID | Requirement summary | Package-capability status | Workflow evidence | Missing capability | Recommended change | Authoritative source | Last materially verified |
+| Requirement ID | Requirement summary | Campaign-capability status | Workflow evidence | Missing capability | Recommended change | Authoritative source | Last materially verified |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | UK-AI-001 | Apply the guidance to published or publicly accessible UK public-sector code; AI is a threat accelerator, not an eligibility requirement | IMPLEMENTED | `uk-ai-advisory` — Discovery scope and ranking | None known | Preserve public-sector and published-code scope independently of AI functionality | GOV.UK AI open-code and vulnerability-risk guidance, non-binding, link above | 2026-08-27 |
 | UK-AI-002 | Keep public-sector code open and reusable by default for transparency, scrutiny, reuse, and reduced supplier lock-in | IMPLEMENTED | Worker — Open by default method | None known | Preserve open-by-default burden of proof | GOV.UK guidance, non-binding, link above | 2026-08-27 |
@@ -34,7 +34,7 @@ The source below is non-binding GOV.UK policy guidance. Stable requirement IDs p
 | UK-AI-011 | Maintain recovery, rollback, and incident-response capability | IMPLEMENTED | `recovery_controls`; exposure-without-recovery metric | Repository evidence may be incomplete | Require human review of operational evidence outside the repository | GOV.UK guidance, non-binding, link above | 2026-08-27 |
 | UK-AI-012 | A closure exception must identify the credible attacker, what publication adds to risk, and the realistic path to harm | IMPLEMENTED | Worker — Open-Code Exception Register and scorer C/D gate | None known | Never recommend closure when any threat-model field lacks evidence | GOV.UK guidance, non-binding, link above | 2026-08-27 |
 | UK-AI-013 | Keep closure exceptions narrow, time-bound, mitigated, owned, and periodically re-approved | IMPLEMENTED | Worker exception record requires bounded scope, compensating controls, expiry, owner, and cadence | None known | Preserve remediation alternatives and re-approval evidence | GOV.UK guidance, non-binding, link above | 2026-08-27 |
-| UK-AI-014 | Treat A/B/C/D results as workflow prioritization labels, not authoritative guidance decisions | IMPLEMENTED | Worker tier disclaimer and human-review gate | None known | Preserve the B cap when closure evidence is incomplete | GOV.UK guidance plus package-specific safety boundary, non-binding, link above | 2026-08-27 |
-| UK-AI-015 | Make limitations explicit and require human review without exposing sensitive evidence | IMPLEMENTED | Package disclaimers, incomplete handling, output restrictions, and human-review section | None known | Preserve advisory-only language and confidential evidence controls | GOV.UK guidance plus package-specific safety boundary, non-binding, link above | 2026-08-29 |
+| UK-AI-014 | Treat A/B/C/D results as workflow prioritization labels, not authoritative guidance decisions | IMPLEMENTED | Worker tier disclaimer and human-review gate | None known | Preserve the B cap when closure evidence is incomplete | GOV.UK guidance plus campaign-specific safety boundary, non-binding, link above | 2026-08-27 |
+| UK-AI-015 | Make limitations explicit and require human review without exposing sensitive evidence | IMPLEMENTED | Campaign disclaimers, incomplete handling, output restrictions, and human-review section | None known | Preserve advisory-only language and confidential evidence controls | GOV.UK guidance plus campaign-specific safety boundary, non-binding, link above | 2026-08-29 |
 | UK-AI-016 | Maintain a safe posture for unmaintained code: clearly mark and archive inactive repositories, and ensure any live service still has an explicit owner and patching route | PARTIAL | Orchestrator Discovery prioritizes prolonged inactivity without ownership or automated hygiene; worker output says inactivity requires a dormancy finding | No explicit ledgered capability requires checking whether unmaintained repositories are clearly marked and archived, or whether live services tied to dormant repos still have an explicit owner and patching route | Extend worker minimum-standard verification and metrics to assess dormant/unmaintained posture explicitly, including archive marking evidence and owner/patch-route status for any still-live service | GOV.UK AI open-code and vulnerability-risk guidance, non-binding, link above | 2026-08-29 |
 | UK-AI-017 | Avoid private-by-default drift: privacy is an exception control for specific, credible harm paths and not a compensating control for inadequate capability | IMPLEMENTED | Worker — Open by default method, closure rules, private-repo exception handling, and B-tier cap when closure evidence is incomplete | None known | Preserve explicit anti-drift language and prohibition on using privacy to mask under-resourced maintenance | GOV.UK AI open-code and vulnerability-risk guidance, non-binding, link above | 2026-08-29 |

@@ -40,7 +40,7 @@ case "$BUNDLE" in
     workflow_file=optimization.lock.yml
     worker_files=(optimization-ai-credit-auditor.lock.yml optimization-ai-credit-optimizer.lock.yml optimization-token-optimizer.lock.yml)
     ;;
-  *) printf 'Unsupported package: %s\n' "$BUNDLE" >&2; exit 1 ;;
+  *) printf 'Unsupported campaign: %s\n' "$BUNDLE" >&2; exit 1 ;;
 esac
 
 [[ "$TARGET_REPO" =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$ ]] \
@@ -164,7 +164,7 @@ esac
 {
   printf '## Enterprise canary\n'
   printf -- '- Mode: `%s`\n' "$SAFE_OUTPUT_MODE"
-  printf -- '- Package: `%s`\n' "$BUNDLE"
+  printf -- '- Campaign: `%s`\n' "$BUNDLE"
   printf -- '- Target: `%s`\n' "$TARGET_REPO"
   printf -- '- Review destination: `%s`\n' "${SAFE_OUTPUT_REPO:-not applicable}"
   printf -- '- Worker runs: `%s`\n' "$(paste -sd, "$worker_ids_file")"

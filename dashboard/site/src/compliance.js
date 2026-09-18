@@ -115,7 +115,7 @@ dashboard:
             mark: table
             encoding:
               columns:
-                - field: package-name
+                - field: campaign-name
                 - field: repository
                 - field: workflow
                 - field: workflow-role
@@ -464,16 +464,16 @@ function runSemanticComplianceChecks() {
     workflows: {
       rows: [
         { workflow: 'orchestrator.yml', 'workflow-role': 'orchestrator' },
-        { workflow: 'standalone.yml', 'workflow-role': 'standalone', package: 'invalid-package' }
+        { workflow: 'standalone.yml', 'workflow-role': 'standalone', campaign: 'invalid-campaign' }
       ]
     }
   });
-  const packageMembershipCovered = validSources.ok && !invalidMembership.ok;
+  const campaignMembershipCovered = validSources.ok && !invalidMembership.ok;
   results.push(createResult(
     'T-SEM-003',
     'DLS-SEM-022',
-    packageMembershipCovered,
-    packageMembershipCovered ? null : 'Package workflow role and membership fixtures did not produce the expected acceptance and rejection results.'
+    campaignMembershipCovered,
+    campaignMembershipCovered ? null : 'Campaign workflow role and membership fixtures did not produce the expected acceptance and rejection results.'
   ));
 
   const invalidNegativeAllowance = validateLogicalSources({
@@ -482,7 +482,7 @@ function runSemanticComplianceChecks() {
         {
           organization: 'octo-org',
           repository: 'platform',
-          package: 'daily-ops',
+          campaign: 'daily-ops',
           workflow: 'orchestrator.yml',
           'workflow-role': 'orchestrator',
           'max-ai-credits': -1
@@ -496,21 +496,21 @@ function runSemanticComplianceChecks() {
         {
           organization: 'octo-org',
           repository: 'platform',
-          package: 'daily-ops',
+          campaign: 'daily-ops',
           workflow: 'orchestrator.yml',
           'workflow-role': 'orchestrator',
           'max-ai-credits': 100,
-          'package-aic-allowance': 99
+          'campaign-aic-allowance': 99
         }
       ]
     }
   });
-  const packageAllowanceCovered = validSources.ok && !invalidNegativeAllowance.ok && !invalidMismatchedAllowance.ok;
+  const campaignAllowanceCovered = validSources.ok && !invalidNegativeAllowance.ok && !invalidMismatchedAllowance.ok;
   results.push(createResult(
     'T-SEM-003',
     'DLS-SEM-023',
-    packageAllowanceCovered,
-    packageAllowanceCovered ? null : 'Package allowance fixtures did not produce the expected non-negative and summed-limit validation results.'
+    campaignAllowanceCovered,
+    campaignAllowanceCovered ? null : 'Campaign allowance fixtures did not produce the expected non-negative and summed-limit validation results.'
   ));
 
   return results;
@@ -1032,20 +1032,20 @@ function createSemanticFixtureSources() {
         {
           organization: 'octo-org',
           repository: 'platform',
-          package: 'daily-ops',
+          campaign: 'daily-ops',
           workflow: '.github/workflows/daily-ops.yml',
           'workflow-role': 'orchestrator',
           'max-ai-credits': 100,
-          'package-aic-allowance': 250
+          'campaign-aic-allowance': 250
         },
         {
           organization: 'octo-org',
           repository: 'platform',
-          package: 'daily-ops',
+          campaign: 'daily-ops',
           workflow: '.github/workflows/daily-ops-worker.yml',
           'workflow-role': 'worker',
           'max-ai-credits': 150,
-          'package-aic-allowance': 250
+          'campaign-aic-allowance': 250
         },
         {
           organization: 'octo-org',

@@ -24,9 +24,9 @@ test("dashboard view assessment recognizes worker-produced sources", () => {
       { data: { source: "readiness-observations" } },
       { data: { source: "repository-activity" } },
       { data: { source: "workflow-runs" } },
-      { data: { source: "packaged-workflows" } },
+      { data: { source: "campaign-workflows" } },
       { data: { source: "dispatches" } },
-      { data: { source: "package-reports" } },
+      { data: { source: "campaign-reports" } },
       { data: { source: "data-health-coverage" } },
     ],
   };

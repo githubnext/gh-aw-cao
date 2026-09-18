@@ -17,14 +17,14 @@ function document(id, navigationLabel) {
   };
 }
 
-test("bundles installed package dashboards into one deterministic document", async () => {
+test("bundles installed campaign dashboards into one deterministic document", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-bundle-"));
   const output = path.join(root, "dashboard.json");
   const additions = path.join(root, "dashboards");
   await mkdir(additions);
   await writeFile(output, `${JSON.stringify(document("overview", "Explore"))}\n`);
-  await writeFile(path.join(additions, "zeta.json"), `${JSON.stringify(document("zeta", "Package operations"))}\n`);
-  await writeFile(path.join(additions, "alpha.json"), `${JSON.stringify(document("alpha", "Package operations"))}\n`);
+  await writeFile(path.join(additions, "zeta.json"), `${JSON.stringify(document("zeta", "Campaign operations"))}\n`);
+  await writeFile(path.join(additions, "alpha.json"), `${JSON.stringify(document("alpha", "Campaign operations"))}\n`);
 
   try {
     await bundleDashboards(output, additions);
@@ -32,7 +32,7 @@ test("bundles installed package dashboards into one deterministic document", asy
     assert.deepEqual(bundled.dashboard.pages.map(({ id }) => id), ["overview", "alpha", "zeta"]);
     assert.deepEqual(bundled.dashboard.navigation, [
       { label: "Explore", pages: ["overview"] },
-      { label: "Package operations", pages: ["alpha", "zeta"] },
+      { label: "Campaign operations", pages: ["alpha", "zeta"] },
     ]);
   } finally {
     await rm(root, { recursive: true, force: true });

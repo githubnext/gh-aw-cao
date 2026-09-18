@@ -27,8 +27,8 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "cao-evolution-failures-investigator-operational-value.sh",
     "dependabot-update-planner-operational-value.sh",
     "eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
+    "eu-cra-compliance-campaign-maintainer-operational-value.sh",
     "eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-    "eu-cra-compliance-package-maintainer-operational-value.sh",
     "eu-cra-compliance-scope-classifier-operational-value.sh",
     "eu-cra-compliance-security-requirements-auditor-operational-value.sh",
     "eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
@@ -107,7 +107,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     assert.equal(
       readFileSync(join(root, "repo-assist", ".github", "graders", name), "utf8"),
       readFileSync(join(gradersDirectory, name), "utf8"),
-      `${name}: packaged evaluator must match the compiled source`,
+      `${name}: bundled evaluator must match the compiled source`,
     );
   }
 

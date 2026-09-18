@@ -54,7 +54,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: self-care
+      campaign: self-care
       role: worker
       worker: dashboard-language-refactor
 
@@ -154,7 +154,7 @@ Inspect the Dashboard Language renderer for one view whose JavaScript is over-sp
 1. Preserve rendered behavior, accessibility semantics, routes, data-state handling, source provenance, and public module APIs unless the Dashboard Language specification requires an explicit declarative replacement.
 2. Move view composition out of page- or view-specific JavaScript and into `dashboard/site/dashboard.json` using existing Dashboard Language vocabulary whenever possible.
 3. If the reusable boundary needs new language vocabulary, make the smallest coherent normative update to `docs/dashboard-language-specification.md`, implement matching validation in `dashboard/site/src/specification.js`, and add positive and negative conformance tests. Do not add arbitrary scripts, expressions, templates, or executable content to Dashboard Language.
-4. Extract small reusable subcomponents under `dashboard/site/src/components/`. Give them domain-neutral names and inputs. Update both `dashboard/aw.yml` and root `aw.yml` only when a new runtime file must be packaged.
+4. Extract small reusable subcomponents under `dashboard/site/src/components/`. Give them domain-neutral names and inputs. Update both `dashboard/aw.yml` and root `aw.yml` only when a new runtime file must be bundled.
 5. Add focused unit tests for the reusable component contract and an end-to-end assertion for the affected rendered view. If Dashboard Language JSON changes, validate the document and cover the declarative composition.
 6. Change only the files allowed by the safe-output configuration. Do not edit workflows, generated lock files, report producers, dependencies, or unrelated dashboard views.
 7. Keep the change to one view and one reusable component family. Do not redesign navigation, visual styling, data acquisition, or the Dashboard Language beyond what the selected refactor requires.

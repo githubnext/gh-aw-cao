@@ -28,7 +28,7 @@ const scenarios = [
     id: 'cfo',
     persona: 'Chief Financial Officer',
     question: 'Where is AI Credit usage concentrated, and is it producing operational value?',
-    routes: ['cost', 'usage', 'packages']
+    routes: ['cost', 'usage', 'campaigns']
   },
   {
     id: 'cto',

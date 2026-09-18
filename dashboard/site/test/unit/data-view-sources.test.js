@@ -11,11 +11,11 @@ const optimizationDashboardQueries = JSON.parse(
   readFileSync(`${process.cwd()}/../../optimization/dashboard.json`, 'utf8')
 ).dashboard.queries;
 const sources = {
-  packages: {
+  campaigns: {
     rows: [{
-      package: 'dashboard', 'package-name': 'CAO Dashboard', 'package-description': 'Deploy the dashboard.',
-      'package-icon': 'graph', 'package-mode': 'review', 'package-enabled': true,
-      'package-worker-count': 1, 'package-min-version': 'v0.89.3', 'package-experimental': true
+      campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', 'campaign-description': 'Deploy the dashboard.',
+      'campaign-icon': 'graph', 'campaign-mode': 'review', 'campaign-enabled': true,
+      'campaign-worker-count': 1, 'campaign-min-version': 'v0.89.3', 'campaign-experimental': true
     }],
     metadata
   },
@@ -23,7 +23,7 @@ const sources = {
   workflows: {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.lock.yml',
-      package: 'dashboard', 'package-name': 'CAO Dashboard', 'workflow-id': '501',
+      campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', 'workflow-id': '501',
       'workflow-name': 'Published registry name', 'workflow-role': 'worker',
       'workflow-registry-state': 'active', 'workflow-active': 'true',
       'workflow-link': {
@@ -61,7 +61,7 @@ const sources = {
       'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
       name: 'Dashboard · Publish report', objective: 'Dashboard',
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-      run: '42', 'workflow-name': 'Dashboard', 'workflow-icon': 'workflow', package: 'dashboard',
+      run: '42', 'workflow-name': 'Dashboard', 'workflow-icon': 'workflow', campaign: 'dashboard',
       scope: 'githubnext/gh-aw-cao', domain: 'dashboard', 'work-type': 'worker',
       'lifecycle-state': 'blocked', phase: 'completed', reason: 'Build failed',
       'reason-evidence-class': 'observed', 'next-action': 'Resolve the run failure',
@@ -202,26 +202,26 @@ describe('canonical view sources', () => {
     });
   });
 
-  it('projects package rows and workflow membership from canonical records', async () => {
+  it('projects campaign rows and workflow membership from canonical records', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
-    const projected = await queryCanonicalViewSources(indexedDB, sources, ['packages', 'workflows']);
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['campaigns', 'workflows']);
 
-    expect(projected.packages).toMatchObject({
-      source: 'packages',
+    expect(projected.campaigns).toMatchObject({
+      source: 'campaigns',
       rows: [{
-        package: 'dashboard',
-        'package-name': 'CAO Dashboard',
-        'package-description': 'Deploy the dashboard.',
-        'package-mode': 'review',
-        'package-worker-count': 1
+        campaign: 'dashboard',
+        'campaign-name': 'CAO Dashboard',
+        'campaign-description': 'Deploy the dashboard.',
+        'campaign-mode': 'review',
+        'campaign-worker-count': 1
       }],
       metadata: { 'source-kind': 'canonical-query' }
     });
     expect(projected.workflows.rows).toEqual([
       expect.objectContaining({
-        package: 'dashboard',
-        'package-name': 'CAO Dashboard',
+        campaign: 'dashboard',
+        'campaign-name': 'CAO Dashboard',
         workflow: '.github/workflows/dashboard.md',
         'workflow-id': '501',
         'workflow-name': 'Published registry name',

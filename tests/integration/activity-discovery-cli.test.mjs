@@ -43,13 +43,13 @@ test("discover-workflows collects a bounded repository set locally", async () =>
     await writeFile(path.join(root, "aw.yml"), "name: Fixture\nincludes: []\n");
     await writeFile(path.join(workflowDirectory, "cao.json"), JSON.stringify({
       version: 1,
-      "control-plane": { packages: {} },
+      "control-plane": { campaigns: {} },
     }));
     await writeFile(path.join(workflowDirectory, "ci.md"), "---\nname: CI\n---\n");
     const settingsPath = path.join(root, "control-settings.json");
     await writeFile(settingsPath, JSON.stringify({
       allowed_repositories: ["acme/app"],
-      packages: {},
+      campaigns: {},
       policy_document: {
         "control-plane": {
           inventory: { "max-scan-repositories": 2 },
@@ -81,7 +81,7 @@ test("discover-workflows collects a bounded repository set locally", async () =>
     assert.deepEqual(result, {
       command: "discover-workflows",
       repositories: 2,
-      packages: 0,
+      campaigns: 0,
       workflows: 3,
     });
     const sources = JSON.parse(await readFile(outputPath, "utf8"));

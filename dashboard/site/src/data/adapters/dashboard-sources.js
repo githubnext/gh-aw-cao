@@ -56,7 +56,7 @@ function optionalString(value) {
  */
 export function adaptDashboardSources(sources) {
   const repositories = sourceDocument(sources.repositories);
-  const packages = sourceDocument(sources.packages);
+  const campaigns = sourceDocument(sources.campaigns);
   const workflows = sourceDocument(sources.workflows);
   const runs = sourceDocument(sources.runs);
   const runLinkedSources = [
@@ -68,43 +68,43 @@ export function adaptDashboardSources(sources) {
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
   const publishedRunIds = new Set();
-  const publishedPackageIds = new Map();
+  const publishedCampaignIds = new Map();
 
-  for (const candidate of packages.rows) {
+  for (const candidate of campaigns.rows) {
     const row = objectRow(candidate);
     if (!row) continue;
-    const slug = requiredString(row.package, 'package.package');
-    const id = sourceId('package', SOURCE, slug);
-    publishedPackageIds.set(slug, id);
+    const slug = requiredString(row.campaign, 'campaign.campaign');
+    const id = sourceId('campaign', SOURCE, slug);
+    publishedCampaignIds.set(slug, id);
     observations.push({
-      kind: 'package',
+      kind: 'campaign',
       source: SOURCE,
       sourceId: slug,
-      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(packages.metadata), 'package.observed-at'),
+      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(campaigns.metadata), 'campaign.observed-at'),
       data: {
         id,
         slug,
-        name: row['package-name'] ?? slug,
-        description: row['package-description'] ?? '',
-        icon: row['package-icon'] ?? 'package',
-        mode: row['package-mode'] ?? 'unknown',
-        enabled: row['package-enabled'] !== false,
-        maxRepositories: row['package-max-repositories'] ?? null,
-        rolloutPercent: row['package-rollout-percent'] ?? null,
-        monthlyAiCreditBudget: row['package-monthly-ai-credit-budget'] ?? null,
-        aiCreditAllowance: row['package-aic-allowance'] ?? null,
-        workerCount: row['package-worker-count'] ?? 0,
-        inventoryWarnings: row['package-inventory-warnings'] ?? 0,
-        workers: row['package-workers'] ?? [],
-        targets: row['package-targets'] ?? [],
-        minVersion: row['package-min-version'] ?? '',
-        version: row['package-version'] ?? 'unknown',
-        currentVersion: row['package-current-version'] ?? 'unknown',
-        updateState: row['package-update-state'] ?? 'unknown',
-        experimental: row['package-experimental'] === true,
-        readmePath: row['package-readme-path'] ?? '',
-        readme: row['package-readme'] ?? '',
-        packageLink: row['package-link'] ?? null
+        name: row['campaign-name'] ?? slug,
+        description: row['campaign-description'] ?? '',
+        icon: row['campaign-icon'] ?? 'goal',
+        mode: row['campaign-mode'] ?? 'unknown',
+        enabled: row['campaign-enabled'] !== false,
+        maxRepositories: row['campaign-max-repositories'] ?? null,
+        rolloutPercent: row['campaign-rollout-percent'] ?? null,
+        monthlyAiCreditBudget: row['campaign-monthly-ai-credit-budget'] ?? null,
+        aiCreditAllowance: row['campaign-aic-allowance'] ?? null,
+        workerCount: row['campaign-worker-count'] ?? 0,
+        inventoryWarnings: row['campaign-inventory-warnings'] ?? 0,
+        workers: row['campaign-workers'] ?? [],
+        targets: row['campaign-targets'] ?? [],
+        minVersion: row['campaign-min-version'] ?? '',
+        version: row['campaign-version'] ?? 'unknown',
+        currentVersion: row['campaign-current-version'] ?? 'unknown',
+        updateState: row['campaign-update-state'] ?? 'unknown',
+        experimental: row['campaign-experimental'] === true,
+        readmePath: row['campaign-readme-path'] ?? '',
+        readme: row['campaign-readme'] ?? '',
+        campaignLink: row['campaign-link'] ?? null
       }
     });
   }
@@ -161,10 +161,10 @@ export function adaptDashboardSources(sources) {
         ghAwCurrentVersion: row['gh-aw-current-version'] ?? 'unknown',
         ghAwUpdateState: row['gh-aw-update-state'] ?? 'unknown',
         workflowLink: row['workflow-link'] ?? null,
-        packageId: typeof row.package === 'string' ? publishedPackageIds.get(row.package) : undefined,
-        package: typeof row.package === 'string' ? row.package : undefined,
-        packageName: row['package-name'],
-        packageIcon: row['package-icon'],
+        campaignId: typeof row.campaign === 'string' ? publishedCampaignIds.get(row.campaign) : undefined,
+        campaign: typeof row.campaign === 'string' ? row.campaign : undefined,
+        campaignName: row['campaign-name'],
+        campaignIcon: row['campaign-icon'],
         role: row['workflow-role'],
         rolloutMode: row['rollout-mode'],
         maxAiCredits: row['max-ai-credits']

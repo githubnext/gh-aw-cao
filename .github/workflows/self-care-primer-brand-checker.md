@@ -56,7 +56,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: self-care
+      campaign: self-care
       role: worker
       worker: primer-brand-checker
 

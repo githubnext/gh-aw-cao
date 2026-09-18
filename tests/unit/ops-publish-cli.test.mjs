@@ -111,7 +111,7 @@ function runCommand(command, {
   settings = {
     allowed_owners: ["acme"],
     allowed_repositories: ["acme/service"],
-    packages: {
+    campaigns: {
       "aw-doctor": {
         worker_policies: {
           "cao-evolution-failures-investigator": {
@@ -147,7 +147,7 @@ function runCommand(command, {
     targetCommit: { sha: "0123456789abcdef0123456789abcdef01234567" },
     authoritySource: JSON.stringify({
       version: 1,
-      "target-authority": { packages: { "aw-doctor": { authority: "acme/control" } } },
+      "target-authority": { campaigns: { "aw-doctor": { authority: "acme/control" } } },
     }),
     targetIssue,
     commentBody: `Published\n\n${publicationCommentMarker("acme/service", 84)}`,
@@ -185,7 +185,7 @@ function runCommand(command, {
         GITHUB_SERVER_URL: "https://github.com",
         MOCK_CONFIG: JSON.stringify(completeConfig),
         MOCK_LOG: logPath,
-        PACKAGE: "aw-doctor",
+        CAMPAIGN: "aw-doctor",
         REVIEWER: "octocat",
         SOURCE_CONTENT_DIGEST: issueContentDigest(approvedSourceIssue.title, approvedSourceIssue.body),
         SOURCE_ISSUE: "42",
@@ -229,7 +229,7 @@ test("inspect and validate-run emit trusted publication inputs", () => {
 
   const validation = runCommand("validate-run");
   assert.equal(validation.status, 0, validation.stderr);
-  assert.match(validation.output, /package=aw-doctor/);
+  assert.match(validation.output, /campaign=aw-doctor/);
   assert.match(validation.output, /target_repository=acme\/service/);
   assert.equal(validation.requests[0].authorization, "Bearer control-token");
 });
@@ -295,7 +295,7 @@ test("publish ignores missing, malformed, or mismatched target authority", () =>
   for (const config of [
     { authorityMissing: true },
     { authoritySource: "version: [" },
-    { authoritySource: JSON.stringify({ version: 1, "target-authority": { packages: { "aw-doctor": { authority: "acme/other" } } } }) },
+    { authoritySource: JSON.stringify({ version: 1, "target-authority": { campaigns: { "aw-doctor": { authority: "acme/other" } } } }) },
   ]) {
     const result = runCommand("publish", { config });
     assert.equal(result.status, 0, result.stderr);
@@ -326,7 +326,7 @@ test("validate-run surfaces authentication, server, network, and malformed JSON 
 test("publish rejects malformed command inputs and missing target credentials", () => {
   for (const [env, message] of [
     [{ SOURCE_CONTENT_DIGEST: "not-a-digest" }, /approved source content digest is invalid/],
-    [{ PACKAGE: "unknown" }, /package is unsupported/],
+    [{ CAMPAIGN: "unknown" }, /campaign is unsupported/],
     [{ TARGET_TOKEN: "" }, /required GitHub credential is not configured/],
   ]) {
     const result = runCommand("publish", { env });

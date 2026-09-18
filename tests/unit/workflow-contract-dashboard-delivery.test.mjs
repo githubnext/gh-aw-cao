@@ -64,16 +64,16 @@ test("dashboard authoring corpus workflow generates only validated training exam
   assert.match(dashboardIrSkill, /Reuse an established built-in view pattern/);
   assert.match(dashboardIrSkill, /Return only the validated complete Dashboard Language YAML document/);
   assert.match(dashboardAuthoringSkill, /Pass the intent and operational-value contract to `generate-dashboard-ir`/);
-  assert.match(dashboardAuthoringSkill, /Store an operation package's production Dashboard Language document at `<package>\/dashboard\.json`/);
-  assert.match(dashboardAuthoringSkill, /destination is `\.github\/aw\/dashboards\/<package>\.json`/);
+  assert.match(dashboardAuthoringSkill, /Store an operation campaign's production Dashboard Language document at `<campaign>\/dashboard\.json`/);
+  assert.match(dashboardAuthoringSkill, /destination is `\.github\/aw\/dashboards\/<campaign>\.json`/);
   assert.match(dashboardAuthoringSkill, /bundles installed `\.github\/aw\/dashboards\/\*\.json` documents into the single deployed `dashboard\.json`/);
-  assert.match(dashboardAuthoringSkill, /Do not add package pages directly to `dashboard\/site\/dashboard\.json`/);
+  assert.match(dashboardAuthoringSkill, /Do not add campaign pages directly to `dashboard\/site\/dashboard\.json`/);
   assert.doesNotMatch(dashboardAuthoringSkill, /Select only the Dashboard Language sources and fields/);
   assert.doesNotMatch(dashboardAuthoringSkill, /corpus\/index\.json/);
   assert.match(dashboardIrSkill, /## Corpus procedure/);
 });
 
-test("dashboard CI runs the package quality gates", () => {
+test("dashboard CI runs the campaign quality gates", () => {
   const source = workflow("cid.yml");
   const jobs = generatedJobs(source);
   const lintUnit = jobs.get("lint-unit");
@@ -145,12 +145,12 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(lighthouseComment.block, /issues\.createComment/);
 });
 
-test("Dashboard package builds artifacts and deploys Pages in one workflow", () => {
+test("Dashboard campaign builds artifacts and deploys Pages in one workflow", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
   const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
   const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
-  const rootPackage = parse(rootManifest);
-  const dashboardPackage = parse(dashboardManifest);
+  const rootCampaign = parse(rootManifest);
+  const dashboardCampaign = parse(dashboardManifest);
   const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
   const activityIndexJob = activityWorkflow.match(/\n  index:\n([\s\S]*?)\n  cache:\n/)?.[1];
@@ -173,7 +173,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
     ? { source: entry, destination: entry, kind: "action-workflow" }
     : { ...entry, source: `${sourcePrefix}${entry.source}` };
 
-  assert.ok(rootPackage.includes.includes("dashboard/aw.yml"));
+  assert.ok(rootCampaign.includes.includes("dashboard/aw.yml"));
   assert.match(dashboardManifest, /name: CAO Dashboard/);
   assert.match(rootManifest, /^\s+- dashboard\/aw\.yml$/m);
   assert.match(dashboardManifest, /^\s+- \.github\/workflows\/cao-dashboard\.yml$/m);
@@ -241,7 +241,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardCacheJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: dist\/cao[\s\S]*?Delete previous dashboard cache/);
   assert.match(dashboardCacheJob, /Delete previous dashboard cache[\s\S]*?cache\.key === process\.env\.DASHBOARD_CACHE_KEY[\s\S]*?cache\.ref === process\.env\.GITHUB_REF[\s\S]*?deleteActionsCacheById[\s\S]*?cache_id: cache\.id/);
   assert.match(dashboardCacheJob, /Save dashboard cache[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: dist\/cao[\s\S]*?key: central-agentic-ops-dashboard/);
-  assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?policy\['control-plane'\]\?\.packages\?\.dashboard\?\.deploy[\s\S]*?typeof configuredDeploy !== 'boolean'[\s\S]*?const deploy = configuredDeploy \?\? true[\s\S]*?core\.setOutput\('deploy', String\(deploy\)\)/);
+  assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?policy\['control-plane'\]\?\.campaigns\?\.dashboard\?\.deploy[\s\S]*?typeof configuredDeploy !== 'boolean'[\s\S]*?const deploy = configuredDeploy \?\? true[\s\S]*?core\.setOutput\('deploy', String\(deploy\)\)/);
   assert.ok(dashboardBuildJob);
   assert.ok(dashboardCacheJob);
   assert.ok(dashboardDeployJob);
@@ -338,13 +338,13 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   }
 });
 
-test("Activity package owns the shared collected-data cache contract", () => {
+test("Activity campaign owns the shared collected-data cache contract", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
   const activityManifest = parse(readFileSync(join(root, "activity", "aw.yml"), "utf8"));
   const workflow = readFileSync(join(root, ".github", "workflows", "cao-activity.yml"), "utf8");
   const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
   const readme = readFileSync(join(root, "activity", "README.md"), "utf8");
-  const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const campaignDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.equal(activityManifest.name, "CAO Activity");
   assert.deepEqual(activityManifest.includes, [
@@ -370,7 +370,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /Resolve dashboard control settings[\s\S]*?\.github\/workflows\/shared\/control\.mjs/);
-  assert.doesNotMatch(workflow, /Resolve CAO control source|\.github\/aw\/packages|\.cao-runtime/);
+  assert.doesNotMatch(workflow, /Resolve CAO control source|\.github\/aw\/campaigns|\.cao-runtime/);
   assert.match(workflow, /uses: github\/gh-aw-actions\/setup-cli@[0-9a-f]{40}/);
   assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
@@ -398,9 +398,9 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v5-\$\{\{ github\.run_id \}\}-/);
-  assert.equal(packageDocument.scripts["activity:local"], undefined);
-  assert.equal(packageDocument.scripts["activity:local:node"], undefined);
-  assert.equal(packageDocument.scripts["activity:run-workflow:local"], undefined);
+  assert.equal(campaignDocument.scripts["activity:local"], undefined);
+  assert.equal(campaignDocument.scripts["activity:local:node"], undefined);
+  assert.equal(campaignDocument.scripts["activity:run-workflow:local"], undefined);
   assert.match(readme, /gh-aw-logs-shards/);
 });
 
@@ -426,7 +426,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.match(workflow, /Restore cached CAO Dashboard[\s\S]*?id: dashboard-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: dist\/cao[\s\S]*?key: central-agentic-ops-dashboard/);
   assert.match(workflow, /Find latest CAO Dashboard run[\s\S]*?if: steps\.dashboard-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/workflows\/cao-dashboard\.yml\/runs\?branch=\$DEFAULT_BRANCH&status=success&per_page=20[\s\S]*?\.workflow_runs\[0\]\.id/);
   assert.match(workflow, /Mount latest CAO Dashboard artifact[\s\S]*?if: steps\.dashboard-cache\.outputs\.cache-hit != 'true'[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: dist\/cao[\s\S]*?run-id: \$\{\{ steps\.dashboard-run\.outputs\.run-id \}\}/);
-  assert.doesNotMatch(workflow, /gh aw add|DASHBOARD_PACKAGE/);
+  assert.doesNotMatch(workflow, /gh aw add|DASHBOARD_CAMPAIGN/);
   assert.equal((workflow.match(/actions\/upload-pages-artifact@/g) || []).length, 1);
   assert.equal((workflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(dashboardWorkflow, /workflow_call:/);
@@ -445,7 +445,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
 
 test("mobile dashboard integration downloads deployed dashboard data", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "actions.yml"), "utf8");
-  const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const campaignDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
   assert.match(workflow, /concurrency:\n\s+group: mobile-dashboard-integration-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: true/);
@@ -469,10 +469,10 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   const playwrightConfig = readFileSync(join(root, "tests", "playwright", "configs", "mobile.config.mjs"), "utf8");
   assert.match(playwrightConfig, /preserveOutput: "always"/);
   assert.match(playwrightConfig, /--max-old-space-size=\$\{memoryMb\}/);
-  assert.match(packageDocument.scripts["dashboard:local:mobile"], /DASHBOARD_DATA_URL=https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/payload-hashes\.json/);
-  assert.match(packageDocument.scripts["dashboard:local:mobile"], /MOBILE_DEVICE='Pixel 7'/);
-  assert.match(packageDocument.scripts["dashboard:local:mobile"], /MOBILE_MEMORY_MB=256/);
-  assert.match(packageDocument.scripts["dashboard:local:mobile"], /tests\/playwright\/configs\/mobile\.config\.mjs/);
+  assert.match(campaignDocument.scripts["dashboard:local:mobile"], /DASHBOARD_DATA_URL=https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/payload-hashes\.json/);
+  assert.match(campaignDocument.scripts["dashboard:local:mobile"], /MOBILE_DEVICE='Pixel 7'/);
+  assert.match(campaignDocument.scripts["dashboard:local:mobile"], /MOBILE_MEMORY_MB=256/);
+  assert.match(campaignDocument.scripts["dashboard:local:mobile"], /tests\/playwright\/configs\/mobile\.config\.mjs/);
   const mobileTest = readFileSync(join(root, "tests", "e2e", "dashboard-mobile-live.spec.mjs"), "utf8");
   assert.match(mobileTest, /Network\.emulateNetworkConditions/);
   assert.match(mobileTest, /Performance\.getMetrics/);
@@ -503,9 +503,9 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
 });
 
 test("Documentation site uses stock Starlight without external themes", () => {
-  const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  const campaignJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf8");
-  const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+  const dependencies = { ...campaignJson.dependencies, ...campaignJson.devDependencies };
 
   assert.deepEqual(Object.keys(dependencies).filter((name) => name.startsWith("starlight-theme-")), []);
   assert.doesNotMatch(astroConfig, /starlight-theme-/);
@@ -520,25 +520,25 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
     });
     const inventory = JSON.parse(readFileSync(outputPath, "utf8"));
     const dependabotBundle = inventory.bundles.find((bundle) => bundle.id === "dependabot");
-    const policyPackages = JSON.parse(
+    const policyCampaigns = JSON.parse(
       readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"),
-    )["control-plane"].packages;
-    const registeredPackageIds = Object.keys(policyPackages).sort();
-    const expectedBundles = registeredPackageIds.flatMap((packageId) => {
-      const descriptorPath = join(root, packageId, "cao.json");
+    )["control-plane"].campaigns;
+    const registeredCampaignIds = Object.keys(policyCampaigns).sort();
+    const expectedBundles = registeredCampaignIds.flatMap((campaignId) => {
+      const descriptorPath = join(root, campaignId, "cao.json");
       if (!existsSync(descriptorPath)) {
-        assert.equal(policyPackages[packageId].workers, undefined, `${packageId} workers require a package descriptor`);
+        assert.equal(policyCampaigns[campaignId].workers, undefined, `${campaignId} workers require a campaign descriptor`);
         return [];
       }
       const descriptor = JSON.parse(readFileSync(descriptorPath, "utf8"));
-      assert.equal(descriptor.package, packageId, descriptorPath);
+      assert.equal(descriptor.campaign, campaignId, descriptorPath);
       assert.deepEqual(
-        Object.fromEntries(Object.entries(policyPackages[packageId].workers).map(([worker, config]) => [
+        Object.fromEntries(Object.entries(policyCampaigns[campaignId].workers).map(([worker, config]) => [
           worker,
           config.workflow,
         ])),
         descriptor.workers,
-        `${packageId} policy workers must match its package descriptor`,
+        `${campaignId} policy workers must match its campaign descriptor`,
       );
       const orchestratorSource = workflow(`${descriptor.orchestrator}.md`);
       const frontmatter = /^---\n([\s\S]*?)\n---/.exec(orchestratorSource)?.[1];
@@ -547,17 +547,17 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
       assert.deepEqual(
         [...dispatchWorkflows].sort(),
         Object.values(descriptor.workers).sort(),
-        `${packageId} dispatch allowlist must match its package descriptor`,
+        `${campaignId} dispatch allowlist must match its campaign descriptor`,
       );
       return [{
-        id: packageId,
+        id: campaignId,
         workers: dispatchWorkflows,
       }];
     }).sort((left, right) => left.id.localeCompare(right.id));
-    assert.deepEqual(inventory.packages.map((entry) => entry.id), registeredPackageIds);
-    assert.equal(inventory.packages.find((entry) => entry.id === "repo-assist")?.name, "Repo Assist");
+    assert.deepEqual(inventory.campaigns.map((entry) => entry.id), registeredCampaignIds);
+    assert.equal(inventory.campaigns.find((entry) => entry.id === "repo-assist")?.name, "Repo Assist");
     assert.equal(dependabotBundle.readmePath, "dependabot/README.md");
-    assert.match(dependabotBundle.readme, /^# Dependabot Package\n/);
+    assert.match(dependabotBundle.readme, /^# Dependabot Campaign\n/);
     assert.match(dependabotBundle.readme, /## Safety Boundaries/);
     assert.deepEqual(inventory.bundles.map((bundle) => ({
       id: bundle.id,

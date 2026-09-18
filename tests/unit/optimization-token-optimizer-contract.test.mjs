@@ -110,7 +110,7 @@ test("token optimizer metric measures only verified comparable savings", () => {
   }), null);
 });
 
-test("optimization package installs the token optimizer contract", () => {
+test("optimization campaign installs the token optimizer contract", () => {
   const manifest = readFileSync(join(root, "optimization", "aw.yml"), "utf8");
 
   assert.match(
@@ -128,7 +128,7 @@ test("optimization package installs the token optimizer contract", () => {
 test("token optimizer is review-only, assignment-scoped, and gated before inference", () => {
   const source = workflow("optimization-token-optimizer.md");
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
-  const packagePolicy = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
+  const campaignPolicy = JSON.parse(readFileSync(join(root, "optimization", "cao.json"), "utf8"));
 
   assert.match(source, /^name: "AW Optimization \/ Token Optimizer"$/m);
   assert.match(source, /worker: token-optimizer/);
@@ -151,12 +151,14 @@ test("token optimizer is review-only, assignment-scoped, and gated before infere
   assert.match(source, /token-efficiency-observation\.json/);
   assert.match(source, /recommendationDisposition: "unapplied"/);
   assert.match(source, /interventionState: "proposed"/);
-  assert.match(source, /attributableRunIds: \(\(\$attributableRunIds \| fromjson\) \+ \[\$optimizerRunId\] \| unique\)/);
+  assert.match(source, /^      assignment_json:$/m);
+  assert.doesNotMatch(source, /^      assignment_run_id:$/m);
+  assert.match(source, /attributableRunIds: \(\$assignment\.attributableRunIds \+ \[\$optimizerRunId\] \| unique\)/);
   assert.equal(
-    policy["control-plane"].packages.optimization.workers["token-optimizer"]["max-mode"],
+    policy["control-plane"].campaigns.optimization.workers["token-optimizer"]["max-mode"],
     "review",
   );
-  assert.equal(packagePolicy.workers["token-optimizer"], "optimization-token-optimizer");
+  assert.equal(campaignPolicy.workers["token-optimizer"], "optimization-token-optimizer");
 });
 
 test("token optimizer observations use the Activity JSONL boundary, not issue text", () => {
@@ -185,7 +187,7 @@ test("token optimizer observations use the Activity JSONL boundary, not issue te
   assert.doesNotMatch(adapter, /token_efficiency[\s\S]{0,1000}(title|body)/i);
 });
 
-test("token intervention tracking is deterministic, read-only, and package-owned", () => {
+test("token intervention tracking is deterministic, read-only, and campaign-owned", () => {
   const tracker = readFileSync(
     join(root, ".github", "workflows", "optimization-token-intervention-tracker.yml"),
     "utf8",

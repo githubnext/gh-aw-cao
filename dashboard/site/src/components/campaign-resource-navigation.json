@@ -1,0 +1,14 @@
+{
+  "default": "overview",
+  "tabs": [
+    { "id": "overview", "label": "Overview", "icon": "goal", "page": "campaign-detail" },
+    { "id": "insights", "label": "Insights", "icon": "graph", "page": "campaign-insights" },
+    { "id": "workflows", "label": "Workflows", "icon": "workflow", "page": "campaign-workflows" },
+    { "id": "runs", "label": "Runs", "icon": "play", "page": "campaign-runs" },
+    { "id": "issues", "label": "Issues", "icon": "issue-opened", "page": "campaign-issues" }
+  ],
+  "additional-bodies": ["pull-requests", "repositories", "reports"],
+  "aliases": {
+    "dispatches": "runs"
+  }
+}

@@ -30,7 +30,7 @@ const item = {
   icon: 'dependabot',
   repository: 'github/gh-aw',
   owner: 'dependency-automation',
-  packageName: 'dependabot',
+  campaignName: 'dependabot',
   workType: 'worker',
   started: '2026-08-30T09:00:00Z',
   timeLabel: 'Started',
@@ -63,7 +63,7 @@ describe('work project view primitives', () => {
     expect(rendered.textContent).toContain('dependency-automation');
     expect(rendered.querySelector('.work-owner-avatar')?.textContent).toBe('DA');
     expect(rendered.querySelector('.work-owner-avatar')?.getAttribute('aria-label')).toBe('Owner: dependency-automation');
-    expect(rendered.querySelector('.work-card-label-package')?.textContent).toBe('dependabot');
+    expect(rendered.querySelector('.work-card-label-campaign')?.textContent).toBe('dependabot');
     expect(rendered.querySelector('.work-card-label-role')?.textContent).toBe('worker');
   });
 
@@ -221,8 +221,8 @@ describe('work project view primitives', () => {
 
   it('provides a one-group mobile Board with canonical state and full-screen details', () => {
     const rows = [
-      { 'work-item-id': 'todo', name: 'Queued item', owner: 'operations', package: 'core', 'lifecycle-state': 'waiting' },
-      { 'work-item-id': 'review', name: 'Blocked item', owner: 'security', package: 'review', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision' }
+      { 'work-item-id': 'todo', name: 'Queued item', owner: 'operations', campaign: 'core', 'lifecycle-state': 'waiting' },
+      { 'work-item-id': 'review', name: 'Blocked item', owner: 'security', campaign: 'review', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision' }
     ];
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work',

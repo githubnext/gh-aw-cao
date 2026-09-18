@@ -80,8 +80,8 @@ gh aw graders operational-value report WORKFLOW --json
 Count an outcome only when accepted evidence satisfies the worker's frozen contract. A successful dispatch or generated suggestion is activity, not attained value.
 :::
 
-:::caution[Verify package transport]
-A packaged worker is grader-enabled only when a clean `gh aw add` consumer receives both its Markdown workflow and referenced `.github/workflows/graders/*.sh` evaluator. Keeping the evaluator beside the workflow under `graders/` lets the compiler and package installer resolve the same workflow-relative path.
+:::caution[Verify campaign transport]
+A bundled worker is grader-enabled only when a clean `gh aw add` consumer receives both its Markdown workflow and referenced `.github/workflows/graders/*.sh` evaluator. Keeping the evaluator beside the workflow under `graders/` lets the compiler and campaign installer resolve the same workflow-relative path.
 :::
 
 Apply the process independently to every worker in an operation. Workers may receive different classifications because their outcomes and available history differ:
@@ -100,20 +100,20 @@ This provides an immediate worker kill switch: disable the generated worker work
 
 ## Worker Ceilings
 
-Declare each installed package worker and its exact workflow slug in package policy. Add optional worker-specific controls only when a worker has a materially different blast radius, permission set, maturity timeline, or operational owner. The controls are:
+Declare each installed campaign worker and its exact workflow slug in campaign policy. Add optional worker-specific controls only when a worker has a materially different blast radius, permission set, maturity timeline, or operational owner. The controls are:
 
 | Control | Purpose | Default |
 | --- | --- | --- |
 | `workflow` | Declares the exact workflow slug dispatched for this worker | Required |
 | `enabled` | Explicitly excludes or re-enables a worker workflow for dispatch | `true` |
-| `max-mode` | Optionally caps the most permissive mode a worker workflow can execute | Inherits the resolved package or exact-target mode |
+| `max-mode` | Optionally caps the most permissive mode a worker workflow can execute | Inherits the resolved campaign or exact-target mode |
 | worker workflow limit | Caps worker workflow-specific volume or resource use | Existing Agentic Workflow limit |
 
 Mode ordering is:
 
 `review < live`
 
-Without `max-mode`, the worker inherits the resolved package or exact-target mode. When an explicit ceiling is present, the effective worker mode is the less permissive of that resolved mode and the worker ceiling:
+Without `max-mode`, the worker inherits the resolved campaign or exact-target mode. When an explicit ceiling is present, the effective worker mode is the less permissive of that resolved mode and the worker ceiling:
 
 `effective_mode = worker_max_mode ? min(resolved_mode, worker_max_mode) : resolved_mode`
 
@@ -134,7 +134,7 @@ Example: AW Optimization can be live while `optimization-ai-credit-optimizer` re
 	"version": 1,
 	"gh-aw-version": "v0.89.15",
 	"control-plane": {
-		"packages": {
+		"campaigns": {
 			"optimization": {
 				"workers": {
 					"ai-credit-optimizer": {
@@ -149,7 +149,7 @@ Example: AW Optimization can be live while `optimization-ai-credit-optimizer` re
 ```
 
 :::caution[Ceilings only narrow]
-Omitting a worker ceiling does not promote the operation; the worker follows the package or exact-target decision. Adding or lowering a ceiling takes effect as an additional guard beneath scheduled and manual mode requests.
+Omitting a worker ceiling does not promote the operation; the worker follows the campaign or exact-target decision. Adding or lowering a ceiling takes effect as an additional guard beneath scheduled and manual mode requests.
 :::
 
 ## When to Split Control

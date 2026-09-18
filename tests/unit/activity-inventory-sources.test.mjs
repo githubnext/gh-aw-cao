@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   buildInventoryDashboardSources,
   discoverLatestGhAwVersion,
-  discoverLatestPackageCommits,
+  discoverLatestCampaignCommits,
   discoverRepositories,
   discoverWorkflowRegistries,
   discoverWorkflowVersions,
@@ -58,12 +58,12 @@ test("discovers public workflow registry metadata and disabled state", async () 
     assert.equal(version, "v0.90.2");
   });
 
-  test("retains successful package revisions when another repository lookup fails", async () => {
+  test("retains successful campaign revisions when another repository lookup fails", async () => {
     const currentRevision = "a".repeat(40);
-    const resolution = await discoverLatestPackageCommits({
-      packages: [
-        { package: "acme/catalog/operations" },
-        { package: "acme/broken/operations" },
+    const resolution = await discoverLatestCampaignCommits({
+      campaigns: [
+        { campaign: "acme/catalog/operations" },
+        { campaign: "acme/broken/operations" },
       ],
     }, {
       token: "test-token",
@@ -139,19 +139,19 @@ test("discovers public workflow registry metadata and disabled state", async () 
     assert.equal(enriched[1].versionFailures[0].repository, "acme/broken");
   });
 
-  test("emits package and workflow version update state for control and enrolled repositories", () => {
-    const installedPackageRevision = "1".repeat(40);
-    const latestPackageRevision = "2".repeat(40);
+  test("emits campaign and workflow version update state for control and enrolled repositories", () => {
+    const installedCampaignRevision = "1".repeat(40);
+    const latestCampaignRevision = "2".repeat(40);
     const generatedAt = "2026-09-17T00:00:00Z";
     const sources = buildInventoryDashboardSources({
       repository: "acme/control",
       generatedAt,
       inventory: {
-        packages: [{
+        campaigns: [{
           id: "operations",
           name: "Operations",
-          package: "acme/catalog/operations",
-          resolvedCommit: installedPackageRevision,
+          campaign: "acme/catalog/operations",
+          resolvedCommit: installedCampaignRevision,
         }],
         workflows: [{
           id: "control-agent",
@@ -163,7 +163,7 @@ test("discovers public workflow registry metadata and disabled state", async () 
         bundles: [],
       },
       controlSettings: {
-        packages: {
+        campaigns: {
           operations: { enabled: true, mode: "review" },
         },
       },
@@ -188,8 +188,8 @@ test("discovers public workflow registry metadata and disabled state", async () 
           ghAwVersion: "v0.89.0",
         }],
       }],
-      latestPackageResolution: {
-        commits: { "acme/catalog": latestPackageRevision },
+      latestCampaignResolution: {
+        commits: { "acme/catalog": latestCampaignRevision },
         failures: [],
         expected: 1,
         observed: 1,
@@ -198,12 +198,12 @@ test("discovers public workflow registry metadata and disabled state", async () 
     });
 
     assert.deepEqual({
-      installed: sources.packages.rows[0]["package-version"],
-      latest: sources.packages.rows[0]["package-current-version"],
-      state: sources.packages.rows[0]["package-update-state"],
+      installed: sources.campaigns.rows[0]["campaign-version"],
+      latest: sources.campaigns.rows[0]["campaign-current-version"],
+      state: sources.campaigns.rows[0]["campaign-update-state"],
     }, {
-      installed: installedPackageRevision.slice(0, 12),
-      latest: latestPackageRevision.slice(0, 12),
+      installed: installedCampaignRevision.slice(0, 12),
+      latest: latestCampaignRevision.slice(0, 12),
       state: "update-available",
     });
     assert.deepEqual(sources.workflows.rows.map((row) => ({
@@ -363,7 +363,7 @@ test("represents inaccessible repositories and workflow registries as partial ev
   assert.deepEqual(sources.workflows.rows.map((row) => `${row.organization}/${row.repository}`), ["acme/app"]);
 });
 
-test("merges control registry metadata without replacing package ownership", () => {
+test("merges control registry metadata without replacing campaign ownership", () => {
   const generatedAt = "2026-09-17T00:00:00Z";
   const sources = buildInventoryDashboardSources({
     repository: "acme/control",
@@ -379,7 +379,7 @@ test("merges control registry metadata without replacing package ownership", () 
       }],
       bundles: [{
         id: "operations",
-        controlPackage: "operations",
+        controlCampaign: "operations",
         name: "Operations",
         workflow: ".github/workflows/orchestrator.md",
         compiled: true,
@@ -394,7 +394,7 @@ test("merges control registry metadata without replacing package ownership", () 
     },
     controlSettings: {
       allowed_repositories: ["acme/control"],
-      packages: {
+      campaigns: {
         operations: {
           mode: "review",
           worker_policies: { worker: { enabled: true } },
@@ -427,12 +427,12 @@ test("merges control registry metadata without replacing package ownership", () 
   assert.deepEqual(sources.workflows.rows[0], {
     organization: "acme",
     repository: "control",
-    package: "operations",
-    "package-name": "Operations",
-    "package-icon": "package",
-    "package-aic-allowance": 25,
-    "package-worker-count": 1,
-    "package-inventory-warnings": 0,
+    campaign: "operations",
+    "campaign-name": "Operations",
+    "campaign-icon": "goal",
+    "campaign-aic-allowance": 25,
+    "campaign-worker-count": 1,
+    "campaign-inventory-warnings": 0,
     "max-ai-credits": 25,
     "inventory-ready": true,
     "admission-status": "authorized",

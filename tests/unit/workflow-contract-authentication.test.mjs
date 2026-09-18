@@ -30,7 +30,7 @@ test("Copilot setup uses Node 24", () => {
 });
 
 test("root CAO workflows use organization-billed Copilot authentication", () => {
-  const rootPackageWorkflowIds = [
+  const rootCampaignWorkflowIds = [
     "optimization-agents-md-curator",
     "optimization-skills-curator",
     "cao-evolution-failures-investigator",
@@ -50,7 +50,7 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
 
   assert.doesNotMatch(rootManifest, /COPILOT_GITHUB_TOKEN/);
 
-  for (const workflowId of rootPackageWorkflowIds) {
+  for (const workflowId of rootCampaignWorkflowIds) {
     const source = workflow(`${workflowId}.md`);
     const lock = workflow(`${workflowId}.lock.yml`);
 

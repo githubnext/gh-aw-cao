@@ -73,7 +73,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: dependabot
+      campaign: dependabot
       role: worker
       worker: update-planner
 

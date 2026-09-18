@@ -119,114 +119,114 @@ describe('data view renderer', () => {
         placement: 'view'
       },
       {
-        id: 'update-package',
+        id: 'update-campaign',
         label: 'Update',
         icon: 'sync',
-        command: 'gh aw update {{package}}',
+        command: 'gh aw update {{campaign}}',
         placement: 'row'
       },
       {
-        id: 'set-package-live',
+        id: 'set-campaign-live',
         label: 'Switch to live',
         icon: 'play',
-        command: './.github/aw/cao.sh mode live {{package}}',
+        command: './.github/aw/cao.sh mode live {{campaign}}',
         placement: 'row'
       },
       {
-        id: 'set-package-preview',
+        id: 'set-campaign-preview',
         label: 'Switch to preview',
         icon: 'eye',
-        command: './.github/aw/cao.sh mode preview {{package}}',
+        command: './.github/aw/cao.sh mode preview {{campaign}}',
         placement: 'row'
       },
       {
-        id: 'enable-package',
+        id: 'enable-campaign',
         label: 'Enable',
         icon: 'play',
-        command: './.github/aw/cao.sh enable {{package}}',
+        command: './.github/aw/cao.sh enable {{campaign}}',
         placement: 'row'
       },
       {
-        id: 'disable-package',
+        id: 'disable-campaign',
         label: 'Disable',
         icon: 'stop',
-        command: './.github/aw/cao.sh disable {{package}}',
+        command: './.github/aw/cao.sh disable {{campaign}}',
         placement: 'row'
       }
     ], { canExecute: false });
 
     const rendered = renderDataView('list', {
       pageId: 'maintenance',
-      title: 'Packages',
+      title: 'Campaigns',
       view: {
         mark: 'list',
-        description: 'Update installed packages.',
-        list: { style: 'cards', icon: 'package', action: 'update-repository' },
+        description: 'Update installed campaigns.',
+        list: { style: 'cards', icon: 'goal', action: 'update-repository' },
         encoding: {
           columns: [
-            { field: 'package-name', title: 'Package' },
-            { field: 'package-version', title: 'Installed' },
-            { field: 'package-current-version', title: 'Latest' }
+            { field: 'campaign-name', title: 'Campaign' },
+            { field: 'campaign-version', title: 'Installed' },
+            { field: 'campaign-current-version', title: 'Latest' }
           ],
           actions: [
             {
-              action: 'update-package',
+              action: 'update-campaign',
               presentation: 'cli-action',
               icon: 'sync',
               label: 'Update',
-              context: ['package'],
-              when: { field: 'package-update-state', equals: 'update-available' }
+              context: ['campaign'],
+              when: { field: 'campaign-update-state', equals: 'update-available' }
             },
             {
-              action: 'set-package-live',
+              action: 'set-campaign-live',
               presentation: 'cli-action',
               icon: 'play',
               label: 'Switch to live',
-              context: ['package'],
-              when: { field: 'package-mode', equals: 'review' }
+              context: ['campaign'],
+              when: { field: 'campaign-mode', equals: 'review' }
             },
             {
-              action: 'set-package-preview',
+              action: 'set-campaign-preview',
               presentation: 'cli-action',
               icon: 'eye',
               label: 'Switch to preview',
-              context: ['package'],
-              when: { field: 'package-mode', equals: 'live' }
+              context: ['campaign'],
+              when: { field: 'campaign-mode', equals: 'live' }
             },
             {
-              action: 'enable-package',
+              action: 'enable-campaign',
               presentation: 'cli-action',
               icon: 'play',
               label: 'Enable',
-              context: ['package']
+              context: ['campaign']
             },
             {
-              action: 'disable-package',
+              action: 'disable-campaign',
               presentation: 'cli-action',
               icon: 'stop',
               label: 'Disable',
-              context: ['package']
+              context: ['campaign']
             }
           ]
         }
       },
-      sourceName: 'packages',
+      sourceName: 'campaigns',
       rows: [
         {
-          package: 'remote-agent',
-          'package-name': 'Remote agent',
-          'package-version': 'v1',
-          'package-current-version': 'v2',
-          'package-update-state': 'update-available',
-          'package-mode': 'review'
+          campaign: 'remote-agent',
+          'campaign-name': 'Remote agent',
+          'campaign-version': 'v1',
+          'campaign-current-version': 'v2',
+          'campaign-update-state': 'update-available',
+          'campaign-mode': 'review'
         },
         {
-          package: 'ci-doctor',
-          'package-name': 'CI doctor',
-          'package-version': 'v2',
-          'package-current-version': 'v2',
-          'package-update-state': 'current',
-          'package-mode': 'live'
+          campaign: 'ci-doctor',
+          'campaign-name': 'CI doctor',
+          'campaign-version': 'v2',
+          'campaign-current-version': 'v2',
+          'campaign-update-state': 'current',
+          'campaign-mode': 'live'
         }
       ],
       metadata,
@@ -239,7 +239,7 @@ describe('data view renderer', () => {
     });
 
     expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2);
-    expect(rendered?.querySelector('h3')?.textContent).toBe('Packages');
+    expect(rendered?.querySelector('h3')?.textContent).toBe('Campaigns');
     expect(rendered?.querySelector('.document-list-header .declared-cli-action')?.textContent).toContain('Update all');
     expect(rendered?.querySelectorAll('.document-list-card-actions')).toHaveLength(2);
     expect(rendered?.querySelectorAll('.document-list-card-actions .table-cli-action-control')).toHaveLength(7);
@@ -468,7 +468,7 @@ describe('data view renderer', () => {
       rows: [{
         'operation-name': 'Doctor',
         'operation-icon': 'gear',
-        'operation-link': '#page-package-detail?package=doctor'
+        'operation-link': '#page-campaign-detail?campaign=doctor'
       }],
       cardTemplates: {
         operation: {
@@ -491,7 +491,7 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.entity-card-list-grid')).not.toBeNull();
     expect(rendered?.querySelector('.issue-list-card-icon .octicon-gear')).not.toBeNull();
     expect(rendered?.querySelector('[data-card-drill]')?.getAttribute('href'))
-      .toBe('#page-package-detail?package=doctor');
+      .toBe('#page-campaign-detail?campaign=doctor');
   });
 
   it('keeps a list action available when its source is unavailable', () => {
@@ -665,38 +665,38 @@ describe('data view renderer', () => {
 
   it('renders quantitative mobile table fields as labeled card metrics', () => {
     const rendered = renderDataView('table', {
-      pageId: 'packages',
-      title: 'Packages',
+      pageId: 'campaigns',
+      title: 'Campaigns',
       view: {
         mark: 'table',
         controls: 'interactive',
         'lazy-list': true,
         layout: 'full-view',
         encoding: {
-          href: { field: 'package-dashboard-link', type: 'nominal' },
+          href: { field: 'campaign-dashboard-link', type: 'nominal' },
           columns: [
-            { field: 'package-name', type: 'nominal', title: 'Package' },
+            { field: 'campaign-name', type: 'nominal', title: 'Campaign' },
             { field: 'workflows', type: 'quantitative', title: 'Workflows' },
             { field: 'runs', type: 'quantitative', title: 'Runs' },
             { field: 'registration', type: 'nominal', title: 'Registration', display: 'active-state' }
           ]
         }
       },
-      sourceName: 'package-inventory',
+      sourceName: 'campaign-inventory',
       rows: [{
-        'package-name': 'Daily ops',
-        'package-dashboard-link': {
-          'dashboard-href': '#page-package-detail?package=daily-ops',
-          'dashboard-label': 'View Daily ops package dashboard'
+        'campaign-name': 'Daily ops',
+        'campaign-dashboard-link': {
+          'dashboard-href': '#page-campaign-detail?campaign=daily-ops',
+          'dashboard-label': 'View Daily ops campaign dashboard'
         },
         workflows: 2,
         runs: 14,
         registration: 'active'
       }],
       cardTemplates: {
-        package: {
-          icon: 'package',
-          title: { field: 'package-name', title: 'Package' },
+        campaign: {
+          icon: 'goal',
+          title: { field: 'campaign-name', title: 'Campaign' },
           labels: [{ field: 'registration', title: 'Registration', display: 'active-state' }],
           details: [
             { field: 'workflows', title: 'Workflows' },
@@ -721,9 +721,9 @@ describe('data view renderer', () => {
     const labels = card?.querySelector('.issue-list-labels');
     expect(labels?.textContent).toContain('active');
     expect(labels?.getAttribute('aria-label')).toBe('Daily ops labels and metrics');
-    const packageLink = /** @type {HTMLAnchorElement} */ (card?.querySelector('[data-card-drill]'));
-    expect(packageLink.getAttribute('href')).toBe('#page-package-detail?package=daily-ops');
-    const activate = vi.spyOn(packageLink, 'click');
+    const campaignLink = /** @type {HTMLAnchorElement} */ (card?.querySelector('[data-card-drill]'));
+    expect(campaignLink.getAttribute('href')).toBe('#page-campaign-detail?campaign=daily-ops');
+    const activate = vi.spyOn(campaignLink, 'click');
     card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(activate).toHaveBeenCalledOnce();
   });

@@ -62,7 +62,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: repo-assist
+      campaign: repo-assist
       role: worker
       worker: maintenance
   - uses: shared/review-bundle.md
@@ -159,7 +159,7 @@ Choose at most one atomic improvement from:
 5. a meaningful missing regression test or brittle test correction;
 6. a small repository-hygiene gap that prevents contributor confusion or release safety.
 
-Require concrete evidence, a bounded file set, and an objective validation command. Do not add dependencies, propose major upgrades, make breaking changes, chase coverage percentages, rewrite style, or perform speculative refactoring. Search open issues, pull requests, and package-worker outputs first; skip any materially equivalent active work. Use a stable kebab-case work key and marker `<!-- repo-assist:maintenance target=TARGET_REPO work=WORK_KEY -->` in durable output.
+Require concrete evidence, a bounded file set, and an objective validation command. Do not add dependencies, propose major upgrades, make breaking changes, chase coverage percentages, rewrite style, or perform speculative refactoring. Search open issues, pull requests, and campaign-worker outputs first; skip any materially equivalent active work. Use a stable kebab-case work key and marker `<!-- repo-assist:maintenance target=TARGET_REPO work=WORK_KEY -->` in durable output.
 
 ## Implementation
 

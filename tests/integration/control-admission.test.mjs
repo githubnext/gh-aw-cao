@@ -50,7 +50,7 @@ esac
       env: {
         ...process.env,
         PATH: `${directory}:${process.env.PATH}`,
-        CAO_PACKAGE: "dependabot",
+        CAO_CAMPAIGN: "dependabot",
         CAO_ROLE: "orchestrator",
         GITHUB_OUTPUT: githubOutput,
         GITHUB_ACTIONS: String(githubActions),
@@ -86,7 +86,7 @@ esac
   }
 }
 
-test("CAO admission authorizes a declared package before activation", () => {
+test("CAO admission authorizes a declared campaign before activation", () => {
   const { result, admission, output, summary } = runAdmission();
 
   assert.equal(result.status, 0, result.stderr);
@@ -103,7 +103,7 @@ test("CAO admission authorizes a declared package before activation", () => {
     "",
   ].join("\n"));
   assert.deepEqual(output, { authorized: "true", reason: "authorized", monthly_credit_budget: "0" });
-  assert.match(summary, /<details>\n<summary><h3>Central Agentic Ops admission<\/h3><\/summary>\n\nAuthorized package `dependabot` as `orchestrator`/);
+  assert.match(summary, /<details>\n<summary><h3>Central Agentic Ops admission<\/h3><\/summary>\n\nAuthorized campaign `dependabot` as `orchestrator`/);
   assert.match(summary, /- ✅ Runtime revision — The control and policy modules/);
   assert.match(summary, /- ✅ Run limits — Any supplied `max_repos`/);
   assert.equal((summary.match(/<details>/g) ?? []).length, 1);
@@ -112,7 +112,7 @@ test("CAO admission authorizes a declared package before activation", () => {
   assert.equal(admission.authorized, true);
   assert.equal(admission.reason, "authorized");
   assert.equal(admission.failed_check, null);
-  assert.equal(admission.package, "dependabot");
+  assert.equal(admission.campaign, "dependabot");
   assert.equal(admission.role, "orchestrator");
   assert.deepEqual([...new Set(admission.checks.map(({ status }) => status))], ["passed"]);
 });
@@ -134,31 +134,31 @@ test("CAO admission emits plain logs outside GitHub Actions", () => {
   ].join("\n"));
 });
 
-test("CAO admission ignores deprecated monthly package budgets", () => {
+test("CAO admission ignores deprecated monthly campaign budgets", () => {
   const { result, output } = runAdmission({
-    policy: controlPolicy({ packagePolicy: { "monthly-ai-credit-budget": 1200 } }),
+    policy: controlPolicy({ campaignPolicy: { "monthly-ai-credit-budget": 1200 } }),
   });
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(output, { authorized: "true", reason: "authorized", monthly_credit_budget: "0" });
 });
 
-test("CAO admission denies a disabled package without failing the workflow", () => {
+test("CAO admission denies a disabled campaign without failing the workflow", () => {
   const { result, admission, output, summary } = runAdmission({
-    policy: controlPolicy({ packagePolicy: { enabled: false } }),
+    policy: controlPolicy({ campaignPolicy: { enabled: false } }),
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(output, { authorized: "false", reason: "package-disabled", monthly_credit_budget: "0" });
-  assert.match(summary, /Skipped package `dependabot` as `orchestrator`: package-disabled/);
+  assert.deepEqual(output, { authorized: "false", reason: "campaign-disabled", monthly_credit_budget: "0" });
+  assert.match(summary, /Skipped campaign `dependabot` as `orchestrator`: campaign-disabled/);
   assert.match(summary, /- ✅ Workflow identity —/);
-  assert.match(summary, /- ❌ Package —/);
+  assert.match(summary, /- ❌ Campaign —/);
   assert.match(summary, /- Worker —/);
   assert.doesNotMatch(summary, /- [✅❌] Worker —/);
   assert.equal(admission.authorized, false);
-  assert.equal(admission.failed_check, "Package");
+  assert.equal(admission.failed_check, "Campaign");
   assert.equal(admission.checks.find(({ check }) => check === "Workflow identity").status, "passed");
-  assert.equal(admission.checks.find(({ check }) => check === "Package").status, "failed");
+  assert.equal(admission.checks.find(({ check }) => check === "Campaign").status, "failed");
   assert.equal(admission.checks.find(({ check }) => check === "Worker").status, "not-evaluated");
 });
 
@@ -173,8 +173,8 @@ test("CAO admission denies a requested mode that exceeds checked-in policy and m
     reason: "safe_output_mode exceeds checked-in policy",
     monthly_credit_budget: "0",
   });
-  assert.match(summary, /Skipped package `dependabot` as `orchestrator`: safe_output_mode exceeds checked-in policy/);
-  assert.match(summary, /- ✅ Package —/);
+  assert.match(summary, /Skipped campaign `dependabot` as `orchestrator`: safe_output_mode exceeds checked-in policy/);
+  assert.match(summary, /- ✅ Campaign —/);
   assert.match(summary, /- ✅ Worker —/);
   assert.match(summary, /- ✅ Target input —/);
   assert.match(summary, /- ❌ Mode input —/);
@@ -219,7 +219,7 @@ test("CAO admission blocks exhausted GitHub API capacity with reset and remediat
     github_api_required: "100",
     github_api_reset_at: new Date(rateReset * 1000).toISOString(),
   });
-  assert.match(summary, /Blocked package `dependabot` as `orchestrator` before activation/);
+  assert.match(summary, /Blocked campaign `dependabot` as `orchestrator` before activation/);
   assert.match(summary, /approximately \*\*60 minutes \(1\.00 hours\)\*\*/);
   assert.match(summary, /### What to do now/);
   assert.match(summary, /Do not rerun before/);

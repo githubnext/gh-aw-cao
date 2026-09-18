@@ -43,7 +43,7 @@ function detectionJob(run, conclusion = "success") {
   };
 }
 
-test("builds deployable package and workflow inventory sources", () => {
+test("builds deployable campaign and workflow inventory sources", () => {
   const generatedAt = "2026-09-11T00:00:00Z";
   const sources = buildInventoryDashboardSources({
     repository: "githubnext/control",
@@ -57,7 +57,7 @@ test("builds deployable package and workflow inventory sources", () => {
           role: "orchestrator",
           sourcePath: ".github/workflows/daily-ops.md",
           compiled: true,
-          controlPackage: "daily-operations",
+          controlCampaign: "daily-operations",
           maxAiCredits: 100,
         },
         {
@@ -66,13 +66,13 @@ test("builds deployable package and workflow inventory sources", () => {
           role: "worker",
           sourcePath: ".github/workflows/daily-worker.md",
           compiled: true,
-          controlPackage: "daily-operations",
+          controlCampaign: "daily-operations",
           maxAiCredits: 200,
         },
       ],
       bundles: [{
         id: "daily-ops",
-        controlPackage: "daily-operations",
+        controlCampaign: "daily-operations",
         name: "Daily Operations",
         description: "Daily operational checks.",
         workflow: ".github/workflows/daily-ops.md",
@@ -89,7 +89,7 @@ test("builds deployable package and workflow inventory sources", () => {
     },
     controlSettings: {
       allowed_repositories: ["githubnext/control"],
-      packages: {
+      campaigns: {
         "daily-operations": {
           icon: "clock",
           mode: "review",
@@ -103,46 +103,46 @@ test("builds deployable package and workflow inventory sources", () => {
         },
       },
       policy_resolution: { status: "available", reason: "" },
-      policy_document: { version: 1, "control-plane": { packages: { "daily-ops": { mode: "review" } } } },
+      policy_document: { version: 1, "control-plane": { campaigns: { "daily-ops": { mode: "review" } } } },
       policy_source: '{\n  "version": 1\n}\n',
     },
   });
 
-  assert.equal(sources.packages.rows.length, 1);
-  assert.deepEqual(sources.packages.rows[0], {
-    package: "daily-operations",
-    "package-name": "Daily Operations",
-    "package-description": "Daily operational checks.",
-    "package-icon": "clock",
-    "package-mode": "review",
-    "package-enabled": true,
-    "package-max-repositories": null,
-    "package-rollout-percent": 25,
-    "package-monthly-ai-credit-budget": null,
-    "package-aic-allowance": 300,
-    "package-worker-count": 1,
-    "package-inventory-warnings": 0,
-    "package-workers": [{ id: "daily-worker", workflow: "daily-worker", enabled: true, "max-mode": null }],
-    "package-targets": [{ repository: "githubnext/control", mode: "live" }],
-    "package-min-version": "",
-    "package-version": "unknown",
-    "package-current-version": "unknown",
-    "package-update-state": "unknown",
-    "package-experimental": false,
-    "package-readme-path": "",
-    "package-readme": "",
+  assert.equal(sources.campaigns.rows.length, 1);
+  assert.deepEqual(sources.campaigns.rows[0], {
+    campaign: "daily-operations",
+    "campaign-name": "Daily Operations",
+    "campaign-description": "Daily operational checks.",
+    "campaign-icon": "clock",
+    "campaign-mode": "review",
+    "campaign-enabled": true,
+    "campaign-max-repositories": null,
+    "campaign-rollout-percent": 25,
+    "campaign-monthly-ai-credit-budget": null,
+    "campaign-aic-allowance": 300,
+    "campaign-worker-count": 1,
+    "campaign-inventory-warnings": 0,
+    "campaign-workers": [{ id: "daily-worker", workflow: "daily-worker", enabled: true, "max-mode": null }],
+    "campaign-targets": [{ repository: "githubnext/control", mode: "live" }],
+    "campaign-min-version": "",
+    "campaign-version": "unknown",
+    "campaign-current-version": "unknown",
+    "campaign-update-state": "unknown",
+    "campaign-experimental": false,
+    "campaign-readme-path": "",
+    "campaign-readme": "",
     "observed-at": generatedAt,
   });
 
   assert.deepEqual(
     sources.workflows.rows.map((workflow) => ({
       workflow: workflow.workflow,
-      package: workflow.package,
+      campaign: workflow.campaign,
       role: workflow["workflow-role"],
     })),
     [
-      { workflow: ".github/workflows/daily-ops.md", package: "daily-operations", role: "orchestrator" },
-      { workflow: ".github/workflows/daily-worker.md", package: "daily-operations", role: "worker" },
+      { workflow: ".github/workflows/daily-ops.md", campaign: "daily-operations", role: "orchestrator" },
+      { workflow: ".github/workflows/daily-worker.md", campaign: "daily-operations", role: "worker" },
     ],
   );
   assert.deepEqual(
@@ -150,16 +150,16 @@ test("builds deployable package and workflow inventory sources", () => {
     {
       organization: "githubnext",
       repository: "control",
-      package: "daily-operations",
-      "package-name": "Daily Operations",
-      "package-icon": "clock",
-      "package-aic-allowance": 300,
-      "package-worker-count": 1,
-      "package-inventory-warnings": 0,
+      campaign: "daily-operations",
+      "campaign-name": "Daily Operations",
+      "campaign-icon": "clock",
+      "campaign-aic-allowance": 300,
+      "campaign-worker-count": 1,
+      "campaign-inventory-warnings": 0,
       "max-ai-credits": 200,
-      "package-description": "Daily operational checks.",
-      "package-rollout-percent": 25,
-      "package-targets": [{ repository: "githubnext/control", mode: "live" }],
+      "campaign-description": "Daily operational checks.",
+      "campaign-rollout-percent": 25,
+      "campaign-targets": [{ repository: "githubnext/control", mode: "live" }],
       "inventory-ready": true,
       "admission-status": "authorized",
       "admission-reason": "authorized",
@@ -186,20 +186,20 @@ test("builds deployable package and workflow inventory sources", () => {
   }]);
 });
 
-test("excludes internal packages from user-facing package inventory", () => {
+test("excludes internal campaigns from user-facing campaign inventory", () => {
   const sources = buildInventoryDashboardSources({
     repository: "githubnext/control",
     generatedAt: "2026-09-11T00:00:00Z",
     inventory: { bundles: [], workflows: [] },
     controlSettings: {
-      packages: {
+      campaigns: {
         activity: {},
         dashboard: { deploy: false },
       },
     },
   });
 
-  assert.deepEqual(sources.packages.rows, []);
+  assert.deepEqual(sources.campaigns.rows, []);
 });
 
 test("inventory configuration policy source reports unavailable control policy resolution", () => {
@@ -246,7 +246,7 @@ test("inventory sources tolerate null control settings", () => {
     controlSettings: null,
   });
 
-  assert.deepEqual(sources.packages.rows, []);
+  assert.deepEqual(sources.campaigns.rows, []);
   assert.deepEqual(sources["configuration-policy"].rows, []);
 });
 
@@ -258,7 +258,7 @@ test("inventory sources tolerate non-object control settings", () => {
     controlSettings: "not-collected",
   });
 
-  assert.deepEqual(sources.packages.rows, []);
+  assert.deepEqual(sources.campaigns.rows, []);
   assert.deepEqual(sources["configuration-policy"].rows, []);
 });
 
@@ -286,25 +286,25 @@ test("inventory configuration policy source distinguishes collected unvalidated 
   }]);
 });
 
-test("includes registered packages that have no inventory or run history", () => {
+test("includes registered campaigns that have no inventory or run history", () => {
   const sources = buildInventoryDashboardSources({
     repository: "githubnext/control",
     generatedAt: "2026-09-16T00:00:00Z",
     inventory: {
       bundles: [],
       workflows: [],
-      packages: [{ id: "repo-assist", name: "Repo Assist" }],
+      campaigns: [{ id: "repo-assist", name: "Repo Assist" }],
     },
-    controlSettings: { packages: {} },
+    controlSettings: { campaigns: {} },
   });
 
-  assert.deepEqual(sources.packages.rows.map((row) => ({
-    package: row.package,
-    name: row["package-name"],
-    mode: row["package-mode"],
-    workers: row["package-worker-count"],
+  assert.deepEqual(sources.campaigns.rows.map((row) => ({
+    campaign: row.campaign,
+    name: row["campaign-name"],
+    mode: row["campaign-mode"],
+    workers: row["campaign-worker-count"],
   })), [{
-    package: "repo-assist",
+    campaign: "repo-assist",
     name: "Repo Assist",
     mode: "unknown",
     workers: 0,
@@ -795,7 +795,7 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
           conclusion: "failure",
           startedAt: "2026-09-05T09:00:00Z",
           admissionStatus: "denied",
-          admissionReason: "package-disabled",
+          admissionReason: "campaign-disabled",
           engine: "copilot",
           resolvedModel: "gpt-5",
         }, {
@@ -881,7 +881,7 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.equal(dependabot["started-at"], "2026-09-05T09:00:00Z");
   assert.equal(dependabot["ended-at"], "");
   assert.equal(dependabot["lifecycle-state"], "blocked");
-  assert.equal(dependabot.reason, "package-disabled");
+  assert.equal(dependabot.reason, "campaign-disabled");
   assert.equal(dependabot["consequence-tier"], "high");
   assert.equal(worker["lifecycle-state"], "completed");
   assert.equal(worker["verification-state"], "accepted");
@@ -987,7 +987,7 @@ test("dashboard source bridge expands GitHub telemetry resources", () => {
       version: 1,
       "control-plane": {
         scope: { "allowed-owners": ["acme"] },
-        packages: {
+        campaigns: {
           dependabot: {
             mode: "review",
             workers: {
@@ -1272,16 +1272,16 @@ test("dashboard source bridge carries API capacity admission blocks into run row
       workflowSha: "1111111111111111111111111111111111111111",
       runId: "42",
       runAttempt: 1,
-      package: "dependabot",
+      campaign: "dependabot",
       role: "orchestrator",
       worker: "",
       targetRepository: "",
       authorized: false,
-      reason: "package-disabled",
-      failedCheck: "Package",
+      reason: "campaign-disabled",
+      failedCheck: "Campaign",
       checks: [
         { check: "Runtime revision", status: "passed" },
-        { check: "Package", status: "failed" },
+        { check: "Campaign", status: "failed" },
       ],
     };
     const sources = buildDashboardLanguageSources({
@@ -1322,13 +1322,13 @@ test("dashboard source bridge carries API capacity admission blocks into run row
       workflow: ".github/workflows/dependabot.md",
       run: "42",
       "observed-at": "2026-09-05T10:00:00.000Z",
-      package: "dependabot",
+      campaign: "dependabot",
       "workflow-role": "orchestrator",
       worker: "",
       "target-repository": "",
       "admission-status": "denied",
-      "admission-reason": "package-disabled",
-      "failed-check": "Package",
+      "admission-reason": "campaign-disabled",
+      "failed-check": "Campaign",
       "github-api-status": "unknown",
       "github-api-remaining": null,
       "github-api-required": null,
@@ -1345,7 +1345,7 @@ test("dashboard source bridge carries API capacity admission blocks into run row
       status: row["check-status"],
     })), [
       { check: "Runtime revision", order: 1, status: "passed" },
-      { check: "Package", order: 2, status: "failed" },
+      { check: "Campaign", order: 2, status: "failed" },
     ]);
   });
 
@@ -1981,8 +1981,8 @@ test("dashboard source bridge exposes authoritative coverage and structured coll
   assert.equal(sources.runs.metadata["coverage-start"], "2026-09-01T06:00:00Z");
 });
 
-test("dashboard source bridge carries package memberships, allowance, and inventory readiness into workflow rows", () => {
-  const workflowPath = ".github/workflows/package.lock.yml";
+test("dashboard source bridge carries campaign memberships, allowance, and inventory readiness into workflow rows", () => {
+  const workflowPath = ".github/workflows/campaign.lock.yml";
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-08-30T12:00:00Z",
@@ -2003,7 +2003,7 @@ test("dashboard source bridge carries package memberships, allowance, and invent
       workflows: [{
         repository: "githubnext/gh-aw-cao",
         path: workflowPath,
-        name: "Package",
+        name: "Campaign",
         role: "orchestrator",
         state: "active",
         ghAwVersion: "v0.88.0",
@@ -2036,8 +2036,8 @@ test("dashboard source bridge carries package memberships, allowance, and invent
         description: "Ambient context maintenance.",
         minVersion: "v0.89.3",
         experimental: true,
-        workflow: ".github/workflows/package.md",
-        controlPackage: "ambient-context",
+        workflow: ".github/workflows/campaign.md",
+        controlCampaign: "ambient-context",
         maxAiCredits: 500,
         compiled: true,
         missingWorkers: [],
@@ -2045,7 +2045,7 @@ test("dashboard source bridge carries package memberships, allowance, and invent
       }],
     },
     controlSettings: {
-      packages: {
+      campaigns: {
         "ambient-context": {
           enabled: true,
           mode: "review",
@@ -2070,13 +2070,13 @@ test("dashboard source bridge carries package memberships, allowance, and invent
 
   assert.deepEqual(
     {
-      package: sources.workflows.rows[0].package,
-      packageName: sources.workflows.rows[0]["package-name"],
-      packageIcon: sources.workflows.rows[0]["package-icon"],
-      packageMemberships: sources.workflows.rows[0]["package-memberships"],
+      campaign: sources.workflows.rows[0].campaign,
+      campaignName: sources.workflows.rows[0]["campaign-name"],
+      campaignIcon: sources.workflows.rows[0]["campaign-icon"],
+      campaignMemberships: sources.workflows.rows[0]["campaign-memberships"],
       maxAiCredits: sources.workflows.rows[0]["max-ai-credits"],
-      packageAllowance: sources.workflows.rows[0]["package-aic-allowance"],
-      packageWorkerCount: sources.workflows.rows[0]["package-worker-count"],
+      campaignAllowance: sources.workflows.rows[0]["campaign-aic-allowance"],
+      campaignWorkerCount: sources.workflows.rows[0]["campaign-worker-count"],
       inventoryReady: sources.workflows.rows[0]["inventory-ready"],
       rolloutMode: sources.workflows.rows[0]["rollout-mode"],
       ghAwVersion: sources.workflows.rows[0]["gh-aw-version"],
@@ -2087,15 +2087,15 @@ test("dashboard source bridge carries package memberships, allowance, and invent
       manifest: sources.workflows.rows[0]["gh-aw-manifest"],
     },
     {
-      package: "ambient-context",
-      packageName: "Ambient Context",
-      packageIcon: "workflow",
-      packageMemberships: [
+      campaign: "ambient-context",
+      campaignName: "Ambient Context",
+      campaignIcon: "workflow",
+      campaignMemberships: [
         { id: "ambient-context", name: "Ambient Context" },
       ],
       maxAiCredits: 500,
-      packageAllowance: 500,
-      packageWorkerCount: 0,
+      campaignAllowance: 500,
+      campaignWorkerCount: 0,
       inventoryReady: true,
       rolloutMode: "review",
       ghAwVersion: "v0.88.0",
@@ -2107,36 +2107,36 @@ test("dashboard source bridge carries package memberships, allowance, and invent
     },
   );
   assert.equal(sources.outcomes.rows[0]["run-conclusion"], "failure");
-  assert.deepEqual(sources.packages.rows, [{
-    package: "ambient-context",
-    "package-name": "Ambient Context",
-    "package-description": "Ambient context maintenance.",
-    "package-icon": "workflow",
-    "package-mode": "review",
-    "package-enabled": true,
-    "package-max-repositories": 4,
-    "package-rollout-percent": 50,
-    "package-monthly-ai-credit-budget": 1000,
-    "package-aic-allowance": 500,
-    "package-worker-count": 1,
-    "package-inventory-warnings": 0,
-    "package-workers": [{
+  assert.deepEqual(sources.campaigns.rows, [{
+    campaign: "ambient-context",
+    "campaign-name": "Ambient Context",
+    "campaign-description": "Ambient context maintenance.",
+    "campaign-icon": "workflow",
+    "campaign-mode": "review",
+    "campaign-enabled": true,
+    "campaign-max-repositories": 4,
+    "campaign-rollout-percent": 50,
+    "campaign-monthly-ai-credit-budget": 1000,
+    "campaign-aic-allowance": 500,
+    "campaign-worker-count": 1,
+    "campaign-inventory-warnings": 0,
+    "campaign-workers": [{
       id: "curator",
       workflow: "ambient-context-curator",
       enabled: true,
       "max-mode": "review",
     }],
-    "package-targets": [{
+    "campaign-targets": [{
       repository: "githubnext/gh-aw-cao",
       mode: "review",
     }],
-    "package-min-version": "v0.89.3",
-    "package-version": "unknown",
-    "package-current-version": "unknown",
-    "package-update-state": "unknown",
-    "package-experimental": true,
-    "package-readme-path": "",
-    "package-readme": "",
+    "campaign-min-version": "v0.89.3",
+    "campaign-version": "unknown",
+    "campaign-current-version": "unknown",
+    "campaign-update-state": "unknown",
+    "campaign-experimental": true,
+    "campaign-readme-path": "",
+    "campaign-readme": "",
     "observed-at": "2026-08-30T12:00:00Z",
   }]);
 });
@@ -2171,7 +2171,7 @@ test("dashboard source bridge exposes an issue search link for workflows that cr
         id: "dependabot",
         name: "Dependabot",
         workflow: ".github/workflows/dependabot.md",
-        controlPackage: "dependabot",
+        controlCampaign: "dependabot",
         compiled: true,
         missingWorkers: [],
         workers: [{
@@ -2182,7 +2182,7 @@ test("dashboard source bridge exposes an issue search link for workflows that cr
         }],
       }],
     },
-    controlSettings: { packages: { dependabot: { mode: "review" } } },
+    controlSettings: { campaigns: { dependabot: { mode: "review" } } },
   });
 
   const row = sources.workflows.rows[0];
@@ -2293,10 +2293,10 @@ test("dashboard source bridge does not let report discovery degrade logs-owned w
   assert.equal(sources.workflows.metadata["collection-reason"], "");
 });
 
-test("dashboard source bridge maps a legacy manifest-derived package identity to the canonical inventory bundle id", () => {
+test("dashboard source bridge maps a legacy manifest-derived campaign identity to the canonical inventory bundle id", () => {
   const orchestratorPath = ".github/workflows/uk-ai-advisory.lock.yml";
   const workerPath = ".github/workflows/uk-ai-advisory-operational-resilience.lock.yml";
-  const standalonePath = ".github/workflows/uk-ai-advisory-package-maintainer.lock.yml";
+  const standalonePath = ".github/workflows/uk-ai-advisory-campaign-maintainer.lock.yml";
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-02T12:00:00Z",
@@ -2315,7 +2315,7 @@ test("dashboard source bridge maps a legacy manifest-derived package identity to
       workflows: [
         { repository: "githubnext/gh-aw-cao", path: orchestratorPath, name: "UK AI Advisory", role: "orchestrator", state: "active" },
         { repository: "githubnext/gh-aw-cao", path: workerPath, name: "Operational Resilience", role: "worker", state: "active" },
-        { repository: "githubnext/gh-aw-cao", path: standalonePath, name: "Package Maintainer", state: "active" },
+        { repository: "githubnext/gh-aw-cao", path: standalonePath, name: "Campaign Maintainer", state: "active" },
       ],
     },
     usage: { available: true, complete: true, runs: [] },
@@ -2330,7 +2330,7 @@ test("dashboard source bridge maps a legacy manifest-derived package identity to
         id: "uk-ai-advisory",
         name: "UK AI Advisory",
         workflow: ".github/workflows/uk-ai-advisory.md",
-        controlPackage: "uk-ai-advisory",
+        controlCampaign: "uk-ai-advisory",
         maxAiCredits: 250,
         compiled: true,
         missingWorkers: [],
@@ -2344,16 +2344,16 @@ test("dashboard source bridge maps a legacy manifest-derived package identity to
       }],
     },
     controlSettings: {
-      packages: { "uk-ai-advisory": { mode: "review" } },
+      campaigns: { "uk-ai-advisory": { mode: "review" } },
     },
   });
 
-  const packagesById = new Map(sources.workflows.rows.map((row) => [row.workflow, row.package]));
-  assert.equal(packagesById.get(".github/workflows/uk-ai-advisory.md"), "uk-ai-advisory");
-  assert.equal(packagesById.get(".github/workflows/uk-ai-advisory-operational-resilience.md"), "uk-ai-advisory");
-  assert.equal(packagesById.get(".github/workflows/uk-ai-advisory-package-maintainer.md"), "uk-ai-advisory");
+  const campaignsById = new Map(sources.workflows.rows.map((row) => [row.workflow, row.campaign]));
+  assert.equal(campaignsById.get(".github/workflows/uk-ai-advisory.md"), "uk-ai-advisory");
+  assert.equal(campaignsById.get(".github/workflows/uk-ai-advisory-operational-resilience.md"), "uk-ai-advisory");
+  assert.equal(campaignsById.get(".github/workflows/uk-ai-advisory-campaign-maintainer.md"), "uk-ai-advisory");
   assert.deepEqual(
-    new Set(sources.workflows.rows.map((row) => row.package)),
+    new Set(sources.workflows.rows.map((row) => row.campaign)),
     new Set(["uk-ai-advisory"]),
   );
 });
@@ -2659,8 +2659,8 @@ test("dashboard source bridge derives admission gates from resolved control poli
         { repository: "acme/control", path: ".github/workflows/enabled-worker.lock.yml", name: "Enabled worker", role: "worker", state: "active", runHealth: { runRecords: [] } },
         { repository: "acme/control", path: ".github/workflows/disabled-worker.lock.yml", name: "Disabled worker", role: "worker", state: "active", runHealth: { runRecords: [] } },
         { repository: "acme/control", path: ".github/workflows/undeclared-worker.lock.yml", name: "Undeclared worker", role: "worker", state: "active", runHealth: { runRecords: [] } },
-        { repository: "acme/control", path: ".github/workflows/disabled-package.lock.yml", name: "Disabled package", role: "orchestrator", state: "active", runHealth: { runRecords: [] } },
-        { repository: "acme/control", path: ".github/workflows/undeclared-package.lock.yml", name: "Undeclared package", role: "orchestrator", state: "active", runHealth: { runRecords: [] } },
+        { repository: "acme/control", path: ".github/workflows/disabled-campaign.lock.yml", name: "Disabled campaign", role: "orchestrator", state: "active", runHealth: { runRecords: [] } },
+        { repository: "acme/control", path: ".github/workflows/undeclared-campaign.lock.yml", name: "Undeclared campaign", role: "orchestrator", state: "active", runHealth: { runRecords: [] } },
       ],
     },
     usage: { available: true, complete: true, runs: [] },
@@ -2672,7 +2672,7 @@ test("dashboard source bridge derives admission gates from resolved control poli
         id: "operations",
         name: "Operations",
         workflow: ".github/workflows/operations.md",
-        controlPackage: "operations",
+        controlCampaign: "operations",
         compiled: true,
         missingWorkers: [],
         workers: [
@@ -2681,25 +2681,25 @@ test("dashboard source bridge derives admission gates from resolved control poli
           { id: "undeclared-worker", sourcePath: ".github/workflows/undeclared-worker.md", lockPath: ".github/workflows/undeclared-worker.lock.yml", compiled: true },
         ],
       }, {
-        id: "disabled-package",
-        name: "Disabled package",
-        workflow: ".github/workflows/disabled-package.md",
-        controlPackage: "disabled-package",
+        id: "disabled-campaign",
+        name: "Disabled campaign",
+        workflow: ".github/workflows/disabled-campaign.md",
+        controlCampaign: "disabled-campaign",
         compiled: true,
         missingWorkers: [],
         workers: [],
       }, {
-        id: "undeclared-package",
-        name: "Undeclared package",
-        workflow: ".github/workflows/undeclared-package.md",
-        controlPackage: "undeclared-package",
+        id: "undeclared-campaign",
+        name: "Undeclared campaign",
+        workflow: ".github/workflows/undeclared-campaign.md",
+        controlCampaign: "undeclared-campaign",
         compiled: true,
         missingWorkers: [],
         workers: [],
       }],
     },
     controlSettings: {
-      packages: {
+      campaigns: {
         operations: {
           enabled: true,
           worker_policies: {
@@ -2707,7 +2707,7 @@ test("dashboard source bridge derives admission gates from resolved control poli
             "disabled-worker": { worker: "disabled", enabled: false, max_mode: null },
           },
         },
-        "disabled-package": {
+        "disabled-campaign": {
           enabled: false,
           worker_policies: {},
         },
@@ -2724,8 +2724,8 @@ test("dashboard source bridge derives admission gates from resolved control poli
     { workflow: ".github/workflows/enabled-worker.md", status: "authorized", reason: "authorized" },
     { workflow: ".github/workflows/disabled-worker.md", status: "blocked", reason: "worker-disabled" },
     { workflow: ".github/workflows/undeclared-worker.md", status: "blocked", reason: "worker-undeclared" },
-    { workflow: ".github/workflows/disabled-package.md", status: "blocked", reason: "package-disabled" },
-    { workflow: ".github/workflows/undeclared-package.md", status: "blocked", reason: "package-undeclared" },
+    { workflow: ".github/workflows/disabled-campaign.md", status: "blocked", reason: "campaign-disabled" },
+    { workflow: ".github/workflows/undeclared-campaign.md", status: "blocked", reason: "campaign-undeclared" },
   ]);
 });
 
@@ -2982,7 +2982,7 @@ test("dashboard source bridge carries outcome detail content and presentation me
       workflow: sources.outcomes.rows[0].workflow,
       workflowRole: sources.outcomes.rows[0]["workflow-role"],
       runtimeRepository: sources.outcomes.rows[0]["runtime-repository"],
-      package: sources.outcomes.rows[0].package,
+      campaign: sources.outcomes.rows[0].campaign,
       workflowName: sources.outcomes.rows[0]["workflow-name"],
       title: sources.outcomes.rows[0]["outcome-title"],
       number: sources.outcomes.rows[0]["outcome-number"],
@@ -2998,7 +2998,7 @@ test("dashboard source bridge carries outcome detail content and presentation me
       workflow: ".github/workflows/daily.md",
       workflowRole: "worker",
       runtimeRepository: "githubnext/control-plane",
-      package: "daily",
+      campaign: "daily",
       workflowName: "Daily review",
       title: "Parity verification sweep",
       number: 1,

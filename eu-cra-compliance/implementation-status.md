@@ -1,10 +1,10 @@
 # EU CRA Implementation Status
 
-This ledger records how the **operation workflow fleet** represents Regulation (EU) 2024/2847 requirements. `IMPLEMENTED` means a workflow capability exists; it is not a finding that any product, organization, or package is legally compliant.
+This ledger records how the **operation workflow fleet** represents Regulation (EU) 2024/2847 requirements. `IMPLEMENTED` means a workflow capability exists; it is not a finding that any product, organization, or campaign is legally compliant.
 
-This is an RFC-style status document. The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Normative obligations, package capability, human-review conditions, and unavailable evidence are separate dimensions; `INCOMPLETE` means that verification is unfinished, not that the requirement is absent or satisfied.
+This is an RFC-style status document. The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Normative obligations, campaign capability, human-review conditions, and unavailable evidence are separate dimensions; `INCOMPLETE` means that verification is unfinished, not that the requirement is absent or satisfied.
 
-Allowed package-capability statuses: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `NOT_APPLICABLE`, `HUMAN_REVIEW_REQUIRED`, `INCOMPLETE`. Record `HUMAN_REVIEW_REQUIRED` here only when whether the fleet needs a capability cannot be determined; when an implemented capability correctly gates a legal decision on human review, use `IMPLEMENTED` or `PARTIAL` and state the review condition under applicability.
+Allowed campaign-capability statuses: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `NOT_APPLICABLE`, `HUMAN_REVIEW_REQUIRED`, `INCOMPLETE`. Record `HUMAN_REVIEW_REQUIRED` here only when whether the fleet needs a capability cannot be determined; when an implemented capability correctly gates a legal decision on human review, use `IMPLEMENTED` or `PARTIAL` and state the review condition under applicability.
 
 ## Completeness index
 
@@ -25,7 +25,7 @@ Allowed package-capability statuses: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `NOT_A
 
 All sources below are binding unless explicitly labelled otherwise. Official regulation entry point: <https://eur-lex.europa.eu/eli/reg/2024/2847/oj>.
 
-| Requirement ID | Requirement summary | Applicability | Package-capability status | Workflow evidence | Missing capability | Recommended change | Authoritative source | Last verified |
+| Requirement ID | Requirement summary | Applicability | Campaign-capability status | Workflow evidence | Missing capability | Recommended change | Authoritative source | Last verified |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CRA-ART-001 | Subject matter | Establishes the instrument's subject; no independent repository operation | NOT_APPLICABLE | Fleet mission is bounded to CRA implementation evidence | None for fleet mission | Retain as a completeness anchor | Regulation (EU) 2024/2847, Art. 1, binding, EUR-Lex link above | 2026-08-27 |
 | CRA-ART-002 | Scope and exclusions | Material exclusion decisions require human review | IMPLEMENTED | `scope-classifier` — scope evidence matrix and review gate | None known | Preserve explicit review gates and current-source checks | Regulation (EU) 2024/2847, Art. 2, binding, EUR-Lex link above | 2026-08-27 |

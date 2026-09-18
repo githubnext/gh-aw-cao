@@ -33,7 +33,7 @@ test("CAO admission uses the github-script Octokit singleton", async () => {
 
   try {
     Object.assign(process.env, {
-      CAO_PACKAGE: "dependabot",
+      CAO_CAMPAIGN: "dependabot",
       CAO_ROLE: "orchestrator",
       GITHUB_OUTPUT: githubOutput,
       GITHUB_ACTIONS: "true",

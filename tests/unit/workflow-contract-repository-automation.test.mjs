@@ -63,37 +63,37 @@ test("Actions lint issue reporter uses GraphQL issue APIs", () => {
   assert.doesNotMatch(issueReporter, /github\.rest\.issues/);
 });
 
-test("workflow contracts isolate authenticated package lifecycle checks", () => {
-  const packageScripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
-  const packageLifecycleTest = readFileSync(join(root, "tests", "integration", "package-lifecycle.test.mjs"), "utf8");
-  assert.match(packageScripts["test:integration"], /control-failure\.test\.mjs/);
-  assert.doesNotMatch(packageScripts["test:integration"], /package-lifecycle/);
-  assert.match(packageScripts["test:package-lifecycle"], /package-lifecycle\.test\.mjs/);
-  assert.match(packageScripts["test:package-root"], /--test-name-pattern=.\^root package bootstraps/);
-  assert.match(packageScripts["test:package-root"], /package-lifecycle\.test\.mjs/);
-  assert.doesNotMatch(packageScripts.test, /package-lifecycle/);
+test("workflow contracts isolate authenticated campaign lifecycle checks", () => {
+  const campaignScripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
+  const campaignLifecycleTest = readFileSync(join(root, "tests", "integration", "campaign-lifecycle.test.mjs"), "utf8");
+  assert.match(campaignScripts["test:integration"], /control-failure\.test\.mjs/);
+  assert.doesNotMatch(campaignScripts["test:integration"], /campaign-lifecycle/);
+  assert.match(campaignScripts["test:campaign-lifecycle"], /campaign-lifecycle\.test\.mjs/);
+  assert.match(campaignScripts["test:campaign-root"], /--test-name-pattern=.\^root campaign bootstraps/);
+  assert.match(campaignScripts["test:campaign-root"], /campaign-lifecycle\.test\.mjs/);
+  assert.doesNotMatch(campaignScripts.test, /campaign-lifecycle/);
 
   const source = workflow("workflow-contracts.yml");
   const jobs = generatedJobs(source);
   const contracts = jobs.get("test")?.block ?? "";
-  const packageLifecycle = jobs.get("package-lifecycle")?.block ?? "";
+  const campaignLifecycle = jobs.get("campaign-lifecycle")?.block ?? "";
 
   assert.match(source, /pull_request:\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
   assert.match(source, /push:\n    branches: \[main\]\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
   assert.match(contracts, /npm run check/);
-  assert.doesNotMatch(contracts, /GH_TOKEN|CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE|test:package-lifecycle/);
-  assert.match(packageLifecycle, /gh api rate_limit --jq '\.resources\.core\.remaining'/);
-  assert.match(packageLifecycle, /remaining < 500/);
-  assert.match(packageLifecycle, /max-parallel: 1/);
-  assert.match(packageLifecycle, /if: steps\.package-api\.outputs\.ready == 'true'/);
-  assert.match(packageLifecycle, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.doesNotMatch(contracts, /GH_TOKEN|CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE|test:campaign-lifecycle/);
+  assert.match(campaignLifecycle, /gh api rate_limit --jq '\.resources\.core\.remaining'/);
+  assert.match(campaignLifecycle, /remaining < 500/);
+  assert.match(campaignLifecycle, /max-parallel: 1/);
+  assert.match(campaignLifecycle, /if: steps\.campaign-api\.outputs\.ready == 'true'/);
+  assert.match(campaignLifecycle, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(
-    packageLifecycle,
-    /export CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE="\$\{GITHUB_REPOSITORY\}@\$\(git rev-parse --short=12 "\$GITHUB_SHA"\)"/,
+    campaignLifecycle,
+    /export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="\$\{GITHUB_REPOSITORY\}@\$\(git rev-parse --short=12 "\$GITHUB_SHA"\)"/,
   );
-  assert.match(packageLifecycle, /npm run test:package-lifecycle/);
-  assert.match(packageLifecycle, /grep -Fq "API rate limit exceeded for installation"/);
-  assert.match(packageLifecycle, /exit "\$status"/);
-  assert.match(packageLifecycleTest, /const packageUpdateSource = "https:\/\/github\.com\/githubnext\/gh-aw-cao"/);
-  assert.match(packageLifecycleTest, /"update",\n\s+packageUpdateSource,/);
+  assert.match(campaignLifecycle, /npm run test:campaign-lifecycle/);
+  assert.match(campaignLifecycle, /grep -Fq "API rate limit exceeded for installation"/);
+  assert.match(campaignLifecycle, /exit "\$status"/);
+  assert.match(campaignLifecycleTest, /const campaignUpdateSource = "https:\/\/github\.com\/githubnext\/gh-aw-cao"/);
+  assert.match(campaignLifecycleTest, /"update",\n\s+campaignUpdateSource,/);
 });

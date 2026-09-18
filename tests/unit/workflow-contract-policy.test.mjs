@@ -14,18 +14,18 @@ function workflowConfig(name) {
   return parse(frontmatter);
 }
 
-function operationPackages() {
-  const policyPackages = JSON.parse(
+function operationCampaigns() {
+  const policyCampaigns = JSON.parse(
     readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"),
-  )["control-plane"].packages;
-  return Object.entries(policyPackages).flatMap(([packageName, policy]) => {
-    const descriptorPath = join(root, packageName, "cao.json");
+  )["control-plane"].campaigns;
+  return Object.entries(policyCampaigns).flatMap(([campaignName, policy]) => {
+    const descriptorPath = join(root, campaignName, "cao.json");
     if (!existsSync(descriptorPath)) {
-      assert.equal(policy.workers, undefined, `${packageName} workers require a package descriptor`);
+      assert.equal(policy.workers, undefined, `${campaignName} workers require a campaign descriptor`);
       return [];
     }
     return [{
-      packageName,
+      campaignName,
       policy,
       descriptor: JSON.parse(readFileSync(descriptorPath, "utf8")),
     }];
@@ -33,16 +33,16 @@ function operationPackages() {
 }
 
 function operationWorkflowRegistrations() {
-  return operationPackages().flatMap(({ packageName, descriptor }) => [
+  return operationCampaigns().flatMap(({ campaignName, descriptor }) => [
     {
       name: `${descriptor.orchestrator}.md`,
-      packageName,
+      campaignName,
       role: "orchestrator",
       workerName: undefined,
     },
     ...Object.entries(descriptor.workers).map(([workerName, workflowId]) => ({
       name: `${workflowId}.md`,
-      packageName,
+      campaignName,
       role: "worker",
       workerName,
     })),
@@ -66,21 +66,21 @@ test("all scheduled configurations and manual selections route safely", () => {
     const expectedReviewRepo = scenario.manualReviewRepo || "acme/control-plane";
     const percentageCap = scenario.rolloutPercent === 10 ? 3 : 25;
 
-    assert.equal(policy.enabled, scenario.packageEnabled, scenario.id);
-    assert.equal(policy.safeOutputMode, scenario.packageEnabled ? expectedMode : null, scenario.id);
+    assert.equal(policy.enabled, scenario.campaignEnabled, scenario.id);
+    assert.equal(policy.safeOutputMode, scenario.campaignEnabled ? expectedMode : null, scenario.id);
     assert.equal(
       policy.safeOutputRepo,
-      scenario.packageEnabled && expectedMode === "review" ? expectedReviewRepo : "",
+      scenario.campaignEnabled && expectedMode === "review" ? expectedReviewRepo : "",
       scenario.id,
     );
     assert.equal(
       policy.dispatchAllowed,
-      scenario.packageEnabled,
+      scenario.campaignEnabled,
       scenario.id,
     );
     assert.equal(
       policy.effectiveMaxRepos,
-      scenario.packageEnabled
+      scenario.campaignEnabled
         ? (scenario.maxRepos ? Math.min(scenario.maxRepos, percentageCap) : percentageCap)
         : 0,
       scenario.id,
@@ -103,11 +103,11 @@ test("every checked user-facing scenario is backed by the exhaustive matrix", ()
   for (const scenario of userFacingScenarios) {
     const matrixCase = cases.find(({ id, totalRepositories, ...inputs }) =>
       Object.entries(scenario.inputs).every(([name, value]) => inputs[name] === value)
-      && inputs.packageEnabled === (scenario.inputs.packageEnabled ?? true));
+      && inputs.campaignEnabled === (scenario.inputs.campaignEnabled ?? true));
 
     assert.ok(matrixCase, `${scenario.name} is missing from the exhaustive matrix`);
     const policy = resolvePolicy(matrixCase);
-    assert.equal(policy.enabled, scenario.inputs.packageEnabled ?? true, scenario.name);
+    assert.equal(policy.enabled, scenario.inputs.campaignEnabled ?? true, scenario.name);
     const { enabled, ...actual } = policy;
     assert.deepEqual(actual, scenario.expected, scenario.name);
   }
@@ -141,7 +141,7 @@ test("percentage rollout rejects invalid settings and handles an empty organizat
   assert.deepEqual(resolvePolicy({
     eventName: "schedule",
     configuredMode: "invalid-but-disabled",
-    packageEnabled: false,
+    campaignEnabled: false,
     maxRepos: 0,
     rolloutPercent: 0,
     totalRepositories: 25,
@@ -236,7 +236,7 @@ test("enterprise-scale limits remain bounded across inventory sizes", () => {
 test("enterprise defaults, budgets, timeouts, and concurrency are finite", () => {
   const expected = {
     "uk-ai-advisory.md": { credits: 250, timeout: 15, dispatchMax: 50, workers: 1 },
-    "uk-ai-advisory-package-maintainer.md": { credits: 200, timeout: 20 },
+    "uk-ai-advisory-campaign-maintainer.md": { credits: 200, timeout: 20 },
     "uk-ai-advisory-operational-resilience.md": { credits: 600, timeout: 30 },
     "cao-evolution.md": { credits: 250, timeout: 15, dispatchMax: 6, workers: 6 },
     "cao-evolution-catalog-advisor.md": { credits: 400, timeout: 40 },
@@ -251,7 +251,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eslint-rules-applier.md": { credits: 350, timeout: 25 },
     "eslint-rules-librarian.md": { credits: 300, timeout: 25 },
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
-    "eu-cra-compliance-package-maintainer.md": { credits: 200, timeout: 20 },
+    "eu-cra-compliance-campaign-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 5 },
     "self-care.md": { credits: 200, timeout: 15, dispatchMax: 15, workers: 15 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
@@ -303,7 +303,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
 
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
-  assert.match(control, /package:\n\s+type: string\n\s+required: true/);
+  assert.match(control, /campaign:\n\s+type: string\n\s+required: true/);
   assert.match(control, /role:\n\s+type: choice\n\s+options: \[orchestrator, worker\]/);
   assert.match(control, /worker:\n\s+type: string\n\s+default: "__none__"/);
   assert.match(precompute, /join\(admissionDirectory\(\), "effective-policy\.json"\)/);
@@ -337,15 +337,15 @@ test("control workflows deny before activation through one shared admission cont
     registrations.map(({ name }) => name).sort(),
     "shared control imports must match the declarative operation inventory",
   );
-  for (const { packageName, policy, descriptor } of operationPackages()) {
-    assert.equal(descriptor.package, packageName);
+  for (const { campaignName, policy, descriptor } of operationCampaigns()) {
+    assert.equal(descriptor.campaign, campaignName);
     assert.deepEqual(
       Object.fromEntries(Object.entries(policy.workers).map(([workerName, config]) => [
         workerName,
         config.workflow,
       ])),
       descriptor.workers,
-      `${packageName} policy workers must match its package descriptor`,
+      `${campaignName} policy workers must match its campaign descriptor`,
     );
   }
   assert.equal(
@@ -383,11 +383,11 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /name: Validate CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
   assert.match(sharedControl, /name: Upload CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
   assert.match(sharedControl, /const reason = 'cannot read or execute the CAO control modules at github\.workflow_sha'/);
-  for (const { name, packageName, role, workerName } of registrations) {
+  for (const { name, campaignName, role, workerName } of registrations) {
     const source = workflow(name);
     const controlImport = workflowConfig(name).imports.find((entry) => entry.uses === "shared/control.md");
 
-    assert.equal(controlImport.with.package, packageName, name);
+    assert.equal(controlImport.with.campaign, campaignName, name);
     assert.equal(controlImport.with.role, role, name);
     assert.equal(controlImport.with.worker, workerName, name);
     assert.equal(
@@ -428,36 +428,36 @@ test("live workers use central policy as the activation authority", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  assert.match(control, /package:\n\s+type: string\n\s+required: true/);
+  assert.match(control, /campaign:\n\s+type: string\n\s+required: true/);
   assert.doesNotMatch(precompute, /validateLiveAuthority|target_authority_source|target default branch/);
   assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*writeWorkerPrecompute\(context\)/);
 
-  for (const { name, packageName } of operationWorkflowRegistrations()) {
-    assert.match(workflow(name), new RegExp(`package: ${packageName}`));
+  for (const { name, campaignName } of operationWorkflowRegistrations()) {
+    assert.match(workflow(name), new RegExp(`campaign: ${campaignName}`));
   }
 });
 
 test("orchestrators use checked-in policy with independent manual narrowing", () => {
-  for (const { name, packageName } of operationWorkflowRegistrations().filter(({ role }) => role === "orchestrator")) {
+  for (const { name, campaignName } of operationWorkflowRegistrations().filter(({ role }) => role === "orchestrator")) {
     const source = workflow(name);
 
     assert.match(source, /rollout_percent:\n\s+default: 100\n\s+type: number/);
     assert.match(source, /max_repos:\n\s+default: 1\n\s+type: number/);
     assert.match(source, /safe_output_mode:\n\s+default: "review"\n\s+type: choice/);
-    assert.match(source, new RegExp(`package: ${packageName}`));
+    assert.match(source, new RegExp(`campaign: ${campaignName}`));
     assert.match(source, /role: orchestrator/);
     assert.doesNotMatch(source, /vars\.CENTRAL_AGENTIC_OPS_|cell_count:|cell_index:|batch_size:|batch_index:/);
   }
 });
 
 test("operation workflows optionally load per-operation markdown steering", () => {
-  const packageSkill = readFileSync(join(root, "skills", "create-cao-package", "SKILL.md"), "utf8");
+  const campaignSkill = readFileSync(join(root, "skills", "create-cao-campaign", "SKILL.md"), "utf8");
 
-  assert.match(packageSkill, /Every orchestrator and worker prompt must include[\s\S]*at the bottom of the Markdown body/);
-  assert.match(packageSkill, /Never place the runtime import at the top of the Markdown body/);
-  assert.match(packageSkill, /\{\{#runtime-import\? \.github\/cao\/<package-slug>\.md\}\}/);
+  assert.match(campaignSkill, /Every orchestrator and worker prompt must include[\s\S]*at the bottom of the Markdown body/);
+  assert.match(campaignSkill, /Never place the runtime import at the top of the Markdown body/);
+  assert.match(campaignSkill, /\{\{#runtime-import\? \.github\/cao\/<campaign-slug>\.md\}\}/);
 
-  for (const { name, packageName: operation } of operationWorkflowRegistrations()) {
+  for (const { name, campaignName: operation } of operationWorkflowRegistrations()) {
     assert.match(
       workflow(name),
       new RegExp(`\\{\\{#runtime-import\\? \\.github/cao/${operation}\\.md\\}\\}\\s*$`),
@@ -478,7 +478,7 @@ test("review destinations allow control self-review and isolate other targets", 
   assert.match(precompute, /non-central review safe_output_repo must be private/);
 });
 
-test("safe-output modes are review and live with a separate package kill switch", () => {
+test("safe-output modes are review and live with a separate campaign kill switch", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
@@ -488,7 +488,7 @@ test("safe-output modes are review and live with a separate package kill switch"
   assert.doesNotMatch(`${control}\n${precompute}`, /preview_only|\bstaged\b/);
 });
 
-test("exact package target modes flow through candidate dispatch and reporting", () => {
+test("exact campaign target modes flow through candidate dispatch and reporting", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 

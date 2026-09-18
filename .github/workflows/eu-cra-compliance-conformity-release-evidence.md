@@ -60,7 +60,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: eu-cra-compliance
+      campaign: eu-cra-compliance
       role: worker
       worker: conformity-release-evidence
 

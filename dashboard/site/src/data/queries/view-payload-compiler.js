@@ -276,7 +276,7 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
   const byName = new Map(definitions
     .filter((definition) => typeof definition.name === 'string')
     .map((definition) => [/** @type {string} */ (definition.name), definition]));
-  const structuralSources = new Set(['packages', 'repositories', 'workflows']);
+  const structuralSources = new Set(['campaigns', 'repositories', 'workflows']);
   const rootComputedName = `${alias}:root`;
   /** @param {string} name */
   const scopedName = (name) => name === sourceName ? rootComputedName : `${alias}:dependency:${slug(name)}`;

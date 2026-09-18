@@ -23,9 +23,9 @@ const workflow = {
   workflow: '.github/workflows/multi-device-docs-tester.md',
   'workflow-name': 'Multi-Device Docs Tester',
   'workflow-role': 'standalone',
-  package: 'testing',
-  'package-name': 'Testing',
-  'package-memberships': [
+  campaign: 'testing',
+  'campaign-name': 'Testing',
+  'campaign-memberships': [
     { id: 'testing', name: 'Testing' },
     { id: 'central-agentic-ops', name: 'Central Agentic Ops' }
   ],
@@ -127,12 +127,12 @@ describe('renderWorkflowRuntime', () => {
     );
     expect([...rendered.querySelectorAll('.workflow-badges .workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Standalone',
-      'Package · Central Agentic Ops',
-      'Package · Testing'
+      'Campaign · Central Agentic Ops',
+      'Campaign · Testing'
     ]);
     expect([...rendered.querySelectorAll('.workflow-badges a')].map((badge) => badge.getAttribute('href'))).toEqual([
-      '#page-package-insights?package=central-agentic-ops',
-      '#page-package-insights?package=testing'
+      '#page-campaign-insights?campaign=central-agentic-ops',
+      '#page-campaign-insights?campaign=testing'
     ]);
     expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('href')).toBe(
       'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md'
@@ -276,7 +276,7 @@ describe('renderWorkflowRuntime', () => {
       title: 'Multi-Device Docs Tester',
       description: 'Run health, AI Credit usage, and operational value for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
       mode: 'review',
-      navigationPage: 'packages'
+      navigationPage: 'campaigns'
     });
 
     selectWorkflow(rendered, '<invalid>');

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { selectPackageLifecycleSuites } from "../../scripts/package-lifecycle-matrix.mjs";
+import { selectCampaignLifecycleSuites } from "../../scripts/campaign-lifecycle-matrix.mjs";
 
-const names = (files) => selectPackageLifecycleSuites(files).map(({ name }) => name);
+const names = (files) => selectCampaignLifecycleSuites(files).map(({ name }) => name);
 
-test("package lifecycle matrix selects only packages owning changed files", () => {
+test("campaign lifecycle matrix selects only campaigns owning changed files", () => {
   assert.deepEqual(names(["uk-ai-advisory/dashboard.json"]), []);
   assert.deepEqual(
     names([".github/workflows/shared/control.md"]),
@@ -49,25 +49,25 @@ test("package lifecycle matrix selects only packages owning changed files", () =
   );
 });
 
-test("package lifecycle matrix selects a package and its dependents when its manifest changes", () => {
+test("campaign lifecycle matrix selects a campaign and its dependents when its manifest changes", () => {
   assert.deepEqual(names(["activity/aw.yml"]), ["root", "activity", "CAO Evolution", "Dependabot"]);
   assert.deepEqual(names(["software-development-practices/aw.yml"]), []);
   assert.deepEqual(names(["self-care/aw.yml"]), []);
 });
 
-test("package lifecycle matrix selects no packages for unrelated changes", () => {
+test("campaign lifecycle matrix selects no campaigns for unrelated changes", () => {
   assert.deepEqual(names(["docs/index.mdx"]), []);
 });
 
-test("package lifecycle matrix selects all packages for manual runs", () => {
-  const suites = selectPackageLifecycleSuites(null);
+test("campaign lifecycle matrix selects all campaigns for manual runs", () => {
+  const suites = selectCampaignLifecycleSuites(null);
   assert.equal(suites.length, 5);
-  assert.equal(names(["tests/integration/package-lifecycle.test.mjs"]).length, 5);
+  assert.equal(names(["tests/integration/campaign-lifecycle.test.mjs"]).length, 5);
 
-  const source = readFileSync(new URL("../integration/package-lifecycle.test.mjs", import.meta.url), "utf8");
+  const source = readFileSync(new URL("../integration/campaign-lifecycle.test.mjs", import.meta.url), "utf8");
   const testNames = [...source.matchAll(/^test\("([^"]+)"/gm)].map((match) => match[1]);
   for (const suite of suites) {
     const matches = testNames.filter((testName) => new RegExp(suite["test-pattern"]).test(testName));
-    assert.ok(matches.length >= 1, `${suite.name} must run at least one package lifecycle test`);
+    assert.ok(matches.length >= 1, `${suite.name} must run at least one campaign lifecycle test`);
   }
 });

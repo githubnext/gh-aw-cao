@@ -40,12 +40,12 @@ const idleWorkflow = { repository: 'control-plane', workflow: '.github/workflows
 function queryScenarioSources() {
   const metadata = { 'as-of': asOf, 'artifact-generation': generation };
   return {
-    packages: {
+    campaigns: {
       rows: [{
-        package: 'dashboard',
-        'package-name': 'CAO Dashboard',
-        'package-mode': 'review',
-        'package-registration': 'enabled',
+        campaign: 'dashboard',
+        'campaign-name': 'CAO Dashboard',
+        'campaign-mode': 'review',
+        'campaign-registration': 'enabled',
         'observed-at': asOf
       }],
       metadata
@@ -63,7 +63,7 @@ function queryScenarioSources() {
         repository: workflow.repository,
         workflow: workflow.workflow,
         ...(workflow === dashboardWorkflow
-          ? { package: 'dashboard', 'package-name': 'CAO Dashboard', 'workflow-role': 'worker' }
+          ? { campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', 'workflow-role': 'worker' }
           : {}),
         'observed-at': asOf
       })),
@@ -402,7 +402,7 @@ test('the authored Safe Outputs query returns every canonical outcome for the us
 
 test('the authored basic table queries return the populated canonical database rows', async ({ page }) => {
   const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
-  const requested = ['repository-activity', 'workflow-inventory', 'top-workflow-runs', 'runs-table', 'package-inventory'];
+  const requested = ['repository-activity', 'workflow-inventory', 'top-workflow-runs', 'runs-table', 'campaign-inventory'];
   const payload = await loadThroughWorker(page, dashboard.dashboard.queries, requested);
 
   expect(payload['repository-activity'].rows.map((row) => row.repository)).toEqual([
@@ -426,8 +426,8 @@ test('the authored basic table queries return the populated canonical database r
     ['1004', 'githubnext/gh-aw-cao:.github/workflows/doctor.md', 1]
   ]);
   expect(payload['runs-table'].rows.map((row) => row.run)).toEqual(['1005', '1004', '1003', '1002', '1001']);
-  expect(payload['package-inventory'].rows).toEqual([
-    expect.objectContaining({ package: 'dashboard', 'package-name': 'CAO Dashboard', workflows: 1, runs: 3, dispatches: 2 })
+  expect(payload['campaign-inventory'].rows).toEqual([
+    expect.objectContaining({ campaign: 'dashboard', 'campaign-name': 'CAO Dashboard', workflows: 1, runs: 3, dispatches: 2 })
   ]);
 });
 

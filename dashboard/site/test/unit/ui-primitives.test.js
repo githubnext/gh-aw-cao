@@ -92,12 +92,12 @@ describe('ui primitives', () => {
   });
 
   it('renders a shared table head row of scope="col" cells from plain labels', () => {
-    const headRow = renderTableHeadRow(['Package', 'Runs', 'Failed']);
+    const headRow = renderTableHeadRow(['Campaign', 'Runs', 'Failed']);
     const headCells = headRow.querySelectorAll('th');
 
     expect(headRow.tagName).toBe('TR');
     expect(headCells).toHaveLength(3);
-    expect(Array.from(headCells).map((cell) => cell.textContent)).toEqual(['Package', 'Runs', 'Failed']);
+    expect(Array.from(headCells).map((cell) => cell.textContent)).toEqual(['Campaign', 'Runs', 'Failed']);
     expect(Array.from(headCells).every((cell) => cell.getAttribute('scope') === 'col')).toBe(true);
   });
 
@@ -240,12 +240,12 @@ describe('ui primitives', () => {
   });
 
   it('renders the shared empty-table-row placeholder spanning the given column count', () => {
-    const rendered = renderEmptyTableRow(8, 'No packages discovered.');
+    const rendered = renderEmptyTableRow(8, 'No campaigns discovered.');
 
     expect(rendered.tagName).toBe('TR');
     const cell = rendered.querySelector('td');
     expect(cell?.getAttribute('colspan')).toBe('8');
-    expect(rendered.textContent).toBe('No packages discovered.');
+    expect(rendered.textContent).toBe('No campaigns discovered.');
   });
 
   it('renders the shared decorative legend swatch with the requested class and aria-hidden', () => {
@@ -310,21 +310,21 @@ describe('ui primitives', () => {
 
   it('renders the shared identity link with an icon, label element, and optional class name', () => {
     const withStrong = renderIdentityLink({
-      href: '#page-package-insights?package=self-care',
-      icon: 'package',
+      href: '#page-campaign-insights?campaign=self-care',
+      icon: 'goal',
       label: 'SelfCare',
-      className: 'package-status-identity',
+      className: 'campaign-status-identity',
       labelTag: 'strong'
     });
 
     expect(withStrong.tagName).toBe('A');
-    expect(withStrong.getAttribute('href')).toBe('#page-package-insights?package=self-care');
-    expect(withStrong.className).toBe('package-status-identity');
-    expect(withStrong.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-package');
+    expect(withStrong.getAttribute('href')).toBe('#page-campaign-insights?campaign=self-care');
+    expect(withStrong.className).toBe('campaign-status-identity');
+    expect(withStrong.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-goal');
     expect(withStrong.querySelector('strong')?.textContent).toBe('SelfCare');
 
     const withDefaultLabelTag = renderIdentityLink({
-      href: '#page-package-insights?package=dashboard',
+      href: '#page-campaign-insights?campaign=dashboard',
       icon: 'graph',
       label: 'Dashboard'
     });
@@ -496,13 +496,13 @@ describe('ui primitives', () => {
   });
 
   it('renders a shared disclosure summary label with a caller-classed "Show details" hint', () => {
-    const nodes = /** @type {HTMLElement[]} */ (renderDisclosureSummaryLabel('Resources', 'package-readme-resources-hint'));
+    const nodes = /** @type {HTMLElement[]} */ (renderDisclosureSummaryLabel('Resources', 'campaign-readme-resources-hint'));
 
     expect(nodes).toHaveLength(2);
     expect(nodes[0].tagName).toBe('SPAN');
     expect(nodes[0].textContent).toBe('Resources');
     expect(nodes[1].tagName).toBe('SPAN');
-    expect(nodes[1].className).toBe('package-readme-resources-hint');
+    expect(nodes[1].className).toBe('campaign-readme-resources-hint');
     expect(nodes[1].textContent).toBe('Show details');
   });
 

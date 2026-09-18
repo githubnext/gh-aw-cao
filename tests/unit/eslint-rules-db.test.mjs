@@ -237,6 +237,6 @@ test("rules database command line builds and verifies without dependencies", () 
   }
 });
 
-test("installed rules database resource matches the package source", () => {
+test("installed rules database resource matches the campaign source", () => {
   assert.deepEqual(readFileSync(scriptResource), readFileSync(scriptSource));
 });

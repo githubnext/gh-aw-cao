@@ -16,7 +16,7 @@
               "field": "workflow",
               "in": [
                 ".github/workflows/eu-cra-compliance.md",
-                ".github/workflows/eu-cra-compliance-package-maintainer.md",
+                ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
                 ".github/workflows/eu-cra-compliance-scope-classifier.md",
                 ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
                 ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
@@ -41,7 +41,7 @@
         "filter": {
           "predicates": [
             {
-              "field": "package",
+              "field": "campaign",
               "equals": "eu-cra-compliance"
             }
           ]
@@ -62,7 +62,7 @@
             {
               "field": "workflow",
               "in": [
-                ".github/workflows/eu-cra-compliance-package-maintainer.md",
+                ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
                 ".github/workflows/eu-cra-compliance-scope-classifier.md",
                 ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
                 ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
@@ -102,7 +102,7 @@
               "filters": {
                 "workflow": [
                   ".github/workflows/eu-cra-compliance.md",
-                  ".github/workflows/eu-cra-compliance-package-maintainer.md",
+                  ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
                   ".github/workflows/eu-cra-compliance-scope-classifier.md",
                   ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
                   ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
@@ -135,7 +135,7 @@
             "data": {
               "source": "eu-cra-evidence-reports",
               "filters": {
-                "package": [
+                "campaign": [
                   "eu-cra-compliance"
                 ]
               },
@@ -203,7 +203,7 @@
               "source": "eu-cra-domain-attainment",
               "filters": {
                 "workflow": [
-                  ".github/workflows/eu-cra-compliance-package-maintainer.md",
+                  ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
                   ".github/workflows/eu-cra-compliance-scope-classifier.md",
                   ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
                   ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
@@ -271,7 +271,7 @@
               },
               "filters": {
                 "workflow": [
-                  ".github/workflows/eu-cra-compliance-package-maintainer.md",
+                  ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
                   ".github/workflows/eu-cra-compliance-scope-classifier.md",
                   ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
                   ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
@@ -307,7 +307,7 @@
     ],
     "navigation": [
       {
-        "label": "Package operations",
+        "label": "Campaign operations",
         "experimental": true,
         "pages": [
           "eu-cra-compliance-dashboard"

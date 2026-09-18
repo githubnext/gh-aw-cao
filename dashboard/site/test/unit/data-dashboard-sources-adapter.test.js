@@ -11,19 +11,19 @@ const metadata = {
 describe('current dashboard source adapter', () => {
   it('converts real source-shaped repository, workflow, and run rows', () => {
     const adapted = adaptDashboardSources({
-      packages: {
+      campaigns: {
         rows: [{
-          package: 'dashboard',
-          'package-name': 'CAO Dashboard',
-          'package-description': 'Deploy the CAO dashboard.',
-          'package-icon': 'graph',
-          'package-mode': 'review',
-          'package-enabled': true,
-          'package-min-version': 'v0.89.3',
-          'package-version': 'v1.2.0',
-          'package-current-version': 'v1.3.0',
-          'package-update-state': 'update-available',
-          'package-experimental': true
+          campaign: 'dashboard',
+          'campaign-name': 'CAO Dashboard',
+          'campaign-description': 'Deploy the CAO dashboard.',
+          'campaign-icon': 'graph',
+          'campaign-mode': 'review',
+          'campaign-enabled': true,
+          'campaign-min-version': 'v0.89.3',
+          'campaign-version': 'v1.2.0',
+          'campaign-current-version': 'v1.3.0',
+          'campaign-update-state': 'update-available',
+          'campaign-experimental': true
         }],
         metadata
       },
@@ -40,8 +40,8 @@ describe('current dashboard source adapter', () => {
           organization: 'githubnext',
           repository: 'gh-aw-cao',
           workflow: '.github/workflows/dashboard.md',
-          package: 'dashboard',
-          'package-name': 'CAO Dashboard',
+          campaign: 'dashboard',
+          'campaign-name': 'CAO Dashboard',
           'workflow-id': '501',
           'workflow-role': 'worker',
           'workflow-name': 'Dashboard',
@@ -110,8 +110,8 @@ describe('current dashboard source adapter', () => {
       fullName: 'githubnext/gh-aw-cao',
       repositoryLink: { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao' }
     });
-    expect(batch.packages[0]).toMatchObject({
-      id: 'package:dashboard-sources:dashboard',
+    expect(batch.campaigns[0]).toMatchObject({
+      id: 'campaign:dashboard-sources:dashboard',
       slug: 'dashboard',
       name: 'CAO Dashboard',
       minVersion: 'v0.89.3',
@@ -130,8 +130,8 @@ describe('current dashboard source adapter', () => {
       updatedAt: '2026-09-08T00:00:00Z',
       ghAwVersion: '0.88.8',
       ghAwUpdateState: 'update-available',
-      packageId: batch.packages[0].id,
-      package: 'dashboard',
+      campaignId: batch.campaigns[0].id,
+      campaign: 'dashboard',
       role: 'worker'
     });
     expect(batch.runs[0]).toMatchObject({

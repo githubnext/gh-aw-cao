@@ -16,7 +16,7 @@ function observation(kind, sourceId, data) {
 
 function completeGraph() {
   return normalize([
-    observation('package', 'package-0', {
+    observation('campaign', 'campaign-0', {
       slug: 'dashboard',
       name: 'Dashboard'
     }),
@@ -27,8 +27,8 @@ function completeGraph() {
     observation('workflow', 'workflow-2', {
       githubId: 2,
       repositoryId: 'github:repository:1',
-      packageId: 'package:fixture:dashboard',
-      package: 'dashboard',
+      campaignId: 'campaign:fixture:dashboard',
+      campaign: 'dashboard',
       name: 'Dashboard'
     }),
     observation('run', 'run-3', {
@@ -53,12 +53,12 @@ describe('canonical entity relationships', () => {
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch).toMatchObject({
-      packages: [{ id: 'package:fixture:dashboard', slug: 'dashboard' }],
+      campaigns: [{ id: 'campaign:fixture:dashboard', slug: 'dashboard' }],
       repositories: [{ id: 'github:repository:1' }],
       workflows: [{
         id: 'github:workflow:2',
         repositoryId: 'github:repository:1',
-        packageId: 'package:fixture:dashboard'
+        campaignId: 'campaign:fixture:dashboard'
       }],
       runs: [{
         id: 'github:run:3:attempt:1',
@@ -72,13 +72,13 @@ describe('canonical entity relationships', () => {
   it('reports every dangling mandatory relationship before activation', () => {
     const batch = completeGraph();
     batch.workflows[0].repositoryId = 'github:repository:missing';
-    batch.workflows[0].packageId = 'package:fixture:missing';
+    batch.workflows[0].campaignId = 'campaign:fixture:missing';
     batch.runs[0].workflowId = 'github:workflow:missing';
     batch.audits[0].runId = 'github:run:missing:attempt:1';
 
     expect(relationshipErrors(batch)).toEqual([
       'github:workflow:2.repositoryId does not reference an existing repository',
-      'github:workflow:2.packageId does not reference an existing package',
+      'github:workflow:2.campaignId does not reference an existing campaign',
       'github:run:3:attempt:1.workflowId does not reference an existing workflow',
       'audit:6.runId does not reference an existing run'
     ]);

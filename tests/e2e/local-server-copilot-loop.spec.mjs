@@ -5,7 +5,7 @@ import { startDashboardServer } from "../../dashboard/local-server.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 
-const packageDashboard = () => JSON.stringify({
+const campaignDashboard = () => JSON.stringify({
   "language-version": "0.1.0",
   dashboard: {
     id: "copilot-loop",
@@ -28,12 +28,12 @@ const packageDashboard = () => JSON.stringify({
 
 test("Copilot prompt saves a dashboard change, renders it, and correlates browser/server traces", async ({ page }) => {
   const fixtureRoot = await mkdtemp(path.join(repositoryRoot, ".cao-dashboard-e2e-"));
-  const packageRoot = path.join(fixtureRoot, "packages");
-  const packageDirectory = path.join(packageRoot, "copilot-loop");
-  const dashboardPath = path.join(packageDirectory, "dashboard.json");
+  const campaignRoot = path.join(fixtureRoot, "campaigns");
+  const campaignDirectory = path.join(campaignRoot, "copilot-loop");
+  const dashboardPath = path.join(campaignDirectory, "dashboard.json");
   const tracePath = path.join(fixtureRoot, "trace.jsonl");
-  await mkdir(packageDirectory, { recursive: true });
-  await writeFile(dashboardPath, packageDashboard());
+  await mkdir(campaignDirectory, { recursive: true });
+  await writeFile(dashboardPath, campaignDashboard());
   const browserTraces = [];
   page.on("console", (message) => {
     if (message.text().startsWith("[dashboard-trace]")) {
@@ -47,7 +47,7 @@ test("Copilot prompt saves a dashboard change, renders it, and correlates browse
   try {
     preview = await startDashboardServer({
       siteRoot: path.join(repositoryRoot, "dashboard/site"),
-      catalogRoot: packageRoot,
+      catalogRoot: campaignRoot,
       installedDashboardsDirectory: path.join(fixtureRoot, "installed"),
       downloadData: async (destination) => {
         await mkdir(destination, { recursive: true });

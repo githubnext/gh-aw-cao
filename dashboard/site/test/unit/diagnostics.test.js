@@ -27,7 +27,7 @@ describe('full dashboard diagnostics', () => {
     const report = await collectFullDiagnostics({ indexedDB });
 
     expect(report.passed).toBe(false);
-    expect(report.database.counts.packages).toBe(0);
+    expect(report.database.counts.campaigns).toBe(0);
     expect(report.database.counts.audits).toBe(0);
     expect(report.ui.activePageId).toBe('events');
     expect(report.checks).toContainEqual(expect.objectContaining({

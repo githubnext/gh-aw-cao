@@ -8,7 +8,7 @@ const suites = [
   {
     name: "root",
     manifest: "aw.yml",
-    testPattern: "root package",
+    testPattern: "root campaign",
     prefixes: [
       ".github/aw/cao-evolution/graders/",
       ".github/aw/optimization/graders/",
@@ -21,13 +21,13 @@ const suites = [
   {
     name: "activity",
     manifest: "activity/aw.yml",
-    testPattern: "focused activity package contract",
+    testPattern: "focused activity campaign contract",
     prefixes: [".github/workflows/activity."],
   },
   {
     name: "CAO Evolution",
     manifest: "cao-evolution/aw.yml",
-    testPattern: "focused CAO Evolution package contract",
+    testPattern: "focused CAO Evolution campaign contract",
     prefixes: [
       ".github/aw/cao-evolution/graders/",
       ".github/workflows/graders/cao-evolution-",
@@ -38,7 +38,7 @@ const suites = [
   {
     name: "EU CRA",
     manifest: "eu-cra-compliance/aw.yml",
-    testPattern: "focused EU CRA package contract",
+    testPattern: "focused EU CRA campaign contract",
     prefixes: [
       ".github/aw/eu-cra-compliance/graders/",
       ".github/workflows/eu-cra-compliance",
@@ -49,7 +49,7 @@ const suites = [
   {
     name: "UK AI Advisory",
     manifest: "uk-ai-advisory/aw.yml",
-    testPattern: "focused UK AI Advisory package contract",
+    testPattern: "focused UK AI Advisory campaign contract",
     prefixes: [
       ".github/workflows/shared/",
       ".github/workflows/uk-ai-advisory",
@@ -58,7 +58,7 @@ const suites = [
   {
     name: "SelfCare",
     manifest: "self-care/aw.yml",
-    testPattern: "focused SelfCare package contract",
+    testPattern: "focused SelfCare campaign contract",
     prefixes: [
       ".github/aw/self-care/graders/",
       ".github/workflows/graders/self-care-",
@@ -69,7 +69,7 @@ const suites = [
   {
     name: "Software Development Practices",
     manifest: "software-development-practices/aw.yml",
-    testPattern: "focused Software Development Practices package contract",
+    testPattern: "focused Software Development Practices campaign contract",
     prefixes: [
       ".github/aw/software-development-practices/graders/",
       ".github/workflows/graders/software-development-practices-",
@@ -80,7 +80,7 @@ const suites = [
   {
     name: "dashboard",
     manifest: "dashboard/aw.yml",
-    testPattern: "dashboard package contract|--force restores dashboard",
+    testPattern: "dashboard campaign contract|--force restores dashboard",
     prefixes: [".github/workflows/dashboard-"],
   },
   {
@@ -104,7 +104,7 @@ function resourceSourcePath(manifest, source) {
   return posix.normalize(posix.join(posix.dirname(manifest), source));
 }
 
-function packageSources(root, suite) {
+function campaignSources(root, suite) {
   const sources = [];
   const visited = new Set();
   const collect = (manifestPath) => {
@@ -128,7 +128,7 @@ function packageSources(root, suite) {
   return sources;
 }
 
-export function selectPackageLifecycleSuites(changedFiles, root = process.cwd()) {
+export function selectCampaignLifecycleSuites(changedFiles, root = process.cwd()) {
   const installableSuites = suites.filter((suite) => {
     const manifest = parse(readFileSync(join(root, suite.manifest), "utf8"));
     return manifest.private !== true;
@@ -137,21 +137,21 @@ export function selectPackageLifecycleSuites(changedFiles, root = process.cwd())
 
   const normalized = changedFiles.map((file) => file.replaceAll("\\", "/"));
   if (normalized.some((file) => [
-    "scripts/package-lifecycle-matrix.mjs",
-    "tests/integration/package-lifecycle.test.mjs",
+    "scripts/campaign-lifecycle-matrix.mjs",
+    "tests/integration/campaign-lifecycle.test.mjs",
   ].includes(file))) {
-    return selectPackageLifecycleSuites(null, root);
+    return selectCampaignLifecycleSuites(null, root);
   }
   return installableSuites
     .filter((suite) => {
-      const packageDirectory = posix.dirname(suite.manifest);
-      const prefixes = packageDirectory === "."
+      const campaignDirectory = posix.dirname(suite.manifest);
+      const prefixes = campaignDirectory === "."
         ? suite.prefixes
-        : [`${packageDirectory}/`, ...suite.prefixes];
+        : [`${campaignDirectory}/`, ...suite.prefixes];
       if (normalized.some((file) => file === suite.manifest || prefixes.some((prefix) => file.startsWith(prefix)))) {
         return true;
       }
-      const sources = new Set(packageSources(root, suite));
+      const sources = new Set(campaignSources(root, suite));
       return normalized.some((file) => sources.has(file));
     })
     .map(({ name, testPattern }) => ({ name, "test-pattern": testPattern }));
@@ -170,5 +170,5 @@ if (invokedPath === import.meta.url) {
   const files = process.argv[2] === "--all"
     ? null
     : changedFiles(process.argv[2], process.argv[3], root);
-  process.stdout.write(JSON.stringify({ include: selectPackageLifecycleSuites(files, root) }));
+  process.stdout.write(JSON.stringify({ include: selectCampaignLifecycleSuites(files, root) }));
 }

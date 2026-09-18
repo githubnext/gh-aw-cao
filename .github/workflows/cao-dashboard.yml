@@ -56,7 +56,7 @@ jobs:
               core.exportVariable('DASHBOARD_SITE_ROOT', 'dashboard/site')
               core.info('Resolved dashboard source layout: source')
             } else {
-              throw new Error('Dashboard package sources are unavailable')
+              throw new Error('Dashboard campaign sources are unavailable')
             }
 
       - name: Resolve dashboard deployment policy
@@ -66,13 +66,13 @@ jobs:
           script: |
             const fs = require('fs')
             const policy = JSON.parse(fs.readFileSync('.github/workflows/cao.json', 'utf8'))
-            const configuredDeploy = policy['control-plane']?.packages?.dashboard?.deploy
+            const configuredDeploy = policy['control-plane']?.campaigns?.dashboard?.deploy
             if (
               configuredDeploy !== undefined
               && configuredDeploy !== null
               && typeof configuredDeploy !== 'boolean'
             ) {
-              throw new Error('control-plane.packages.dashboard.deploy must be a boolean')
+              throw new Error('control-plane.campaigns.dashboard.deploy must be a boolean')
             }
             const deploy = configuredDeploy ?? true
             core.info(`Standalone Pages deployment: ${deploy ? 'enabled' : 'disabled'}`)

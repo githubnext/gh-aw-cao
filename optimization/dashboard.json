@@ -41,7 +41,7 @@
         "filter": {
           "predicates": [
             {
-              "field": "package",
+              "field": "campaign",
               "equals": "optimization"
             }
           ]
@@ -3748,7 +3748,7 @@
             "data": {
               "source": "optimization-retained-outcomes",
               "filters": {
-                "package": [
+                "campaign": [
                   "optimization"
                 ]
               },
@@ -3811,7 +3811,7 @@
     ],
     "navigation": [
       {
-        "label": "Package operations",
+        "label": "Campaign operations",
         "experimental": true,
         "pages": [
           "optimization-dashboard"

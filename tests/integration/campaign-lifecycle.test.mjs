@@ -11,37 +11,37 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { retryTransientPackageInstall } from "../helpers/package-install-retry.mjs";
+import { retryTransientCampaignInstall } from "../helpers/campaign-install-retry.mjs";
 
-const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
+const campaignSource = process.env.CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE
   || "githubnext/gh-aw-cao@main";
-const packageUpdateSource = "https://github.com/githubnext/gh-aw-cao";
+const campaignUpdateSource = "https://github.com/githubnext/gh-aw-cao";
 const controlRuntimeFiles = [
   ".github/workflows/shared/control.mjs",
   ".github/workflows/shared/policy.mjs",
   ".github/workflows/shared/setup-github-apps.mjs",
 ];
 const controlPlaneSkillFiles = [
-  ".github/skills/add-cao-package/SKILL.md",
+  ".github/skills/add-cao-campaign/SKILL.md",
   ".github/skills/analyze-cao/SKILL.md",
   ".github/skills/cao-cli/SKILL.md",
-  ".github/skills/create-cao-package/SKILL.md",
+  ".github/skills/create-cao-campaign/SKILL.md",
   ".github/skills/setup-cao/SKILL.md",
 ];
-function focusedPackageSource(slug, source = packageSource) {
+function focusedCampaignSource(slug, source = campaignSource) {
   const separator = source.lastIndexOf("@");
-  assert.notEqual(separator, -1, "package source must include a ref");
+  assert.notEqual(separator, -1, "campaign source must include a ref");
   return `${source.slice(0, separator)}/${slug}${source.slice(separator)}`;
 }
-const ukAiAdvisoryPackageSource = focusedPackageSource("uk-ai-advisory");
-const activityPackageSource = focusedPackageSource("activity");
-const caoEvolutionPackageSource = focusedPackageSource("cao-evolution");
-const craPackageSource = focusedPackageSource("eu-cra-compliance");
-const dashboardPackageSource = focusedPackageSource("dashboard");
-const dependabotUpdateSource = focusedPackageSource("dependabot");
-const dependabotPackageUpdateSource = `${packageUpdateSource}/dependabot`;
-const selfCarePackageSource = focusedPackageSource("self-care");
-const softwareDevelopmentPracticesPackageSource = focusedPackageSource("software-development-practices");
+const ukAiAdvisoryCampaignSource = focusedCampaignSource("uk-ai-advisory");
+const activityCampaignSource = focusedCampaignSource("activity");
+const caoEvolutionCampaignSource = focusedCampaignSource("cao-evolution");
+const craCampaignSource = focusedCampaignSource("eu-cra-compliance");
+const dashboardCampaignSource = focusedCampaignSource("dashboard");
+const dependabotUpdateSource = focusedCampaignSource("dependabot");
+const dependabotCampaignUpdateSource = `${campaignUpdateSource}/dependabot`;
+const selfCareCampaignSource = focusedCampaignSource("self-care");
+const softwareDevelopmentPracticesCampaignSource = focusedCampaignSource("software-development-practices");
 const activityExpectedFiles = [
   ".github/aw/activity/actions-context.mjs",
   ".github/aw/activity/actions-log.mjs",
@@ -74,7 +74,7 @@ const caoEvolutionExpectedFiles = [
 const ukAiAdvisoryExpectedFiles = [
   ".github/aw/uk-ai-advisory/implementation-status.md",
   ".github/aw/dashboards/uk-ai-advisory.json",
-  ".github/workflows/uk-ai-advisory-package-maintainer.md",
+  ".github/workflows/uk-ai-advisory-campaign-maintainer.md",
   ".github/workflows/uk-ai-advisory-operational-resilience.md",
   ".github/workflows/uk-ai-advisory.md",
   ".github/workflows/shared/control.md",
@@ -85,7 +85,7 @@ const craExpectedFiles = [
   ".github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
+  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
@@ -98,13 +98,13 @@ const craExpectedFiles = [
   ".github/workflows/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
   ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
   ".github/workflows/eu-cra-compliance-conformity-release-evidence.md",
-  ".github/workflows/eu-cra-compliance-package-maintainer.md",
+  ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
   ".github/workflows/eu-cra-compliance-scope-classifier.md",
   ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
   ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
   ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
   ".github/workflows/eu-cra-compliance.md",
-  ".github/workflows/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
+  ".github/workflows/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
   ".github/workflows/shared/control.md",
 ];
 const dashboardExpectedFiles = [
@@ -157,6 +157,14 @@ const repositoryOnlyFiles = [
   ".github/workflows/review-smoke.yml",
 ];
 
+function installedManifestPath(consumer, manifestName) {
+  return join(consumer, ".github", "aw", "packages", manifestName);
+}
+
+function installedManifests(consumer) {
+  return readdirSync(join(consumer, ".github", "aw", "packages"));
+}
+
 function run(command, args, cwd) {
   return execFileSync(command, args, {
     cwd,
@@ -167,9 +175,9 @@ function run(command, args, cwd) {
   });
 }
 
-async function installPackage(source) {
-  return retryTransientPackageInstall(() => {
-    const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
+async function installCampaign(source) {
+  return retryTransientCampaignInstall(() => {
+    const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-campaign-"));
     try {
       run("git", ["init", "--quiet"], consumer);
       run("gh", [
@@ -187,16 +195,16 @@ async function installPackage(source) {
   });
 }
 
-test("root package bootstraps an empty CAO and preserves resources during workflow update", { timeout: 240_000 }, async () => {
-  const consumer = await installPackage(packageSource);
+test("root campaign bootstraps an empty CAO and preserves resources during workflow update", { timeout: 240_000 }, async () => {
+  const consumer = await installCampaign(campaignSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
     assert.equal(existsSync(join(consumer, ".github", "aw", "cao")), false);
     for (const relativePath of controlRuntimeFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted control file ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted control file ${relativePath}`);
     }
     for (const relativePath of controlPlaneSkillFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted project skill ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted project skill ${relativePath}`);
     }
     const policyPath = join(consumer, ".github", "workflows", "cao.json");
     const policy = `${JSON.stringify({
@@ -206,7 +214,7 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
           "allowed-owners": ["acme"],
           "allowed-repositories": ["acme/example"],
         },
-        packages: {},
+        campaigns: {},
       },
     }, null, 2)}\n`;
     writeFileSync(policyPath, policy);
@@ -215,22 +223,22 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
       ["--pre-releases"],
     );
     for (const relativePath of activityExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted activity file ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted activity file ${relativePath}`);
     }
     for (const relativePath of dashboardExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `root package omitted dashboard file ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted dashboard file ${relativePath}`);
     }
-    const packageRecords = readdirSync(join(consumer, ".github", "aw", "packages"));
-    assert.equal(packageRecords.length, 1, "expected one installed root package manifest");
-    const installedPackage = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "packages", packageRecords[0]),
+    const campaignRecords = installedManifests(consumer);
+    assert.equal(campaignRecords.length, 1, "expected one installed root campaign manifest");
+    const installedCampaign = JSON.parse(readFileSync(
+      installedManifestPath(consumer, campaignRecords[0]),
       "utf8",
     ));
-    for (const { destination } of installedPackage.files) {
+    for (const { destination } of installedCampaign.files) {
       const workflowPath = join(consumer, destination);
       if (!destination.endsWith(".md") || !existsSync(workflowPath)) continue;
       const workflow = readFileSync(workflowPath, "utf8");
-      writeFileSync(workflowPath, workflow.replace(/^source: .*$/m, `source: ${packageSource}`));
+      writeFileSync(workflowPath, workflow.replace(/^source: .*$/m, `source: ${campaignSource}`));
     }
 
     const removedRuntime = controlRuntimeFiles[0];
@@ -238,7 +246,7 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
     run("gh", [
       "aw",
       "update",
-      packageUpdateSource,
+      campaignUpdateSource,
       "--force",
       "--no-merge",
       "--no-compile",
@@ -255,44 +263,44 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
   }
 });
 
-test("gh aw add installs the focused activity package contract", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(activityPackageSource);
+test("gh aw add installs the focused activity campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(activityCampaignSource);
   try {
     for (const relativePath of activityExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `activity package omitted ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `activity campaign omitted ${relativePath}`);
     }
-    const packageManifests = readdirSync(join(consumer, ".github", "aw", "packages"));
-    assert.equal(packageManifests.length, 1, "expected one installed activity package manifest");
+    const campaignManifests = installedManifests(consumer);
+    assert.equal(campaignManifests.length, 1, "expected one installed activity campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "packages", packageManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       activityExpectedFiles.toSorted(),
-      "activity package manifest must own its workflow and indexer",
+      "activity campaign manifest must own its workflow and indexer",
     );
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
 });
 
-test("gh aw add installs the focused EU CRA package contract", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(craPackageSource);
+test("gh aw add installs the focused EU CRA campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(craCampaignSource);
 
   try {
     for (const relativePath of craExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `focused CRA package omitted ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `focused CRA campaign omitted ${relativePath}`);
     }
     assert.ok(
       !existsSync(join(consumer, ".github", "workflows", "dependabot.md")),
-      "focused CRA package installed an unrelated orchestrator",
+      "focused CRA campaign installed an unrelated orchestrator",
     );
 
-    const packageManifests = readdirSync(join(consumer, ".github", "aw", "packages"));
-    assert.equal(packageManifests.length, 1, "expected one focused CRA package manifest");
+    const campaignManifests = installedManifests(consumer);
+    assert.equal(campaignManifests.length, 1, "expected one focused CRA campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "packages", packageManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
@@ -303,7 +311,7 @@ test("gh aw add installs the focused EU CRA package contract", { timeout: 180_00
         ".github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
         ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
         ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
+        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
         ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
         ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
         ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
@@ -316,37 +324,37 @@ test("gh aw add installs the focused EU CRA package contract", { timeout: 180_00
         ".github/workflows/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
         ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
         ".github/workflows/eu-cra-compliance-conformity-release-evidence.md",
-        ".github/workflows/eu-cra-compliance-package-maintainer.md",
+        ".github/workflows/eu-cra-compliance-campaign-maintainer.md",
         ".github/workflows/eu-cra-compliance-scope-classifier.md",
         ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
         ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
         ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
         ".github/workflows/eu-cra-compliance.md",
-        ".github/workflows/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
+        ".github/workflows/graders/eu-cra-compliance-campaign-maintainer-operational-value.sh",
       ].sort(),
-      "focused CRA package manifest must own its entry workflows, evaluator, and ledger",
+      "focused CRA campaign manifest must own its entry workflows, evaluator, and ledger",
     );
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
 });
 
-test("gh aw add installs the focused UK AI Advisory package contract", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(ukAiAdvisoryPackageSource);
+test("gh aw add installs the focused UK AI Advisory campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(ukAiAdvisoryCampaignSource);
 
   try {
     for (const relativePath of ukAiAdvisoryExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `focused UK AI Advisory package omitted ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `focused UK AI Advisory campaign omitted ${relativePath}`);
     }
     assert.ok(
       !existsSync(join(consumer, ".github", "workflows", "dependabot.md")),
-      "focused UK AI Advisory package installed an unrelated orchestrator",
+      "focused UK AI Advisory campaign installed an unrelated orchestrator",
     );
 
-    const packageManifests = readdirSync(join(consumer, ".github", "aw", "packages"));
-    assert.equal(packageManifests.length, 1, "expected one focused UK AI Advisory package manifest");
+    const campaignManifests = installedManifests(consumer);
+    assert.equal(campaignManifests.length, 1, "expected one focused UK AI Advisory campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "packages", packageManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
@@ -354,58 +362,58 @@ test("gh aw add installs the focused UK AI Advisory package contract", { timeout
       [
         ".github/aw/uk-ai-advisory/implementation-status.md",
         ".github/aw/dashboards/uk-ai-advisory.json",
-        ".github/workflows/uk-ai-advisory-package-maintainer.md",
+        ".github/workflows/uk-ai-advisory-campaign-maintainer.md",
         ".github/workflows/uk-ai-advisory.md",
       ].toSorted(),
-      "focused UK AI Advisory package manifest must own its entry workflows and ledger",
+      "focused UK AI Advisory campaign manifest must own its entry workflows and ledger",
     );
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
 });
 
-test("gh aw add installs the focused SelfCare package contract", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(selfCarePackageSource);
+test("gh aw add installs the focused SelfCare campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(selfCareCampaignSource);
 
   try {
     for (const relativePath of selfCareExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `focused SelfCare package omitted ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `focused SelfCare campaign omitted ${relativePath}`);
     }
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
 });
 
-test("gh aw add installs the focused CAO Evolution package contract", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(caoEvolutionPackageSource);
+test("gh aw add installs the focused CAO Evolution campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(caoEvolutionCampaignSource);
   try {
     for (const relativePath of caoEvolutionExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `focused CAO Evolution package omitted ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `focused CAO Evolution campaign omitted ${relativePath}`);
     }
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
 });
 
-test("gh aw add installs the focused Software Development Practices package contract", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(softwareDevelopmentPracticesPackageSource);
+test("gh aw add installs the focused Software Development Practices campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(softwareDevelopmentPracticesCampaignSource);
 
   try {
     for (const relativePath of softwareDevelopmentPracticesExpectedFiles) {
       assert.ok(
         existsSync(join(consumer, relativePath)),
-        `focused Software Development Practices package omitted ${relativePath}`,
+        `focused Software Development Practices campaign omitted ${relativePath}`,
       );
     }
     assert.ok(
       !existsSync(join(consumer, ".github", "workflows", "dependabot.md")),
-      "focused Software Development Practices package installed an unrelated orchestrator",
+      "focused Software Development Practices campaign installed an unrelated orchestrator",
     );
 
-    const packageManifests = readdirSync(join(consumer, ".github", "aw", "packages"));
-    assert.equal(packageManifests.length, 1, "expected one focused Software Development Practices package manifest");
+    const campaignManifests = installedManifests(consumer);
+    assert.equal(campaignManifests.length, 1, "expected one focused Software Development Practices campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "packages", packageManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
@@ -421,31 +429,31 @@ test("gh aw add installs the focused Software Development Practices package cont
         ".github/workflows/software-development-practices-nist-ssdf.md",
         ".github/workflows/software-development-practices.md",
       ],
-      "focused Software Development Practices package manifest must own its entry workflows, evaluators, runtime, and dashboard",
+      "focused Software Development Practices campaign manifest must own its entry workflows, evaluators, runtime, and dashboard",
     );
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
 });
 
-test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(dashboardPackageSource);
+test("gh aw add installs the dashboard campaign contract", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(dashboardCampaignSource);
 
   try {
     for (const relativePath of dashboardExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `dashboard package omitted ${relativePath}`);
+      assert.ok(existsSync(join(consumer, relativePath)), `dashboard campaign omitted ${relativePath}`);
     }
 
-    const packageManifests = readdirSync(join(consumer, ".github", "aw", "packages"));
-    assert.equal(packageManifests.length, 1, "expected one installed dashboard package manifest");
+    const campaignManifests = installedManifests(consumer);
+    assert.equal(campaignManifests.length, 1, "expected one installed dashboard campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "packages", packageManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
       installedManifest.files.map(({ destination }) => destination).sort(),
       dashboardExpectedFiles.toSorted(),
-      "dashboard package manifest must own its workflow and every report module",
+      "dashboard campaign manifest must own its workflow and every report module",
     );
 
     const dashboardWorkflow = readFileSync(join(consumer, ".github", "workflows", "cao-dashboard.yml"), "utf8");
@@ -470,7 +478,7 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     const dashboardSite = join(consumer, ".github", "aw", "dashboard", "site");
     const dashboardOutput = join(consumer, "dashboard-output");
     const controlSettings = join(consumer, "control-settings.json");
-    run("gh", ["aw", "add", activityPackageSource, "--force", "--no-security-scanner"], consumer);
+    run("gh", ["aw", "add", activityCampaignSource, "--force", "--no-security-scanner"], consumer);
     writeFileSync(controlSettings, "{}\n");
     run("npm", ["ci", "--ignore-scripts"], dashboardSite);
     run("npm", ["run", "build", "--", dashboardOutput, controlSettings], dashboardSite);
@@ -483,7 +491,7 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
 });
 
 test("gh aw add --force restores dashboard workflows, producers, and renderer assets", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(dashboardPackageSource);
+  const consumer = await installCampaign(dashboardCampaignSource);
 
   try {
     const deployPath = join(consumer, ".github", "workflows", "cao-dashboard.yml");
@@ -502,7 +510,7 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
     run("gh", [
       "aw",
       "add",
-      dashboardPackageSource,
+      dashboardCampaignSource,
       "--force",
       "--no-security-scanner",
     ], consumer);
@@ -519,17 +527,17 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
   }
 });
 
-test("gh aw update replaces workflows and restores package-owned assets", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(dependabotUpdateSource);
+test("gh aw update replaces workflows and restores campaign-owned assets", { timeout: 180_000 }, async () => {
+  const consumer = await installCampaign(dependabotUpdateSource);
 
   try {
     assert.ok(
       existsSync(join(consumer, ".github", "aw", "dependabot", "graders", "dependabot-update-planner-operational-value.sh")),
-      "Dependabot package omitted its package-owned operational-value grader",
+      "Dependabot campaign omitted its campaign-owned operational-value grader",
     );
     assert.ok(
       existsSync(join(consumer, ".github", "workflows", "graders", "dependabot-update-planner-operational-value.sh")),
-      "Dependabot package omitted its operational-value grader",
+      "Dependabot campaign omitted its operational-value grader",
     );
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");
     const orchestrator = readFileSync(orchestratorPath, "utf8");
@@ -548,7 +556,7 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
     run("gh", [
       "aw",
       "update",
-      dependabotPackageUpdateSource,
+      dependabotCampaignUpdateSource,
       "--force",
       "--no-merge",
       "--no-compile",
@@ -560,7 +568,7 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
     const updatedOrchestrator = readFileSync(orchestratorPath, "utf8");
     assert.ok(
       !updatedOrchestrator.includes("# local integration-test change"),
-      "gh aw update retained a local package workflow modification",
+      "gh aw update retained a local campaign workflow modification",
     );
     for (const relativePath of removedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `gh aw update did not restore ${relativePath}`);

@@ -10,11 +10,11 @@ The CAO dashboard previously organized navigation around a different set of view
 
 - "Home" is described as an attention-first catch-up experience grounded in retained evidence.
 - "Work" provides GitHub Projects-style Board, Tasks, and Roadmap views, with the Roadmap supporting Day, Week, Month, Quarter, and Year zoom levels, and shows safe-output primitives, actor roles, and a current-date marker.
-- "Agents" adds a policy-scoped Agents Marketplace with package README details.
+- "Agents" adds a policy-scoped Agents Marketplace with campaign README details.
 - "Insights" composes an overview across outcomes, value, usage, runtime, security, and experiments.
 - "Settings" improves checked-in `cao.json` policy editing.
 
-The PR also extends dashboard source generation for work identity, package metadata, safe outputs, and actor roles, and updates the Dashboard Language and normative dashboard specifications (`docs/dashboard-language-specification.md`, `specs/dashboard.md`) to reflect these views. The change touches 59 files with roughly 3,410 core additions, including new components (`agent-marketplace-view.js`, `insights-overview.js`, `package-readme.js`, `package-route-composition.js`, `work-project-view.js`) and updates to existing presenter, validator, styles, and data-source modules.
+The PR also extends dashboard source generation for work identity, campaign metadata, safe outputs, and actor roles, and updates the Dashboard Language and normative dashboard specifications (`docs/dashboard-language-specification.md`, `specs/dashboard.md`) to reflect these views. The change touches 59 files with roughly 3,410 core additions, including new components (`agent-marketplace-view.js`, `insights-overview.js`, `campaign-readme.js`, `campaign-route-composition.js`, `work-project-view.js`) and updates to existing presenter, validator, styles, and data-source modules.
 
 Separately, the PR body notes that with this change, legacy and investigative navigation groups are hidden by default, remaining reachable only via the shareable hash parameter `?show=experimental` (e.g. `#page-overview?show=experimental`).
 
@@ -24,7 +24,7 @@ Not inferable from current pull request evidence: the specific prior navigation 
 
 Reorganize the CAO dashboard's information architecture around five primary, "locked" (reviewed and stabilized) destinations — Home, Work, Agents, Insights, and Settings — as the default navigation surface, and move legacy and investigative navigation groups behind an opt-in `?show=experimental` hash parameter rather than removing or continuing to surface them by default.
 
-This decision is implemented by adding new view components for Work (Board/Tasks/Roadmap), Agents (Marketplace with package README composition), and Insights (composed overview), improving the existing Settings/configuration view for `cao.json` policy editing, and extending the dashboard source-generation pipeline (`dashboard/report/*`) and specifications (`dashboard-language-specification.md`, `specs/dashboard.md`) to support the new work identity, package metadata, safe-output, and actor-role data needed by these views.
+This decision is implemented by adding new view components for Work (Board/Tasks/Roadmap), Agents (Marketplace with campaign README composition), and Insights (composed overview), improving the existing Settings/configuration view for `cao.json` policy editing, and extending the dashboard source-generation pipeline (`dashboard/report/*`) and specifications (`dashboard-language-specification.md`, `specs/dashboard.md`) to support the new work identity, campaign metadata, safe-output, and actor-role data needed by these views.
 
 ## Alternatives Considered
 
@@ -36,7 +36,7 @@ This decision is implemented by adding new view components for Work (Board/Tasks
 **Positive:**
 - Users get a single, attention-first default navigation (Home, Work, Agents, Insights, Settings) instead of a broader set of navigation groups, with Work explicitly modeled on familiar GitHub Projects-style Board/Tasks/Roadmap concepts.
 - Legacy and investigative views remain available for users who need them, via the `?show=experimental` shareable hash parameter, avoiding outright loss of functionality.
-- The dashboard's underlying data pipeline is extended (work identity, package metadata, safe outputs, actor roles) and the Dashboard Language / dashboard specifications are updated, giving the new views a documented, normative basis.
+- The dashboard's underlying data pipeline is extended (work identity, campaign metadata, safe outputs, actor roles) and the Dashboard Language / dashboard specifications are updated, giving the new views a documented, normative basis.
 - Related run-metadata handling in `activity/README.md` is updated so that if `gh aw logs` fails, the downloader can fall back to the control repository's Actions workflow-run API to enrich cached snapshots with basic run identity, status, conclusion, and timing fields, while existing artifact-derived fields remain authoritative and admission evidence remains unavailable until gh-aw exposes it.
 
 **Negative:**

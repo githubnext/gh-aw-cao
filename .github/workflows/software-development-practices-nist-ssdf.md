@@ -59,7 +59,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: software-development-practices
+      campaign: software-development-practices
       role: worker
       worker: nist-ssdf
 

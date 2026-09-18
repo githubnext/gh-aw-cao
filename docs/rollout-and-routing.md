@@ -13,7 +13,7 @@ Roll out each operation independently. Begin with one explicit target in `review
 4. Enable scheduled live operation with `max_repos` kept small.
 5. Increase limits only from observed evidence.
 
-Set the package's checked-in `enabled` field to `false` whenever authentication, routing, output quality, cost, or provenance is uncertain. Resume in `review` after correcting the issue.
+Set the campaign's checked-in `enabled` field to `false` whenever authentication, routing, output quality, cost, or provenance is uncertain. Resume in `review` after correcting the issue.
 
 ![A control plane promotes bounded operations from review to live across organization repositories.](assets/control-plane-scale.svg)
 
@@ -26,22 +26,22 @@ review --approve--> limited live --observe--> scheduled live
 
 ## Operation-Level Control
 
-Each package under `control-plane.packages` has its own mode and limits. Review safe outputs route to the current control-plane repository unless a manual run supplies an allowed `safe_output_repo`. This is the primary unit of gradual rollout.
+Each campaign under `control-plane.campaigns` has its own mode and limits. Review safe outputs route to the current control-plane repository unless a manual run supplies an allowed `safe_output_repo`. This is the primary unit of gradual rollout.
 
-| Control | Package JSON field | Default |
+| Control | Campaign JSON field | Default |
 | --- | --- | --- |
-| Kill switch | `enabled` | `true` for a declared package |
+| Kill switch | `enabled` | `true` for a declared campaign |
 | Output mode | `mode` | `review` |
 | Scheduled absolute cap | `max-repositories` | `1` |
 | Rollout percentage | `rollout-percent` | `100` |
-| Exact target mode | `targets.<owner/repository>.mode` | Package mode |
+| Exact target mode | `targets.<owner/repository>.mode` | Campaign mode |
 | Worker workflow identity | `workers.<worker>.workflow` | Required workflow slug |
 | Worker kill switch | `workers.<worker>.enabled` | `true` |
-| Optional worker mode ceiling | `workers.<worker>.max-mode` | Inherit package or exact-target mode |
+| Optional worker mode ceiling | `workers.<worker>.max-mode` | Inherit campaign or exact-target mode |
 
 Changing one operation does not change another. For example, Dependabot may be live while AW Optimization remains in review.
 
-An exact package target can advance independently while the package remains in review elsewhere:
+An exact campaign target can advance independently while the campaign remains in review elsewhere:
 
 ```json
 {
@@ -54,7 +54,7 @@ An exact package target can advance independently while the package remains in r
 }
 ```
 
-Unmatched repositories retain the package mode. Exact targets must remain inside `control-plane.scope`, comparisons are case-insensitive, and duplicate spellings fail validation. The worker re-resolves its own target policy before execution, so a dispatched envelope cannot promote a review target. A manual mode may narrow all selected targets to review but cannot widen any target to live.
+Unmatched repositories retain the campaign mode. Exact targets must remain inside `control-plane.scope`, comparisons are case-insensitive, and duplicate spellings fail validation. The worker re-resolves its own target policy before execution, so a dispatched envelope cannot promote a review target. A manual mode may narrow all selected targets to review but cannot widen any target to live.
 
 Absolute caps default to `1`, so missing configuration cannot create broad fan-out. Rollout percentages accept integers from `1` through `100` and default to `100`. The control plane rounds the percentage-derived repository count up for a non-empty candidate set, then applies the smallest of that count, `max_repos`, and the target count supported by the declared dispatch budget and eligible worker count. For example, a `10` percent rollout over 25 discovered repositories permits at most 3 selections before stricter caps are applied. Invalid values fail closed.
 
@@ -66,7 +66,7 @@ Automatic discovery scans at most `control-plane.inventory.max-scan-repositories
 
 ### Live Authority Check
 
-The control repository's `.github/workflows/cao.json` is the sole live-activation decision marker. Before promoting an operation to `live`, operators must declare the package mode, worker ceiling, allowed owner or exact repository, and any target-specific mode in that policy. Workers resolve it at the exact workflow SHA, so a target repository cannot widen, narrow, or veto the decision by adding, changing, or removing its own files.
+The control repository's `.github/workflows/cao.json` is the sole live-activation decision marker. Before promoting an operation to `live`, operators must declare the campaign mode, worker ceiling, allowed owner or exact repository, and any target-specific mode in that policy. Workers resolve it at the exact workflow SHA, so a target repository cannot widen, narrow, or veto the decision by adding, changing, or removing its own files.
 
 If an enterprise and organization runtime both select the same target and operation, keep both in `review` until operators choose one control repository and remove live scope from the other. Do not rely on run timing or workflow concurrency to resolve the conflict. Separate control repositories have independent queues and kill switches.
 
@@ -96,7 +96,7 @@ For Pages reports, `safe_output_repo` retains its standard meaning as the safe-o
 
 ## `workflow_dispatch` Runs
 
-A `workflow_dispatch` run can set the `target_repo`, `max_repos`, `rollout_percent`, `safe_output_mode`, and `safe_output_repo` workflow inputs. These DispatchOps runs are useful for a controlled canary or incident diagnosis. They do not update checked-in policy. Mode and numeric requests may narrow the resolved package policy but cannot widen it.
+A `workflow_dispatch` run can set the `target_repo`, `max_repos`, `rollout_percent`, `safe_output_mode`, and `safe_output_repo` workflow inputs. These DispatchOps runs are useful for a controlled canary or incident diagnosis. They do not update checked-in policy. Mode and numeric requests may narrow the resolved campaign policy but cannot widen it.
 
 `workflow_dispatch` runs should narrow scope during validation:
 
@@ -134,14 +134,14 @@ An operation does not become safer because it remained in a mode for several day
 
 ## Rollback
 
-The first rollback action is to set the affected package's `enabled` field to `false` in `.github/workflows/cao.json` and deploy that reviewed revision. For a narrower incident, set the worker's `enabled` field to `false`. Then:
+The first rollback action is to set the affected campaign's `enabled` field to `false` in `.github/workflows/cao.json` and deploy that reviewed revision. For a narrower incident, set the worker's `enabled` field to `false`. Then:
 
 1. stop new dispatches;
 2. inspect the orchestrator run and correlated worker runs;
 3. close, revert, or supersede unintended safe outputs using normal repository procedures;
-4. if a workflow or package release caused the incident, restore its last known-good Git revision, compile every affected workflow, and deploy that revision through the normal reviewed change process;
+4. if a workflow or campaign release caused the incident, restore its last known-good Git revision, compile every affected workflow, and deploy that revision through the normal reviewed change process;
 5. otherwise, correct the affected policy or worker behavior and compile every affected workflow;
-6. re-enable the package in review mode and repeat promotion gates.
+6. re-enable the campaign in review mode and repeat promotion gates.
 
 Do not reduce another operation's mode unless the incident involves shared authentication or shared control behavior.
 

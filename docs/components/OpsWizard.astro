@@ -84,7 +84,7 @@ const agents = [
           <span class="option-body">
             <span class="option-name">Custom operation</span>
             <span class="option-description">
-              Describe your own operation. The prompt uses the packaged <code>create-cao-package</code> skill to design the
+              Describe your own operation. The prompt uses the bundled <code>create-cao-campaign</code> skill to design the
               orchestrator and workers for you.
             </span>
           </span>
@@ -236,18 +236,18 @@ const agents = [
 
     const body = isCustom
       ? [
-          `4. Install the catalog packages and packaged skills: \`gh aw add ${CATALOG}@${CATALOG_REF}\`.`,
-          "5. Read `.github/skills/create-cao-package/SKILL.md` and follow it to design a new operation package for:",
+          `4. Install the catalog campaigns and bundled skills: \`gh aw add ${CATALOG}@${CATALOG_REF}\`.`,
+          "5. Read `.github/skills/create-cao-campaign/SKILL.md` and follow it to design a new operation campaign for:",
           "",
           `   > ${idea}`,
           "",
           "6. Create the orchestrator and every worker under `.github/workflows/`, then compile them with `gh aw compile`.",
           `7. Set \`engine: ${engine}\` in each new workflow's frontmatter.`,
-          "8. Add the package and every worker to `.github/workflows/cao.json` in `review` mode with `max-repositories` set to `1`.",
+          "8. Add the campaign and every worker to `.github/workflows/cao.json` in `review` mode with `max-repositories` set to `1`.",
           "9. Commit and push the policy, sources, and generated `.lock.yml` files together.",
         ]
       : [
-          `4. Install the operation package: \`gh aw add ${CATALOG}/${operation.value}@${CATALOG_REF}\`.`,
+          `4. Install the operation campaign: \`gh aw add ${CATALOG}/${operation.value}@${CATALOG_REF}\`.`,
           `5. Set \`engine: ${engine}\` in the installed workflow frontmatter, then recompile with \`gh aw compile\`.`,
           "6. Create `.github/workflows/cao.json` with this policy:",
           "",
@@ -262,7 +262,7 @@ const agents = [
       ? [
           "## First run",
           "",
-          "- Confirm `.github/workflows/cao.json` allows only the intended owners and keeps the package in `review` with a one-repository cap.",
+          "- Confirm `.github/workflows/cao.json` allows only the intended owners and keeps the campaign in `review` with a one-repository cap.",
           "- Trigger one manual run of the orchestrator against a single low-risk target repository with `safe_output_mode=review`.",
           "- Watch the run with `gh run watch` and summarize the orchestrator report.",
         ]

@@ -62,7 +62,7 @@ This specification covers:
 - domain-level attention states and investigation routes;
 - time-bounded execution episodes and aligned run intervals;
 - measured resource allocation and cost-evaluation readiness;
-- package, worker, and target overlap views;
+- campaign, worker, and target overlap views;
 - statistically qualified anomaly views;
 - static topology as secondary context;
 - missing-data and uncertainty semantics; and
@@ -128,12 +128,12 @@ This specification defines three conformance classes:
 
 | Term | Definition |
 |---|---|
-| Package | A static control-plane definition containing an orchestrator and zero or more workers. |
+| Campaign | A static control-plane definition containing an orchestrator and zero or more workers. |
 | Episode | One observed orchestrator root run and only the worker or output evidence explicitly correlated to that root. |
 | Signal | One independently interpretable reason for operator attention. |
 | Attribution coverage | The ratio of explicitly attributed observations to eligible observed observations. |
 | Execution map | A shared time axis containing observed lifecycle intervals for one episode. |
-| Overlap | Multiple observed producers, packages, or attempts associated with the same target or outcome class. |
+| Overlap | Multiple observed producers, campaigns, or attempts associated with the same target or outcome class. |
 | Anomaly | An observation meeting a disclosed statistical rule against a representative historical baseline. |
 
 ### 3.2 Evidence Classes
@@ -142,10 +142,10 @@ Evidence is ordered by what it can establish, not by visual prominence:
 
 1. **Direct state:** terminal run state, approval state, or durable output state.
 2. **Exact association:** correlation identifier, trace or span link, or run URL that identifies both observations.
-3. **Declared structure:** package membership and configured dispatch topology.
+3. **Declared structure:** campaign membership and configured dispatch topology.
 4. **Unknown:** missing, incomplete, or unattributed evidence.
 
-- **OOV-MODEL-001:** A presenter **MUST** keep package topology and observed episodes as distinct entities.
+- **OOV-MODEL-001:** A presenter **MUST** keep campaign topology and observed episodes as distinct entities.
 - **OOV-MODEL-002:** A presenter **MUST NOT** create a causal edge from timestamp proximity, workflow-name similarity, or declared topology alone.
 - **OOV-MODEL-003:** Missing attribution **MUST** remain visible as unknown and **MUST NOT** be assigned to the nearest plausible episode.
 - **OOV-MODEL-004:** Control result, worker execution result, durable output state, and operational outcome **MUST** remain distinct evidence dimensions.
@@ -160,7 +160,7 @@ A Standard or Complete presenter **MUST** provide the following hierarchy:
 
 1. a default attention overview organized by operational domain;
 2. investigation views for runtime, security and controls, value and outcomes, and cost and efficiency; and
-3. exploration views for dispatch events, workflow definitions, repositories, packages, runs, and retained outputs.
+3. exploration views for dispatch events, workflow definitions, repositories, campaigns, runs, and retained outputs.
 
 The attention overview **MUST** represent these domains when applicable evidence exists:
 
@@ -192,7 +192,7 @@ The attention overview **MUST** represent these domains when applicable evidence
 | Is measured resource use within policy? | Usage allocation plus readiness boundary | Complete aligned usage and an applicable policy threshold. |
 | Where does work overlap? | Producer-by-target matrix or UpSet-style intersection view | Explicit producer-target associations and visible set sizes. |
 | Is behavior unusual? | Distribution plus control or drift chart | Representative comparable baseline and disclosed method. |
-| How is the system intended to connect? | Static grouped topology | Versioned package and workflow definitions. |
+| How is the system intended to connect? | Static grouped topology | Versioned campaign and workflow definitions. |
 
 ---
 
@@ -291,7 +291,7 @@ A presenter **MAY** highlight a critical path when complete parent-child or span
 
 ### 7.1 Matrix Form
 
-- **OOV-OVR-001:** Pairwise package-target or worker-target overlap **SHOULD** use a matrix when the number of relationships would make node-link crossings difficult to trace.
+- **OOV-OVR-001:** Pairwise campaign-target or worker-target overlap **SHOULD** use a matrix when the number of relationships would make node-link crossings difficult to trace.
 - **OOV-OVR-002:** A matrix **MUST** label both axes and **MUST** expose the value encoded by each cell.
 - **OOV-OVR-003:** Row totals and column totals **MUST** remain visible with pairwise intersections.
 - **OOV-OVR-004:** A cell **MUST** distinguish attempt count, unique episode count, actionable-output count, and no-action count; these measures **MUST NOT** be silently combined.
@@ -476,7 +476,7 @@ This appendix is informative and describes the initial Central Agentic Ops imple
 | Episode execution map | Partially implemented | Root timestamps exist; worker lanes appear only when exact retained correlation exists. |
 | Producer-target matrix | Deferred | The current 24-hour sample has no correlated worker-target attempt evidence. |
 | Statistical anomaly view | Deferred | The current window does not establish a representative historical baseline. |
-| Definition topology | Implemented | Versioned local package inventory is available. |
+| Definition topology | Implemented | Versioned local campaign inventory is available. |
 
 ### Appendix D: Error Codes
 

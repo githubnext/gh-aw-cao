@@ -30,54 +30,8 @@ on:
         type: string
       control_plane_run_url:
         type: string
-      batch_label:
-        type: string
-      workflow_path:
+      assignment_json:
         required: true
-        type: string
-      evidence_window_start:
-        required: true
-        type: string
-      evidence_window_end:
-        required: true
-        type: string
-      assignment_run_id:
-        required: true
-        type: string
-      experiment_id:
-        required: true
-        type: string
-      variant:
-        required: true
-        type: string
-      evaluator_digest:
-        required: true
-        type: string
-      opportunity_kind:
-        required: true
-        type: string
-      evidence_complete:
-        required: true
-        type: boolean
-      evidence_confidence:
-        required: false
-        type: string
-      evidence_provenance_json:
-        required: true
-        type: string
-      attributable_run_ids_json:
-        required: true
-        type: string
-      cost_grain:
-        required: true
-        type: string
-      measured_aic:
-        required: true
-        type: string
-      proposed_savings_aic:
-        required: false
-        type: string
-      supersedes_intervention_id:
         type: string
   permissions:
     contents: read
@@ -105,22 +59,7 @@ jobs:
         id: token_eligibility
         env:
           TARGET_REPOSITORY: ${{ inputs.target_repo }}
-          WORKFLOW_PATH: ${{ inputs.workflow_path }}
-          EVIDENCE_WINDOW_START: ${{ inputs.evidence_window_start }}
-          EVIDENCE_WINDOW_END: ${{ inputs.evidence_window_end }}
-          ASSIGNMENT_RUN_ID: ${{ inputs.assignment_run_id }}
-          EXPERIMENT_ID: ${{ inputs.experiment_id }}
-          VARIANT: ${{ inputs.variant }}
-          EVALUATOR_DIGEST: ${{ inputs.evaluator_digest }}
-          OPPORTUNITY_KIND: ${{ inputs.opportunity_kind }}
-          EVIDENCE_COMPLETE: ${{ inputs.evidence_complete }}
-          EVIDENCE_CONFIDENCE: ${{ inputs.evidence_confidence }}
-          EVIDENCE_PROVENANCE_JSON: ${{ inputs.evidence_provenance_json }}
-          ATTRIBUTABLE_RUN_IDS_JSON: ${{ inputs.attributable_run_ids_json }}
-          COST_GRAIN: ${{ inputs.cost_grain }}
-          MEASURED_AIC: ${{ inputs.measured_aic }}
-          PROPOSED_SAVINGS_AIC: ${{ inputs.proposed_savings_aic }}
-          SUPERSEDES_INTERVENTION_ID: ${{ inputs.supersedes_intervention_id }}
+          ASSIGNMENT_JSON: ${{ inputs.assignment_json }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/gh-aw/token-optimizer
@@ -136,58 +75,40 @@ jobs:
             cao_script=
           fi
 
-          assignment="$(jq -cn \
-            --arg targetRepo "$TARGET_REPOSITORY" \
-            --arg workflowPath "$WORKFLOW_PATH" \
-            --arg evidenceWindowStart "$EVIDENCE_WINDOW_START" \
-            --arg evidenceWindowEnd "$EVIDENCE_WINDOW_END" \
-            --arg assignmentRunId "$ASSIGNMENT_RUN_ID" \
-            --arg experimentId "$EXPERIMENT_ID" \
-            --arg variant "$VARIANT" \
-            --arg evaluatorDigest "$EVALUATOR_DIGEST" \
-            --arg opportunityKind "$OPPORTUNITY_KIND" \
-            --arg evidenceConfidence "$EVIDENCE_CONFIDENCE" \
-            --arg evidenceProvenance "$EVIDENCE_PROVENANCE_JSON" \
-            --arg attributableRunIds "$ATTRIBUTABLE_RUN_IDS_JSON" \
-            --arg costGrain "$COST_GRAIN" \
-            --arg measuredAic "$MEASURED_AIC" \
-            --arg proposedSavingsAic "$PROPOSED_SAVINGS_AIC" \
-            --arg supersedesInterventionId "$SUPERSEDES_INTERVENTION_ID" \
-            '{
-              schemaVersion: 1,
-              targetRepo: $targetRepo,
-              workflowPath: $workflowPath,
-              evidenceWindowStart: $evidenceWindowStart,
-              evidenceWindowEnd: $evidenceWindowEnd,
-              assignmentRunId: $assignmentRunId,
-              experimentId: $experimentId,
-              evaluatorDigest: $evaluatorDigest,
-              opportunityKind: $opportunityKind,
-              variant: $variant,
-              evidenceConfidenceSupplied: ($evidenceConfidence != ""),
-              evidenceConfidence: (
-                if $evidenceConfidence == ""
-                then null
-                else (($evidenceConfidence | tonumber?) // "__invalid_number__")
-                end
-              ),
-              evidenceProvenance: ($evidenceProvenance | fromjson?),
-              attributableRunIds: ($attributableRunIds | fromjson?),
-              proposedSavingsAicSupplied: ($proposedSavingsAic != ""),
-              proposedSavingsAic: (
-                if $proposedSavingsAic == ""
-                then null
-                else (($proposedSavingsAic | tonumber?) // "__invalid_number__")
-                end
-              ),
-              costGrain: $costGrain,
-              measuredAic: (($measuredAic | tonumber?) // "__invalid_number__")
-            }
-            + (if $supersedesInterventionId != ""
-              then {supersedesInterventionId: $supersedesInterventionId}
-              else {}
-              end)')"
-          if [ "$EVIDENCE_COMPLETE" != "true" ]; then
+          assignment="$(jq -ce '
+            . as $input
+            | {
+                schemaVersion: 1,
+                targetRepo: ($input.targetRepo // ""),
+                workflowPath: ($input.workflowPath // ""),
+                evidenceWindowStart: ($input.evidenceWindowStart // ""),
+                evidenceWindowEnd: ($input.evidenceWindowEnd // ""),
+                assignmentRunId: (($input.assignmentRunId // "") | tostring),
+                experimentId: ($input.experimentId // ""),
+                evaluatorDigest: ($input.evaluatorDigest // ""),
+                opportunityKind: ($input.opportunityKind // ""),
+                variant: ($input.variant // ""),
+                evidenceComplete: ($input.evidenceComplete // false),
+                evidenceConfidenceSupplied: ($input | has("evidenceConfidence")),
+                evidenceConfidence: ($input.evidenceConfidence // null),
+                evidenceProvenance: ($input.evidenceProvenance // null),
+                attributableRunIds: ($input.attributableRunIds // null),
+                proposedSavingsAicSupplied: ($input | has("proposedSavingsAic")),
+                proposedSavingsAic: ($input.proposedSavingsAic // null),
+                costGrain: ($input.costGrain // ""),
+                measuredAic: ($input.measuredAic // "__invalid_number__")
+              }
+              + (if ($input | has("supersedesInterventionId"))
+                then {supersedesInterventionId: $input.supersedesInterventionId}
+                else {}
+                end)
+          ' <<<"$ASSIGNMENT_JSON")"
+          WORKFLOW_PATH="$(jq -r '.workflowPath' <<<"$assignment")"
+          EVIDENCE_WINDOW_START="$(jq -r '.evidenceWindowStart' <<<"$assignment")"
+          EVIDENCE_WINDOW_END="$(jq -r '.evidenceWindowEnd' <<<"$assignment")"
+          SUPERSEDES_INTERVENTION_ID="$(jq -r '.supersedesInterventionId // ""' <<<"$assignment")"
+
+          if ! jq -e '.evidenceComplete == true' <<<"$assignment" >/dev/null; then
             reason=evidence-not-complete
           elif [ -z "$cao_script" ] || [ ! -s "$db" ]; then
             reason=activity-cache-unavailable
@@ -200,6 +121,7 @@ jobs:
           elif ! jq -e '
               . as $assignment
               | .schemaVersion == 1
+              and .targetRepo == env.TARGET_REPOSITORY
               and (.targetRepo | test("^[a-z0-9][a-z0-9-]*/[a-z0-9._-]+$"))
               and (.workflowPath | test("^\\.github/workflows/[^/]+\\.(md|lock\\.yml)$"))
               and (.evidenceWindowStart | fromdateiso8601? != null)
@@ -398,7 +320,7 @@ jobs:
 imports:
   - uses: shared/control.md
     with:
-      package: optimization
+      campaign: optimization
       role: worker
       worker: token-optimizer
   - uses: shared/activity-cache.md
@@ -420,7 +342,7 @@ network:
 run-name: "Token Optimizer · ${{ inputs.target_repo }} · review"
 
 concurrency:
-  group: "${{ github.workflow }}-${{ inputs.target_repo }}-${{ inputs.workflow_path }}"
+  group: "${{ github.workflow }}-${{ inputs.target_repo }}"
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
@@ -452,21 +374,7 @@ post-steps:
   - name: Materialize token-efficiency observation
     id: token_observation
     env:
-      TARGET_REPOSITORY: ${{ inputs.target_repo }}
-      WORKFLOW_PATH: ${{ inputs.workflow_path }}
-      EVIDENCE_WINDOW_START: ${{ inputs.evidence_window_start }}
-      EVIDENCE_WINDOW_END: ${{ inputs.evidence_window_end }}
-      ASSIGNMENT_RUN_ID: ${{ inputs.assignment_run_id }}
-      EXPERIMENT_ID: ${{ inputs.experiment_id }}
-      VARIANT: ${{ inputs.variant }}
-      EVALUATOR_DIGEST: ${{ inputs.evaluator_digest }}
-      OPPORTUNITY_KIND: ${{ inputs.opportunity_kind }}
-      EVIDENCE_CONFIDENCE: ${{ inputs.evidence_confidence }}
-      EVIDENCE_PROVENANCE_JSON: ${{ inputs.evidence_provenance_json }}
-      ATTRIBUTABLE_RUN_IDS_JSON: ${{ inputs.attributable_run_ids_json }}
-      COST_GRAIN: ${{ inputs.cost_grain }}
-      PROPOSED_SAVINGS_AIC: ${{ inputs.proposed_savings_aic }}
-      SUPERSEDES_INTERVENTION_ID: ${{ inputs.supersedes_intervention_id }}
+      ASSIGNMENT_JSON: ${{ inputs.assignment_json }}
     run: |
       set -euo pipefail
       output=/tmp/gh-aw/agent_output.json
@@ -479,92 +387,88 @@ post-steps:
         echo "created=false" >> "$GITHUB_OUTPUT"
         exit 0
       fi
-      opportunity_id="$(jq -rn \
-        --arg targetRepo "$TARGET_REPOSITORY" \
-        --arg workflowPath "$WORKFLOW_PATH" \
-        --arg evidenceWindowStart "$EVIDENCE_WINDOW_START" \
-        --arg evidenceWindowEnd "$EVIDENCE_WINDOW_END" \
-        --arg assignmentRunId "$ASSIGNMENT_RUN_ID" \
-        --arg experimentId "$EXPERIMENT_ID" \
-        --arg variant "$VARIANT" \
-        '"token-opportunity:\($targetRepo | @uri):\($workflowPath | @uri):\($evidenceWindowStart | fromdateiso8601 | strftime("%Y-%m-%dT%H:%M:%SZ")):\($evidenceWindowEnd | fromdateiso8601 | strftime("%Y-%m-%dT%H:%M:%SZ")):\($assignmentRunId):\($experimentId | @uri)"')"
-      intervention_component="$(jq -rn --arg value "$EXPERIMENT_ID" '$value | @uri')"
+      assignment="$(jq -ce '
+        . as $input
+        | {
+          targetRepo: ($input.targetRepo // ""),
+          workflowPath: ($input.workflowPath // ""),
+          evidenceWindowStart: ($input.evidenceWindowStart // ""),
+          evidenceWindowEnd: ($input.evidenceWindowEnd // ""),
+          assignmentRunId: (($input.assignmentRunId // "") | tostring),
+          experimentId: ($input.experimentId // ""),
+          evaluatorDigest: ($input.evaluatorDigest // ""),
+          opportunityKind: ($input.opportunityKind // ""),
+          evidenceConfidence: ($input.evidenceConfidence // null),
+          evidenceProvenance: ($input.evidenceProvenance // []),
+          attributableRunIds: ($input.attributableRunIds // []),
+          proposedSavingsAic: ($input.proposedSavingsAic // null),
+          costGrain: ($input.costGrain // "")
+        }
+        + (if ($input | has("supersedesInterventionId"))
+          then {supersedesInterventionId: $input.supersedesInterventionId}
+          else {}
+          end)
+      ' <<<"$ASSIGNMENT_JSON")"
+      opportunity_id="$(jq -r '
+        "token-opportunity:\(.targetRepo | @uri):\(.workflowPath | @uri):\(.evidenceWindowStart | fromdateiso8601 | strftime("%Y-%m-%dT%H:%M:%SZ")):\(.evidenceWindowEnd | fromdateiso8601 | strftime("%Y-%m-%dT%H:%M:%SZ")):\(.assignmentRunId):\(.experimentId | @uri)"
+      ' <<<"$assignment")"
+      intervention_component="$(jq -r '.experimentId | @uri' <<<"$assignment")"
       intervention_id="token-intervention:${opportunity_id}:${intervention_component}"
       jq -cn \
+        --argjson assignment "$assignment" \
         --arg observedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         --arg controlRepository "$GITHUB_REPOSITORY" \
         --arg optimizerRunId "$GITHUB_RUN_ID" \
         --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
-        --arg targetRepo "$TARGET_REPOSITORY" \
-        --arg workflowPath "$WORKFLOW_PATH" \
-        --arg evidenceWindowStart "$EVIDENCE_WINDOW_START" \
-        --arg evidenceWindowEnd "$EVIDENCE_WINDOW_END" \
-        --arg assignmentRunId "$ASSIGNMENT_RUN_ID" \
-        --arg experimentId "$EXPERIMENT_ID" \
-        --arg evaluatorDigest "$EVALUATOR_DIGEST" \
-        --arg opportunityKind "$OPPORTUNITY_KIND" \
         --arg opportunityId "$opportunity_id" \
         --arg interventionId "$intervention_id" \
-        --arg evidenceConfidence "$EVIDENCE_CONFIDENCE" \
-        --arg evidenceProvenance "$EVIDENCE_PROVENANCE_JSON" \
-        --arg attributableRunIds "$ATTRIBUTABLE_RUN_IDS_JSON" \
-        --arg costGrain "$COST_GRAIN" \
-        --arg proposedSavingsAic "$PROPOSED_SAVINGS_AIC" \
-        --arg supersedesInterventionId "$SUPERSEDES_INTERVENTION_ID" \
-        '(if $proposedSavingsAic == ""
-          then null
-          else (($proposedSavingsAic | tonumber?) // "__invalid_number__")
-          end) as $proposedSavings
-        | (if $evidenceConfidence == ""
-          then null
-          else (($evidenceConfidence | tonumber?) // "__invalid_number__")
-          end) as $confidence
+        '$assignment as $assignment
         | {
-          schemaVersion: 1,
-          observedAt: $observedAt,
-          controlRepository: $controlRepository,
-          optimizerRunId: $optimizerRunId,
-          runAttempt: ($runAttempt | tonumber),
-          targetRepo: $targetRepo,
-          workflowPath: $workflowPath,
-          evidenceWindowStart: $evidenceWindowStart,
-          evidenceWindowEnd: $evidenceWindowEnd,
-          assignmentRunId: $assignmentRunId,
-          experimentId: $experimentId,
-          opportunityKind: $opportunityKind,
-          opportunityId: $opportunityId,
-          evidenceState: "complete",
-          costGrain: $costGrain,
-          evidenceProvenance: ($evidenceProvenance | fromjson),
-          interventionId: $interventionId,
-          interventionState: "proposed",
-          recommendationDisposition: "unapplied",
+        schemaVersion: 1,
+        observedAt: $observedAt,
+        controlRepository: $controlRepository,
+        optimizerRunId: $optimizerRunId,
+        runAttempt: ($runAttempt | tonumber),
+        targetRepo: $assignment.targetRepo,
+        workflowPath: $assignment.workflowPath,
+        evidenceWindowStart: $assignment.evidenceWindowStart,
+        evidenceWindowEnd: $assignment.evidenceWindowEnd,
+        assignmentRunId: $assignment.assignmentRunId,
+        experimentId: $assignment.experimentId,
+        opportunityKind: $assignment.opportunityKind,
+        opportunityId: $opportunityId,
+        evidenceState: "complete",
+        costGrain: $assignment.costGrain,
+        evidenceProvenance: $assignment.evidenceProvenance,
+        interventionId: $interventionId,
+        interventionState: "proposed",
+        recommendationDisposition: "unapplied",
+        controlVariant: "control",
+        optimizedVariant: "optimized",
+        verificationContract: {
+          evaluatorDigest: $assignment.evaluatorDigest,
+          costGrain: $assignment.costGrain,
           controlVariant: "control",
           optimizedVariant: "optimized",
-          verificationContract: {
-            evaluatorDigest: $evaluatorDigest,
-            costGrain: $costGrain,
-            controlVariant: "control",
-            optimizedVariant: "optimized",
-            workloadComparisonKey: "accepted-target-outcome:v1",
-            acceptanceRuleDigest: "authoritative-accepted-target-outcome:v1",
-            minimumSampleSize: 2,
-            minimumMaturityDays: 14
-          },
-          attributableRunIds: (($attributableRunIds | fromjson) + [$optimizerRunId] | unique)
+          workloadComparisonKey: "accepted-target-outcome:v1",
+          acceptanceRuleDigest: "authoritative-accepted-target-outcome:v1",
+          minimumSampleSize: 2,
+          minimumMaturityDays: 14
+        },
+        attributableRunIds: ($assignment.attributableRunIds + [$optimizerRunId] | unique)
         }
-        + (if ($confidence | type) == "number"
-            then {evidenceConfidence: $confidence}
-            else {}
-          end)
-        + (if ($proposedSavings | type) == "number"
-          then {proposedSavingsAic: $proposedSavings}
+        + (if ($assignment.evidenceConfidence | type) == "number"
+          then {evidenceConfidence: $assignment.evidenceConfidence}
           else {}
-          end)
-        + (if $supersedesInterventionId != ""
-          then {supersedesInterventionId: $supersedesInterventionId}
-          else {}
-          end)' > "$observation"
+        end)
+        + (if ($assignment.proposedSavingsAic | type) == "number"
+        then {proposedSavingsAic: $assignment.proposedSavingsAic}
+        else {}
+        end)
+        + (if ($assignment.supersedesInterventionId // "") != ""
+        then {supersedesInterventionId: $assignment.supersedesInterventionId}
+        else {}
+        end)' > "$observation"
       echo "created=true" >> "$GITHUB_OUTPUT"
   - name: Upload token-efficiency observation
     if: ${{ steps.token_observation.outputs.created == 'true' }}

@@ -1,5 +1,5 @@
 {
-  "package": "self-care",
+  "campaign": "self-care",
   "orchestrator": "self-care",
   "workers": {
     "accessibility-checker": "self-care-accessibility-checker",

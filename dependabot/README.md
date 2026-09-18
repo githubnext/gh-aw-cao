@@ -1,9 +1,9 @@
-# Dependabot Package
+# Dependabot Campaign
 
 > [!NOTE]
 > **Research prototype:** Features and interfaces may change as the project evolves.
 
-The Dependabot package runs manifest-aware dependency maintenance from a private Central Agentic Ops control repository. It prioritizes security and repair work, selects target repositories, and dispatches one bounded update planner per repository.
+The Dependabot campaign runs manifest-aware dependency maintenance from a private Central Agentic Ops control repository. It prioritizes security and repair work, selects target repositories, and dispatches one bounded update planner per repository.
 
 The Agentic Workflow definitions remain in the control repository. Target repositories receive only declared safe outputs; they do not receive installed copies of these workflows.
 
@@ -21,7 +21,7 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 - Measures whether each plan issue is consumed through assignment, outside participation, checklist progress, a linked pull request, or closure within 14 days.
 - Never creates or changes a pull request.
 
-## Package Contents
+## Campaign Contents
 
 | Workflow | Role |
 | --- | --- |
@@ -32,13 +32,13 @@ The orchestrator workflow can dispatch no more than 50 worker workflows in one r
 
 ## Install
 
-Install the package into a new private control repository owned by an organization:
+Install the campaign into a new private control repository owned by an organization:
 
 ```bash
 gh aw add githubnext/gh-aw-cao/dependabot@<catalog-release>
 ```
 
-The package is runnable after credentials, when needed, and checked-in policy are configured.
+The campaign is runnable after credentials, when needed, and checked-in policy are configured.
 
 ## Configure
 
@@ -52,7 +52,7 @@ Declare Dependabot in `.github/workflows/cao.json`:
 {
 	"version": 1,
 	"control-plane": {
-		"packages": {
+		"campaigns": {
 			"dependabot": {
 				"workers": {
 					"update-planner": {
@@ -65,15 +65,15 @@ Declare Dependabot in `.github/workflows/cao.json`:
 }
 ```
 
-The omitted fields default to an enabled package and worker, `review` mode, one repository, and 100 percent rollout. Set shared owner, repository, and inventory boundaries under `control-plane.scope` and `control-plane.inventory`.
+The omitted fields default to an enabled campaign and worker, `review` mode, one repository, and 100 percent rollout. Set shared owner, repository, and inventory boundaries under `control-plane.scope` and `control-plane.inventory`.
 
-The App installation or PAT must cover every private or internal target, alternate review repository, and live target the package needs to read or update. Public review runs may use `GITHUB_TOKEN`, but unavailable target Actions, security, or Dependabot data makes the run incomplete rather than broadening access or guessing. See the [authentication guide](../docs/authentication.md) for the permission model and credential precedence.
+The App installation or PAT must cover every private or internal target, alternate review repository, and live target the campaign needs to read or update. Public review runs may use `GITHUB_TOKEN`, but unavailable target Actions, security, or Dependabot data makes the run incomplete rather than broadening access or guessing. See the [authentication guide](../docs/authentication.md) for the permission model and credential precedence.
 
-The update-planner rename preserves previously created plan issues. Existing issues with the former `dependabot:release-train-updater` label are recovered by the `dependabot` package label and canonical repository marker; newly created issues use `dependabot:update-planner`.
+The update-planner rename preserves previously created plan issues. Existing issues with the former `dependabot:release-train-updater` label are recovered by the `dependabot` campaign label and canonical repository marker; newly created issues use `dependabot:update-planner`.
 
 Grant the credential read access to Dependabot alerts, Dependabot repository access, and security events. The workflows already declare `vulnerability-alerts: read` and `security-events: read`; they do not request security write access and never change Dependabot repository-access settings. Dependabot alerts and access boundaries can therefore be inspected directly without treating Dependabot pull requests as the source of truth.
 
-Target maintainers can add `.github/dependabot.md` to declare dependency priorities, grouping preferences, validation commands, and sensitive risk areas. The update planner treats this file as guidance only: it cannot grant permissions, widen repository scope, or override package safety rules. Every generated plan issue reports whether the file was present and which guidance was used.
+Target maintainers can add `.github/dependabot.md` to declare dependency priorities, grouping preferences, validation commands, and sensitive risk areas. The update planner treats this file as guidance only: it cannot grant permissions, widen repository scope, or override campaign safety rules. Every generated plan issue reports whether the file was present and which guidance was used.
 
 ## Validate in review mode
 
@@ -85,16 +85,16 @@ Start with one representative repository:
 4. Keep `max_repos` at `1` and `safe_output_mode` at `review`.
 5. Trigger a `workflow_dispatch` run and inspect repository selection, the dispatched worker workflow, review outputs in the control repository, and control-plane correlation data.
 
-To keep scheduled runs in review, leave `mode` omitted or set it to `review` in the package policy. Policy changes affect future runs; cancel active runs separately during incident response.
+To keep scheduled runs in review, leave `mode` omitted or set it to `review` in the campaign policy. Policy changes affect future runs; cancel active runs separately during incident response.
 
-## Promote the Package
+## Promote the Campaign
 
 | Mode | Behavior |
 | --- | --- |
 | `review` | Routes safe outputs to the control-plane repository; manual runs may override it with `safe_output_repo`. |
 | `live` | Allows the worker to create or refresh the single Dependabot plan issue in the selected target repository. |
 
-Promote in order: one-repository review, limited live, then scheduled live. Change only this package's checked-in `mode`; other packages keep their own rollout state.
+Promote in order: one-repository review, limited live, then scheduled live. Change only this campaign's checked-in `mode`; other campaigns keep their own rollout state.
 
 ## Targeting
 
@@ -124,7 +124,7 @@ Repositories without a recognized dependency ecosystem, readable manifests, or e
 
 ## Operational Questions
 
-The package dashboard answers three questions from retained run, safe-output, and operational-value evidence:
+The campaign dashboard answers three questions from retained run, safe-output, and operational-value evidence:
 
 1. **Does Dependabot work?** Run conclusions show whether the orchestrator and update planner activate and complete successfully.
 2. **What did it produce?** The outcomes table links each durable repository plan issue and shows its disposition.
@@ -132,7 +132,7 @@ The package dashboard answers three questions from retained run, safe-output, an
 
 ## Pause or Stop
 
-Set `control-plane.packages.dependabot.enabled` to `false`, deploy that reviewed policy revision, and cancel active runs. For a narrower stop, set `workers.update-planner.enabled` to `false`. Re-enable in `review` mode after resolving the incident. For a control-plane-wide stop, follow the [emergency-stop procedure](../docs/operations.md#emergency-stop).
+Set `control-plane.campaigns.dependabot.enabled` to `false`, deploy that reviewed policy revision, and cancel active runs. For a narrower stop, set `workers.update-planner.enabled` to `false`. Re-enable in `review` mode after resolving the incident. For a control-plane-wide stop, follow the [emergency-stop procedure](../docs/operations.md#emergency-stop).
 
 ## More Information
 

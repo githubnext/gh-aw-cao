@@ -1,14 +1,14 @@
 ---
 title: Author Your First Operation
-description: Turn one recurring repository outcome into a validated operation package and prove it safely on one repository.
+description: Turn one recurring repository outcome into a validated operation campaign and prove it safely on one repository.
 ---
 
-An operation package captures one repeatable engineering outcome as code. It
+An operation campaign captures one repeatable engineering outcome as code. It
 contains one orchestrator that selects repositories and at least one worker that
 handles one selected repository.
 
 This guide is for the first authoring session. The goal is not a production
-rollout. The goal is a complete package that compiles and completes one bounded
+rollout. The goal is a complete campaign that compiles and completes one bounded
 run in `review` mode.
 
 ## Before the Session
@@ -37,9 +37,9 @@ Open your CAO source or control repository in a coding agent. Then use this
 prompt, replacing the bracketed values:
 
 ```text
-Read and follow .github/skills/create-cao-package/SKILL.md.
+Read and follow .github/skills/create-cao-campaign/SKILL.md.
 
-Create an operation package for this outcome:
+Create an operation campaign for this outcome:
 [What should become measurably better in a repository?]
 
 Target repositories:
@@ -51,18 +51,18 @@ inferred safely. Compile the workflows and report the files, policy registration
 validation results, and first-run command.
 ```
 
-The packaged skill derives the orchestrator, worker boundaries, permissions,
+The bundled skill derives the orchestrator, worker boundaries, permissions,
 safe outputs, no-op behavior, and validation from the desired outcome. Do not
 begin by copying an existing generated `.lock.yml` file.
 
-## Review the Package Contract
+## Review the Campaign Contract
 
 Before running anything, confirm that the change contains:
 
-- one `<package-slug>/aw.yml` manifest and package README;
-- one `.github/workflows/<package-slug>.md` orchestrator;
-- at least one `.github/workflows/<package-slug>-<worker-slug>.md` worker;
-- the package and every worker registered in `.github/workflows/cao.json`;
+- one `<campaign-slug>/aw.yml` manifest and campaign README;
+- one `.github/workflows/<campaign-slug>.md` orchestrator;
+- at least one `.github/workflows/<campaign-slug>-<worker-slug>.md` worker;
+- the campaign and every worker registered in `.github/workflows/cao.json`;
 - read-only agent permissions and only the safe outputs required by the outcome;
 - stable duplicate detection and explicit `noop` behavior;
 - `review` mode with a one-repository limit.
@@ -86,7 +86,7 @@ Review the generated lock files, but never edit them directly. Confirm that the
 compiled workflows contain no unexpected permissions, network hosts, secrets,
 write destinations, or worker dispatches.
 
-For a package authored in another repository, run strict compilation with a
+For a campaign authored in another repository, run strict compilation with a
 stable schedule seed:
 
 ```bash
@@ -95,11 +95,11 @@ gh aw compile --strict --schedule-seed OWNER/REPOSITORY
 
 ## Prove One Review Run
 
-Commit the workflow sources, generated locks, package manifest, and policy
+Commit the workflow sources, generated locks, campaign manifest, and policy
 together. Trigger only the orchestrator:
 
 ```bash
-gh aw run <package-slug> --ref <default-branch> \
+gh aw run <campaign-slug> --ref <default-branch> \
   --raw-field target_repo="OWNER/REPOSITORY" \
   --raw-field max_repos="1" \
   --raw-field rollout_percent="100" \
@@ -114,12 +114,12 @@ A successful first run proves that:
 - the target repository was not changed;
 - the run produced either one useful review item or an explainable `noop`.
 
-Do not promote the package to `live` during the authoring session.
+Do not promote the campaign to `live` during the authoring session.
 
 ## Share the Result
 
 A private operation can remain in its control repository. To propose an
-operation for the official catalog, open a pull request containing the package,
+operation for the official catalog, open a pull request containing the campaign,
 workflow sources, generated locks, documentation, policy registration, and
 focused contract tests.
 
@@ -130,7 +130,7 @@ acceptance never grants rollout authority in another control repository.
 ## Done Checklist
 
 - [ ] The desired repository outcome is stated in one sentence.
-- [ ] The package has one orchestrator and at least one focused worker.
+- [ ] The campaign has one orchestrator and at least one focused worker.
 - [ ] Permissions, network access, and safe outputs are minimal and explicit.
 - [ ] Duplicate, healthy, and insufficient-evidence cases return `noop`.
 - [ ] Strict compilation and documentation build pass.

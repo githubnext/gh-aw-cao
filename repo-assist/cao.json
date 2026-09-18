@@ -1,5 +1,5 @@
 {
-  "package": "repo-assist",
+  "campaign": "repo-assist",
   "orchestrator": "repo-assist",
   "workers": {
     "issue-triage": "repo-assist-issue-triage",

@@ -3,7 +3,7 @@ spec: cbm/v0.1
 project:
   name: central-agentic-ops
   purpose: >
-    Public CAO package catalog and source-managed control plane for bounded,
+    Public CAO campaign catalog and source-managed control plane for bounded,
     policy-governed agentic operations across an explicitly enrolled repository fleet.
   stack:
     - GitHub Actions
@@ -30,7 +30,7 @@ structure:
   workflow_shared: .github/workflows/shared/
   rollout_policy: .github/workflows/cao.json
   workflow_resources: .github/aw/
-  package_records: .github/aw/packages/
+  campaign_records: .github/aw/campaigns/
   workflow_agent_skills: .github/skills/
   portable_agent_skills: skills/
   specifications: specs/
@@ -40,9 +40,9 @@ structure:
   utilities: scripts/
 
 architecture:
-  style: policy-governed central control plane with catalog packages and bounded workers
+  style: policy-governed central control plane with catalog campaigns and bounded workers
   roles:
-    catalog: publishes versioned operation packages
+    catalog: publishes versioned operation campaigns
     control_repository: owns rollout policy, credentials, installed workflows, and workflow runs
     review_repository: receives declared safe outputs in review mode
     target_repository: supplies source data and receives only declared safe outputs
@@ -167,7 +167,7 @@ boundaries:
 invariants:
   - "CAO controls whether and where operations run; gh-aw controls how admitted workflows run."
   - "No authority input can widen another."
-  - "Review mode is the default; live mode requires explicit package, worker, scope, and target authority."
+  - "Review mode is the default; live mode requires explicit campaign, worker, scope, and target authority."
   - "Credentials remain GitHub Actions secrets and are resolved only inside a run."
   - "Missing policy, authority, credentials, access, or required evidence MUST fail closed."
   - "GitHub tools available to agents are read-only; repository changes use only workflow-declared safe outputs."
@@ -182,7 +182,7 @@ invariants:
   - "Dashboard UI effects and components MUST NOT query source data or reconstruct business relationships."
   - "ADRs are durable decision history; current requirements and conformance rules live in specs/ or specification-style documentation."
   - "Generated workflow lock files MUST NOT be edited directly."
-  - "Installed package records MUST be updated through gh-aw package commands."
+  - "Installed campaign records MUST be updated through gh-aw campaign commands."
   - "Policy and workflow changes MUST be committed together."
 
 flows:
@@ -243,8 +243,8 @@ commands:
       tests: npm test
       unit_tests: npm run test:unit
       integration_tests: npm run test:integration
-      package_lifecycle_tests: npm run test:package-lifecycle
-      package_root_tests: npm run test:package-root
+      campaign_lifecycle_tests: npm run test:campaign-lifecycle
+      campaign_root_tests: npm run test:campaign-root
       load_tests: npm run test:load
       svg_check: npm run check:svg
       workflow_compile: npm run compile
@@ -277,9 +277,9 @@ validation:
     - commands.repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
     - commands.repository_root.entries.workflow_compile_locks
-  package_lifecycle_command_refs:
-    - commands.repository_root.entries.package_lifecycle_tests
-    - commands.repository_root.entries.package_root_tests
+  campaign_lifecycle_command_refs:
+    - commands.repository_root.entries.campaign_lifecycle_tests
+    - commands.repository_root.entries.campaign_root_tests
   load_command_refs:
     - commands.repository_root.entries.load_tests
   control_source_command_refs:
@@ -290,7 +290,7 @@ validation:
   documentation_command_refs:
     - commands.repository_root.entries.docs_build
   architecture:
-    - "Verify package contents against root and package aw.yml manifests."
+    - "Verify campaign contents against root and campaign aw.yml manifests."
     - "Verify policy and workflow changes are reviewed together."
     - "Verify workflow sources, not generated lock files, are edited."
     - "Verify dashboard data access crosses the Web Worker and declarative query boundary."
@@ -304,7 +304,7 @@ provenance:
     boundary_values: architecture.concepts
   intentionally_compressed:
     - Architectural history, examples, diagrams, and explanatory prose
-    - Individual leaf files and package inventory details
+    - Individual leaf files and campaign inventory details
     - Detailed normative contract text; retain it in specs/
 
 benchmark:

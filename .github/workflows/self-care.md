@@ -59,7 +59,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: self-care
+      campaign: self-care
       role: orchestrator
       dispatch_max: 15
       orchestrator_credits: 200

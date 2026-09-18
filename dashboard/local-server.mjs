@@ -240,7 +240,7 @@ async function dashboardSourceForView(view, dashboardPaths) {
   return dashboardPaths[0];
 }
 
-async function packageDashboardPaths(catalogRoot, installedDashboardsDirectory) {
+async function campaignDashboardPaths(catalogRoot, installedDashboardsDirectory) {
   const paths = [];
   const installed = await readdir(installedDashboardsDirectory, { withFileTypes: true }).catch((error) => {
     if (error?.code === "ENOENT") return [];
@@ -1212,7 +1212,7 @@ The original dashboard source most likely defining this view is ${JSON.stringify
 The complete set of editable original dashboard sources is:
 ${editableDashboardPaths.map((path) => `- ${path}`).join("\n")}
 
-Built-in views come from the site's dashboard.json. Package views come from their package dashboard.json source (for an installed control repository, under .github/aw/dashboards; for this catalog, in the matching top-level package directory). Only JSON dashboard changes are supported. You may inspect files in the workspace, search with grep, and use common safe shell commands to understand existing data, conventions, and related dashboards. Read, write, and shell access are available in the workspace and under ${JSON.stringify(tmpdir())}; use the temporary directory only for disposable intermediate files. Modify application state only through the selected dashboard.json. Use read_dashboard_language_reference when language vocabulary is needed, then use read_current_dashboard_view and validate_current_dashboard_view to inspect and validate the selected page. Prefer save_current_dashboard_view for the final write, then run validate_dashboard_json. Do not finish until validate_dashboard_json returns ok: true.
+Built-in views come from the site's dashboard.json. Campaign views come from their campaign dashboard.json source (for an installed control repository, under .github/aw/dashboards; for this catalog, in the matching top-level campaign directory). Only JSON dashboard changes are supported. You may inspect files in the workspace, search with grep, and use common safe shell commands to understand existing data, conventions, and related dashboards. Read, write, and shell access are available in the workspace and under ${JSON.stringify(tmpdir())}; use the temporary directory only for disposable intermediate files. Modify application state only through the selected dashboard.json. Use read_dashboard_language_reference when language vocabulary is needed, then use read_current_dashboard_view and validate_current_dashboard_view to inspect and validate the selected page. Prefer save_current_dashboard_view for the final write, then run validate_dashboard_json. Do not finish until validate_dashboard_json returns ok: true.
 
 JavaScript, HTML, CSS, and all other application files are outside this session's scope. Do not propose or attempt changes to them because they require a full application reload; make the requested improvement only through the selected dashboard.json page.
 
@@ -1601,7 +1601,7 @@ export async function startDashboardServer({
     const controller = new AbortController();
     copilotRequest = { socket, controller, traceId, sessionKey };
     try {
-      const editableDashboardPaths = [baseDashboardPath, ...await packageDashboardPaths(
+      const editableDashboardPaths = [baseDashboardPath, ...await campaignDashboardPaths(
         resolvedCatalogRoot,
         resolvedInstalledDashboardsDirectory,
       )];
@@ -1755,8 +1755,8 @@ export async function startDashboardServer({
           () => rebuild(true, traceId, true),
           () => rebuild(true, traceId, true),
         );
-        const packagePaths = await refreshPromise;
-        await refreshWatchers(packagePaths);
+        const campaignPaths = await refreshPromise;
+        await refreshWatchers(campaignPaths);
         await rendered.promise;
       } catch (error) {
         let sourceRestored = false;
@@ -1768,8 +1768,8 @@ export async function startDashboardServer({
             () => rebuild(false, traceId),
             () => rebuild(false, traceId),
           );
-          const packagePaths = await refreshPromise;
-          await refreshWatchers(packagePaths);
+          const campaignPaths = await refreshPromise;
+          await refreshWatchers(campaignPaths);
           sourceRestored = true;
         } catch (restoreError) {
           recoveryError = restoreError;
@@ -1879,18 +1879,18 @@ export async function startDashboardServer({
 
   const rebuild = async (notify = true, traceId, forceNotify = false) => {
     output("Checking dashboard sources for updates.");
-    const packagePaths = await packageDashboardPaths(
+    const campaignPaths = await campaignDashboardPaths(
       resolvedCatalogRoot,
       resolvedInstalledDashboardsDirectory,
     );
-    const nextSignature = await sourceSignature([baseDashboardPath, ...packagePaths]);
+    const nextSignature = await sourceSignature([baseDashboardPath, ...campaignPaths]);
     if (nextSignature === signature) {
       if (notify && forceNotify) broadcastDashboard(traceId);
-      return packagePaths;
+      return campaignPaths;
     }
 
     await copyFile(baseDashboardPath, bundledDashboardPath);
-    await bundleDashboardFiles(bundledDashboardPath, packagePaths);
+    await bundleDashboardFiles(bundledDashboardPath, campaignPaths);
     const dashboardDocument = JSON.parse(await readFile(bundledDashboardPath, "utf8"));
     if (repository) dashboardDocument.dashboard.repository = repository;
     const splitDashboard = splitDashboardDocument({
@@ -1907,27 +1907,27 @@ export async function startDashboardServer({
     signature = nextSignature;
     output("Dashboard preview rebuilt.", {
       bundledDashboardPath,
-      editableDashboardPaths: [baseDashboardPath, ...packagePaths],
+      editableDashboardPaths: [baseDashboardPath, ...campaignPaths],
       notify,
     });
     trace.record("server", "preview.rebuilt", {
       traceId,
       details: {
         bundledDashboardPath,
-        editableDashboardPaths: [baseDashboardPath, ...packagePaths],
+        editableDashboardPaths: [baseDashboardPath, ...campaignPaths],
         notify,
       },
     });
     if (notify) broadcastDashboard(traceId);
-    return packagePaths;
+    return campaignPaths;
   };
 
-  const refreshWatchers = async (packagePaths) => {
+  const refreshWatchers = async (campaignPaths) => {
     if (closed) return;
     const candidates = new Set([
       resolvedSiteRoot,
       resolvedInstalledDashboardsDirectory,
-      ...packagePaths.map(dirname),
+      ...campaignPaths.map(dirname),
     ]);
     if (resolvedCatalogRoot) candidates.add(resolvedCatalogRoot);
     for (const directory of await existingDirectories(candidates)) {
@@ -1946,8 +1946,8 @@ export async function startDashboardServer({
   const refresh = async () => {
     if (closed) return;
     try {
-      const packagePaths = await rebuild();
-      await refreshWatchers(packagePaths);
+      const campaignPaths = await rebuild();
+      await refreshWatchers(campaignPaths);
       refreshRetryCount = 0;
     } catch (error) {
       output(`Dashboard update failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -1970,8 +1970,8 @@ export async function startDashboardServer({
   }
 
   try {
-    const initialPackagePaths = await rebuild(false);
-    await refreshWatchers(initialPackagePaths);
+    const initialCampaignPaths = await rebuild(false);
+    await refreshWatchers(initialCampaignPaths);
     if (copilot) {
       copilotRuntime = await createCopilotRuntime({
         workingDirectory: resolvedWorkingDirectory,

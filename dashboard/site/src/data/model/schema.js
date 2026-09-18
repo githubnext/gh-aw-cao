@@ -1,7 +1,7 @@
 export const CANONICAL_SCHEMA_VERSION = 11;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
-  'package',
+  'campaign',
   'repository',
   'workflow',
   'run',
@@ -28,7 +28,7 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ (['domains', 'tools', 'audit
 
 /**
  * @typedef {object} CanonicalBatch
- * @property {Record<string, unknown>[]} packages
+ * @property {Record<string, unknown>[]} campaigns
  * @property {Record<string, unknown>[]} repositories
  * @property {Record<string, unknown>[]} workflows
  * @property {Record<string, unknown>[]} runs
@@ -70,18 +70,18 @@ export function canonicalTimestamp(value, field) {
  * @returns {string[]}
  */
 export function relationshipErrors(batch) {
-  const packageRecords = batch.packages ?? [];
-  const packagesById = new Map(packageRecords.map((record) => [record.id, record]));
+  const campaignRecords = batch.campaigns ?? [];
+  const campaignsById = new Map(campaignRecords.map((record) => [record.id, record]));
   const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
-    packages: new Set(packageRecords.map((record) => record.id)),
+    campaigns: new Set(campaignRecords.map((record) => record.id)),
     workflows: new Set(batch.workflows.map((record) => record.id)),
     runs: new Set(batch.runs.map((record) => record.id))
   };
   const entityNames = {
     repositories: 'repository',
-    packages: 'package',
+    campaigns: 'campaign',
     workflows: 'workflow',
     runs: 'run'
   };
@@ -103,11 +103,11 @@ export function relationshipErrors(batch) {
 
   for (const workflow of batch.workflows) {
     requireReference(workflow, 'repositoryId', 'repositories');
-    if (workflow.packageId !== undefined && workflow.packageId !== null) {
-      requireReference(workflow, 'packageId', 'packages');
-      const packageRecord = packagesById.get(workflow.packageId);
-      if (packageRecord && workflow.package !== packageRecord.slug) {
-        errors.push(`${String(workflow.id ?? '<unknown>')}.packageId references a different package slug`);
+    if (workflow.campaignId !== undefined && workflow.campaignId !== null) {
+      requireReference(workflow, 'campaignId', 'campaigns');
+      const campaignRecord = campaignsById.get(workflow.campaignId);
+      if (campaignRecord && workflow.campaign !== campaignRecord.slug) {
+        errors.push(`${String(workflow.id ?? '<unknown>')}.campaignId references a different campaign slug`);
       }
     }
   }

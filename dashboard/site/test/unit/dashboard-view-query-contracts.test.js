@@ -57,12 +57,12 @@ function sourceNamesOf(view) {
 }
 
 describe('dashboard view query contracts', () => {
-  it('keeps package run navigation first and failure views scoped to dispatches', () => {
-    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'package-runs');
+  it('keeps campaign run navigation first and failure views scoped to dispatches', () => {
+    const page = dashboard.pages.find((/** @type {Record<string, unknown>} */ candidate) => candidate.id === 'campaign-runs');
     const views = viewsOf(page);
 
-    expect(views[0]?.id).toBe('package-run-navigation');
-    for (const viewId of ['package-failure-reason-distribution', 'package-failed-dispatch-table']) {
+    expect(views[0]?.id).toBe('campaign-run-navigation');
+    for (const viewId of ['campaign-failure-reason-distribution', 'campaign-failed-dispatch-table']) {
       const view = views.find((candidate) => candidate.id === viewId);
       expect(/** @type {Record<string, unknown> | undefined} */ (view?.data)?.source).toBe('dispatches');
     }

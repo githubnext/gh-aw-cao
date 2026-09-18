@@ -48,11 +48,11 @@
     "detail": "Repository-owned workflows not currently active"
   },
   {
-    "id": "package-gaps",
-    "metric": "package-gaps",
-    "icon": "package",
+    "id": "campaign-gaps",
+    "metric": "campaign-gaps",
+    "icon": "goal",
     "tone": "attention",
-    "title": "{{count}} package inventory gap{{count:suffix::s}}",
+    "title": "{{count}} campaign inventory gap{{count:suffix::s}}",
     "detail": "An orchestrator, worker, or active workflow is missing"
   },
   {

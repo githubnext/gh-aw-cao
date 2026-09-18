@@ -1,5 +1,5 @@
 {
-  "package": "software-development-practices",
+  "campaign": "software-development-practices",
   "orchestrator": "software-development-practices",
   "workers": {
     "github-well-architected": "software-development-practices-github-well-architected",

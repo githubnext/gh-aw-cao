@@ -2,7 +2,7 @@ export class PolicyError extends Error {}
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
-const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "packages", "publishing"];
+const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "campaigns", "publishing"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon"];
@@ -10,14 +10,14 @@ const DEFAULT_KEYS = ["mode", "max-repositories", "rollout-percent", "monthly-ai
 const OCTICONS = [
   "mark-github", "code", "repo", "server", "issue", "pull-request", "play", "eye",
   "shield", "meter", "graph", "codescan", "dependabot", "key", "beaker", "rocket",
-  "workflow", "gear", "check-circle", "package", "external-link",
+  "workflow", "gear", "check-circle", "campaign", "external-link",
 ];
-const PACKAGE_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "deploy", "targets", "workers"];
+const CAMPAIGN_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "deploy", "targets", "workers"];
 const TARGET_POLICY_KEYS = ["mode"];
 const WORKER_KEYS = ["workflow", "enabled", "max-mode"];
 const PUBLISHING_KEYS = ["enabled", "control-repositories", "reviewers"];
-const TARGET_AUTHORITY_KEYS = ["packages"];
-const TARGET_PACKAGE_KEYS = ["authority"];
+const TARGET_AUTHORITY_KEYS = ["campaigns"];
+const TARGET_CAMPAIGN_KEYS = ["authority"];
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
 const LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
@@ -156,9 +156,9 @@ function validateControlPlane(control) {
   if ("inventory" in control) validateInventory(control.inventory);
   if ("web" in control) validateWeb(control.web);
   if ("defaults" in control) validateDefaults(control.defaults, "control-plane.defaults");
-  if ("packages" in control) {
-    validatePackages(control.packages);
-    validatePackageRepositoryScopes(control);
+  if ("campaigns" in control) {
+    validateCampaigns(control.campaigns);
+    validateCampaignRepositoryScopes(control);
   }
   if ("publishing" in control) validatePublishing(control.publishing);
 }
@@ -211,19 +211,19 @@ function validateDefaults(defaults, path) {
   }
 }
 
-function validatePackages(packages) {
-  assertMapping(packages, "control-plane.packages");
-  for (const [packageName, packagePolicy] of Object.entries(packages)) {
-    const path = `control-plane.packages.${packageName}`;
-    assertString(packageName, path, SLUG_PATTERN);
-    assertMapping(packagePolicy, path);
-    assertKeys(packagePolicy, PACKAGE_KEYS, path);
-    if ("enabled" in packagePolicy) assertBoolean(packagePolicy.enabled, `${path}.enabled`);
-    if ("icon" in packagePolicy) assertOcticon(packagePolicy.icon, `${path}.icon`);
-    if ("deploy" in packagePolicy) assertBoolean(packagePolicy.deploy, `${path}.deploy`);
-    validateDefaults(pick(packagePolicy, DEFAULT_KEYS), path);
-    if ("targets" in packagePolicy) {
-      const targets = packagePolicy.targets;
+function validateCampaigns(campaigns) {
+  assertMapping(campaigns, "control-plane.campaigns");
+  for (const [campaignName, campaignPolicy] of Object.entries(campaigns)) {
+    const path = `control-plane.campaigns.${campaignName}`;
+    assertString(campaignName, path, SLUG_PATTERN);
+    assertMapping(campaignPolicy, path);
+    assertKeys(campaignPolicy, CAMPAIGN_KEYS, path);
+    if ("enabled" in campaignPolicy) assertBoolean(campaignPolicy.enabled, `${path}.enabled`);
+    if ("icon" in campaignPolicy) assertOcticon(campaignPolicy.icon, `${path}.icon`);
+    if ("deploy" in campaignPolicy) assertBoolean(campaignPolicy.deploy, `${path}.deploy`);
+    validateDefaults(pick(campaignPolicy, DEFAULT_KEYS), path);
+    if ("targets" in campaignPolicy) {
+      const targets = campaignPolicy.targets;
       assertMapping(targets, `${path}.targets`);
       assertUniqueRepositoryKeys(targets, `${path}.targets`);
       for (const [repository, targetPolicy] of Object.entries(targets)) {
@@ -235,9 +235,9 @@ function validatePackages(packages) {
         assertMode(targetPolicy.mode, `${targetPath}.mode`);
       }
     }
-    if (!("workers" in packagePolicy)) continue;
+    if (!("workers" in campaignPolicy)) continue;
 
-    const workers = packagePolicy.workers;
+    const workers = campaignPolicy.workers;
     assertMapping(workers, `${path}.workers`);
     const workflows = new Set();
     for (const [workerName, worker] of Object.entries(workers)) {
@@ -256,20 +256,20 @@ function validatePackages(packages) {
   }
 }
 
-function validatePackageRepositoryScopes(control) {
+function validateCampaignRepositoryScopes(control) {
   const allowedRepositories = control.scope?.["allowed-repositories"];
   const allowedOwners = control.scope?.["allowed-owners"];
   const repositorySet = allowedRepositories && new Set(allowedRepositories.map((repository) => repository.toLowerCase()));
   const ownerSet = allowedOwners && new Set(allowedOwners.map((owner) => owner.toLowerCase()));
 
-  for (const packagePolicy of Object.values(control.packages ?? {})) {
-    for (const repository of Object.keys(packagePolicy.targets ?? {})) {
+  for (const campaignPolicy of Object.values(control.campaigns ?? {})) {
+    for (const repository of Object.keys(campaignPolicy.targets ?? {})) {
       const normalized = repository.toLowerCase();
       if (repositorySet && !repositorySet.has(normalized)) {
-        throw new PolicyError(`package target ${repository} is outside control-plane.scope.allowed-repositories`);
+        throw new PolicyError(`campaign target ${repository} is outside control-plane.scope.allowed-repositories`);
       }
       if (ownerSet && !ownerSet.has(normalized.split("/", 1)[0])) {
-        throw new PolicyError(`package target ${repository} is outside control-plane.scope.allowed-owners`);
+        throw new PolicyError(`campaign target ${repository} is outside control-plane.scope.allowed-owners`);
       }
     }
   }
@@ -293,14 +293,14 @@ function validateTargetAuthority(target) {
   const path = "target-authority";
   assertMapping(target, path);
   assertKeys(target, TARGET_AUTHORITY_KEYS, path);
-  const packages = target.packages;
-  assertMapping(packages, `${path}.packages`);
-  for (const [packageName, packagePolicy] of Object.entries(packages)) {
-    const packagePath = `${path}.packages.${packageName}`;
-    assertString(packageName, packagePath, SLUG_PATTERN);
-    assertMapping(packagePolicy, packagePath);
-    assertKeys(packagePolicy, TARGET_PACKAGE_KEYS, packagePath);
-    assertString(packagePolicy.authority, `${packagePath}.authority`, REPOSITORY_PATTERN);
+  const campaigns = target.campaigns;
+  assertMapping(campaigns, `${path}.campaigns`);
+  for (const [campaignName, campaignPolicy] of Object.entries(campaigns)) {
+    const campaignPath = `${path}.campaigns.${campaignName}`;
+    assertString(campaignName, campaignPath, SLUG_PATTERN);
+    assertMapping(campaignPolicy, campaignPath);
+    assertKeys(campaignPolicy, TARGET_CAMPAIGN_KEYS, campaignPath);
+    assertString(campaignPolicy.authority, `${campaignPath}.authority`, REPOSITORY_PATTERN);
   }
 }
 
@@ -317,7 +317,7 @@ function rejectExpressions(value, path = "policy") {
 export function effectivePolicy(
   document,
   {
-    packageName,
+    campaignName,
     role,
     workerName = "",
     controlRepository,
@@ -333,14 +333,14 @@ export function effectivePolicy(
   if (role === "orchestrator" && workerName) throw new PolicyError("worker identity is forbidden for orchestrators");
 
   const control = document["control-plane"];
-  if (!control) return denied("control-plane-absent", packageName, role, workerName);
+  if (!control) return denied("control-plane-absent", campaignName, role, workerName);
 
-  const packagePolicy = (control.packages ?? {})[packageName];
-  if (!packagePolicy) return denied("package-undeclared", packageName, role, workerName);
-  if (!(packagePolicy.enabled ?? true)) return denied("package-disabled", packageName, role, workerName);
-  const workers = packagePolicy.workers ?? {};
+  const campaignPolicy = (control.campaigns ?? {})[campaignName];
+  if (!campaignPolicy) return denied("campaign-undeclared", campaignName, role, workerName);
+  if (!(campaignPolicy.enabled ?? true)) return denied("campaign-disabled", campaignName, role, workerName);
+  const workers = campaignPolicy.workers ?? {};
   if (role === "worker" && !(workerName in workers)) {
-    throw new PolicyError(`unknown worker: ${packageName}/${workerName}`);
+    throw new PolicyError(`unknown worker: ${campaignName}/${workerName}`);
   }
 
   const defaults = {
@@ -350,9 +350,9 @@ export function effectivePolicy(
     "monthly-ai-credit-budget": 0,
     ...(control.defaults ?? {}),
   };
-  const effective = { ...defaults, ...pick(packagePolicy, DEFAULT_KEYS) };
+  const effective = { ...defaults, ...pick(campaignPolicy, DEFAULT_KEYS) };
   let targetPolicies = Object.fromEntries(
-    Object.entries(packagePolicy.targets ?? {}).map(([repository, targetPolicy]) => [
+    Object.entries(campaignPolicy.targets ?? {}).map(([repository, targetPolicy]) => [
       repository.toLowerCase(),
       { mode: targetPolicy.mode },
     ]),
@@ -376,7 +376,7 @@ export function effectivePolicy(
 
   if (role === "worker") {
     const worker = workers[workerName];
-    if (!(worker.enabled ?? true)) return denied("worker-disabled", packageName, role, workerName);
+    if (!(worker.enabled ?? true)) return denied("worker-disabled", campaignName, role, workerName);
     if ("max-mode" in worker) {
       effective.mode = lesserMode(effective.mode, worker["max-mode"]);
       targetPolicies = Object.fromEntries(
@@ -419,7 +419,7 @@ export function effectivePolicy(
     authorized: true,
     reason: "authorized",
     control_role: role,
-    package: packageName,
+    campaign: campaignName,
     worker: workerName,
     enabled: true,
     safe_output_mode: effective.mode,
@@ -449,7 +449,7 @@ export function controlSettings(document, controlRepository) {
     "monthly-ai-credit-budget": 0,
     ...(control.defaults ?? {}),
   };
-  const packages = Object.fromEntries(Object.entries(control.packages ?? {}).map(([name, policy]) => [name, {
+  const campaigns = Object.fromEntries(Object.entries(control.campaigns ?? {}).map(([name, policy]) => [name, {
     enabled: policy.enabled ?? true,
     ...defaults,
     ...pick(policy, DEFAULT_KEYS),
@@ -475,19 +475,19 @@ export function controlSettings(document, controlRepository) {
       experimental: web.experimental ?? false,
       favicon: web.favicon ?? "./favicon.svg",
     },
-    packages,
+    campaigns,
     publishing_enabled: publishing.enabled ?? false,
     publishing_control_repositories: publishing["control-repositories"] ?? [controlRepository],
     publishing_reviewers: publishing.reviewers ?? [],
   };
 }
 
-function denied(reason, packageName, role, workerName) {
+function denied(reason, campaignName, role, workerName) {
   return {
     authorized: false,
     reason,
     control_role: role,
-    package: packageName,
+    campaign: campaignName,
     worker: workerName,
     enabled: false,
     effective_max_repos: 0,

@@ -1,5 +1,5 @@
 name: CAO Dashboard
-description: Deploy an access-controlled, read-only Central Agentic Ops report with GitHub Pages and optional background data updates. Requires the activity package.
+description: Deploy an access-controlled, read-only Central Agentic Ops report with GitHub Pages and optional background data updates. Requires the activity campaign.
 min-version: v0.89.15
 experimental: true
 includes:
@@ -265,24 +265,24 @@ resources:
     destination: .github/aw/dashboard/site/src/components/outcome-detail.js
   - source: site/src/components/outcome-detail-sections.js
     destination: .github/aw/dashboard/site/src/components/outcome-detail-sections.js
-  - source: site/src/components/package-aic-utilization-thresholds.json
-    destination: .github/aw/dashboard/site/src/components/package-aic-utilization-thresholds.json
-  - source: site/src/components/package-detail.js
-    destination: .github/aw/dashboard/site/src/components/package-detail.js
-  - source: site/src/components/package-readme.js
-    destination: .github/aw/dashboard/site/src/components/package-readme.js
-  - source: site/src/components/package-resource-navigation.json
-    destination: .github/aw/dashboard/site/src/components/package-resource-navigation.json
-  - source: site/src/components/package-route-composition.js
-    destination: .github/aw/dashboard/site/src/components/package-route-composition.js
-  - source: site/src/components/package-route-shell.js
-    destination: .github/aw/dashboard/site/src/components/package-route-shell.js
-  - source: site/src/components/package-route-view.js
-    destination: .github/aw/dashboard/site/src/components/package-route-view.js
-  - source: site/src/components/packages-mode-shell.js
-    destination: .github/aw/dashboard/site/src/components/packages-mode-shell.js
-  - source: site/src/components/packages-view.js
-    destination: .github/aw/dashboard/site/src/components/packages-view.js
+  - source: site/src/components/campaign-aic-utilization-thresholds.json
+    destination: .github/aw/dashboard/site/src/components/campaign-aic-utilization-thresholds.json
+  - source: site/src/components/campaign-detail.js
+    destination: .github/aw/dashboard/site/src/components/campaign-detail.js
+  - source: site/src/components/campaign-readme.js
+    destination: .github/aw/dashboard/site/src/components/campaign-readme.js
+  - source: site/src/components/campaign-resource-navigation.json
+    destination: .github/aw/dashboard/site/src/components/campaign-resource-navigation.json
+  - source: site/src/components/campaign-route-composition.js
+    destination: .github/aw/dashboard/site/src/components/campaign-route-composition.js
+  - source: site/src/components/campaign-route-shell.js
+    destination: .github/aw/dashboard/site/src/components/campaign-route-shell.js
+  - source: site/src/components/campaign-route-view.js
+    destination: .github/aw/dashboard/site/src/components/campaign-route-view.js
+  - source: site/src/components/campaigns-mode-shell.js
+    destination: .github/aw/dashboard/site/src/components/campaigns-mode-shell.js
+  - source: site/src/components/campaigns-view.js
+    destination: .github/aw/dashboard/site/src/components/campaigns-view.js
   - source: site/src/components/route-empty-state.js
     destination: .github/aw/dashboard/site/src/components/route-empty-state.js
   - source: site/src/components/route-page-shell.js

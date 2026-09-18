@@ -16,12 +16,12 @@ curl --fail --silent --show-error --location \
   bash
 ```
 
-The installer adds gh-aw and the core CAO package, installs CAO project skills under `.github/skills/`, creates the minimal control policy, and makes no CAO changes when rerun after installation.
+The installer adds gh-aw and the core CAO campaign, installs CAO project skills under `.github/skills/`, creates the minimal control policy, and makes no CAO changes when rerun after installation.
 
-Central Agentic Ops packages reusable orchestrators and focused workers so platform teams can automate repository operations without copying workflows into every repository.
+Central Agentic Ops campaigns reusable orchestrators and focused workers so platform teams can automate repository operations without copying workflows into every repository.
 
 - **Reach more repositories:** deterministically discover and batch inventories of 100,000+ repositories while keeping each run bounded.
-- **Roll out with confidence:** review proposed outcomes away from the target, then promote each package independently to `live`.
+- **Roll out with confidence:** review proposed outcomes away from the target, then promote each campaign independently to `live`.
 - **Keep work accountable:** every worker stays scoped to one repository and links its outcome to the originating control-plane run.
 
 ## Project status and scope
@@ -40,15 +40,15 @@ Ready to explore? [See the docs](https://githubnext.github.io/gh-aw-cao/).
 
 ## Agent plugin and Requirements
 
-This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-cao`, `add-cao-package`, `create-cao-package`, `analyze-cao`, and `cao-cli` skills.
+This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-cao`, `add-cao-campaign`, `create-cao-campaign`, `analyze-cao`, and `cao-cli` skills.
 
-Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `setup-cao` to create a control plane from scratch, `add-cao-package` to discover and safely install an existing catalog package, `create-cao-package` with an operational strategy and target-repository description, `analyze-cao` to download and query CAO activity data with the `cao` CLI, or `cao-cli` for a general reference on using `cao` in local development and inside agentic workflow runs.
+Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `setup-cao` to create a control plane from scratch, `add-cao-campaign` to discover and safely install an existing catalog campaign, `create-cao-campaign` with an operational strategy and target-repository description, `analyze-cao` to download and query CAO activity data with the `cao` CLI, or `cao-cli` for a general reference on using `cao` in local development and inside agentic workflow runs.
 
 In Copilot CLI, the plugin also provides a **Central Agentic Ops** Canvas. Open it to start the repository's local dashboard preview, optionally for a specified `OWNER/REPOSITORY`. The extension gives the agent tools to execute declarative queries with the canonical dashboard query engine and read bounded sections of the dashboard data architecture specification.
 
 ## GitHub Pages setup
 
-The default Central Agentic Ops package installs the dashboard builder and manual Pages publisher. Before running **Central Agentic Ops Dashboard** for the first time:
+The default Central Agentic Ops campaign installs the dashboard builder and manual Pages publisher. Before running **Central Agentic Ops Dashboard** for the first time:
 
 1. Open **Settings > Pages** in the control repository.
 2. Under **Build and deployment**, set **Source** to **GitHub Actions**.

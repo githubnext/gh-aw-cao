@@ -242,20 +242,20 @@ describe('view chrome component helpers', () => {
   });
 
   it('renders layout section headers through the shared section-heading helper', () => {
-    const header = renderLayoutSectionChrome('packages', {
+    const header = renderLayoutSectionChrome('campaigns', {
       id: 'run-trend',
-      title: 'Package run trend',
-      description: 'Thirty-day retained package run totals.',
+      title: 'Campaign run trend',
+      description: 'Thirty-day retained campaign run totals.',
       layout: 'full',
-      views: ['packages-run-trend'],
+      views: ['campaigns-run-trend'],
       'count-label': 'records'
     }, 12);
 
     expect(header.className).toBe('layout-section-header');
     expect(header.querySelector('.section-heading .scope-kicker')?.textContent).toBe('Run Trend');
-    expect(header.querySelector('h3')?.id).toBe('packages-run-trend-layout-heading');
-    expect(header.querySelector('h3')?.textContent).toBe('Package run trend');
-    expect(header.querySelector('.section-heading p')?.textContent).toBe('Thirty-day retained package run totals.');
+    expect(header.querySelector('h3')?.id).toBe('campaigns-run-trend-layout-heading');
+    expect(header.querySelector('h3')?.textContent).toBe('Campaign run trend');
+    expect(header.querySelector('.section-heading p')?.textContent).toBe('Thirty-day retained campaign run totals.');
     expect(header.querySelector('.layout-section-header > strong')?.textContent).toBe('12 records');
   });
 

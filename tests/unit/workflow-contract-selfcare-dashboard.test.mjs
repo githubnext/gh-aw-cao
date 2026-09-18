@@ -20,7 +20,7 @@ test("dashboard view assessment issues are ready for agent assignment", () => {
 test("SelfCare dashboard data schema worker tracks every deployed source with Data Health inference", () => {
   const source = workflow("self-care-dashboard-data-schema.md");
 
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-data-schema/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: dashboard-data-schema/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources/);
   assert.match(source, /deriveDataHealthSources/);
@@ -63,7 +63,7 @@ test("SelfCare Primer brand checker audits the dashboard against retrieved guida
   const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
 
   assert.match(source, /^name: "SelfCare \/ Primer"$/m);
-  assert.match(source, /package: self-care/);
+  assert.match(source, /campaign: self-care/);
   assert.match(source, /worker: primer-brand-checker/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /skip-if-match: 'is:pr is:open in:title "Primer branding"'/);
@@ -88,7 +88,7 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   const compiled = workflow("self-care-reactive-ui-expert.lock.yml");
 
   assert.match(source, /^name: "SelfCare \/ Reactive UI Expert"$/m);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: reactive-ui-expert/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: reactive-ui-expert/);
   assert.match(source, /skills:\n\s+- \.github\/skills\/reactive-ui/);
   assert.match(source, /\.github\/skills\/migrate-dashboard-view/);
   assert.match(source, /safe_output_mode` is `live`/);
@@ -119,7 +119,7 @@ test("SelfCare dashboard debug logging worker preserves the logging privacy boun
   const compiled = workflow("self-care-dashboard-debug-logging.lock.yml");
 
   assert.match(source, /^name: "SelfCare \/ Dashboard Debug Logging"$/m);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-debug-logging/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: dashboard-debug-logging/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /all-you-can-eat feature grower/);
   assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-dashboard-debug-logging" in:body'/);
@@ -150,7 +150,7 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   const compiled = workflow("self-care-dashboard-review.lock.yml");
 
   assert.match(source, /name: "SelfCare \/ Dashboard"/);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-review/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: dashboard-review/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /REPORT_INVENTORY=\/tmp\/gh-aw\/agent\/self-care-dashboard-review\/expected-inventory\.json/);
   assert.match(source, /githubnext\.github\.io\/gh-aw-cao\/cao\//);
@@ -167,7 +167,7 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   assert.match(source, /toolsets: \[repos, issues, actions\]/);
   assert.match(source, /githubnext\.github\.io/);
   assert.match(source, /at most the latest 100 runs from the last 24 hours/);
-  assert.match(source, /overview, dispatches, packages, repositories, workflows, runs, and coverage routes/);
+  assert.match(source, /overview, dispatches, campaigns, repositories, workflows, runs, and coverage routes/);
   assert.match(source, /title-prefix: "\[self-care:dashboard-review\] "/);
   assert.match(source, /close-older-key: self-care-dashboard-review/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-review\]/);
@@ -198,7 +198,7 @@ test("SelfCare dashboard performance worker selects one highest-ROI small win", 
   const views = dashboard.dashboard.pages[0].views;
 
   assert.match(source, /^name: "SelfCare \/ Dashboard Performance"$/m);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-performance/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: dashboard-performance/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-dashboard-performance" in:body'/);
   assert.match(source, /cache-memory:\n\s+retention-days: 30\n\s+allowed-extensions: \["\.json"\]/);
@@ -230,7 +230,7 @@ test("SelfCare experimental views worker exhaustively checks editable views acro
   const orchestrator = workflow("self-care.md");
 
   assert.match(source, /^name: "SelfCare \/ Experimental Views"$/m);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: experimental-views/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: experimental-views/);
   assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-experimental-views" in:body'/);
   assert.match(source, /browsers: \[chromium, webkit\]/);
   assert.match(source, /Require `\.github\/workflows\/cao\.json` to set `control-plane\.web\.experimental` to the Boolean `true`/);
@@ -263,7 +263,7 @@ test("SelfCare Pages health worker audits every deployed view on three profiles"
   assert.match(source, /^name: "SelfCare \/ Pages Health"$/m);
   assert.match(source, /^\s+workflow_dispatch:$/m);
   assert.doesNotMatch(source, /^\s+schedule:/m);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: pages-health/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: pages-health/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\//);
   assert.doesNotMatch(source, /close-older-issues: true/);
@@ -292,7 +292,7 @@ test("SelfCare code improvement preserves its focused dashboard component missio
   const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
 
   assert.match(source, /^name: "SelfCare \/ Code Quality"$/m);
-  assert.match(source, /package: self-care/);
+  assert.match(source, /campaign: self-care/);
   assert.match(source, /worker: code-improvement/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /allowed-files:\n\s+- "dashboard\/site\/src\/\*\.js"\n\s+- "dashboard\/site\/src\/\*\*\/\*\.js"\n\s+- "dashboard\/site\/test\/\*\*\/\*\.js"/);
@@ -307,14 +307,14 @@ test("SelfCare view reuse worker generalizes one Dashboard Language view", () =>
   const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
 
   assert.match(source, /^name: "SelfCare \/ View Reuse"$/m);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-language-refactor/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: dashboard-language-refactor/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /branches on a built-in page identity, route, view ID, or one-off element name/);
   assert.match(source, /dashboard\/site\/dashboard\.json/);
   assert.match(source, /docs\/dashboard-language-specification\.md/);
   assert.match(source, /dashboard\/site\/src\/specification\.js/);
   assert.match(source, /at least one additional existing or test-fixture composition/);
-  assert.match(source, /Update both `dashboard\/aw\.yml` and root `aw\.yml` only when a new runtime file must be packaged/);
+  assert.match(source, /Update both `dashboard\/aw\.yml` and root `aw\.yml` only when a new runtime file must be bundled/);
   assert.match(source, /npm --prefix dashboard\/site run validate:corpus/);
   assert.match(source, /uses: actions\/cache@/);
   assert.match(source, /path: ~\/\.cache\/ms-playwright/);

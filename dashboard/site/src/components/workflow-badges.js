@@ -1,5 +1,5 @@
 /**
- * Shared workflow role and package-membership badge strip.
+ * Shared workflow role and campaign-membership badge strip.
  */
 
 import { h } from '../dom.js';
@@ -10,7 +10,7 @@ import { text, titleCase } from './count-formatters.js';
  *   roleClassName?: string,
  *   membershipClassName?: string,
  *   containerClassName?: string,
- *   packagePage?: string
+ *   campaignPage?: string
  * }} WorkflowBadgeOptions
  */
 
@@ -24,10 +24,10 @@ export function renderWorkflowBadges(workflow, options = {}) {
     roleClassName = 'workflow-badge',
     membershipClassName = 'workflow-badge workflow-badge-operation',
     containerClassName = 'workflow-badges',
-    packagePage = 'package-insights'
+    campaignPage = 'campaign-insights'
   } = options;
   const role = workflowRole(workflow);
-  const memberships = workflowPackageMemberships(workflow);
+  const memberships = workflowCampaignMemberships(workflow);
   return h(
     'span',
     { className: containerClassName },
@@ -36,9 +36,9 @@ export function renderWorkflowBadges(workflow, options = {}) {
       'a',
       {
         className: membershipClassName,
-        href: `#page-${packagePage}?package=${encodeURIComponent(membership.id)}`
+        href: `#page-${campaignPage}?campaign=${encodeURIComponent(membership.id)}`
       },
-      `Package · ${membership.name}`
+      `Campaign · ${membership.name}`
     ))
   );
 }
@@ -48,15 +48,15 @@ export function workflowRole(workflow) {
   const role = text(workflow['workflow-role']).toLowerCase();
   return ['orchestrator', 'worker', 'standalone'].includes(role)
     ? role
-    : workflowPackageMemberships(workflow).length > 0 ? 'operation' : 'unknown';
+    : workflowCampaignMemberships(workflow).length > 0 ? 'operation' : 'unknown';
 }
 
 /** @param {Record<string, unknown>} workflow */
-export function workflowPackageMemberships(workflow) {
-  const memberships = Array.isArray(workflow['package-memberships'])
-    ? workflow['package-memberships']
-    : workflow.package
-      ? [{ id: workflow.package, name: workflow['package-name'] ?? workflow.package }]
+export function workflowCampaignMemberships(workflow) {
+  const memberships = Array.isArray(workflow['campaign-memberships'])
+    ? workflow['campaign-memberships']
+    : workflow.campaign
+      ? [{ id: workflow.campaign, name: workflow['campaign-name'] ?? workflow.campaign }]
       : [];
   const unique = new Map();
   for (const membership of memberships) {

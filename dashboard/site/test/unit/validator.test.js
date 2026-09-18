@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js';
 import { DASHBOARD_QUERY_LIMITS, QUERY_MAX_JOINS } from '../../src/specification.js';
-import { packageDashboardSources } from '../package-dashboard-documents.js';
+import { campaignDashboardSources } from '../campaign-dashboard-documents.js';
 
 const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
 
@@ -240,13 +240,13 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('keeps package updates exclusively in the Maintenance list', () => {
+  it('keeps campaign updates exclusively in the Maintenance list', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const action = document.dashboard['cli-actions'].find(
-      (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-package'
+      (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-campaign'
     );
-    const packagesPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'packages'
+    const campaignsPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'campaigns'
     );
     const maintenancePage = document.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
@@ -254,61 +254,61 @@ describe('dashboard document validation', () => {
     const listAction = maintenancePage.views[0].encoding.actions[0];
 
     expect(action).toMatchObject({
-      command: './.github/aw/cao.sh add {{package}}',
+      command: './.github/aw/cao.sh add {{campaign}}',
       placement: 'row'
     });
     expect(document.dashboard['cli-actions'].some(
       (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-target-repository'
     )).toBe(false);
-    expect(packagesPage.definition.views[0].encoding.actions).toBeUndefined();
+    expect(campaignsPage.definition.views[0].encoding.actions).toBeUndefined();
     expect(listAction).toMatchObject({
-      action: 'update-package',
+      action: 'update-campaign',
       presentation: 'cli-action',
-      context: ['package']
+      context: ['campaign']
     });
     expect(maintenancePage.views[0].encoding.actions.slice(1)).toEqual([
       expect.objectContaining({
-        action: 'set-package-live',
+        action: 'set-campaign-live',
         presentation: 'cli-action',
-        context: ['package'],
-        when: { field: 'package-mode', equals: 'review' }
+        context: ['campaign'],
+        when: { field: 'campaign-mode', equals: 'review' }
       }),
       expect.objectContaining({
-        action: 'set-package-preview',
+        action: 'set-campaign-preview',
         presentation: 'cli-action',
-        context: ['package'],
-        when: { field: 'package-mode', equals: 'live' }
+        context: ['campaign'],
+        when: { field: 'campaign-mode', equals: 'live' }
       }),
       expect.objectContaining({
-        action: 'enable-package',
+        action: 'enable-campaign',
         presentation: 'cli-action',
-        context: ['package']
+        context: ['campaign']
       }),
       expect.objectContaining({
-        action: 'disable-package',
+        action: 'disable-campaign',
         presentation: 'cli-action',
-        context: ['package']
+        context: ['campaign']
       })
     ]);
     expect(document.dashboard['cli-actions']).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: 'set-package-live',
-        command: './.github/aw/cao.sh mode live {{package}}',
+        id: 'set-campaign-live',
+        command: './.github/aw/cao.sh mode live {{campaign}}',
         placement: 'row'
       }),
       expect.objectContaining({
-        id: 'set-package-preview',
-        command: './.github/aw/cao.sh mode preview {{package}}',
+        id: 'set-campaign-preview',
+        command: './.github/aw/cao.sh mode preview {{campaign}}',
         placement: 'row'
       }),
       expect.objectContaining({
-        id: 'enable-package',
-        command: './.github/aw/cao.sh enable {{package}}',
+        id: 'enable-campaign',
+        command: './.github/aw/cao.sh enable {{campaign}}',
         placement: 'row'
       }),
       expect.objectContaining({
-        id: 'disable-package',
-        command: './.github/aw/cao.sh disable {{package}}',
+        id: 'disable-campaign',
+        command: './.github/aw/cao.sh disable {{campaign}}',
         placement: 'row'
       })
     ]));
@@ -324,8 +324,8 @@ describe('dashboard document validation', () => {
       (/** @type {{ id: string }} */ action) => action.id === starterList.list.action
     );
 
-    expect(starterList.title).toBe('Packages');
-    expect(starterList.description).toBe('Update installed packages when a newer package revision is available.');
+    expect(starterList.title).toBe('Campaigns');
+    expect(starterList.description).toBe('Update installed campaigns when a newer campaign revision is available.');
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     starterList.list.style = 'rows';
@@ -432,7 +432,7 @@ describe('dashboard document validation', () => {
   });
 
   it('applies human-friendly formatting to every declarative temporal encoding', () => {
-    const documents = [authoritativeDashboardSource, ...packageDashboardSources].map((source) => JSON.parse(source));
+    const documents = [authoritativeDashboardSource, ...campaignDashboardSources].map((source) => JSON.parse(source));
     /** @type {Array<Record<string, unknown>>} */
     const temporalFields = [];
     const visit = (/** @type {unknown} */ value) => {
@@ -566,11 +566,11 @@ describe('dashboard document validation', () => {
       (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
     )?.views).toEqual([
       expect.objectContaining({
-        id: 'package-updates',
+        id: 'campaign-updates',
         mark: 'list',
         list: {
           style: 'cards',
-          icon: 'package',
+          icon: 'goal',
           action: 'update-repository'
         },
         layout: 'full'
@@ -1085,7 +1085,7 @@ describe('dashboard document validation', () => {
     expect(columns).toEqual(expect.arrayContaining([
       expect.objectContaining({ field: 'workflow-name', display: 'workflow-link' }),
       expect.objectContaining({ field: 'repository', display: 'repository-link' }),
-      expect.objectContaining({ field: 'package-name' }),
+      expect.objectContaining({ field: 'campaign-name' }),
       expect.objectContaining({ field: 'runs', type: 'quantitative' })
     ]));
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
@@ -1167,21 +1167,21 @@ dashboard:
 
   it('defines core data pages as declarative full-view lazy tables', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
+    const campaignsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'campaigns');
     const operationalValuePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operational-value');
     const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
-    const packageWorkflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'package-workflows');
+    const campaignWorkflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'campaign-workflows');
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
     const transactionsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'transactions');
 
-    const packagesChart = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-value-created');
-    const operationalValueChart = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-by-package');
-    const operationalValueTable = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-packages');
-    const packagesView = packagesPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packages-inventory');
-    const packageWorkflowsView = packageWorkflowsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-workflow-table');
+    const campaignsChart = campaignsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'campaigns-value-created');
+    const operationalValueChart = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-by-campaign');
+    const operationalValueTable = operationalValuePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'operational-value-campaigns');
+    const campaignsView = campaignsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'campaigns-inventory');
+    const campaignWorkflowsView = campaignWorkflowsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'campaign-workflow-table');
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
     const transactionsView = transactionsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'transaction-entries');
-    for (const view of [packagesView, runsView]) {
+    for (const view of [campaignsView, runsView]) {
       expect(view).toMatchObject({
         mark: 'table',
         controls: 'interactive',
@@ -1190,27 +1190,27 @@ dashboard:
         layout: 'full-view'
       });
     }
-    expect(packagesView.data.source).toBe('package-inventory');
-    expect(packagesChart).toMatchObject({
-      data: { source: 'package-inventory' },
+    expect(campaignsView.data.source).toBe('campaign-inventory');
+    expect(campaignsChart).toMatchObject({
+      data: { source: 'campaign-inventory' },
       mark: 'chart',
       chart: 'pie',
       encoding: {
-        x: { field: 'package-name', type: 'nominal', title: 'Package' },
+        x: { field: 'campaign-name', type: 'nominal', title: 'Campaign' },
         y: { field: 'value-created', type: 'quantitative', aggregate: 'sum', title: 'Ops Value', unit: 'ops-value' }
       }
     });
     expect(operationalValueChart).toMatchObject({
-      data: { source: 'package-inventory' },
+      data: { source: 'campaign-inventory' },
       mark: 'chart',
       chart: 'pie',
       encoding: {
-        x: { field: 'package-name', type: 'nominal', title: 'Package' },
+        x: { field: 'campaign-name', type: 'nominal', title: 'Campaign' },
         y: { field: 'value-created', type: 'quantitative', aggregate: 'mean', title: 'Operational value', unit: 'ops-value' }
       }
     });
     expect(operationalValueTable).toMatchObject({
-      data: { source: 'package-inventory' },
+      data: { source: 'campaign-inventory' },
       mark: 'table',
       controls: 'interactive',
       'lazy-list': true,
@@ -1218,12 +1218,12 @@ dashboard:
       layout: 'full-view'
     });
     expect(operationalValueTable.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
-      'Package',
+      'Campaign',
       'Operational value'
     ]);
-    expect(packagesView.encoding.href).toEqual({ field: 'package-dashboard-link', type: 'nominal' });
-    expect(packagesView.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
-      'Package',
+    expect(campaignsView.encoding.href).toEqual({ field: 'campaign-dashboard-link', type: 'nominal' });
+    expect(campaignsView.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
+      'Campaign',
       'Workflows',
       'Roles',
       'Modes',
@@ -1233,9 +1233,9 @@ dashboard:
       'Ops Value',
       'Registration'
     ]);
-    expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
-    expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'registration')?.display).toBe('active-state');
-    for (const view of [packagesView, packageWorkflowsView]) {
+    expect(campaignsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
+    expect(campaignsView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'registration')?.display).toBe('active-state');
+    for (const view of [campaignsView, campaignWorkflowsView]) {
       expect(view.encoding.columns.at(-1)?.title).toBe('Registration');
     }
     expect(runsView.data.source).toBe('runs-table');
@@ -1253,9 +1253,9 @@ dashboard:
       'lazy-list': true,
       layout: 'full-view'
     });
-    expect(packagesPage.definition.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
-      'packages-value-created',
-      'packages-inventory'
+    expect(campaignsPage.definition.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
+      'campaigns-value-created',
+      'campaigns-inventory'
     ]);
     expect(workflowsPage.definition.views.map((/** @type {{ id?: string } | string} */ view) =>
       typeof view === 'string' ? view : view.id
@@ -1264,7 +1264,7 @@ dashboard:
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
       'repositories',
-      'packages',
+      'campaigns',
       'configuration'
     ]);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
@@ -1333,23 +1333,23 @@ dashboard:
     }
   });
 
-  it('accepts package-route config.body and rejects unsupported values', () => {
+  it('accepts campaign-route config.body and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
-  id: package-route-config
-  title: Package route config
+  id: campaign-route-config
+  title: Campaign route config
   pages:
-    - id: package-page
+    - id: campaign-page
       kind: custom
-      title: Package page
+      title: Campaign page
       route:
-        hash-query-parameter: package
+        hash-query-parameter: campaign
       views:
-        - id: package-shell
+        - id: campaign-shell
           data:
             sources: [workflows]
           mark: element
-          element: package-route
+          element: campaign-route
           config:
             body: pull-requests
 `);
@@ -1357,20 +1357,20 @@ dashboard:
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
-  id: package-route-config
-  title: Package route config
+  id: campaign-route-config
+  title: Campaign route config
   pages:
-    - id: package-page
+    - id: campaign-page
       kind: custom
-      title: Package page
+      title: Campaign page
       route:
-        hash-query-parameter: package
+        hash-query-parameter: campaign
       views:
-        - id: package-shell
+        - id: campaign-shell
           data:
             sources: [workflows]
           mark: element
-          element: package-route
+          element: campaign-route
           config:
             body: activity
 `);
@@ -1701,8 +1701,8 @@ dashboard:
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('accepts every package dashboard document', () => {
-    for (const source of packageDashboardSources) {
+  it('accepts every campaign dashboard document', () => {
+    for (const source of campaignDashboardSources) {
       expect(validateDashboardDocument(source).ok).toBe(true);
     }
   });
@@ -1815,21 +1815,21 @@ dashboard:
     }
   });
 
-  it('keeps one focused custom dashboard for every operation package', () => {
-    const documents = packageDashboardSources.map((source) => JSON.parse(source));
-    const packagePageIds = [
+  it('keeps one focused custom dashboard for every operation campaign', () => {
+    const documents = campaignDashboardSources.map((source) => JSON.parse(source));
+    const campaignPageIds = [
       'cao-evolution-dashboard',
       'dependabot-dashboard',
       'uk-ai-advisory-dashboard',
       'eu-cra-compliance-dashboard',
       'optimization-dashboard'
     ];
-    expect(documents).toHaveLength(packagePageIds.length);
-    for (const pageId of packagePageIds) {
+    expect(documents).toHaveLength(campaignPageIds.length);
+    for (const pageId of campaignPageIds) {
       const document = documents.find((candidate) => candidate.dashboard.pages[0].id === pageId);
-      if (!document) throw new Error(`Missing package dashboard page ${pageId}`);
+      if (!document) throw new Error(`Missing campaign dashboard page ${pageId}`);
       const page = document.dashboard.pages[0];
-      expect(document.dashboard.navigation).toEqual([{ label: 'Package operations', experimental: true, pages: [pageId] }]);
+      expect(document.dashboard.navigation).toEqual([{ label: 'Campaign operations', experimental: true, pages: [pageId] }]);
       expect(page).toMatchObject({ kind: 'custom' });
       expect(page.views).toHaveLength(pageId === 'cao-evolution-dashboard' ? 5 : 4);
       const tables = page.views.filter(
@@ -1865,7 +1865,7 @@ dashboard:
     const builtInRunView = builtInDocument.dashboard.pages
       .find((/** @type {{ id: string }} */ page) => page.id === 'runs')
       .definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
-    const evolutionDocument = packageDashboardSources
+    const evolutionDocument = campaignDashboardSources
       .map((source) => JSON.parse(source))
       .find((document) => document.dashboard.id === 'cao-evolution-dashboard');
     const runView = evolutionDocument.dashboard.pages[0].views
@@ -3112,15 +3112,15 @@ dashboard:
     }
   });
 
-  it('DLS-PAGE-015 rejects a packages built-in page without declarative built-in source definitions with DLS-E003', () => {
+  it('DLS-PAGE-015 rejects a campaigns built-in page without declarative built-in source definitions with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
-  id: packages-page
-  title: Packages Page
+  id: campaigns-page
+  title: Campaigns Page
   pages:
-    - id: packages
+    - id: campaigns
       kind: built-in
-      page: packages
+      page: campaigns
 `);
 
     expect(result.ok).toBe(false);
@@ -3129,7 +3129,7 @@ dashboard:
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
-            message: 'built-in page "packages" requires declarative definitions for source "package-inventory".'
+            message: 'built-in page "campaigns" requires declarative definitions for source "campaign-inventory".'
           })
         ])
       );
@@ -4013,28 +4013,28 @@ dashboard:
     }
   });
 
-  it('DLS-SEM-022 DLS-SEM-023 validates package membership and configured allowances in logical workflow sources', () => {
+  it('DLS-SEM-022 DLS-SEM-023 validates campaign membership and configured allowances in logical workflow sources', () => {
     const accepted = validateLogicalSources({
       workflows: {
         rows: [
           {
             organization: 'octo-org',
             repository: 'platform',
-            package: 'daily-ops',
-            'package-icon': 'workflow',
+            campaign: 'daily-ops',
+            'campaign-icon': 'workflow',
             workflow: 'orchestrator.yml',
             'workflow-role': 'orchestrator',
             'max-ai-credits': 100,
-            'package-aic-allowance': 250
+            'campaign-aic-allowance': 250
           },
           {
             organization: 'octo-org',
             repository: 'platform',
-            package: 'daily-ops',
+            campaign: 'daily-ops',
             workflow: 'worker.yml',
             'workflow-role': 'worker',
             'max-ai-credits': 150,
-            'package-aic-allowance': 250
+            'campaign-aic-allowance': 250
           },
           {
             organization: 'octo-org',
@@ -4052,20 +4052,20 @@ dashboard:
       workflows: {
         rows: [
           { workflow: 'worker.yml', 'workflow-role': 'worker' },
-          { package: 'invalid', workflow: 'standalone.yml', 'workflow-role': 'standalone' },
+          { campaign: 'invalid', workflow: 'standalone.yml', 'workflow-role': 'standalone' },
           {
-            package: 'negative',
+            campaign: 'negative',
             workflow: 'negative.yml',
             'workflow-role': 'orchestrator',
             'max-ai-credits': -1
           },
           {
-            package: 'mismatch',
-            'package-icon': 'not-an-octicon',
+            campaign: 'mismatch',
+            'campaign-icon': 'not-an-octicon',
             workflow: 'mismatch.yml',
             'workflow-role': 'orchestrator',
             'max-ai-credits': 100,
-            'package-aic-allowance': 99
+            'campaign-aic-allowance': 99
           }
         ]
       }
@@ -4074,11 +4074,11 @@ dashboard:
     expect(rejected.ok).toBe(false);
     if (!rejected.ok) {
       expect(rejected.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[0].package' }),
-        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[1].package' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[0].campaign' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[1].campaign' }),
         expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[2].max-ai-credits' }),
-        expect.objectContaining({ code: 'DLS-E005', path: '$.sources.workflows.rows[3].package-icon' }),
-        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[3].package-aic-allowance' })
+        expect.objectContaining({ code: 'DLS-E005', path: '$.sources.workflows.rows[3].campaign-icon' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[3].campaign-aic-allowance' })
       ]));
     }
   });
@@ -6253,8 +6253,8 @@ describe('declarative query validation', () => {
   it('rejects fields that only exist after post-query link inference', () => {
     const result = validateDashboardDocument(queryDocument([{
       name: 'workflow-costs',
-      from: 'packaged-workflows',
-      select: [{ field: 'workflow' }, { field: 'package-link' }]
+      from: 'campaign-workflows',
+      select: [{ field: 'workflow' }, { field: 'campaign-link' }]
     }]));
 
     expect(result.ok).toBe(false);

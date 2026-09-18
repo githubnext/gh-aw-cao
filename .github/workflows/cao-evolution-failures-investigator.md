@@ -65,7 +65,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: cao-evolution
+      campaign: cao-evolution
       role: worker
       worker: failures-investigator
   - uses: shared/activity-cache.md

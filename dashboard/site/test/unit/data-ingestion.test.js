@@ -82,7 +82,7 @@ describe('canonical source ingestion and queries', () => {
       ingestionVersion: 2,
       sourceRecords: 1,
       batch: {
-        packages: [],
+        campaigns: [],
         repositories: [{
           id: 'repository:normalized',
           observedAt: metadata['as-of'],
@@ -120,7 +120,7 @@ describe('canonical source ingestion and queries', () => {
       sourceRecords: 1,
       phase: 'records',
       batch: {
-        packages: [],
+        campaigns: [],
         repositories: [],
         workflows: [],
         runs: [{ id: 'run:unexpected' }],
@@ -175,34 +175,34 @@ describe('canonical source ingestion and queries', () => {
     ]);
   });
 
-  it('reimports inventory cached before package mapping preservation', async () => {
-    const packagedSources = {
+  it('reimports inventory cached before campaign mapping preservation', async () => {
+    const bundledSources = {
       ...sources,
-      packages: {
-        rows: [{ package: 'dashboard', 'observed-at': metadata['as-of'] }],
+      campaigns: {
+        rows: [{ campaign: 'dashboard', 'observed-at': metadata['as-of'] }],
         metadata
       },
       workflows: {
-        rows: [{ ...sources.workflows.rows[0], package: 'dashboard' }],
+        rows: [{ ...sources.workflows.rows[0], campaign: 'dashboard' }],
         metadata
       }
     };
-    await ingestDashboardSources(indexedDB, packagedSources);
+    await ingestDashboardSources(indexedDB, bundledSources);
     const stored = await readCanonicalBatch(indexedDB);
-    delete stored.workflows[0].packageId;
-    delete stored.workflows[0].package;
+    delete stored.workflows[0].campaignId;
+    delete stored.workflows[0].campaign;
     await replaceCanonicalBatch(indexedDB, stored);
     const [transaction] = await readTransactions(indexedDB);
     delete transaction.ingestionVersion;
     await recordTransaction(indexedDB, transaction);
 
-    await expect(ingestDashboardSources(indexedDB, packagedSources)).resolves.toMatchObject({
+    await expect(ingestDashboardSources(indexedDB, bundledSources)).resolves.toMatchObject({
       updated: true
     });
     await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
       expect.objectContaining({
-        packageId: 'package:dashboard-sources:dashboard',
-        package: 'dashboard'
+        campaignId: 'campaign:dashboard-sources:dashboard',
+        campaign: 'dashboard'
       })
     ]);
   });
@@ -300,10 +300,10 @@ describe('canonical source ingestion and queries', () => {
   it('upserts complete gh-aw transaction logs onto retained canonical records', async () => {
     await ingestDashboardSources(indexedDB, {
       ...sources,
-      packages: {
+      campaigns: {
         rows: [{
-          package: 'dashboard',
-          'package-name': 'CAO Dashboard',
+          campaign: 'dashboard',
+          'campaign-name': 'CAO Dashboard',
           'observed-at': metadata['as-of']
         }],
         metadata
@@ -312,13 +312,13 @@ describe('canonical source ingestion and queries', () => {
         ...sources.workflows,
         rows: sources.workflows.rows.map((workflow) => ({
           ...workflow,
-          package: 'dashboard',
-          'package-name': 'CAO Dashboard',
-          'package-icon': 'dashboard'
+          campaign: 'dashboard',
+          'campaign-name': 'CAO Dashboard',
+          'campaign-icon': 'dashboard'
         }))
       }
     });
-    const [packagedWorkflow] = await createCanonicalQueries(indexedDB).workflows.list();
+    const [bundledWorkflow] = await createCanonicalQueries(indexedDB).workflows.list();
     const input = {
       generation: 'gh-aw-generation-b',
       observedAt: '2026-09-09T05:00:00Z',
@@ -340,10 +340,10 @@ describe('canonical source ingestion and queries', () => {
     const activeRuns = await queries.runs.list();
     expect(await queries.workflows.list()).toEqual([
       expect.objectContaining({
-        packageId: packagedWorkflow.packageId,
-        package: 'dashboard',
-        packageName: 'CAO Dashboard',
-        packageIcon: 'dashboard'
+        campaignId: bundledWorkflow.campaignId,
+        campaign: 'dashboard',
+        campaignName: 'CAO Dashboard',
+        campaignIcon: 'dashboard'
       })
     ]);
     expect(activeRuns.map((run) => run.id)).toEqual([
@@ -624,12 +624,12 @@ describe('canonical source ingestion and queries', () => {
     ]));
   });
 
-  it('preserves package mappings when cached workflow runs are imported', async () => {
+  it('preserves campaign mappings when cached workflow runs are imported', async () => {
     await ingestDashboardSources(indexedDB, {
-      packages: {
+      campaigns: {
         rows: [{
-          package: 'dashboard',
-          'package-name': 'CAO Dashboard',
+          campaign: 'dashboard',
+          'campaign-name': 'CAO Dashboard',
           'observed-at': metadata['as-of']
         }],
         metadata
@@ -638,8 +638,8 @@ describe('canonical source ingestion and queries', () => {
       workflows: {
         rows: [{
           ...sources.workflows.rows[0],
-          package: 'dashboard',
-          'package-name': 'CAO Dashboard',
+          campaign: 'dashboard',
+          'campaign-name': 'CAO Dashboard',
           'workflow-id': '501',
           'workflow-name': 'Current registry name',
           'workflow-active': 'unknown',
@@ -666,9 +666,9 @@ describe('canonical source ingestion and queries', () => {
 
     await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
       expect.objectContaining({
-        packageId: 'package:dashboard-sources:dashboard',
-        package: 'dashboard',
-        packageName: 'CAO Dashboard',
+        campaignId: 'campaign:dashboard-sources:dashboard',
+        campaign: 'dashboard',
+        campaignName: 'CAO Dashboard',
         githubId: '501',
         name: 'Current registry name',
         state: 'unknown',
@@ -721,12 +721,12 @@ describe('canonical source ingestion and queries', () => {
     ]);
   });
 
-  it('preserves package records across imports regardless of the TTL horizon', async () => {
+  it('preserves campaign records across imports regardless of the TTL horizon', async () => {
     await ingestDashboardSources(indexedDB, {
-      packages: {
+      campaigns: {
         rows: [{
-          package: 'durable-package',
-          'package-name': 'Durable package',
+          campaign: 'durable-campaign',
+          'campaign-name': 'Durable campaign',
           'observed-at': '2025-01-01T00:00:00Z'
         }],
         metadata: { 'as-of': '2025-01-01T00:00:00Z' }
@@ -739,8 +739,8 @@ describe('canonical source ingestion and queries', () => {
       now: Date.parse('2026-09-09T05:00:00Z')
     });
 
-    await expect(createCanonicalQueries(indexedDB).packages.list()).resolves.toEqual([
-      expect.objectContaining({ slug: 'durable-package', name: 'Durable package' })
+    await expect(createCanonicalQueries(indexedDB).campaigns.list()).resolves.toEqual([
+      expect.objectContaining({ slug: 'durable-campaign', name: 'Durable campaign' })
     ]);
   });
 

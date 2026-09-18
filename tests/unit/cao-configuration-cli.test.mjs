@@ -4,12 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
-  addCaoPackage,
+  addCaoCampaign,
   ensureGhAwMinimumVersion,
   initializeCaoPolicy,
-  setCaoPackageMode,
-  setCaoPackageWorkflowsEnabled,
-  updateCaoPackages,
+  setCaoCampaignMode,
+  setCaoCampaignWorkflowsEnabled,
+  updateCaoCampaigns,
 } from "../../activity/cao.mjs";
 
 const versionResult = {
@@ -35,7 +35,7 @@ test("cao init writes the minimal control-plane policy", async () => {
       $schema: "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
       version: 1,
       "gh-aw-version": "v0.89.15",
-      "control-plane": { packages: {} },
+      "control-plane": { campaigns: {} },
     });
     assert.equal(result["gh-aw-version"], "v0.89.15");
   } finally {
@@ -58,7 +58,7 @@ test("cao init does not overwrite an existing policy", async () => {
   }
 });
 
-test("cao mode changes configured packages between live and preview atomically", async () => {
+test("cao mode changes configured campaigns between live and preview atomically", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-"));
   const policyPath = path.join(root, ".github", "workflows", "cao.json");
   try {
@@ -67,53 +67,53 @@ test("cao mode changes configured packages between live and preview atomically",
       version: 1,
       "gh-aw-version": "v0.89.15",
       "control-plane": {
-        packages: {
+        campaigns: {
           dependabot: { mode: "review", icon: "dependabot" },
           "repo-assist": { mode: "review", "max-repositories": 1 },
         },
       },
     }, null, 2)}\n`);
 
-    const live = await setCaoPackageMode("live", ["dependabot", "repo-assist"], { policyPath });
+    const live = await setCaoCampaignMode("live", ["dependabot", "repo-assist"], { policyPath });
     let policy = JSON.parse(await readFile(policyPath, "utf8"));
-    assert.equal(policy["control-plane"].packages.dependabot.mode, "live");
-    assert.equal(policy["control-plane"].packages.dependabot.icon, "dependabot");
-    assert.equal(policy["control-plane"].packages["repo-assist"].mode, "live");
-    assert.deepEqual(live.packages, ["dependabot", "repo-assist"]);
+    assert.equal(policy["control-plane"].campaigns.dependabot.mode, "live");
+    assert.equal(policy["control-plane"].campaigns.dependabot.icon, "dependabot");
+    assert.equal(policy["control-plane"].campaigns["repo-assist"].mode, "live");
+    assert.deepEqual(live.campaigns, ["dependabot", "repo-assist"]);
 
-    const preview = await setCaoPackageMode("preview", ["dependabot"], { policyPath });
+    const preview = await setCaoCampaignMode("preview", ["dependabot"], { policyPath });
     policy = JSON.parse(await readFile(policyPath, "utf8"));
-    assert.equal(policy["control-plane"].packages.dependabot.mode, "review");
-    assert.equal(policy["control-plane"].packages["repo-assist"].mode, "live");
+    assert.equal(policy["control-plane"].campaigns.dependabot.mode, "review");
+    assert.equal(policy["control-plane"].campaigns["repo-assist"].mode, "live");
     assert.equal(preview.mode, "preview");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test("cao mode validates every package before changing the policy", async () => {
+test("cao mode validates every campaign before changing the policy", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-mode-invalid-"));
   const policyPath = path.join(root, "cao.json");
-  const original = '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"packages":{"dependabot":{"mode":"review"}}}}\n';
+  const original = '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"campaigns":{"dependabot":{"mode":"review"}}}}\n';
   try {
     await writeFile(policyPath, original);
     await assert.rejects(
-      setCaoPackageMode("live", ["dependabot", "missing-package"], { policyPath }),
-      /Unknown CAO package: missing-package/,
+      setCaoCampaignMode("live", ["dependabot", "missing-campaign"], { policyPath }),
+      /Unknown CAO campaign: missing-campaign/,
     );
     assert.equal(await readFile(policyPath, "utf8"), original);
 
     await assert.rejects(
-      setCaoPackageMode("live", ["Not-A-Package"], { policyPath }),
-      /Invalid CAO package name: Not-A-Package/,
+      setCaoCampaignMode("live", ["Not-A-Campaign"], { policyPath }),
+      /Invalid CAO campaign name: Not-A-Campaign/,
     );
     await assert.rejects(
-      setCaoPackageMode("review", ["dependabot"], { policyPath }),
+      setCaoCampaignMode("review", ["dependabot"], { policyPath }),
       /cao mode requires live or preview/,
     );
     await assert.rejects(
-      setCaoPackageMode("preview", [], { policyPath }),
-      /requires at least one package/,
+      setCaoCampaignMode("preview", [], { policyPath }),
+      /requires at least one campaign/,
     );
     assert.equal(await readFile(policyPath, "utf8"), original);
   } finally {
@@ -121,7 +121,7 @@ test("cao mode validates every package before changing the policy", async () => 
   }
 });
 
-test("cao enable and disable update every workflow declared by installed packages", async () => {
+test("cao enable and disable update every workflow declared by installed campaigns", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-workflow-state-"));
   const previousDirectory = process.cwd();
   const declarationDirectory = path.join(root, ".github", "aw", "repo-assist");
@@ -130,7 +130,7 @@ test("cao enable and disable update every workflow declared by installed package
   try {
     await mkdir(declarationDirectory, { recursive: true });
     await writeFile(path.join(declarationDirectory, "cao.json"), JSON.stringify({
-      package: "repo-assist",
+      campaign: "repo-assist",
       orchestrator: "repo-assist",
       workers: {
         "issue-triage": "repo-assist-issue-triage",
@@ -139,7 +139,7 @@ test("cao enable and disable update every workflow declared by installed package
     }));
     await mkdir(secondDeclarationDirectory, { recursive: true });
     await writeFile(path.join(secondDeclarationDirectory, "cao.json"), JSON.stringify({
-      package: "dependabot",
+      campaign: "dependabot",
       orchestrator: "dependabot",
       workers: {
         "update-planner": "dependabot-update-planner",
@@ -151,8 +151,8 @@ test("cao enable and disable update every workflow declared by installed package
       return { status: 0, stdout: "", stderr: "" };
     };
 
-    const enabled = await setCaoPackageWorkflowsEnabled("enable", ["repo-assist", "dependabot"], { execute });
-    const disabled = await setCaoPackageWorkflowsEnabled("disable", ["repo-assist", "dependabot"], { execute });
+    const enabled = await setCaoCampaignWorkflowsEnabled("enable", ["repo-assist", "dependabot"], { execute });
+    const disabled = await setCaoCampaignWorkflowsEnabled("disable", ["repo-assist", "dependabot"], { execute });
 
     assert.deepEqual(calls, [
       ["gh", ["workflow", "enable", "repo-assist.lock.yml"]],
@@ -168,7 +168,7 @@ test("cao enable and disable update every workflow declared by installed package
     ]);
     assert.deepEqual(enabled, {
       command: "enable",
-      packages: ["repo-assist", "dependabot"],
+      campaigns: ["repo-assist", "dependabot"],
       workflows: [
         "repo-assist",
         "repo-assist-issue-triage",
@@ -184,29 +184,29 @@ test("cao enable and disable update every workflow declared by installed package
   }
 });
 
-test("cao enable and disable validate packages and report workflow failures", async () => {
+test("cao enable and disable validate campaigns and report workflow failures", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-workflow-state-errors-"));
   const previousDirectory = process.cwd();
   const declarationDirectory = path.join(root, ".github", "aw", "dependabot");
   try {
     await mkdir(declarationDirectory, { recursive: true });
     await writeFile(path.join(declarationDirectory, "cao.json"), JSON.stringify({
-      package: "dependabot",
+      campaign: "dependabot",
       orchestrator: "dependabot",
       workers: { planner: "dependabot-planner" },
     }));
     process.chdir(root);
 
     await assert.rejects(
-      setCaoPackageWorkflowsEnabled("enable", ["missing"]),
-      /Package missing is not installed or does not declare CAO workflows/,
+      setCaoCampaignWorkflowsEnabled("enable", ["missing"]),
+      /Campaign missing is not installed or does not declare CAO workflows/,
     );
     await assert.rejects(
-      setCaoPackageWorkflowsEnabled("disable", ["Not-A-Package"]),
-      /Invalid CAO package name: Not-A-Package/,
+      setCaoCampaignWorkflowsEnabled("disable", ["Not-A-Campaign"]),
+      /Invalid CAO campaign name: Not-A-Campaign/,
     );
     await assert.rejects(
-      setCaoPackageWorkflowsEnabled("enable", ["dependabot"], {
+      setCaoCampaignWorkflowsEnabled("enable", ["dependabot"], {
         execute: (_command, arguments_) => arguments_.at(-1) === "dependabot-planner.lock.yml"
           ? { status: 1, stdout: "", stderr: "workflow unavailable" }
           : { status: 0, stdout: "", stderr: "" },
@@ -214,8 +214,8 @@ test("cao enable and disable validate packages and report workflow failures", as
       /gh workflow enable failed for dependabot-planner: workflow unavailable/,
     );
     await assert.rejects(
-      setCaoPackageWorkflowsEnabled("enable", []),
-      /cao enable requires at least one package/,
+      setCaoCampaignWorkflowsEnabled("enable", []),
+      /cao enable requires at least one campaign/,
     );
   } finally {
     process.chdir(previousDirectory);
@@ -223,7 +223,7 @@ test("cao enable and disable validate packages and report workflow failures", as
   }
 });
 
-test("cao add installs a package and merges its declaration safely", async () => {
+test("cao add installs a campaign and merges its declaration safely", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-add-"));
   const previousDirectory = process.cwd();
   const policyPath = path.join(root, ".github", "workflows", "cao.json");
@@ -232,7 +232,7 @@ test("cao add installs a package and merges its declaration safely", async () =>
   try {
     await mkdir(declarationDirectory, { recursive: true });
     await writeFile(path.join(declarationDirectory, "cao.json"), JSON.stringify({
-      package: "dependabot",
+      campaign: "dependabot",
       orchestrator: "dependabot",
       workers: {
         "release-train-updater": "dependabot-release-train-updater",
@@ -244,7 +244,7 @@ test("cao add installs a package and merges its declaration safely", async () =>
       "gh-aw-version": "v0.89.15",
       "control-plane": {
         scope: { "allowed-owners": ["acme"] },
-        packages: {
+        campaigns: {
           existing: { mode: "review" },
           dependabot: {
             mode: "review",
@@ -261,7 +261,7 @@ test("cao add installs a package and merges its declaration safely", async () =>
       },
     }, null, 2)}\n`);
     process.chdir(root);
-    const result = await addCaoPackage(
+    const result = await addCaoCampaign(
       "githubnext/gh-aw-cao/dependabot@feature/config",
       ["--force", "--no-security-scanner"],
       {
@@ -278,8 +278,8 @@ test("cao add installs a package and merges its declaration safely", async () =>
       ["aw", "add", "githubnext/gh-aw-cao/dependabot@feature/config", "--force", "--no-security-scanner"],
     ]]);
     assert.equal(policy["control-plane"].scope["allowed-owners"][0], "acme");
-    assert.deepEqual(policy["control-plane"].packages.existing, { mode: "review" });
-    assert.deepEqual(policy["control-plane"].packages.dependabot, {
+    assert.deepEqual(policy["control-plane"].campaigns.existing, { mode: "review" });
+    assert.deepEqual(policy["control-plane"].campaigns.dependabot, {
       mode: "review",
       workers: {
         "release-train-updater": {
@@ -302,7 +302,7 @@ test("cao add leaves policy untouched when gh aw add fails", async () => {
   await writeFile(policyPath, '{"version":1}\n');
   try {
     await assert.rejects(
-      addCaoPackage("githubnext/gh-aw-cao/dependabot@v1", [], {
+      addCaoCampaign("githubnext/gh-aw-cao/dependabot@v1", [], {
         policyPath,
         execute: () => ({ status: 1, stdout: "", stderr: "installation failed" }),
       }),
@@ -314,27 +314,27 @@ test("cao add leaves policy untouched when gh aw add fails", async () => {
   }
 });
 
-test("cao update upgrades gh-aw, updates installed packages, and merges declarations", async () => {
+test("cao update upgrades gh-aw, updates installed campaigns, and merges declarations", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-update-"));
   const previousDirectory = process.cwd();
   const policyPath = path.join(root, ".github", "workflows", "cao.json");
-  const packageRecords = path.join(root, ".github", "aw", "packages");
+  const campaignRecords = path.join(root, ".github", "aw", "campaigns");
   const declarationDirectory = path.join(root, ".github", "aw", "dependabot");
   const calls = [];
   let versionCalls = 0;
   try {
-    await mkdir(packageRecords, { recursive: true });
-    await writeFile(path.join(packageRecords, "root.json"), JSON.stringify({
-      package: "githubnext/gh-aw-cao",
+    await mkdir(campaignRecords, { recursive: true });
+    await writeFile(path.join(campaignRecords, "root.json"), JSON.stringify({
+      campaign: "githubnext/gh-aw-cao",
       source: "githubnext/gh-aw-cao@v1",
     }));
-    await writeFile(path.join(packageRecords, "dependabot.json"), JSON.stringify({
-      package: "githubnext/gh-aw-cao/dependabot",
+    await writeFile(path.join(campaignRecords, "dependabot.json"), JSON.stringify({
+      campaign: "githubnext/gh-aw-cao/dependabot",
       source: "githubnext/gh-aw-cao/dependabot@v1",
     }));
     await mkdir(declarationDirectory, { recursive: true });
     await writeFile(path.join(declarationDirectory, "cao.json"), JSON.stringify({
-      package: "dependabot",
+      campaign: "dependabot",
       orchestrator: "dependabot",
       workers: {
         "release-train-updater": "dependabot-release-train-updater",
@@ -346,7 +346,7 @@ test("cao update upgrades gh-aw, updates installed packages, and merges declarat
       version: 1,
       "gh-aw-version": "v0.89.15",
       "control-plane": {
-        packages: {
+        campaigns: {
           dependabot: {
             mode: "live",
             workers: {
@@ -362,7 +362,7 @@ test("cao update upgrades gh-aw, updates installed packages, and merges declarat
       },
     }, null, 2)}\n`);
     process.chdir(root);
-    const result = await updateCaoPackages(["--force"], {
+    const result = await updateCaoCampaigns(["--force"], {
       policyPath,
       execute(command, arguments_) {
         calls.push([command, arguments_]);
@@ -385,13 +385,13 @@ test("cao update upgrades gh-aw, updates installed packages, and merges declarat
       ["gh", ["aw", "update", "githubnext/gh-aw-cao", "--force"]],
       ["gh", ["aw", "update", "githubnext/gh-aw-cao/dependabot", "--force"]],
     ]);
-    assert.deepEqual(result.packages, [
+    assert.deepEqual(result.campaigns, [
       "githubnext/gh-aw-cao",
       "githubnext/gh-aw-cao/dependabot",
     ]);
     assert.deepEqual(result.declarations, ["dependabot"]);
     assert.equal(result["gh-aw"].updated, true);
-    assert.deepEqual(policy["control-plane"].packages.dependabot, {
+    assert.deepEqual(policy["control-plane"].campaigns.dependabot, {
       mode: "live",
       workers: {
         "release-train-updater": {
@@ -415,7 +415,7 @@ test("cao update leaves current gh-aw versions that meet the minimum in place", 
   const policyPath = path.join(root, "cao.json");
   const calls = [];
   try {
-    await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"packages":{}}}\n');
+    await writeFile(policyPath, '{"version":1,"gh-aw-version":"v0.89.15","control-plane":{"campaigns":{}}}\n');
     const result = await ensureGhAwMinimumVersion({
       policyPath,
       execute(command, arguments_) {

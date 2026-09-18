@@ -10,7 +10,7 @@ import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.j
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
 const canonicalEntityTables = [
-  'audits', 'domains', 'issues', 'packages', 'repositories', 'runs', 'tools', 'workflows'
+  'audits', 'campaigns', 'domains', 'issues', 'repositories', 'runs', 'tools', 'workflows'
 ];
 
 function ghAwLogInput() {
@@ -29,17 +29,17 @@ function ghAwLogInput() {
 
 function canonicalSources(generation = 'browser-generation', run = '12345') {
   return {
-    packages: {
+    campaigns: {
       rows: [{
-        package: 'dashboard',
-        'package-name': 'CAO Dashboard',
-        'package-description': 'Deploy the CAO dashboard.',
-        'package-icon': 'graph',
-        'package-mode': 'review',
-        'package-enabled': true,
-        'package-worker-count': 1,
-        'package-min-version': 'v0.89.3',
-        'package-experimental': true,
+        campaign: 'dashboard',
+        'campaign-name': 'CAO Dashboard',
+        'campaign-description': 'Deploy the CAO dashboard.',
+        'campaign-icon': 'graph',
+        'campaign-mode': 'review',
+        'campaign-enabled': true,
+        'campaign-worker-count': 1,
+        'campaign-min-version': 'v0.89.3',
+        'campaign-experimental': true,
         'observed-at': '2026-09-09T05:00:00Z'
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -53,8 +53,8 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         workflow: '.github/workflows/dashboard.md',
-        package: 'dashboard',
-        'package-name': 'CAO Dashboard',
+        campaign: 'dashboard',
+        'campaign-name': 'CAO Dashboard',
         'workflow-role': 'worker',
         'rollout-mode': 'review',
         'workflow-active': 'true',
@@ -300,22 +300,22 @@ test.beforeEach(async ({ context, page }) => {
     }
     if (pathname === '/inventory-sources.json') {
       const sources = canonicalSources();
-      sources.packages.rows.push({
-        package: 'repo-assist',
-        'package-name': 'Repo Assist',
-        'package-description': 'Review-first repository assistance.',
-        'package-icon': 'gear',
-        'package-mode': 'review',
-        'package-enabled': true,
-        'package-worker-count': 4,
-        'package-min-version': 'v0.89.15',
-        'package-experimental': true,
+      sources.campaigns.rows.push({
+        campaign: 'repo-assist',
+        'campaign-name': 'Repo Assist',
+        'campaign-description': 'Review-first repository assistance.',
+        'campaign-icon': 'gear',
+        'campaign-mode': 'review',
+        'campaign-enabled': true,
+        'campaign-worker-count': 4,
+        'campaign-min-version': 'v0.89.15',
+        'campaign-experimental': true,
         'observed-at': '2026-09-09T05:00:00Z'
       });
       await route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify({
-          packages: sources.packages,
+          campaigns: sources.campaigns,
           repositories: sources.repositories,
           workflows: sources.workflows
         })
@@ -920,7 +920,7 @@ test('gh-aw logs audit populates the firewall domain query from canonical events
   });
 });
 
-test('data worker computes repository and package pages with request-scoped dashboard queries', async ({ page }) => {
+test('data worker computes repository and campaign pages with request-scoped dashboard queries', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -950,7 +950,7 @@ test('data worker computes repository and package pages with request-scoped dash
         }
       }
     );
-    const navigated = await loadCanonicalDashboardPage(['package-inventory'], context);
+    const navigated = await loadCanonicalDashboardPage(['campaign-inventory'], context);
     return { initial, horizon, navigated };
   });
 
@@ -976,11 +976,11 @@ test('data worker computes repository and package pages with request-scoped dash
       status: 'No recent activity'
     }]
   });
-  expect(Object.keys(result.navigated)).toEqual(['package-inventory']);
-  expect(result.navigated['package-inventory']).toMatchObject({
+  expect(Object.keys(result.navigated)).toEqual(['campaign-inventory']);
+  expect(result.navigated['campaign-inventory']).toMatchObject({
     rows: [{
-      package: 'dashboard',
-      'package-name': 'CAO Dashboard',
+      campaign: 'dashboard',
+      'campaign-name': 'CAO Dashboard',
       workflows: 1,
       roles: 'worker',
       modes: 'review',
@@ -989,17 +989,17 @@ test('data worker computes repository and package pages with request-scoped dash
       dispatches: 0,
       aic: 17
     }],
-    metadata: { 'source-kind': 'derived', 'query-name': 'package-inventory' }
+    metadata: { 'source-kind': 'derived', 'query-name': 'campaign-inventory' }
   });
 });
 
-test('deployed JSONL ingestion includes the published package inventory', async ({ page }) => {
+test('deployed JSONL ingestion includes the published campaign inventory', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
     const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
     return loadCanonicalDashboardSources(
       `${location.origin}/payload-hashes.json`,
-      ['packages', 'workflows', 'package-inventory'],
+      ['campaigns', 'workflows', 'campaign-inventory'],
       {
         githubUrlBase: 'https://github.com',
         pages: dashboard.dashboard.pages,
@@ -1008,20 +1008,20 @@ test('deployed JSONL ingestion includes the published package inventory', async 
     );
   });
 
-  expect(result.packages.rows).toHaveLength(2);
+  expect(result.campaigns.rows).toHaveLength(2);
   expect(result.workflows.rows).toHaveLength(1);
-  expect(result['package-inventory']).toMatchObject({
+  expect(result['campaign-inventory']).toMatchObject({
     rows: [
       {
-        package: 'dashboard',
-        'package-name': 'CAO Dashboard',
+        campaign: 'dashboard',
+        'campaign-name': 'CAO Dashboard',
         workflows: 1,
         runs: 1,
         dispatches: 0
       },
       {
-        package: 'repo-assist',
-        'package-name': 'Repo Assist',
+        campaign: 'repo-assist',
+        'campaign-name': 'Repo Assist',
         workflows: 0,
         runs: 0,
         dispatches: 0

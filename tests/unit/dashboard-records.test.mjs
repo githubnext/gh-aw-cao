@@ -8,7 +8,7 @@ const inventory = {
   bundles: [{
     id: "maintenance",
     name: "Maintenance",
-    controlPackage: "maintenance",
+    controlCampaign: "maintenance",
     workers: [{ id: "maintenance-worker", name: "Worker" }],
   }],
   standalone: [],
@@ -50,7 +50,7 @@ test("dashboard records retain durable-output target and run attribution", async
     token: "test-token",
     controlSettings: {
       allowed_repositories: ["acme/service"],
-      packages: { maintenance: { mode: "review" } },
+      campaigns: { maintenance: { mode: "review" } },
     },
     inventory,
     deployedInventory: {
@@ -125,7 +125,7 @@ test("dashboard records attribute issues from the gh-aw workflow XML marker", as
     token: "test-token",
     controlSettings: {
       allowed_repositories: ["acme/control"],
-      packages: { maintenance: { mode: "review" } },
+      campaigns: { maintenance: { mode: "review" } },
     },
     inventory: {
       ...inventory,
@@ -203,7 +203,7 @@ test("dashboard records retain report model and agent metadata when available", 
     token: "test-token",
     controlSettings: {
       allowed_repositories: ["acme/service"],
-      packages: { maintenance: { mode: "review" } },
+      campaigns: { maintenance: { mode: "review" } },
     },
     inventory,
     deployedInventory: {

@@ -3,43 +3,43 @@ import { octicon } from '../octicons.js';
 import { externalAnchorAttrs, findLink } from './link-content.js';
 import { renderDisclosureSummaryLabel, renderDlRow } from './ui-primitives.js';
 
-/** @param {{ packageId: string, packageName: string, workflows: Array<Record<string, unknown>> }} args */
-export function renderPackageReadme({ packageId, packageName, workflows }) {
+/** @param {{ campaignId: string, campaignName: string, workflows: Array<Record<string, unknown>> }} args */
+export function renderCampaignReadme({ campaignId, campaignName, workflows }) {
   const primary = workflows.find((workflow) => workflow['workflow-role'] === 'orchestrator') ?? workflows[0] ?? {};
-  const description = value(primary['package-description']) || `Operational workflows in the ${packageName} package.`;
-  const markdown = value(primary['package-readme']);
+  const description = value(primary['campaign-description']) || `Operational workflows in the ${campaignName} campaign.`;
+  const markdown = value(primary['campaign-readme']);
   const repositoryUrl = ownerUrl(primary);
-  const readmeUrl = repositoryFileUrl(primary, value(primary['package-readme-path']));
+  const readmeUrl = repositoryFileUrl(primary, value(primary['campaign-readme-path']));
   const mode = value(primary['rollout-mode']);
   return h(
     'section',
-    { className: 'package-marketplace-detail', 'data-package': packageId },
-    h('header', { className: 'package-marketplace-header' },
-      h('div', { className: 'package-marketplace-identity' },
-        h('span', { className: 'package-marketplace-icon', 'aria-hidden': 'true' }, octicon(value(primary['package-icon']) || 'package')),
+    { className: 'campaign-marketplace-detail', 'data-campaign': campaignId },
+    h('header', { className: 'campaign-marketplace-header' },
+      h('div', { className: 'campaign-marketplace-identity' },
+        h('span', { className: 'campaign-marketplace-icon', 'aria-hidden': 'true' }, octicon(value(primary['campaign-icon']) || 'goal')),
         h('div', null,
-          h('div', { className: 'package-marketplace-title' }, h('h2', null, packageName), h('span', null, 'Package')),
+          h('div', { className: 'campaign-marketplace-title' }, h('h2', null, campaignName), h('span', null, 'Campaign')),
           h('p', null, description))),
-      h('div', { className: 'package-marketplace-actions' },
+      h('div', { className: 'campaign-marketplace-actions' },
         readmeUrl ? resourceLink(readmeUrl, 'Read README', 'book') : null,
         repositoryUrl ? resourceLink(repositoryUrl, 'View source', 'mark-github') : null)),
-    h('div', { className: 'package-readme-layout' },
-      h('article', { className: 'package-readme markdown-body', 'aria-label': `${packageName} README` },
+    h('div', { className: 'campaign-readme-layout' },
+      h('article', { className: 'campaign-readme markdown-body', 'aria-label': `${campaignName} README` },
         ...(markdown ? renderMarkdownBlocks(markdown, primary) : [
-          h('h2', null, packageName),
+          h('h2', null, campaignName),
           h('p', null, description),
-          h('p', { className: 'value-details-unavailable' }, 'Package README content is unavailable in this inventory.')
+          h('p', { className: 'value-details-unavailable' }, 'Campaign README content is unavailable in this inventory.')
         ])),
-      h('aside', { className: 'package-readme-about', 'aria-label': `${packageName} package information` },
+      h('aside', { className: 'campaign-readme-about', 'aria-label': `${campaignName} campaign information` },
         h('section', null,
           h('h2', null, 'About'),
           h('p', null, description),
           h('dl', null,
             renderDlRow('Workflows', String(workflows.length)),
             renderDlRow('Owner', owner(primary)),
-            mode ? renderDlRow('Rollout', h('span', { className: `package-rollout package-rollout-${mode}` }, mode)) : null)),
-        h('details', { className: 'package-readme-resources' },
-          h('summary', null, ...renderDisclosureSummaryLabel('Resources', 'package-readme-resources-hint')),
+            mode ? renderDlRow('Rollout', h('span', { className: `campaign-rollout campaign-rollout-${mode}` }, mode)) : null)),
+        h('details', { className: 'campaign-readme-resources' },
+          h('summary', null, ...renderDisclosureSummaryLabel('Resources', 'campaign-readme-resources-hint')),
           h('ul', null,
             readmeUrl ? h('li', null, resourceLink(readmeUrl, 'README', 'book')) : null,
             repositoryUrl ? h('li', null, resourceLink(repositoryUrl, 'Source repository', 'repo')) : null))))
@@ -153,7 +153,7 @@ function readmeHref(href, source) {
   if (/^https:\/\//i.test(href)) return href;
   if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('#')) return '';
   const repositoryUrl = ownerUrl(source);
-  const readmePath = value(source['package-readme-path']);
+  const readmePath = value(source['campaign-readme-path']);
   if (!repositoryUrl || !readmePath) return '';
   const directory = readmePath.includes('/') ? readmePath.slice(0, readmePath.lastIndexOf('/') + 1) : '';
   try {

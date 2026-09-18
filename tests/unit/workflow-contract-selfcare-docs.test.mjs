@@ -55,7 +55,7 @@ test("SelfCare data acquisition audit refreshes its specification", () => {
   const compiled = workflow("self-care-data-acquisition-audit.lock.yml");
 
   assert.match(source, /on:\n\s+bots: \["github-actions\[bot\]", "cao-githubnext-gh-aw-cao-write\[bot\]"\]/);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: data-acquisition-audit/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: data-acquisition-audit/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /draft: true/);
   assert.match(
@@ -88,7 +88,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
 
   assert.match(source, /^name: "SelfCare \/ Accessibility"$/m);
   assert.match(source, /workflow_dispatch:/);
-  assert.match(source, /package: self-care/);
+  assert.match(source, /campaign: self-care/);
   assert.match(source, /worker: accessibility-checker/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /engine:\n\s+id: pi\n\s+model: copilot\/gpt-5\.4/);
@@ -138,7 +138,7 @@ test("SelfCare docs build-time investigator rotates evidenced recommendations", 
 
   assert.match(source, /^name: "SelfCare \/ Docs Build Time"$/m);
   assert.match(source, /on:\n\s+bots: \["github-actions\[bot\]", "cao-githubnext-gh-aw-cao-write\[bot\]"\]/);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: docs-build-time-investigator/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: docs-build-time-investigator/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /at most the latest 20 completed `docs\.yml` runs from the last 14 days/);
   assert.match(source, /median and p90 durations/);
@@ -155,7 +155,7 @@ test("SelfCare glossary worker maintains Astro documentation from daily change e
   const source = workflow("self-care-glossary.md");
 
   assert.match(source, /^name: "SelfCare \/ Glossary"$/m);
-  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: glossary/);
+  assert.match(source, /campaign: self-care\n\s+role: worker\n\s+worker: glossary/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /most recent completed successful run of `self-care-glossary`/);
   assert.match(source, /preceding 24 hours/);

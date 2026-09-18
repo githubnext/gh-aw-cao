@@ -1,6 +1,6 @@
 ---
 import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
-import PackageReadmeContent from "../../components/PackageReadmeContent.astro";
+import CampaignReadmeContent from "../../components/CampaignReadmeContent.astro";
 import { catalogEntries } from "../../lib/catalog";
 
 export function getStaticPaths() {
@@ -8,11 +8,11 @@ export function getStaticPaths() {
 }
 
 const entry = catalogEntries.find(({ slug }) => slug === Astro.params.slug);
-if (!entry) throw new Error(`Unknown package: ${Astro.params.slug}`);
+if (!entry) throw new Error(`Unknown campaign: ${Astro.params.slug}`);
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const repositoryBase = "https://github.com/githubnext/gh-aw-cao";
-const packageUrl = `${repositoryBase}/tree/main/${entry.slug}`;
+const campaignUrl = `${repositoryBase}/tree/main/${entry.slug}`;
 const manifestUrl = `${repositoryBase}/blob/main/${entry.slug}/${entry.manifestFile}`;
 const editUrl = entry.readmePath
   ? `${repositoryBase}/edit/main/${entry.readmePath}`
@@ -28,10 +28,10 @@ const ReadmeContent = entry.ReadmeContent;
     editUrl,
   }}
 >
-  <section class="package-overview" aria-label="What it does">
+  <section class="campaign-overview" aria-label="What it does">
     <p>{entry.description}</p>
-    <p class="package-meta">
-      {entry.experimental ? "Experimental package" : "Package"}
+    <p class="campaign-meta">
+      {entry.experimental ? "Experimental campaign" : "Campaign"}
       <span aria-hidden="true">·</span>
       {entry.includes.length} {entry.includes.length === 1 ? "workflow" : "workflows"}
       <span aria-hidden="true">·</span>
@@ -41,28 +41,28 @@ const ReadmeContent = entry.ReadmeContent;
 
   {
     ReadmeContent ? (
-      <section class="package-guide" aria-labelledby="package-guide">
-        <h2 id="package-guide">Package guide</h2>
-        <div class="package-readme">
-          <PackageReadmeContent>
+      <section class="campaign-guide" aria-labelledby="campaign-guide">
+        <h2 id="campaign-guide">Campaign guide</h2>
+        <div class="campaign-readme">
+          <CampaignReadmeContent>
             <ReadmeContent />
-          </PackageReadmeContent>
+          </CampaignReadmeContent>
         </div>
       </section>
     ) : (
-      <section class="package-guide" aria-labelledby="package-guide">
-        <h2 id="package-guide">Package guide</h2>
+      <section class="campaign-guide" aria-labelledby="campaign-guide">
+        <h2 id="campaign-guide">Campaign guide</h2>
         <p>
-          This package does not yet include a README. Use its manifest and workflow sources as the authoritative package
-          inventory until a package guide is added.
+          This campaign does not yet include a README. Use its manifest and workflow sources as the authoritative campaign
+          inventory until a campaign guide is added.
         </p>
-        <a href={packageUrl}>Browse this package on GitHub</a>
+        <a href={campaignUrl}>Browse this campaign on GitHub</a>
       </section>
     )
   }
 
-  <section class="install-package" aria-labelledby="install-package">
-    <h2 id="install-package">Add this package</h2>
+  <section class="install-campaign" aria-labelledby="install-campaign">
+    <h2 id="install-campaign">Add this campaign</h2>
     <p>
       From a private control repository, install a published release tag:
     </p>
@@ -71,12 +71,12 @@ const ReadmeContent = entry.ReadmeContent;
       Replace <code>&lt;catalog-release&gt;</code> with the latest published tag shown in
       <a href={`${repositoryBase}/releases/latest`}> GitHub Releases</a>.
       Follow the <a href={`${basePath}/getting-started/`}>Quickstart</a> for prerequisites and first-run validation, or
-      <a href={packageUrl}> view the package source on GitHub</a>.
+      <a href={campaignUrl}> view the campaign source on GitHub</a>.
     </p>
   </section>
 
-  <section class="package-inventory" aria-labelledby="package-inventory">
-    <h2 id="package-inventory">Package inventory</h2>
+  <section class="campaign-inventory" aria-labelledby="campaign-inventory">
+    <h2 id="campaign-inventory">Campaign inventory</h2>
     <ul>
       {entry.includes.map((includedPath) => <li><code>{includedPath}</code></li>)}
     </ul>
@@ -85,28 +85,28 @@ const ReadmeContent = entry.ReadmeContent;
 </StarlightPage>
 
 <style>
-  .package-meta {
+  .campaign-meta {
     color: var(--sl-color-gray-3);
     font-size: 0.875rem;
   }
 
-  .package-meta span {
+  .campaign-meta span {
     margin-inline: 0.35rem;
   }
 
-  .package-guide,
-  .install-package,
-  .package-inventory {
+  .campaign-guide,
+  .install-campaign,
+  .campaign-inventory {
     margin-block-start: 2.5rem;
   }
 
-  .package-guide :global(pre),
-  .install-package pre {
+  .campaign-guide :global(pre),
+  .install-campaign pre {
     max-width: 100%;
     overflow-x: auto;
   }
 
-  .package-inventory ul {
+  .campaign-inventory ul {
     padding-inline-start: 1.25rem;
   }
 </style>

@@ -49,8 +49,8 @@ jobs:
       - name: Check patch formatting
         run: git diff --check
 
-  package-lifecycle-changes:
-    name: Select package lifecycle tests
+  campaign-lifecycle-changes:
+    name: Select campaign lifecycle tests
     runs-on: ubuntu-latest
     outputs:
       has-changes: ${{ steps.matrix.outputs.has-changes }}
@@ -66,16 +66,16 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Build package test matrix
+      - name: Build campaign test matrix
         id: matrix
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" || "$BASE_SHA" =~ ^0+$ ]]; then
-            matrix="$(node scripts/package-lifecycle-matrix.mjs --all)"
+            matrix="$(node scripts/campaign-lifecycle-matrix.mjs --all)"
           else
-            matrix="$(node scripts/package-lifecycle-matrix.mjs "$BASE_SHA" "$HEAD_SHA")"
+            matrix="$(node scripts/campaign-lifecycle-matrix.mjs "$BASE_SHA" "$HEAD_SHA")"
           fi
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           if [[ "$matrix" == '{"include":[]}' ]]; then
@@ -84,14 +84,14 @@ jobs:
             echo "has-changes=true" >> "$GITHUB_OUTPUT"
           fi
 
-  package-lifecycle:
-    needs: package-lifecycle-changes
-    if: needs.package-lifecycle-changes.outputs.has-changes == 'true'
-    name: Package lifecycle (${{ matrix.name }})
+  campaign-lifecycle:
+    needs: campaign-lifecycle-changes
+    if: needs.campaign-lifecycle-changes.outputs.has-changes == 'true'
+    name: Campaign lifecycle (${{ matrix.name }})
     strategy:
       fail-fast: false
       max-parallel: 1
-      matrix: ${{ fromJSON(needs.package-lifecycle-changes.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.campaign-lifecycle-changes.outputs.matrix) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -101,8 +101,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
-      - name: Check package API capacity
-        id: package-api
+      - name: Check campaign API capacity
+        id: campaign-api
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -110,24 +110,24 @@ jobs:
           echo "remaining=$remaining" >> "$GITHUB_OUTPUT"
           if (( remaining < 500 )); then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Package lifecycle incomplete::The shared GitHub App installation has $remaining core API requests remaining; 500 are required for clean-room package tests."
-            echo "Package lifecycle tests were skipped because the shared GitHub App installation API quota is exhausted." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning title=Campaign lifecycle incomplete::The shared GitHub App installation has $remaining core API requests remaining; 500 are required for clean-room campaign tests."
+            echo "Campaign lifecycle tests were skipped because the shared GitHub App installation API quota is exhausted." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Install gh-aw
-        if: steps.package-api.outputs.ready == 'true'
+        if: steps.campaign-api.outputs.ready == 'true'
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
-      - name: Run package lifecycle integration
-        if: steps.package-api.outputs.ready == 'true'
+      - name: Run campaign lifecycle integration
+        if: steps.campaign-api.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: '--test-name-pattern="${{ matrix.test-pattern }}"'
         run: |
           # shellcheck disable=SC2155
-          export CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE="${GITHUB_REPOSITORY}@$(git rev-parse --short=12 "$GITHUB_SHA")"
+          export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="${GITHUB_REPOSITORY}@$(git rev-parse --short=12 "$GITHUB_SHA")"
           set +e
-          output="$(npm run test:package-lifecycle 2>&1)"
+          output="$(npm run test:campaign-lifecycle 2>&1)"
           status=$?
           set -e
           printf '%s\n' "$output"
@@ -135,8 +135,8 @@ jobs:
             exit 0
           fi
           if grep -Fq "API rate limit exceeded for installation" <<< "$output"; then
-            echo "::warning title=Package lifecycle incomplete::The shared GitHub App installation API quota was exhausted during clean-room package tests."
-            echo "Package lifecycle tests became inconclusive because the shared GitHub App installation API quota was exhausted during the run." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning title=Campaign lifecycle incomplete::The shared GitHub App installation API quota was exhausted during clean-room campaign tests."
+            echo "Campaign lifecycle tests became inconclusive because the shared GitHub App installation API quota was exhausted during the run." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           exit "$status"

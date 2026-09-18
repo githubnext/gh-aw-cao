@@ -56,5 +56,5 @@ canonical model.
 - Keep the model canonical and vendor-neutral. Do not make `AGENTS.md` its
   specification or claim universal agent compatibility before adapters exist.
 - Do not build a full static architecture analyzer, universal understanding
-  system, new language, or package-management system for v0.1.
+  system, new language, or campaign-management system for v0.1.
 - Do not claim that special punctuation improves AI compliance without evidence.

@@ -4,9 +4,9 @@ import controlPolicy from "../../.github/workflows/cao.json";
 import rootManifestSource from "../../aw.yml?raw";
 import { selectConfiguredOperations } from "./configured-operations.mjs";
 
-type PackageReadme = MarkdownInstance<Record<string, unknown>>;
+type CampaignReadme = MarkdownInstance<Record<string, unknown>>;
 
-type PackageManifest = {
+type CampaignManifest = {
   name?: unknown;
   description?: unknown;
   "min-version"?: unknown;
@@ -26,7 +26,7 @@ export type CatalogEntry = {
   includes: string[];
   manifestFile: string;
   readmePath?: string;
-  ReadmeContent?: PackageReadme["Content"];
+  ReadmeContent?: CampaignReadme["Content"];
 };
 
 const manifests = import.meta.glob<string>("../../*/aw.{yml,yaml}", {
@@ -34,8 +34,8 @@ const manifests = import.meta.glob<string>("../../*/aw.{yml,yaml}", {
   import: "default",
   eager: true,
 });
-const readmes = import.meta.glob<PackageReadme>("../../*/README.md", { eager: true });
-const rootManifest = parse(rootManifestSource) as PackageManifest;
+const readmes = import.meta.glob<CampaignReadme>("../../*/README.md", { eager: true });
+const rootManifest = parse(rootManifestSource) as CampaignManifest;
 
 function requiredString(value: unknown, field: string, manifestPath: string): string {
   if (typeof value !== "string" || value.trim() === "") {
@@ -68,7 +68,7 @@ function workflowList(value: unknown, manifestPath: string): string[] {
   });
 }
 
-function builtinPackageSlugs(root: PackageManifest): Set<string> {
+function builtinCampaignSlugs(root: CampaignManifest): Set<string> {
   const includes = workflowList(root.includes, "../../aw.yml");
   return new Set(
     includes
@@ -77,16 +77,16 @@ function builtinPackageSlugs(root: PackageManifest): Set<string> {
   );
 }
 
-const builtinSlugs = builtinPackageSlugs(rootManifest);
+const builtinSlugs = builtinCampaignSlugs(rootManifest);
 
-const packageEntries: CatalogEntry[] = Object.entries(manifests)
+const campaignEntries: CatalogEntry[] = Object.entries(manifests)
   .map(([manifestPath, source]) => {
     const slug = manifestPath.split("/").at(-2);
-    if (!slug) throw new Error(`Could not derive a package slug from ${manifestPath}`);
+    if (!slug) throw new Error(`Could not derive a campaign slug from ${manifestPath}`);
     const manifestFile = manifestPath.split("/").at(-1);
     if (!manifestFile) throw new Error(`Could not derive a manifest filename from ${manifestPath}`);
 
-    const manifest = parse(source) as PackageManifest;
+    const manifest = parse(source) as CampaignManifest;
     const readmePath = `../../${slug}/README.md`;
     const readme = readmes[readmePath];
 
@@ -105,11 +105,11 @@ const packageEntries: CatalogEntry[] = Object.entries(manifests)
     };
   });
 
-export const catalogEntries = packageEntries
+export const catalogEntries = campaignEntries
   .filter((entry) => !entry.private)
   .sort((left, right) => {
     const advisoryRank = (entry: CatalogEntry) => /advisor(y|ies)?/i.test(entry.name) ? 1 : 0;
     return advisoryRank(left) - advisoryRank(right) || left.name.localeCompare(right.name);
   });
 
-export const configuredOperationEntries = selectConfiguredOperations(controlPolicy, packageEntries);
+export const configuredOperationEntries = selectConfiguredOperations(controlPolicy, campaignEntries);

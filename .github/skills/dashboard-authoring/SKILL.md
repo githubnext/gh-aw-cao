@@ -42,9 +42,9 @@ For live feature-development data, run `cao download`. It downloads the deployed
 
 Before treating a source as complete, run `cao audit-jsonl --input FILE`. Distinguish repeated source observations from duplicate canonical records, and distinguish run-summary coverage from enriched artifact coverage. Use a separate SQLite database plus `--retention-days all` and `doctor --ttl-days all` for historical backfills; do not turn browser IndexedDB into an archive.
 
-## Package file convention
+## Campaign file convention
 
-- Store an operation package's production Dashboard Language document at `<package>/dashboard.json`.
-- Declare it in `<package>/aw.yml` as a resource whose destination is `.github/aw/dashboards/<package>.json`, where `<package>` is the package's canonical identifier.
-- Keep each package dashboard independently valid. The dashboard package bundles installed `.github/aw/dashboards/*.json` documents into the single deployed `dashboard.json` that the browser loads.
-- Do not add package pages directly to `dashboard/site/dashboard.json`; that file contains the built-in dashboard configuration.
+- Store an operation campaign's production Dashboard Language document at `<campaign>/dashboard.json`.
+- Declare it in `<campaign>/aw.yml` as a resource whose destination is `.github/aw/dashboards/<campaign>.json`, where `<campaign>` is the campaign's canonical identifier.
+- Keep each campaign dashboard independently valid. The dashboard campaign bundles installed `.github/aw/dashboards/*.json` documents into the single deployed `dashboard.json` that the browser loads.
+- Do not add campaign pages directly to `dashboard/site/dashboard.json`; that file contains the built-in dashboard configuration.

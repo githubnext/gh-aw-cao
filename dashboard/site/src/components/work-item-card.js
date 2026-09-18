@@ -16,7 +16,7 @@ import { nameInitials, renderDlRow, renderIconSpan } from './ui-primitives.js';
  *   stoppedLabel: string,
  *   durationLabel: string,
  *   state: string,
- *   packageName: string,
+ *   campaignName: string,
  *   workType: string
  * }} item
  * @returns {HTMLElement}
@@ -38,7 +38,7 @@ export function renderWorkItemCard(item) {
     ),
     h('p', null, item.repository),
     h('div', { className: 'work-card-labels', 'aria-label': 'Work labels' },
-      ...(item.packageName ? [h('span', { className: 'work-card-label work-card-label-package' }, item.packageName)] : []),
+      ...(item.campaignName ? [h('span', { className: 'work-card-label work-card-label-campaign' }, item.campaignName)] : []),
       ...(item.workType && item.workType !== 'unknown'
         ? [h('span', { className: 'work-card-label work-card-label-role' }, item.workType)]
         : [])

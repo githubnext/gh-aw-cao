@@ -18,7 +18,7 @@ Run -> Repository and Workflow
 Event -> Run
 ```
 
-The mapping SHALL NOT emit Package or Transaction observations. Transactions
+The mapping SHALL NOT emit Campaign or Transaction observations. Transactions
 remain the database-operation audit ledger maintained by the ingestion
 coordinator. Enriched `job_details` MAY feed published job-performance
 projections but SHALL NOT emit canonical Job observations.
@@ -38,7 +38,7 @@ be interpreted as a separate observation source in addition to those shards.
 
 Runtime ownership SHALL always come from the execution repository represented
 by `request.repository` or the enriched Run's `organization` and `repository`.
-Target repositories carried in dispatch titles, package policy, safe-output
+Target repositories carried in dispatch titles, campaign policy, safe-output
 records, or other payload fields MUST NOT participate in the Repository,
 Workflow, or Run ownership joins below.
 

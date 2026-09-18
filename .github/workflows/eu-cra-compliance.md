@@ -59,7 +59,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: eu-cra-compliance
+      campaign: eu-cra-compliance
       role: orchestrator
       dispatch_max: 48
       orchestrator_credits: 200
@@ -108,7 +108,7 @@ safe-outputs:
 
 # EU CRA
 
-Advisory package orchestrator for evidence-led review against Regulation (EU) 2024/2847 across organization repositories. Its output is non-binding and is not legal advice, certification, or a compliance determination. Select and rank repositories only. The orchestrator must not analyze a target repository for CRA compliance, make legal determinations, or create target findings; workers own those responsibilities.
+Advisory campaign orchestrator for evidence-led review against Regulation (EU) 2024/2847 across organization repositories. Its output is non-binding and is not legal advice, certification, or a compliance determination. Select and rank repositories only. The orchestrator must not analyze a target repository for CRA compliance, make legal determinations, or create target findings; workers own those responsibilities.
 
 ## Discovery
 
@@ -116,13 +116,13 @@ Read `/tmp/gh-aw/agent/control-precompute.json` first and use its candidates and
 
 Rank repositories by evidence that they plausibly represent products with digital elements or components shipped in such products:
 
-1. Releases, packages, containers, distributed binaries, downloadable software, firmware, CLIs, desktop/mobile applications, server or network/security products, SDKs, or libraries used in downstream products.
-2. Package manifests, container files, release workflows, product documentation, EU-market terminology, and support or update-policy documentation.
+1. Releases, artifacts, containers, distributed binaries, downloadable software, firmware, CLIs, desktop/mobile applications, server or network/security products, SDKs, or libraries used in downstream products.
+2. Artifact manifests, container files, release workflows, product documentation, EU-market terminology, and support or update-policy documentation.
 3. `SECURITY.md`, vulnerability alerts or advisories, code scanning, Dependabot, SBOM configuration, and signed release or provenance configuration.
 
 Exclude archived or disabled repositories, repositories inaccessible to the credential, obvious documentation-only repositories with no distributed digital product or component, and generated mirrors where meaningful product ownership cannot be established. Discovery decides only whether assessment is useful. Never declare a repository out of CRA scope.
 
-Use bounded two-stage discovery. First rank the complete precomputed batch using only its trusted metadata. Then inspect repository contents and GitHub metadata only for the strongest candidates needed to fill `effective_max_repos`, plus at most two alternates per available slot. Prefer cheap repository-tree, release, package, workflow, security-policy, and existing CRA-report checks before deeper issue, advisory, alert, or run queries. Do not claim a positive or negative signal that was not actually observed, do not exhaustively inspect every candidate, and stop discovery once the selected targets and defensible alternates are established.
+Use bounded two-stage discovery. First rank the complete precomputed batch using only its trusted metadata. Then inspect repository contents and GitHub metadata only for the strongest candidates needed to fill `effective_max_repos`, plus at most two alternates per available slot. Prefer cheap repository-tree, release, artifact, workflow, security-policy, and existing CRA-report checks before deeper issue, advisory, alert, or run queries. Do not claim a positive or negative signal that was not actually observed, do not exhaustively inspect every candidate, and stop discovery once the selected targets and defensible alternates are established.
 
 ## Workers
 
@@ -141,6 +141,6 @@ Resolve enabled workers from precompute before calculating fan-out. Before dispa
 
 ## Completion
 
-Finish with the standard `## Orchestrator Report` inherited from `shared/control.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields. Add package-specific dispatch rationale only without renaming, replacing, or omitting standard fields.
+Finish with the standard `## Orchestrator Report` inherited from `shared/control.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields. Add campaign-specific dispatch rationale only without renaming, replacing, or omitting standard fields.
 
 {{#runtime-import? .github/cao/eu-cra-compliance.md}}

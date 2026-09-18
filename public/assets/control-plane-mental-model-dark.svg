@@ -14,7 +14,7 @@
   <g data-node="catalog-release">
     <rect x="40" y="196" width="210" height="128" rx="12" fill="#0a241b" stroke="#909692" stroke-width="2"/>
     <text x="145" y="242" text-anchor="middle" font-family="Mona Sans, system-ui, sans-serif" font-size="18" font-weight="700" fill="#f2f5f3">Catalog release</text>
-    <text x="145" y="273" text-anchor="middle" font-family="Mona Sans Mono, ui-monospace, monospace" font-size="16" fill="#b6bfb8">pinned package</text>
+    <text x="145" y="273" text-anchor="middle" font-family="Mona Sans Mono, ui-monospace, monospace" font-size="16" fill="#b6bfb8">pinned campaign</text>
     <text x="145" y="299" text-anchor="middle" font-family="Mona Sans, system-ui, sans-serif" font-size="16" fill="#b6bfb8">versioned source</text>
   </g>
 
