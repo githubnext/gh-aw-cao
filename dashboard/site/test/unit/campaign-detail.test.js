@@ -185,6 +185,13 @@ describe('campaign detail route', () => {
       '#page-campaign-runs?campaign=ambient-context',
       '#page-campaign-issues?campaign=ambient-context'
     ]);
+    expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('data-nav-page-id'))).toEqual([
+      'campaign-detail',
+      'campaign-insights',
+      'campaign-workflows',
+      'campaign-runs',
+      'campaign-issues'
+    ]);
     expect(rendered.querySelector('.campaign-readme h1')?.textContent).toBe('Ambient Context');
     expect(rendered.querySelector('.campaign-readme h2')?.textContent).toBe('Capabilities');
     expect(rendered.querySelectorAll('.campaign-readme li')).toHaveLength(2);
