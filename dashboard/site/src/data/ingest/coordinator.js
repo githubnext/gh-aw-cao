@@ -215,6 +215,12 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
       options.signal?.throwIfAborted();
       const reduced = capCanonicalBatchSize(batch, Math.floor(estimateCanonicalBatchBytes(batch) * 0.5));
       if (reduced.runs.length === batch.runs.length) throw error;
+      debug('retrying canonical write after quota pressure', {
+        attempt: attempt + 1,
+        retainedRecords: Object.values(previousBatch).reduce((total, records) => total + records.length, 0),
+        previousRuns: batch.runs.length,
+        targetRuns: reduced.runs.length
+      });
       batch = reduced;
     }
   }
@@ -227,6 +233,13 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
       const target = Math.floor(estimateCanonicalBatchBytes(batch) * (maxDatabaseBytes / databaseUsage) * 0.9);
       const reduced = capCanonicalBatchSize(batch, target);
       if (reduced.runs.length === batch.runs.length) break;
+      debug('shrinking canonical batch after storage usage check', {
+        attempt: attempt + 1,
+        databaseUsage,
+        maxDatabaseBytes,
+        previousRuns: batch.runs.length,
+        targetRuns: reduced.runs.length
+      });
       batch = reduced;
       await write();
     }

@@ -1,6 +1,9 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const debug = vi.hoisted(() => vi.fn());
+vi.mock('../../src/debug.js', () => ({ createDebug: () => debug }));
+
 const actualStorage = /** @type {typeof import('../../src/data/storage/indexeddb.js')} */ (
   await vi.importActual('../../src/data/storage/indexeddb.js')
 );
@@ -59,6 +62,7 @@ function quotaExceededError() {
 }
 
 beforeEach(async () => {
+  debug.mockClear();
   replaceCanonicalBatch.mockClear();
   replaceCanonicalBatch.mockImplementation(
     /** @type {(...parameters: unknown[]) => Promise<void>} */ (actualStorage.replaceCanonicalBatch)
@@ -125,6 +129,10 @@ describe('canonical ingestion termination', () => {
     await expect(ingestDashboardSources(indexedDB, sourcesWithRuns(64)))
       .resolves.toMatchObject({ updated: true });
     expect(attempt).toBe(2);
+    expect(debug).toHaveBeenCalledWith(
+      'retrying canonical write after quota pressure',
+      expect.objectContaining({ attempt: 1, retainedRecords: 3 })
+    );
   });
 
   it('stops rewriting when reported database usage never drops below the cap', async () => {
@@ -142,5 +150,13 @@ describe('canonical ingestion termination', () => {
       maxDatabaseBytes: 1_000_000
     })).resolves.toMatchObject({ updated: true });
     expect(replaceCanonicalBatch.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(debug).toHaveBeenCalledWith(
+      'shrinking canonical batch after storage usage check',
+      expect.objectContaining({
+        attempt: 1,
+        databaseUsage: 4_000_000_000,
+        maxDatabaseBytes: 1_000_000
+      })
+    );
   });
 });

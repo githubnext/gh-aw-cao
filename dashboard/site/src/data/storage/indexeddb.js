@@ -119,13 +119,21 @@ function readwriteTransaction(database, storeNames) {
     return database.transaction(storeNames, 'readwrite', { durability: 'relaxed' });
   } catch (error) {
     if (!(error instanceof TypeError)) throw error;
+    debug('relaxed transaction durability unsupported; using default durability', {
+      storeCount: Array.isArray(storeNames) ? storeNames.length : 1
+    });
     return database.transaction(storeNames, 'readwrite');
   }
 }
 
 /** @param {IDBTransaction} transaction */
 function commitTransaction(transaction) {
-  if (typeof transaction.commit === 'function') transaction.commit();
+  if (typeof transaction.commit === 'function') {
+    debug('explicitly committing queued IndexedDB requests');
+    transaction.commit();
+  } else {
+    debug('explicit IndexedDB commit unsupported; using automatic commit');
+  }
 }
 
 /**
@@ -231,6 +239,7 @@ export function openCanonicalDatabase(indexedDB) {
     request.onsuccess = () => {
       const database = request.result;
       if (blocked) {
+        debug('closing database opened after blocked request settled', name);
         database.close();
         return;
       }
@@ -316,6 +325,7 @@ export async function readCanonicalBatch(indexedDB) {
  */
 export async function readCollections(indexedDB, storeNames) {
   if (storeNames.length === 0) return {};
+  const startedAt = monotonicNow();
   const database = await openCanonicalDatabase(indexedDB);
   try {
     const transaction = database.transaction([...storeNames]);
@@ -324,6 +334,11 @@ export async function readCollections(indexedDB, storeNames) {
       requestResult(transaction.objectStore(storeName).getAll())
     ));
     await done;
+    debug('completed multi-store collection read', {
+      storeCount: storeNames.length,
+      requestCount: storeNames.length,
+      durationMs: monotonicNow() - startedAt
+    });
     return Object.fromEntries(storeNames.map((storeName, index) => [storeName, records[index]]));
   } finally {
     database.close();
@@ -530,6 +545,11 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
       const removalDone = transactionDone(removal);
       const removalStore = removal.objectStore(storeName);
       const knownDeleted = recordsToDelete?.[storeName];
+      const reconciliationStrategy = knownDeleted
+        ? 'retained-snapshot'
+        : typeof removalStore.openKeyCursor === 'function'
+          ? 'key-cursor'
+          : 'all-keys-fallback';
       try {
         if (knownDeleted) {
           for (const id of knownDeleted) removalStore.delete(/** @type {IDBValidKey} */ (id));
@@ -583,7 +603,8 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
         store: storeName,
         retainedRecords: retained.size,
         deletedRecords: knownDeleted?.length ?? deletedRecords,
-        scannedKeys: knownDeleted ? 0 : scannedKeys
+        scannedKeys: knownDeleted ? 0 : scannedKeys,
+        reconciliationStrategy
       });
       const changedRecords = recordsToWrite[storeName];
       for (let offset = 0; offset < changedRecords.length; offset += batchSize) {

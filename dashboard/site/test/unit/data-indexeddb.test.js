@@ -76,6 +76,8 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.resetModules();
 });
 
 describe('canonical IndexedDB', () => {
@@ -211,6 +213,45 @@ describe('canonical IndexedDB', () => {
 
     expect(argumentCounts.slice(-2)).toEqual([3, 2]);
     expect(await readCollection(indexedDB, 'repositories')).toHaveLength(1);
+  });
+
+  it('logs transaction compatibility and reconciliation access paths', async () => {
+    const debug = vi.fn();
+    vi.resetModules();
+    vi.doMock('../../src/debug.js', () => ({ createDebug: () => debug }));
+    const originalTransaction = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = /** @type {typeof IDBDatabase.prototype.transaction} */ (
+      function transactionWithoutOptions(...args) {
+        if (args.length === 3) throw new TypeError('transaction options are unsupported');
+        return originalTransaction.apply(this, args);
+      }
+    );
+    const storage = await import('../../src/data/storage/indexeddb.js');
+    const canonicalBatch = batch();
+
+    try {
+      await storage.replaceCanonicalBatch(indexedDB, canonicalBatch, {
+        previousBatch: normalize([])
+      });
+      await storage.readCollections(indexedDB, ['repositories', 'packages']);
+    } finally {
+      IDBDatabase.prototype.transaction = originalTransaction;
+      vi.doUnmock('../../src/debug.js');
+    }
+
+    expect(debug).toHaveBeenCalledWith(
+      'relaxed transaction durability unsupported; using default durability',
+      { storeCount: 1 }
+    );
+    expect(debug).toHaveBeenCalledWith('explicitly committing queued IndexedDB requests');
+    expect(debug).toHaveBeenCalledWith(
+      'completed canonical store eviction',
+      expect.objectContaining({ reconciliationStrategy: 'retained-snapshot' })
+    );
+    expect(debug).toHaveBeenCalledWith(
+      'completed multi-store collection read',
+      expect.objectContaining({ storeCount: 2, requestCount: 2 })
+    );
   });
 
   it('compiles indexed predicates while preserving JavaScript query semantics', async () => {
