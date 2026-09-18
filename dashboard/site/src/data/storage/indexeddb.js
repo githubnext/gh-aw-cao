@@ -471,7 +471,7 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
  *
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, previousBatch?: import('../model/schema.js').CanonicalBatch, signal?: AbortSignal }} [options]
+ * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onMetrics?: (metrics: { durationMs: number, requestCount: number, storedRecords: number, deletedRecords: number, scannedKeys: number, committedBatches: number, abortedTransactions: number }) => void, previousBatch?: import('../model/schema.js').CanonicalBatch, signal?: AbortSignal }} [options]
  */
 export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   options.signal?.throwIfAborted();
@@ -490,10 +490,11 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
         && (!retained || JSON.stringify(retained) !== JSON.stringify(record));
     })];
   }));
-  const recordsToDelete = options.previousBatch
+  const previousBatch = options.previousBatch;
+  const recordsToDelete = previousBatch
     ? Object.fromEntries(ENTITY_STORES.map((storeName) => {
         const retained = new Set(batch[storeName].map((record) => String(record.id)));
-        return [storeName, options.previousBatch[storeName]
+        return [storeName, previousBatch[storeName]
           .map((record) => record.id)
           .filter((id) => !retained.has(String(id)))];
       }))
@@ -509,6 +510,15 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
   let committedBatches = 0;
   let abortedTransactions = 0;
   const startedAt = monotonicNow();
+  const currentMetrics = () => ({
+    durationMs: monotonicNow() - startedAt,
+    requestCount,
+    storedRecords,
+    deletedRecords,
+    scannedKeys,
+    committedBatches,
+    abortedTransactions
+  });
   debug('starting canonical batch replacement', { totalRecords, batchSize });
   const database = await openCanonicalDatabase(indexedDB);
   try {
@@ -520,37 +530,53 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
       const removalDone = transactionDone(removal);
       const removalStore = removal.objectStore(storeName);
       const knownDeleted = recordsToDelete?.[storeName];
-      if (knownDeleted) {
-        for (const id of knownDeleted) removalStore.delete(id);
-        deletedRecords += knownDeleted.length;
-        requestCount += knownDeleted.length;
-        commitTransaction(removal);
-      } else {
-        await new Promise((resolve, reject) => {
-          requestCount += 1;
-          const cursorRequest = removalStore.openKeyCursor();
-          cursorRequest.onerror = () => reject(cursorRequest.error ?? new Error('IndexedDB key cursor failed'));
-          cursorRequest.onsuccess = () => {
-            const cursor = cursorRequest.result;
-            if (!cursor) {
-              resolve(undefined);
-              return;
-            }
-            scannedKeys += 1;
-            if (!retained.has(String(cursor.primaryKey))) {
-              cursor.delete();
-              deletedRecords += 1;
-              requestCount += 1;
-            }
-            cursor.continue();
-          };
-        });
-      }
       try {
+        if (knownDeleted) {
+          for (const id of knownDeleted) removalStore.delete(/** @type {IDBValidKey} */ (id));
+          deletedRecords += knownDeleted.length;
+          requestCount += knownDeleted.length;
+          commitTransaction(removal);
+        } else if (typeof removalStore.openKeyCursor !== 'function') {
+          requestCount += 1;
+          const existing = await requestResult(removalStore.getAllKeys());
+          scannedKeys += existing.length;
+          for (const id of existing) {
+            if (retained.has(String(id))) continue;
+            removalStore.delete(id);
+            deletedRecords += 1;
+            requestCount += 1;
+          }
+        } else {
+          await new Promise((resolve, reject) => {
+            requestCount += 1;
+            const cursorRequest = removalStore.openKeyCursor();
+            cursorRequest.onerror = () => reject(cursorRequest.error ?? new Error('IndexedDB key cursor failed'));
+            cursorRequest.onsuccess = () => {
+              const cursor = cursorRequest.result;
+              if (!cursor) {
+                resolve(undefined);
+                return;
+              }
+              scannedKeys += 1;
+              if (!retained.has(String(cursor.primaryKey))) {
+                removalStore.delete(cursor.primaryKey);
+                deletedRecords += 1;
+                requestCount += 1;
+              }
+              cursor.continue();
+            };
+          });
+        }
         await removalDone;
         committedBatches += 1;
       } catch (error) {
         abortedTransactions += 1;
+        try {
+          removal.abort();
+        } catch {
+          // The transaction already aborted or completed.
+        }
+        await removalDone.catch(() => undefined);
         throw error;
       }
       debug('completed canonical store eviction', {
@@ -565,14 +591,20 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
         const transaction = readwriteTransaction(database, storeName);
         const done = transactionDone(transaction);
         const store = transaction.objectStore(storeName);
-        for (const record of boundedRecords) store.put(record);
-        requestCount += boundedRecords.length;
-        commitTransaction(transaction);
         try {
+          for (const record of boundedRecords) store.put(record);
+          requestCount += boundedRecords.length;
+          commitTransaction(transaction);
           await done;
           committedBatches += 1;
         } catch (error) {
           abortedTransactions += 1;
+          try {
+            transaction.abort();
+          } catch {
+            // The transaction already aborted or completed.
+          }
+          await done.catch(() => undefined);
           throw error;
         }
         storedRecords += boundedRecords.length;
@@ -587,20 +619,17 @@ export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
     }
     // Empty batches still report a terminal progress update.
     if (totalRecords === 0) options.onProgress?.({ storedRecords, totalRecords });
+  } catch (error) {
+    const metrics = currentMetrics();
+    debug('canonical batch replacement failed', metrics);
+    options.onMetrics?.(metrics);
+    throw error;
   } finally {
     database.close();
   }
-  const metrics = {
-    durationMs: monotonicNow() - startedAt,
-    requestCount,
-    storedRecords,
-    deletedRecords,
-    scannedKeys,
-    committedBatches,
-    abortedTransactions
-  };
+  const metrics = currentMetrics();
   debug('completed canonical batch replacement', metrics);
-  return metrics;
+  options.onMetrics?.(metrics);
 }
 
 /**
@@ -614,9 +643,14 @@ export async function recordTransaction(indexedDB, transaction) {
     const done = transactionDone(write);
     const store = write.objectStore(TRANSACTION_STORE);
     store.put(transaction);
-    const count = await requestResult(store.count());
-    let remaining = Math.max(0, count - MAX_TRANSACTION_RECORDS);
-    if (remaining > 0) {
+    if (typeof store.count !== 'function' || typeof store.index('byCreatedAt').openCursor !== 'function') {
+      const records = await requestResult(store.index('byCreatedAt').getAll());
+      for (const expired of records.slice(0, Math.max(0, records.length - MAX_TRANSACTION_RECORDS))) {
+        store.delete(expired.id);
+      }
+    } else {
+      const count = await requestResult(store.count());
+      let remaining = Math.max(0, count - MAX_TRANSACTION_RECORDS);
       await new Promise((resolve, reject) => {
         const cursorRequest = store.index('byCreatedAt').openCursor();
         cursorRequest.onerror = () => reject(cursorRequest.error ?? new Error('IndexedDB transaction cursor failed'));

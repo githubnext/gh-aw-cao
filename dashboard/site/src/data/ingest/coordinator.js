@@ -182,19 +182,29 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings,
     preserveRepositoryRecords: options.preserveRepositoryRecords
   }), targetDatabaseBytes);
-  const write = () => replaceCanonicalBatch(indexedDB, batch, {
-    onProgress: options.onWriteProgress,
-    previousBatch: retained,
-    signal: options.signal
-  });
-  /** @type {Awaited<ReturnType<typeof replaceCanonicalBatch>> | null} */
-  let writeMetrics = null;
+  let writeMetrics = {
+    durationMs: 0,
+    requestCount: 0,
+    storedRecords: 0,
+    deletedRecords: 0,
+    scannedKeys: 0,
+    committedBatches: 0,
+    abortedTransactions: 0
+  };
+  const write = async () => {
+    await replaceCanonicalBatch(indexedDB, batch, {
+      onProgress: options.onWriteProgress,
+      onMetrics: (metrics) => { writeMetrics = metrics; },
+      previousBatch: retained,
+      signal: options.signal
+    });
+  };
   // Every write of a large batch costs minutes in a constrained browser, so
   // recovery halves the batch a bounded number of times and then reports the
   // quota failure instead of retrying until the tab looks stuck.
   for (let attempt = 0; ; attempt += 1) {
     try {
-      writeMetrics = await write();
+      await write();
       options.signal?.throwIfAborted();
       break;
     } catch (error) {
@@ -214,13 +224,13 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
       const reduced = capCanonicalBatchSize(batch, target);
       if (reduced.runs.length === batch.runs.length) break;
       batch = reduced;
-      writeMetrics = await write();
+      await write();
     }
   }
   return {
     updated: true,
-    committedBatches: writeMetrics?.committedBatches ?? 0,
-    committedRecords: writeMetrics?.storedRecords ?? 0,
+    committedBatches: writeMetrics.committedBatches,
+    committedRecords: writeMetrics.storedRecords,
     idb: writeMetrics
   };
 }

@@ -1639,15 +1639,14 @@ Indexes SHOULD initially reflect known query paths.
 ### repositories
 
 ```text
-githubId
-fullName
+none; shipped views enumerate the bounded repository inventory or address a
+record by primary key
 ```
 
 ### workflows
 
 ```text
 repositoryId
-[repositoryId, path]
 ```
 
 ### runs
@@ -1655,21 +1654,23 @@ repositoryId
 ```text
 repositoryId
 workflowId
-status
-[repositoryId, startedAt]
-[workflowId, startedAt]
+conclusion
 ```
 
 ### run-linked tables
 
 ```text
-domains: runId, domain
-tools: runId, toolType
-audits: runId, type
+domains: runId
+tools: runId
+audits: runId
 issues: runId
 ```
 
-Indexes SHOULD NOT be added speculatively.
+These indexes correspond to the shipped package lookup, repository/workflow
+navigation, failed-run, and run-detail access paths. Presentation-level
+Dashboard Language fields are projected after canonical reads and do not by
+themselves justify canonical secondary indexes. Indexes SHOULD NOT be added
+speculatively.
 
 Every secondary index increases storage and write amplification.
 
@@ -1794,6 +1795,16 @@ A million-record import MUST NOT use one giant IndexedDB transaction.
 
 Canonical records SHOULD be committed in bounded batches.
 
+Because browser IndexedDB is reconstructable cache state, implementations
+SHOULD request `relaxed` durability for these bounded write transactions when
+the browser supports the transaction option, and MUST retain a compatibility
+path for implementations that reject it. Implementations MAY call
+`transaction.commit()` after synchronously enqueueing a complete write batch.
+
+Reconciliation SHOULD derive removals from the already loaded prior snapshot.
+When no prior snapshot is available, it SHOULD traverse primary keys with a
+key-only cursor rather than materializing every stored key.
+
 An initial target MAY be:
 
 ```text
@@ -1875,6 +1886,11 @@ Progress MAY be communicated as:
   completedRecords: 210000
 }
 ```
+
+Low-overhead diagnostics SHOULD report transaction duration, request count,
+records written, records deleted, keys or records scanned, records returned,
+committed batches, aborted transactions, and unchanged shard skips. Diagnostic
+collection MUST NOT add full-store reads to the measured workload.
 
 ---
 

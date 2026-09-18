@@ -87,11 +87,15 @@ describe('canonical IndexedDB', () => {
       'workflows'
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
-    expect(database.transaction('runs').objectStore('runs').indexNames).toContain('byConclusion');
-    expect([...database.transaction('domains').objectStore('domains').indexNames]).toEqual(['byDomain', 'byRun']);
-    expect([...database.transaction('tools').objectStore('tools').indexNames]).toEqual(['byRun', 'byType']);
-    expect([...database.transaction('audits').objectStore('audits').indexNames]).toEqual(['byRun', 'byType']);
+    expect([...database.transaction('repositories').objectStore('repositories').indexNames]).toEqual([]);
+    expect([...database.transaction('workflows').objectStore('workflows').indexNames]).toEqual(['byRepository']);
+    expect([...database.transaction('runs').objectStore('runs').indexNames])
+      .toEqual(['byConclusion', 'byRepository', 'byWorkflow']);
+    expect([...database.transaction('domains').objectStore('domains').indexNames]).toEqual(['byRun']);
+    expect([...database.transaction('tools').objectStore('tools').indexNames]).toEqual(['byRun']);
+    expect([...database.transaction('audits').objectStore('audits').indexNames]).toEqual(['byRun']);
     expect([...database.transaction('issues').objectStore('issues').indexNames]).toEqual(['byRun']);
+    expect([...database.transaction('transactions').objectStore('transactions').indexNames]).toEqual(['byCreatedAt']);
     database.close();
   });
 
@@ -170,6 +174,29 @@ describe('canonical IndexedDB', () => {
     expect(result).toEqual(tidy(stored, operators));
     expect(indexedReads).toHaveBeenCalledTimes(2);
     indexedReads.mockRestore();
+  });
+
+  it('reports query access-plan measurements', async () => {
+    await writeRecords('runs', [
+      { id: 'run:1', conclusion: 'failure' },
+      { id: 'run:2', conclusion: 'success' },
+      { id: 'run:3', conclusion: 'failure' }
+    ]);
+    const metrics = vi.fn();
+
+    const result = await queryCollection(indexedDB, 'runs', [{
+      op: 'filter',
+      predicates: [{ field: 'conclusion', equals: 'failure' }]
+    }], { onMetrics: metrics });
+
+    expect(result).toHaveLength(2);
+    expect(metrics).toHaveBeenCalledWith({
+      durationMs: expect.any(Number),
+      requestCount: 1,
+      recordsScanned: 2,
+      recordsReturned: 2,
+      index: 'byConclusion'
+    });
   });
 
   it('uses run indexes without changing filtered collection order', async () => {
@@ -299,6 +326,70 @@ describe('canonical IndexedDB', () => {
     expect(await readCollection(indexedDB, 'repositories')).toEqual(canonicalBatch.repositories);
   });
 
+  it('uses the supplied snapshot for bounded reconciliation without scanning database keys', async () => {
+    const canonicalBatch = batch();
+    await upsertCanonicalBatch(indexedDB, canonicalBatch);
+    const keyScans = vi.spyOn(IDBObjectStore.prototype, 'getAllKeys');
+    const metrics = vi.fn();
+
+    await replaceCanonicalBatch(indexedDB, normalize([]), {
+      previousBatch: canonicalBatch,
+      onMetrics: metrics
+    });
+
+    expect(keyScans).not.toHaveBeenCalled();
+    expect(metrics).toHaveBeenCalledWith(expect.objectContaining({
+      deletedRecords: 1,
+      scannedKeys: 0
+    }));
+    keyScans.mockRestore();
+  });
+
+  it('uses key-only cursors when reconciliation has no previous snapshot', async () => {
+    const canonicalBatch = batch();
+    await upsertCanonicalBatch(indexedDB, canonicalBatch);
+    const keyScans = vi.spyOn(IDBObjectStore.prototype, 'getAllKeys');
+    const cursors = vi.spyOn(IDBObjectStore.prototype, 'openKeyCursor');
+
+    await replaceCanonicalBatch(indexedDB, normalize([]));
+
+    expect(keyScans).not.toHaveBeenCalled();
+    expect(cursors).toHaveBeenCalled();
+    keyScans.mockRestore();
+    cursors.mockRestore();
+  });
+
+  it('converges after a partial write failure is retried', async () => {
+    const replacement = normalize([]);
+    replacement.repositories = [
+      { id: 'repository:1', fullName: 'githubnext/one' },
+      { id: 'repository:2', fullName: 'githubnext/two' }
+    ];
+    const originalPut = IDBObjectStore.prototype.put;
+    const metrics = vi.fn();
+    let puts = 0;
+    IDBObjectStore.prototype.put = function failingSecondPut(/** @type {unknown} */ value) {
+      puts += 1;
+      if (puts === 2) throw new DOMException('simulated write failure', 'AbortError');
+      return originalPut.call(this, value);
+    };
+
+    try {
+      await expect(replaceCanonicalBatch(indexedDB, replacement, {
+        batchSize: 1,
+        onMetrics: metrics
+      }))
+        .rejects.toThrow('simulated write failure');
+    } finally {
+      IDBObjectStore.prototype.put = originalPut;
+    }
+
+    expect(metrics).toHaveBeenCalledWith(expect.objectContaining({ abortedTransactions: 1 }));
+    await expect(replaceCanonicalBatch(indexedDB, replacement, { batchSize: 1 }))
+      .resolves.toBeUndefined();
+    expect(await readCollection(indexedDB, 'repositories')).toEqual(replacement.repositories);
+  });
+
   it('evicts records omitted from a supplied previous snapshot', async () => {
     const canonicalBatch = batch();
     await upsertCanonicalBatch(indexedDB, canonicalBatch);
@@ -340,11 +431,11 @@ describe('canonical IndexedDB', () => {
     await expect(deleteCanonicalDatabase(indexedDB, { onBlocked })).resolves.toBeUndefined();
   });
 
-  it('rejects the delete if a blocking connection never closes', async () => {
+  it('closes stale connections when another context deletes the database', async () => {
     const database = await openCanonicalDatabase(indexedDB);
 
     await expect(deleteCanonicalDatabase(indexedDB, { blockedTimeoutMs: 20 }))
-      .rejects.toThrow('blocked');
+      .resolves.toBeUndefined();
     database.close();
   });
 
