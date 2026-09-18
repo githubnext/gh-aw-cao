@@ -10,7 +10,7 @@ const hero = readFileSync("docs/components/HierarchyHero.astro", "utf8");
 const illustration = readFileSync("docs/components/DispatchIllustration.astro", "utf8");
 const wizard = readFileSync("docs/components/OpsWizard.astro", "utf8");
 const catalog = readFileSync("docs/lib/catalog.ts", "utf8");
-const campaignManifest = readFileSync("package.json", "utf8");
+const packageManifest = readFileSync("package.json", "utf8");
 const sparklePathData = "M7.53 1.282a.5.5 0 0 1 .94 0l.478 1.306a7.492 7.492 0 0 0 4.464 4.464l1.305.478a.5.5 0 0 1 0 .94l-1.305.478a7.492 7.492 0 0 0-4.464 4.464l-.478 1.305a.5.5 0 0 1-.94 0l-.478-1.305a7.492 7.492 0 0 0-4.464-4.464L1.282 8.47a.5.5 0 0 1 0-.94l1.306-.478a7.492 7.492 0 0 0 4.464-4.464Z";
 
 function withoutRootPalette(svg) {
@@ -41,7 +41,7 @@ test("landing diagram fallbacks use concrete light and dark palettes", () => {
 
 test("landing animations use SVG and CSS without a JavaScript player", () => {
   assert.doesNotMatch(illustration, /<script>|lottie/i);
-  assert.doesNotMatch(campaignManifest, /lottie-web/);
+  assert.doesNotMatch(packageManifest, /lottie-web/);
   assert.match(illustration, /control-plane-dispatch-motion\.svg/);
   assert.match(illustration, /control-plane-dispatch-mobile-motion\.svg/);
   assert.match(illustration, /@media \(prefers-reduced-motion: reduce\) \{\s+\.dispatch-motion \{\s+display: none;/);
