@@ -191,6 +191,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/attention-rules.json
   - source: site/src/components/badge.js
     destination: .github/aw/dashboard/site/src/components/badge.js
+  - source: site/src/components/browser-support.js
+    destination: .github/aw/dashboard/site/src/components/browser-support.js
   - source: site/src/components/cell-display.js
     destination: .github/aw/dashboard/site/src/components/cell-display.js
   - source: site/src/components/card-status.js

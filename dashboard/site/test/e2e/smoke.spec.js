@@ -37,6 +37,17 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+test('shows a not-supported message instead of starting without IndexedDB', async ({ page }) => {
+  await page.evaluate(async () => {
+    Object.defineProperty(window, 'indexedDB', { configurable: true, value: undefined });
+    await import('http://dashboard.test/src/main.js');
+  });
+
+  const alert = page.getByRole('alert');
+  await expect(alert).toContainText('Browser not supported');
+  await expect(alert).toContainText('This dashboard requires IndexedDB');
+});
+
 /**
  * @param {string} pageId
  * @param {Record<string, unknown>} [overrides]
