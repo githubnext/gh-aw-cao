@@ -32,6 +32,16 @@ const GH_AW_JSONL_INGESTION_VERSION = 4;
 export const NORMALIZED_JSON_INGESTION_VERSION = 2;
 const MAX_QUOTA_RECOVERY_ATTEMPTS = 4;
 const MAX_USAGE_RECOVERY_ATTEMPTS = 4;
+const NORMALIZED_BATCH_COLLECTIONS = /** @type {const} */ ([
+  'campaigns',
+  'repositories',
+  'workflows',
+  'runs',
+  'domains',
+  'tools',
+  'audits',
+  'issues'
+]);
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
 
 /**
@@ -43,6 +53,57 @@ function isQuotaExceededError(error) {
   return typeof error === 'object'
     && error !== null
     && /** @type {{ name?: unknown }} */ (error).name === 'QuotaExceededError';
+}
+
+/** @param {unknown} value */
+function migrateLegacyPackageId(value) {
+  return typeof value === 'string' && value.startsWith('package:')
+    ? `campaign:${value.slice('package:'.length)}`
+    : value;
+}
+
+/**
+ * Accepts normalized shards emitted shortly before the package-to-campaign
+ * vocabulary rename. The schema and ingestion versions did not change in that
+ * transition, so cached payloads may still contain the legacy collection and
+ * relationship field names.
+ *
+ * @param {Record<string, unknown>} batch
+ * @returns {import('../model/schema.js').CanonicalBatch}
+ */
+function migrateNormalizedBatch(batch) {
+  const migrated = { ...batch };
+  if (!Array.isArray(migrated.campaigns) && Array.isArray(migrated.packages)) {
+    migrated.campaigns = migrated.packages.map((candidate) => {
+      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return candidate;
+      const record = { ...candidate };
+      record.id = migrateLegacyPackageId(record.id);
+      if (record.campaignLink === undefined && record.packageLink !== undefined) {
+        record.campaignLink = record.packageLink;
+      }
+      delete record.packageLink;
+      return record;
+    });
+  }
+  if (Array.isArray(migrated.workflows)) {
+    migrated.workflows = migrated.workflows.map((candidate) => {
+      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return candidate;
+      const record = { ...candidate };
+      if (record.campaignId === undefined && record.packageId !== undefined) {
+        record.campaignId = migrateLegacyPackageId(record.packageId);
+      }
+      if (record.campaign === undefined && record.package !== undefined) record.campaign = record.package;
+      if (record.campaignName === undefined && record.packageName !== undefined) record.campaignName = record.packageName;
+      if (record.campaignIcon === undefined && record.packageIcon !== undefined) record.campaignIcon = record.packageIcon;
+      delete record.packageId;
+      delete record.package;
+      delete record.packageName;
+      delete record.packageIcon;
+      return record;
+    });
+  }
+  delete migrated.packages;
+  return /** @type {import('../model/schema.js').CanonicalBatch} */ (migrated);
 }
 
 /**
@@ -382,9 +443,9 @@ export function ingestNormalizedJson(indexedDB, input, options) {
       if (!payload.batch || typeof payload.batch !== 'object' || Array.isArray(payload.batch)) {
         throw new TypeError('Normalized activity payload must include a canonical batch');
       }
-      const batch = /** @type {import('../model/schema.js').CanonicalBatch} */ (payload.batch);
-      for (const collection of ['campaigns', 'repositories', 'workflows', 'runs', 'domains', 'tools', 'audits', 'issues']) {
-        if (!Array.isArray(batch[/** @type {keyof import('../model/schema.js').CanonicalBatch} */ (collection)])) {
+      const batch = migrateNormalizedBatch(/** @type {Record<string, unknown>} */ (payload.batch));
+      for (const collection of NORMALIZED_BATCH_COLLECTIONS) {
+        if (!Array.isArray(batch[collection])) {
           throw new TypeError(`Normalized activity payload is missing ${collection}`);
         }
       }

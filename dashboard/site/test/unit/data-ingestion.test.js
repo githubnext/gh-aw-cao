@@ -113,6 +113,70 @@ describe('canonical source ingestion and queries', () => {
     expect((await readCanonicalBatch(indexedDB)).repositories).toEqual(payload.batch.repositories);
   });
 
+  it('imports legacy package-shaped normalized JSON as campaigns', async () => {
+    const repositoryId = 'repository:githubnext%2Fgh-aw-cao';
+    const legacyPackageId = 'package:dashboard-sources:maintenance';
+    const payload = {
+      schemaVersion: 11,
+      ingestionVersion: 2,
+      sourceRecords: 2,
+      phase: 'runs',
+      batch: {
+        packages: [{
+          id: legacyPackageId,
+          slug: 'maintenance',
+          name: 'Maintenance',
+          packageLink: 'https://example.test/packages/maintenance',
+          observedAt: metadata['as-of'],
+          provenance: { source: 'test', sourceId: 'maintenance', observedAt: metadata['as-of'] }
+        }],
+        repositories: [{
+          id: repositoryId,
+          observedAt: metadata['as-of'],
+          provenance: { source: 'test', sourceId: 'normalized', observedAt: metadata['as-of'] }
+        }],
+        workflows: [{
+          id: 'workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmaintenance.md',
+          repositoryId,
+          packageId: legacyPackageId,
+          package: 'maintenance',
+          packageName: 'Maintenance',
+          packageIcon: 'tools',
+          observedAt: metadata['as-of'],
+          provenance: { source: 'test', sourceId: 'maintenance-workflow', observedAt: metadata['as-of'] }
+        }],
+        runs: [],
+        domains: [],
+        tools: [],
+        audits: [],
+        issues: []
+      }
+    };
+    const options = {
+      payloadIdentity: 'c'.repeat(64),
+      payloadScope: 'https://example.test/gh-aw-logs-runs/shard.json',
+      expectedPhase: /** @type {const} */ ('runs')
+    };
+
+    await expect(ingestNormalizedJson(indexedDB, payload, options)).resolves.toMatchObject({
+      updated: true,
+      records: 2
+    });
+    await expect(readCanonicalBatch(indexedDB)).resolves.toMatchObject({
+      campaigns: [expect.objectContaining({
+        id: 'campaign:dashboard-sources:maintenance',
+        slug: 'maintenance',
+        campaignLink: 'https://example.test/packages/maintenance'
+      })],
+      workflows: [expect.objectContaining({
+        campaignId: 'campaign:dashboard-sources:maintenance',
+        campaign: 'maintenance',
+        campaignName: 'Maintenance',
+        campaignIcon: 'tools'
+      })]
+    });
+  });
+
   it('rejects mislabeled or mixed phased payloads', async () => {
     const payload = {
       schemaVersion: 11,
