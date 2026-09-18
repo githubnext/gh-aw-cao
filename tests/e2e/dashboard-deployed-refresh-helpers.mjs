@@ -14,7 +14,7 @@ function isDeployedDashboardShardProbe({ method, url }) {
     // Match deployed activity JSON shard probes, including phased run and record shards.
     return parsed.origin === deployedDashboardBase.origin
       && parsed.pathname.startsWith(deployedDashboardBase.pathname)
-      && /^(?:gh-aw-logs-(?:runs|records)\/)?[^/]+\.json$/.test(
+      && /^gh-aw-logs-(?:runs|records)\/[^/]+\.json$/.test(
         parsed.pathname.slice(deployedDashboardBase.pathname.length)
       );
   } catch {

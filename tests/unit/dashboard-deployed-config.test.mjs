@@ -136,4 +136,9 @@ test("deployed dashboard failure tracking ignores only benign aborted probes", (
     url: `${deployedDashboardUrl}assets/app.js`,
     errorText: "net::ERR_ABORTED",
   }), false);
+  assert.equal(shouldIgnoreRequestFailure({
+    method: "HEAD",
+    url: `${deployedDashboardUrl}payload-hashes.json`,
+    errorText: "net::ERR_ABORTED",
+  }), false);
 });
