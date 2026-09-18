@@ -253,6 +253,34 @@ describe('canonical source ingestion and queries', () => {
     expect(estimate).toHaveBeenCalledTimes(3);
   });
 
+  it('removes newly written records when post-write quota reconciliation shrinks the batch', async () => {
+    const maxDatabaseBytes = 1_000_000_000;
+    const estimate = vi.fn()
+      .mockResolvedValueOnce({ usage: 0, quota: maxDatabaseBytes * 4 })
+      .mockResolvedValueOnce({
+        usage: maxDatabaseBytes * 3,
+        quota: maxDatabaseBytes * 4,
+        usageDetails: { indexedDB: maxDatabaseBytes * 3 }
+      })
+      .mockResolvedValueOnce({
+        usage: 0,
+        quota: maxDatabaseBytes * 4,
+        usageDetails: { indexedDB: 0 }
+      });
+    const storage = /** @type {StorageManager} */ (/** @type {unknown} */ ({
+      estimate,
+      persist: vi.fn().mockResolvedValue(true)
+    }));
+
+    await ingestDashboardSources(indexedDB, sources, {
+      storage,
+      maxDatabaseBytes,
+      payloadIdentity: 'new-data-storage-policy'
+    });
+
+    expect((await readCanonicalBatch(indexedDB)).runs).toEqual([]);
+  });
+
   it('upserts a complete SQL export onto retained canonical records', async () => {
     await ingestDashboardSources(indexedDB, sources);
 

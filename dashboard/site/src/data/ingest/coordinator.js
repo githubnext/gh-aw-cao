@@ -191,13 +191,15 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     committedBatches: 0,
     abortedTransactions: 0
   };
+  let previousBatch = retained;
   const write = async () => {
     await replaceCanonicalBatch(indexedDB, batch, {
       onProgress: options.onWriteProgress,
       onMetrics: (metrics) => { writeMetrics = metrics; },
-      previousBatch: retained,
+      previousBatch,
       signal: options.signal
     });
+    previousBatch = batch;
   };
   // Every write of a large batch costs minutes in a constrained browser, so
   // recovery halves the batch a bounded number of times and then reports the
@@ -209,6 +211,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
       break;
     } catch (error) {
       if (!isQuotaExceededError(error) || attempt >= MAX_QUOTA_RECOVERY_ATTEMPTS) throw error;
+      previousBatch = await readCanonicalBatch(indexedDB);
+      options.signal?.throwIfAborted();
       const reduced = capCanonicalBatchSize(batch, Math.floor(estimateCanonicalBatchBytes(batch) * 0.5));
       if (reduced.runs.length === batch.runs.length) throw error;
       batch = reduced;
