@@ -138,7 +138,7 @@
         ],
         "details": [
           { "field": "workflows", "title": "Workflows" },
-          { "field": "runs", "title": "Runs" },
+          { "field": "value-created", "title": "Value", "unit": "ops-value" },
           { "field": "dispatches", "title": "Dispatches" },
           { "field": "aic", "title": "AIC", "unit": "aic" }
         ]
@@ -9320,7 +9320,7 @@
                 { "field": "modes", "type": "nominal", "title": "Modes" },
                 { "field": "registration", "type": "nominal", "title": "Registration" },
                 { "field": "workflows", "type": "quantitative", "title": "Workflows" },
-                { "field": "runs", "type": "quantitative", "title": "Runs" },
+                { "field": "value-created", "type": "quantitative", "title": "Value", "unit": "ops-value" },
                 { "field": "dispatches", "type": "quantitative", "title": "Dispatches" },
                 { "field": "aic", "type": "quantitative", "title": "AIC", "unit": "aic" },
                 { "field": "campaign-dashboard-link", "type": "nominal", "title": "Campaign link" }

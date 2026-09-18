@@ -36,11 +36,12 @@ describe('entity card templates', () => {
       ],
       details: [
         { field: 'workflows', title: 'Workflows' },
-        { field: 'runs', title: 'Runs' },
+        { field: 'value-created', title: 'Value', unit: 'ops-value' },
         { field: 'dispatches', title: 'Dispatches' },
         { field: 'aic', title: 'AIC', unit: 'aic' }
       ]
     });
+    expect(templates.campaign.details).not.toContainEqual(expect.objectContaining({ field: 'runs' }));
     expect(pages.overview.views[2]).toMatchObject({
       title: 'Campains',
       data: { source: 'campaign-inventory' },
