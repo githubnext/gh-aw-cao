@@ -138,7 +138,7 @@ Use the checked-out `target/` tree and at most a handful of bounded read-only AP
 
 Record one `lint-inventory` transaction describing:
 
-1. **Toolchain** — campaign manager and lockfile, Node engine range, TypeScript presence and version, monorepo layout and workspace count.
+1. **Toolchain** — package manager and lockfile, Node engine range, TypeScript presence and version, monorepo layout and workspace count.
 2. **ESLint support** — whether ESLint is a dependency, its version, config flavour (flat `eslint.config.*` versus legacy `.eslintrc.*`), config file paths, shared configs and plugins in use, and whether type-aware linting is configured.
 3. **Enforcement** — lint-related `package.json` scripts, whether a CI workflow runs lint, whether lint failures block the build, and whether any pre-commit hook runs it.
 4. **Coverage** — approximate counts of linted source files by extension, ignore patterns that exclude significant source trees, and the presence of a local custom rules or plugin directory.

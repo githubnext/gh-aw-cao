@@ -21,7 +21,7 @@ const inventory = {
       campaign: 'dependabot',
       'campaign-name': 'Dependabot',
       'campaign-description': 'Dependabot automation',
-      'campaign-icon': 'campaign',
+      'campaign-icon': 'goal',
       'campaign-mode': 'review',
       'campaign-enabled': true,
       'campaign-worker-count': 1,

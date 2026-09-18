@@ -224,7 +224,7 @@ test('campaign card actions wrap together on narrow screens', async ({ page }) =
       title: 'Campaigns',
       view: {
         mark: 'list',
-        list: { style: 'cards', icon: 'campaign' },
+        list: { style: 'cards', icon: 'goal' },
         encoding: {
           columns: [{ field: 'campaign-name', title: 'Campaign' }],
           actions: [
@@ -5124,7 +5124,7 @@ test('phone navigation uses overview actions and a full-label view menu without 
               { id: 'security', kind: 'custom', title: 'Security', icon: 'shield', views: [] },
               { id: 'value', kind: 'custom', title: 'Value', icon: 'graph', views: [] },
               { id: 'cost', kind: 'custom', title: 'Cost & efficiency', icon: 'meter', views: [] },
-              { id: 'campaigns', kind: 'custom', title: 'Campaigns', icon: 'campaign', views: [] }
+              { id: 'campaigns', kind: 'custom', title: 'Campaigns', icon: 'goal', views: [] }
             ],
             navigation: [
               { label: 'Main', pages: ['overview', 'runs', 'security'] },

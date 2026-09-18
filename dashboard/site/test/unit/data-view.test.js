@@ -161,7 +161,7 @@ describe('data view renderer', () => {
       view: {
         mark: 'list',
         description: 'Update installed campaigns.',
-        list: { style: 'cards', icon: 'campaign', action: 'update-repository' },
+        list: { style: 'cards', icon: 'goal', action: 'update-repository' },
         encoding: {
           columns: [
             { field: 'campaign-name', title: 'Campaign' },
@@ -695,7 +695,7 @@ describe('data view renderer', () => {
       }],
       cardTemplates: {
         campaign: {
-          icon: 'campaign',
+          icon: 'goal',
           title: { field: 'campaign-name', title: 'Campaign' },
           labels: [{ field: 'registration', title: 'Registration', display: 'active-state' }],
           details: [

@@ -266,14 +266,14 @@ steps:
         const conflicts = [];
         if (managersMentioned.length > 1) {
           conflicts.push({
-            kind: 'campaign_manager',
-            detail: `instruction files reference more than one campaign manager: ${managersMentioned.join(', ')}`,
+            kind: 'package_manager',
+            detail: `instruction files reference more than one package manager: ${managersMentioned.join(', ')}`,
             by_file: managersByFile,
           });
         }
         if (lockfilesPresent.length === 1 && managersMentioned.length && !managersMentioned.includes(lockfilesPresent[0])) {
           conflicts.push({
-            kind: 'campaign_manager_lockfile',
+            kind: 'package_manager_lockfile',
             detail: `instruction files document ${managersMentioned.join(', ')} but the repository has ${lockfilesPresent[0]} lockfile`,
           });
         }
@@ -498,7 +498,7 @@ Use the precomputed evidence first; use bounded `git` and `jq` calls in `target/
 | Size | `agents_md.lines`, `agents_md.bytes`, `agents_md.estimated_tokens` | under 200 lines and under 10 KB; every run pays this cost |
 | Freshness | `staleness.days_since_last_change`, `staleness.commits_since_last_change` | changed within 90 days, or unchanged because the repository is also unchanged |
 | Accuracy | `verification.missing_referenced_paths`, `verification.missing_campaign_scripts`, `staleness.deleted_paths_since_last_change` | no broken paths or commands |
-| Consistency | `verification.cross_file_conflicts`, `verification.lockfiles_present` | one campaign manager and one set of commands across every instruction file, matching the lockfiles actually committed |
+| Consistency | `verification.cross_file_conflicts`, `verification.lockfiles_present` | one package manager and one set of commands across every instruction file, matching the lockfiles actually committed |
 | Version accuracy | `verification.version_claims` against `verification.declared_dependencies` | prose version claims match the manifests |
 | Residue | `verification.stale_markers` | no unresolved `TODO`/`FIXME` markers and no year references that contradict current reality |
 | Non-duplication | `verification.duplication` | little verbatim overlap with `README.md` or `CONTRIBUTING.md` |
@@ -581,7 +581,7 @@ A fenced block containing a complete, self-contained prompt that an agent can ru
 
 ### Verification
 
-State how a reviewer can check the result: the merged file is at least 10 percent smaller in estimated tokens than before, referenced paths resolve, documented commands exist in the manifest or task runner, the instruction files agree on one campaign manager and command set, size is within target, and no content duplicates `README.md`.
+State how a reviewer can check the result: the merged file is at least 10 percent smaller in estimated tokens than before, referenced paths resolve, documented commands exist in the manifest or task runner, the instruction files agree on one package manager and command set, size is within target, and no content duplicates `README.md`.
 
 ### Control Plane
 

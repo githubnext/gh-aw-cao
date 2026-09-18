@@ -84,7 +84,7 @@ test("dashboard CI runs the campaign quality gates", () => {
 
   assert.match(source, /dashboard\/site\/\*\*/);
   assert.match(source, /working-directory: dashboard\/site/);
-  assert.match(source, /cache-dependency-path: dashboard\/site\/campaign-lock\.json/);
+  assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
   assert.deepEqual(
     [...jobs.keys()],
     ["lint-unit", "playwright-integration", "ingestion-scale", "lighthouse-performance", "lighthouse-comment"]
@@ -103,7 +103,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.doesNotMatch(lintUnit.block, /playwright|test:e2e/i);
   assert.match(playwrightIntegration.block, /uses: actions\/cache@/);
   assert.match(playwrightIntegration.block, /path: ~\/\.cache\/ms-playwright/);
-  assert.match(playwrightIntegration.block, /hashFiles\('dashboard\/site\/campaign-lock\.json'\)/);
+  assert.match(playwrightIntegration.block, /hashFiles\('dashboard\/site\/package-lock\.json'\)/);
   assert.match(playwrightIntegration.block, /npx playwright install --with-deps chromium/);
   assert.match(playwrightIntegration.block, /run: npm run test:e2e/);
   assert.doesNotMatch(playwrightIntegration.block, /run: npm (?:run (?:typecheck|lint)|test)$/m);
@@ -291,7 +291,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/g) || []).length, 4);
   assert.doesNotMatch(activityCacheJob, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
   assert.match(activityManifest, /source: cao\.mjs[\s\S]*?destination: \.github\/aw\/activity\/cao\.mjs/);
-  assert.match(dashboardManifest, /source: site\/src\/data\/campaign\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/campaign\.json/);
+  assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/package\.json/);
   assert.match(dashboardManifest, /source: site\/src\/main\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/main\.js/);
   assert.match(dashboardManifest, /source: site\/src\/components\/refresh-error\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/components\/refresh-error\.js/);
   assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
@@ -414,7 +414,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-build.yml")), false);
 
   assert.doesNotMatch(workflow, /dashboard-build|needs: dashboard/);
-  assert.match(workflow, /name: Restore node_modules[\s\S]*?id: node-modules-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ runner\.os \}\}-node-24-\$\{\{ hashFiles\('campaign-lock\.json'\) \}\}/);
+  assert.match(workflow, /name: Restore node_modules[\s\S]*?id: node-modules-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ runner\.os \}\}-node-24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/);
   assert.match(workflow, /name: Install dependencies\n\s+if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'\n\s+run: npm ci/);
   assert.match(workflow, /name: Save node_modules[\s\S]*?if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ steps\.node-modules-cache\.outputs\.cache-primary-key \}\}/);
   assert.match(workflow, /run: npm run docs:build/);

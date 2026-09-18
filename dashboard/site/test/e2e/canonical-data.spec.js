@@ -10,7 +10,7 @@ import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.j
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
 const canonicalEntityTables = [
-  'audits', 'domains', 'issues', 'campaigns', 'repositories', 'runs', 'tools', 'workflows'
+  'audits', 'campaigns', 'domains', 'issues', 'repositories', 'runs', 'tools', 'workflows'
 ];
 
 function ghAwLogInput() {

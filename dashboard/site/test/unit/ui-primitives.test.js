@@ -311,7 +311,7 @@ describe('ui primitives', () => {
   it('renders the shared identity link with an icon, label element, and optional class name', () => {
     const withStrong = renderIdentityLink({
       href: '#page-campaign-insights?campaign=self-care',
-      icon: 'campaign',
+      icon: 'goal',
       label: 'SelfCare',
       className: 'campaign-status-identity',
       labelTag: 'strong'

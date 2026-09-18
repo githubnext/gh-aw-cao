@@ -199,7 +199,7 @@ Follow these rules:
 - Use only safe outputs for issue creation, issue updates, refresh comments, and noops.
 - Do not expose secrets, tokens, OTel endpoints, environment variables, or private URLs in issue bodies or comments.
 - Prefer least-risk changes: patch before minor, minor before major, direct dependencies before broad transitive churn unless a security advisory requires otherwise.
-- Clearly mark any update that touches auth, crypto, payment, database, serialization, deserialization, telemetry, build tooling, CI runners, campaign managers, or container bases as requiring human review.
+- Clearly mark any update that touches auth, crypto, payment, database, serialization, deserialization, telemetry, build tooling, CI runners, package managers, or container bases as requiring human review.
 - Never edit repository files.
 
 ## Workspace Layout

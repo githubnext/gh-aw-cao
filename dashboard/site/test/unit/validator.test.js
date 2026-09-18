@@ -570,7 +570,7 @@ describe('dashboard document validation', () => {
         mark: 'list',
         list: {
           style: 'cards',
-          icon: 'campaign',
+          icon: 'goal',
           action: 'update-repository'
         },
         layout: 'full'

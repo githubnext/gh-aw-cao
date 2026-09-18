@@ -152,7 +152,7 @@ Discover how this repository builds and previews its documentation, start the pr
 Inspect committed campaign manifests, lockfiles, task definitions, and documentation configuration to determine:
 
 - the documentation project root;
-- the repository's campaign manager;
+- the repository's package manager;
 - the documented build and preview commands; and
 - the local site base path.
 

@@ -136,7 +136,7 @@ Persist the resulting prioritized list in shared memory. For each eligible candi
 
 ## Workers
 
-- `eslint-rules-inventory`: maps ESLint support for one dispatched repository — config flavour, ESLint and parser versions, campaign manager, lint scripts, CI enforcement, and existing rule coverage — and records it in shared campaign memory. Dispatch it for any eligible repository without a recent inventory record.
+- `eslint-rules-inventory`: maps ESLint support for one dispatched repository — config flavour, ESLint and parser versions, package manager, lint scripts, CI enforcement, and existing rule coverage — and records it in shared campaign memory. Dispatch it for any eligible repository without a recent inventory record.
 - `eslint-rules-miner`: reads a bounded window of recently merged pull requests, commits, and review comments for one repository, prioritizes real bug fixes and human corrections of agent or contributor output, and proposes at most one corroborated rule candidate per run into shared memory.
 - `eslint-rules-refiner`: evaluates centrally managed candidate and active rules against one repository, classifies false positives, false negatives, unclear diagnostics, unsafe fixes, and performance problems, and records the outcome. Precision comes before coverage.
 - `eslint-rules-applier`: opens one deduplicated adoption issue asking the repository to bootstrap or update ESLint with a selected central rule in warning-only mode, plus a dedicated npm script and a separate CI build job. It never edits the repository.

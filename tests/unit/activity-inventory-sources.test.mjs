@@ -429,7 +429,7 @@ test("merges control registry metadata without replacing campaign ownership", ()
     repository: "control",
     campaign: "operations",
     "campaign-name": "Operations",
-    "campaign-icon": "campaign",
+    "campaign-icon": "goal",
     "campaign-aic-allowance": 25,
     "campaign-worker-count": 1,
     "campaign-inventory-warnings": 0,

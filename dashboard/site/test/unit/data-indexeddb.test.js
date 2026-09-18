@@ -86,9 +86,9 @@ describe('canonical IndexedDB', () => {
 
     expect([...database.objectStoreNames]).toEqual([
       'audits',
+      'campaigns',
       'domains',
       'issues',
-      'campaigns',
       'repositories',
       'runs',
       'tools',
@@ -127,9 +127,9 @@ describe('canonical IndexedDB', () => {
 
     expect([...database.objectStoreNames]).toEqual([
       'audits',
+      'campaigns',
       'domains',
       'issues',
-      'campaigns',
       'repositories',
       'runs',
       'tools',

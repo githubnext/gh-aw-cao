@@ -67,7 +67,7 @@ imports:
 permissions:
   contents: read
   actions: read
-  campaigns: read
+  packages: read
   copilot-requests: write
   issues: read
   pull-requests: read
