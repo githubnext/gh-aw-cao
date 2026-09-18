@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded
+
+Settings returned to primary navigation and the account menu was removed. The passive viewer avatar left in the header had no action or authorization meaning, so the dashboard no longer resolves or displays local viewer identity.
 
 ## Context
 

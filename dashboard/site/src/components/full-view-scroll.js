@@ -21,9 +21,7 @@ export function syncFullViewMode(root, page) {
   const siblings = fullView?.parentElement
     ? [...fullView.parentElement.querySelectorAll(':scope > .custom-view')].filter((view) => view !== fullView)
     : [];
-  const modeSelectionPage = page?.hasAttribute('data-mobile-view-mode-page') === true;
-  const selectedFullViewMode = ['table', 'card'].includes(root.dataset.mobileViewMode ?? '')
-    && modeSelectionPage;
+  const selectedFullViewMode = ['table', 'card'].includes(page?.dataset.viewMode ?? '');
   const canPin = Boolean(fullView) && (
     selectedFullViewMode
     || siblings.every((view) => !view.querySelector(CHART_SIBLING_SELECTOR))

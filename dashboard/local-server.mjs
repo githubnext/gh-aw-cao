@@ -84,35 +84,6 @@ const maximumCachedCompressions = 4;
 /** @type {Map<string, Buffer>} */
 const compressedPayloads = new Map();
 
-function normalizeLocalViewer(viewer) {
-  if (!viewer || typeof viewer !== "object") return null;
-  const login = typeof viewer.login === "string" ? viewer.login.trim() : "";
-  const name = typeof viewer.name === "string" ? viewer.name.trim() : "";
-  const avatarUrl = typeof viewer.avatarUrl === "string" ? viewer.avatarUrl.trim() : "";
-  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(login)) return null;
-  try {
-    const parsedAvatarUrl = new URL(avatarUrl);
-    if (parsedAvatarUrl.protocol !== "https:" || parsedAvatarUrl.username || parsedAvatarUrl.password) return null;
-  } catch {
-    return null;
-  }
-  return { login, name: name || login, avatarUrl };
-}
-
-async function loadLocalViewer(ghExecutable) {
-  try {
-    const result = await executeFile(ghExecutable, [
-      "api",
-      "user",
-      "--jq",
-      "{login: .login, name: .name, avatarUrl: .avatar_url}",
-    ]);
-    return normalizeLocalViewer(JSON.parse(result.stdout));
-  } catch {
-    return null;
-  }
-}
-
 function compressPayload(body) {
   if (body.byteLength < minimumCacheableCompressionBytes) return gzipSync(body);
   const key = createHash("sha256").update(body).digest("hex");
@@ -1405,7 +1376,6 @@ function readWebsocketFrames(buffer) {
  *   repository?: string,
  *   ghExecutable?: string,
  *   downloadData?: (destination: string, repository?: string, ghExecutable?: string) => Promise<void>,
- *   loadViewer?: (ghExecutable: string) => Promise<unknown>,
  *   copilot?: boolean,
  *   canvas?: boolean,
  *   executeCliAction?: (action: { id: string, command: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
@@ -1427,7 +1397,6 @@ export async function startDashboardServer({
   repository,
   ghExecutable = "gh",
   downloadData = downloadDashboardData,
-  loadViewer = loadLocalViewer,
   copilot = false,
   canvas = false,
   executeCliAction,
@@ -1482,7 +1451,6 @@ export async function startDashboardServer({
   const dashboardDataDirectory = join(temporaryDirectory, "data");
   let sourcesContent;
   let sourceManifestContent;
-  let viewerContent;
   const ghAwLogShards = new Map();
   let payloadHashesContent;
   let inventorySourcesContent;
@@ -1519,7 +1487,6 @@ export async function startDashboardServer({
       }
       sourceManifestContent = JSON.stringify({ version: 1, sources: [...splitSourceContent.keys()] });
     }
-    viewerContent = JSON.stringify(normalizeLocalViewer(await loadViewer(ghExecutable).catch(() => null)));
   } catch (error) {
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
@@ -2163,10 +2130,6 @@ export async function startDashboardServer({
           return;
         }
         sendContent(request, response, contentTypes.get(".json"), inventorySourcesContent);
-        return;
-      }
-      if (pathname === "/viewer.json") {
-        sendContent(request, response, contentTypes.get(".json"), viewerContent);
         return;
       }
       if (dashboardPageChunkContent.has(pathname)) {

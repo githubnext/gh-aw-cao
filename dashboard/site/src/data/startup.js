@@ -10,7 +10,7 @@ import { configureSourceLoader, refreshSources as refreshBoundSources } from "..
 import { dashboardViewAliasName } from "./queries/view-payload-compiler.js";
 
 /** @typedef {Record<string, import('../presenter.js').LogicalSourceInput>} DashboardSources */
-/** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string } }} DashboardQueryContext */
+/** @typedef {{ filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc' | 'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' }} DashboardQueryContext */
 /** @typedef {{ signal: AbortSignal, onUpdate: (sources: DashboardSources) => void, routeParameters?: Record<string, string>, queryContext?: DashboardQueryContext }} PageLoadOptions */
 /** @typedef {(pageId: string, options: PageLoadOptions) => Promise<DashboardSources>} PageSourceLoader */
 
@@ -43,7 +43,7 @@ export function waitForDashboardUi(browserWindow) {
  *     queries: unknown[],
  *   },
  *   preparePage?: (pageId: string) => Promise<void>,
- *   pageSourceNames: (pageId: string) => string[],
+ *   pageSourceNames: (pageId: string, viewMode?: 'chart'|'table'|'card') => string[],
  *   pagePaginatedSourceBindings: (pageId: string) => Record<string, { sourceName: string, viewId: string }>,
  *   render: (sources: DashboardSources, state: 'ready' | 'cached' | 'stale', loadPageSources: PageSourceLoader, retryRefresh?: () => void) => void,
  *   settleUi?: () => Promise<void>,
@@ -101,7 +101,7 @@ export async function startDashboardData(options) {
   /** @type {PageSourceLoader} */
   const loadPageSources = async (pageId, pageOptions) => {
     await preparePage?.(pageId);
-    const sourceNames = pageSourceNames(pageId);
+    const sourceNames = pageSourceNames(pageId, pageOptions.queryContext?.viewMode);
     const paginatedSources = pagePaginatedSourceBindings(pageId);
     const pagination = continuationRequests(Object.keys(paginatedSources));
     return new Promise((resolve, reject) => {

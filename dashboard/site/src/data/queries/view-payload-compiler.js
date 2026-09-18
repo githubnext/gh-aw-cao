@@ -8,7 +8,8 @@
  *   filters?: Record<string, string[]>,
  *   search?: { fields: string[], query: string },
  *   orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>,
- *   timeWindow?: { start?: string, end?: string }
+ *   timeWindow?: { start?: string, end?: string },
+ *   viewMode?: 'chart'|'table'|'card'
  * }} GlobalQueryContext
  */
 
@@ -57,6 +58,7 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
 
   views.forEach((view, viewIndex) => {
     if (options.viewId && (!isPlainObject(view) || view.id !== options.viewId)) return;
+    if (options.queryContext?.viewMode && !viewMatchesMode(view, options.queryContext.viewMode)) return;
     const sources = getViewSources(view);
     if (sources.length === 0) return;
     const viewData = isPlainObject(view) && isPlainObject(view.data)
@@ -86,6 +88,14 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
   });
 
   return { aliases, queries, replacedSources: [...replacedSources] };
+}
+
+/** @param {unknown} view @param {'chart'|'table'|'card'} mode */
+function viewMatchesMode(view, mode) {
+  if (!isPlainObject(view)) return mode === 'chart';
+  if (mode === 'table') return view.mark === 'table';
+  if (mode === 'card') return view.mark === 'table' || view.mark === 'list';
+  return view.mark !== 'table' && view.mark !== 'list';
 }
 
 /**

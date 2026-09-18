@@ -229,11 +229,6 @@
       /** @type {((pageId: string, options: { signal: AbortSignal, onUpdate: (sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void }) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
       let renderedPageSourceLoader;
       const previewMode = new URLSearchParams(window.location.search).get("local-preview");
-      const localViewer = previewMode
-        ? await fetch("./viewer.json")
-          .then((response) => response.ok ? response.json() : null)
-          .catch(() => null)
-        : null;
       /** @type {WebSocket | undefined} */
       let dashboardSocket;
       if (previewMode) {
@@ -339,7 +334,6 @@
           document: dashboardDocument,
           sources,
           commitSha: document.querySelector('meta[name="dashboard-version"]')?.getAttribute("content"),
-          viewer: localViewer,
           prepared,
           loading: state === "loading",
           loadPageSources,
@@ -1070,7 +1064,7 @@
             sourceUrl,
             dashboardContext,
             preparePage: ensureDashboardPageLoaded,
-            pageSourceNames: (pageId) => dashboardPageSourceNames(dashboardDocument, pageId),
+            pageSourceNames: (pageId, viewMode) => dashboardPageSourceNames(dashboardDocument, pageId, viewMode),
             pagePaginatedSourceBindings: (pageId) => dashboardPagePaginatedSourceBindings(dashboardDocument, pageId),
             render: (sources, state, loadPageSources, retryRefresh) => {
               renderSources(sources, state, true, loadPageSources, retryRefresh);

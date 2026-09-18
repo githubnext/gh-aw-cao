@@ -111,17 +111,19 @@ function getViewSources(view) {
 /**
  * @param {DashboardDocument} document
  * @param {string} pageId
+ * @param {'chart'|'table'|'card'} [viewMode]
  * @returns {string[]}
  */
-export function dashboardPageSourceNames(document, pageId) {
+export function dashboardPageSourceNames(document, pageId, viewMode) {
   const page = dashboardPage(document, pageId);
   if (!page) return [];
   const indexed = stringList(page['source-names']);
-  if (indexed.length > 0) return indexed;
+  if (!viewMode && indexed.length > 0) return indexed;
   const payload = dashboardPagePayload(page, document.dashboard.views);
   const names = new Set();
   for (const view of payload.views ?? []) {
     if (isAsyncElementView(view)) continue;
+    if (viewMode && !viewMatchesMode(view, viewMode)) continue;
     for (const sourceName of getViewSources(view)) names.add(sourceName);
   }
   for (const section of payload.sections ?? []) {
@@ -138,6 +140,14 @@ export function dashboardPageSourceNames(document, pageId) {
     }
   }
   return [...names];
+}
+
+/** @param {unknown} view @param {'chart'|'table'|'card'} mode */
+function viewMatchesMode(view, mode) {
+  if (!isPlainObject(view)) return mode === 'chart';
+  if (mode === 'table') return view.mark === 'table';
+  if (mode === 'card') return view.mark === 'table' || view.mark === 'list';
+  return view.mark !== 'table' && view.mark !== 'list';
 }
 
 /**

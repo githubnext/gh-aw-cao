@@ -38,7 +38,7 @@ import { renderPanel } from './panel.js';
  *   scope?: Record<string, unknown>,
  *   time?: Record<string, unknown>,
  *   routeParameter?: string,
- *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string } },
+ *   queryContext?: { filters?: Record<string, string[]>, search?: { fields: string[], query: string }, orderBy?: Array<{ field: string, direction?: 'asc'|'desc' }>, timeWindow?: { start?: string, end?: string }, viewMode?: 'chart'|'table'|'card' },
  *   titleLink?: Record<string, unknown>,
  *   element?: string,
  *   viewId?: string,

@@ -785,10 +785,10 @@ test('Transactions includes local database controls and a responsive transaction
   await expect(transactionsPage.locator('.line-chart-series')).toHaveCount(2);
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Known runs');
   await expect(transactionsPage.locator('.chart-legend')).toContainText('Runs with record data');
-  expect(await page.getByRole('button', { name: 'Show table view' }).evaluate(
-    (toggle) => toggle.parentElement?.classList.contains('title-area')
+  expect(await transactionsPage.getByRole('button', { name: 'Table' }).evaluate(
+    (toggle) => toggle.closest('.filter-bar')?.parentElement === toggle.closest('.dashboard-page')
   )).toBe(true);
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await transactionsPage.getByRole('button', { name: 'Table' }).click();
   await expect(view).toBeVisible();
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
@@ -813,14 +813,14 @@ test('Transactions includes local database controls and a responsive transaction
   });
   await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
 
-  await page.getByRole('button', { name: 'Show card list view' }).click();
-  await page.getByRole('button', { name: 'Show chart view' }).click();
+  await transactionsPage.getByRole('button', { name: 'Cards' }).click();
+  await transactionsPage.getByRole('button', { name: 'Chart' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(root).not.toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.org-sidebar')).toBeVisible();
-  await expect(page.locator('.sidebar-header > .mobile-view-mode-toggle')).toBeVisible();
+  await expect(transactionsPage.locator(':scope > .filter-bar .view-mode-control')).toBeVisible();
   await expect(view).toBeHidden();
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await transactionsPage.getByRole('button', { name: 'Table' }).click();
   await expect(view).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
@@ -1834,7 +1834,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const data = page.locator('.nav-section').first();
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Campaigns', 'Settings']);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Campaigns', 'Repositories', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Models & Agents', 'Firewall', 'MCPs']);
@@ -5292,30 +5292,30 @@ test('phone pages toggle between chart, full-view table, and card-list modes', a
   const root = page.locator('.dashboard-root');
   const chart = page.locator('[data-view-id="runs-chart"]');
   const table = page.locator('[data-view-id="runs-table"]');
-  const toggle = page.getByRole('button', { name: 'Show table view' });
-  await expect(toggle).toBeVisible();
-  await expect(toggle.locator('.octicon-table')).toBeVisible();
+  const tableMode = page.getByRole('button', { name: 'Table' });
+  await expect(tableMode).toBeVisible();
+  await expect(tableMode.locator('.octicon-table')).toBeVisible();
   await expect(chart).toBeVisible();
   await expect(table).toBeHidden();
   await expect(root).not.toHaveClass(/dashboard-full-view/);
 
-  await toggle.click();
+  await tableMode.click();
 
-  await expect(page.getByRole('button', { name: 'Show card list view' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Show card list view' }).locator('.octicon-stack')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cards' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cards' }).locator('.octicon-stack')).toBeVisible();
   await expect(chart).toBeHidden();
   await expect(table).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('table');
+  await expect(tableMode).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByRole('button', { name: 'Show card list view' }).click();
-  await expect(page.getByRole('button', { name: 'Show chart view' }).locator('.octicon-graph')).toBeVisible();
+  await page.getByRole('button', { name: 'Cards' }).click();
+  await expect(page.getByRole('button', { name: 'Chart' }).locator('.octicon-graph')).toBeVisible();
   await expect(chart).toBeHidden();
   await expect(table.locator('.table-region')).toBeHidden();
   await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(table.getByRole('heading', { name: 'Runs', level: 3 })).toBeHidden();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.mobile-view-mode'))).toBe('card');
+  await expect(page.getByRole('button', { name: 'Cards' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('phone Workflows page cycles through chart, table, and card-list views', async ({ page }) => {
@@ -5366,16 +5366,16 @@ test('phone Workflows page cycles through chart, table, and card-list views', as
   await expect(chart).toBeVisible();
   await expect(table).toBeHidden();
 
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.locator('[data-page-id="workflows"] > .filter-bar').getByRole('button', { name: 'Table' }).click();
   await expect(chart).toBeHidden();
   await expect(table.locator('.table-region')).toBeVisible();
   await expect(table.locator('tbody')).toContainText('AW Maintenance');
 
-  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.locator('[data-page-id="workflows"] > .filter-bar').getByRole('button', { name: 'Cards' }).click();
   await expect(table.locator('.table-region')).toBeHidden();
   await expect(table.locator('[data-mobile-card-list]')).toBeVisible();
   await expect(table.locator('[data-mobile-card-list]')).toContainText('AW Maintenance');
-  await expect(page.getByRole('button', { name: 'Show chart view' })).toBeVisible();
+  await expect(page.locator('[data-page-id="workflows"] > .filter-bar').getByRole('button', { name: 'Chart' })).toBeVisible();
 });
 
 test('phone full-view lazy tables switch between table and card-list modes', async ({ page }) => {
@@ -5445,14 +5445,14 @@ test('phone full-view lazy tables switch between table and card-list modes', asy
   await expect(cards).toBeHidden();
   await expect(root).toHaveClass(/dashboard-full-view/);
 
-  await page.getByRole('button', { name: 'Show card list view' }).click();
+  await page.getByRole('button', { name: 'Cards' }).click();
   await expect(table).toBeHidden();
   await expect(cards).toBeVisible();
   await expect(cards.locator('.entity-card-list-card')).toContainText('githubnext/gh-aw-cao');
   await expect(root).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Repositories', level: 3 })).toBeHidden();
 
-  await page.getByRole('button', { name: 'Show table view' }).click();
+  await page.getByRole('button', { name: 'Table' }).click();
   await expect(table).toBeVisible();
   await expect(cards).toBeHidden();
   await expect(root).toHaveClass(/dashboard-full-view/);

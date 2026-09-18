@@ -168,11 +168,6 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     catalogRoot: campaignRoot,
     installedDashboardsDirectory: path.join(root, "installed-dashboards"),
     downloadData,
-    loadViewer: async () => ({
-      login: "octocat",
-      name: "The Octocat",
-      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
-    }),
     allowMissingOrigin: true,
     workingDirectory: root,
     requestOutput: (message) => requestLogs.push(message),
@@ -219,13 +214,6 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     assert.deepEqual(await splitSourceResponse.json(), {
       rows: [{ token: "[REDACTED]", note: "[REDACTED]", detail: "x".repeat(2_048) }],
   });
-    const viewerResponse = await fetch(`${preview.url}/viewer.json`);
-    assert.deepEqual(await viewerResponse.json(), {
-      login: "octocat",
-      name: "The Octocat",
-      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
-    });
-
     test("repository skill discovery includes supported workspace skill directories", async () => {
       const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-server-skills-"));
       await mkdir(path.join(root, ".github", "skills"), { recursive: true });

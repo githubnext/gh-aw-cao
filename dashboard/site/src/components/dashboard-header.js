@@ -1,27 +1,10 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { isSafeHttpsUrl } from './ui-primitives.js';
 
 /**
- * @param {{ title: string, description?: string, overviewPageHref: string, dashboardHorizon: HTMLElement, githubUrlBase: string, dashboardRepository: string | null, viewer?: { login: string, name: string, avatarUrl: string } | null }} options
+ * @param {{ title: string, description?: string, overviewPageHref: string, dashboardHorizon: HTMLElement, githubUrlBase: string, dashboardRepository: string | null }} options
  */
 export function renderDashboardHeader(options) {
-  const viewerLabel = options.viewer?.name || options.viewer?.login;
-  const avatar = options.viewer && isSafeHttpsUrl(options.viewer.avatarUrl)
-    ? h(
-        'span',
-        { className: 'viewer-avatar', title: viewerLabel ? `Signed in as ${viewerLabel}` : 'Signed in viewer' },
-        h('img', {
-          className: 'viewer-avatar-image',
-          src: options.viewer.avatarUrl,
-          alt: viewerLabel ? `${viewerLabel} avatar` : 'Viewer avatar',
-          width: 28,
-          height: 28,
-          referrerPolicy: 'no-referrer'
-        })
-      )
-    : null;
-
   return h(
     'header',
     { className: 'top-nav' },
@@ -42,19 +25,7 @@ export function renderDashboardHeader(options) {
           { className: 'title-area' },
           h('h1', { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' }, options.title),
           h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
-          h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true }),
-          h(
-            'button',
-            {
-              className: 'mobile-view-mode-toggle',
-              type: 'button',
-              'aria-label': 'Show table view',
-              'aria-pressed': 'false',
-              title: 'Show table view',
-              hidden: true
-            },
-            octicon('table')
-          )
+          h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
         ),
         h('p', { className: 'lede', 'data-page-description': '', hidden: !options.description }, options.description ?? '')
       ),
@@ -74,8 +45,7 @@ export function renderDashboardHeader(options) {
               octicon('mark-github'),
               h('span', { className: 'sr-only action-label' }, options.dashboardRepository)
             )
-          : null,
-        avatar
+          : null
       )
     )
   );
