@@ -1223,7 +1223,11 @@ function renderChartView(context) {
       token: /** @type {string | undefined} */ (initialRows.length < maximumRows ? continuation.token : undefined),
       error: /** @type {string | null} */ (null)
     });
-    const totalRows = Math.min(continuation.totalRows, maximumRows);
+    const continuationTotalRows = Number(continuation.totalRows);
+    const totalRows = Math.min(
+      Number.isFinite(continuationTotalRows) ? continuationTotalRows : initialRows.length,
+      maximumRows
+    );
     const rowsPerRender = Math.max(
       1,
       Math.ceil(Math.max(totalRows - initialRows.length, 1) / MAX_INCREMENTAL_SWIMLANE_RENDERS)
