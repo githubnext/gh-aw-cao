@@ -96,6 +96,16 @@ test("docs dashboard installs renderer assets and configured package pages", asy
     assert.equal(mainSourceMap.sources.length, mainSourceMap.sourcesContent.length);
     assert.equal(workerSourceMap.sources.length, workerSourceMap.sourcesContent.length);
     await assert.rejects(readFile(new URL("src/presenter.js", destination), "utf8"), { code: "ENOENT" });
+    assert.match(
+      await readFile(new URL("src/octicons.svg", destination), "utf8"),
+      /<symbol id="octicon-rocket"/,
+      "deployed site serves the Octicon sprite inlined at startup",
+    );
+    assert.match(
+      await readFile(new URL("src/main.js", destination), "utf8"),
+      /octicons\.svg/,
+      "bundled site resolves the deployed Octicon sprite",
+    );
     for (const pageId of ["uk-ai-advisory-dashboard", "dependabot-dashboard"]) {
       assert.match(await readFile(new URL(`${pageId}/index.html`, destination), "utf8"), new RegExp(`#page-${pageId}`));
     }

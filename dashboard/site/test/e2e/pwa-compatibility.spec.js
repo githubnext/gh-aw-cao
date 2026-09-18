@@ -13,6 +13,7 @@ test.beforeEach(async ({ context }) => {
     const contentTypes = {
       '.html': 'text/html',
       '.json': 'application/manifest+json',
+      '.js': 'text/javascript',
       '.png': 'image/png',
       '.svg': 'image/svg+xml'
     };
@@ -70,4 +71,27 @@ test('desktop browser exposes an installable dashboard application', async ({ pa
     expect(result.userAgent).toContain('Chrome/');
     expect(result.userAgent).not.toContain('Edg/');
   }
+});
+
+test('renders Octicons from an inlined sprite instead of an external reference', async ({ page }) => {
+  await page.goto('http://localhost/');
+
+  const icon = await page.evaluate(async (moduleUrl) => {
+    const { ensureOcticonSprite, octicon } = await import(moduleUrl);
+    await ensureOcticonSprite();
+    const rendered = octicon('rocket');
+    document.body.append(rendered);
+    const glyph = rendered.querySelector('use');
+    return {
+      href: glyph?.getAttribute('href') ?? '',
+      symbolPresent: Boolean(document.querySelector('#octicon-sprite #octicon-rocket')),
+      width: glyph?.getBoundingClientRect().width ?? 0,
+      height: glyph?.getBoundingClientRect().height ?? 0
+    };
+  }, 'http://localhost/src/octicons.js');
+
+  expect(icon.href).toBe('#octicon-rocket');
+  expect(icon.symbolPresent).toBe(true);
+  expect(icon.width).toBeGreaterThan(0);
+  expect(icon.height).toBeGreaterThan(0);
 });
