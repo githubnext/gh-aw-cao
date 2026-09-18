@@ -151,7 +151,9 @@ test("token optimizer is review-only, assignment-scoped, and gated before infere
   assert.match(source, /token-efficiency-observation\.json/);
   assert.match(source, /recommendationDisposition: "unapplied"/);
   assert.match(source, /interventionState: "proposed"/);
-  assert.match(source, /attributableRunIds: \(\(\$attributableRunIds \| fromjson\) \+ \[\$optimizerRunId\] \| unique\)/);
+  assert.match(source, /^      assignment_json:$/m);
+  assert.doesNotMatch(source, /^      assignment_run_id:$/m);
+  assert.match(source, /attributableRunIds: \(\$assignment\.attributableRunIds \+ \[\$optimizerRunId\] \| unique\)/);
   assert.equal(
     policy["control-plane"].campaigns.optimization.workers["token-optimizer"]["max-mode"],
     "review",
