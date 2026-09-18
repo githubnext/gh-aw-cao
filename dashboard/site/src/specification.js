@@ -103,7 +103,7 @@ export const VIEW_ELEMENT_VALUES = [
   'factory-floor',
   'outcomes-overview'
 ];
-export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
+export const VIEW_CHART_VALUES = ['area', 'bar', 'dot', 'heatmap', 'histogram', 'horizontal-bar', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page', 'animate'];
 export const VIEW_METRIC_STYLE_VALUES = ['card'];
 export const VIEW_METRIC_TONE_VALUES = ['attention', 'danger', 'neutral', 'review'];

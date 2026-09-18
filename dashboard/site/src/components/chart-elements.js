@@ -621,7 +621,8 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     );
   }
 
-  if (chartType === 'line' || chartType === 'dot' || chartType === 'scatter') {
+  if (chartType === 'area' || chartType === 'line' || chartType === 'dot' || chartType === 'scatter') {
+    const isAreaChart = chartType === 'area';
     const isDotChart = chartType === 'dot';
     const isScatterChart = chartType === 'scatter';
     const isPointChart = isDotChart || isScatterChart;
@@ -643,10 +644,34 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const timelineTicks = isScatterChart
       ? scatterChartTimeAxisTicks(parsedTimes, minimumTime, maximumTime)
       : lineChartTimelineTicks(xValues);
+    const areaCoordinates = new Map();
     let maximum = 1;
-    for (const point of points) {
-      const value = toNumber(point.y);
-      if (Number.isFinite(value)) maximum = Math.max(maximum, value);
+    if (isAreaChart) {
+      const cumulativeByX = new Map(xValues.map((value) => [value, 0]));
+      for (const [seriesName, seriesPoints] of groupedSeries) {
+        const valuesByX = new Map();
+        for (const point of seriesPoints) {
+          const value = toNumber(point.y);
+          valuesByX.set(point.x, (valuesByX.get(point.x) ?? 0) + (Number.isFinite(value) ? Math.max(0, value) : 0));
+        }
+        const coordinates = xValues.map((xValue, xIndex) => {
+          const lower = cumulativeByX.get(xValue) ?? 0;
+          const upper = lower + (valuesByX.get(xValue) ?? 0);
+          cumulativeByX.set(xValue, upper);
+          maximum = Math.max(maximum, upper);
+          return {
+            x: xValues.length < 2 ? 50 : (xIndex / (xValues.length - 1)) * 100,
+            lower,
+            upper
+          };
+        });
+        areaCoordinates.set(seriesName, coordinates);
+      }
+    } else {
+      for (const point of points) {
+        const value = toNumber(point.y);
+        if (Number.isFinite(value)) maximum = Math.max(maximum, value);
+      }
     }
     const referenceLines = isDotChart && referenceField
       ? groupedSeries.flatMap(([seriesName, seriesPoints]) => [...new Set(seriesPoints
@@ -669,6 +694,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         end: Math.min(100, (Math.max(...highlightedIndexes) + 0.5) * xStep)
       }
       : null;
+    const scaledAreaY = (value) => Number((38 - (value / maximum) * 34).toFixed(4));
     return renderChartWidgetShell(
       chartType,
       { 'data-line-rendering': showInteractivePoints ? 'rich' : 'compact' },
@@ -677,7 +703,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         {
           viewBox: '0 0 100 42',
           role: 'img',
-          'aria-label': isPointChart
+          'aria-label': isAreaChart
+            ? `${series.length > 1 ? 'Stacked area' : 'Area'} chart with ${points.length} points`
+            : isPointChart
             ? `${isScatterChart ? 'Scatter' : 'Dot'} chart with ${points.length} points${isDotChart ? ` and ${referenceLines.length} reference lines` : ''}`
             : `Line chart with ${points.length} points`
         },
@@ -703,6 +731,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         })),
         ...groupedSeries.flatMap(([seriesName, seriesPoints], seriesIndex) => {
           const seriesClassName = seriesClassNames.get(seriesName) ?? 'chart-series-1';
+          const stackedCoordinates = areaCoordinates.get(seriesName) ?? [];
           const coordinates = seriesPoints.map((point) => {
             const xIndex = xIndexes.get(point.x) ?? 0;
             const pointTime = Date.parse(point.x);
@@ -717,7 +746,17 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             ? sampleLineCoordinates(coordinates.filter(({ point }) => point.highlighted), renderedPointLimit)
             : [];
           return [
-            ...(!isPointChart ? [h('polyline', {
+            ...(isAreaChart ? [h('path', {
+              className: `area-chart-area ${seriesClassName}`,
+              style: `--chart-entry-index: ${seriesIndex}`,
+              d: [
+                ...stackedCoordinates.map(({ x, upper }, index) => `${index === 0 ? 'M' : 'L'} ${x} ${scaledAreaY(upper)}`),
+                ...[...stackedCoordinates].reverse().map(({ x, lower }) => `L ${x} ${scaledAreaY(lower)}`),
+                'Z'
+              ].join(' '),
+              'data-chart-series': seriesName,
+              'aria-hidden': 'true'
+            })] : !isPointChart ? [h('polyline', {
               className: `line-chart-series ${seriesClassName}${hasWindowHighlight ? ' line-chart-context' : ''}`,
               style: `--chart-entry-index: ${seriesIndex}`,
               pathLength: 1,
@@ -725,7 +764,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               fill: 'none',
               'data-chart-series': seriesName
             })] : []),
-            ...(!isPointChart && highlightedCoordinates.length > 1
+            ...(!isAreaChart && !isPointChart && highlightedCoordinates.length > 1
               ? [h('polyline', {
                 className: `line-chart-series line-chart-current ${seriesClassName}`,
                 style: `--chart-entry-index: ${seriesIndex}`,
@@ -744,33 +783,46 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
                 'aria-hidden': 'true'
               }))
               : []),
-            ...(showInteractivePoints ? coordinates.map(({ point, x, y }, pointIndex) => h('g', {
-              className: `chart-point${point.highlighted === false ? ' chart-point-context' : point.highlighted ? ' chart-point-current' : ''}`,
-              style: `--chart-entry-index: ${pointIndex}`,
-              tabIndex: 0,
-              role: 'img',
-              'aria-label': `${chartPointLabel(point, unit)}${point.highlighted === false ? ' (context)' : point.highlighted ? ' (selected window)' : ''}`
-            },
-            h('title', null, chartPointLabel(point, unit)),
-            isPointChart
-              ? h('circle', {
-                className: `${isScatterChart ? 'scatter' : 'dot'}-chart-point ${seriesClassName}`,
-                cx: x,
-                cy: y,
-                r: dotPointRadius
-              })
-              : h('line', {
-                className: `line-chart-point ${seriesClassName}`,
-                style: `--chart-point-size: ${hasWindowHighlight ? 4 : pointSize}px`,
-                x1: x,
-                y1: y,
-                x2: x + NON_SCALING_POINT_LENGTH,
-                y2: y
-              }),
-            renderChartPointTooltip({
-              transform: `translate(${Math.min(Math.max(x - 21, 1), 57)} ${Math.max(y - 12, 1)})`,
-              label: chartPointLabel(point, unit)
-            }))) : [])
+            ...(showInteractivePoints ? coordinates.map(({ point, x, y }, pointIndex) => {
+              const stacked = isAreaChart
+                ? stackedCoordinates.find((coordinate) => coordinate.x === x)
+                : null;
+              const markY = stacked ? scaledAreaY(stacked.upper) : y;
+              return h('g', {
+                className: `chart-point${point.highlighted === false ? ' chart-point-context' : point.highlighted ? ' chart-point-current' : ''}`,
+                style: `--chart-entry-index: ${pointIndex}`,
+                tabIndex: 0,
+                role: 'img',
+                'aria-label': `${chartPointLabel(point, unit)}${point.highlighted === false ? ' (context)' : point.highlighted ? ' (selected window)' : ''}`
+              },
+              h('title', null, chartPointLabel(point, unit)),
+              isAreaChart
+                ? h('circle', {
+                  className: `area-chart-point ${seriesClassName}`,
+                  cx: x,
+                  cy: markY,
+                  r: 1.25
+                })
+                : isPointChart
+                  ? h('circle', {
+                    className: `${isScatterChart ? 'scatter' : 'dot'}-chart-point ${seriesClassName}`,
+                    cx: x,
+                    cy: y,
+                    r: dotPointRadius
+                  })
+                  : h('line', {
+                    className: `line-chart-point ${seriesClassName}`,
+                    style: `--chart-point-size: ${hasWindowHighlight ? 4 : pointSize}px`,
+                    x1: x,
+                    y1: y,
+                    x2: x + NON_SCALING_POINT_LENGTH,
+                    y2: y
+                  }),
+              renderChartPointTooltip({
+                transform: `translate(${Math.min(Math.max(x - 21, 1), 57)} ${Math.max(markY - 12, 1)})`,
+                label: chartPointLabel(point, unit)
+              }));
+            }) : [])
           ];
         })
       ),

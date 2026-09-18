@@ -504,6 +504,30 @@ describe('chart element helpers', () => {
     expect(fullPieSegments[1]?.getAttribute('d')).toBe('M 21 5.0845');
   });
 
+  it('renders area marks and stacks color series over the shared ordered axis', () => {
+    const points = [
+      { x: '2026-09-01', y: 2, color: 'review' },
+      { x: '2026-09-01', y: 3, color: 'triage' },
+      { x: '2026-09-02', y: 4, color: 'review' },
+      { x: '2026-09-02', y: 1, color: 'triage' }
+    ];
+    const chart = renderChartWidget('area', points, listChartSeries(points), null, 'AI Credits', {
+      name: 'AI Credits',
+      symbol: 'AIC',
+      significant: 1
+    });
+
+    expect(chart.getAttribute('data-chart-widget')).toBe('area');
+    expect(chart.querySelector('svg')?.getAttribute('aria-label')).toBe('Stacked area chart with 4 points');
+    expect(chart.querySelectorAll('path.area-chart-area')).toHaveLength(2);
+    expect(chart.querySelectorAll('.area-chart-point')).toHaveLength(4);
+    expect(chart.querySelector('[data-chart-series="review"]')?.getAttribute('d'))
+      .toBe('M 0 24.4 L 100 10.8 L 100 38 L 0 38 Z');
+    expect(chart.querySelector('[data-chart-series="triage"]')?.getAttribute('d'))
+      .toBe('M 0 4 L 100 4 L 100 10.8 L 0 24.4 Z');
+    expect(chart.querySelector('.chart-point')?.getAttribute('aria-label')).toContain('2 AIC');
+  });
+
   it('renders temporal dot observations with per-series reference lines', () => {
     const points = [
       { x: '2026-09-04T10:00:00Z', y: 4_900, color: 'core', source: { limit: 5_000 } },

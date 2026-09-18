@@ -5382,6 +5382,69 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
+  it('DLS-VIEW-005 accepts aggregated area charts over temporal or ordered dimensions', () => {
+    const valid = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: area-charts
+  title: Area Charts
+  pages:
+    - id: cost
+      kind: custom
+      views:
+        - id: aic-over-time
+          data:
+            source: runs
+          mark: chart
+          chart: area
+          encoding:
+            x:
+              field: started-at
+              type: temporal
+              time-unit: day
+            y:
+              field: aic-total
+              type: quantitative
+              aggregate: sum
+            color:
+              field: workflow
+              type: nominal
+        - id: ordered-volume
+          data:
+            source: runs
+          mark: chart
+          chart: area
+          encoding:
+            x:
+              field: run-conclusion
+              type: ordinal
+            y:
+              field: run
+              type: quantitative
+              aggregate: count
+`);
+    expect(valid.ok).toBe(true);
+
+    const invalidDocument = JSON.parse(validDocument);
+    invalidDocument.dashboard.pages[1].views[0] = {
+      id: 'invalid-area',
+      data: { source: 'runs' },
+      mark: 'chart',
+      chart: 'area',
+      encoding: {
+        x: { field: 'workflow', type: 'nominal' },
+        y: { field: 'run', type: 'quantitative', aggregate: 'count' }
+      }
+    };
+    const invalid = validateDashboardDocument(JSON.stringify(invalidDocument));
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E010',
+        path: '$.dashboard.pages[1].views[0].encoding.x.type'
+      }));
+    }
+  });
+
   it('DLS-VIEW-005 accepts multiple named measures only for line charts without color', () => {
     const valid = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:

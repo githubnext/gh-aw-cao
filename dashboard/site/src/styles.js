@@ -605,8 +605,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-clustering-progress { min-height: 230px; display: grid; place-content: center; justify-items: center; gap: 10px; margin: 12px 0; color: var(--muted); font-size: .8125rem; }
 .chart-clustering-progress progress { width: min(240px, 70vw); }
 .chart-widget svg { width: min(100%, 420px); max-height: 220px; overflow: visible; }
-.line-chart-widget, .dot-chart-widget, .scatter-chart-widget { min-width: 0; overflow: hidden; }
-.line-chart-widget svg, .dot-chart-widget svg, .scatter-chart-widget svg { width: 100%; max-height: none; }
+.area-chart-widget, .line-chart-widget, .dot-chart-widget, .scatter-chart-widget { min-width: 0; overflow: hidden; }
+.area-chart-widget svg, .line-chart-widget svg, .dot-chart-widget svg, .scatter-chart-widget svg { width: 100%; max-height: none; }
 .pie-chart-track { stroke: var(--border-muted); }
 .pie-chart-segment { stroke: var(--accent); }
 .pie-chart-total-value { fill: var(--fg); font-size: 5px; font-weight: 700; }
@@ -619,7 +619,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-legend-pie strong { color: var(--fg); font-variant-numeric: tabular-nums; }
 .chart-legend-pie small { color: var(--muted); }
 .chart-axis { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); font-size: .6875rem; }
-.line-chart-widget .chart-axis, .dot-chart-widget .chart-axis, .scatter-chart-widget .chart-axis { width: 100%; }
+.area-chart-widget .chart-axis, .line-chart-widget .chart-axis, .dot-chart-widget .chart-axis, .scatter-chart-widget .chart-axis { width: 100%; }
 .timeline-chart-axis { position: relative; width: 100%; margin: -12px 0 12px; padding-top: 9px; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
 .timeline-chart-axis span { position: relative; white-space: nowrap; }
 .timeline-chart-axis span::before { position: absolute; top: -10px; left: 50%; width: 1px; height: 5px; background: var(--border); content: ""; }
@@ -663,6 +663,8 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .line-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 2 2; }
 .histogram-chart-grid { stroke: var(--border-muted); stroke-width: .5; stroke-dasharray: 1.5 2; }
 .line-chart-series { stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.area-chart-area { stroke-width: 1; fill-opacity: .52; vector-effect: non-scaling-stroke; }
+.area-chart-point { fill: var(--canvas); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .line-chart-point { stroke-width: var(--chart-point-size, 4px); stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .dot-chart-point, .scatter-chart-point { fill: var(--canvas); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .dot-chart-reference { stroke-width: 1; stroke-dasharray: 4 3; opacity: .72; vector-effect: non-scaling-stroke; }
@@ -740,6 +742,18 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .bar-chart-bar.chart-series-10 { fill: var(--cyan); background: var(--cyan); }
 .bar-chart-bar.chart-series-11 { fill: var(--lime); background: var(--lime); }
 .bar-chart-bar.chart-series-12 { fill: var(--violet); background: var(--violet); }
+.area-chart-area.chart-series-1 { fill: var(--success); }
+.area-chart-area.chart-series-2 { fill: var(--attention); }
+.area-chart-area.chart-series-3 { fill: var(--danger); }
+.area-chart-area.chart-series-4 { fill: var(--accent); }
+.area-chart-area.chart-series-5 { fill: var(--muted); }
+.area-chart-area.chart-series-6 { fill: var(--purple); }
+.area-chart-area.chart-series-7 { fill: var(--pink); }
+.area-chart-area.chart-series-8 { fill: var(--coral); }
+.area-chart-area.chart-series-9 { fill: var(--yellow); }
+.area-chart-area.chart-series-10 { fill: var(--cyan); }
+.area-chart-area.chart-series-11 { fill: var(--lime); }
+.area-chart-area.chart-series-12 { fill: var(--violet); }
 .histogram-chart-bar.chart-series-1 { fill: var(--success); }
 .chart-legend i.chart-series-1 { border-color: var(--success); color: var(--success); }
 .chart-legend i.chart-series-2 { border-color: var(--attention); color: var(--attention); }
@@ -757,6 +771,10 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .chart-widget .chart-series-semantic-success, .chart-widget .chart-series-semantic-waiting { stroke: var(--accent); }
 .chart-widget .chart-series-semantic-attention { stroke: var(--attention); }
 .chart-widget .chart-series-semantic-neutral { stroke: var(--muted); }
+.area-chart-area.chart-series-semantic-failure { fill: var(--danger); }
+.area-chart-area.chart-series-semantic-success, .area-chart-area.chart-series-semantic-waiting { fill: var(--accent); }
+.area-chart-area.chart-series-semantic-attention { fill: var(--attention); }
+.area-chart-area.chart-series-semantic-neutral { fill: var(--muted); }
 .bar-chart-bar.chart-series-semantic-failure { fill: var(--danger); background: var(--danger); }
 .bar-chart-bar.chart-series-semantic-success, .bar-chart-bar.chart-series-semantic-waiting { fill: var(--accent); background: var(--accent); }
 .bar-chart-bar.chart-series-semantic-attention { fill: var(--attention); background: var(--attention); }
@@ -786,7 +804,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
   from { opacity: 0; transform: scaleX(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pie-chart-segment, .line-chart-series, .line-chart-point, .dot-chart-point, .scatter-chart-point, .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect, .metric-number-animated { animation: none; }
+  .pie-chart-segment, .area-chart-area, .line-chart-series, .line-chart-point, .dot-chart-point, .scatter-chart-point, .bar-chart-bar, .histogram-chart-bar, .table-summary-histogram rect, .metric-number-animated { animation: none; }
   .metric-number-animated { --metric-number: var(--metric-number-target); }
   .pie-chart-segment, .point-tooltip, .swimlane-run-mark, .dashboard-notification-chevron { transition: none; }
 }

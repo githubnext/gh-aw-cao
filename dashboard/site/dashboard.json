@@ -1973,6 +1973,17 @@
         }
       },
       {
+        "name": "cost-aic-over-time",
+        "intent": "Prepare run-level AI Credit observations for daily workflow-grouped visualization.",
+        "description": "Run timestamps, workflows, and AI Credit values used by the Cost trend.",
+        "from": "runs",
+        "select": [
+          { "field": "started-at" },
+          { "field": "workflow" },
+          { "field": "aic-total", "as": "aic" }
+        ]
+      },
+      {
         "name": "cost-workflow-run-efficiency",
         "intent": "Summarize observed runs, AI Credit consumption, failures, and agent and model identity for each declared workflow.",
         "description": "Observed run, AI Credit, failure, and agent and model totals by workflow.",
@@ -4032,6 +4043,39 @@
         "class-name": "cost-page",
         "description": "Per-workflow AI Credit consumption and agent behavior evidence for token-efficiency review.",
         "views": [
+          {
+            "id": "cost-aic-over-time",
+            "title": "AI Credits over time",
+            "description": "Daily AI Credit consumption stacked by workflow shows how total usage and its operational mix change over time.",
+            "data": {
+              "source": "cost-aic-over-time"
+            },
+            "mark": "chart",
+            "chart": "area",
+            "layout": "full",
+            "empty-message": "No AI Credit consumption was observed in the selected horizon.",
+            "encoding": {
+              "x": {
+                "field": "started-at",
+                "type": "temporal",
+                "time-unit": "day",
+                "title": "Day"
+              },
+              "y": {
+                "field": "aic",
+                "type": "quantitative",
+                "aggregate": "sum",
+                "as": "daily-aic",
+                "title": "AI Credits",
+                "unit": "aic"
+              },
+              "color": {
+                "field": "workflow",
+                "type": "nominal",
+                "title": "Workflow"
+              }
+            }
+          },
           {
             "id": "cost-top-workflow-aic",
             "title": "Top AI Credit consumers",

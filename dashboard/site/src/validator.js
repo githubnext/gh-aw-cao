@@ -4417,6 +4417,18 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
       `${viewPath}.encoding.x.type`
     ));
   }
+  if (
+    chart === 'area'
+    && isPlainObject(encoding.x)
+    && encoding.x.type !== undefined
+    && !['ordinal', 'temporal'].includes(String(encoding.x.type))
+  ) {
+    errors.push(createError(
+      ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+      'area chart x encoding must be ordinal or temporal when explicitly typed.',
+      `${viewPath}.encoding.x.type`
+    ));
+  }
   if (chart !== 'dot' && encoding.reference !== undefined) {
     errors.push(createError(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,

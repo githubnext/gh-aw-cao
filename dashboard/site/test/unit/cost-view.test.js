@@ -50,6 +50,13 @@ const efficiencyRows = [
   }
 ];
 
+const runRows = [
+  { 'started-at': '2026-08-29T08:00:00Z', workflow: '.github/workflows/daily.md', aic: 2 },
+  { 'started-at': '2026-08-29T12:00:00Z', workflow: '.github/workflows/review.md', aic: 3 },
+  { 'started-at': '2026-08-30T08:00:00Z', workflow: '.github/workflows/daily.md', aic: 4 },
+  { 'started-at': '2026-08-30T12:00:00Z', workflow: '.github/workflows/review.md', aic: 1 }
+];
+
 /** @param {HTMLElement} rendered */
 async function activateCostPage(rendered) {
   const link = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'));
@@ -63,10 +70,15 @@ async function activateCostPage(rendered) {
 }
 
 describe('Cost dashboard view', () => {
-  it('leads with the top AI Credit consumers pie chart and a workflow efficiency table', async () => {
+  it('leads with an AI Credit area trend, top consumers, and workflow efficiency', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
+        'cost-aic-over-time': {
+          source: 'cost-aic-over-time',
+          rows: runRows,
+          metadata
+        },
         'cost-top-workflow-aic': {
           source: 'cost-top-workflow-aic',
           rows: efficiencyRows,
@@ -87,8 +99,19 @@ describe('Cost dashboard view', () => {
 
     expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Cost', icon: 'meter' });
     expect(dashboardPage.sections).toBeUndefined();
-    expect(dashboardPage.views).toHaveLength(2);
+    expect(dashboardPage.views).toHaveLength(3);
     expect(dashboardPage.views[0]).toMatchObject({
+      id: 'cost-aic-over-time',
+      mark: 'chart',
+      chart: 'area',
+      data: { source: 'cost-aic-over-time' },
+      encoding: {
+        x: { field: 'started-at', type: 'temporal', 'time-unit': 'day' },
+        y: { field: 'aic', type: 'quantitative', aggregate: 'sum', unit: 'aic' },
+        color: { field: 'workflow', type: 'nominal' }
+      }
+    });
+    expect(dashboardPage.views[1]).toMatchObject({
       id: 'cost-top-workflow-aic',
       mark: 'chart',
       chart: 'pie',
@@ -102,8 +125,8 @@ describe('Cost dashboard view', () => {
       'order-by': expect.arrayContaining([{ field: 'aic', direction: 'desc' }]),
       limit: 10
     });
-    expect(dashboardPage.views[0].encoding.y).toMatchObject({ field: 'aic', aggregate: 'sum', unit: 'aic' });
-    expect(dashboardPage.views[1]).toMatchObject({
+    expect(dashboardPage.views[1].encoding.y).toMatchObject({ field: 'aic', aggregate: 'sum', unit: 'aic' });
+    expect(dashboardPage.views[2]).toMatchObject({
       id: 'cost-workflow-efficiency',
       mark: 'table',
       controls: 'interactive',
@@ -113,6 +136,8 @@ describe('Cost dashboard view', () => {
     });
 
     expect(rendered.querySelector('[data-nav-page-id="cost"] .octicon-meter')).not.toBeNull();
+    expect(page?.querySelector('[data-view-id="cost-aic-over-time"] [data-chart-widget="area"]')).not.toBeNull();
+    expect(page?.querySelectorAll('[data-view-id="cost-aic-over-time"] .area-chart-area')).toHaveLength(2);
     expect(page?.querySelector('[data-view-id="cost-top-workflow-aic"] [data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="cost-workflow-efficiency"] [data-lazy-list]')).not.toBeNull();
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);

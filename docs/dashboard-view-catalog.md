@@ -62,6 +62,7 @@ Built-in pages carry renderer-defined semantic requirements and required source 
 
 | Chart | Purpose |
 | --- | --- |
+| `area` | Show quantitative change over an ordered or temporal axis, optionally stacked by color. |
 | `bar` | Compare quantitative values across categories. |
 | `dot` | Compare compact point values across categories. |
 | `heatmap` | Show intensity across two categorical or temporal dimensions. |
