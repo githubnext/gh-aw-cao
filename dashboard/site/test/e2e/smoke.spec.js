@@ -3545,7 +3545,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context campaign.');
   await expect(campaignInsights.locator('.campaign-value-history [data-chart-widget="line"]')).toHaveCount(3);
   await expect(campaignInsights.locator('.campaign-value-history .chart-point')).toHaveCount(6);
-  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Repository readiness attainment');
+  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Repository readiness');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Quality');
   await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Efficiency');
 });

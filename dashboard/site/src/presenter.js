@@ -1186,6 +1186,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         /** @param {HTMLElement} renderedPage */
         const replacePage = (renderedPage) => {
           if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
+          const routeInitialized = currentPage.hasAttribute('data-route-value');
           const detailsState = pageState.get(pageId)?.details ?? [];
           [...renderedPage.querySelectorAll('details')].forEach((details, index) => {
             if (detailsState[index] !== undefined) details.open = detailsState[index];
@@ -1203,8 +1204,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           pagePopulated = true;
           placeDashboardHorizon(renderedPage);
           syncFullViewMode(renderedPage);
-          if (deferPopulation) {
+          if (routeInitialized) {
             dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
+          }
+          if (deferPopulation) {
             restoreScroll(renderedPage);
           }
         };

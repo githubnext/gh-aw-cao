@@ -157,6 +157,59 @@ describe('current dashboard source adapter', () => {
     expect(batch.issues).toEqual([]);
   });
 
+  it('maps legacy package inventory to canonical campaigns during rollout', () => {
+    const adapted = adaptDashboardSources({
+      packages: {
+        rows: [{
+          package: 'optimization',
+          'package-name': 'AW Optimization',
+          'package-description': 'Improves workflow efficiency.',
+          'package-icon': 'zap',
+          'package-mode': 'review',
+          'package-worker-count': 4,
+          'package-targets': [{ repository: 'github/gh-aw', mode: 'review' }]
+        }],
+        metadata
+      },
+      repositories: {
+        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+        metadata
+      },
+      workflows: {
+        rows: [{
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow: '.github/workflows/optimization-token-optimizer.md',
+          package: 'optimization',
+          'package-name': 'AW Optimization',
+          'package-icon': 'zap',
+          'workflow-name': 'AW Optimization / Token Optimizer',
+          'workflow-role': 'worker'
+        }],
+        metadata
+      }
+    });
+
+    const batch = normalize(adapted.observations);
+
+    expect(batch.campaigns[0]).toMatchObject({
+      slug: 'optimization',
+      name: 'AW Optimization',
+      description: 'Improves workflow efficiency.',
+      icon: 'zap',
+      mode: 'review',
+      workerCount: 4,
+      targets: [{ repository: 'github/gh-aw', mode: 'review' }]
+    });
+    expect(batch.workflows[0]).toMatchObject({
+      campaignId: batch.campaigns[0].id,
+      campaign: 'optimization',
+      campaignName: 'AW Optimization',
+      campaignIcon: 'zap'
+    });
+    expect(relationshipErrors(batch)).toEqual([]);
+  });
+
   it('accepts source documents without generation metadata', () => {
     expect(adaptDashboardSources({ repositories: { rows: [], metadata: {} } }))
       .toEqual({ observations: [] });
