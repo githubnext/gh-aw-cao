@@ -8116,11 +8116,7 @@
                   "label": "Enable",
                   "context": [
                     "package"
-                  ],
-                  "when": {
-                    "field": "package-enabled",
-                    "equals": false
-                  }
+                  ]
                 },
                 {
                   "action": "disable-package",
@@ -8129,11 +8125,7 @@
                   "label": "Disable",
                   "context": [
                     "package"
-                  ],
-                  "when": {
-                    "field": "package-enabled",
-                    "equals": true
-                  }
+                  ]
                 }
               ]
             },

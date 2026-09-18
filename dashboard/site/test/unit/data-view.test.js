@@ -198,16 +198,14 @@ describe('data view renderer', () => {
               presentation: 'cli-action',
               icon: 'play',
               label: 'Enable',
-              context: ['package'],
-              when: { field: 'package-enabled', equals: false }
+              context: ['package']
             },
             {
               action: 'disable-package',
               presentation: 'cli-action',
               icon: 'stop',
               label: 'Disable',
-              context: ['package'],
-              when: { field: 'package-enabled', equals: true }
+              context: ['package']
             }
           ]
         }
@@ -220,8 +218,7 @@ describe('data view renderer', () => {
           'package-version': 'v1',
           'package-current-version': 'v2',
           'package-update-state': 'update-available',
-          'package-mode': 'review',
-          'package-enabled': false
+          'package-mode': 'review'
         },
         {
           package: 'ci-doctor',
@@ -229,8 +226,7 @@ describe('data view renderer', () => {
           'package-version': 'v2',
           'package-current-version': 'v2',
           'package-update-state': 'current',
-          'package-mode': 'live',
-          'package-enabled': true
+          'package-mode': 'live'
         }
       ],
       metadata,
@@ -244,7 +240,7 @@ describe('data view renderer', () => {
 
     expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2);
     expect(rendered?.querySelector('.document-list-header .declared-cli-action')?.textContent).toContain('Update all');
-    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(5);
+    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(7);
     expect(rendered?.textContent).toContain('Switch to live');
     expect(rendered?.textContent).toContain('Switch to preview');
     expect(rendered?.textContent).toContain('Enable');

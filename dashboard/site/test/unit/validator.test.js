@@ -282,14 +282,12 @@ describe('dashboard document validation', () => {
       expect.objectContaining({
         action: 'enable-package',
         presentation: 'cli-action',
-        context: ['package'],
-        when: { field: 'package-enabled', equals: false }
+        context: ['package']
       }),
       expect.objectContaining({
         action: 'disable-package',
         presentation: 'cli-action',
-        context: ['package'],
-        when: { field: 'package-enabled', equals: true }
+        context: ['package']
       })
     ]);
     expect(document.dashboard['cli-actions']).toEqual(expect.arrayContaining([
