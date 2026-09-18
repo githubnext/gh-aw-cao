@@ -46,6 +46,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
     results: [],
   };
   let preview;
+  let browserContext;
 
   try {
     if (process.env.DASHBOARD_PAGE_IDS === "") return;
@@ -69,9 +70,10 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       throw new Error("No selected page IDs exist in the composed dashboard.");
     }
     test.setTimeout(dashboardAssessmentTimeout(pages.length));
+    browserContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 
     for (const pageDefinition of pages) {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+      const page = await browserContext.newPage();
       const errors = [];
       const failedRequests = [];
       let crashed = false;
@@ -182,6 +184,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       join(outputDirectory, "summary.json"),
       `${JSON.stringify(summary, null, 2)}\n`,
     );
+    await browserContext?.close();
     await preview?.close();
   }
 
