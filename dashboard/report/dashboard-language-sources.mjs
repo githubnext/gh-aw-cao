@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
-import { hasOperationalValueResult } from "./operational-value-records.mjs";
+import { hasOperationalValueResult, operationalValueRecordTime } from "./operational-value-records.mjs";
 import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
@@ -2510,7 +2510,7 @@ function operationalValueRows(values) {
     const metrics = operationalValueMetrics(definitions, record);
     const primary = metrics[0] || {};
     const diagnostics = Object.fromEntries(metrics.slice(1).map((metric) => [metric.id, metric.value]));
-    const observedAt = record.observedAt || record.observation?.evidenceAt || record.run?.createdAt;
+    const observedAt = operationalValueRecordTime(record);
     return {
       ...repository,
       "repository-name": repository.repository,

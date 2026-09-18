@@ -10,3 +10,12 @@ export function hasOperationalValueResult(record) {
   return record?.resultAvailable === true
     || Boolean(record?.observation && typeof record.observation === "object" && !Array.isArray(record.observation));
 }
+
+/**
+ * Shared observation timestamp precedence for native and legacy cache records.
+ *
+ * @param {Record<string, unknown>} record
+ */
+export function operationalValueRecordTime(record) {
+  return record.observedAt || record.observation?.evidenceAt || record.run?.createdAt || "";
+}

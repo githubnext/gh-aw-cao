@@ -3,7 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
-import { hasOperationalValueResult } from "./operational-value-records.mjs";
+import { hasOperationalValueResult, operationalValueRecordTime } from "./operational-value-records.mjs";
 
 function metricValue(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -26,10 +26,6 @@ function runIdentity(record) {
   ].join(":");
 }
 
-function recordTime(record) {
-  return record.observedAt || record.observation?.evidenceAt || record.run?.createdAt || "";
-}
-
 function mergeRecords(...recordSets) {
   const records = new Map();
   for (const record of recordSets.flat()) {
@@ -41,7 +37,7 @@ function mergeRecords(...recordSets) {
     records.set(key, record);
   }
   return [...records.values()].sort((left, right) => (
-    Date.parse(recordTime(left)) - Date.parse(recordTime(right))
+    Date.parse(operationalValueRecordTime(left)) - Date.parse(operationalValueRecordTime(right))
       || runIdentity(left).localeCompare(runIdentity(right))
   ));
 }
@@ -177,7 +173,7 @@ export async function collectOperationalValues() {
 
     const records = mergeRecords(cachedRecords, currentRecords);
     const evidenceTimes = records
-      .map(recordTime)
+      .map(operationalValueRecordTime)
       .filter(Boolean)
       .sort();
     const output = {
