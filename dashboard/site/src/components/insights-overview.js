@@ -7,6 +7,7 @@ import { rowsFor } from './source-rows.js';
 import { renderDlRow } from './ui-primitives.js';
 
 const FAILURE_CONCLUSIONS = new Set(['failure', 'timed-out', 'startup-failure', 'action-required']);
+const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -57,8 +58,6 @@ function renderMeasureRow(metric) {
     readout);
 }
 
-const SELECT_POINT_MESSAGE = 'Select a point to inspect that observation.';
-
 /**
  * Describes one measure: what it records, how many extracts it retains, how
  * many workflow series it separates, and the observed horizon.
@@ -73,7 +72,7 @@ function describeMeasure(kind, title, points, seriesCount) {
     ? `Primary operational-value measure “${title}” extracted by this package's workflows.`
     : `Diagnostic measure “${title}” reported alongside the primary operational value.`;
   const extracts = `${formatNumber(points.length)} ${points.length === 1 ? 'extract' : 'extracts'}`;
-  const seriesText = `${formatNumber(seriesCount)} workflow ${seriesCount === 1 ? 'series' : 'series'}`;
+  const seriesText = `${formatNumber(seriesCount)} workflow series`;
   const first = points[0] ? formatInstant(points[0].x) : '';
   const last = points.length > 1 ? formatInstant(points[points.length - 1].x) : '';
   const horizon = first && last ? ` observed from ${first} to ${last}` : first ? ` observed at ${first}` : '';
@@ -96,26 +95,29 @@ function attachPointSelection(chart, points, readout) {
     mark.setAttribute('role', 'button');
     mark.setAttribute('aria-pressed', 'false');
   }
+  /** @type {string | null} */
+  let selectedKey = null;
   /** @param {Element} mark */
   const select = (mark) => {
-    const selected = mark.getAttribute('aria-pressed') !== 'true';
+    const key = String(mark.getAttribute('data-chart-point-key'));
+    selectedKey = selectedKey === key ? null : key;
     for (const candidate of marks) {
-      candidate.setAttribute('aria-pressed', 'false');
-      candidate.removeAttribute('data-selected');
+      const pressed = selectedKey !== null && candidate.getAttribute('data-chart-point-key') === selectedKey;
+      candidate.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+      if (pressed) candidate.setAttribute('data-selected', 'true');
+      else candidate.removeAttribute('data-selected');
     }
-    if (!selected) {
+    const point = selectedKey === null ? undefined : byKey.get(selectedKey);
+    if (!point) {
       readout.replaceChildren(SELECT_POINT_MESSAGE);
       return;
     }
-    mark.setAttribute('aria-pressed', 'true');
-    mark.setAttribute('data-selected', 'true');
-    const point = byKey.get(String(mark.getAttribute('data-chart-point-key')));
-    const seriesName = point ? point.color : String(mark.getAttribute('data-chart-point-series') || '');
-    readout.replaceChildren(
-      h('strong', null, point ? formatNumber(point.y) : ''),
-      h('span', null, point ? formatInstant(point.x) : ''),
-      seriesName ? h('span', null, seriesName) : ''
-    );
+    const seriesLabel = String(point.color || mark.getAttribute('data-chart-point-series') || '');
+    readout.replaceChildren(...[
+      h('strong', null, formatNumber(point.y)),
+      h('span', null, formatInstant(point.x)),
+      ...(seriesLabel ? [h('span', null, seriesLabel)] : [])
+    ]);
   };
   chart.addEventListener('click', (event) => {
     const mark = /** @type {Element | null} */ (event.target instanceof Element ? event.target.closest('.chart-point[data-chart-point-key]') : null);
