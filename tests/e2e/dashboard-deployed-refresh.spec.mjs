@@ -2,11 +2,11 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+  deployedDashboardUrl as dashboardUrl,
   scrollRenderedViewsIntoView,
   shouldIgnoreRequestFailure,
 } from "./dashboard-deployed-refresh-helpers.mjs";
 
-const dashboardUrl = "https://githubnext.github.io/gh-aw-cao/cao/";
 const outputDirectory = resolve("test-results/dashboard-deployed");
 const populatedPages = ["events", "repositories", "workflows"];
 
