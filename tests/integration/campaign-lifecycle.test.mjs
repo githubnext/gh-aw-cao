@@ -157,6 +157,14 @@ const repositoryOnlyFiles = [
   ".github/workflows/review-smoke.yml",
 ];
 
+function installedManifestPath(consumer, manifestName) {
+  return join(consumer, ".github", "aw", "packages", manifestName);
+}
+
+function installedManifests(consumer) {
+  return readdirSync(join(consumer, ".github", "aw", "packages"));
+}
+
 function run(command, args, cwd) {
   return execFileSync(command, args, {
     cwd,
@@ -220,10 +228,10 @@ test("root campaign bootstraps an empty CAO and preserves resources during workf
     for (const relativePath of dashboardExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `root campaign omitted dashboard file ${relativePath}`);
     }
-    const campaignRecords = readdirSync(join(consumer, ".github", "aw", "campaigns"));
+    const campaignRecords = installedManifests(consumer);
     assert.equal(campaignRecords.length, 1, "expected one installed root campaign manifest");
     const installedCampaign = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "campaigns", campaignRecords[0]),
+      installedManifestPath(consumer, campaignRecords[0]),
       "utf8",
     ));
     for (const { destination } of installedCampaign.files) {
@@ -261,10 +269,10 @@ test("gh aw add installs the focused activity campaign contract", { timeout: 180
     for (const relativePath of activityExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `activity campaign omitted ${relativePath}`);
     }
-    const campaignManifests = readdirSync(join(consumer, ".github", "aw", "campaigns"));
+    const campaignManifests = installedManifests(consumer);
     assert.equal(campaignManifests.length, 1, "expected one installed activity campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "campaigns", campaignManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
@@ -289,10 +297,10 @@ test("gh aw add installs the focused EU CRA campaign contract", { timeout: 180_0
       "focused CRA campaign installed an unrelated orchestrator",
     );
 
-    const campaignManifests = readdirSync(join(consumer, ".github", "aw", "campaigns"));
+    const campaignManifests = installedManifests(consumer);
     assert.equal(campaignManifests.length, 1, "expected one focused CRA campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "campaigns", campaignManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
@@ -343,10 +351,10 @@ test("gh aw add installs the focused UK AI Advisory campaign contract", { timeou
       "focused UK AI Advisory campaign installed an unrelated orchestrator",
     );
 
-    const campaignManifests = readdirSync(join(consumer, ".github", "aw", "campaigns"));
+    const campaignManifests = installedManifests(consumer);
     assert.equal(campaignManifests.length, 1, "expected one focused UK AI Advisory campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "campaigns", campaignManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
@@ -402,10 +410,10 @@ test("gh aw add installs the focused Software Development Practices campaign con
       "focused Software Development Practices campaign installed an unrelated orchestrator",
     );
 
-    const campaignManifests = readdirSync(join(consumer, ".github", "aw", "campaigns"));
+    const campaignManifests = installedManifests(consumer);
     assert.equal(campaignManifests.length, 1, "expected one focused Software Development Practices campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "campaigns", campaignManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
@@ -436,10 +444,10 @@ test("gh aw add installs the dashboard campaign contract", { timeout: 180_000 },
       assert.ok(existsSync(join(consumer, relativePath)), `dashboard campaign omitted ${relativePath}`);
     }
 
-    const campaignManifests = readdirSync(join(consumer, ".github", "aw", "campaigns"));
+    const campaignManifests = installedManifests(consumer);
     assert.equal(campaignManifests.length, 1, "expected one installed dashboard campaign manifest");
     const installedManifest = JSON.parse(readFileSync(
-      join(consumer, ".github", "aw", "campaigns", campaignManifests[0]),
+      installedManifestPath(consumer, campaignManifests[0]),
       "utf8",
     ));
     assert.deepEqual(
