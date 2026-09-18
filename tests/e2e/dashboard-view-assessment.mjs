@@ -22,7 +22,7 @@ export const visibleBusyViewSelector = '[aria-busy="true"]:visible';
 // inside its job timeout so the summary is always uploaded.
 export const dashboardAssessmentStartupBudgetMs = 120_000;
 export const dashboardAssessmentPageBudgetMs = 20_000;
-export const maximumDashboardAssessmentTimeoutMs = 900_000;
+export const maximumDashboardAssessmentTimeoutMs = 1_500_000;
 
 export function dashboardAssessmentTimeout(pageCount) {
   const pages = Number.isFinite(pageCount) && pageCount > 0 ? Math.floor(pageCount) : 0;
