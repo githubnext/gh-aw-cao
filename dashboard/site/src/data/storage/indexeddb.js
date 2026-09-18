@@ -327,18 +327,17 @@ export async function readCollections(indexedDB, storeNames) {
   const startedAt = monotonicNow();
   const database = await openCanonicalDatabase(indexedDB);
   try {
-    if (storeNames.length === 0) {
-      debug('initialized canonical database for an empty collection read', {
-        durationMs: monotonicNow() - startedAt
-      });
-      return {};
-    }
-    const transaction = database.transaction([...storeNames]);
-    const done = transactionDone(transaction);
-    const records = await Promise.all(storeNames.map((storeName) =>
-      requestResult(transaction.objectStore(storeName).getAll())
-    ));
-    await done;
+    const records = storeNames.length === 0
+      ? []
+      : await (async () => {
+        const transaction = database.transaction([...storeNames]);
+        const done = transactionDone(transaction);
+        const values = await Promise.all(storeNames.map((storeName) =>
+          requestResult(transaction.objectStore(storeName).getAll())
+        ));
+        await done;
+        return values;
+      })();
     debug('completed multi-store collection read', {
       storeCount: storeNames.length,
       requestCount: storeNames.length,

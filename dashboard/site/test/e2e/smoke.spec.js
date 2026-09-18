@@ -50,15 +50,15 @@ test('shows a not-supported message instead of starting without IndexedDB', asyn
 });
 
 test('initializes IndexedDB during dashboard startup', async ({ page }) => {
-  await page.evaluate(async ({ mainModuleUrl, databaseName }) => {
+  await page.evaluate(async (databaseName) => {
     await new Promise((resolve, reject) => {
       const request = indexedDB.deleteDatabase(databaseName);
       request.onsuccess = () => resolve(undefined);
       request.onerror = () => reject(request.error);
       request.onblocked = () => reject(new Error('Unable to clear IndexedDB before startup.'));
     });
-    await import(mainModuleUrl);
-  }, { mainModuleUrl: 'http://dashboard.test/src/main.js', databaseName: DATABASE_NAME });
+    await import(new URL('/src/main.js', window.location.href).href);
+  }, DATABASE_NAME);
 
   await expect.poll(() => page.evaluate(async (databaseName) => (
     (await indexedDB.databases()).some(({ name }) => name === databaseName)
