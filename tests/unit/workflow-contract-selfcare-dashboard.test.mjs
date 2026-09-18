@@ -270,6 +270,7 @@ test("SelfCare Pages health worker audits every deployed view on three profiles"
   assert.doesNotMatch(source, /close-older-key: self-care-pages-health/);
   assert.match(source, /create-pull-request:/);
   assert.match(source, /labels: \[self-care, self-care:pages-health\]/);
+  assert.match(source, /"dashboard\/site\/test\/performance\/\*\*\/\*\.mjs"/);
   assert.match(source, /self-care-pages-health-evidence\/\*\*/);
   assert.match(source, /each of the `desktop`, `mobile`, and `low-bandwidth` profiles/);
   assert.match(source, /scrolls every deployed dashboard view/i);

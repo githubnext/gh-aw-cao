@@ -116,6 +116,7 @@ safe-outputs:
       - "dashboard/site/src/**/*.js"
       - "dashboard/site/test/unit/**/*.js"
       - "dashboard/site/test/e2e/**/*.js"
+      - "dashboard/site/test/performance/**/*.mjs"
   upload-artifact:
     max-uploads: 1
     retention-days: 14
