@@ -30,6 +30,15 @@ test("grows the assessment timeout with the number of selected views", () => {
   );
   assert.equal(dashboardAssessmentTimeout(0), dashboardAssessmentStartupBudgetMs);
   assert.equal(dashboardAssessmentTimeout(undefined), dashboardAssessmentStartupBudgetMs);
+  assert.equal(
+    dashboardAssessmentTimeout(68),
+    dashboardAssessmentStartupBudgetMs + 68 * dashboardAssessmentPageBudgetMs,
+  );
+  assert.equal(
+    dashboardAssessmentTimeout(69),
+    dashboardAssessmentStartupBudgetMs + 69 * dashboardAssessmentPageBudgetMs,
+  );
+  assert.equal(dashboardAssessmentTimeout(75), maximumDashboardAssessmentTimeoutMs);
   assert.equal(dashboardAssessmentTimeout(10_000), maximumDashboardAssessmentTimeoutMs);
 });
 
