@@ -1229,7 +1229,7 @@ function renderChartView(context) {
       Math.ceil(Math.max(totalRows - initialRows.length, 1) / MAX_INCREMENTAL_SWIMLANE_RENDERS)
     );
     let chartWidget = /** @type {HTMLElement | null} */ (section.querySelector('[data-chart-widget="swimlane"]'));
-    let renderedRowCount = rows.length;
+    let renderedRowCount = initialRows.length;
     const failureMessage = h(
       'p',
       { className: 'view-context', role: 'status' },
