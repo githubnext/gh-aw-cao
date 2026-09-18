@@ -140,6 +140,39 @@ describe('canonical IndexedDB', () => {
     database.close();
   });
 
+  it('rebuilds package-store caches during the campaigns schema upgrade', async () => {
+    const legacy = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, 17);
+      request.onupgradeneeded = () => {
+        const packages = request.result.createObjectStore('packages', { keyPath: 'id' });
+        packages.createIndex('bySlug', 'slug');
+        packages.put({
+          id: 'package:dashboard-sources:dashboard',
+          slug: 'dashboard'
+        });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    legacy.close();
+
+    const database = await openCanonicalDatabase(indexedDB);
+
+    expect([...database.objectStoreNames]).toEqual([
+      'audits',
+      'campaigns',
+      'domains',
+      'issues',
+      'repositories',
+      'runs',
+      'tools',
+      'transactions',
+      'workflows'
+    ]);
+    expect(await readCollection(indexedDB, 'campaigns')).toEqual([]);
+    database.close();
+  });
+
   it('directly upserts records for immediate queries', async () => {
     await upsertCanonicalBatch(indexedDB, batch());
 

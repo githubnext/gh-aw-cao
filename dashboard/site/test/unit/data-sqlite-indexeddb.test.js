@@ -21,6 +21,7 @@ import {
   createSqliteIndexedDB,
   installSqliteIndexedDB
 } from '../../src/data/storage/sqlite-indexeddb.js';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 
 const temporaryDirectories = /** @type {string[]} */ ([]);
 const originalIndexedDB = globalThis.indexedDB;
@@ -233,7 +234,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
       [`normalized/${normalizedName}`]: expect.stringMatching(/^[a-f0-9]{64}$/)
     });
     expect(JSON.parse(readFileSync(join(normalizedDirectory, normalizedName), 'utf8'))).toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: CANONICAL_SCHEMA_VERSION,
       ingestionVersion: 2,
       sourceRecords: 3,
       batch: {
