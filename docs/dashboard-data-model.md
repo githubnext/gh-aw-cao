@@ -3,8 +3,8 @@ title: Data model
 description: Understand the canonical entities, relationships, identities, and lifecycle of Central Agentic Ops dashboard data.
 ---
 
-The data model gives every retained repository, workflow, run, and event a
-stable identity and explicit relationships. Read this page when you
+The data model gives every retained package, repository, workflow, run, and
+run-owned record a stable identity and explicit relationships. Read this page when you
 need to understand what a dashboard record represents or how records connect.
 Views query this source-neutral model instead of interpreting upstream formats
 directly.
@@ -14,34 +14,47 @@ See [Data ingestion](/gh-aw-cao/dashboard-data-ingestion/) for collection, JSONL
 ## Entity map
 
 ```mermaid
-%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 36, "rankSpacing": 52}}}%%
-flowchart LR
-  repository["Repository"] --> workflow["Workflow"] --> run["Run"] --> event["Event"]
-
-  classDef entity fill:#ddf4ff,stroke:#0969da,color:#0a3069,stroke-width:2px
-  class repository,workflow,run,event entity
+erDiagram
+  PACKAGE o|--o{ WORKFLOW : classifies
+  REPOSITORY ||--o{ WORKFLOW : contains
+  REPOSITORY ||--o{ RUN : executes
+  WORKFLOW ||--o{ RUN : defines
+  RUN ||--o{ DOMAIN : records
+  RUN ||--o{ TOOL : invokes
+  RUN ||--o{ AUDIT : records
+  RUN ||--o{ ISSUE : creates
 ```
 
-The main path follows activity from a repository to the events recorded for a
-workflow run. The table below provides the exact identities and parent
-relationships.
+The main path follows activity from a repository through its workflows and
+runs to four specialized run-owned record types. A Package may classify a
+Workflow independently of that execution hierarchy. The table below provides
+the exact identities and parent relationships.
 
 ## Entities
 
 | Entity | Canonical identity | Parent relationships | Purpose |
 | --- | --- | --- | --- |
+| **Package** | Namespaced deterministic ID from the stable package slug | None | Classifies an installed starter package and its maintenance state. |
 | **Repository** | `github:repository:<github-id>` | None | Represents one GitHub repository across renames. |
 | **Workflow** | `github:workflow:<github-id>` | Repository | Represents one workflow across path or filename changes. |
 | **Run** | `github:run:<run-id>:attempt:<attempt>` | Repository and Workflow | Distinguishes every attempt of a GitHub Actions run. |
-| **Event** | Stable source ID or deterministic source coordinate | Run | Records messages, tools, network, policy, safe-output, API, and runtime activity. |
+| **Domain** | Namespaced deterministic source ID | Run | Records allowed and blocked firewall observations. |
+| **Tool** | Namespaced deterministic source ID | Run | Records MCP, Bash, and skill calls. |
+| **Audit** | Namespaced deterministic source ID | Run | Records lifecycle, policy, grader, agent, and other execution observations. |
+| **Issue** | Namespaced deterministic source ID | Run | Records issue and pull-request safe outputs. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
 The current dashboard publication does not include immutable GitHub repository or workflow IDs. Its compatibility adapter therefore uses namespaced deterministic source coordinates for those entities. These IDs are explicitly transitional and MUST be replaced by immutable GitHub IDs when publication supplies them.
 
-## Run events
+## Run-owned records
 
-A Run owns one ordered Event stream combining observations from agents, tools, MCP servers, gateways, firewalls, policy engines, safe-output processing, GitHub APIs, and the workflow runtime.
+A Run owns ordered Domain, Tool, Audit, and Issue records combining observations
+from agents, tools, MCP servers, gateways, firewalls, policy engines,
+safe-output processing, GitHub APIs, and the workflow runtime. These records
+remain independently addressable rather than being stored in one growing
+array. Skills are Tools with `toolType="skill"`; issues and pull requests share
+the Issue type and use `isPullRequest` to distinguish them.
 
 Run-owned records use a source sequence when one exists. Otherwise, source timestamp plus a deterministic ID tie-breaker defines order. Related calls, policy checks, responses, and results share a `correlationId` where available.
 

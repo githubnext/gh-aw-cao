@@ -98,7 +98,7 @@ A declared, bounded way for a workflow to produce an external effect, such as cr
 
 An upstream agent or tool interaction context. Session identifiers may appear in
 source evidence, but Session is not a canonical dashboard entity; canonical
-Events link directly to the owning Run.
+Domain, Tool, Audit, and Issue records link directly to the owning Run.
 
 ## Target repository
 

@@ -17,7 +17,7 @@ Agentic workflows produce Actions logs. The Activity workflow collects a bounded
   <img class="docs-theme-diagram-dark" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-aw-cao/assets/dashboard-data-flow-dark.svg">
 </div>
 
-SQLite and IndexedDB are rebuildable copies. Neither is the source for the other. Both use the same conversion rules and keep all run summaries available in the published JSONL. Detailed events remain bounded to 30 days unless a separate full-detail SQLite archive is requested.
+SQLite and IndexedDB are rebuildable copies. Neither is the source for the other. Both use the same conversion rules and keep all run summaries available in the published JSONL. Detailed Domain, Tool, Audit, and Issue records remain bounded to 30 days unless a separate full-detail SQLite archive is requested.
 
 See [Data model](/gh-aw-cao/dashboard-data-model/) for the canonical entities, identities, and relationships produced by ingestion.
 
@@ -31,7 +31,7 @@ The scheduled Activity workflow is a rolling operational snapshot, not a full hi
 | Enrichment | The scheduled command downloads at most five matching usage artifacts across all workflow targets per Activity invocation. |
 | GitHub retention | Expired or unavailable artifacts cannot provide agent, usage, job, or audit detail. The run summary may still exist. |
 | Mapping | GitHub API rate-limit records without collection context are intentionally not attached to a run. |
-| Browser storage | IndexedDB keeps all published run summaries and expires detailed Event records after 30 days. |
+| Browser storage | IndexedDB keeps all published run summaries and expires detailed Domain, Tool, Audit, and Issue records after 30 days. |
 
 Cached JSONL can repeat the same run in later snapshots. These are repeated observations, not duplicate database records. Raw runs are deduplicated by GitHub run ID and attempt. Enriched runs are deduplicated by run ID and attempt, with the newest observation winning.
 
@@ -114,7 +114,7 @@ cao ingest-jsonl \
   --input-dir .cao/gh-aw-logs-shards
 ```
 
-Pass `--context CONTEXT_JSON` when JSONL `github_api_rate_limit` records should become canonical Events. Without an owning collection Repository, Workflow, and Run, those records remain unmapped.
+Pass `--context CONTEXT_JSON` when JSONL `github_api_rate_limit` records should become canonical Audits. Without an owning collection Repository, Workflow, and Run, those records remain unmapped.
 
 Download the JSONL and SQLite projection published by the deployed CAO Pages site:
 

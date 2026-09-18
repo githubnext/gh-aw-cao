@@ -235,9 +235,10 @@ SQLite can serve a historical archive while IndexedDB remains a bounded browser
 cache.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
-Repository, Workflow, and Run summaries. They SHALL retain detailed Event
-records for the bounded 30-day operational window. Expiring Events MUST NOT
-remove their retained Run or the Run's structural parents.
+Repository, Workflow, and Run summaries. They SHALL retain detailed Domain,
+Tool, Audit, and Issue records for the bounded 30-day operational window.
+Expiring run-owned records MUST NOT remove their retained Run or the Run's
+structural parents.
 
 ## 5.1 Completeness and archives
 
@@ -313,8 +314,8 @@ name, active or disabled state, native identifier, and link without an observed
 Run. Repository-owned registry Workflows MUST remain standalone and MUST NOT
 inherit Package membership, worker status, admission, or rollout authority from
 repository enrollment. Cached gh-aw JSONL SHALL provide observed runtime
-evidence: Repository, Workflow, Run, and Event observations. A
-declared or registered Workflow MAY exist without an observed Run. Queries MUST
+evidence: Repository, Workflow, Run, Domain, Tool, Audit, and Issue observations.
+A declared or registered Workflow MAY exist without an observed Run. Queries MUST
 preserve that distinction and registry coverage metadata rather than fabricate
 runtime or inventory completeness. Deleted registry entries SHALL NOT appear as
 current Workflows, and local compilation SHALL NOT convert missing or unknown
@@ -365,7 +366,10 @@ The mandatory execution joins are:
 Workflow.repositoryId -> Repository.id
 Run.repositoryId      -> Repository.id
 Run.workflowId        -> Workflow.id
-Event.runId           -> Run.id
+Domain.runId           -> Run.id
+Tool.runId             -> Run.id
+Audit.runId            -> Run.id
+Issue.runId            -> Run.id
 ```
 
 `Run.repositoryId` SHALL identify the repository where GitHub Actions executed
@@ -653,7 +657,7 @@ operational-value facts remain in their existing canonical domains. Dashboard
 logical sources SHALL be materialized from these canonical facts in the data
 Web Worker; views and components MUST NOT reconstruct relationships.
 
-The IndexedDB Event representation SHALL use camel-case fields:
+The IndexedDB Audit representation SHALL use camel-case fields:
 `opportunityId`, `opportunityKind`, `interventionId`, `lifecycleObservationId`,
 `previousInterventionState`, `interventionState`,
 `previousRecommendationDisposition`, `recommendationDisposition`,
@@ -667,11 +671,11 @@ The IndexedDB Event representation SHALL use camel-case fields:
 `recommendationChurnCount`, `recommendationChurnRate`,
 `baselineAicPerAcceptedOutcome`, `optimizedAicPerAcceptedOutcome`,
 `acceptedTargetOutcomeCount`, `baselineFailureRate`, `optimizedFailureRate`,
-`outcomeQualityPreserved`, and the relationship IDs applicable to that Event.
+`outcomeQualityPreserved`, and the relationship IDs applicable to that Audit.
 
-The `gh-aw-cao.dashboard-sql-export` representation SHALL emit the same Events
+The `gh-aw-cao.dashboard-sql-export` representation SHALL emit the same Audits
 with equivalent snake-case columns. Each SQL-export row SHALL retain
-`entity_kind=event`, `source_id`, `observed_at`, `github_run_id`, `run_attempt`, and the
+`entity_kind=audit`, `source_id`, `observed_at`, `github_run_id`, `run_attempt`, and the
 applicable `optimization_*` columns. SQL and IndexedDB adapters SHALL normalize
 to byte-identical canonical IDs and equivalent units, nullability, enums,
 relationships, and query results. SQL tables, SQL text, and database credentials
@@ -1045,7 +1049,7 @@ Example:
 
 ## 12.2 Canonical Record Types
 
-Initial event families SHOULD include:
+Initial run-owned record families SHOULD include:
 
 ```text
 message.user
@@ -1546,7 +1550,7 @@ Benchmark data MAY change them.
 
 # 24. Large Payloads
 
-Large diagnostic payloads SHOULD NOT be duplicated into hot Event rows.
+Large diagnostic payloads SHOULD NOT be duplicated into hot run-owned record rows.
 
 Prefer:
 
@@ -1559,7 +1563,7 @@ Prefer:
 
   payloadRef: {
     chunk: "payloads/run-123-004.json",
-    key: "event-442"
+    key: "record-442"
   }
 }
 ```
@@ -1936,7 +1940,7 @@ Verify required relationships such as:
 ```text
 Workflow -> Repository
 Run -> Workflow
-Event -> Run
+Domain, Tool, Audit, and Issue -> Run
 ```
 
 Where eventually consistent partial relationships are intentionally allowed, that behavior MUST be explicit.
@@ -2060,7 +2064,8 @@ remains bounded.
 
 IndexedDB indexes SHALL NOT be treated as a full-text search engine.
 
-If message/event full-text search is required, the implementation SHOULD build a dedicated derived search index.
+If full-text search over run-owned records is required, the implementation
+SHOULD build a dedicated derived search index.
 
 The search index MUST also be disposable and rebuildable.
 
@@ -2091,7 +2096,7 @@ issues.forRun(runId);
 Dashboard code SHOULD NOT directly scatter IndexedDB transaction logic through views.
 
 Token-optimization pages SHALL query only the three logical sources defined in
-Section 5.5.5 and their declarative derivatives. They MUST NOT scan Event
+Section 5.5.5 and their declarative derivatives. They MUST NOT scan Audit
 payloads, join source rows, calculate comparability, or rank opportunities in a
 presenter or component.
 
@@ -2163,7 +2168,10 @@ Implement only:
 Repository
 Workflow
 Run
-Event
+Domain
+Tool
+Audit
+Issue
 
 canonical IDs
 canonical timestamps
@@ -2641,7 +2649,7 @@ memory release between chunks
 responsive main thread
 page-scoped worker query results
 no whole-dashboard structured clone
-lazy event detail loading
+lazy run-owned record detail loading
 ```
 
 ---
@@ -2800,7 +2808,7 @@ model
 
 The foundation is complete when:
 
-* Repository/Workflow/Run/Event exist;
+* Repository, Workflow, Run, Domain, Tool, Audit, and Issue exist;
 * canonical IDs are deterministic;
 * run-owned records support multiple producers;
 * real fixtures normalize correctly;
@@ -2828,7 +2836,7 @@ The subsystem is complete when:
 The implementation MUST NOT be described as enterprise-hardened until all of the following have passed:
 
 ```text
-million-event load test
+million-record load test
 bounded-memory ingestion
 real-browser IndexedDB testing
 interruption recovery
@@ -3021,7 +3029,11 @@ One coherent dashboard surface at a time.
                        v
             canonical domain model
 
-       Repository → Workflow → Run → Event*
+      Repository → Workflow → Run
+                  ├── Domain*
+                  ├── Tool*
+                  ├── Audit*
+                  └── Issue*
                        |
                        v
               generation ingestion
@@ -3057,7 +3069,7 @@ The implementation SHALL be guided by the following rules:
 
 > **Authoritative data must remain capable of rebuilding the browser completely.**
 
-> **Each Run owns one unified operational Event stream.**
+> **Each Run owns ordered Domain, Tool, Audit, and Issue records.**
 
 > **Never replace known-good data with an incomplete generation.**
 

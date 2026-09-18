@@ -50,7 +50,7 @@ Activity has two source classes:
 | Input | Authority | Canonical contribution |
 | --- | --- | --- |
 | `control-settings.json` and `inventory-sources.json` | Enrolled repository scope, package configuration, declared control workflows, paginated Actions workflow registries, and maintenance evidence | Package, Repository, declared control Workflow, and standalone repository Workflow observations |
-| `gh-aw-logs-shards/*.jsonl` | Observed GitHub Actions execution and agentic audit evidence | Repository, Workflow, Run, Job, Session, and Event observations |
+| `gh-aw-logs-shards/*.jsonl` | Observed GitHub Actions execution and agentic audit evidence | Repository, Workflow, Run, Domain, Tool, Audit, and Issue observations |
 
 The SQLite database and browser IndexedDB are
 independently reconstructable projections of these external inputs.
@@ -90,8 +90,8 @@ shards to their SHA-256 checksums. Run-information shards contain immutable
 agent/model identity and duration, firewall, MCP, operational-value, and audit
 priority aggregates. Every domain, tool, audit, and issue record includes its
 owning run identity. Empty phase shards are omitted, so the run and record directories can contain different
-filename stems. The dashboard imports all run-information shards before event
-record shards so clients can query runs while detailed ingestion continues.
+filename stems. The dashboard imports all run-information shards before record
+shards so clients can query runs while detailed ingestion continues.
 Each phase filename retains the source shard's sortable prefix before its
 content and normalization hashes, preserving observation precedence across
 repeated records.
@@ -110,8 +110,8 @@ cao discover-workflows \
 
 The split improves time to first useful Run query rather than reducing the
 total transfer required for a complete refresh. Run results exposed between
-phases are partial snapshot state; event-dependent results become current only
-after the event phase succeeds.
+phases are partial snapshot state; record-dependent results become current only
+after the record phase succeeds.
 
 `activity/cao.mjs` logs shard skip/ingest decisions and per-file hash results
 through Node's built-in `util.debuglog` (see `activity/debug.mjs`), scoped
@@ -126,7 +126,7 @@ reconstruct its immutable key from the returned run ID and attempt. Producers
 and consumers use this complete path list because GitHub includes paths in the
 cache version. When the current layout misses, Activity restores the preceding
 layout containing `gh-aw-logs-normalized/`; `hash-payloads` processes its
-retained JSONL shard directory to generate non-empty run and event shards.
+retained JSONL shard directory to generate non-empty run and record shards.
 The cache is an evictable transport optimization, not durable
 historical authority.
 

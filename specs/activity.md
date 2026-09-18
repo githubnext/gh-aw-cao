@@ -39,8 +39,8 @@ Activity consumer conforms when it satisfies Section 8.
 
 CAO Activity is deterministic collection infrastructure. It MUST collect one
 bounded `gh aw logs` JSONL snapshot for reuse. It MAY produce deterministic,
-rebuildable run-information and event transport shards from that snapshot, but
-MUST NOT supplement or reinterpret the collected evidence.
+rebuildable run-information and run-linked record transport shards from that
+snapshot, but MUST NOT supplement or reinterpret the collected evidence.
 
 Activity:
 
@@ -99,14 +99,14 @@ attempt. A consumer that dispatches Activity MUST restore the exact snapshot
 for the completed run and attempt rather than an unspecified latest snapshot.
 
 The snapshot consists of the JSONL produced by `gh aw logs`, compact
-run-information shards, detailed event shards, and rebuildable projections.
+run-information shards, detailed record shards, and rebuildable projections.
 Run-information shards MUST contain only Package, Repository, Workflow, and Run
-records. Event shards MUST contain only Event records. Every Event transport
-record MUST carry its canonical Run identity.
+records. Record shards MUST contain only Domain, Tool, Audit, and Issue records.
+Every record-shard transport record MUST carry its canonical Run identity.
 
 The two phases MUST be a complete partition of the source records. Publishers
 MUST omit a phase shard when it contains no records, so the run-information and
-event shard sets MAY contain different filename stems. Consumers MUST validate
+record shard sets MAY contain different filename stems. Consumers MUST validate
 the phase labels before phased ingestion and MUST fall back to a complete
 compatible transport or fail closed when the phased set is invalid.
 
@@ -115,20 +115,20 @@ content and normalization hashes. Publishers and consumers MUST process both
 phases in that order so a later observation of the same canonical entity wins
 over an earlier observation; content-hash order MUST NOT determine precedence.
 
-A consumer MUST load all run-information shards before event shards and MAY
-expose the resulting Run queries while event ingestion continues. This
+A consumer MUST load all run-information shards before record shards and MAY
+expose the resulting Run queries while record ingestion continues. This
 intermediate state is partial: it MUST NOT be represented as a complete
-snapshot, and event-dependent queries MUST remain unavailable or stale until
-the event phase succeeds. Failure or cancellation of the event phase MUST NOT
+snapshot, and record-dependent queries MUST remain unavailable or stale until
+the record phase succeeds. Failure or cancellation of the record phase MUST NOT
 invalidate already committed Run information, but the consumer MUST retry the
-missing event phase rather than mark the snapshot complete. Consumers MUST
+missing record phase rather than mark the snapshot complete. Consumers MUST
 determine availability, completeness, freshness, and scope for their own use
 and MUST NOT infer those properties from row counts.
 
 The phase split optimizes time to first useful Run query, avoids rewriting
 unchanged canonical records, and omits empty phase payloads. Phase metadata and
-direct Event-to-Run identity add bounded overhead. Consumers SHOULD avoid
-background event transfer on metered or data-saver connections.
+direct record-to-Run identity add bounded overhead. Consumers SHOULD avoid
+background record transfer on metered or data-saver connections.
 
 The concrete cache file and identity rule are defined by
 [`activity/README.md`](../activity/README.md). Changing the file or identity
