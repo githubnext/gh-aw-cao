@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { renderCampaignNavigation } from '../../src/components/campaign-detail.js';
 import { renderCampaignRouteVariant, renderCampaignRouteView } from '../../src/components/campaign-route-view.js';
 
 const metadata = {
@@ -154,7 +153,7 @@ function context() {
   };
 }
 
-describe('renderCampaignNavigation', () => {
+describe('campaign detail route', () => {
   it('renders the Insights facet for the selected campaign', () => {
     const rendered = renderCampaignRouteView({
       ...context(),
@@ -171,7 +170,7 @@ describe('renderCampaignNavigation', () => {
   });
 
   it('renders reusable navigation for the selected campaign workflow view', () => {
-    const rendered = renderCampaignNavigation(context());
+    const rendered = renderCampaignRouteVariant(context(), 'overview');
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
@@ -242,10 +241,10 @@ describe('renderCampaignNavigation', () => {
       const targetModeWorkflows = workflows.map((workflow) => workflow.campaign === 'ambient-context'
         ? { ...workflow, 'campaign-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }] }
         : workflow);
-      const rendered = renderCampaignNavigation({
+      const rendered = renderCampaignRouteVariant({
         ...context(),
         sources: { ...context().sources, workflows: { source: 'workflows', metadata, rows: targetModeWorkflows } }
-      });
+      }, 'overview');
       host.append(rendered);
       let detail;
       host.addEventListener('dashboard-route-allocation', (event) => {
@@ -262,7 +261,7 @@ describe('renderCampaignNavigation', () => {
 
   it('reallocates campaign title, description, mode, and parent navigation', () => {
     const host = document.createElement('div');
-    const rendered = renderCampaignNavigation(context());
+    const rendered = renderCampaignRouteVariant(context(), 'overview');
     host.append(rendered);
     let detail;
     host.addEventListener('dashboard-route-allocation', (event) => {
@@ -338,7 +337,7 @@ describe('renderCampaignNavigation', () => {
   });
 
   it('renders explicit empty states for missing and invalid campaign routes', () => {
-    const rendered = renderCampaignNavigation(context());
+    const rendered = renderCampaignRouteVariant(context(), 'overview');
     expect(rendered.textContent).toBe('Select a campaign to view its overview.');
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {

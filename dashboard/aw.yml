@@ -269,8 +269,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/outcome-detail-sections.js
   - source: site/src/components/campaign-aic-utilization-thresholds.json
     destination: .github/aw/dashboard/site/src/components/campaign-aic-utilization-thresholds.json
-  - source: site/src/components/campaign-detail.js
-    destination: .github/aw/dashboard/site/src/components/campaign-detail.js
   - source: site/src/components/campaign-readme.js
     destination: .github/aw/dashboard/site/src/components/campaign-readme.js
   - source: site/src/components/campaign-resource-navigation.json
@@ -349,8 +347,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/work-view-sections.js
   - source: site/src/components/workflow-badges.js
     destination: .github/aw/dashboard/site/src/components/workflow-badges.js
-  - source: site/src/components/workflow-detail.js
-    destination: .github/aw/dashboard/site/src/components/workflow-detail.js
   - source: site/src/components/workflow-identity.js
     destination: .github/aw/dashboard/site/src/components/workflow-identity.js
   - source: site/src/components/workflow-route.js
