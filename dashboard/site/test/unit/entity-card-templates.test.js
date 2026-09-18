@@ -46,12 +46,12 @@ describe('entity card templates', () => {
       title: { field: 'workflow-name' },
       subtitle: { field: 'workflow', format: 'workflow-relative-path' },
       details: expect.arrayContaining([
-        { field: 'runs', title: 'Runs' },
         { field: 'successful-runs', title: 'Success' },
         { field: 'failed-runs', title: 'Failures' },
         { field: 'aic-per-run', title: 'Average AIC', unit: 'aic-per-run' }
       ])
     });
+    expect(templates.workflow.details).not.toContainEqual({ field: 'runs', title: 'Runs' });
     const inventoryQuery = dashboard.queries.find(
       (/** @type {Record<string, any>} */ query) => query.name === 'workflow-inventory'
     );

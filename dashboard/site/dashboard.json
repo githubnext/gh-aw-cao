@@ -26,7 +26,6 @@
           { "field": "workflow-active", "title": "State", "display": "active-state" }
         ],
         "details": [
-          { "field": "runs", "title": "Runs" },
           { "field": "successful-runs", "title": "Success" },
           { "field": "failed-runs", "title": "Failures" },
           { "field": "aic-per-run", "title": "Average AIC", "unit": "aic-per-run" },

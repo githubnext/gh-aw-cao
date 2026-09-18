@@ -814,7 +814,6 @@ describe('data view renderer', () => {
           subtitle: { field: 'workflow', title: 'Workflow file', format: 'workflow-relative-path' },
           labels: [],
           details: [
-            { field: 'runs', title: 'Runs' },
             { field: 'successful-runs', title: 'Success' },
             { field: 'failed-runs', title: 'Failures' },
             { field: 'aic-per-run', title: 'Average AIC', unit: 'aic-per-run' }
@@ -843,7 +842,7 @@ describe('data view renderer', () => {
     expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('cao-dashboard.md');
     expect(card?.querySelector('.octicon-workflow')).not.toBeNull();
     expect([...card?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
-      .toEqual(['14Runs', '11Success', '3Failures', '2.50Average AIC']);
+      .toEqual(['11Success', '3Failures', '2.50Average AIC']);
   });
 
   it('lets a mobile card continuation retry after a load failure', async () => {
