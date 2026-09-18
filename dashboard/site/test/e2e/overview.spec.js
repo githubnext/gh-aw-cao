@@ -32,6 +32,20 @@ const sources = {
   'overview-factory-status': source('overview-factory-status', [{ 'factory-heading': 'Your factory is delivering value.' }]),
   'overview-registered-repository-summary': source('overview-registered-repository-summary', [{ 'registered-repositories': 6 }]),
   'overview-worker-summary': source('overview-worker-summary', [{ workers: 3 }]),
+  'campaign-inventory': source('campaign-inventory', [{
+    campaign: 'aw-doctor',
+    'campaign-name': 'AW Doctor',
+    'campaign-dashboard-link': {
+      'dashboard-href': '#page-campaign-detail?campaign=aw-doctor',
+      'dashboard-label': 'View AW Doctor campaign dashboard'
+    },
+    workflows: 3,
+    modes: ['review'],
+    registration: ['active'],
+    runs: 20,
+    dispatches: 12,
+    aic: 42
+  }]),
   'overview-rhythm': source('overview-rhythm', [{
     rhythm: {
       days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, index) => ({
@@ -101,7 +115,11 @@ test('declarative Overview views preserve desktop and mobile behavior', async ({
     await expect(factory.locator('.dashboard-lazy-view')).toHaveCount(0);
     await expect(factory.locator(':scope > [data-view-id="overview-header"]')).toHaveClass(/factory-intro/);
     await expect(factory.locator(':scope > [data-view-id="overview-floor"]')).toHaveClass(/factory-floor/);
+    await expect(factory.locator(':scope > [data-view-id="overview-campaigns"]')).toHaveClass(/custom-view/);
     await expect(factory.locator(':scope > .factory-intro + .factory-floor')).toHaveCount(1);
+    await expect(factory.getByRole('heading', { name: 'Campains' })).toBeVisible();
+    await expect(factory.getByRole('link', { name: 'View AW Doctor campaign dashboard' })).toBeVisible();
+    await expect(factory.locator('.entity-card-list-card')).toHaveCount(1);
     await expect(factory.getByRole('heading', { name: 'Your factory is delivering value.' })).toBeVisible();
     await expect(factory.locator('.factory-running-active')).toBeVisible();
     await expect(factory.locator('.factory-rhythm-day')).toHaveCount(7);
