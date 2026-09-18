@@ -143,7 +143,7 @@ export function renderShortenedUrl(value) {
  */
 export function renderExternalLink(link) {
   const external = isExternalLink(link);
-  return h('a', safeLinkAnchorAttrs(link, external), link.label, ...(external ? [octicon('external-link')] : []));
+  return h('a', safeLinkAnchorAttrs(link, external), link.label, ...(external ? [octicon('link-external')] : []));
 }
 
 /**

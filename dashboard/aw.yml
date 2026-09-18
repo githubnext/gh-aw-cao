@@ -153,8 +153,8 @@ resources:
     destination: .github/aw/dashboard/site/src/octicon-names.json
   - source: site/src/octicons.js
     destination: .github/aw/dashboard/site/src/octicons.js
-  - source: site/src/octicons.svg
-    destination: .github/aw/dashboard/site/src/octicons.svg
+  - source: site/src/octicon-sprite.js
+    destination: .github/aw/dashboard/site/src/octicon-sprite.js
   - source: site/src/presenter.js
     destination: .github/aw/dashboard/site/src/presenter.js
   - source: site/src/query-type-checker.js

@@ -73,17 +73,15 @@ test('desktop browser exposes an installable dashboard application', async ({ pa
   }
 });
 
-test('renders Octicons from an inlined sprite instead of an external reference', async ({ page }) => {
+test('renders Octicons inlined in JavaScript instead of an external reference', async ({ page }) => {
   await page.goto('http://localhost/');
 
   const icon = await page.evaluate(async (moduleUrl) => {
-    const { ensureOcticonSprite, octicon } = await import(moduleUrl);
-    await ensureOcticonSprite();
+    const { octicon } = await import(moduleUrl);
     const rendered = octicon('rocket');
     document.body.append(rendered);
     const glyph = rendered.querySelector('use');
     return {
-      symbolPresent: Boolean(document.querySelector('#octicon-sprite #octicon-rocket')),
       usesExternalGlyph: Boolean(glyph),
       pathCount: rendered.querySelectorAll('path').length,
       width: rendered.getBoundingClientRect().width,
@@ -91,7 +89,6 @@ test('renders Octicons from an inlined sprite instead of an external reference',
     };
   }, 'http://localhost/src/octicons.js');
 
-  expect(icon.symbolPresent).toBe(true);
   expect(icon.usesExternalGlyph).toBe(false);
   expect(icon.pathCount).toBeGreaterThan(0);
   expect(icon.width).toBeGreaterThan(0);
