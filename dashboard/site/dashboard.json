@@ -5038,7 +5038,7 @@
                 "type": "nominal"
               }
             },
-            "layout": "full-view"
+            "layout": "full"
           }
         ]
       },
@@ -5123,7 +5123,7 @@
                 "type": "nominal"
               }
             },
-            "layout": "full-view"
+            "layout": "full"
           }
         ]
       },
