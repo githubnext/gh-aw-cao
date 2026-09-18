@@ -93,6 +93,7 @@ export const VIEW_ELEMENT_VALUES = [
   'campaign-dispatches',
   'campaign-reports',
   'campaign-route',
+  'repository-route',
   'workflow-route',
   'workflow-route-page',
   'outcome-detail',

@@ -96,6 +96,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `campaign-dispatches` | Compatibility element that presents the workflow-runs variant of a routed campaign page. |
 | `campaign-reports` | Presents the reports variant of a routed campaign page. |
 | `campaign-route` | Resolves and composes a route-selected campaign experience. |
+| `repository-route` | Resolves and composes a route-selected repository experience across its overview, insights, workflows, runs, and settings tabs. |
 | `workflow-route` | Resolves a route-selected workflow experience. |
 | `workflow-route-page` | Composes a complete routed workflow page. |
 | `outcome-detail` | Presents one outcome and its linked evidence. |

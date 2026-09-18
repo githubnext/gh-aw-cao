@@ -14,6 +14,7 @@ import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, r
 import { slugify, clampPercent, text as stringValue } from './count-formatters.js';
 import { renderDefinitionList } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
+import { renderRepositoryRouteView } from './repository-route-view.js';
 import { renderWorkflowRouteView } from './workflow-route-view.js';
 import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
@@ -68,6 +69,7 @@ const ELEMENT_RENDERERS = new Map([
   ['campaign-dispatches', (context) => renderCampaignRouteVariant(context, 'runs')],
   ['campaign-reports', (context) => renderCampaignRouteVariant(context, 'reports')],
   ['campaign-route', renderCampaignRouteView],
+  ['repository-route', renderRepositoryRouteView],
   ['workflow-route', renderWorkflowRouteView],
   ['workflow-route-page', renderWorkflowRoutePage],
   ['outcome-detail', renderOutcomeDetail],
@@ -94,7 +96,7 @@ export function elementLoadsSourcesAsync(name) {
   return ASYNC_SOURCE_ELEMENTS.has(name);
 }
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'outcomes-overview', 'local-database']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'campaign-insights', 'campaign-detail', 'campaign-dispatches', 'campaign-reports', 'campaign-route', 'repository-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'campaign-activity-shell', 'work-project-view', 'insights-overview', 'factory-header', 'factory-floor', 'outcomes-overview', 'local-database']);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy']);
 
 /**
@@ -158,6 +160,10 @@ const LAZY_ELEMENT_RENDERERS = new Map([
   ['campaign-route-lazy', lazyElementRenderer(
     () => import('./campaign-route-view.js'),
     ({ renderCampaignRouteView }, context) => renderCampaignRouteView(context)
+  )],
+  ['repository-route-lazy', lazyElementRenderer(
+    () => import('./repository-route-view.js'),
+    ({ renderRepositoryRouteView }, context) => renderRepositoryRouteView(context)
   )],
   ['workflow-route-lazy', lazyElementRenderer(
     () => import('./workflow-route-view.js'),

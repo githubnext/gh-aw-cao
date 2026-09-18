@@ -2094,18 +2094,21 @@ dashboard:
 
   it('DLS-VIEW-030 validates route fields against the selected logical source', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-detail');
+    const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-workflow-inventory');
     const repositoryPage = document.dashboard.pages[repositoryPageIndex];
-    expect(repositoryPage.views.every((/** @type {{ data: { 'route-field'?: string } }} */ view) => view.data['route-field'] === 'repository')).toBe(true);
+    const routedViewIndex = repositoryPage.views.findIndex((/** @type {{ data: { source?: string } }} */ view) => typeof view.data.source === 'string');
+    expect(repositoryPage.views
+      .filter((/** @type {{ data: { source?: string } }} */ view) => typeof view.data.source === 'string')
+      .every((/** @type {{ data: { 'route-field'?: string } }} */ view) => view.data['route-field'] === 'repository')).toBe(true);
 
-    repositoryPage.views[0].data['route-field'] = 'missing-field';
+    repositoryPage.views[routedViewIndex].data['route-field'] = 'missing-field';
     const invalid = validateDashboardDocument(JSON.stringify(document));
 
     expect(invalid.ok).toBe(false);
     if (!invalid.ok) {
       expect(invalid.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E010',
-        path: `$.dashboard.pages[${repositoryPageIndex}].views[0].data.route-field`
+        path: `$.dashboard.pages[${repositoryPageIndex}].views[${routedViewIndex}].data.route-field`
       }));
     }
   });
