@@ -5,6 +5,7 @@ description: Closes every open issue with a label supplied to the /close-issues 
 intent: Let maintainers remove labeled preview issues without repetitive manual cleanup.
 on:
   slash_command:
+    strategy: centralized
     name: close-issues
     events: [issue_comment]
   reaction: none
@@ -24,7 +25,6 @@ safe-outputs:
     target: "*"
     max: 100
     state-reason: completed
-    allow-body: false
   noop:
     report-as-issue: false
 ---
