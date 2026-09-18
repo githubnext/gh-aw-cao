@@ -86,7 +86,8 @@ process.stderr.write("Fetched 1 run\\n");
     invocations = (await readFile(item.argumentsPath, "utf8")).trim().split("\n").map(JSON.parse);
     assert.equal(invocations.length, 4);
     const args = invocations[0];
-    assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--audit"]);
+    assert.deepEqual(args.slice(0, 2), ["aw", "logs"]);
+    assert.equal(args.includes("--audit"), false);
     assert.equal(args.includes("--json"), false);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",

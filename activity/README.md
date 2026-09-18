@@ -6,7 +6,7 @@ rollout mode, safe-output, target-writing, indexing, or reporting authority.
 
 The scheduled and manually dispatchable `CAO Activity` workflow checks out the
 control repository, restores the latest compatible log cache, and runs one
-bounded `gh aw logs --audit --artifacts usage --repo OWNER/REPOSITORY` command
+bounded `gh aw logs --artifacts usage --repo OWNER/REPOSITORY` command
 for each repository in the distinct union of the control repository and the
 allowed repositories resolved from `cao.json`. `cao.json` bounds collection; it
 does not declare runtime workflow or run identities. The collector then ingests
@@ -36,6 +36,11 @@ unchanged. Failed collections leave the prior files untouched. Shards containing
 out-of-range dated records are pruned by `gh aw logs --cache-before`. The
 ingestion step passes the shard directory to `cao ingest-jsonl --input-dir`,
 which tracks each compacted shard by content hash.
+
+The collector intentionally uses the compact `usage` artifact without
+`--audit`: gh-aw can reuse cached JSONL analyses only for that artifact mode.
+The JSONL records remain the Activity source for dashboard audit observations;
+enabling `--audit` would disable reuse and redownload unchanged reports.
 
 Collection is serial by repository so audits share refreshed Drain3 weights and
 do not multiply concurrent GitHub API pressure. A cold collection must discover

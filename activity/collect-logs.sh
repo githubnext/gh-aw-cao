@@ -51,7 +51,7 @@ for target_repository in "${repositories[@]}"; do
   fi
   shard_groups+=("$target_repository=$(basename "$shard_prefix")")
   set +e
-  gh aw logs --audit \
+  gh aw logs \
     --repo "$target_repository" \
     --output "$output_directory/$cache_name" \
     --summary-file "" \

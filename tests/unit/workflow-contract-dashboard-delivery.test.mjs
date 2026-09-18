@@ -394,7 +394,8 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
   assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/cao\.mjs[\s\S]*?\.github\/aw\/activity\/cao\.mjs/);
   assert.match(workflow, /bash "\$collector"/);
-  assert.match(activityCollector, /gh aw logs --audit/);
+  assert.match(activityCollector, /gh aw logs \\\n\s+--repo "\$target_repository"/);
+  assert.doesNotMatch(activityCollector, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v5-\$\{\{ github\.run_id \}\}-/);
