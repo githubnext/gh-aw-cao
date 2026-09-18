@@ -6348,7 +6348,12 @@
               "title": "Runs for top workflows",
               "description": "Observed runs for the ten workflows with the most runs, one lane per workflow.",
               "data": {
-                "source": "top-workflow-runs"
+                "source": "top-workflow-runs",
+                "order-by": [
+                  { "field": "workflow-runs", "direction": "desc" },
+                  { "field": "started-at", "direction": "desc" }
+                ],
+                "limit": 250
               },
               "mark": "chart",
               "chart": "swimlane",
@@ -6666,7 +6671,9 @@
                 "source": "runs-table",
                 "time": {
                   "range": "7d"
-                }
+                },
+                "order-by": [{ "field": "started-at", "direction": "desc" }],
+                "limit": 250
               },
               "mark": "chart",
               "chart": "swimlane",
@@ -7168,7 +7175,9 @@
               "id": "graders-graders-source",
               "disclosure": "supplemental",
               "data": {
-                "source": "graders"
+                "source": "graders",
+                "order-by": [{ "field": "grader", "direction": "asc" }],
+                "limit": 100
               },
               "mark": "table",
               "encoding": {
@@ -7184,7 +7193,9 @@
               "id": "graders-observations-source",
               "disclosure": "supplemental",
               "data": {
-                "source": "grader-observations"
+                "source": "grader-observations",
+                "order-by": [{ "field": "observed-at", "direction": "desc" }],
+                "limit": 100
               },
               "mark": "table",
               "encoding": {
@@ -7349,7 +7360,9 @@
               "id": "usage-usage-source",
               "disclosure": "supplemental",
               "data": {
-                "source": "usage"
+                "source": "usage",
+                "order-by": [{ "field": "observed-at", "direction": "desc" }],
+                "limit": 100
               },
               "mark": "table",
               "encoding": {
@@ -7937,7 +7950,12 @@
               "id": "findings-source",
               "disclosure": "supplemental",
               "data": {
-                "source": "findings"
+                "source": "findings",
+                "order-by": [
+                  { "field": "finding-severity", "direction": "desc" },
+                  { "field": "observed-at", "direction": "desc" }
+                ],
+                "limit": 100
               },
               "mark": "table",
               "encoding": {

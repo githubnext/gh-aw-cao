@@ -124,6 +124,12 @@ export function supportsIncrementalChartContinuation(view) {
   return isPlainObject(view) && view.mark === 'chart' && view.chart === 'swimlane';
 }
 
+/** @param {Record<string, any>} view */
+function chartRowLimit(view) {
+  const limit = isPlainObject(view.data) ? Number(view.data.limit) : Number.NaN;
+  return Number.isSafeInteger(limit) && limit > 0 ? limit : Number.POSITIVE_INFINITY;
+}
+
 /** @param {DataViewContext} context */
 function renderMetricView(context) {
   const { pageId, title, view, rows, metadata, contextDetails, headingTag, toText, units = {} } = context;
@@ -1208,14 +1214,19 @@ function renderChartView(context) {
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);
   if (supportsIncrementalChartContinuation(view) && continuation?.token && !pending) {
+    const maximumRows = chartRowLimit(view);
+    const initialRows = Number.isFinite(maximumRows)
+      ? rows.slice(0, maximumRows)
+      : [...rows];
     const continuationState = state({
-      rows: [...rows],
-      token: /** @type {string | undefined} */ (continuation.token),
+      rows: initialRows,
+      token: /** @type {string | undefined} */ (initialRows.length < maximumRows ? continuation.token : undefined),
       error: /** @type {string | null} */ (null)
     });
+    const totalRows = Math.min(continuation.totalRows, maximumRows);
     const rowsPerRender = Math.max(
       1,
-      Math.ceil(Math.max(continuation.totalRows - rows.length, 1) / MAX_INCREMENTAL_SWIMLANE_RENDERS)
+      Math.ceil(Math.max(totalRows - initialRows.length, 1) / MAX_INCREMENTAL_SWIMLANE_RENDERS)
     );
     let chartWidget = /** @type {HTMLElement | null} */ (section.querySelector('[data-chart-widget="swimlane"]'));
     let renderedRowCount = rows.length;
@@ -1271,12 +1282,17 @@ function renderChartView(context) {
             const next = await continuation.load(current.token);
             if (!active || (wasConnected && !section.isConnected)) return;
             wasConnected ||= section.isConnected;
-            accumulatedRows.push(...next.rows);
-            pendingRows += next.rows.length;
-            const shouldRender = !next.continuationToken || pendingRows >= rowsPerRender;
+            const remainingRows = Math.max(0, maximumRows - accumulatedRows.length);
+            const acceptedRows = Number.isFinite(maximumRows)
+              ? next.rows.slice(0, remainingRows)
+              : next.rows;
+            accumulatedRows.push(...acceptedRows);
+            pendingRows += acceptedRows.length;
+            const nextToken = accumulatedRows.length < maximumRows ? next.continuationToken : undefined;
+            const shouldRender = !nextToken || pendingRows >= rowsPerRender;
             current = {
               rows: shouldRender ? [...accumulatedRows] : current.rows,
-              token: next.continuationToken,
+              token: nextToken,
               error: null
             };
             continuationState.set(current);
