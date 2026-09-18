@@ -28,6 +28,15 @@ function openDatabase(name) {
   });
 }
 
+/** @param {string} name */
+function openBlockingDatabase(name) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 beforeEach(async () => {
   localStorage.clear();
   await Promise.all([
@@ -73,7 +82,7 @@ describe('dashboard local-data reset', () => {
 
   it('shows blocking-tab feedback and a friendly message when reset stays blocked', async () => {
     const reload = vi.fn();
-    const database = await openCanonicalDatabase(indexedDB);
+    const database = /** @type {IDBDatabase} */ (await openBlockingDatabase(DATABASE_NAME));
     const control = renderResetDashboardControl({ storage: localStorage, indexedDB, reload });
     document.body.append(control);
 

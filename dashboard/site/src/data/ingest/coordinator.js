@@ -229,8 +229,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
   }
   return {
     updated: true,
-    committedBatches: writeMetrics.committedBatches,
-    committedRecords: writeMetrics.storedRecords,
+    committedBatches: 0,
+    committedRecords: Object.values(batch).reduce((total, records) => total + records.length, 0),
     idb: writeMetrics
   };
 }
