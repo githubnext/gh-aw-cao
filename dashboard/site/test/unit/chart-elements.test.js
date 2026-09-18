@@ -360,7 +360,7 @@ describe('chart element helpers', () => {
         source: { run: '1840' }
       },
       {
-        x: '2026-08-29T08:00:00Z',
+        x: '2026-08-28T08:00:00Z',
         y: Number.NaN,
         category: 'doctor.md (githubnext/gh-aw-cao)',
         color: 'failure',
@@ -385,6 +385,8 @@ describe('chart element helpers', () => {
     expect(chart.querySelectorAll('.swimlane-mark-success')).toHaveLength(1);
     expect(chart.querySelectorAll('.swimlane-mark-failure')).toHaveLength(1);
     expect(chart.querySelectorAll('.swimlane-mark-cancelled')).toHaveLength(1);
+    expect([...chart.querySelectorAll('[data-swimlane-count]')].map((mark) => mark.getAttribute('data-swimlane-count')))
+      .toEqual(['1', '1', '1']);
     expect(chart.querySelector('.swimlane-mark-failure')?.getAttribute('aria-label'))
       .toContain('Lane: doctor.md (githubnext/gh-aw-cao)');
   });

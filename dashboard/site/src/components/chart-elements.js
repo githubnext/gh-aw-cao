@@ -1189,8 +1189,11 @@ function renderSwimlaneChart(points, timeRange) {
 function buildSwimlaneSections(points, timestamps, laneIndexes, laneDefinitions, xCoordinate) {
   const binCount = MAX_SWIMLANE_SECTIONS_PER_LANE;
   const sectionWidth = (SWIMLANE_LAYOUT.endX - SWIMLANE_LAYOUT.startX) / binCount;
-  /** @type {Map<string, Array<{ count: number, first: number, last: number, status: string, point: ChartPointLike & { lane: string, status: string, timestamp: number } } | null>>} */
-  const binsByLane = new Map(laneDefinitions.map(([lane]) => [lane, Array(binCount).fill(null)]));
+  /** @type {Map<string, Array<Map<string, { count: number, first: number, last: number, status: string, point: ChartPointLike & { lane: string, status: string, timestamp: number } }>>>} */
+  const binsByLane = new Map(laneDefinitions.map(([lane]) => [
+    lane,
+    Array.from({ length: binCount }, () => new Map())
+  ]));
   for (let pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
     const laneIndex = laneIndexes[pointIndex];
     if (laneIndex < 0) continue;
@@ -1200,13 +1203,13 @@ function buildSwimlaneSections(points, timestamps, laneIndexes, laneDefinitions,
     const x = xCoordinate(timestamp);
     const index = Math.min(binCount - 1, Math.max(0, Math.floor((x - SWIMLANE_LAYOUT.startX) / sectionWidth)));
     const bins = /** @type {NonNullable<ReturnType<typeof binsByLane.get>>} */ (binsByLane.get(lane));
-    const bin = bins[index];
+    const bin = bins[index].get(status);
     if (bin) {
       bin.count += 1;
       bin.first = Math.min(bin.first, timestamp);
       bin.last = Math.max(bin.last, timestamp);
     } else {
-      bins[index] = { count: 1, first: timestamp, last: timestamp, status, point: { ...points[pointIndex], lane, status, timestamp } };
+      bins[index].set(status, { count: 1, first: timestamp, last: timestamp, status, point: { ...points[pointIndex], lane, status, timestamp } });
     }
   }
 
@@ -1216,18 +1219,21 @@ function buildSwimlaneSections(points, timestamps, laneIndexes, laneDefinitions,
     /** @type {Array<{ lane: string, x1: number, x2: number, count: number, first: number, last: number, status: string, point: ChartPointLike & { lane: string, status: string, timestamp: number } }>} */
     const sections = [];
     for (let index = 0; index < bins.length; index += 1) {
-      const bin = bins[index];
-      if (!bin) continue;
-      const previous = sections.at(-1);
-      const x1 = SWIMLANE_LAYOUT.startX + (index * sectionWidth);
-      const x2 = Math.min(SWIMLANE_LAYOUT.endX, x1 + sectionWidth);
-      if (previous && previous.status === bin.status && Math.abs(previous.x2 - x1) < 1e-9) {
-        previous.x2 = x2;
-        previous.count += bin.count;
-        previous.first = Math.min(previous.first, bin.first);
-        previous.last = Math.max(previous.last, bin.last);
-      } else {
-        sections.push({ lane, x1, x2, ...bin });
+      const statusBins = [...bins[index].values()].sort((left, right) => left.status.localeCompare(right.status));
+      const statusWidth = sectionWidth / Math.max(1, statusBins.length);
+      for (let statusIndex = 0; statusIndex < statusBins.length; statusIndex += 1) {
+        const bin = statusBins[statusIndex];
+        const previous = sections.at(-1);
+        const x1 = SWIMLANE_LAYOUT.startX + (index * sectionWidth) + (statusIndex * statusWidth);
+        const x2 = Math.min(SWIMLANE_LAYOUT.endX, x1 + statusWidth);
+        if (previous && previous.status === bin.status && Math.abs(previous.x2 - x1) < 1e-9) {
+          previous.x2 = x2;
+          previous.count += bin.count;
+          previous.first = Math.min(previous.first, bin.first);
+          previous.last = Math.max(previous.last, bin.last);
+        } else {
+          sections.push({ lane, x1, x2, ...bin });
+        }
       }
     }
     sectionsByLane.set(lane, sections);
