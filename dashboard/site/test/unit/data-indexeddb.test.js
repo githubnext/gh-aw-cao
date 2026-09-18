@@ -19,6 +19,8 @@ import {
 import { normalize } from '../../src/data/normalize/index.js';
 import { tidy } from '../../src/data-operations.js';
 
+const LEGACY_PACKAGES_DATABASE_VERSION = 17;
+
 function batch() {
   return normalize([
     {
@@ -144,7 +146,7 @@ describe('canonical IndexedDB', () => {
 
   it('rebuilds package-store caches during the campaigns schema upgrade', async () => {
     const legacy = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, 17);
+      const request = indexedDB.open(DATABASE_NAME, LEGACY_PACKAGES_DATABASE_VERSION);
       request.onupgradeneeded = () => {
         const packages = request.result.createObjectStore('packages', { keyPath: 'id' });
         packages.createIndex('bySlug', 'slug');
@@ -156,7 +158,7 @@ describe('canonical IndexedDB', () => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    expect(legacy.version).toBe(17);
+    expect(legacy.version).toBe(LEGACY_PACKAGES_DATABASE_VERSION);
     expect([...legacy.objectStoreNames]).toContain('packages');
     legacy.close();
 
@@ -174,6 +176,8 @@ describe('canonical IndexedDB', () => {
       'transactions',
       'workflows'
     ]);
+    expect([...database.objectStoreNames]).not.toContain('packages');
+    expect(() => database.transaction('packages')).toThrow();
     expect(await readCollection(indexedDB, 'campaigns')).toEqual([]);
     database.close();
   });
