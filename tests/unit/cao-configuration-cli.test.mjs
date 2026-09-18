@@ -121,10 +121,11 @@ test("cao mode validates every package before changing the policy", async () => 
   }
 });
 
-test("cao enable and disable update every workflow declared by an installed package", async () => {
+test("cao enable and disable update every workflow declared by installed packages", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-workflow-state-"));
   const previousDirectory = process.cwd();
   const declarationDirectory = path.join(root, ".github", "aw", "repo-assist");
+  const secondDeclarationDirectory = path.join(root, ".github", "aw", "dependabot");
   const calls = [];
   try {
     await mkdir(declarationDirectory, { recursive: true });
@@ -136,27 +137,45 @@ test("cao enable and disable update every workflow declared by an installed pack
         maintenance: "repo-assist-maintenance",
       },
     }));
+    await mkdir(secondDeclarationDirectory, { recursive: true });
+    await writeFile(path.join(secondDeclarationDirectory, "cao.json"), JSON.stringify({
+      package: "dependabot",
+      orchestrator: "dependabot",
+      workers: {
+        "update-planner": "dependabot-update-planner",
+      },
+    }));
     process.chdir(root);
     const execute = (command, arguments_) => {
       calls.push([command, arguments_]);
       return { status: 0, stdout: "", stderr: "" };
     };
 
-    const enabled = await setCaoPackageWorkflowsEnabled("enable", "repo-assist", { execute });
-    const disabled = await setCaoPackageWorkflowsEnabled("disable", "repo-assist", { execute });
+    const enabled = await setCaoPackageWorkflowsEnabled("enable", ["repo-assist", "dependabot"], { execute });
+    const disabled = await setCaoPackageWorkflowsEnabled("disable", ["repo-assist", "dependabot"], { execute });
 
     assert.deepEqual(calls, [
       ["gh", ["workflow", "enable", "repo-assist.lock.yml"]],
       ["gh", ["workflow", "enable", "repo-assist-issue-triage.lock.yml"]],
       ["gh", ["workflow", "enable", "repo-assist-maintenance.lock.yml"]],
+      ["gh", ["workflow", "enable", "dependabot.lock.yml"]],
+      ["gh", ["workflow", "enable", "dependabot-update-planner.lock.yml"]],
       ["gh", ["workflow", "disable", "repo-assist.lock.yml"]],
       ["gh", ["workflow", "disable", "repo-assist-issue-triage.lock.yml"]],
       ["gh", ["workflow", "disable", "repo-assist-maintenance.lock.yml"]],
+      ["gh", ["workflow", "disable", "dependabot.lock.yml"]],
+      ["gh", ["workflow", "disable", "dependabot-update-planner.lock.yml"]],
     ]);
     assert.deepEqual(enabled, {
       command: "enable",
-      package: "repo-assist",
-      workflows: ["repo-assist", "repo-assist-issue-triage", "repo-assist-maintenance"],
+      packages: ["repo-assist", "dependabot"],
+      workflows: [
+        "repo-assist",
+        "repo-assist-issue-triage",
+        "repo-assist-maintenance",
+        "dependabot",
+        "dependabot-update-planner",
+      ],
     });
     assert.equal(disabled.command, "disable");
   } finally {
@@ -179,20 +198,24 @@ test("cao enable and disable validate packages and report workflow failures", as
     process.chdir(root);
 
     await assert.rejects(
-      setCaoPackageWorkflowsEnabled("enable", "missing"),
+      setCaoPackageWorkflowsEnabled("enable", ["missing"]),
       /Package missing is not installed or does not declare CAO workflows/,
     );
     await assert.rejects(
-      setCaoPackageWorkflowsEnabled("disable", "Not-A-Package"),
+      setCaoPackageWorkflowsEnabled("disable", ["Not-A-Package"]),
       /Invalid CAO package name: Not-A-Package/,
     );
     await assert.rejects(
-      setCaoPackageWorkflowsEnabled("enable", "dependabot", {
+      setCaoPackageWorkflowsEnabled("enable", ["dependabot"], {
         execute: (_command, arguments_) => arguments_.at(-1) === "dependabot-planner.lock.yml"
           ? { status: 1, stdout: "", stderr: "workflow unavailable" }
           : { status: 0, stdout: "", stderr: "" },
       }),
       /gh workflow enable failed for dependabot-planner: workflow unavailable/,
+    );
+    await assert.rejects(
+      setCaoPackageWorkflowsEnabled("enable", []),
+      /cao enable requires at least one package/,
     );
   } finally {
     process.chdir(previousDirectory);

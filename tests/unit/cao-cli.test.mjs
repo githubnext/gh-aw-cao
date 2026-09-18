@@ -37,7 +37,7 @@ test("reports a missing cao enable package without a stack trace", async () => {
   assert.ok(error);
   assert.equal(error.code, 1);
   assert.equal(error.stdout, "");
-  assert.match(error.stderr, /^Error: cao enable requires a package\n\n/);
-  assert.match(error.stderr, /\n  cao enable PACKAGE\b/);
+  assert.match(error.stderr, /^Error: cao enable requires at least one package\n\n/);
+  assert.match(error.stderr, /\n  cao enable PACKAGE\.\.\./);
   assert.doesNotMatch(error.stderr, /\n\s+at /);
 });

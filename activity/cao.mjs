@@ -63,8 +63,8 @@ const USAGE = `Usage:
   cao add PACKAGE [GH_AW_ADD_OPTIONS...]
   cao update [GH_AW_UPDATE_OPTIONS...]
   cao mode (live|preview) PACKAGE...
-  cao enable PACKAGE
-  cao disable PACKAGE
+  cao enable PACKAGE...
+  cao disable PACKAGE...
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
@@ -492,25 +492,33 @@ export async function setCaoPackageMode(mode, packageNames, {
   };
 }
 
-export async function setCaoPackageWorkflowsEnabled(action, packageName, {
+export async function setCaoPackageWorkflowsEnabled(action, packageNames, {
   execute = spawnSync
 } = {}) {
   if (action !== 'enable' && action !== 'disable') {
     throw new UsageError('CAO package workflow action must be enable or disable');
   }
-  if (!packageName) throw new UsageError(`cao ${action} requires a package`);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(packageName)) {
-    throw new UsageError(`Invalid CAO package name: ${packageName}`);
+  if (!Array.isArray(packageNames) || packageNames.length === 0) {
+    throw new UsageError(`cao ${action} requires at least one package`);
+  }
+  const packages = [...new Set(packageNames)];
+  const invalidPackage = packages.find((packageName) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(packageName));
+  if (invalidPackage !== undefined) {
+    throw new UsageError(`Invalid CAO package name: ${invalidPackage}`);
   }
 
-  const declaration = await readInstalledCaoDeclaration(packageName);
-  if (!declaration) {
-    throw new Error(`Package ${packageName} is not installed or does not declare CAO workflows`);
+  const declarations = [];
+  for (const packageName of packages) {
+    const declaration = await readInstalledCaoDeclaration(packageName);
+    if (!declaration) {
+      throw new Error(`Package ${packageName} is not installed or does not declare CAO workflows`);
+    }
+    declarations.push(declaration);
   }
-  const workflows = [...new Set([
+  const workflows = [...new Set(declarations.flatMap((declaration) => [
     declaration.orchestrator,
     ...Object.values(declaration.workers)
-  ])];
+  ]))];
   for (const workflow of workflows) {
     const workflowFile = `${workflow}.lock.yml`;
     const result = execute('gh', ['workflow', action, workflowFile], {
@@ -521,7 +529,7 @@ export async function setCaoPackageWorkflowsEnabled(action, packageName, {
       throw new Error(`gh workflow ${action} failed for ${workflow}: ${commandFailureMessage(result, 'unknown error')}`);
     }
   }
-  return { command: action, package: packageName, workflows };
+  return { command: action, packages, workflows };
 }
 
 async function jsonlFiles(root) {
@@ -1639,8 +1647,7 @@ export async function runCli(arguments_, input = process.stdin) {
     return setCaoPackageMode(optionArguments[0], optionArguments.slice(1));
   }
   if (command === 'enable' || command === 'disable') {
-    if (optionArguments.length > 1) throw new UsageError(`Unexpected argument: ${optionArguments[1]}`);
-    return setCaoPackageWorkflowsEnabled(command, optionArguments[0]);
+    return setCaoPackageWorkflowsEnabled(command, optionArguments);
   }
   if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
