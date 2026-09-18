@@ -29,11 +29,11 @@ export function renderRepositoryOverview({ repository, activity }) {
         ? h('a', externalAnchorAttrs(externalHref, `View ${repository} on GitHub`), octicon('mark-github'), h('span', null, 'View on GitHub'))
         : null),
     h('dl', { className: 'repository-overview-stats' },
-      renderDlRow('Workflows', value(activity.workflows)),
-      renderDlRow('Runs', value(activity.runs)),
-      renderDlRow('Failure rate', value(activity['failure-summary'])),
-      renderDlRow('AI Credits', value(activity.aic)),
-      renderDlRow('Ingestion', value(activity.ingestion)))
+      renderDlRow('Workflows', displayValue(activity.workflows)),
+      renderDlRow('Runs', displayValue(activity.runs)),
+      renderDlRow('Failures', displayValue(activity['failure-summary'])),
+      renderDlRow('AI Credits', displayValue(activity.aic)),
+      renderDlRow('Ingestion', displayValue(activity.ingestion)))
   );
 }
 
@@ -60,7 +60,7 @@ function statusSummary(activity) {
 }
 
 /** @param {unknown} input */
-function value(input) {
+function displayValue(input) {
   const rendered = text(input);
   return rendered.length > 0 ? rendered : '—';
 }

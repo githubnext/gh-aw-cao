@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { renderRepositoryRouteView } from '../../src/components/repository-route-view.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 
@@ -62,6 +62,10 @@ function selectRepository(rendered) {
 }
 
 describe('repository route', () => {
+  afterEach(() => {
+    setDeclaredCliActions([]);
+  });
+
   it('renders repository tabs for the selected repository', () => {
     const rendered = renderRepositoryRouteView(context('repository-detail', 'overview'));
     selectRepository(rendered);
@@ -113,7 +117,6 @@ describe('repository route', () => {
     expect(actions.map((action) => action.textContent)).toEqual(['Update all', 'Upgrade all']);
     expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Settings');
     expect(rendered.textContent).toContain('./.github/aw/cao.sh update --repo githubnext/gh-aw-cao');
-    setDeclaredCliActions([]);
   });
 
   it('asks for a repository selection when the route is empty', () => {
