@@ -809,6 +809,73 @@ describe('data view renderer', () => {
     expect(metrics).toEqual(['4778Calls', '12Workflows']);
   });
 
+  it('renders workflow cards with their file, Octicon, and run outcome metrics', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'workflows',
+      title: 'Workflows',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: {
+          columns: [
+            { field: 'workflow-name', type: 'nominal', title: 'Workflow' },
+            { field: 'workflow', type: 'nominal', title: 'Workflow file', format: 'workflow-relative-path' },
+            { field: 'runs', type: 'quantitative', title: 'Runs' },
+            { field: 'successful-runs', type: 'quantitative', title: 'Success' },
+            { field: 'failed-runs', type: 'quantitative', title: 'Failures' },
+            { field: 'aic-per-run', type: 'quantitative', title: 'Average AIC', unit: 'aic-per-run' }
+          ]
+        }
+      },
+      sourceName: 'workflow-inventory',
+      rows: [{
+        'workflow-name': 'Dashboard',
+        workflow: '.github/workflows/cao-dashboard.md',
+        runs: 14,
+        'successful-runs': 11,
+        'failed-runs': 3,
+        'aic-per-run': 2.5
+      }],
+      cardTemplates: {
+        workflow: {
+          icon: 'workflow',
+          title: { field: 'workflow-name', title: 'Workflow' },
+          subtitle: { field: 'workflow', title: 'Workflow file', format: 'workflow-relative-path' },
+          labels: [],
+          details: [
+            { field: 'successful-runs', title: 'Success' },
+            { field: 'failed-runs', title: 'Failures' },
+            { field: 'aic-per-run', title: 'Average AIC', unit: 'aic-per-run' }
+          ]
+        }
+      },
+      units: /** @type {any} */ ({
+        'aic-per-run': {
+          name: 'AI Credits per run',
+          symbol: 'AIC/run',
+          significant: 0.01,
+          format: 'number'
+        }
+      }),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('Dashboard');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('cao-dashboard.md');
+    expect(card?.querySelector('.octicon-workflow')).not.toBeNull();
+    expect([...card?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
+      .toEqual(['11Success', '3Failures', '2.50Average AIC']);
+  });
+
   it('lets a mobile card continuation retry on scroll after a load failure', async () => {
     const intersect = stubIntersectionObserver();
     const load = vi.fn()

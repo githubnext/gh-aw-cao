@@ -19,12 +19,16 @@
       {
         "id": "workflow",
         "icon": "workflow",
-        "title": { "field": "workflow", "title": "Workflow", "format": "workflow-relative-path" },
+        "title": { "field": "workflow-name", "title": "Workflow" },
+        "subtitle": { "field": "workflow", "title": "Workflow file", "format": "workflow-relative-path" },
         "labels": [
           { "field": "workflow-role", "title": "Role", "display": "label" },
           { "field": "workflow-active", "title": "State", "display": "active-state" }
         ],
         "details": [
+          { "field": "successful-runs", "title": "Success" },
+          { "field": "failed-runs", "title": "Failures" },
+          { "field": "aic-per-run", "title": "Average AIC", "unit": "aic-per-run" },
           { "field": "repository", "title": "Repository" },
           { "field": "campaign-name", "title": "Campaign" },
           { "field": "observed-at", "title": "Observed", "format": "human-friendly-timestamp" }
@@ -672,9 +676,66 @@
         "order-by": [{ "field": "repository-coordinate", "direction": "asc" }]
       },
       {
+        "name": "entity-workflow-run-totals",
+        "intent": "Summarize run outcomes and AI Credit consumption for reusable workflow cards.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "run-attempt-identity",
+            "function": "concat",
+            "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
+          }
+        ],
+        "aggregate": {
+          "by": ["organization", "repository", "workflow"],
+          "values": [
+            { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
+            {
+              "field": "run-conclusion",
+              "as": "successful-runs",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] }
+            },
+            {
+              "field": "run-conclusion",
+              "as": "failed-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+              }
+            },
+            { "field": "aic-total", "as": "aic", "reducer": "sum" }
+          ]
+        }
+      },
+      {
         "name": "entity-workflows",
         "intent": "Project workflow entities for reusable workflow cards and repository drill-down.",
         "from": "workflows",
+        "joins": [
+          {
+            "source": "entity-workflow-run-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" }
+            ],
+            "fields": [
+              { "field": "runs", "as": "observed-runs" },
+              { "field": "successful-runs", "as": "observed-successful-runs" },
+              { "field": "failed-runs", "as": "observed-failed-runs" },
+              { "field": "aic", "as": "observed-aic" }
+            ]
+          }
+        ],
+        "compute": [
+          { "as": "runs", "function": "coalesce", "args": [{ "field": "observed-runs" }, { "value": 0 }] },
+          { "as": "successful-runs", "function": "coalesce", "args": [{ "field": "observed-successful-runs" }, { "value": 0 }] },
+          { "as": "failed-runs", "function": "coalesce", "args": [{ "field": "observed-failed-runs" }, { "value": 0 }] },
+          { "as": "aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] },
+          { "as": "aic-per-run", "function": "quotient", "args": [{ "field": "aic" }, { "field": "runs" }] }
+        ],
         "select": [
           { "field": "organization" },
           { "field": "repository" },
@@ -684,6 +745,10 @@
           { "field": "workflow-active" },
           { "field": "campaign-name" },
           { "field": "observed-at" },
+          { "field": "runs" },
+          { "field": "successful-runs" },
+          { "field": "failed-runs" },
+          { "field": "aic-per-run" },
           { "field": "workflow-link" }
         ],
         "order-by": [
@@ -1970,10 +2035,31 @@
         "intent": "Summarize observed run counts and imported runs by declared workflow.",
         "description": "Observed run and imported-run totals for each declared workflow.",
         "from": "run-import-status",
+        "compute": [
+          {
+            "as": "run-attempt-identity",
+            "function": "concat",
+            "args": [{ "field": "run" }, { "value": ":" }, { "field": "run-attempt" }]
+          }
+        ],
         "aggregate": {
           "by": ["organization", "repository", "workflow"],
           "values": [
-            { "field": "run", "as": "runs", "reducer": "distinct-count" },
+            { "field": "run-attempt-identity", "as": "runs", "reducer": "distinct-count" },
+            {
+              "field": "run-conclusion",
+              "as": "successful-runs",
+              "reducer": "count",
+              "filter": { "predicates": [{ "field": "run-conclusion", "equals": "success" }] }
+            },
+            {
+              "field": "run-conclusion",
+              "as": "failed-runs",
+              "reducer": "count",
+              "filter": {
+                "predicates": [{ "field": "run-conclusion", "in": ["failure", "startup-failure", "stale", "timed-out"] }]
+              }
+            },
             { "field": "imported", "as": "imported-runs", "reducer": "sum" }
           ]
         }
@@ -2643,6 +2729,8 @@
             ],
             "fields": [
               { "field": "runs", "as": "observed-runs" },
+              { "field": "successful-runs", "as": "observed-successful-runs" },
+              { "field": "failed-runs", "as": "observed-failed-runs" },
               { "field": "imported-runs", "as": "observed-imported-runs" }
             ]
           },
@@ -2694,7 +2782,22 @@
             "function": "coalesce",
             "args": [{ "field": "observed-runs" }, { "value": 0 }]
           },
+          {
+            "as": "total-successful-runs",
+            "function": "coalesce",
+            "args": [{ "field": "observed-successful-runs" }, { "value": 0 }]
+          },
+          {
+            "as": "total-failed-runs",
+            "function": "coalesce",
+            "args": [{ "field": "observed-failed-runs" }, { "value": 0 }]
+          },
           { "as": "total-aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] },
+          {
+            "as": "aic-per-run",
+            "function": "quotient",
+            "args": [{ "field": "total-aic" }, { "field": "total-runs" }]
+          },
           {
             "as": "total-imported-runs",
             "function": "coalesce",
@@ -2788,6 +2891,9 @@
           { "field": "declared-registration", "as": "workflow-active" },
           { "field": "total-aic", "as": "aic" },
           { "field": "total-runs", "as": "runs" },
+          { "field": "total-successful-runs", "as": "successful-runs" },
+          { "field": "total-failed-runs", "as": "failed-runs" },
+          { "field": "aic-per-run" },
           { "field": "ingestion" },
           { "field": "campaign-dashboard-link", "as": "campaign-link" },
           { "field": "repository-dashboard-link", "as": "repository-link" },
@@ -6444,6 +6550,12 @@
                     "display": "workflow-link"
                   },
                   {
+                    "field": "workflow",
+                    "type": "nominal",
+                    "title": "Workflow file",
+                    "format": "workflow-relative-path"
+                  },
+                  {
                     "field": "repository",
                     "type": "nominal",
                     "title": "Repository",
@@ -6481,6 +6593,22 @@
                     "field": "runs",
                     "type": "quantitative",
                     "title": "Runs"
+                  },
+                  {
+                    "field": "successful-runs",
+                    "type": "quantitative",
+                    "title": "Success"
+                  },
+                  {
+                    "field": "failed-runs",
+                    "type": "quantitative",
+                    "title": "Failures"
+                  },
+                  {
+                    "field": "aic-per-run",
+                    "type": "quantitative",
+                    "title": "Average AIC",
+                    "unit": "aic-per-run"
                   },
                   {
                     "field": "ingestion",
