@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { renderWorkflowDetail } from '../../src/components/workflow-detail.js';
+import { renderWorkflowRoutePage } from '../../src/components/workflow-route-page.js';
 
 const metadata = {
   'source-id': 'fixture',
@@ -103,12 +103,12 @@ function context(pageId = 'workflow-detail') {
   };
 }
 
-describe('renderWorkflowDetail', () => {
+describe('workflow detail route', () => {
   it('renders the selected workflow identity and report navigation', () => {
     const host = document.createElement('div');
     const allocation = vi.fn();
     host.addEventListener('dashboard-route-allocation', allocation);
-    const rendered = renderWorkflowDetail(context());
+    const rendered = renderWorkflowRoutePage(context());
     host.append(rendered);
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
@@ -162,7 +162,7 @@ describe('renderWorkflowDetail', () => {
     const host = document.createElement('div');
     const allocation = vi.fn();
     host.addEventListener('dashboard-route-allocation', allocation);
-    const rendered = renderWorkflowDetail({
+    const rendered = renderWorkflowRoutePage({
       ...context('workflow-runs'),
       elementConfig: { body: 'runs' }
     });
@@ -185,7 +185,7 @@ describe('renderWorkflowDetail', () => {
   });
 
   it('uses declarative route view ids to choose the runs composition', () => {
-    const rendered = renderWorkflowDetail({
+    const rendered = renderWorkflowRoutePage({
       ...context('custom-workflow-page'),
       element: 'workflow-runs',
       elementConfig: { body: 'runs' }
@@ -202,7 +202,7 @@ describe('renderWorkflowDetail', () => {
   });
 
   it('uses the declarative route view id instead of page identity', () => {
-    const rendered = renderWorkflowDetail({
+    const rendered = renderWorkflowRoutePage({
       ...context('workflow-detail'),
       pageId: 'totally-custom-page',
       element: 'workflow-detail',
@@ -220,7 +220,7 @@ describe('renderWorkflowDetail', () => {
   });
 
   it('reuses the shared route page shell for workflow tabs and chrome', () => {
-    const rendered = renderWorkflowDetail(context());
+    const rendered = renderWorkflowRoutePage(context());
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: {
@@ -235,7 +235,7 @@ describe('renderWorkflowDetail', () => {
   });
 
   it('renders explicit empty states for missing and invalid workflow routes', () => {
-    const rendered = renderWorkflowDetail(context());
+    const rendered = renderWorkflowRoutePage(context());
     expect(rendered.textContent).toBe('Select a workflow to view its reports.');
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {

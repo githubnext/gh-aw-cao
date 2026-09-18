@@ -13,6 +13,10 @@ trigger -> pre-activation admission -> authorized-run precompute -> activation -
 
 Admission queries the GitHub rate-limit API and uses the returned core limit, remaining capacity, and reset time directly. It does not read or write a repository variable to coordinate capacity decisions across runs.
 
+The former `CAO_GITHUB_API_GATE` repository variable is not an authority or integrity input and is no longer used. Capacity is checked directly with the job-local credential, so there is no shared mutable gate or concurrent gate writer.
+
+There is no `.github/cao/src/report.mjs` in the current control runtime. Admission reporting is emitted by `.github/workflows/shared/control.mjs`; dashboard reporting is the separate modular pipeline under `dashboard/report/`.
+
 ## What Admission Gates
 
 The shared control component keeps one campaign-installed runtime under `.github/workflows/shared/`. The exact-`github.workflow_sha` shared checkout contains that runtime and `.github/workflows/cao.json`; authorized runs execute `precompute` from the same checkout.

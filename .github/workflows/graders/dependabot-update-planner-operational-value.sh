@@ -18,16 +18,16 @@ definition() {
   "workflowName": "Dependabot / Update Planner",
   "sourcePath": ".github/workflows/dependabot-update-planner.md",
   "adoption": {"commit": "eee5133bfe88654948f63ce6380a9b1bf8f60de3", "adoptedAt": "2026-09-17T00:00:00Z"},
-  "operationalValue": "Get each durable Dependabot plan issue into active human or coding-agent use.",
+  "operationalValue": "Get at least one PR-sized child task from each durable Dependabot plan into active human or coding-agent use.",
   "evidence": {
-    "opportunity": "One durable Dependabot plan issue created or refreshed for a dispatched target repository.",
+    "opportunity": "One durable Dependabot plan with at most twelve PR-sized child tasks created or refreshed for a dispatched target repository.",
     "assignment": "Bind the safe-output repository, target repository, and exact plan issue number; key dependabot-plan:<safeOutputRepo>:<issueNumber> so refreshes share one opportunity.",
-    "accepted": "Within fourteen days of publication, the issue is assigned, receives participation from someone other than the publishing automation, records checklist progress, is cross-referenced by a pull request, or is closed.",
+    "accepted": "Within fourteen days of publication, at least one child task is assigned, receives participation from someone other than the publishing automation, is cross-referenced by a pull request, or is closed as completed.",
     "repositories": ["githubnext/gh-aw-cao"],
-    "collection": "Read the bound issue, at most 100 comments, and at most 100 timeline events directly by repository and issue number. Do not use GitHub search.",
+    "collection": "Read the bound parent and its native sub-issue list, then at most 100 comments and 100 timeline events for each of at most twelve children. Do not use GitHub search.",
     "maturation": "Fourteen days after the plan issue was created.",
-    "zeroRule": "Complete mature evidence showing an open, unassigned issue with no outside participation, checklist progress, or linked pull request scores 0.",
-    "missingRule": "Missing assignment, an inaccessible issue, incomplete comments or timeline evidence, or an immature issue with no consumption signal scores null."
+    "zeroRule": "Complete mature evidence showing no consumed child task scores 0; assigning only the parent does not count.",
+    "missingRule": "Missing assignment, an inaccessible parent or child, more than twelve children, incomplete comments or timeline evidence, or an immature plan with no child consumption signal scores null."
   },
   "primaryMetric": {"id": "dependabot-plan-consumption", "formula": "1 when the bound plan issue has at least one accepted consumption signal; otherwise 0 when mature evidence is complete.", "direction": "higher_is_better"},
   "baseline": {"mode": "attainment-only", "value": null, "evidenceCutoff": null, "provenance": []},
@@ -94,16 +94,27 @@ assign_case() {
 collect_issue_evidence() {
     evidence_repo=$1; issue_number=$2; assigned_at=$3
     gh api --method GET "repos/$evidence_repo/issues/$issue_number" >"$tmp_dir/issue.json" 2>/dev/null || return 1
-    gh api --method GET "repos/$evidence_repo/issues/$issue_number/comments" -f per_page=100 >"$tmp_dir/comments.json" 2>/dev/null || return 1
-    gh api --method GET "repos/$evidence_repo/issues/$issue_number/timeline" -f per_page=100 >"$tmp_dir/timeline.json" 2>/dev/null || return 1
-    jq -cn --arg assignedAt "$assigned_at" --slurpfile issue "$tmp_dir/issue.json" --slurpfile comments "$tmp_dir/comments.json" --slurpfile timeline "$tmp_dir/timeline.json" '
-      def publisher: .==($issue[0].user.login//"") or .=="github-actions[bot]" or .=="dependabot[bot]" or test("^cao-.*\\[bot\\]$");
+    gh api --method GET "repos/$evidence_repo/issues/$issue_number/sub_issues" -f per_page=100 >"$tmp_dir/sub-issues.json" 2>/dev/null || return 1
+    child_count=$(jq 'length' "$tmp_dir/sub-issues.json") || return 1
+    (( child_count <= 12 )) || return 1
+    : >"$tmp_dir/child-evidence.jsonl"
+    while IFS= read -r child_number; do
+        gh api --method GET "repos/$evidence_repo/issues/$child_number/comments" -f per_page=100 >"$tmp_dir/child-$child_number-comments.json" 2>/dev/null || return 1
+        gh api --method GET "repos/$evidence_repo/issues/$child_number/timeline" -f per_page=100 >"$tmp_dir/child-$child_number-timeline.json" 2>/dev/null || return 1
+        jq -cn --arg assignedAt "$assigned_at" --argjson childNumber "$child_number" --slurpfile children "$tmp_dir/sub-issues.json" --slurpfile comments "$tmp_dir/child-$child_number-comments.json" --slurpfile timeline "$tmp_dir/child-$child_number-timeline.json" '
+          ($children[0][]|select(.number==$childNumber)) as $record
+          | def publisher: .==($record.user.login//"") or .=="github-actions[bot]" or .=="dependabot[bot]" or test("^cao-.*\\[bot\\]$");
+          ([$comments[0][]|select((.created_at//"") >= $assignedAt)|.user.login//empty|select(publisher|not)]|unique) as $participants
+          | ([$timeline[0][]|select(.event=="assigned")|.assignee.login//empty]|unique) as $assignments
+          | ([$timeline[0][]|select(.event=="cross-referenced")|.source.issue|select(.pull_request!=null)|.number]|unique) as $pulls
+          | {number:$record.number,consumed:(($record.state=="closed" and $record.state_reason=="completed") or (($record.assignees//[])|length)>0 or ($assignments|length)>0 or ($participants|length)>0 or ($pulls|length)>0),completed:($record.state=="closed" and $record.state_reason=="completed"),currentAssigneeCount:(($record.assignees//[])|length),assignmentCount:($assignments|length),participantCount:($participants|length),linkedPullRequestNumbers:$pulls}' \
+          >>"$tmp_dir/child-evidence.jsonl" || return 1
+    done < <(jq -r '.[].number' "$tmp_dir/sub-issues.json")
+    jq -s '.' "$tmp_dir/child-evidence.jsonl" >"$tmp_dir/child-evidence.json" || return 1
+    jq -cn --slurpfile issue "$tmp_dir/issue.json" --slurpfile children "$tmp_dir/child-evidence.json" '
       ($issue[0]) as $record
-      | ([$comments[0][]|select((.created_at//"") >= $assignedAt)|.user.login//empty|select(publisher|not)]|unique) as $participants
-      | ([$timeline[0][]|select(.event=="assigned")|.assignee.login//empty]|unique) as $assignments
-      | ([$timeline[0][]|select(.event=="cross-referenced")|.source.issue|select(.pull_request!=null)|.number]|unique) as $pulls
-      | ([($record.body//"")|scan("(?m)^\\s*- \\[xX\\]")]|length) as $checked
-      | {valid:true,consumed:(($record.state=="closed") or (($record.assignees//[])|length)>0 or ($assignments|length)>0 or ($participants|length)>0 or $checked>0 or ($pulls|length)>0),closed:($record.state=="closed"),currentAssigneeCount:(($record.assignees//[])|length),assignmentCount:($assignments|length),participantCount:($participants|length),checkedTaskCount:$checked,linkedPullRequestCount:($pulls|length),linkedPullRequestNumbers:$pulls,issueCreatedAt:$record.created_at}'
+      | ($children[0]) as $tasks
+      | {valid:true,consumed:any($tasks[];.consumed),parentAssigneeCount:(($record.assignees//[])|length),childCount:($tasks|length),consumedChildCount:([$tasks[]|select(.consumed)]|length),completedChildCount:([$tasks[]|select(.completed)]|length),currentAssigneeCount:([$tasks[].currentAssigneeCount]|add//0),assignmentCount:([$tasks[].assignmentCount]|add//0),participantCount:([$tasks[].participantCount]|add//0),linkedPullRequestCount:([$tasks[].linkedPullRequestNumbers[]]|unique|length),linkedPullRequestNumbers:([$tasks[].linkedPullRequestNumbers[]]|unique),childIssueNumbers:([$tasks[].number]),issueCreatedAt:$record.created_at}'
 }
 
 grade_run() {
@@ -126,8 +137,8 @@ grade_run() {
     matures_at=$(add_seconds "$issue_created_at" "$MATURATION_SECONDS"); evidence_cutoff=$(earlier_timestamp "$evidence_at" "$matures_at")
     if [[ $(printf '%s\n' "$evidence"|jq -r .consumed) != true && $evidence_at < $matures_at ]]; then emit_missing "$key" "$case_json" "$evidence_cutoff" "$matures_at" maturation-pending; return; fi
     value=$(printf '%s\n' "$evidence"|metric)
-    provenance=$(printf '%s\n' "$evidence"|jq --arg repository "$evidence_repo" --argjson issue "$issue_number" '[{repository:$repository,kind:"dependabot-plan-issue",ref:($issue|tostring)}]+[.linkedPullRequestNumbers[]|{repository:$repository,kind:"pull-request",ref:(.|tostring)}]')
-    diagnostics=$(printf '%s\n' "$evidence"|jq 'del(.valid,.consumed,.linkedPullRequestNumbers,.issueCreatedAt)')
+    provenance=$(printf '%s\n' "$evidence"|jq --arg repository "$evidence_repo" --argjson issue "$issue_number" '[{repository:$repository,kind:"dependabot-plan-issue",ref:($issue|tostring)}]+[.childIssueNumbers[]|{repository:$repository,kind:"dependabot-task-issue",ref:(.|tostring)}]+[.linkedPullRequestNumbers[]|{repository:$repository,kind:"pull-request",ref:(.|tostring)}]')
+    diagnostics=$(printf '%s\n' "$evidence"|jq 'del(.valid,.consumed,.linkedPullRequestNumbers,.childIssueNumbers,.issueCreatedAt)')
     jq -cn --argjson value "$value" --arg key "$key" --argjson case "$case_json" --arg cutoff "$evidence_cutoff" --arg maturesAt "$matures_at" --argjson provenance "$provenance" --argjson diagnostics "$diagnostics" '{value:$value,opportunityKey:$key,case:$case,evidenceCutoff:$cutoff,maturesAt:$maturesAt,provenance:$provenance,diagnostics:$diagnostics}'
 }
 

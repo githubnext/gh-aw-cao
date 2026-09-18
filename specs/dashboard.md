@@ -229,7 +229,7 @@ Candidate persona and domain evidence may inform labels, filters, consequence co
 | Decision | A recorded human or automated disposition with actor, time, authority, and supporting evidence. |
 | Artifact | A durable output produced by work, including a report, issue, pull request, patch, measurement, or deployment record. |
 | Outcome | The observed disposition or real-world result of an artifact or work item, distinct from execution success. |
-| Operational value | Absolute attainment under a named, versioned, evidence-bound definition. |
+| Operational value | An ordered native metric result published by gh-aw for one workflow run. |
 | Usage observation | A measured resource quantity such as AI Credits, tokens, requests, compute, or estimated currency. |
 | Capacity observation | A measured ability to continue work, such as quota remaining or admitted budget. |
 
@@ -550,10 +550,10 @@ Examples of domain labels include:
 
 ### 10.2 Operational Value
 
-- **CAOD-OUT-006:** Operational value **MUST** be presented only under a named, versioned definition with accepted evidence provenance, evidence cutoff, evaluator digest, maturity time, and maturity status.
-- **CAOD-OUT-007:** Absolute attainment **MUST** remain distinct from an optional baseline delta.
-- **CAOD-OUT-008:** Operational-value observations using different definitions **MUST NOT** be combined into one total or average.
-- **CAOD-OUT-009:** Immature or missing evidence **MUST** produce `pending`, `immature`, or `unavailable`, not zero attainment.
+- **CAOD-OUT-006:** Operational value **MUST** preserve the ordered metrics published by gh-aw, including each metric identifier, native finite numeric value or `null`, unit, direction, run, and observation time.
+- **CAOD-OUT-007:** The presenter **MUST NOT** normalize, clamp, rescale, replay, mature, or infer a baseline for an operational-value metric.
+- **CAOD-OUT-008:** Operational-value observations using different metric identifiers, units, or directions **MUST NOT** be combined into one total or average.
+- **CAOD-OUT-009:** A null or missing metric **MUST** produce `unavailable`, not zero.
 - **CAOD-OUT-010:** Temporal association between a workflow and an outcome **MUST NOT** be presented as causal impact.
 
 ### 10.3 Home Outcomes Region

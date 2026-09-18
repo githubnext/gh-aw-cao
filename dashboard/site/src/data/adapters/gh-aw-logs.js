@@ -246,7 +246,10 @@ function runAggregates(run) {
     .filter((value) => value && typeof value === 'object' && !Array.isArray(value))
     .map((value) => /** @type {Record<string, unknown>} */ (value))
     .filter((value) => value.id === 'operational-value' || value.source === 'operational-value')
-    .map((value) => finiteNumber(value.value))
+    .map((value) => {
+      const primaryMetric = Array.isArray(value.metrics) ? value.metrics[0] : undefined;
+      return finiteNumber(primaryMetric && typeof primaryMetric === 'object' ? primaryMetric.value : value.value);
+    })
     .filter((value) => value !== null);
 
   const auditItems = ['key_findings', 'observability_insights', 'recommendations']
@@ -1323,6 +1326,7 @@ function createCachedGhAwJsonlAccumulator(options) {
           error: optionalString(record.error),
           implementation: record.implementation,
           observation: record.observation,
+          metrics: record.metrics,
           diagnostics: record.diagnostics,
           baselineValue: finiteNumber(record.baselineValue),
           deltaFromBaseline: finiteNumber(record.deltaFromBaseline)

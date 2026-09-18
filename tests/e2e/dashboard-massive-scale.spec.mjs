@@ -208,7 +208,7 @@ test.afterAll(async () => {
 test("massive shards populate canonical storage within restricted memory", async ({ page }, testInfo) => {
   expect(databaseCounts.repositories).toBe(manifest.expected.repositories);
   expect(databaseCounts.runs).toBe(manifest.expected.runs);
-  expect(databaseCounts.events).toBe(manifest.expected.events);
+  expect(databaseCounts.audits).toBe(manifest.expected.audits);
 
   const session = await page.context().newCDPSession(page);
   await session.send("Performance.enable");

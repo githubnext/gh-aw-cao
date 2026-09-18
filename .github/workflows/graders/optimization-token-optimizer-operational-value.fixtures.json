@@ -1,0 +1,34 @@
+[
+  {
+    "name": "attained",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "1", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / Token Optimizer"},
+      "event": {"inputs": {"target_repo": "octo/service", "workflow_path": ".github/workflows/check.md", "opportunity_kind": "unused-tools"}},
+      "outputs": [{"type": "create_issue", "title": "Token efficiency for octo/service .github/workflows/check.md unused-tools", "body": "**Action:** Remove unused tools and validate the workflow.\n### Evidence\nopportunityId: token-opportunity:1\nexperimentId: experiment-1\nThe recommendation is unapplied.\n<details><summary><b>Agent prompt</b></summary>Apply and test the change.</details>"}],
+      "config": {}
+    },
+    "expected": [{"id": "token-efficiency-request-conformance", "value": 1}]
+  },
+  {
+    "name": "missed",
+    "request": {
+      "schemaVersion": 1,
+      "run": {"id": "2", "repository": "githubnext/gh-aw-cao", "workflow": "AW Optimization / Token Optimizer"},
+      "event": {"inputs": {"target_repo": "octo/service", "workflow_path": ".github/workflows/check.md", "opportunity_kind": "unused-tools"}},
+      "outputs": [{"type": "create_issue", "title": "Generic optimization", "body": "No assignment evidence."}],
+      "config": {}
+    },
+    "expected": [{"id": "token-efficiency-request-conformance", "value": 0}]
+  },
+  {
+    "name": "noop",
+    "request": {"schemaVersion": 1, "run": {"id": "3"}, "event": {"inputs": {"target_repo": "octo/service", "workflow_path": ".github/workflows/check.md", "opportunity_kind": "unused-tools"}}, "outputs": [{"type": "noop", "message": "No conservative recommendation is supported."}], "config": {}},
+    "expected": [{"id": "token-efficiency-request-conformance", "value": null}]
+  },
+  {
+    "name": "malformed",
+    "request": {"schemaVersion": 2, "run": {}, "event": [], "outputs": {}, "config": []},
+    "expected": [{"id": "token-efficiency-request-conformance", "value": null}]
+  }
+]

@@ -14,6 +14,7 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
   await mkdir(outputDirectory, { recursive: true });
   const browserErrors = [];
   const failedRequests = [];
+  const succeededRequests = new WeakSet();
   let reloading = false;
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
@@ -21,11 +22,21 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const errorText = request.failure()?.errorText || "failed";
-    if (shouldIgnoreRequestFailure({ method: request.method(), url: request.url(), errorText, reloading })) return;
+    if (shouldIgnoreRequestFailure({
+      method: request.method(),
+      url: request.url(),
+      errorText,
+      reloading,
+      hadSuccessResponse: succeededRequests.has(request),
+    })) return;
     failedRequests.push(`${request.method()} ${request.url()}: ${errorText}`);
   });
   page.on("response", (response) => {
-    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
+    if (response.status() >= 400) {
+      failedRequests.push(`${response.status()} ${response.url()}`);
+      return;
+    }
+    succeededRequests.add(response.request());
   });
   await page.addInitScript(() => {
     window.__dashboardTestEvents = [];

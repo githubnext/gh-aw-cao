@@ -5,6 +5,7 @@
  */
 
 import { formatCount, titleCase } from './components/count-formatters.js';
+import { projectTemporalSeries } from './data/analytics/temporal-series.js';
 import { formatPercent } from './view-formatters.js';
 
 /**
@@ -21,7 +22,9 @@ import { formatPercent } from './view-formatters.js';
  * @typedef {{ field: string, on: string|string[], method?: PredictionMethod, order?: number, groupby?: string[], as: string }} PredictedField
  * @typedef {{ op: 'predict', values: PredictedField[] }} PredictOperator
  * @typedef {{ op: 'select', fields: Array<{ field: string, as?: string }> }} SelectOperator
- * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|SelectOperator} DataOperator
+ * @typedef {{ time: string, series: string, shape?: 'tidy'|'groups', carry?: string[], measures?: Array<{ field: string, key?: string, kind: string }>, maps?: Array<{ field: string, definitions?: string, group?: string, kind: string }> }} TemporalSeriesDefinition
+ * @typedef {{ op: 'temporal-series' } & TemporalSeriesDefinition} TemporalSeriesOperator
+ * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|PredictOperator|SelectOperator|TemporalSeriesOperator} DataOperator
  */
 
 /**
@@ -80,6 +83,7 @@ function applyOperator(rows, operator) {
   if (operator.op === 'compute') return compute(rows, operator);
   if (operator.op === 'predict') return predict(rows, operator);
   if (operator.op === 'select') return select(rows, operator);
+  if (operator.op === 'temporal-series') return projectTemporalSeries(rows, operator);
   if (operator.op === 'slice') {
     const offset = Number.isInteger(operator.offset) ? Math.max(0, Number(operator.offset)) : 0;
     return rows.slice(offset, offset + Math.max(0, operator.limit));

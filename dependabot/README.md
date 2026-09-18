@@ -11,14 +11,15 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 
 - Prioritizes repositories with dependency alerts, Dependabot repository-access gaps, stale or conflicted update pull requests, lockfile drift, and actionable Dependabot configuration failures.
 - Understands relationships among manifests, lockfiles, workspaces, solutions, source code, tests, and CI instead of grouping updates only by package name.
-- Maintains one concise repository-scoped issue containing every update, blocker, and access gap currently identified by Dependabot service evidence.
+- Maintains one concise repository-scoped parent containing every update, blocker, and access gap, plus bounded PR-sized child tasks.
 - Keeps merge order, grouping, security-sensitive surfaces, and Dependabot access boundaries visible near the top of the issue instead of burying them in collapsed details.
 - Refreshes the durable existing issue, posts a confirmation comment on later runs, and replaces obsolete tasks with a completed description when no work remains.
 - Remembers the issue number in repository memory and reads that issue directly on later runs instead of repeatedly using GitHub search.
 - Reads optional target-maintainer guidance from `.github/dependabot.md` and tells issue readers how to use that feedback channel.
 - Reads comments on the durable plan issue and incorporates safe, evidence-backed feedback about priority, grouping, validation, blockers, and risk in the next refresh.
-- Uses progressive disclosure, a visible human call to action, and a complete prompt for an assigned coding agent.
-- Measures whether each plan issue is consumed through assignment, outside participation, checklist progress, a linked pull request, or closure within 14 days.
+- Keeps the durable parent unassigned and gives each delegable child a complete coding-agent prompt scoped to exactly one pull request.
+- Verifies peer compatibility, generated consumers, golden fixtures, and old-version remnants before a child is assignment-ready.
+- Measures whether a child task is consumed through assignment, outside participation, a linked pull request, or completed closure within 14 days.
 - Never creates or changes a pull request.
 
 ## Campaign Contents
@@ -26,7 +27,7 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 | Workflow | Role |
 | --- | --- |
 | [`dependabot`](../.github/workflows/dependabot.md) | Daily orchestrator workflow that discovers, ranks, and selects repositories. |
-| [Dependabot / Update Planner](../.github/workflows/dependabot-update-planner.md) | Repository-scoped worker workflow that creates or refreshes one agent-ready Dependabot update-plan issue. |
+| [Dependabot / Update Planner](../.github/workflows/dependabot-update-planner.md) | Repository-scoped worker that maintains one durable plan and bounded, PR-sized child tasks. |
 
 The orchestrator workflow can dispatch no more than 50 worker workflows in one run. Each worker workflow handles one target repository and uses only its declared issue, refresh-comment, or `noop` safe outputs.
 
@@ -92,7 +93,7 @@ To keep scheduled runs in review, leave `mode` omitted or set it to `review` in 
 | Mode | Behavior |
 | --- | --- |
 | `review` | Routes safe outputs to the control-plane repository; manual runs may override it with `safe_output_repo`. |
-| `live` | Allows the worker to create or refresh the single Dependabot plan issue in the selected target repository. |
+| `live` | Allows the worker to create or refresh the durable plan and its PR-sized child tasks in the selected target repository. |
 
 Promote in order: one-repository review, limited live, then scheduled live. Change only this campaign's checked-in `mode`; other campaigns keep their own rollout state.
 
@@ -117,7 +118,7 @@ Repositories without a recognized dependency ecosystem, readable manifests, or e
 - The orchestrator workflow selects repositories but does not mutate them directly.
 - A worker workflow receives one target and cannot discover more repositories, dispatch another workflow, or promote its mode.
 - The worker workflow cannot create or mutate pull requests or repository files.
-- The worker can create one deduplicated plan issue, refresh the existing issue with one confirmation comment, replace resolved work with a completed description, or emit `noop`.
+- The worker can create one deduplicated durable parent and at most 12 deduplicated PR-sized child tasks, refresh existing issues with one parent confirmation comment, close obsolete children, replace resolved parent work with a completed description, or emit `noop`.
 - The worker can report Dependabot repository-access gaps, but it cannot grant, revoke, or broaden Dependabot access.
 - Comments on the plan issue can refine the next refresh only within existing control-plane policy, credential reach, Dependabot evidence, and safe-output boundaries.
 - Credentials remain in the private control repository and are never included in dispatch inputs.

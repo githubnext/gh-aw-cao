@@ -1098,6 +1098,7 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect(cards).toBeVisible();
   await expect(cards.locator('.entity-card-list-card').first()).toBeVisible();
   await expect(cards.locator('.entity-card-list-card').first()).toContainText('copilot / model-1');
+  await expect(cards.getByRole('button', { name: 'Load more cards' })).toHaveCount(0);
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(page.getByRole('heading', { name: 'Engines and models', level: 3 })).toBeHidden();
   await expect.poll(async () => cards.evaluate((element) =>
@@ -1106,8 +1107,9 @@ test('a page combining a chart with a full-view table fills and scrolls in table
   await expect.poll(async () => cardScroll.evaluate((element) =>
     element.scrollHeight > element.clientHeight
   )).toBe(true);
-  await cardScroll.evaluate((element) => { element.scrollTop = 100; });
+  await cardScroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await expect.poll(async () => cardScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect(cards.locator('.entity-card-list-card')).toHaveCount(60);
 
   await page.getByRole('button', { name: 'Show chart view' }).click();
   await expect(chart).toBeVisible();
@@ -3401,7 +3403,18 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
         'operational-values': {
           source: 'operational-values',
           rows: [
-            { workflow: '.github/workflows/ambient-context-worker.md', run: '4', 'operational-value': 0.75 },
+            {
+              organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '3',
+              'observed-at': '2026-09-13T14:00:00Z', 'operational-value': 0.5, 'operational-value-definition': 'repository-readiness',
+              diagnostics: { quality: 0.6, efficiency: 0.8 },
+              'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
+            },
+            {
+              organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/ambient-context-worker.md', run: '4',
+              'observed-at': '2026-09-14T14:00:00Z', 'operational-value': 0.75, 'operational-value-definition': 'repository-readiness',
+              diagnostics: { quality: 0.85, efficiency: 0.7 },
+              'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
+            },
             { workflow: '.github/workflows/aw-doctor.md', run: '1', 'operational-value': 0.25 }
           ],
           metadata
@@ -3525,6 +3538,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"] tbody tr')).toHaveCount(1);
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).toContainText('Review worker finding');
   await expect(page.locator('[data-page-id="campaign-issues"] [data-view-id="campaign-issue-table"]')).not.toContainText('Review ambient context proposal');
+  await campaignNavigation.getByRole('link', { name: 'Overview' }).click();
+  await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(campaignNavigation).toHaveCSS('display', 'grid');
@@ -3546,9 +3561,19 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in campaigns page renders value, inventory
   await campaignNavigation.getByRole('link', { name: 'Insights' }).click();
   const campaignInsights = page.locator('[data-page-id="campaign-insights"]');
   await expect(campaignInsights).toBeVisible();
-  await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })
-    .getByRole('link', { name: 'Insights' })).toHaveAttribute('aria-current', 'page');
+  await expect(campaignInsights.getByRole('navigation', { name: 'Ambient Context views' })).toBeHidden();
+  const mobileBack = page.getByRole('button', { name: 'Go back' });
+  await expect(mobileBack).toBeVisible();
   await expect(page.locator('.overview-header')).toContainText('Audit events observed for the Ambient Context campaign.');
+  await expect(campaignInsights.locator('.campaign-value-history [data-chart-widget="line"]')).toHaveCount(3);
+  await expect(campaignInsights.locator('.campaign-value-history .chart-point')).toHaveCount(6);
+  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Repository readiness');
+  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Quality');
+  await expect(campaignInsights.locator('.campaign-value-history')).toContainText('Efficiency');
+  await mobileBack.click();
+  await expect(page).toHaveURL(/#page-campaign-detail\?campaign=ambient-context$/);
+  await expect(page.locator('[data-page-id="campaign-detail"]')).toBeVisible();
+  await expect(campaignNavigation).toBeVisible();
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {
@@ -4484,7 +4509,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
     </script>
   `);
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('.github/workflows/ambient-context.md');
+  await expect(page.getByRole('heading', { name: 'Ambient Context', level: 1 })).toBeVisible();
   await expect(page.locator('#page-workflow-detail .custom-table')).toContainText('Debug ambient context workflow failure');
   await expect(page.locator('#page-workflow-detail .custom-table .status-success')).toHaveText('closed');
   await expect(page.locator('#page-workflow-detail .custom-table .mode-review')).toHaveText('review');

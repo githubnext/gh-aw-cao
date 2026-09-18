@@ -23,40 +23,24 @@
     "successConditions": [
       "The workflow activates for eligible issue opportunities within the selected horizon.",
       "Observed outcomes for eligible opportunities are accepted or intentionally no-op with matching evidence strength and run provenance.",
-      "Mature operational-value observations show the direct triage-readiness attainment metric for the same issue opportunity."
+      "Operational-value observations preserve the ordered metrics published by gh-aw for each workflow run."
     ],
     "uncertainties": [
       "A successful run does not by itself prove the durable issue outcome was accepted.",
       "Pending or ignored safe outputs do not establish attained triage readiness.",
-      "Missing or interim operational-value evidence must remain distinct from zero attainment."
+      "A null operational-value metric must remain distinct from a numeric zero."
     ]
   },
   "operationalValue": {
-    "statement": "Operational value is the share of stable new-issue triage opportunities that reach accepted triage-readiness outcomes with mature evidence for the issue-triage review workflow.",
-    "opportunity": "One newly opened issue in githubnext/gh-aw-cao that is eligible for repository triage review.",
-    "opportunityKey": "repository + issue opportunity represented by operational-case",
-    "acceptedEvidence": [
-      "A workflow run for the issue-triage review workflow bound to the issue opportunity.",
-      "A safe-output outcome on the issue recording the triage review disposition.",
-      "An operational-value observation whose operational-case identifies the same issue opportunity and whose accepted-evidence-provenance names the accepted issue evidence."
+    "upstream": "gh-aw",
+    "orderedMetrics": [
+      {
+        "id": "triage-readiness-attainment",
+        "unit": "ratio",
+        "direction": "higher_is_better"
+      }
     ],
-    "evidenceRepositories": [
-      "githubnext/gh-aw-cao"
-    ],
-    "metric": {
-      "name": "triage-readiness-attainment",
-      "range": "[0,1]",
-      "directness": "direct",
-      "definition": "1 when the issue opportunity reaches an accepted triage-readiness outcome with mature evidence for the same operational case; 0 when the matured evidence shows the issue was not triage-ready or the accepted outcome was rejected, ignored, or absent by cutoff; null when required evidence has not matured."
-    },
-    "maturation": "An opportunity matures when the operational-value observation reaches maturity-status matured after the evidence-cutoff for the same operational case.",
-    "zeroRule": "Assign 0 only when mature evidence for the issue opportunity shows triage readiness was not attained by cutoff.",
-    "missingRule": "Use null when the operational-value observation is absent, unavailable, or not yet matured for the issue opportunity; do not substitute 0.",
-    "baseline": {
-      "mode": "attainment-only",
-      "value": null,
-      "cutoff": null
-    }
+    "preservation": "Preserve metric IDs, order, native finite values or null, units, and directions exactly as published by gh-aw."
   },
   "logicalSources": {
     "workflows": {

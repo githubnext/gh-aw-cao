@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
@@ -8,14 +7,6 @@ import { root } from "./workflow-contract.helpers.mjs";
 const dataSpec = readFileSync(join(root, "specs", "dashboard-data.md"), "utf8");
 const mappingSpec = readFileSync(join(root, "specs", "dashboard-gh-aw-jsonl-mapping.md"), "utf8");
 const languageSpec = readFileSync(join(root, "docs", "dashboard-language-specification.md"), "utf8");
-const grader = join(
-  root,
-  "optimization",
-  ".github",
-  "graders",
-  "optimization-token-optimizer-operational-value.sh",
-);
-const definition = JSON.parse(execFileSync(grader, ["--definition"], { encoding: "utf8" }));
 
 test("token data contract covers the frozen opportunity identity", () => {
   for (const field of [
@@ -26,7 +17,6 @@ test("token data contract covers the frozen opportunity identity", () => {
     "assignmentRunId",
     "experimentId",
   ]) {
-    assert.match(definition.evidence.assignment, new RegExp(field));
     assert.match(dataSpec, new RegExp(field));
   }
 

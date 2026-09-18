@@ -4015,6 +4015,54 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('dispatches initialized route state after an asynchronous page render', async () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first">First</a>
+      <a data-nav-page-id="second" href="#page-second?campaign=optimization">Second</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first" data-page-pending></section>
+        <section class="dashboard-page" id="page-second" data-page-id="second" data-page-pending data-route-parameter="campaign"></section>
+      </main>
+    `;
+    document.body.append(root);
+    /** @type {((page: HTMLElement) => void) | undefined} */
+    let resolveSecond;
+    /** @param {string} pageId */
+    const renderPage = (pageId) => {
+      if (pageId !== 'second') return null;
+      return new Promise((resolve) => {
+        resolveSecond = resolve;
+      });
+    };
+    try {
+      const disposeNavigation = enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="second"]')).click();
+      await vi.waitFor(() => expect(resolveSecond).toBeDefined());
+
+      const page = document.createElement('section');
+      page.className = 'dashboard-page';
+      page.id = 'page-second';
+      page.dataset.pageId = 'second';
+      page.dataset.routeParameter = 'campaign';
+      const routeView = document.createElement('div');
+      routeView.dataset.routeView = '';
+      routeView.addEventListener('dashboard-route-change', (event) => {
+        if (event instanceof CustomEvent) routeView.dataset.campaign = event.detail.value;
+      });
+      page.append(routeView);
+      resolveSecond?.(page);
+
+      await vi.waitFor(() => {
+        expect(root.querySelector('#page-second [data-route-view]')?.getAttribute('data-campaign')).toBe('optimization');
+      });
+      disposeNavigation();
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   it('keeps route tabs visible while a sibling view loads', async () => {
     const root = document.createElement('div');
     root.innerHTML = `

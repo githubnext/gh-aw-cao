@@ -798,24 +798,36 @@ if (typeof document === 'undefined' && workerScope) {
     if (event.data?.operation === 'subscribe-canonical-dashboard') {
       const subscriptionId = event.data.subscriptionId;
       if (typeof subscriptionId !== 'string' || !subscriptionId.trim()) return;
-      const context = dashboardContext(event.data.context);
-      const subscription = {
-        sourceNames: [...requestedSourceNames(event.data.sourceNames)],
-        context,
-        requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
-        pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
-        pageId: typeof event.data.pageId === 'string' ? event.data.pageId : undefined,
-        viewId: typeof event.data.viewId === 'string' ? event.data.viewId : undefined,
-        routeParameters: routeParameters(event.data.routeParameters),
-        queryContext: queryContext(event.data.queryContext),
-        revision: liveDashboard?.revision ?? null,
-        emitted: false
-      };
-      dashboardSubscriptions.set(subscriptionId, subscription);
-      if (liveDashboard
-        && event.data.emitCurrent !== false
-        && (!runPhaseOnly || isRunPhaseSubscription(subscription))) {
-        scheduleDashboardSubscriptions([subscriptionId]);
+      try {
+        const context = dashboardContext(event.data.context);
+        const subscription = {
+          sourceNames: [...requestedSourceNames(event.data.sourceNames)],
+          context,
+          requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
+          pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
+          pageId: typeof event.data.pageId === 'string' ? event.data.pageId : undefined,
+          viewId: typeof event.data.viewId === 'string' ? event.data.viewId : undefined,
+          routeParameters: routeParameters(event.data.routeParameters),
+          queryContext: queryContext(event.data.queryContext),
+          revision: liveDashboard?.revision ?? null,
+          emitted: false
+        };
+        dashboardSubscriptions.set(subscriptionId, subscription);
+        if (liveDashboard
+          && event.data.emitCurrent !== false
+          && (!runPhaseOnly || isRunPhaseSubscription(subscription))) {
+          scheduleDashboardSubscriptions([subscriptionId]);
+        }
+      } catch (error) {
+        // Remove any partially-registered subscription so it cannot linger
+        // as a stale, unusable entry, then report the failure so the main
+        // thread's pending page load rejects instead of waiting forever for
+        // a snapshot that will never arrive.
+        dashboardSubscriptions.delete(subscriptionId);
+        workerScope.postMessage({
+          subscriptionId,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
       return;
     }

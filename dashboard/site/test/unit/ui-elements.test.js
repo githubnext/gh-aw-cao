@@ -47,10 +47,11 @@ describe('UI elements', () => {
       sourceNames: ['operational-values', 'outcomes', 'usage', 'runs', 'detection-observations', 'experiments'],
       sources: {
         'operational-values': source([
-          { 'operational-value': 0.6, 'operational-value-definition': 'Accepted change', 'maturity-status': 'matured', 'observed-at': '2026-08-29T10:00:00Z' },
-          { 'operational-value': 0.8, 'operational-value-definition': 'Accepted change', 'maturity-status': 'matured', 'observed-at': '2026-08-30T10:00:00Z' },
-          { 'operational-value': 0.5, 'operational-value-definition': 'Issue resolved', 'maturity-status': 'matured', 'observed-at': '2026-08-29T10:00:00Z' },
-          { 'operational-value': 0.9, 'operational-value-definition': 'Issue resolved', 'maturity-status': 'matured', 'observed-at': '2026-08-30T10:00:00Z' }
+          { 'operational-value': 60, 'operational-value-definition': 'Accepted change', 'observed-at': '2026-08-29T10:00:00Z' },
+          { 'operational-value': 80, 'operational-value-definition': 'Accepted change', 'observed-at': '2026-08-30T10:00:00Z' },
+          { 'operational-value': 50, 'operational-value-definition': 'Issue resolved', 'observed-at': '2026-08-29T10:00:00Z' },
+          { 'operational-value': 90, 'operational-value-definition': 'Issue resolved', 'observed-at': '2026-08-30T10:00:00Z' },
+          { 'operational-value': null, 'operational-value-definition': 'Issue resolved', 'observed-at': '2026-08-30T11:00:00Z' }
         ]),
         outcomes: source([
           { 'outcome-state': 'accepted' }, { 'outcome-state': 'accepted' }, { 'outcome-state': 'rejected' }
@@ -75,8 +76,8 @@ describe('UI elements', () => {
     });
     if (rendered) enableLazyViews(rendered);
 
-    expect(rendered?.querySelector('#insights-value-title')?.textContent).toBe('Operational value attainment');
-    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[0]?.textContent).toBe('70%');
+    expect(rendered?.querySelector('#insights-value-title')?.textContent).toBe('Operational value metrics');
+    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[0]?.textContent).toBe('70');
     expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[1]?.textContent).toBe('2');
     expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[2]?.textContent).toBe('4');
     expect(rendered?.querySelectorAll('[data-chart-widget]')).toHaveLength(6);
@@ -97,6 +98,46 @@ describe('UI elements', () => {
       expect(seriesSelector?.querySelector('summary')?.textContent).toBe('Series1 of 2');
       expect(rendered?.querySelector('.insights-value-chart')?.textContent).not.toContain('No data is available');
     }
+  });
+
+  it('renders every campaign operational-value extract in separate primary and diagnostic histories', () => {
+    const rendered = renderUiElement('campaign-route', {
+      pageId: 'campaign-insights', title: 'Operational value history',
+      routeParameter: 'campaign',
+      elementConfig: { body: 'insights' },
+      sourceNames: ['workflows', 'campaign-operational-value-series'],
+      sources: {
+        workflows: {
+          source: 'workflows',
+          metadata,
+          rows: [{ campaign: 'alpha-campaign', 'campaign-name': 'Alpha campaign', workflow: '.github/workflows/worker.md' }]
+        },
+        'campaign-operational-value-series': {
+          source: 'campaign-operational-value-series',
+          metadata,
+          rows: [
+            { campaign: 'alpha-campaign', metric: 'repository-readiness', 'metric-key': 'primary:repository-readiness', 'metric-name': 'repository-readiness', 'metric-kind': 'primary', points: [{ x: '2026-08-29T10:00:00Z', y: 40, color: '.github/workflows/worker.md', key: 'primary:0' }, { x: '2026-08-30T10:00:00Z', y: 80, color: '.github/workflows/worker.md', key: 'primary:1' }] },
+            { campaign: 'alpha-campaign', metric: 'quality', 'metric-key': 'diagnostic:repository-readiness:quality', 'metric-name': 'Quality', 'metric-kind': 'diagnostic', points: [{ x: '2026-08-29T10:00:00Z', y: 50, color: '.github/workflows/worker.md', key: 'quality:0' }, { x: '2026-08-30T10:00:00Z', y: 90, color: '.github/workflows/worker.md', key: 'quality:1' }] },
+            { campaign: 'alpha-campaign', metric: 'efficiency', 'metric-key': 'diagnostic:repository-readiness:efficiency', 'metric-name': 'Efficiency', 'metric-kind': 'diagnostic', points: [{ x: '2026-08-29T10:00:00Z', y: 70, color: '.github/workflows/worker.md', key: 'efficiency:0' }, { x: '2026-08-30T10:00:00Z', y: 60, color: '.github/workflows/worker.md', key: 'efficiency:1' }] }
+          ]
+        }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+    rendered?.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'campaign', value: 'alpha-campaign' }
+    }));
+
+    expect(rendered?.querySelectorAll('[data-chart-widget="line"]')).toHaveLength(3);
+    expect([...rendered?.querySelectorAll('.insights-plot-panel h2') ?? []].map((heading) => heading.textContent)).toEqual([
+      'Repository readiness',
+      'Quality',
+      'Efficiency'
+    ]);
+    expect(rendered?.querySelectorAll('.chart-point')).toHaveLength(6);
+    expect(rendered?.textContent).toContain('Primary metric · 2 extracts');
+    expect(rendered?.textContent).toContain('Diagnostic · 2 extracts');
   });
 
   it('renders the routed Work roadmap as a Projects-style timeline', () => {

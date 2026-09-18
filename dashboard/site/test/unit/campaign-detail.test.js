@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { renderCampaignNavigation } from '../../src/components/campaign-detail.js';
 import { renderCampaignRouteVariant, renderCampaignRouteView } from '../../src/components/campaign-route-view.js';
 
 const metadata = {
@@ -154,7 +153,7 @@ function context() {
   };
 }
 
-describe('renderCampaignNavigation', () => {
+describe('campaign detail route', () => {
   it('renders the Insights facet for the selected campaign', () => {
     const rendered = renderCampaignRouteView({
       ...context(),
@@ -167,11 +166,11 @@ describe('renderCampaignNavigation', () => {
     }));
 
     expect(rendered.querySelector('.campaign-tabs [aria-current="page"]')?.textContent).toBe('Insights');
-    expect(rendered.querySelector('.campaign-insights-content')).toBeNull();
+  expect(rendered.querySelector('.campaign-value-history')?.textContent).toContain('No operational-value extracts were observed');
   });
 
   it('renders reusable navigation for the selected campaign workflow view', () => {
-    const rendered = renderCampaignNavigation(context());
+    const rendered = renderCampaignRouteVariant(context(), 'overview');
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'campaign', value: 'ambient-context' }
     }));
@@ -185,6 +184,13 @@ describe('renderCampaignNavigation', () => {
       '#page-campaign-workflows?campaign=ambient-context',
       '#page-campaign-runs?campaign=ambient-context',
       '#page-campaign-issues?campaign=ambient-context'
+    ]);
+    expect([...rendered.querySelectorAll('.campaign-tabs a')].map((link) => link.getAttribute('data-nav-page-id'))).toEqual([
+      'campaign-detail',
+      'campaign-insights',
+      'campaign-workflows',
+      'campaign-runs',
+      'campaign-issues'
     ]);
     expect(rendered.querySelector('.campaign-readme h1')?.textContent).toBe('Ambient Context');
     expect(rendered.querySelector('.campaign-readme h2')?.textContent).toBe('Capabilities');
@@ -242,10 +248,10 @@ describe('renderCampaignNavigation', () => {
       const targetModeWorkflows = workflows.map((workflow) => workflow.campaign === 'ambient-context'
         ? { ...workflow, 'campaign-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }] }
         : workflow);
-      const rendered = renderCampaignNavigation({
+      const rendered = renderCampaignRouteVariant({
         ...context(),
         sources: { ...context().sources, workflows: { source: 'workflows', metadata, rows: targetModeWorkflows } }
-      });
+      }, 'overview');
       host.append(rendered);
       let detail;
       host.addEventListener('dashboard-route-allocation', (event) => {
@@ -262,7 +268,7 @@ describe('renderCampaignNavigation', () => {
 
   it('reallocates campaign title, description, mode, and parent navigation', () => {
     const host = document.createElement('div');
-    const rendered = renderCampaignNavigation(context());
+    const rendered = renderCampaignRouteVariant(context(), 'overview');
     host.append(rendered);
     let detail;
     host.addEventListener('dashboard-route-allocation', (event) => {
@@ -338,7 +344,7 @@ describe('renderCampaignNavigation', () => {
   });
 
   it('renders explicit empty states for missing and invalid campaign routes', () => {
-    const rendered = renderCampaignNavigation(context());
+    const rendered = renderCampaignRouteVariant(context(), 'overview');
     expect(rendered.textContent).toBe('Select a campaign to view its overview.');
 
     rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {

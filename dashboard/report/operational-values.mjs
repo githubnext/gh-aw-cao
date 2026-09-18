@@ -3,13 +3,47 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { readGhAwLogShards } from "../../activity/gh-aw-logs.mjs";
-import {
-  mergeOperationalValueRecords,
-  operationalValueRunIdentity,
-} from "./operational-value-history.mjs";
+import { hasOperationalValueResult, operationalValueRecordTime } from "./operational-value-records.mjs";
+
+function metricValue(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function metricsFromResult(result) {
+  return (Array.isArray(result.metrics) ? result.metrics : []).flatMap((metric) => (
+    metric && typeof metric === "object" && typeof metric.id === "string" && metric.id
+      ? [{ id: metric.id, value: metricValue(metric.value) }]
+      : []
+  ));
+}
+
+function runIdentity(record) {
+  return [
+    record.repository || "unknown-repository",
+    record.workflowId || record.workflowPath || "unknown-workflow",
+    record.runId ?? "unknown-run",
+    record.runAttempt || 1,
+  ].join(":");
+}
+
+function mergeRecords(...recordSets) {
+  const records = new Map();
+  for (const record of recordSets.flat()) {
+    const key = runIdentity(record);
+    const existing = records.get(key);
+    // Legacy cached observations may be the only retained result for a run
+    // when the current logs shard no longer includes that run.
+    if (existing && hasOperationalValueResult(existing) && !hasOperationalValueResult(record)) continue;
+    records.set(key, record);
+  }
+  return [...records.values()].sort((left, right) => (
+    Date.parse(operationalValueRecordTime(left)) - Date.parse(operationalValueRecordTime(right))
+      || runIdentity(left).localeCompare(runIdentity(right))
+  ));
+}
 
 function normalizeResult(selected, result) {
-  const value = Number.isFinite(result.value) && result.value >= 0 && result.value <= 1 ? result.value : null;
+  const metrics = metricsFromResult(result);
   return {
     schemaVersion: 1,
     repository: selected.repository,
@@ -19,13 +53,14 @@ function normalizeResult(selected, result) {
     runAttempt: selected.run?.runAttempt || selected.runAttempt || 1,
     runUrl: `https://github.com/${selected.repository}/actions/runs/${selected.runId}`,
     status: result.status || "unavailable",
-    value,
-    baselineValue: Number.isFinite(result.baselineValue) ? result.baselineValue : null,
-    deltaFromBaseline: Number.isFinite(result.deltaFromBaseline) ? result.deltaFromBaseline : null,
-    evaluatorDigest: result.implementation?.digest || null,
-    observation: result.observation || null,
+    graderName: result.name || null,
+    unit: result.unit || null,
+    direction: result.direction || null,
+    metrics,
+    value: metrics.length > 0 ? metrics[0].value : metricValue(result.value),
+    observedAt: selected.run?.updatedAt || selected.run?.createdAt || null,
     observationSource: "logs-jsonl",
-    diagnostics: result.diagnostics || {},
+    resultAvailable: true,
     error: result.error || null,
   };
 }
@@ -39,33 +74,6 @@ function operationalValueResult(run) {
   const matches = (Array.isArray(results) ? results : [])
     .filter((result) => result.id === "operational-value" && result.source === "operational-value");
   return matches.length === 1 ? matches[0] : null;
-}
-
-function definitionFromLogsResult(selected, result) {
-  const definition = result.definition || result.implementation?.definition || {};
-  return {
-    repository: selected.repository,
-    workflowId: selected.workflowId,
-    workflowPath: selected.workflowPath,
-    evaluatorDigest: result.implementation?.digest || null,
-    operationalValue: definition.operationalValue || result.operationalValue || null,
-    baseline: definition.baseline || result.baseline || null,
-    diagnosticMetrics: Array.isArray(definition.diagnostics)
-      ? definition.diagnostics
-          .filter((series) => series && typeof series === "object")
-          .map((series) => series.metric)
-          .filter(Boolean)
-      : [],
-  };
-}
-
-function mergeDefinitions(...definitionSets) {
-  const definitions = new Map();
-  for (const definition of definitionSets.flat()) {
-    const key = `${definition.repository}:${definition.workflowId}:${definition.evaluatorDigest || "unknown-evaluator"}`;
-    definitions.set(key, definition);
-  }
-  return [...definitions.values()];
 }
 
 export async function collectOperationalValues() {
@@ -118,13 +126,11 @@ export async function collectOperationalValues() {
     }
 
     let cachedRecords = [];
-    let cachedDefinitions = [];
     if (cachePath) {
       try {
         const cached = JSON.parse(await readFile(cachePath, "utf8"));
         if (cached.schemaVersion === 1 && Array.isArray(cached.records)) {
           cachedRecords = cached.records;
-          cachedDefinitions = Array.isArray(cached.definitions) ? cached.definitions : [];
           log.info`Loaded ${cachedRecords.length} cached operational-value records from ${cachePath}`;
         }
       } catch (error) {
@@ -136,19 +142,13 @@ export async function collectOperationalValues() {
     const runsById = new Map(logs.runs
       .map((run) => [logsRunId(run), run])
       .filter(([runId]) => Number.isFinite(runId)));
-    // Only skip re-processing a run when the cache already holds a non-placeholder
-    // record for it (i.e. one with an evaluatorDigest). A prior "unavailable"
-    // placeholder (no evaluatorDigest yet) must not block a later logs snapshot
-    // from filling in the real observation for that same run.
     const cachedRunKeys = new Set(cachedRecords
-      .filter((record) => record.evaluatorDigest)
-      .map((record) => operationalValueRunIdentity(record))
-      .filter(Boolean));
+      .filter(hasOperationalValueResult)
+      .map(runIdentity));
     const currentRecords = [];
-    const currentDefinitions = [];
     let missingRuns = 0;
     for (const selected of selectedRuns) {
-      if (cachedRunKeys.has(operationalValueRunIdentity(selected))) continue;
+      if (cachedRunKeys.has(runIdentity(selected))) continue;
       const run = runsById.get(selected.runId);
       const result = operationalValueResult(run);
       if (!result) {
@@ -160,19 +160,20 @@ export async function collectOperationalValues() {
           runUrl: `https://github.com/${selected.repository}/actions/runs/${selected.runId}`,
           status: "unavailable",
           value: null,
+          metrics: [],
+          observedAt: selected.run?.updatedAt || selected.run?.createdAt || null,
           observationSource: "logs-jsonl",
-          observation: null,
+          resultAvailable: false,
           reason: run ? "operational-value result not found" : "run not found in gh-aw logs JSONL",
         });
         continue;
       }
       currentRecords.push(normalizeResult(selected, result));
-      currentDefinitions.push(definitionFromLogsResult(selected, result));
     }
 
-    const records = mergeOperationalValueRecords(cachedRecords, currentRecords);
+    const records = mergeRecords(cachedRecords, currentRecords);
     const evidenceTimes = records
-      .map((record) => record.observation?.evidenceAt || record.run?.createdAt)
+      .map(operationalValueRecordTime)
       .filter(Boolean)
       .sort();
     const output = {
@@ -185,15 +186,7 @@ export async function collectOperationalValues() {
       complete: missingRuns === 0,
       collectionMode: "logs-jsonl",
       selectedRuns: selectedRuns.length,
-      observedRuns: records.filter((record) => record.observation).length,
-      matureRuns: records.filter((record) => record.observation?.mature).length,
-      // Retained for compatibility with existing dashboard source consumers.
-      regradedRuns: records.filter((record) => record.observationSource === "regrade").length,
-      pendingRegrades: 0,
-      regradeAvailable: false,
-      reportsCollected: 0,
-      reportsFailed: 0,
-      definitions: mergeDefinitions(cachedDefinitions, currentDefinitions),
+      observedRuns: records.filter(hasOperationalValueResult).length,
       records,
     };
     await mkdir(path.dirname(outputPath), { recursive: true });

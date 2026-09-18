@@ -18,6 +18,9 @@ import {
   QUERY_AGGREGATE_VALUE_KEYS,
   QUERY_COMPUTE_ARGUMENT_KEYS,
   QUERY_COMPUTE_KEYS,
+  QUERY_TEMPORAL_SERIES_KEYS,
+  QUERY_TEMPORAL_SERIES_MAP_KEYS,
+  QUERY_TEMPORAL_SERIES_MEASURE_KEYS,
   QUERY_FILTER_KEYS,
   QUERY_JOIN_FIELD_KEYS,
   QUERY_JOIN_KEYS,
@@ -2695,7 +2698,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
           `${path}.data.source`
         ));
       }
-      for (const key of ['arguments', 'limit', 'order-by', 'source-metadata', 'route-field']) {
+      for (const key of ['limit', 'order-by', 'source-metadata', 'route-field']) {
         if (view.data[key] !== undefined) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
@@ -2704,6 +2707,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ));
         }
       }
+      validateViewDataArguments(
+        view.data.arguments,
+        getValueNodeByKey(dataNode, 'arguments'),
+        `${path}.data.arguments`,
+        Array.isArray(view.data.sources) ? view.data.sources.filter((name) => typeof name === 'string') : null,
+        errors
+      );
     } else {
       validateSource(view.data.source, `${path}.data.source`, errors);
       if (typeof view.data.source === 'string'
@@ -2770,7 +2780,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
  * @param {unknown} args
  * @param {unknown} argsNode
  * @param {string} path
- * @param {string | null} sourceName
+ * @param {string | string[] | null} sourceName
  * @param {ValidationError[]} errors
  */
 function validateViewDataArguments(args, argsNode, path, sourceName, errors) {
@@ -2780,7 +2790,11 @@ function validateViewDataArguments(args, argsNode, path, sourceName, errors) {
     return;
   }
   const names = new Set();
-  const fields = sourceName ? sourceFieldNames(sourceName) : null;
+  const sourceNames = Array.isArray(sourceName) ? sourceName : sourceName ? [sourceName] : [];
+  const sourceFields = sourceNames.map((name) => sourceFieldNames(name));
+  const fields = sourceFields.length > 0 && sourceFields.every(Array.isArray)
+    ? sourceFields.reduce((shared, candidate) => shared.filter((field) => candidate.includes(field)), [...sourceFields[0]])
+    : null;
   for (const [index, argument] of args.entries()) {
     const argumentPath = `${path}[${index}]`;
     if (!isPlainObject(argument)) {
@@ -2797,10 +2811,41 @@ function validateViewDataArguments(args, argsNode, path, sourceName, errors) {
     if (fields && typeof argument.field === 'string' && !fields.includes(argument.field)) {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'data argument field must be declared by data.source.',
+        `data argument field must be declared by ${sourceNames.length > 1 ? 'every data.sources entry' : 'data.source'}.`,
         `${argumentPath}.field`
       ));
     }
+  }
+}
+
+/**
+ * @param {unknown} entries
+ * @param {unknown} entriesNode
+ * @param {string} path
+ * @param {string[]} allowedKeys
+ * @param {string[]} fieldKeys
+ * @param {(field: unknown, path: string) => void} requireField
+ * @param {ValidationError[]} errors
+ */
+function validateTemporalSeriesEntries(entries, entriesNode, path, allowedKeys, fieldKeys, requireField, errors) {
+  if (entries === undefined) return;
+  if (!Array.isArray(entries) || entries.length === 0 || entries.length > 64) {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series entries must contain 1 to 64 definitions.', path));
+    return;
+  }
+  for (const [index, entry] of entries.entries()) {
+    const entryPath = `${path}[${index}]`;
+    if (!isPlainObject(entry)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series entry must be a mapping.', entryPath));
+      continue;
+    }
+    validateObjectKeys(getSequenceItemNode(entriesNode, index), allowedKeys, entryPath, errors);
+    for (const key of fieldKeys) {
+      if (key !== 'field' && entry[key] === undefined) continue;
+      validateStringField(entry[key], `${entryPath}.${key}`, true, errors);
+      requireField(entry[key], `${entryPath}.${key}`);
+    }
+    validateRequiredIdentifier(entry.kind, `${entryPath}.kind`, 'temporal-series kind', errors);
   }
 }
 
@@ -3535,6 +3580,47 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
         }
         declareField(computed.as, `${computePath}.as`);
       }
+    }
+  }
+
+  if (query['temporal-series'] !== undefined) {
+    const seriesPath = `${path}.temporal-series`;
+    const seriesNode = getValueNodeByKey(queryNode, 'temporal-series');
+    const definition = query['temporal-series'];
+    if (!isPlainObject(definition)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series must be a mapping.', seriesPath));
+    } else {
+      validateObjectKeys(seriesNode, QUERY_TEMPORAL_SERIES_KEYS, seriesPath, errors);
+      for (const key of ['time', 'series']) {
+        validateStringField(definition[key], `${seriesPath}.${key}`, true, errors);
+        requireField(definition[key], `${seriesPath}.${key}`);
+      }
+      const shape = definition.shape;
+      if (shape !== undefined
+          && (typeof shape !== 'string' || (shape !== 'tidy' && shape !== 'groups'))) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'temporal-series shape must be tidy or groups.', `${seriesPath}.shape`));
+      }
+      const carry = definition.carry;
+      if (carry !== undefined && (!Array.isArray(carry) || carry.length === 0 || carry.length > 16)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series carry must contain 1 to 16 fields.', `${seriesPath}.carry`));
+      } else if (Array.isArray(carry)) {
+        carry.forEach((field, index) => {
+          validateStringField(field, `${seriesPath}.carry[${index}]`, true, errors);
+          requireField(field, `${seriesPath}.carry[${index}]`);
+        });
+      }
+      const measures = definition.measures;
+      const maps = definition.maps;
+      if ((!Array.isArray(measures) || measures.length === 0) && (!Array.isArray(maps) || maps.length === 0)) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'temporal-series must declare at least one measure or map.', seriesPath));
+      }
+      validateTemporalSeriesEntries(measures, getValueNodeByKey(seriesNode, 'measures'), `${seriesPath}.measures`, QUERY_TEMPORAL_SERIES_MEASURE_KEYS, ['field', 'key'], requireField, errors);
+      validateTemporalSeriesEntries(maps, getValueNodeByKey(seriesNode, 'maps'), `${seriesPath}.maps`, QUERY_TEMPORAL_SERIES_MAP_KEYS, ['field', 'definitions', 'group'], requireField, errors);
+      fields = fields
+        ? definition.shape === 'groups'
+          ? [...(Array.isArray(carry) ? carry.filter((field) => typeof field === 'string') : []), 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group', 'points']
+          : [...(Array.isArray(carry) ? carry.filter((field) => typeof field === 'string') : []), 'time', 'series', 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group', 'value']
+        : undefined;
     }
   }
 

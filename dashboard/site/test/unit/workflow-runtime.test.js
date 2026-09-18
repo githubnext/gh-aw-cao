@@ -177,7 +177,7 @@ describe('renderWorkflowRuntime', () => {
           repository: 'gh-aw-cao',
           workflow: workflow.workflow,
           run: '0',
-          'operational-value': 0.4,
+          'operational-value': 40,
           'operational-case': 'docs-run-1',
           'maturity-status': 'matured',
           'evaluator-digest': 'sha256:old',
@@ -189,13 +189,13 @@ describe('renderWorkflowRuntime', () => {
           repository: 'gh-aw-cao',
           workflow: workflow.workflow,
           run: '1',
-          'operational-value': 0.75,
+          'operational-value': 75,
           'operational-case': 'docs-run-1',
           'maturity-status': 'matured',
           'evaluator-digest': 'sha256:abcdefghijk',
           'requested-evidence-at': '2026-08-24T18:00:00Z',
           'observed-at': '2026-09-01T18:00:00Z',
-          diagnostics: { 'repository-health': 0.4, 'oversized-file-share': 0.8, currentLines: 1907 },
+          diagnostics: { 'repository-health': 40, 'oversized-file-share': 80, currentLines: 1907 },
           'diagnostic-definitions': [
             { id: 'repository-health', name: 'Repository health', direction: 'higher_is_better', aggregation: 'latest' },
             { id: 'oversized-file-share', name: 'Oversized file share', direction: 'lower_is_better', aggregation: 'latest' }
@@ -206,13 +206,13 @@ describe('renderWorkflowRuntime', () => {
           repository: 'gh-aw-cao',
           workflow: workflow.workflow,
           run: '2',
-          'operational-value': 0.8,
+          'operational-value': 80,
           'operational-case': 'docs-run-1',
           'maturity-status': 'matured',
           'evaluator-digest': 'sha256:abcdefghijk',
           'requested-evidence-at': '2026-08-31T18:00:00Z',
           'observed-at': '2026-09-01T19:00:00Z',
-          diagnostics: { 'repository-health': 0.65, 'oversized-file-share': 0.5 },
+          diagnostics: { 'repository-health': 65, 'oversized-file-share': 50 },
           'diagnostic-definitions': [
             { id: 'repository-health', name: 'Repository health', direction: 'higher_is_better', aggregation: 'latest' },
             { id: 'oversized-file-share', name: 'Oversized file share', direction: 'lower_is_better', aggregation: 'latest' }
@@ -226,15 +226,15 @@ describe('renderWorkflowRuntime', () => {
     selectWorkflow(rendered);
 
     expect(rendered.querySelector('.value-report-empty')).toBeNull();
-    expect(rendered.querySelector('.value-score')?.textContent).toContain('80%');
-    expect(rendered.querySelector('.value-chart')?.textContent).toContain('Mature average80%');
-    expect(rendered.querySelector('.value-chart')?.textContent).toContain('Opportunities1');
+    expect(rendered.querySelector('.value-score')?.textContent).toContain('80');
+    expect(rendered.querySelector('.value-chart')?.textContent).toContain('Observed average80');
+    expect(rendered.querySelector('.value-chart')?.textContent).toContain('Observations1');
     expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Outcome change from first observation');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Repository health+25.0 pts');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Oversized file share+30.0 pts');
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Repository health+25');
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Oversized file share+30');
     expect(rendered.querySelector('.value-outcomes')?.textContent).not.toContain('CurrentLines');
     expect(rendered.querySelector('.value-diagnostic-legend i.chart-series-1[aria-hidden="true"]')).not.toBeNull();
-    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('Weekly operational attainment');
+    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('Weekly primary metric');
     expect(rendered.querySelector('.value-attainment')?.textContent).toContain('4-week rolling mean');
     expect(rendered.querySelector('.value-attainment .chart-axis')?.textContent).toBe('Aug 24Aug 31');
     expect(rendered.querySelector('.value-attainment .primary-weekly')).not.toBeNull();

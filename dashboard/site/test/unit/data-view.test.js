@@ -14,11 +14,40 @@ const metadata = {
   freshness: /** @type {'fresh'} */ ('fresh')
 };
 
+function stubIntersectionObserver() {
+  /** @type {Map<Element, IntersectionObserverCallback>} */
+  const callbacks = new Map();
+  class IntersectionObserverStub {
+    /** @type {IntersectionObserverCallback} */
+    callback;
+
+    /** @param {IntersectionObserverCallback} callback */
+    constructor(callback) {
+      this.callback = callback;
+    }
+
+    /** @param {Element} element */
+    observe(element) {
+      callbacks.set(element, this.callback);
+    }
+
+    disconnect() {}
+  }
+  vi.stubGlobal('IntersectionObserver', IntersectionObserverStub);
+  /** @param {Element} element */
+  const intersect = (element) => callbacks.get(element)?.(
+    /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([{ target: element, isIntersecting: true }])),
+    /** @type {IntersectionObserver} */ (/** @type {unknown} */ ({}))
+  );
+  return intersect;
+}
+
 describe('data view renderer', () => {
   afterEach(() => {
     window.localStorage.clear();
     window.history.replaceState({}, '', '/');
     setDeclaredCliActions([]);
+    vi.unstubAllGlobals();
   });
 
   it('renders a unit-bearing metric selected by the JSON mark', () => {
@@ -626,6 +655,7 @@ describe('data view renderer', () => {
   });
 
   it('replays continuation pages when table and mobile card modes load the same rows', async () => {
+    const intersect = stubIntersectionObserver();
     const load = vi.fn(async () => ({
       rows: [{ event: 'event-26' }],
       continuationToken: undefined
@@ -656,10 +686,11 @@ describe('data view renderer', () => {
     expect(tableMore).toBeInstanceOf(HTMLButtonElement);
     /** @type {HTMLButtonElement} */ (tableMore).click();
     await vi.waitFor(() => expect(rendered?.querySelectorAll('tbody tr')).toHaveLength(26));
-    const cardMore = rendered?.querySelector('[data-card-list-more]');
-    expect(cardMore).toBeInstanceOf(HTMLButtonElement);
-    /** @type {HTMLButtonElement} */ (cardMore).click();
-    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] li')).toHaveLength(26));
+    const cardBoundary = /** @type {HTMLElement} */ (rendered?.querySelector('[data-card-list-boundary]'));
+    expect(cardBoundary).toBeInstanceOf(HTMLElement);
+    expect(rendered?.querySelector('[data-card-list-more]')).toBeNull();
+    intersect(cardBoundary);
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] .entity-card-list-card')).toHaveLength(26));
     expect(load).toHaveBeenCalledTimes(1);
   });
 
@@ -778,7 +809,75 @@ describe('data view renderer', () => {
     expect(metrics).toEqual(['4778Calls', '12Workflows']);
   });
 
-  it('lets a mobile card continuation retry after a load failure', async () => {
+  it('renders workflow cards with their file, Octicon, and run outcome metrics', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'workflows',
+      title: 'Workflows',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view',
+        encoding: {
+          columns: [
+            { field: 'workflow-name', type: 'nominal', title: 'Workflow' },
+            { field: 'workflow', type: 'nominal', title: 'Workflow file', format: 'workflow-relative-path' },
+            { field: 'runs', type: 'quantitative', title: 'Runs' },
+            { field: 'successful-runs', type: 'quantitative', title: 'Success' },
+            { field: 'failed-runs', type: 'quantitative', title: 'Failures' },
+            { field: 'aic-per-run', type: 'quantitative', title: 'Average AIC', unit: 'aic-per-run' }
+          ]
+        }
+      },
+      sourceName: 'workflow-inventory',
+      rows: [{
+        'workflow-name': 'Dashboard',
+        workflow: '.github/workflows/cao-dashboard.md',
+        runs: 14,
+        'successful-runs': 11,
+        'failed-runs': 3,
+        'aic-per-run': 2.5
+      }],
+      cardTemplates: {
+        workflow: {
+          icon: 'workflow',
+          title: { field: 'workflow-name', title: 'Workflow' },
+          subtitle: { field: 'workflow', title: 'Workflow file', format: 'workflow-relative-path' },
+          labels: [],
+          details: [
+            { field: 'successful-runs', title: 'Success' },
+            { field: 'failed-runs', title: 'Failures' },
+            { field: 'aic-per-run', title: 'Average AIC', unit: 'aic-per-run' }
+          ]
+        }
+      },
+      units: /** @type {any} */ ({
+        'aic-per-run': {
+          name: 'AI Credits per run',
+          symbol: 'AIC/run',
+          significant: 0.01,
+          format: 'number'
+        }
+      }),
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const card = rendered?.querySelector('[data-mobile-card-list] .entity-card-list-card');
+    expect(card?.querySelector('.entity-card-list-title')?.textContent).toBe('Dashboard');
+    expect(card?.querySelector('.entity-card-list-subtitle')?.textContent).toBe('cao-dashboard.md');
+    expect(card?.querySelector('.octicon-workflow')).not.toBeNull();
+    expect([...card?.querySelectorAll('.entity-card-list-metric') ?? []].map((metric) => metric.textContent))
+      .toEqual(['11Success', '3Failures', '2.50Average AIC']);
+  });
+
+  it('lets a mobile card continuation retry on scroll after a load failure', async () => {
+    const intersect = stubIntersectionObserver();
     const load = vi.fn()
       .mockRejectedValueOnce(new Error('worker unavailable'))
       .mockResolvedValueOnce({ rows: [{ event: 'event-26' }], continuationToken: undefined });
@@ -803,13 +902,14 @@ describe('data view renderer', () => {
       toText: String,
       continuation: { token: 'page-2', totalRows: 26, load }
     });
-    const more = /** @type {HTMLButtonElement} */ (rendered?.querySelector('[data-card-list-more]'));
+    const boundary = /** @type {HTMLElement} */ (rendered?.querySelector('[data-card-list-boundary]'));
 
-    more.click();
-    await vi.waitFor(() => expect(more.textContent).toBe('Retry loading cards'));
-    expect(more.disabled).toBe(false);
-    more.click();
-    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] li')).toHaveLength(26));
+    expect(boundary).toBeInstanceOf(HTMLElement);
+    expect(rendered?.querySelector('[data-card-list-more]')).toBeNull();
+    intersect(boundary);
+    await vi.waitFor(() => expect(boundary.dataset.loadState).toBe('error'));
+    rendered?.querySelector('.mobile-table-card-list-items')?.dispatchEvent(new Event('scroll'));
+    await vi.waitFor(() => expect(rendered?.querySelectorAll('[data-mobile-card-list] .entity-card-list-card')).toHaveLength(26));
     expect(load).toHaveBeenCalledTimes(2);
   });
 

@@ -63,34 +63,19 @@ It does not receive a token, discovery query, or permission to dispatch another 
 
 Operational value is measured per worker, not per orchestrator or operation. Dispatch counts, generated outputs, and model assessments do not prove that a worker attained its intended repository outcome.
 
-Each adopted worker registers a frozen schema-version 4 evaluator under `.github/workflows/graders/<worker-stem>-operational-value.sh` using the workflow-relative path `./graders/<worker-stem>-operational-value.sh`. gh-aw executes that evaluator for the workflow run, records its assigned opportunity and evidence provenance, and publishes the result in the unified `agent` artifact's `grader_results.json`.
+Each worker may register an evaluator under `.github/workflows/graders/<worker-stem>-operational-value.sh` using the workflow-relative path `./graders/<worker-stem>-operational-value.sh`. The current gh-aw contract invokes the evaluator once without arguments, writes one run request to standard input, and accepts one ordered array of `{id,value}` metrics from standard output. The first metric is primary and later metrics are diagnostics.
 
-An evaluator exposes its contract with `--definition`, scores evidence with `--metric`, and observes one run with `--grade-run`. gh-aw owns canonical evaluation and adoption-to-current replay. Pages consumes its versioned report observations, falls back to actual workflow artifacts when full replay is unavailable for one workflow, and never renders committed live timelines. CAO preserves retries and evaluator generations by observation identity, presents only the latest comparable evaluator series, and collapses repeated opportunities independently for aggregation.
+gh-aw owns evaluator protocol, metric semantics, and validation. CAO preserves the published metric IDs, order, native finite values or `null`, unit, and direction. It does not normalize, clamp, rescale, replay, mature, or infer baselines for those metrics.
 
-```bash
-EVALUATOR=".github/workflows/graders/<worker-stem>-operational-value.sh"
-
-"$EVALUATOR" --definition
-"$EVALUATOR" --metric < evidence.json
-gh aw graders operational-value RUN_ID --evidence-at TIMESTAMP --json
-gh aw graders operational-value report WORKFLOW --json
-```
-
-:::tip[Measure repository outcomes]
-Count an outcome only when accepted evidence satisfies the worker's frozen contract. A successful dispatch or generated suggestion is activity, not attained value.
+:::tip[Interpret repository outcomes]
+A successful dispatch or generated suggestion is activity, not proof of a repository outcome. Interpret each metric according to the metadata and evaluator maintained by gh-aw.
 :::
 
 :::caution[Verify campaign transport]
 A bundled worker is grader-enabled only when a clean `gh aw add` consumer receives both its Markdown workflow and referenced `.github/workflows/graders/*.sh` evaluator. Keeping the evaluator beside the workflow under `graders/` lets the compiler and campaign installer resolve the same workflow-relative path.
 :::
 
-Apply the process independently to every worker in an operation. Workers may receive different classifications because their outcomes and available history differ:
-
-- `baseline-comparable` applies the same outcome measure before and after adoption;
-- `attainment-only` measures post-adoption attainment when comparable history cannot be reconstructed;
-- `not measurable` records that no deterministic opportunity, outcome, or accepted-evidence rule can currently be defined.
-
-Do not create placeholder evaluators while a new worker is unadopted. A frozen evaluator requires its real adoption commit and a stable run-to-opportunity assignment. The operation creation skill records this as a post-adoption follow-up for each new worker.
+Apply the current upstream gh-aw operational-value designer and verifier independently to every worker in an operation. Do not create placeholder evaluators or add CAO-local metric rules.
 
 ## Current Worker Eligibility
 

@@ -63,7 +63,7 @@ test("dashboard authoring corpus workflow generates only validated training exam
   assert.match(dashboardIrSkill, /Read the specification and `dashboard\/site\/dashboard\.json`/);
   assert.match(dashboardIrSkill, /Reuse an established built-in view pattern/);
   assert.match(dashboardIrSkill, /Return only the validated complete Dashboard Language YAML document/);
-  assert.match(dashboardAuthoringSkill, /Pass the intent and operational-value contract to `generate-dashboard-ir`/);
+  assert.match(dashboardAuthoringSkill, /Pass the intent to `generate-dashboard-ir`/);
   assert.match(dashboardAuthoringSkill, /Store an operation campaign's production Dashboard Language document at `<campaign>\/dashboard\.json`/);
   assert.match(dashboardAuthoringSkill, /destination is `\.github\/aw\/dashboards\/<campaign>\.json`/);
   assert.match(dashboardAuthoringSkill, /bundles installed `\.github\/aw\/dashboards\/\*\.json` documents into the single deployed `dashboard\.json`/);
@@ -166,7 +166,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
   const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
   const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
-  const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-value-history.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
+  const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "dashboard-language-sources.mjs", "operational-value-records.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs"]);
   const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
   const normalizeInclude = (entry, sourcePrefix = "") => typeof entry === "string"

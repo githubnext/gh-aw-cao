@@ -15,8 +15,8 @@ resources:
     destination: .github/aw/dashboard/report/text-utils.mjs
   - source: report/operational-values.mjs
     destination: .github/aw/dashboard/report/operational-values.mjs
-  - source: report/operational-value-history.mjs
-    destination: .github/aw/dashboard/report/operational-value-history.mjs
+  - source: report/operational-value-records.mjs
+    destination: .github/aw/dashboard/report/operational-value-records.mjs
   - source: report/records.mjs
     destination: .github/aw/dashboard/report/records.mjs
   - source: report/dashboard-language-sources.mjs
@@ -65,6 +65,8 @@ resources:
     destination: .github/aw/dashboard/site/src/dashboard-chunks.js
   - source: site/src/dashboard-data-updates.js
     destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
+  - source: site/src/data/analytics/temporal-series.js
+    destination: .github/aw/dashboard/site/src/data/analytics/temporal-series.js
   - source: site/src/data/adapters/dashboard-sources.js
     destination: .github/aw/dashboard/site/src/data/adapters/dashboard-sources.js
   - source: site/src/data/adapters/gh-aw-logs.js
@@ -267,8 +269,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/outcome-detail-sections.js
   - source: site/src/components/campaign-aic-utilization-thresholds.json
     destination: .github/aw/dashboard/site/src/components/campaign-aic-utilization-thresholds.json
-  - source: site/src/components/campaign-detail.js
-    destination: .github/aw/dashboard/site/src/components/campaign-detail.js
   - source: site/src/components/campaign-readme.js
     destination: .github/aw/dashboard/site/src/components/campaign-readme.js
   - source: site/src/components/campaign-resource-navigation.json
@@ -347,8 +347,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/work-view-sections.js
   - source: site/src/components/workflow-badges.js
     destination: .github/aw/dashboard/site/src/components/workflow-badges.js
-  - source: site/src/components/workflow-detail.js
-    destination: .github/aw/dashboard/site/src/components/workflow-detail.js
   - source: site/src/components/workflow-identity.js
     destination: .github/aw/dashboard/site/src/components/workflow-identity.js
   - source: site/src/components/workflow-route.js

@@ -2749,21 +2749,18 @@ test("dashboard source bridge retains unavailable grader records separately from
     operationalValues: {
       records: [
         {
+          repository: "githubnext/gh-aw-cao",
           workflowId: "daily-value",
           workflowPath: ".github/workflows/daily-value.lock.yml",
           runId: 42,
           runUrl: "https://github.com/githubnext/gh-aw-cao/actions/runs/42",
           status: "pass",
-          value: 0.8,
-          baselineValue: 0.5,
-          deltaFromBaseline: 0.3,
-          evaluatorDigest: "1234567890abcdef",
-          observation: {
-            evidenceAt: "2026-08-31T10:00:00Z",
-            opportunityKey: "githubnext/gh-aw-cao#42",
-            mature: false,
-            case: { targetRepo: "githubnext/gh-aw-cao" },
-          },
+          value: 8,
+          unit: "count",
+          direction: "higher_is_better",
+          metrics: [{ id: "accepted-outcomes", value: 8 }],
+          observedAt: "2026-08-31T10:00:00Z",
+          resultAvailable: true,
         },
         {
           workflowId: "missing-value",
@@ -2771,6 +2768,9 @@ test("dashboard source bridge retains unavailable grader records separately from
           repository: "githubnext/gh-aw-cao",
           runId: 43,
           status: "unavailable",
+          value: null,
+          metrics: [],
+          resultAvailable: false,
         },
       ],
     },
@@ -2783,25 +2783,25 @@ test("dashboard source bridge retains unavailable grader records separately from
     sources["grader-observations"].rows.map((row) => ({
       grader: row.grader,
       status: row.status,
-      maturity: row["maturity-status"],
-      baseline: row["baseline-value"],
+      unit: row.unit,
+      direction: row.direction,
       run: row.run,
       runHref: row["run-link"]?.href,
     })),
     [
       {
-        grader: "daily-value",
+        grader: "operational-value",
         status: "pass",
-        maturity: "interim",
-        baseline: 0.5,
+        unit: "count",
+        direction: "higher_is_better",
         run: "42",
         runHref: "https://github.com/githubnext/gh-aw-cao/actions/runs/42",
       },
       {
-        grader: "missing-value",
+        grader: "operational-value",
         status: "unavailable",
-        maturity: "unavailable",
-        baseline: undefined,
+        unit: undefined,
+        direction: undefined,
         run: "43",
         runHref: "https://github.com/githubnext/gh-aw-cao/actions/runs/43",
       },
@@ -2809,7 +2809,7 @@ test("dashboard source bridge retains unavailable grader records separately from
   );
 });
 
-test("dashboard source bridge preserves report observation identity, diagnostics, and historical coverage", () => {
+test("dashboard source bridge preserves ordered native metrics and historical coverage", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-01T12:00:00Z",
@@ -2827,12 +2827,6 @@ test("dashboard source bridge preserves report observation identity, diagnostics
         endAt: "2026-09-01T11:00:00Z",
       },
       complete: true,
-      definitions: [{
-        repository: "github/gh-aw",
-        workflowId: "daily-file-diet",
-        evaluatorDigest: "1234567890abcdef",
-        diagnosticMetrics: [{ id: "repository-health", name: "Repository health", direction: "higher_is_better" }],
-      }],
       records: [{
         repository: "github/gh-aw",
         workflowId: "daily-file-diet",
@@ -2841,17 +2835,16 @@ test("dashboard source bridge preserves report observation identity, diagnostics
         runAttempt: 2,
         runUrl: "https://github.com/github/gh-aw/actions/runs/42",
         status: "pass",
-        value: 0.8,
-        evaluatorDigest: "1234567890abcdef",
-        diagnostics: { "repository-health": 0.65 },
-        observation: {
-          evidenceAt: "2026-08-31T10:00:00Z",
-          evidenceCutoff: "2026-08-31T09:00:00Z",
-          opportunityKey: "github/gh-aw#42",
-          mature: true,
-          case: { targetRepo: "github/gh-aw" },
-          provenance: [{ repository: "github/gh-aw", sha: "abc123", path: "pkg/cli" }],
-        },
+        value: 80,
+        unit: "count",
+        direction: "higher_is_better",
+        metrics: [
+          { id: "accepted-outcomes", value: 80 },
+          { id: "repository-health", value: 65 },
+          { id: "unavailable-evidence", value: null },
+        ],
+        observedAt: "2026-08-31T10:00:00Z",
+        resultAvailable: true,
       }],
     },
     report: { generatedAt: "2026-09-01T12:00:00Z", records: [] },
@@ -2866,23 +2859,18 @@ test("dashboard source bridge preserves report observation identity, diagnostics
       workflow: ".github/workflows/daily-file-diet.md",
       run: "42",
       "run-attempt": 2,
-      "observation-id": "github/gh-aw:daily-file-diet:42:2:1234567890abcdef",
-      experiment: "",
-      "operational-case": "github/gh-aw#42",
-      "evaluator-digest": "1234567890abcdef",
+      "observation-id": "github/gh-aw:daily-file-diet:42:2",
       "rollout-mode": "unknown",
-      "operational-value": 0.8,
-      "operational-value-definition": "daily-file-diet",
-      "requested-evidence-at": "2026-08-31T10:00:00Z",
-      "evidence-cutoff": "2026-08-31T09:00:00Z",
-      "maturity-at": "2026-08-31T10:00:00Z",
-      "maturity-status": "matured",
-      "baseline-value": undefined,
-      "delta-from-baseline": undefined,
+      "operational-value": 80,
+      "operational-value-definition": "accepted-outcomes",
+      "operational-value-unit": "count",
+      "operational-value-direction": "higher_is_better",
       "observed-at": "2026-08-31T10:00:00Z",
-      "accepted-evidence-provenance": [{ repository: "github/gh-aw", sha: "abc123", path: "pkg/cli" }],
-      diagnostics: { "repository-health": 0.65 },
-      "diagnostic-definitions": [{ id: "repository-health", name: "Repository health", direction: "higher_is_better" }],
+      diagnostics: { "repository-health": 65, "unavailable-evidence": null },
+      "diagnostic-definitions": [
+        { id: "repository-health", name: "repository-health" },
+        { id: "unavailable-evidence", name: "unavailable-evidence" },
+      ],
       "evidence-link": {
         relation: "evidence",
         href: "https://github.com/github/gh-aw/actions/runs/42",
@@ -2910,6 +2898,63 @@ test("dashboard source bridge preserves report observation identity, diagnostics
       coverageEnd: "2026-09-01T11:00:00Z",
       completeness: "complete",
     },
+  );
+});
+
+test("dashboard source bridge preserves legacy operational-value cache observations", () => {
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt: "2026-09-01T12:00:00Z",
+      discovery: { complete: true },
+      runHealth: { available: true, complete: true },
+      bundles: [],
+      workflows: [],
+    },
+    usage: { available: true, complete: true, runs: [] },
+    operationalValues: {
+      schemaVersion: 1,
+      generatedAt: "2026-09-01T11:30:00Z",
+      complete: true,
+      definitions: [{
+        repository: "github/gh-aw",
+        workflowId: "daily-file-diet",
+        evaluatorDigest: "legacy-digest",
+        operationalValue: { metric: "attainment" },
+        diagnosticMetrics: ["attainment", "quality"],
+      }],
+      records: [{
+        repository: "github/gh-aw",
+        workflowId: "daily-file-diet",
+        workflowPath: ".github/workflows/daily-file-diet.lock.yml",
+        runId: 42,
+        runAttempt: 2,
+        runUrl: "https://github.com/github/gh-aw/actions/runs/42",
+        status: "pass",
+        value: 0.8,
+        evaluatorDigest: "legacy-digest",
+        observation: {
+          evidenceAt: "2026-08-31T10:00:00Z",
+          subject: { createdAt: "2026-08-31T09:00:00Z" },
+        },
+        diagnostics: { attainment: 0.1, quality: 0.6, extra: 0.4 },
+      }],
+    },
+    report: { generatedAt: "2026-09-01T12:00:00Z", records: [] },
+  });
+
+  assert.deepEqual(
+    sources["operational-values"].rows.map((row) => ({
+      value: row["operational-value"],
+      definition: row["operational-value-definition"],
+      diagnostics: row.diagnostics,
+      observedAt: row["observed-at"],
+    })),
+    [{
+      value: 0.8,
+      definition: "attainment",
+      diagnostics: { quality: 0.6, extra: 0.4 },
+      observedAt: "2026-08-31T10:00:00Z",
+    }],
   );
 });
 

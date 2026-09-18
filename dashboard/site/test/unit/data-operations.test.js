@@ -148,6 +148,58 @@ describe('dashboard data operations', () => {
     expect(result.at(-1)?.prediction).toBeCloseTo(14, 10);
   });
 
+  it('reshapes scalar and mapped measures into tidy temporal series', () => {
+    const observations = [
+      {
+        package: 'alpha', workflow: 'worker.md', 'observed-at': '2026-09-01T00:00:00Z',
+        'operational-value': 0.4, 'operational-value-definition': 'repository-readiness',
+        diagnostics: { quality: 0.5, efficiency: 0.7, note: 'ignored' },
+        'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
+      },
+      {
+        package: 'alpha', workflow: 'worker.md', 'observed-at': '2026-09-02T00:00:00Z',
+        'operational-value': 0.8, 'operational-value-definition': 'repository-readiness',
+        diagnostics: { quality: 0.9, efficiency: 0.6 },
+        'diagnostic-definitions': [{ id: 'quality', name: 'Quality' }, { id: 'efficiency', name: 'Efficiency' }]
+      }
+    ];
+
+    expect(tidy(observations, [{
+      op: 'temporal-series',
+      time: 'observed-at',
+      series: 'workflow',
+      carry: ['package'],
+      measures: [{ field: 'operational-value', key: 'operational-value-definition', kind: 'primary' }],
+      maps: [{ field: 'diagnostics', definitions: 'diagnostic-definitions', group: 'operational-value-definition', kind: 'diagnostic' }]
+    }])).toEqual([
+      { package: 'alpha', time: '2026-09-01T00:00:00Z', series: 'worker.md', metric: 'repository-readiness', 'metric-key': 'primary:repository-readiness', 'metric-name': 'repository-readiness', 'metric-kind': 'primary', 'metric-group': 'repository-readiness', value: 0.4 },
+      { package: 'alpha', time: '2026-09-01T00:00:00Z', series: 'worker.md', metric: 'quality', 'metric-key': 'diagnostic:repository-readiness:quality', 'metric-name': 'Quality', 'metric-kind': 'diagnostic', 'metric-group': 'repository-readiness', value: 0.5 },
+      { package: 'alpha', time: '2026-09-01T00:00:00Z', series: 'worker.md', metric: 'efficiency', 'metric-key': 'diagnostic:repository-readiness:efficiency', 'metric-name': 'Efficiency', 'metric-kind': 'diagnostic', 'metric-group': 'repository-readiness', value: 0.7 },
+      { package: 'alpha', time: '2026-09-02T00:00:00Z', series: 'worker.md', metric: 'repository-readiness', 'metric-key': 'primary:repository-readiness', 'metric-name': 'repository-readiness', 'metric-kind': 'primary', 'metric-group': 'repository-readiness', value: 0.8 },
+      { package: 'alpha', time: '2026-09-02T00:00:00Z', series: 'worker.md', metric: 'quality', 'metric-key': 'diagnostic:repository-readiness:quality', 'metric-name': 'Quality', 'metric-kind': 'diagnostic', 'metric-group': 'repository-readiness', value: 0.9 },
+      { package: 'alpha', time: '2026-09-02T00:00:00Z', series: 'worker.md', metric: 'efficiency', 'metric-key': 'diagnostic:repository-readiness:efficiency', 'metric-name': 'Efficiency', 'metric-kind': 'diagnostic', 'metric-group': 'repository-readiness', value: 0.6 }
+    ]);
+
+    const grouped = tidy(observations, [{
+      op: 'temporal-series',
+      time: 'observed-at',
+      series: 'workflow',
+      shape: 'groups',
+      carry: ['package'],
+      measures: [{ field: 'operational-value', key: 'operational-value-definition', kind: 'primary' }],
+      maps: [{ field: 'diagnostics', definitions: 'diagnostic-definitions', group: 'operational-value-definition', kind: 'diagnostic' }]
+    }]);
+    expect(grouped).toHaveLength(3);
+    expect(grouped[0]).toMatchObject({
+      package: 'alpha',
+      'metric-key': 'primary:repository-readiness',
+      points: [
+        { x: '2026-09-01T00:00:00Z', y: 0.4, color: 'worker.md', key: 'primary:repository-readiness:0' },
+        { x: '2026-09-02T00:00:00Z', y: 0.8, color: 'worker.md', key: 'primary:repository-readiness:3' }
+      ]
+    });
+  });
+
   it('centers polynomial predictors to preserve large-magnitude forecasts', () => {
     const base = 1_700_000_000;
     const rows = [0, 1, 2, 3].map((offset) => ({

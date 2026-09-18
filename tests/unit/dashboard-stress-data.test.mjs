@@ -23,7 +23,7 @@ test("stress shards are deterministic and parametric", async () => {
     assert.deepEqual(firstManifest.expected, {
       repositories: 4,
       runs: 8,
-      events: 56,
+      audits: 56,
     });
     assert.equal(firstManifest.files.length, 3);
     for (const file of firstManifest.files) {

@@ -523,11 +523,9 @@ function controlSourcePath() {
     : workflowReference;
   const separator = withoutRepository.lastIndexOf("@");
   const workflowPath = separator >= 0 ? withoutRepository.slice(0, separator) : withoutRepository;
-  const ref = separator >= 0 ? withoutRepository.slice(separator + 1) : "";
-  const sourcePath = workflowPath.endsWith(".lock.yml")
+  return workflowPath.endsWith(".lock.yml")
     ? workflowPath.replace(/\.lock\.yml$/, ".md")
     : workflowPath.replace(/\.yml$/, ".md");
-  return { sourcePath, ref };
 }
 
 async function loadWorkflowInventory(repository) {
@@ -785,10 +783,9 @@ async function writeOrchestratorPrecompute(context) {
   requirePositiveInteger(context.policy.inventory["batch-size"], 100_000, "batch_size must be an integer from 1 through 100000");
   requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
   requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
-  const { sourcePath, ref } = controlSourcePath();
-  const source = Buffer.from((await ghApi(`repos/${context.controlRepository}/contents/${sourcePath}`, {
-    fields: { ref }, jq: ".content",
-  })).replace(/\s/g, ""), "base64").toString("utf8");
+  if (!SHA_PATTERN.test(context.workflowSha)) throw new ControlError("github.workflow_sha must be an exact commit SHA");
+  const sourcePath = controlSourcePath();
+  const source = await decodeRepositoryFile(context.controlRepository, sourcePath, context.workflowSha);
   const configuredWorkers = parseFrontmatterWorkers(source);
   if (configuredWorkers.length === 0) {
     throw new ControlError("shared/control.md role orchestrator requires safe-outputs.dispatch-workflow.workflows");

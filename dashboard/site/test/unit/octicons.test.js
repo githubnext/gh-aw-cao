@@ -40,5 +40,9 @@ describe('octicons', () => {
     const inlined = document.getElementById('octicon-sprite');
     expect(inlined?.querySelector('symbol')?.id).toBe('octicon-alert');
     expect(inlined?.getAttribute('aria-hidden')).toBe('true');
+
+    const rendered = octicon('alert');
+    expect(rendered.querySelector('path')).not.toBeNull();
+    expect(rendered.querySelector('use')).toBeNull();
   });
 });

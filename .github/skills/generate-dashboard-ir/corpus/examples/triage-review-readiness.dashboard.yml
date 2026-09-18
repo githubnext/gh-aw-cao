@@ -19,7 +19,7 @@ dashboard:
     - id: triage-review-readiness
       kind: custom
       title: Issue triage review readiness
-      description: Shows whether the issue-triage review workflow activates on new issues, produces accepted triage outcomes, and attains mature triage-readiness value.
+      description: Shows whether the issue-triage review workflow activates on new issues, produces accepted triage outcomes, and reports its native triage-readiness metric.
       sections:
         - id: triage-summary
           title: Triage summary
@@ -120,7 +120,7 @@ dashboard:
                 title: Observed
         - id: triage-attainment-trend
           title: Triage-readiness attainment
-          description: Operational-value observations show direct triage-readiness attainment for issue opportunities over time; mature evidence remains the intended interpretation contract.
+          description: Operational-value observations show the native triage-readiness metric published by gh-aw over time.
           data:
             source: operational-values
             filters:

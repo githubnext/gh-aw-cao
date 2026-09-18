@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
+import { hasOperationalValueResult, operationalValueRecordTime } from "./operational-value-records.mjs";
 import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
@@ -2455,48 +2456,83 @@ function evidenceRecordRows(outcomes, findings, workItems) {
   return [...outcomeRecords, ...findingRecords];
 }
 
+function operationalValueDefinitionKey(record, evaluatorDigest = record.evaluatorDigest) {
+  return `${record.repository || ""}\0${record.workflowId || ""}\0${evaluatorDigest || ""}`;
+}
+
+function operationalValueDefinitionLookup(values) {
+  const definitions = Array.isArray(values.definitions) ? values.definitions : [];
+  const byDigest = new Map();
+  const singleByWorkflow = new Map();
+  const definitionsByWorkflow = new Map();
+  for (const definition of definitions) {
+    byDigest.set(operationalValueDefinitionKey(definition), definition);
+    const workflowKey = operationalValueDefinitionKey(definition, "");
+    definitionsByWorkflow.set(workflowKey, [...(definitionsByWorkflow.get(workflowKey) ?? []), definition]);
+  }
+  for (const [workflowKey, workflowDefinitions] of definitionsByWorkflow) {
+    if (workflowDefinitions.length === 1) {
+      singleByWorkflow.set(workflowKey, workflowDefinitions[0]);
+    }
+  }
+  return { byDigest, singleByWorkflow };
+}
+
+function diagnosticValues(record) {
+  return record.diagnostics && typeof record.diagnostics === "object" && !Array.isArray(record.diagnostics)
+    ? record.diagnostics
+    : {};
+}
+
+function operationalValueMetrics(definitions, record) {
+  if (Array.isArray(record.metrics)) return record.metrics;
+  // Legacy cache records predate metric arrays. Prefer an exact evaluator
+  // definition; if retained records no longer match the current digest, use the
+  // workflow-level fallback only when it is unambiguous. Otherwise group the
+  // primary value under the stable generic metric id.
+  const definition = definitions.byDigest.get(operationalValueDefinitionKey(record))
+    ?? definitions.singleByWorkflow.get(operationalValueDefinitionKey(record, ""))
+    ?? {};
+  const diagnostics = diagnosticValues(record);
+  const primary = typeof definition.operationalValue === "string"
+    ? definition.operationalValue
+    : definition.operationalValue?.metric;
+  const primaryId = primary || "operational-value";
+  const diagnosticNames = new Set([
+    ...(Array.isArray(definition.diagnosticMetrics) ? definition.diagnosticMetrics : []),
+    ...Object.keys(diagnostics),
+  ]);
+  diagnosticNames.delete(primaryId);
+  return [
+    { id: primaryId, value: record.value ?? diagnostics[primaryId] ?? null },
+    ...[...diagnosticNames].map((id) => ({ id, value: diagnostics[id] ?? null })),
+  ];
+}
+
 function operationalValueRows(values) {
-  const definitions = new Map((values.definitions || []).map((definition) => [
-    `${definition.repository}:${definition.workflowId}:${definition.evaluatorDigest || ""}`,
-    definition,
-  ]));
-  return (values.records || []).filter((record) => record.observation).map((record) => {
-    const target = record.observation.case?.targetRepo || record.observation.subject?.repository || record.repository;
-    const repository = repositoryParts(target);
+  const definitions = operationalValueDefinitionLookup(values);
+  return (values.records || []).filter(hasOperationalValueResult).map((record) => {
+    const repository = repositoryParts(record.repository);
     const runAttempt = Number(record.runAttempt || record.run?.attempt || 1);
-    const observationId = record.observationId || ([
-      record.repository,
-      record.workflowId,
-      record.runId,
-      runAttempt,
-      record.evaluatorDigest,
-    ].every((part) => part !== undefined && part !== null && String(part) !== "")
-      ? `${record.repository}:${record.workflowId}:${record.runId}:${runAttempt}:${record.evaluatorDigest}`
-      : undefined);
-    const definition = definitions.get(`${record.repository}:${record.workflowId}:${record.evaluatorDigest || ""}`);
+    const metrics = operationalValueMetrics(definitions, record);
+    const primary = metrics[0] || {};
+    const diagnostics = Object.fromEntries(metrics.slice(1).map((metric) => [metric.id, metric.value]));
+    const observedAt = operationalValueRecordTime(record);
     return {
       ...repository,
       "repository-name": repository.repository,
       workflow: record.workflowPath?.replace(/\.lock\.yml$/, ".md") || record.workflowId || "",
       run: String(record.runId),
       "run-attempt": runAttempt,
-      "observation-id": observationId,
-      experiment: record.observation.experiment || "",
-      "operational-case": record.observation.opportunityKey || record.workflowId || "unknown",
-      "evaluator-digest": record.evaluatorDigest || "",
+      "observation-id": `${record.repository}:${record.workflowId}:${record.runId}:${runAttempt}`,
       "rollout-mode": "unknown",
-      "operational-value": record.value,
-      "operational-value-definition": record.workflowId || "operational-value",
-      "requested-evidence-at": record.observation.subject?.createdAt || record.observation.evidenceAt,
-      "evidence-cutoff": record.observation.evidenceCutoff || record.observation.evidenceAt,
-      "maturity-at": record.observation.maturesAt || record.observation.evidenceAt,
-      "maturity-status": record.observation.mature ? "matured" : "interim",
-      "baseline-value": record.baselineValue,
-      "delta-from-baseline": record.deltaFromBaseline,
-      "observed-at": record.observation.evidenceAt,
-      "accepted-evidence-provenance": record.observation.provenance || [],
-      diagnostics: record.diagnostics || {},
-      "diagnostic-definitions": definition?.diagnosticMetrics || [],
+      "operational-value": metrics.length > 0 ? primary.value : record.value,
+      "operational-value-definition": primary.id || record.workflowId || "operational-value",
+      "operational-value-unit": record.unit,
+      "operational-value-direction": record.direction,
+      diagnostics,
+      "diagnostic-definitions": metrics.slice(1).map((metric) => ({ id: metric.id, name: metric.id })),
+      "observed-at": observedAt,
       "evidence-link": link("evidence", record.runUrl, `View run ${record.runId}`),
       "run-link": link("run", record.runUrl, `Run ${record.runId}`),
     };
@@ -2517,23 +2553,17 @@ function operationalValueSource(name, rows, values, generatedAt, available) {
 
 function operationalValueGraderRows(values) {
   return (values.records || []).map((record) => {
-    const target = record.observation?.case?.targetRepo
-      || record.observation?.subject?.repository
-      || record.repository;
     return {
-      ...repositoryParts(target),
+      ...repositoryParts(record.repository),
       workflow: record.workflowPath?.replace(/\.lock\.yml$/, ".md") || record.workflowId || "",
       run: record.runId == null ? "Unavailable" : String(record.runId),
-      grader: record.workflowId || "Unknown workflow",
+      grader: "operational-value",
+      "grader-name": record.graderName || "Operational value",
       status: record.status || "unavailable",
       value: record.value,
-      "maturity-status": !record.observation
-        ? "unavailable"
-        : record.observation.mature ? "matured" : "interim",
-      "baseline-value": record.baselineValue,
-      "delta-from-baseline": record.deltaFromBaseline,
-      "evaluator-digest": record.evaluatorDigest || "",
-      "observed-at": record.observation?.evidenceAt || record.run?.createdAt,
+      unit: record.unit,
+      direction: record.direction,
+      "observed-at": record.observedAt || record.run?.createdAt,
       "run-link": link(
         "run",
         record.runUrl || workflowRunUrl(record.repository, record.runId),

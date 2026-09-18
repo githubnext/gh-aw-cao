@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { formatNumber, formatPercent } from '../view-formatters.js';
+import { formatNumber } from '../view-formatters.js';
 import { renderStatusBadge } from './badge.js';
 import { renderChartLegend, renderChartWidget, renderPieLegend } from './chart-elements.js';
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
@@ -203,9 +203,8 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
 
   const comparable = comparableObservations(observations);
   const latest = comparable.at(-1) ?? observations.at(-1) ?? {};
-  const matured = comparable.filter((row) => text(row['maturity-status']) === 'matured');
-  const matureAverage = matured.length > 0
-    ? matured.reduce((total, row) => total + finiteNumber(row['operational-value']), 0) / matured.length
+  const observedAverage = comparable.length > 0
+    ? comparable.reduce((total, row) => total + finiteNumber(row['operational-value']), 0) / comparable.length
     : null;
   return h(
     'section',
@@ -215,8 +214,8 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
       workflowName,
       repository,
       workflowPath,
-      h('div', { className: 'value-score' }, h('strong', null, formatPercent(latest['operational-value'])), h('span', null, 'Latest observation')),
-      "Run-scoped attainment from the workflow's frozen operational-value evaluator."
+      h('div', { className: 'value-score' }, h('strong', null, formatMetricValue(latest['operational-value'])), h('span', null, 'Latest observation')),
+      "Native run-scoped metrics from the workflow's operational-value evaluator."
     ),
     h(
       'div',
@@ -225,9 +224,9 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
       h(
         'dl',
         null,
-        renderVitalStat('Latest', formatPercent(latest['operational-value'])),
-        renderVitalStat('Mature average', formatPercent(matureAverage)),
-        renderVitalStat('Opportunities', formatNumber(comparable.length)),
+        renderVitalStat('Latest', formatMetricValue(latest['operational-value'])),
+        renderVitalStat('Observed average', formatMetricValue(observedAverage)),
+        renderVitalStat('Observations', formatNumber(comparable.length)),
         renderVitalStat('Evaluator', renderDigest(latest['evaluator-digest']) ?? 'Unavailable')
       )
     ),
@@ -308,8 +307,8 @@ function renderValueHistory(observations) {
     sections.push(renderValueHistoryPanel({
       className: 'value-attainment',
       headingId: 'value-attainment-heading',
-      heading: 'Weekly operational attainment',
-      description: 'Weekly opportunity-adjusted values and their 4-week rolling mean; separate from outcome diagnostics.',
+      heading: 'Weekly primary metric',
+      description: 'Weekly native metric values and their 4-week rolling mean; separate from diagnostic metrics.',
       body: [
         renderChartWidget('line', primaryPoints, primarySeries),
         renderChartLegend(primarySeries, 'line')
@@ -335,7 +334,7 @@ function primaryChangeSeries(weekly) {
 function renderOutcomeChangeChart(series) {
   const allWeeks = [...new Set(series.flatMap((item) => item.points.map((point) => point.weekStart)))].sort();
   const maximumChange = Math.max(0.1, ...series.flatMap((item) => item.points.map((point) => Math.abs(point.change))));
-  const extent = Math.min(1, Math.ceil(maximumChange * 10) / 10);
+  const extent = Math.ceil(maximumChange * 10) / 10;
   /** @param {string} weekStart */
   const xFor = (weekStart) => allWeeks.length < 2 ? 54 : 10 + (allWeeks.indexOf(weekStart) / (allWeeks.length - 1)) * 88;
   /** @param {number} change */
@@ -409,7 +408,7 @@ function weeklyDiagnostic(observations, metricId, aggregation) {
   return [...groups].sort(([left], [right]) => left.localeCompare(right)).flatMap(([weekStart, rows]) => {
     /** @type {Array<{ value: number, observedAt: number }>} */
     const values = rows.flatMap((row) => {
-      const value = isRecord(row.diagnostics) ? normalizedValue(row.diagnostics[metricId]) : null;
+      const value = isRecord(row.diagnostics) ? nativeValue(row.diagnostics[metricId]) : null;
       return value === null ? [] : [{ value, observedAt: rowTime(row) }];
     });
     if (values.length === 0) return [];
@@ -425,13 +424,13 @@ function weeklyAttainment(observations) {
   return [...groupObservationsByWeek(observations)].sort(([left], [right]) => left.localeCompare(right)).flatMap(([weekStart, rows]) => {
     const opportunities = new Map();
     for (const row of rows) {
-      const value = normalizedValue(row['operational-value']);
+      const value = nativeValue(row['operational-value']);
       if (value === null) continue;
       const key = text(row['operational-case']) || `run:${text(row.run)}`;
       const existing = opportunities.get(key);
       if (!existing || rowTime(row) >= rowTime(existing)) opportunities.set(key, row);
     }
-    const values = [...opportunities.values()].map((row) => /** @type {number} */ (normalizedValue(row['operational-value'])));
+    const values = [...opportunities.values()].map((row) => /** @type {number} */ (nativeValue(row['operational-value'])));
     return values.length === 0 ? [] : [{ weekStart, value: values.reduce((total, value) => total + value, 0) / values.length }];
   });
 }
@@ -466,10 +465,8 @@ function rollingMean(weekly, index) {
 }
 
 /** @param {unknown} value */
-function normalizedValue(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 1 ? numeric : null;
+function nativeValue(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
@@ -485,9 +482,14 @@ function humanizeIdentifier(value) {
 
 /** @param {number} value @param {boolean} [signed] */
 function formatPointChange(value, signed = true) {
-  const points = value * 100;
-  const prefix = signed && points > 0 ? '+' : '';
-  return `${prefix}${points.toFixed(1)} pts`;
+  const prefix = signed && value > 0 ? '+' : '';
+  return `${prefix}${formatNumber(value)}`;
+}
+
+/** @param {unknown} value */
+function formatMetricValue(value) {
+  const numeric = nativeValue(value);
+  return numeric === null ? 'Unavailable' : formatNumber(numeric);
 }
 
 /** @param {string | undefined} value */
@@ -516,12 +518,12 @@ function renderObservationTable(observations) {
             'tr',
             null,
             h('th', { scope: 'row' }, runLink ? h('a', { href: runLink.href, 'aria-label': runLink.label }, observed) : observed),
-            h('td', null, text(row['operational-case']) || 'unknown'),
-            h('td', null, formatPercent(row['operational-value'])),
+            h('td', null, text(row['operational-case']) || `Run ${text(row.run)}`),
+            h('td', null, formatMetricValue(row['operational-value'])),
             h(
               'td',
               null,
-              renderStatusBadge(text(row['maturity-status']) === 'matured' ? 'Mature' : 'As of run'),
+              renderStatusBadge('Observed'),
               evidenceLink ? h('span', null, ' ', renderExternalLinkOrFallback(evidenceLink)) : null
             )
           );
@@ -533,11 +535,11 @@ function renderObservationTable(observations) {
 
 /** @param {Array<Record<string, unknown>>} observations */
 function comparableObservations(observations) {
-  const valid = observations.filter((row) => normalizedValue(row['operational-value']) !== null && text(row['operational-case']));
+  const valid = observations.filter((row) => nativeValue(row['operational-value']) !== null);
 
   const opportunities = new Map();
   for (const row of valid) {
-    const key = `${qualifiedRepository(row)}:${text(row['operational-case'])}`;
+    const key = `${qualifiedRepository(row)}:${text(row['operational-case']) || `run:${text(row.run)}`}`;
     const existing = opportunities.get(key);
     if (!existing || rowTime(row) >= rowTime(existing)) opportunities.set(key, row);
   }
@@ -546,18 +548,7 @@ function comparableObservations(observations) {
 
 /** @param {Array<Record<string, unknown>>} observations */
 function latestEvaluatorObservations(observations) {
-  const valid = observations.filter((row) => text(row['evaluator-digest']));
-  const latestEvaluator = valid
-    .toSorted((left, right) => evidenceAssignmentTime(right) - evidenceAssignmentTime(left))[0]?.['evaluator-digest'];
-  if (!latestEvaluator) return [];
-  return valid.filter((candidate) => candidate['evaluator-digest'] === latestEvaluator)
-    .sort((left, right) => rowTime(left) - rowTime(right));
-}
-
-/** @param {Record<string, unknown>} row */
-function evidenceAssignmentTime(row) {
-  const value = Date.parse(text(row['requested-evidence-at'] ?? row['observed-at']));
-  return Number.isFinite(value) ? value : 0;
+  return observations.toSorted((left, right) => rowTime(left) - rowTime(right));
 }
 
 /** @param {Array<Record<string, unknown>>} runs */

@@ -364,7 +364,10 @@ function renderEntityCardItems(rows, options) {
   return rows.map((row, index) => {
     const titleText = toText(row[definition.title.field]);
     const subtitle = definition.subtitle;
-    const subtitleText = subtitle ? toText(row[subtitle.field]) : '';
+    const subtitleContent = subtitle ? renderValue(subtitle, row[subtitle.field], row) : '';
+    const subtitleText = subtitleContent instanceof HTMLElement
+      ? subtitleContent.textContent ?? ''
+      : toText(subtitleContent);
     const target = resolveEntityCardDrill(row, drill, titleText);
     const titleContent = target?.external
       ? renderExternalLink(target.link)
@@ -447,7 +450,7 @@ function renderEntityCardItems(rows, options) {
               className: 'issue-list-card-subtitle entity-card-list-subtitle',
               'aria-label': `${fieldTitle(subtitle)}: ${subtitleText}`
             },
-            subtitleText
+            subtitleContent
           )
           : null,
         h(
@@ -925,23 +928,30 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
     details: visibleDetails,
     metrics: visibleMetrics
   };
-  const list = h('ul', {
-    className: 'document-list issue-list entity-card-list mobile-table-card-list-items',
-    'data-custom-view-mark': 'list'
-  }, ...renderEntityCardItems(initialRows, { pageId, title, renderValue, toText, definition: visibleDefinition, drill }));
   const empty = availableRows.length === 0
     ? h('p', { className: 'document-list-empty' }, typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.')
     : null;
-  const more = (availableRows.length > initialRows.length || context.continuation) && initialRows.length < rowLimit
-    ? h('button', { className: 'table-filter-more', type: 'button', 'data-card-list-more': '' }, 'Load more cards')
+  const boundary = (availableRows.length > initialRows.length || context.continuation) && initialRows.length < rowLimit
+    ? h('li', {
+        className: 'mobile-table-card-list-boundary',
+        'data-card-list-boundary': '',
+        'data-load-state': 'idle',
+        'aria-hidden': 'true'
+      })
     : null;
+  const list = h('ul', {
+    className: 'document-list issue-list entity-card-list mobile-table-card-list-items',
+    'data-custom-view-mark': 'list'
+  },
+  ...renderEntityCardItems(initialRows, { pageId, title, renderValue, toText, definition: visibleDefinition, drill }),
+  ...(boundary ? [boundary] : []));
   const region = h('div', {
     className: 'mobile-table-card-list',
     'data-mobile-card-list': '',
     role: 'region',
     'aria-label': `${title}: card list`
-  }, list, empty, more);
-  if (!(more instanceof HTMLButtonElement)) return region;
+  }, list, empty);
+  if (!(boundary instanceof HTMLElement)) return region;
 
   const continuation = context.continuation;
   let token = continuation?.token ?? '';
@@ -950,7 +960,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
   const loadMore = async () => {
     if (loading || renderedCount >= rowLimit || (renderedCount >= availableRows.length && !token)) return;
     loading = true;
-    more.disabled = true;
+    boundary.dataset.loadState = 'loading';
     try {
       let nextToken = token;
       if (renderedCount >= availableRows.length && token && continuation) {
@@ -959,7 +969,7 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
         nextToken = next.continuationToken ?? '';
       }
       const nextRows = availableRows.slice(renderedCount, Math.min(renderedCount + pageSize, rowLimit));
-      list.append(...renderEntityCardItems(nextRows, {
+      boundary.before(...renderEntityCardItems(nextRows, {
         pageId,
         title,
         renderValue,
@@ -970,17 +980,19 @@ function renderMobileTableCardList(context, columns, rows, renderValue, rowLimit
       }));
       renderedCount += nextRows.length;
       token = renderedCount < rowLimit ? nextToken : '';
-      more.textContent = 'Load more cards';
-      more.hidden = renderedCount >= availableRows.length && !token;
+      boundary.hidden = renderedCount >= availableRows.length && !token;
+      boundary.dataset.loadState = boundary.hidden ? 'complete' : 'idle';
     } catch {
-      more.textContent = 'Retry loading cards';
+      boundary.dataset.loadState = 'error';
+      list.addEventListener('scroll', () => void loadMore(), { once: true });
     } finally {
       loading = false;
-      more.disabled = false;
     }
   };
-  more.addEventListener('click', () => void loadMore());
-  observeLoadMoreBoundary(globalThis.IntersectionObserver, more, () => void loadMore(), { rootMargin: '200px' });
+  observeLoadMoreBoundary(globalThis.IntersectionObserver, boundary, () => void loadMore(), {
+    root: list,
+    rootMargin: '200px 0px'
+  });
   return region;
 }
 

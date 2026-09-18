@@ -1284,9 +1284,14 @@ describe('declarative dashboard queries', () => {
     const derived = executeDashboardQueries(
       dashboardQueries,
       { ...emptyRunRecordSources, campaigns, repositories, workflows: queryWorkflows, runs, audits: events, outcomes, 'operational-values': operationalValues, usage },
-      ['repository-activity', 'workflow-inventory', 'top-workflow-runs', 'campaign-operational-value-totals', 'campaign-inventory']
+      ['entity-workflows', 'repository-activity', 'workflow-inventory', 'top-workflow-runs', 'campaign-operational-value-totals', 'campaign-inventory']
     );
 
+    expect(derived['entity-workflows'].rows).toEqual([
+      expect.objectContaining({ workflow: 'a.md', runs: 2, 'successful-runs': 1, 'failed-runs': 1, 'aic-per-run': 5 }),
+      expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null }),
+      expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0 })
+    ]);
     expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
       repository: 'githubnext/gh-aw-cao',
       workflows: 3,
@@ -1299,9 +1304,9 @@ describe('declarative dashboard queries', () => {
       status: 'Needs attention'
     })]);
     expect(derived['workflow-inventory'].rows).toEqual([
-      expect.objectContaining({ workflow: 'a.md', runs: 2, ingestion: '50%' }),
-      expect.objectContaining({ workflow: 'b.md', runs: 0, ingestion: null }),
-      expect.objectContaining({ workflow: 'c.md', runs: 1, ingestion: '100%' })
+      expect.objectContaining({ workflow: 'a.md', runs: 2, 'successful-runs': 1, 'failed-runs': 1, 'aic-per-run': 5, ingestion: '50%' }),
+      expect.objectContaining({ workflow: 'b.md', runs: 0, 'successful-runs': 0, 'failed-runs': 0, 'aic-per-run': null, ingestion: null }),
+      expect.objectContaining({ workflow: 'c.md', runs: 1, 'successful-runs': 1, 'failed-runs': 0, 'aic-per-run': 0, ingestion: '100%' })
     ]);
     expect(derived['top-workflow-runs'].rows).toEqual([
       expect.objectContaining({ workflow: 'a.md', run: '1', 'workflow-label': 'githubnext/gh-aw-cao:a.md', 'workflow-runs': 2 }),
@@ -1328,6 +1333,32 @@ describe('declarative dashboard queries', () => {
       aic: 10,
       'value-created': 1
     }]);
+  });
+
+  it('includes rerun attempts in workflow run counts and average AIC', () => {
+    const rerunWorkflows = {
+      source: 'workflows',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md' }],
+      metadata: metadata('workflows')
+    };
+    const reruns = {
+      source: 'runs',
+      rows: [
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, 'run-conclusion': 'failure', 'aic-total': 4 },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 2, 'run-conclusion': 'success', 'aic-total': 6 }
+      ],
+      metadata: metadata('runs')
+    };
+
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { workflows: rerunWorkflows, runs: reruns },
+      ['entity-workflows']
+    );
+
+    expect(derived['entity-workflows'].rows).toEqual([
+      expect.objectContaining({ runs: 2, 'successful-runs': 1, 'failed-runs': 1, 'aic-per-run': 5 })
+    ]);
   });
 
   it('keeps unavailable repository report and evaluation metrics unknown', () => {

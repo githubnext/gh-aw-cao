@@ -1,9 +1,12 @@
+import { isSpuriousAbortAfterSuccessResponse } from "./dashboard-view-assessment.mjs";
+
 export const deployedDashboardUrl = "https://githubnext.github.io/gh-aw-cao/cao/";
 const deployedDashboardBase = new URL(deployedDashboardUrl);
 const deployedActivityShardDirectories = new Set(["gh-aw-logs-runs", "gh-aw-logs-records"]);
 
-export function shouldIgnoreRequestFailure({ method, url, errorText, reloading = false }) {
-  return errorText === "net::ERR_ABORTED" && (
+export function shouldIgnoreRequestFailure({ method, url, errorText, reloading = false, hadSuccessResponse = false }) {
+  return isSpuriousAbortAfterSuccessResponse(errorText, hadSuccessResponse)
+    || errorText === "net::ERR_ABORTED" && (
     reloading || isDeployedDashboardShardProbe({ method, url })
   );
 }

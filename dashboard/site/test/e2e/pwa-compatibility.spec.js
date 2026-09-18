@@ -83,15 +83,17 @@ test('renders Octicons from an inlined sprite instead of an external reference',
     document.body.append(rendered);
     const glyph = rendered.querySelector('use');
     return {
-      href: glyph?.getAttribute('href') ?? '',
       symbolPresent: Boolean(document.querySelector('#octicon-sprite #octicon-rocket')),
-      width: glyph?.getBoundingClientRect().width ?? 0,
-      height: glyph?.getBoundingClientRect().height ?? 0
+      usesExternalGlyph: Boolean(glyph),
+      pathCount: rendered.querySelectorAll('path').length,
+      width: rendered.getBoundingClientRect().width,
+      height: rendered.getBoundingClientRect().height
     };
   }, 'http://localhost/src/octicons.js');
 
-  expect(icon.href).toBe('#octicon-rocket');
   expect(icon.symbolPresent).toBe(true);
+  expect(icon.usesExternalGlyph).toBe(false);
+  expect(icon.pathCount).toBeGreaterThan(0);
   expect(icon.width).toBeGreaterThan(0);
   expect(icon.height).toBeGreaterThan(0);
 });

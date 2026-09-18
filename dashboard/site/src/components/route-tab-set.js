@@ -30,5 +30,10 @@ export function renderRouteTabSet(options) {
     }))
   });
   tabs.dataset.routeTabs = '';
+  tabs.dataset.routeTabsCurrent = options.currentTab;
+  for (const link of tabs.querySelectorAll('a')) {
+    const route = link.getAttribute('href')?.split('?', 1)[0] ?? '';
+    if (route.startsWith('#page-')) link.dataset.navPageId = decodeURIComponent(route.slice('#page-'.length));
+  }
   return tabs;
 }

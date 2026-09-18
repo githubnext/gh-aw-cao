@@ -56,7 +56,7 @@ jobs:
           CAO_GITHUB_APP_ID: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
           CAO_GITHUB_APP_PRIVATE_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
         if: ${{ env.CAO_GITHUB_APP_ID != '' && env.CAO_GITHUB_APP_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@v3.2.0
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
           private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
@@ -89,7 +89,7 @@ jobs:
 
       - name: Evaluate Central Agentic Ops admission
         id: cao_admission
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           CAO_API_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GH_TOKEN: ${{ github.token }}
@@ -154,6 +154,33 @@ jobs:
             }
             if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
 
+      - name: Run CAO control precompute
+        id: cao_precompute
+        if: ${{ steps.cao_admission.outputs.authorized == 'true' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
+          CAO_ROLE: ${{ github.aw.import-inputs.role }}
+          CAO_WORKER: ${{ github.aw.import-inputs.worker }}
+          CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
+          CAO_DISPATCH_MAX: "${{ github.aw.import-inputs.dispatch_max }}"
+          CAO_SAFE_OUTPUT_REPOSITORY: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || '' }}
+          CAO_CORRELATION_ID: ${{ inputs.correlation_id || '' }}
+          CAO_CENTRAL_REPOSITORY: ${{ inputs.central_repo || '' }}
+          CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
+          CAO_ORCHESTRATOR_CREDITS: "${{ github.aw.import-inputs.orchestrator_credits }}"
+          CAO_WORKER_CREDITS_PER_TARGET: "${{ github.aw.import-inputs.worker_credits_per_target }}"
+          CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
+        with:
+          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          script: |
+            const control = await import(process.env.CAO_CONTROL_RUNTIME);
+            process.exitCode = 0;
+            await control.main({ core, github, context, exec, io, getOctokit }, ['precompute']);
+            if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
+
       - name: Ensure CAO admission record
         if: ${{ always() }}
         env:
@@ -197,7 +224,7 @@ jobs:
 
       - name: Upload CAO admission artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cao-admission
           path: ${{ runner.temp }}/cao/admission.json
@@ -220,33 +247,6 @@ jobs:
         run: |
           echo "::error title=CAO admission could not verify GitHub API capacity::Check authentication and GitHub API status. See the admission summary for next steps."
           exit 1
-
-      - name: Run CAO control precompute
-        id: cao_precompute
-        if: ${{ steps.cao_admission.outputs.authorized == 'true' }}
-        uses: actions/github-script@v9
-        env:
-          GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
-          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
-          CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
-          CAO_ROLE: ${{ github.aw.import-inputs.role }}
-          CAO_WORKER: ${{ github.aw.import-inputs.worker }}
-          CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
-          CAO_DISPATCH_MAX: "${{ github.aw.import-inputs.dispatch_max }}"
-          CAO_SAFE_OUTPUT_REPOSITORY: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || '' }}
-          CAO_CORRELATION_ID: ${{ inputs.correlation_id || '' }}
-          CAO_CENTRAL_REPOSITORY: ${{ inputs.central_repo || '' }}
-          CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
-          CAO_ORCHESTRATOR_CREDITS: "${{ github.aw.import-inputs.orchestrator_credits }}"
-          CAO_WORKER_CREDITS_PER_TARGET: "${{ github.aw.import-inputs.worker_credits_per_target }}"
-          CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
-        with:
-          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
-          script: |
-            const control = await import(process.env.CAO_CONTROL_RUNTIME);
-            process.exitCode = 0;
-            await control.main({ core, github, context, exec, io, getOctokit }, ['precompute']);
-            if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
 
       - name: "CAO precompute blocked: GitHub API limited until ${{ steps.cao_precompute.outputs.github_api_reset_at }}"
         if: ${{ steps.cao_precompute.outputs.reason == 'github-api-capacity-insufficient' }}
@@ -287,7 +287,7 @@ jobs:
 
       - name: Upload CAO control precompute artifact
         if: ${{ steps.cao_admission.outputs.authorized == 'true' && steps.cao_precompute.outputs.authorized != 'false' }}
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cao-control-precompute
           path: /tmp/gh-aw/agent/control-precompute.json
@@ -297,7 +297,7 @@ jobs:
   agent:
     pre-steps:
       - name: Download CAO control precompute artifact
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: cao-control-precompute
           path: /tmp/gh-aw/agent
@@ -306,7 +306,7 @@ post-steps:
   - name: Emit control-plane dispatcher telemetry
     if: ${{ always() }}
     continue-on-error: true
-    uses: actions/github-script@v9
+    uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
     with:
       script: |
         const fs = require('fs');

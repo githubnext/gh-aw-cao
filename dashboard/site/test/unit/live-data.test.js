@@ -152,16 +152,12 @@ describe("live Dashboard Language sources", () => {
           runId: 42,
           runUrl: "https://github.com/githubnext/gh-aw-cao/actions/runs/42",
           status: "pass",
-          value: 0.75,
-          deltaFromBaseline: 0.1,
-          evaluatorDigest: "sha256:test",
-          observation: {
-            opportunityKey: "release-train",
-            evidenceAt: "2026-08-30T10:05:00Z",
-            maturesAt: "2026-09-01T10:05:00Z",
-            mature: false,
-            subject: { repository: "githubnext/gh-aw-cao" },
-          },
+          value: 75,
+          unit: "count",
+          direction: "higher_is_better",
+          metrics: [{ id: "accepted-dependency-updates", value: 75 }],
+          observedAt: "2026-08-30T10:05:00Z",
+          resultAvailable: true,
         }],
       },
       report: {
@@ -325,9 +321,10 @@ describe("live Dashboard Language sources", () => {
       expect(sources.outcomes.rows[0]["outcome-state"]).toBe("pending");
       expect(sources.outcomes.rows[0]["run-conclusion"]).toBe("failure");
       expect(sources["operational-values"].rows[0]).toMatchObject({
-        "operational-value": 0.75,
-        "operational-value-definition": "dependabot",
-        "maturity-status": "interim",
+        "operational-value": 75,
+        "operational-value-definition": "accepted-dependency-updates",
+        "operational-value-unit": "count",
+        "operational-value-direction": "higher_is_better",
       });
 
       const rateLimitedReport = {

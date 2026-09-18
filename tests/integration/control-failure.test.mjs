@@ -234,6 +234,43 @@ test("orchestrator derives its public central review destination without a dispa
   assert.doesNotMatch(result.stderr, /non-central review safe_output_repo must be private/);
 });
 
+test("orchestrator loads workflow source at the exact workflow SHA instead of its mutable ref", () => {
+  const workflowSha = "2222222222222222222222222222222222222222";
+  const result = runPrecompute(
+    {
+      ROLE: "orchestrator",
+      TARGET_REPO: "",
+      GITHUB_WORKFLOW_REF: "acme/control/.github/workflows/dependabot.lock.yml@mutable-branch",
+      GITHUB_WORKFLOW_SHA: workflowSha,
+    },
+    `
+case "$*" in
+  *contents/.github/workflows/dependabot.md*"ref=${workflowSha}"*)
+    printf '%s\\n' '---
+safe-outputs:
+  dispatch-workflow:
+    workflows: [dependabot-update-planner]
+---' | base64 | tr -d '\\n'
+    ;;
+  *contents/.github/workflows/dependabot.md*)
+    echo "workflow source was not requested at the exact SHA: $*" >&2
+    exit 98
+    ;;
+  *actions/workflows*)
+    printf '{"id":1,"name":"Dependabot worker","path":".github/workflows/dependabot-update-planner.lock.yml","state":"active"}\\n'
+    ;;
+  *repos/acme/target*)
+    printf '{"id":1,"full_name":"acme/target","archived":false,"disabled":false,"private":true,"pushed_at":"2026-09-03T00:00:00Z","default_branch":"main"}\\n'
+    ;;
+  *) printf 'true\\n' ;;
+esac
+`,
+    controlPolicy({ scope: { "allowed-repositories": ["acme/target"] } }),
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
 for (const [label, dispatchMaximum, expected] of [
   ["missing", "", 1],
   ["string", "17", 17],

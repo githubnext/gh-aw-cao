@@ -40,6 +40,35 @@ describe('entity card templates', () => {
     expect(selected).toEqual(expect.arrayContaining(['run-title', 'branch', 'event', 'duration', 'started-at']));
   });
 
+  it('presents workflow inventory cards with identity and run outcome totals', () => {
+    expect(templates.workflow).toMatchObject({
+      icon: 'workflow',
+      title: { field: 'workflow-name' },
+      subtitle: { field: 'workflow', format: 'workflow-relative-path' },
+      details: expect.arrayContaining([
+        { field: 'successful-runs', title: 'Success' },
+        { field: 'failed-runs', title: 'Failures' },
+        { field: 'aic-per-run', title: 'Average AIC', unit: 'aic-per-run' }
+      ])
+    });
+    expect(templates.workflow.details).not.toContainEqual({ field: 'runs', title: 'Runs' });
+    const inventoryQuery = dashboard.queries.find(
+      (/** @type {Record<string, any>} */ query) => query.name === 'workflow-inventory'
+    );
+    const selected = inventoryQuery.select.map((/** @type {Record<string, any>} */ field) => field.as ?? field.field);
+    expect(selected).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
+    const inventoryView = pages.workflows.definition.views.find(
+      (/** @type {Record<string, any>} */ view) => view.id === 'workflows-inventory'
+    );
+    const columns = inventoryView.encoding.columns.map((/** @type {Record<string, any>} */ field) => field.field);
+    expect(columns).toEqual(expect.arrayContaining(['workflow-name', 'workflow', 'runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
+    const entityQuery = dashboard.queries.find(
+      (/** @type {Record<string, any>} */ query) => query.name === 'entity-workflows'
+    );
+    const entityFields = entityQuery.select.map((/** @type {Record<string, any>} */ field) => field.as ?? field.field);
+    expect(entityFields).toEqual(expect.arrayContaining(['runs', 'successful-runs', 'failed-runs', 'aic-per-run']));
+  });
+
   it('declares a firewall domain card with allowed and blocked metrics', () => {
     expect(templates['firewall-domain']).toEqual({
       id: 'firewall-domain',

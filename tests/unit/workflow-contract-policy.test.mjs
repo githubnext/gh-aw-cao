@@ -354,7 +354,7 @@ test("control workflows deny before activation through one shared admission cont
   );
   assert.match(sharedControl, /^\s+id: cao_admission$/m);
   assert.match(sharedControl, /Generate CAO pre-activation GitHub App token/);
-  assert.match(sharedControl, /actions\/create-github-app-token@v3\.2\.0/);
+  assert.match(sharedControl, /actions\/create-github-app-token@[0-9a-f]{40} # v3\.2\.0/);
   assert.match(sharedControl, /permission-actions: read[\s\S]*?permission-contents: read/);
   assert.match(sharedControl, /CAO_API_TOKEN: \$\{\{ steps\.cao_pre_activation_app_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
   assert.match(sharedControl, /name: Checkout CAO control modules/);
@@ -366,10 +366,21 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /fetch-depth: 1/);
   assert.doesNotMatch(sharedControl, /gh api --method GET "repos\/\$\{GITHUB_REPOSITORY\}\/contents\/\.github\/cao\/src/);
   assert.doesNotMatch(sharedControl, /base64\s+(?:-d|--decode)/);
-  assert.match(stepBlock(sharedControl, "Evaluate Central Agentic Ops admission"), /uses: actions\/github-script@v9(?:\.0\.0)?/);
+  assert.match(stepBlock(sharedControl, "Evaluate Central Agentic Ops admission"), /uses: actions\/github-script@[0-9a-f]{40} # v9\.0\.0/);
   assert.match(stepBlock(sharedControl, "Evaluate Central Agentic Ops admission"), /await control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['admit'\]\)/);
-  assert.match(stepBlock(sharedControl, "Run CAO control precompute"), /uses: actions\/github-script@v9(?:\.0\.0)?/);
+  assert.match(stepBlock(sharedControl, "Run CAO control precompute"), /uses: actions\/github-script@[0-9a-f]{40} # v9\.0\.0/);
   assert.match(stepBlock(sharedControl, "Run CAO control precompute"), /await control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['precompute'\]\)/);
+  assert.ok(
+    sharedControl.indexOf("- name: Run CAO control precompute")
+      < sharedControl.indexOf("- name: Ensure CAO admission record"),
+    "precompute must run immediately after admission, before mutable handoff consumers",
+  );
+  const admissionEnd = sharedControl.indexOf("- name: Run CAO control precompute");
+  const admissionStart = sharedControl.indexOf("- name: Evaluate Central Agentic Ops admission");
+  assert.doesNotMatch(sharedControl.slice(admissionStart, admissionEnd), /\n\s+- name:/);
+  for (const action of sharedControl.matchAll(/^\s*uses:\s+([^./\s][^@\s]+)@([^\s#]+)/gm)) {
+    assert.match(action[2], /^[0-9a-f]{40}$/, `shared/control.md: ${action[1]} is mutable`);
+  }
   assert.doesNotMatch(sharedControl, /permission-actions: write/);
   assert.doesNotMatch(sharedControl, /CAO_GITHUB_API_GATE|persist-api-gate|gate_writer_token/);
   assert.match(sharedControl, /CAO admission blocked: GitHub API limited until \$\{\{ steps\.cao_admission\.outputs\.github_api_reset_at \}\}/);

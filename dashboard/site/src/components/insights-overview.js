@@ -1,12 +1,42 @@
 import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
 import { finiteNumber, formatCountOf, formatRoundedPercent } from './count-formatters.js';
-import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-elements.js';
+import { listChartSeries, renderChartLegend, renderChartWidget, renderPieLegend } from './chart-elements.js';
 import { renderLazyView } from './lazy-view.js';
 import { rowsFor } from './source-rows.js';
 import { renderDlRow } from './ui-primitives.js';
 
 const FAILURE_CONCLUSIONS = new Set(['failure', 'timed-out', 'startup-failure', 'action-required']);
+
+/**
+ * @param {import('./ui-elements.js').ElementRenderContext} context
+ */
+export function renderCampaignOperationalValueHistory(context) {
+  const metrics = rowsFor(context.sources, 'campaign-operational-value-series');
+  if (metrics.length === 0) {
+    return h('section', { className: 'campaign-value-history', 'aria-label': context.title },
+      h('p', { className: 'empty-message' }, 'No operational-value extracts were observed for this campaign in the selected horizon.'));
+  }
+
+  return h('section', { className: 'campaign-value-history', 'aria-label': context.title },
+    h('div', { className: 'insights-section-heading' },
+      h('div', null,
+        h('span', { className: 'insights-eyebrow' }, 'Selected horizon'),
+        h('h2', null, 'Measure and diagnostic history'),
+        h('p', null, 'Each graph preserves every retained extract; workflow series remain separate.'))),
+    h('div', { className: 'insights-plot-grid' }, ...metrics.map((metric) => {
+      const points = /** @type {Array<{ x: string, y: number, color: string, key: string }>} */ (metric.points);
+      const series = listChartSeries(points);
+      const kind = String(metric['metric-kind']);
+      const name = String(metric['metric-name'] || metric.metric || 'Metric');
+      return insightPanel(
+        kind === 'primary' ? humanizeIdentifier(name) : name,
+        `${kind === 'primary' ? 'Primary metric' : 'Diagnostic'} · ${points.length} ${points.length === 1 ? 'extract' : 'extracts'}`,
+        renderChartWidget('line', points, series),
+        series.length > 1 ? renderChartLegend(series, 'line') : null
+      );
+    })));
+}
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderInsightsOverview(context) {
@@ -18,16 +48,15 @@ export function renderInsightsOverview(context) {
   const experiments = rowsFor(context.sources, 'experiments');
 
   const valuePoints = values.flatMap((row, index) => {
-    const value = Number(row['operational-value']);
+    const value = nativeMetricValue(row['operational-value']);
     const observed = String(row['observed-at'] || '');
-    return Number.isFinite(value) && Number.isFinite(Date.parse(observed))
+    return value !== null && Number.isFinite(Date.parse(observed))
       ? [{ x: observed, y: value, color: String(row['operational-value-definition'] || 'Attainment'), key: `value-${index}`, source: row }]
       : [];
   });
   const valueSeries = listChartSeries(valuePoints);
   const meanValue = mean(valuePoints.map((point) => point.y));
   const acceptedOutcomes = outcomes.filter((row) => String(row['outcome-state']) === 'accepted').length;
-  const matureValues = values.filter((row) => String(row['maturity-status']) === 'matured').length;
 
   const outcomeEntries = counts(outcomes, (row) => String(row['outcome-state'] || 'unknown'));
   const usagePoints = dailyPoints(usage, 'observed-at', (row) => Number(row.aic), () => 'AI Credits');
@@ -62,12 +91,12 @@ export function renderInsightsOverview(context) {
       h('div', { className: 'insights-section-heading' },
         h('div', null,
           h('span', { className: 'insights-eyebrow' }, 'Value created'),
-          h('h2', { id: 'insights-value-title' }, 'Operational value attainment'),
-          h('p', null, 'Measured attainment and accepted repository outcomes, without inferring unsupported ROI.')),
+          h('h2', { id: 'insights-value-title' }, 'Operational value metrics'),
+          h('p', null, 'Native gh-aw metrics and accepted repository outcomes, without inferring unsupported ROI.')),
         h('dl', { className: 'insights-lead-metrics' },
-          renderDlRow('mean attainment', meanValue === null ? '' : formatRoundedPercent(meanValue)),
+          renderDlRow('mean primary value', meanValue === null ? '' : formatNumber(meanValue)),
           renderDlRow('accepted outcomes', formatNumber(acceptedOutcomes)),
-          renderDlRow('mature observations', formatNumber(matureValues)))),
+          renderDlRow('metric observations', formatNumber(valuePoints.length)))),
       valueSeries.length > 1 ? renderValueSeriesSelector(valuePoints, valueSeries, valueChart) : null,
       valueChart),
 
@@ -166,6 +195,17 @@ function insightPanel(title, description, ...children) {
   return h('section', { className: 'insights-plot-panel' },
     h('header', null, h('h2', null, title), h('p', null, description)),
     ...children);
+}
+
+/** @param {string} value */
+function humanizeIdentifier(value) {
+  const words = value.replaceAll(/[-_]+/g, ' ').trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : 'Operational value';
+}
+
+/** @param {unknown} value */
+function nativeMetricValue(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 /** @param {number[]} values */
