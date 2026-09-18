@@ -262,7 +262,9 @@ test('package card actions wrap together on narrow screens', async ({ page }) =>
   expect(actionsBox).not.toBeNull();
   expect(controlBox).not.toBeNull();
   if (actionsBox === null || controlBox === null) throw new Error('Expected visible package actions.');
-  expect(actionsBox.height).toBeLessThanOrEqual(controlBox.height * 2 + 6);
+  const maxWrappedRows = 2;
+  const actionGap = 6;
+  expect(actionsBox.height).toBeLessThanOrEqual(controlBox.height * maxWrappedRows + actionGap);
 });
 
 test('ingestion notifications reveal scrollable progress history on click', async ({ page }) => {

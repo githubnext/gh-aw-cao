@@ -572,13 +572,13 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'maintenance');
-    const starterUpdates = page?.querySelector('[data-view-id="package-updates"]');
+    const packageUpdates = page?.querySelector('[data-view-id="package-updates"]');
     const compilerUpgrades = page?.querySelector('[data-view-id="compiler-upgrades"]');
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
     expect(page?.querySelectorAll('[data-view-layout="full"]')).toHaveLength(2);
-    expect(starterUpdates?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    expect(packageUpdates?.querySelectorAll('.document-list-card')).toHaveLength(1);
     expect(compilerUpgrades?.querySelectorAll('.document-list-card')).toHaveLength(1);
-    expect(starterUpdates?.textContent).toContain('Remote agent');
+    expect(packageUpdates?.textContent).toContain('Remote agent');
     expect(compilerUpgrades?.textContent).toContain('acme/service');
     expect(compilerUpgrades?.textContent).toContain('v0.88.7');
     expect(compilerUpgrades?.textContent).toContain('v0.89.0');
