@@ -133,6 +133,11 @@ test("deployed dashboard failure tracking ignores only benign aborted probes", (
   }), false);
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",
+    url: "https://githubnext.github.io/other-dashboard/cao/gh-aw-logs-runs/shard.json",
+    errorText: "net::ERR_ABORTED",
+  }), false);
+  assert.equal(shouldIgnoreRequestFailure({
+    method: "HEAD",
     url: `${deployedDashboardUrl}assets/app.js`,
     errorText: "net::ERR_ABORTED",
   }), false);
