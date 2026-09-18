@@ -4059,6 +4059,7 @@
                 "field": "started-at",
                 "type": "temporal",
                 "time-unit": "day",
+                "format": "human-friendly-timestamp",
                 "title": "Day"
               },
               "y": {

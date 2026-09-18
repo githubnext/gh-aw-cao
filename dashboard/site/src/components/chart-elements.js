@@ -644,6 +644,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const timelineTicks = isScatterChart
       ? scatterChartTimeAxisTicks(parsedTimes, minimumTime, maximumTime)
       : lineChartTimelineTicks(xValues);
+    /** @type {Map<string, Array<{ x: number, lower: number, upper: number }>>} */
     const areaCoordinates = new Map();
     let maximum = 1;
     if (isAreaChart) {
@@ -694,6 +695,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         end: Math.min(100, (Math.max(...highlightedIndexes) + 0.5) * xStep)
       }
       : null;
+    /** @param {number} value */
     const scaledAreaY = (value) => Number((38 - (value / maximum) * 34).toFixed(4));
     return renderChartWidgetShell(
       chartType,

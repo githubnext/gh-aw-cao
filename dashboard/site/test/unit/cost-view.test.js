@@ -52,6 +52,7 @@ const efficiencyRows = [
 
 const runRows = [
   { 'started-at': '2026-08-29T08:00:00Z', workflow: '.github/workflows/daily.md', aic: 2 },
+  { 'started-at': '2026-08-29T08:00:00Z', workflow: '.github/workflows/daily.md', aic: 3 },
   { 'started-at': '2026-08-29T12:00:00Z', workflow: '.github/workflows/review.md', aic: 3 },
   { 'started-at': '2026-08-30T08:00:00Z', workflow: '.github/workflows/daily.md', aic: 4 },
   { 'started-at': '2026-08-30T12:00:00Z', workflow: '.github/workflows/review.md', aic: 1 }
@@ -138,6 +139,11 @@ describe('Cost dashboard view', () => {
     expect(rendered.querySelector('[data-nav-page-id="cost"] .octicon-meter')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="cost-aic-over-time"] [data-chart-widget="area"]')).not.toBeNull();
     expect(page?.querySelectorAll('[data-view-id="cost-aic-over-time"] .area-chart-area')).toHaveLength(2);
+    expect(page?.querySelectorAll('[data-view-id="cost-aic-over-time"] .chart-point')).toHaveLength(4);
+    expect([...page?.querySelectorAll('[data-view-id="cost-aic-over-time"] .chart-point') ?? []]
+      .map((point) => point.getAttribute('aria-label'))).toEqual(expect.arrayContaining([
+        expect.stringContaining('5')
+      ]));
     expect(page?.querySelector('[data-view-id="cost-top-workflow-aic"] [data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-id="cost-workflow-efficiency"] [data-lazy-list]')).not.toBeNull();
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
