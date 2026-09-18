@@ -47,6 +47,63 @@ test("deployed dashboard scrolling uses a stable view snapshot", async () => {
   assert.deepEqual(disposed, [0, 1]);
 });
 
+test("deployed dashboard scrolling tolerates lazy view replacement only", async () => {
+  const disposed = [];
+  const activePage = {
+    locator() {
+      return {
+        async elementHandles() {
+          return [
+            {
+              async evaluate() {
+                throw new Error("Element is not attached to the DOM");
+              },
+              async dispose() {
+                disposed.push(0);
+              },
+            },
+            {
+              async evaluate() {},
+              async dispose() {
+                disposed.push(1);
+              },
+            },
+          ];
+        },
+      };
+    },
+  };
+
+  await scrollRenderedViewsIntoView(activePage);
+
+  assert.deepEqual(disposed, [0, 1]);
+});
+
+test("deployed dashboard scrolling reports unexpected errors", async () => {
+  const disposed = [];
+  const activePage = {
+    locator() {
+      return {
+        async elementHandles() {
+          return [{
+            async evaluate() {
+              throw new Error("unexpected scroll failure");
+            },
+            async dispose() {
+              disposed.push(0);
+            },
+          }];
+        },
+      };
+    },
+  };
+
+  await assert.rejects(scrollRenderedViewsIntoView(activePage), /unexpected scroll failure/);
+
+  assert.deepEqual(disposed, [0]);
+});
+
+
 test("deployed dashboard failure tracking ignores only benign aborted probes", () => {
   assert.equal(shouldIgnoreRequestFailure({
     method: "HEAD",

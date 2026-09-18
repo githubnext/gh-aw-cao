@@ -29,10 +29,15 @@ export async function scrollRenderedViewsIntoView(activePage) {
       await viewHandle.evaluate((element) => {
         element.scrollIntoView({ block: "center", inline: "nearest" });
       });
-    } catch {
-      // Ignore views that are replaced while lazy content hydrates.
+    } catch (error) {
+      if (!isDetachedViewError(error)) throw error;
     } finally {
       await viewHandle.dispose();
     }
   }
+}
+
+function isDetachedViewError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /not attached|detached|Execution context was destroyed|Cannot find context/i.test(message);
 }
