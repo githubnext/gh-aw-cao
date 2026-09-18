@@ -281,7 +281,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\//);
-  assert.match(activityWorkflow, /Collect dashboard inventory[\s\S]*?inventory-sources\.mjs[\s\S]*?Download agentic workflow logs/);
+  assert.match(activityWorkflow, /Collect dashboard inventory[\s\S]*?'discover-workflows'[\s\S]*?Download agentic workflow logs/);
   assert.match(dashboardWorkflow, /const collectedFiles = \[[\s\S]*?'inventory-sources\.json'[\s\S]*?for \(const fileName of collectedFiles\)[\s\S]*?fs\.copyFileSync/);
   assert.match(activityWorkflow, /REPORT_GH_AW_LOGS_SHARDS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs-shards/);
   assert.match(activityWorkflow, /Set up Node\.js[\s\S]*?node-version: 24/);
@@ -390,9 +390,9 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
   assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
   assert.doesNotMatch(workflow, /ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
-  assert.match(workflow, /Collect dashboard inventory[\s\S]*?uses: actions\/github-script@[0-9a-f]{40}[\s\S]*?core\.info\(`\$\{label\} started`\)[\s\S]*?core\.info\(`\$\{label\} completed`\)/);
+  assert.match(workflow, /Collect dashboard inventory[\s\S]*?uses: actions\/github-script@[0-9a-f]{40}[\s\S]*?core\.info\('Workflow discovery started'\)[\s\S]*?'discover-workflows'[\s\S]*?core\.info\('Workflow discovery completed'\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Upload activity snapshot[\s\S]*?cache:[\s\S]*?needs: index[\s\S]*?Download activity snapshot[\s\S]*?Save activity cache/);
-  assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/inventory-sources\.mjs[\s\S]*?\.github\/aw\/activity\/inventory-sources\.mjs/);
+  assert.match(workflow, /Collect dashboard inventory[\s\S]*?activity\/cao\.mjs[\s\S]*?\.github\/aw\/activity\/cao\.mjs/);
   assert.match(workflow, /bash "\$collector"/);
   assert.match(activityCollector, /gh aw logs --audit/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);

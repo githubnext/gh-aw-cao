@@ -26,6 +26,8 @@ import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
+import { discoverInventory } from './inventory.mjs';
+import { discoverInventoryDashboardSources } from './inventory-sources.mjs';
 
 const debug = createDebug('ingest');
 const debugHash = createDebug('hash-payloads');
@@ -53,7 +55,7 @@ const GH_AW_INSTALLER_COMMAND = 'curl --fail --silent --show-error --location ht
 const CAO_SCHEMA_URL = 'https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json';
 const DEFAULT_POLICY_PATH = '.github/workflows/cao.json';
 const GH_RESOURCES = new Set(['runs', 'issues', 'prs']);
-const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
+const COMMANDS = new Set(['init', 'add', 'update', 'mode', 'discover-workflows', 'ingest', 'ingest-jsonl', 'audit-jsonl', 'compact-jsonl', 'query', 'doctor', 'download', 'hash-payloads', 'activity-stats', 'gh']);
 
 // Intentional CLI misuse that should print usage without an internal stack trace.
 class UsageError extends Error {}
@@ -63,6 +65,7 @@ const USAGE = `Usage:
   cao add PACKAGE [GH_AW_ADD_OPTIONS...]
   cao update [GH_AW_UPDATE_OPTIONS...]
   cao mode (live|preview) PACKAGE...
+  cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY]
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
@@ -1588,6 +1591,32 @@ async function runLegacyIngestion(contextPath, logDirectory) {
   }
 }
 
+export async function discoverWorkflows({
+  root = ".",
+  controlSettingsPath,
+  inventoryPath,
+  outputPath,
+  repository,
+} = {}) {
+  const inventory = discoverInventory(path.resolve(root));
+  const controlSettings = JSON.parse(await readFile(path.resolve(controlSettingsPath), "utf8"));
+  const sources = await discoverInventoryDashboardSources({
+    inventory,
+    controlSettings,
+    repository,
+  });
+  await Promise.all([
+    writeJsonAtomically(inventoryPath, inventory),
+    writeJsonAtomically(outputPath, sources),
+  ]);
+  return {
+    command: "discover-workflows",
+    repositories: sources.repositories.rows.length,
+    packages: sources.packages.rows.length,
+    workflows: sources.workflows.rows.length,
+  };
+}
+
 export async function runCli(arguments_, input = process.stdin) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
@@ -1616,6 +1645,16 @@ export async function runCli(arguments_, input = process.stdin) {
     return downloadDeployedDashboardData({
       url: option(options, 'url', false),
       output: option(options, 'output', false)
+    });
+  }
+  if (command === 'discover-workflows') {
+    rejectUnknownOptions(options, ['root', 'control-settings', 'inventory', 'output', 'repo']);
+    return discoverWorkflows({
+      root: option(options, 'root', false) || '.',
+      controlSettingsPath: option(options, 'control-settings'),
+      inventoryPath: option(options, 'inventory'),
+      outputPath: option(options, 'output'),
+      repository: option(options, 'repo'),
     });
   }
   if (command === 'audit-jsonl') {

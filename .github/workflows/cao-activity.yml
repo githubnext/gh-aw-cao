@@ -160,32 +160,29 @@ jobs:
             if (settings.allowed_repositories.length === 0 && !process.env.ACTIVITY_APP_TOKEN) {
               throw new Error('Owner-wide repository discovery requires the read-only GitHub App')
             }
-            const activityRoot = fs.existsSync('activity/inventory-sources.mjs')
+            const activityRoot = fs.existsSync('activity/cao.mjs')
               ? 'activity'
-              : fs.existsSync('.github/aw/activity/inventory-sources.mjs')
+              : fs.existsSync('.github/aw/activity/cao.mjs')
                 ? '.github/aw/activity'
                 : undefined
             if (!activityRoot) {
               throw new Error('Activity inventory collector is unavailable')
             }
-            fs.rmSync(process.env.REPORT_INVENTORY, { force: true })
-            fs.rmSync(process.env.REPORT_INVENTORY_SOURCES, { force: true })
-            const runDiscoveryStep = async (label, scriptName) => {
-              core.info(`${label} started`)
-              const result = await exec.getExecOutput(
-                process.execPath,
-                [path.join(activityRoot, scriptName)],
-                { ignoreReturnCode: true, silent: true },
-              )
-              if (result.stdout.trim()) core.info(result.stdout.trim())
-              if (result.stderr.trim()) core.info(result.stderr.trim())
-              if (result.exitCode !== 0) {
-                throw new Error(`${label} failed with exit code ${result.exitCode}`)
-              }
-              core.info(`${label} completed`)
+            core.info('Workflow discovery started')
+            const result = await exec.getExecOutput(process.execPath, [
+              path.join(activityRoot, 'cao.mjs'),
+              'discover-workflows',
+              '--control-settings', process.env.REPORT_CONTROL_SETTINGS,
+              '--inventory', process.env.REPORT_INVENTORY,
+              '--output', process.env.REPORT_INVENTORY_SOURCES,
+              '--repo', process.env.GITHUB_REPOSITORY,
+            ], { ignoreReturnCode: true, silent: true })
+            if (result.stdout.trim()) core.info(result.stdout.trim())
+            if (result.stderr.trim()) core.info(result.stderr.trim())
+            if (result.exitCode !== 0) {
+              throw new Error(`Workflow discovery failed with exit code ${result.exitCode}`)
             }
-            await runDiscoveryStep('Local workflow inventory discovery', 'inventory.mjs')
-            await runDiscoveryStep('Remote workflow registry discovery', 'inventory-sources.mjs')
+            core.info('Workflow discovery completed')
 
       - name: Download agentic workflow logs
         continue-on-error: true

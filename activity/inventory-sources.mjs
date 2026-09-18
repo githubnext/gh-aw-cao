@@ -925,6 +925,41 @@ export function buildInventoryDashboardSources({
   };
 }
 
+export async function discoverInventoryDashboardSources({
+  inventory,
+  controlSettings,
+  repository,
+} = {}) {
+  const discoveredRepositories = await discoverRepositories(controlSettings, { controlRepository: repository });
+  log.info`Repository discovery selected ${discoveredRepositories.length} repositories`;
+  log.info`Starting workflow registry, package version, and gh-aw release discovery`;
+  const [rawWorkflowRegistries, latestPackageResolution, latestGhAwResolution] = await Promise.all([
+    discoverWorkflowRegistries(discoveredRepositories, { controlRepository: repository }),
+    discoverLatestPackageCommits(inventory),
+    discoverLatestGhAwVersion().then((version) => ({ version, failure: null })).catch((error) => ({
+      version: null,
+      failure: versionFailure(
+        "github/gh-aw",
+        "gh-aw-version-discovery",
+        error?.status,
+        error?.message || String(error),
+      ),
+    })),
+  ]);
+  const workflowRegistries = await discoverWorkflowVersions(rawWorkflowRegistries);
+  log.info`Workflow discovery completed for ${workflowRegistries.length} repository registries`;
+  return buildInventoryDashboardSources({
+    inventory,
+    controlSettings,
+    discoveredRepositories,
+    workflowRegistries,
+    latestPackageResolution,
+    latestGhAwVersion: latestGhAwResolution.version,
+    latestGhAwFailure: latestGhAwResolution.failure,
+    repository,
+  });
+}
+
 export async function main() {
   const inventoryPath = process.env.REPORT_INVENTORY;
   const controlSettingsPath = process.env.REPORT_CONTROL_SETTINGS;
@@ -940,32 +975,9 @@ export async function main() {
       readFile(inventoryPath, "utf8").then(JSON.parse),
       readFile(controlSettingsPath, "utf8").then(JSON.parse),
     ]);
-    const discoveredRepositories = await discoverRepositories(controlSettings);
-    log.info`Repository discovery selected ${discoveredRepositories.length} repositories`;
-    log.info`Starting workflow registry, package version, and gh-aw release discovery`;
-    const [rawWorkflowRegistries, latestPackageResolution, latestGhAwResolution] = await Promise.all([
-      discoverWorkflowRegistries(discoveredRepositories, { controlRepository: repository }),
-      discoverLatestPackageCommits(inventory),
-      discoverLatestGhAwVersion().then((version) => ({ version, failure: null })).catch((error) => ({
-        version: null,
-        failure: versionFailure(
-          "github/gh-aw",
-          "gh-aw-version-discovery",
-          error?.status,
-          error?.message || String(error),
-        ),
-      })),
-    ]);
-    const workflowRegistries = await discoverWorkflowVersions(rawWorkflowRegistries);
-    log.info`Workflow discovery completed for ${workflowRegistries.length} repository registries`;
-    const sources = buildInventoryDashboardSources({
+    const sources = await discoverInventoryDashboardSources({
       inventory,
       controlSettings,
-      discoveredRepositories,
-      workflowRegistries,
-      latestPackageResolution,
-      latestGhAwVersion: latestGhAwResolution.version,
-      latestGhAwFailure: latestGhAwResolution.failure,
       repository,
     });
     await writeFile(path.resolve(outputPath), `${JSON.stringify(sources, null, 2)}\n`);

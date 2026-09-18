@@ -98,6 +98,16 @@ repeated records.
 Dashboard ingestion checks this sidecar first, then falls back to ETag validation
 and finally a downloaded-content hash when neither server-side identity is usable.
 
+Workflow inventory discovery can be reproduced locally with:
+
+```bash
+cao discover-workflows \
+  --control-settings /path/to/control-settings.json \
+  --inventory /tmp/control-plane-inventory.json \
+  --output /tmp/inventory-sources.json \
+  --repo OWNER/REPOSITORY
+```
+
 The split improves time to first useful Run query rather than reducing the
 total transfer required for a complete refresh. Run results exposed between
 phases are partial snapshot state; event-dependent results become current only

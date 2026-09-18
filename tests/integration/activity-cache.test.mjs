@@ -67,7 +67,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.doesNotMatch(cacheJob, /actions\/checkout@|activity-app-token|gh aw logs|ingest-jsonl/);
   assert.match(
     workflow,
-    /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?core\.info\(`\$\{label\} started`\)[\s\S]*?core\.info\(`\$\{label\} completed`\)[\s\S]*?Download agentic workflow logs/,
+    /Collect dashboard inventory[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?core\.info\('Workflow discovery started'\)[\s\S]*?'discover-workflows'[\s\S]*?core\.info\('Workflow discovery completed'\)[\s\S]*?Download agentic workflow logs/,
   );
   assert.match(
     indexJob,
