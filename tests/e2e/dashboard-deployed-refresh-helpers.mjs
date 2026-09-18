@@ -42,6 +42,6 @@ function isDetachedViewError(error) {
     ? String(error.name)
     : "";
   const message = error instanceof Error ? error.message : String(error);
-  return /not attached|detached|context/i.test(name)
-    || /not attached|detached|Execution context was destroyed|Cannot find context/i.test(message);
+  return name === "DetachedElementError"
+    || /Element is not attached to the DOM|Execution context was destroyed/i.test(message);
 }
