@@ -7,8 +7,9 @@
  * @param {Record<string, unknown> | null | undefined} record
  */
 export function hasOperationalValueResult(record) {
-  return record?.resultAvailable === true
-    || Boolean(record?.observation && typeof record.observation === "object" && !Array.isArray(record.observation));
+  if (record?.resultAvailable === true) return true;
+  if (record?.resultAvailable !== undefined) return false;
+  return Boolean(record?.observation && typeof record.observation === "object" && !Array.isArray(record.observation));
 }
 
 /**

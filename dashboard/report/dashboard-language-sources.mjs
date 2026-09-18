@@ -2462,19 +2462,20 @@ function operationalValueDefinitionKey(record, evaluatorDigest = record.evaluato
 
 function operationalValueDefinitionLookup(values) {
   const definitions = Array.isArray(values.definitions) ? values.definitions : [];
-  const lookup = new Map();
+  const byDigest = new Map();
+  const singleByWorkflow = new Map();
   const definitionsByWorkflow = new Map();
   for (const definition of definitions) {
-    lookup.set(operationalValueDefinitionKey(definition), definition);
+    byDigest.set(operationalValueDefinitionKey(definition), definition);
     const workflowKey = operationalValueDefinitionKey(definition, "");
     definitionsByWorkflow.set(workflowKey, [...(definitionsByWorkflow.get(workflowKey) ?? []), definition]);
   }
   for (const [workflowKey, workflowDefinitions] of definitionsByWorkflow) {
     if (workflowDefinitions.length === 1) {
-      lookup.set(workflowKey, workflowDefinitions[0]);
+      singleByWorkflow.set(workflowKey, workflowDefinitions[0]);
     }
   }
-  return lookup;
+  return { byDigest, singleByWorkflow };
 }
 
 function diagnosticValues(record) {
@@ -2485,7 +2486,9 @@ function diagnosticValues(record) {
 
 function operationalValueMetrics(definitions, record) {
   if (Array.isArray(record.metrics)) return record.metrics;
-  const definition = definitions.get(operationalValueDefinitionKey(record)) ?? definitions.get(operationalValueDefinitionKey(record, "")) ?? {};
+  const definition = definitions.byDigest.get(operationalValueDefinitionKey(record))
+    ?? definitions.singleByWorkflow.get(operationalValueDefinitionKey(record, ""))
+    ?? {};
   const diagnostics = diagnosticValues(record);
   const primary = typeof definition.operationalValue === "string"
     ? definition.operationalValue

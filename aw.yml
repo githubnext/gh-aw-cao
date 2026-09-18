@@ -19,5 +19,3 @@ resources:
     destination: .github/aw/instructions.md
   - source: cao.sh
     destination: .github/aw/cao.sh
-  - source: dashboard/report/operational-value-records.mjs
-    destination: .github/aw/dashboard/report/operational-value-records.mjs
